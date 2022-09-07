@@ -1,0 +1,46 @@
+
+
+GET {{baseUrl}}/api/practice/love
+	?str=STR
+	&num=24
+	&bool=false
+Content-Type: text/plain
+
+###
+
+POST {{baseUrl}}/api/practice/me
+Content-Type: application/json
+
+{
+  "strLit": "unknown-undefined",
+  "numLit": "unknown-undefined",
+  "obj": { "str": "STR", "num": 24 },
+  "arr": ["ARR"],
+  "saveParams": {},
+  "mode": "unknown-undefined",
+  "saveParamsRe": "unknown-undefined",
+  "omitted": {},
+  "partialed": {},
+  "nl1": "NL1",
+  "opt1": "OPT1",
+  "hasDef": "HASDEF"
+}
+
+
+###
+
+GET {{baseUrl}}/api/practice/flying
+	?flying=FLYING
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/practice/high
+	?high=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/practice/findMany
+	?
+Content-Type: application/json

@@ -1,0 +1,34 @@
+# pp1 - production - web - pp1-api
+
+# 빌더
+FROM node:14 AS builder
+WORKDIR /app/pp1/api
+ENV NODE_ENV development
+
+# api npm 설치
+ADD ./package*.json ./
+ADD ./yarn.lock ./yarn.lock
+ADD ./.pnp.cjs ./.pnp.cjs
+ADD ./.yarnrc.yml ./.yarnrc.yml
+ADD ./.yarn ./.yarn
+RUN yarn
+
+# 소스코드 카피 & 빌드
+ADD ./tsconfig.json tsconfig.json
+ADD ./src src
+ADD ./public public
+RUN yarn build
+
+# 타겟
+FROM node:14 AS target
+ENV NODE_ENV production
+
+# 빌드 결과 카피
+WORKDIR /app/pp1/api
+COPY --from=builder /app/pp1/api .
+
+# 포트 오픈
+EXPOSE 15990
+
+# 서버 시작
+CMD yarn serve

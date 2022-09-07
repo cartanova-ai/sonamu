@@ -1,0 +1,57 @@
+
+
+GET {{baseUrl}}/api/post/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/post/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=title
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[withoutCount]=false
+	&params[id]=0
+	&params[type]=a-notice
+	&params[status]=ready
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/post/save
+Content-Type: application/json
+
+{
+  "saveParamsArray": [
+    {
+      "id": 0,
+      "type": "a-notice",
+      "title": null,
+      "content": "CONTENT",
+      "status": "ready",
+      "rating": null,
+      "images": ["IMAGES"],
+      "source_url": null,
+      "is_public": false,
+      "created_at": "2022-09-07"
+    }
+  ]
+}
+
+
+###
+
+GET {{baseUrl}}/api/post/del
+	?ids[0]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/post/like
+Content-Type: application/json
+
+{ "id": 0 }

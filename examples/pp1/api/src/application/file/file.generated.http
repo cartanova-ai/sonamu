@@ -1,0 +1,6 @@
+
+
+POST {{baseUrl}}/api/file/upload
+Content-Type: application/json
+
+{}

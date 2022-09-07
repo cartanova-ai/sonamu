@@ -1,0 +1,33 @@
+
+
+GET {{baseUrl}}/api/tag/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/tag/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[withoutCount]=false
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/tag/save
+Content-Type: application/json
+
+{ "saveParamsArray": [{ "id": 0, "name": "NAME" }] }
+
+
+###
+
+GET {{baseUrl}}/api/tag/del
+	?ids[0]=0
+Content-Type: application/json

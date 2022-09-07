@@ -1,0 +1,11 @@
+{
+  "zt": {
+    "scope": "typescript",
+    "prefix": "zt",
+    "body": [
+      "export const $1 = z.${2:string()};",
+      "export type $1 = z.infer<typeof $1>;"
+    ],
+    "description": "Zod Type 생성"
+  }
+}

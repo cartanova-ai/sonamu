@@ -1,0 +1,38 @@
+{
+  "Model.getDB write": {
+    "scope": "typescript",
+    "prefix": "wdb",
+    "body": ["const wdb = this.getDB('w');", "$1"]
+  },
+  "Model.getDB read": {
+    "scope": "typescript",
+    "prefix": "rdb",
+    "body": ["const rdb = this.getDB('r');", "$1"]
+  },
+  "Model.findById": {
+    "scope": "typescript",
+    "prefix": "id",
+    "body": [
+      "const $1 = await ${1/(.*)/${1:/capitalize}/}Model.findById('${2:AD}', ${3:id});",
+      "$4"
+    ]
+  },
+  "Model.findMany": {
+    "scope": "typescript",
+    "prefix": "find",
+    "body": [
+      "const { rows, total } = await ${1/(.*)/${1:/capitalize}/}Model.findMany('${2:AD}', {",
+      "  $4",
+      "});"
+    ]
+  },
+  "Model.findOne": {
+    "scope": "typescript",
+    "prefix": "findone",
+    "body": [
+      "const $1 = await ${1/(.*)/${1:/capitalize}/}Model.findOne('${2:AD}', {",
+      "  $3",
+      "});"
+    ]
+  }
+}

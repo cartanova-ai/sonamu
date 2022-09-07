@@ -1,0 +1,9 @@
+{
+  "watch": ["dist"],
+  "ext": "js",
+  "execMap": {
+    "js": "yarn node -r source-map-support/register"
+  },
+  "quiet": false,
+  "delay": 50
+}

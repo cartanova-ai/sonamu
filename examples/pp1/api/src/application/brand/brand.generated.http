@@ -1,0 +1,40 @@
+
+
+GET {{baseUrl}}/api/brand/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/brand/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[withoutCount]=false
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/brand/save
+Content-Type: application/json
+
+{ "saveParamsArray": [{ "id": 0, "name": "NAME", "created_at": "2022-09-07" }] }
+
+
+###
+
+GET {{baseUrl}}/api/brand/del
+	?ids[0]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/brand/attach
+Content-Type: application/json
+
+{ "ids": [0], "what": "WHAT" }

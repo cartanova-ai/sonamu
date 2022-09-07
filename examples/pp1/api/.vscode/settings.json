@@ -1,0 +1,31 @@
+{
+  "git.ignoreLimitWarning": true,
+  "todo-tree.tree.showBadges": true,
+  "todo-tree.tree.showCountsInTree": true,
+  "[Log]": {
+    "editor.fontSize": 10,
+    "editor.lineHeight": 1.4
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.yarn": true
+  },
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true
+  },
+  "typescript.tsdk": ".yarn/sdks/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "prettier.prettierPath": ".yarn/sdks/prettier/index.js",
+  "jestTestExplorer.pathToJest": "/Users/minsangk/.nvm/versions/node/v14.18.3/bin/yarn jest",
+  "jestTestExplorer.debugOutput": "externalTerminal",
+  "rest-client.environmentVariables": {
+    "local": {
+      "baseUrl": "http://local.hwlcl-krsel.com"
+    },
+    "production": {
+      "baseUrl": "http://hwlcl-krsel.com"
+    }
+  },
+  "rest-client.previewResponsePanelTakeFocus": false
+}
