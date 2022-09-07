@@ -2,6 +2,9 @@
 import chalk from "chalk";
 console.log(chalk.bgBlue(`BEGIN ${new Date()}`));
 
+import dotenv from "dotenv";
+dotenv.config();
+
 import path from "path";
 import { BaseModel } from "../database/base-model";
 import { DB } from "../database/db";
