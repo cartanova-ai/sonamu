@@ -1,1 +1,1 @@
-### Sonamu Base Repository
+### 🌲Sonamu — TypeScript Fullstack API Framework
