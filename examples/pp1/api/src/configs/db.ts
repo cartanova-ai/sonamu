@@ -21,9 +21,9 @@ const conf = {
     },
     connection: {
       dateStrings: true,
-      host: "0.0.0.0",
-      user: "f9dev",
-      password: "F9.dev12#",
+      host: process.env.EXAMPLE_DB_HOST,
+      user: process.env.EXAMPLE_DB_USER,
+      password: process.env.EXAMPLE_DB_PASSWORD,
       typeCast: function (field: any, next: any) {
         if (field.type == "TINY" && field.length == 1) {
           const value = field.string();

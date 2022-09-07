@@ -9,7 +9,7 @@
     "test:watch": "jest --runInBand --verbose --watch",
     "migrate": "node -r source-map-support/register dist/typeframe/migrator-runner.js",
     "build": "tsc -p ./tsconfig.json",
-    "serve": "node -r source-map-support/register dist/index.js",
+    "serve": "node -r source-map-support/register -r dotenv/config dist/index.js",
     "sonamu": "sonamu"
   },
   "author": "",
@@ -22,6 +22,7 @@
     "@fastify/static": "^6.5.0",
     "@sonamu/core": "*",
     "chalk": "^4.1.2",
+    "dotenv": "^16.0.2",
     "fastify": "^4.5.3",
     "fastify-file-upload": "4.0.0",
     "fastify-qs": "^4.0.0",
