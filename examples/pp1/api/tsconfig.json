@@ -32,7 +32,8 @@
     "emitDecoratorMetadata": true,
 
     /* Advanced Options */
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "noErrorTruncation": true
   },
   "exclude": [
     "node_modules",
