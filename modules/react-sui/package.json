@@ -1,0 +1,40 @@
+{
+  "name": "@sonamu/react-sui",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": "https://github.com/ping-alive/sonamu",
+  "author": "Minsang Kim",
+  "license": "MIT",
+  "packageManager": "yarn@3.2.3",
+  "devDependencies": {
+    "@dnd-kit/core": "^4.0.3",
+    "@dnd-kit/sortable": "^5.1.0",
+    "@dnd-kit/utilities": "^3.0.2",
+    "@types/inflection": "^1.13.0",
+    "@types/lodash": "^4.14.185",
+    "@types/luxon": "^3.0.1",
+    "@types/node": "^18.7.18",
+    "@types/react": "^18.0.20",
+    "@types/react-dom": "^18.0.6",
+    "scss": "^0.2.4",
+    "typescript": "^4.8.3"
+  },
+  "dependencies": {
+    "@types/qs": "^6.9.7",
+    "axios": "^0.27.2",
+    "classnames": "^2.3.2",
+    "fast-deep-equal": "^3.1.3",
+    "inflection": "^1.13.2",
+    "lodash": "^4.17.21",
+    "luxon": "^3.0.3",
+    "qs": "^6.11.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.4.0",
+    "react-semantic-ui-datepickers": "^2.17.1",
+    "semantic-ui-react": "^2.1.3",
+    "swr": "^1.3.0",
+    "zod": "^3.19.1"
+  }
+}
