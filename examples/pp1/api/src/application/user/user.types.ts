@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable } from "@sonamu/core";
+import { zArrayable } from "sonamu";
 import { UserRole, UserStatus } from "./user.enums";
 import { UserBaseListParams, UserBaseSchema } from "./user.generated";
 

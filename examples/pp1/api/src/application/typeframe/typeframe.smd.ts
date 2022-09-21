@@ -1,4 +1,4 @@
-import { SMDInput } from "@sonamu/core";
+import { SMDInput } from "sonamu";
 import { TypeframeFieldExpr } from "./typeframe.generated";
 
 /*

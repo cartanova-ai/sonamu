@@ -7,7 +7,6 @@
     "dev:serve": "nodemon --config ./nm-default.json",
     "test": "jest --runInBand --verbose",
     "test:watch": "jest --runInBand --verbose --watch",
-    "migrate": "node -r source-map-support/register dist/typeframe/migrator-runner.js",
     "build": "tsc -p ./tsconfig.json",
     "serve": "node -r source-map-support/register -r dotenv/config dist/index.js",
     "sonamu": "sonamu"
@@ -15,23 +14,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@sonamu/core": "*",
-    "fastify": "^4.5.3",
     "@fastify/cors": "^8.1.0",
     "@fastify/formbody": "^7.1.0",
     "@fastify/passport": "2.2.0",
     "@fastify/secure-session": "^5.2.0",
     "@fastify/static": "^6.5.0",
-    "fastify-file-upload": "4.0.0",
-    "fastify-qs": "^4.0.0",
     "chalk": "^4.1.2",
     "dotenv": "^16.0.2",
+    "fastify": "^4.5.3",
+    "fastify-file-upload": "4.0.0",
+    "fastify-qs": "^4.0.0",
     "knex": "^2.3.0",
     "lodash": "^4.17.21",
     "luxon": "^2.0.2",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
-    "zod": "^3.11.6"
+    "sonamu": "^0.0.4",
+    "zod": "^3.18.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
@@ -40,15 +39,12 @@
     "@types/node": "^16.11.6",
     "@types/passport": "^1.0.7",
     "@types/passport-local": "^1.0.34",
-    "jest": "^27.3.1",
+    "jest": "^29.0.2",
     "nodemon": "^2.0.14",
     "prettier": "^2.4.1",
-    "source-map-support": "^0.5.20",
+    "source-map-support": "^0.5.21",
     "ts-jest": "^27.0.7",
-    "typescript": "^4.4.4"
+    "typescript": "^4.8.3"
   },
-  "packageManager": "yarn@3.2.3",
-  "resolutions": {
-    "@sonamu/core": "portal:../../../modules/core"
-  }
+  "packageManager": "yarn@3.2.3"
 }

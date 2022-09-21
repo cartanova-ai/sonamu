@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EnumsLabelKo } from "@sonamu/core";
+import { EnumsLabelKo } from "sonamu";
 
 export const ProductOrderBy = z.enum(["id-desc", "price-asc", "price-desc"]);
 export type ProductOrderBy = z.infer<typeof ProductOrderBy>;

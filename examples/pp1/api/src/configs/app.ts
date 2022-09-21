@@ -1,4 +1,4 @@
-import { isDevelopment, isLocal, isStaging } from "@sonamu/core";
+import { isDevelopment, isLocal, isStaging } from "sonamu";
 
 export const appConfig = {
   getHostName: (): string => {

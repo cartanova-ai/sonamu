@@ -7,12 +7,12 @@
 //   Syncer,
 //   TemplateKey,
 //   TemplateOptions,
-// } from "@sonamu/core";
-// import { api } from "@sonamu/core";
+// } from "sonamu";
+// import { api } from "sonamu";
 // import { GenerateOptions, SMDSpec } from "./typeframe.types";
-// import { serializeZodType } from "@sonamu/core";
-// import { Context } from "@sonamu/core";
-// import { BadRequestException, ServiceUnavailableException } from "@sonamu/core";
+// import { serializeZodType } from "sonamu";
+// import { Context } from "sonamu";
+// import { BadRequestException, ServiceUnavailableException } from "sonamu";
 
 // export class TypeframeModelClass {
 //   @api({ httpMethod: "GET", clients: ["swr"], resourceName: "MDSpecs" })

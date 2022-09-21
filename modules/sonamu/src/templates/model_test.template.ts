@@ -20,7 +20,7 @@ export class Template__model_test extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { BadRequestException, FixtureManager } from "@sonamu/core";
+import { BadRequestException, FixtureManager } from "sonamu";
 import { ${smdId}ListParams, ${smdId}SaveParams } from "../${names.fs}/${names.fs}.types";
 import { ${smdId}Model } from "../${names.fs}/${names.fs}.model";
 

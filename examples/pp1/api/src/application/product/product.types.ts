@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable } from "@sonamu/core";
+import { zArrayable } from "sonamu";
 import { TagSaveParams } from "../tag/tag.types";
 import { ProductStatus, ProductType } from "./product.enums";
 import { ProductBaseSchema, ProductBaseListParams } from "./product.generated";

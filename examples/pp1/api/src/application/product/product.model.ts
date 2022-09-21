@@ -1,13 +1,13 @@
-import { BaseModelClass } from "@sonamu/core";
-import { ListResult, asArray } from "@sonamu/core";
-import { NotFoundException, BadRequestException } from "@sonamu/core";
+import { BaseModelClass } from "sonamu";
+import { ListResult, asArray } from "sonamu";
+import { NotFoundException, BadRequestException } from "sonamu";
 import {
   ProductSubsetKey,
   ProductSubsetMapping,
   productSubsetQueries,
 } from "./product.generated";
 import { ProductListParams, ProductSaveParams } from "./product.types";
-import { api } from "@sonamu/core";
+import { api } from "sonamu";
 
 /*
   Product Model

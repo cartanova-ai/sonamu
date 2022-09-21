@@ -1,5 +1,5 @@
-import { p } from "@sonamu/core";
-import { SMDInput } from "@sonamu/core";
+import { p } from "sonamu";
+import { SMDInput } from "sonamu";
 import { TagFieldExpr } from "./tag.generated";
 
 /*

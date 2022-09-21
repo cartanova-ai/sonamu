@@ -1,4 +1,4 @@
-import { SMDInput } from "@sonamu/core";
+import { SMDInput } from "sonamu";
 import { PracticeFieldExpr } from "./practice.generated";
 
 /*

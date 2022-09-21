@@ -23,7 +23,7 @@ Content-Type: application/json
 POST {{baseUrl}}/api/brand/save
 Content-Type: application/json
 
-{ "saveParamsArray": [{ "id": 0, "name": "NAME", "created_at": "2022-09-07" }] }
+{ "saveParamsArray": [{ "id": 0, "name": "NAME", "created_at": "2022-09-21" }] }
 
 
 ###

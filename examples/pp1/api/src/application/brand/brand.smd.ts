@@ -1,4 +1,4 @@
-import { p, SMDInput } from "@sonamu/core";
+import { p, SMDInput } from "sonamu";
 
 /*
   Brand MD

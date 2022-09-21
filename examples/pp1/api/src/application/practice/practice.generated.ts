@@ -13,7 +13,7 @@ export const PracticeSubsetKey = z.enum(["A"]);
 export type PracticeSubsetKey = z.infer<typeof PracticeSubsetKey>;
 
 /* BEGIN- Server-side Only */
-import { SubsetQuery } from "@sonamu/core";
+import { SubsetQuery } from "sonamu";
 export const practiceSubsetQueries: {
   [key in PracticeSubsetKey]: SubsetQuery;
 } = { A: { select: [], virtual: [], joins: [], loaders: [] } };

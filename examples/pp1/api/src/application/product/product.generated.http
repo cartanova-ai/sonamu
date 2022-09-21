@@ -37,9 +37,9 @@ Content-Type: application/json
       "description": "DESCRIPTION",
       "price": 0,
       "is_new": false,
-      "visible_until_at": "2022-09-07",
+      "visible_until_at": "2022-09-21",
       "status": "active",
-      "created_at": "2022-09-07",
+      "created_at": "2022-09-21",
       "checked_at": null,
       "images": ["IMAGES"],
       "tags": [{ "id": 0, "name": "NAME" }]

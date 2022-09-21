@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EnumsLabelKo } from "@sonamu/core";
+import { EnumsLabelKo } from "sonamu";
 
 export const TagOrderBy = z.enum(["id-desc"]);
 export type TagOrderBy = z.infer<typeof TagOrderBy>;

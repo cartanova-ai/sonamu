@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable } from "@sonamu/core";
+import { zArrayable } from "sonamu";
 import { PostType } from "./post.enums";
 import { PostBaseListParams, PostBaseSchema } from "./post.generated";
 

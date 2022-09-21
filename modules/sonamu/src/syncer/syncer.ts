@@ -319,7 +319,7 @@ export class Syncer {
 
     const oldFileContent = readFileSync(fromPath).toString();
     const newFileContent = oldFileContent
-      .replace(/@sonamu\/core/g, "../sonamu.shared")
+      .replace(/from "sonamu"/g, `from "../sonamu.shared"`)
       .replace(
         /\/\* BEGIN- Server-side Only \*\/[\s\S]*\/\* END Server-side Only \*\/\n*/g,
         ""

@@ -1,10 +1,24 @@
 {
-  "name": "@sonamu/core",
-  "version": "0.1.0",
+  "name": "sonamu",
+  "version": "0.0.4",
+  "description": "Sonamu — TypeScript Fullstack API Framework",
+  "keywords": [
+    "typescript",
+    "framework",
+    "orm"
+  ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
-  "author": "Minsang Kim",
+  "author": {
+    "name": "Minsang Kim",
+    "email": "minsangk@me.com",
+    "url": "https://twitter.com/minsangk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ping-alive/sonamu.git"
+  },
   "bin": {
     "sonamu": "./dist/bin/cli.js"
   },

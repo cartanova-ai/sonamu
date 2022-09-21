@@ -7,7 +7,7 @@ import {
   BadRequestException,
   Context,
   UnauthorizedException,
-} from "@sonamu/core";
+} from "sonamu";
 import {
   PostSubsetKey,
   PostSubsetMapping,

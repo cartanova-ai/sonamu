@@ -1,5 +1,5 @@
-import { SMDInput } from "@sonamu/core";
-import { p } from "@sonamu/core";
+import { SMDInput } from "sonamu";
+import { p } from "sonamu";
 import { UserFieldExpr } from "./user.generated";
 
 /*

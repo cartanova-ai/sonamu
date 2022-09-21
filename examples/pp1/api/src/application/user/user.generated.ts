@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SQLDateTimeString } from "@sonamu/core";
+import { zArrayable, SQLDateTimeString } from "sonamu";
 import {
   UserRole,
   UserStatus,
@@ -81,7 +81,7 @@ export const UserSubsetKey = z.enum(["A", "D", "SS"]);
 export type UserSubsetKey = z.infer<typeof UserSubsetKey>;
 
 /* BEGIN- Server-side Only */
-import { SubsetQuery } from "@sonamu/core";
+import { SubsetQuery } from "sonamu";
 export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
   A: {
     select: [

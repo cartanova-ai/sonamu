@@ -2,7 +2,7 @@ import { FastifyFile } from "../application/file/file.types";
 import { UserSubsetSS } from "../application/user/user.generated";
 import { Session } from "@fastify/secure-session";
 
-declare module "@sonamu/core" {
+declare module "sonamu" {
   export interface ContextExtend {
     session: Session;
     user: UserSubsetSS | null;

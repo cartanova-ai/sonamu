@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SQLDateTimeString } from "@sonamu/core";
+import { zArrayable, SQLDateTimeString } from "sonamu";
 import {
   PostType,
   PostStatus,
@@ -82,7 +82,7 @@ export const PostSubsetKey = z.enum(["A", "D"]);
 export type PostSubsetKey = z.infer<typeof PostSubsetKey>;
 
 /* BEGIN- Server-side Only */
-import { SubsetQuery } from "@sonamu/core";
+import { SubsetQuery } from "sonamu";
 export const postSubsetQueries: { [key in PostSubsetKey]: SubsetQuery } = {
   A: {
     select: [

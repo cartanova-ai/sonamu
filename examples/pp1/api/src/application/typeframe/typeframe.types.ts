@@ -1,6 +1,6 @@
 export {};
 // import { z } from "zod";
-// import { ApiParam, ApiParamType, SMDProp, TemplateKey } from "@sonamu/core";
+// import { ApiParam, ApiParamType, SMDProp, TemplateKey } from "sonamu";
 
 // // Zod 미지원 타입이 포함되어 있어 타입만 별도 정의
 // export const SMDSpec = z.any();

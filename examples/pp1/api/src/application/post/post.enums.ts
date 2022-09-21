@@ -1,6 +1,6 @@
 import { pick } from "lodash";
 import { z } from "zod";
-import { EnumsLabelKo } from "@sonamu/core";
+import { EnumsLabelKo } from "sonamu";
 
 export const PostOrderBy = z.enum(["id-desc"]);
 export type PostOrderBy = z.infer<typeof PostOrderBy>;

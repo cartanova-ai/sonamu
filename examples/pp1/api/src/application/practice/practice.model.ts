@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
-import { Context } from "@sonamu/core";
-import { api } from "@sonamu/core";
+import { Context } from "sonamu";
+import { api } from "sonamu";
 import { PracticeSaveParams } from "./practice.types";
 
 export class PracticeModelClass {

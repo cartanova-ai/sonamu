@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { p } from "@sonamu/core";
-import { SMDInput } from "@sonamu/core";
+import { p } from "sonamu";
+import { SMDInput } from "sonamu";
 import { ProductFieldExpr } from "./product.generated";
 
 /*

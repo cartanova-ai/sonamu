@@ -1,7 +1,7 @@
 import path, { dirname } from "path";
-import { BadRequestException } from "@sonamu/core";
-import { Context } from "@sonamu/core";
-import { api } from "@sonamu/core";
+import { BadRequestException } from "sonamu";
+import { Context } from "sonamu";
+import { api } from "sonamu";
 import { existsSync, mkdirSync } from "fs";
 
 export class FileModelClass {

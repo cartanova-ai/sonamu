@@ -15,7 +15,7 @@ import {
   NotFoundException,
   Context,
   UnauthorizedException,
-} from "@sonamu/core";
+} from "sonamu";
 
 const MOCKED_USER: UserSubsetSS = {
   id: 1000,

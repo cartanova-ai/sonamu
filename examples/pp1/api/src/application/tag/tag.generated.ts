@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SQLDateTimeString } from "@sonamu/core";
+import { zArrayable, SQLDateTimeString } from "sonamu";
 import { TagSearchField, TagOrderBy } from "./tag.enums";
 
 export const TagBaseSchema = z.object({
@@ -35,7 +35,7 @@ export const TagSubsetKey = z.enum(["A"]);
 export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
 
 /* BEGIN- Server-side Only */
-import { SubsetQuery } from "@sonamu/core";
+import { SubsetQuery } from "sonamu";
 export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {
   A: {
     select: ["tags.id", "tags.name", "tags.created_at"],

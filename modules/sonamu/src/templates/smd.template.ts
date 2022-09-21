@@ -21,7 +21,7 @@ export class Template__smd extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { p, MDInput } from "@sonamu/core";
+import { p, MDInput } from "sonamu";
 import { ${smdId}FieldExpr } from "./${names.fs}.generated";
 
 /*

@@ -1,5 +1,5 @@
 console.time("total");
-import { setupErrorHandler, init, Context, destroy } from "@sonamu/core";
+import { setupErrorHandler, init, Context, destroy } from "sonamu";
 import fastify from "fastify";
 import path from "path";
 import { FastifyFile } from "./application/file/file.types";

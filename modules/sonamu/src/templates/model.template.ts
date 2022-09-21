@@ -29,7 +29,7 @@ export class Template__model extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from '@sonamu/core';
+import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from 'sonamu';
 import {
   ${smdId}SubsetKey,
   ${smdId}SubsetMapping,

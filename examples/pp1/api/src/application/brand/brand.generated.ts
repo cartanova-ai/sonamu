@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SQLDateTimeString } from "@sonamu/core";
+import { zArrayable, SQLDateTimeString } from "sonamu";
 import { BrandSearchField, BrandOrderBy } from "./brand.enums";
 
 export const BrandBaseSchema = z.object({
@@ -35,7 +35,7 @@ export const BrandSubsetKey = z.enum(["A"]);
 export type BrandSubsetKey = z.infer<typeof BrandSubsetKey>;
 
 /* BEGIN- Server-side Only */
-import { SubsetQuery } from "@sonamu/core";
+import { SubsetQuery } from "sonamu";
 export const brandSubsetQueries: { [key in BrandSubsetKey]: SubsetQuery } = {
   A: {
     select: ["brands.id", "brands.name", "brands.created_at"],

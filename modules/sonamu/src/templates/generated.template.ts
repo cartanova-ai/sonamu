@@ -71,7 +71,7 @@ export class Template__generated extends Template {
               )
                 ? ", SQLDateTimeString"
                 : ""
-            } } from "@sonamu/core";`
+            } } from "sonamu";`
           : "",
       ],
     };
@@ -233,7 +233,7 @@ z.object({
       `export type ${smd.names.module}SubsetKey = z.infer<typeof ${smd.names.module}SubsetKey>`,
       "",
       "/* BEGIN- Server-side Only */",
-      `import { SubsetQuery } from "@sonamu/core";`,
+      `import { SubsetQuery } from "sonamu";`,
       `export const ${camelize(smd.id, true)}SubsetQueries:{ [key in ${
         smd.names.module
       }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,

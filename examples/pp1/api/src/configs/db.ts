@@ -1,4 +1,4 @@
-import { SonamuDBConfig } from "@sonamu/core";
+import { SonamuDBConfig } from "sonamu";
 
 /*
   DB 설정 파일
