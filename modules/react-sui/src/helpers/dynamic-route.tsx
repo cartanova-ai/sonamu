@@ -14,10 +14,10 @@ type ModulesObject = {
           | { default: ComponentType<any> };
       };
 };
-export function tester(something: any) {
-  console.log({ something: something.resolve() });
-}
-export function loadDynamicRoutes(modules: Record<string, () => unknown>) {
+
+export function loadDynamicRoutes(
+  modules: Record<string, () => unknown>
+): JSX.Element[] {
   const keys = Object.keys(modules);
 
   const modulesObject = keys.reduce((result, key) => {
