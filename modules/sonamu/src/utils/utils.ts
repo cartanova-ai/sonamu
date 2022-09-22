@@ -1,5 +1,6 @@
 import path from "path";
 import glob from "glob";
+import { existsSync } from "fs";
 
 export function globAsync(pathPattern: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -25,4 +26,17 @@ export async function importMultiple(
       };
     })
   );
+}
+export async function findAppRootPath() {
+  if (require.main === undefined) {
+    throw new Error("Cannot find AppRoot using Sonamu");
+  }
+  let dir = path.dirname(require.main.path);
+  do {
+    if (existsSync(path.join(dir, "/package.json"))) {
+      return dir.split(path.sep).slice(0, -1).join(path.sep);
+    }
+    dir = dir.split(path.sep).slice(0, -1).join(path.sep);
+  } while (dir.split(path.sep).length > 1);
+  throw new Error("Cannot find AppRoot using Sonamu");
 }

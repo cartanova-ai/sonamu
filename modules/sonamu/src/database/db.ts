@@ -2,7 +2,7 @@ export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
 import path from "path";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import { Syncer } from "../syncer";
+import { findAppRootPath } from "../utils/utils";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
@@ -19,9 +19,13 @@ class DBClass {
   private rdb?: Knex;
   private knexfile?: SonamuDBConfig;
 
-  async readKnexfile() {
+  async readKnexfile(): Promise<SonamuDBConfig> {
+    if (this.knexfile) {
+      return this.knexfile;
+    }
+
     const configPath: string = path.join(
-      Syncer.getInstance().config.appRootPath,
+      await findAppRootPath(),
       "/api/dist/configs/db"
     );
     try {
@@ -40,7 +44,7 @@ class DBClass {
       return this.knexfile;
     }
 
-    throw new ServiceUnavailableException("DB설정 파일을 찾을 수 없습니다.");
+    throw new ServiceUnavailableException("DB설정이 로드되지 않았습니다.");
   }
 
   getDB(which: DBPreset): Knex {
@@ -80,9 +84,6 @@ class DBClass {
 
   async destroy(): Promise<void> {
     if (this.wdb !== undefined) {
-      if (this.wdb.destroy === undefined) {
-        console.log(this.wdb);
-      }
       await this.wdb.destroy();
       this.wdb = undefined;
     }

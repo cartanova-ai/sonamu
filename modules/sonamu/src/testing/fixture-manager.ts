@@ -11,16 +11,18 @@ import {
 } from "../types/types";
 
 export class FixtureManager {
-  private tdb: Knex;
-  private fdb: Knex;
-  private knexfile: SonamuDBConfig;
+  private config?: {
+    tdb: Knex;
+    fdb: Knex;
+    knexfile: SonamuDBConfig;
+  };
 
   constructor(public usingTables?: string[]) {
-    this.knexfile = DB.getKnexfile();
-    this.tdb = knex(this.knexfile.test);
-    this.fdb = knex(this.knexfile.fixture_local);
-
     if (process.env.NODE_ENV === "test") {
+      beforeAll(async () => {
+        await this.init();
+      });
+
       beforeEach(async () => {
         await this.cleanAndSeed();
       });
@@ -32,13 +34,32 @@ export class FixtureManager {
     }
   }
 
+  async init(): Promise<{
+    tdb: Knex;
+    fdb: Knex;
+    knexfile: SonamuDBConfig;
+  }> {
+    if (this.config) {
+      return this.config;
+    }
+
+    const knexfile = await DB.readKnexfile();
+    this.config = {
+      knexfile,
+      tdb: knex(knexfile.test),
+      fdb: knex(knexfile.fixture_local),
+    };
+    return this.config;
+  }
+
   async cleanAndSeed() {
+    const { tdb, fdb, knexfile } = await this.init();
     // console.time("FIXTURE-CleanAndSeed");
 
     let tableNames: string[] = [];
 
     if (this.usingTables === undefined) {
-      const [tables] = await this.tdb.raw(
+      const [tables] = await tdb.raw(
         "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
       );
       tableNames = tables.map((tableInfo: any) => tableInfo["Name"]);
@@ -46,35 +67,31 @@ export class FixtureManager {
       tableNames = this.usingTables;
     }
 
-    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
-    for (let tableName of tableNames) {
+    await tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+    for await (let tableName of tableNames) {
       if (tableName == "migrations") {
         continue;
       }
 
-      const [[fdbChecksumRow]] = await this.fdb.raw(
-        `CHECKSUM TABLE ${tableName}`
-      );
+      const [[fdbChecksumRow]] = await fdb.raw(`CHECKSUM TABLE ${tableName}`);
       const fdbChecksum = fdbChecksumRow["Checksum"];
 
-      const [[tdbChecksumRow]] = await this.tdb.raw(
-        `CHECKSUM TABLE ${tableName}`
-      );
+      const [[tdbChecksumRow]] = await tdb.raw(`CHECKSUM TABLE ${tableName}`);
       const tdbChecksum = tdbChecksumRow["Checksum"];
 
       if (fdbChecksum !== tdbChecksum) {
-        await this.tdb(tableName).truncate();
+        await tdb(tableName).truncate();
         const rawQuery = `INSERT INTO ${
-          (this.knexfile.test.connection as Knex.ConnectionConfig).database
+          (knexfile.test.connection as Knex.ConnectionConfig).database
         }.${tableName}
             SELECT * FROM ${
-              (this.knexfile.fixture_local.connection as Knex.ConnectionConfig)
+              (knexfile.fixture_local.connection as Knex.ConnectionConfig)
                 .database
             }.${tableName}`;
-        await this.tdb.raw(rawQuery);
+        await tdb.raw(rawQuery);
       }
     }
-    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
+    await tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
 
     // console.timeEnd("FIXTURE-CleanAndSeed");
   }
@@ -129,9 +146,10 @@ export class FixtureManager {
   }
 
   async sync() {
-    const frdb = knex(this.knexfile.fixture_remote);
+    const { fdb, knexfile } = await this.init();
+    const frdb = knex(knexfile.fixture_remote);
 
-    const [tables] = await this.fdb.raw(
+    const [tables] = await fdb.raw(
       "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
     );
     const tableNames: string[] = tables.map(
@@ -146,10 +164,10 @@ export class FixtureManager {
         }
 
         const remoteChecksum = await this.getChecksum(frdb, tableName);
-        const localChecksum = await this.getChecksum(this.fdb, tableName);
+        const localChecksum = await this.getChecksum(fdb, tableName);
 
         if (remoteChecksum !== localChecksum) {
-          await this.fdb.transaction(async (transaction) => {
+          await fdb.transaction(async (transaction) => {
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 0`);
             await transaction(tableName).truncate();
 
@@ -204,6 +222,8 @@ export class FixtureManager {
     field: string,
     id: number
   ): Promise<string[]> {
+    const { knexfile } = await this.init();
+
     console.log({ smdId, field, id });
     const smd = SMDManager.get(smdId);
     const wdb = BaseModel.getDB("w");
@@ -215,9 +235,9 @@ export class FixtureManager {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = (this.knexfile.fixture_remote.connection as any)
+    const fixtureDatabase = (knexfile.fixture_remote.connection as any)
       .database;
-    const realDatabase = (this.knexfile.production_master.connection as any)
+    const realDatabase = (knexfile.production_master.connection as any)
       .database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${smd.table}\` (SELECT * FROM \`${realDatabase}\`.\`${smd.table}\` WHERE \`id\` = ${id})`;
@@ -265,7 +285,11 @@ export class FixtureManager {
   }
 
   async destory() {
-    await this.tdb.destroy();
-    await this.fdb.destroy();
+    if (!this.config) {
+      return;
+    }
+    const { tdb, fdb } = await this.init();
+    await tdb.destroy();
+    await fdb.destroy();
   }
 }

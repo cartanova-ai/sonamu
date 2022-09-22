@@ -12,10 +12,10 @@ import { Syncer } from "../syncer/syncer";
 import { isLocal } from "../utils/controller";
 import { DB } from "../database/db";
 import { BaseModel } from "../database/base-model";
+import { findAppRootPath } from "../utils/utils";
 
 export type SonamuInitConfig = {
   prefix: string;
-  appRootPath: string;
   syncTargets: string[];
   contextProvider: (
     defaultContext: Pick<Context, "headers" | "reply">,
@@ -44,8 +44,9 @@ export async function init(
   );
 
   // Syncer
+  const appRootPath = await findAppRootPath();
   const syncer = Syncer.getInstance({
-    appRootPath: config.appRootPath,
+    appRootPath: appRootPath,
     targets: config.syncTargets,
   });
 
@@ -56,9 +57,9 @@ export async function init(
   // Autoload: SMD / Models / Types / APIs
   console.time(chalk.cyan("autoload&sync:"));
   await SMDManager.autoload();
-  const importedModels = await syncer.autoloadModels(config.appRootPath);
-  const references = await syncer.autoloadTypes(config.appRootPath);
-  const apis = await syncer.autoloadApis(config.appRootPath);
+  const importedModels = await syncer.autoloadModels(appRootPath);
+  const references = await syncer.autoloadTypes(appRootPath);
+  const apis = await syncer.autoloadApis(appRootPath);
   if (isLocal()) {
     await syncer.sync();
   }
