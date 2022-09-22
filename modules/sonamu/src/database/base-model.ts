@@ -192,6 +192,7 @@ export class BaseModelClass {
     rows: any[];
     total?: number | undefined;
     subsetQuery: SubsetQuery;
+    qb: Knex.QueryBuilder;
   }> {
     const db = this.getDB(subset.startsWith("A") ? "w" : "r");
     baseTable = baseTable ?? pluralize(underscore(this.modelName));
@@ -266,7 +267,7 @@ export class BaseModelClass {
       }
     }
 
-    return { rows, total, subsetQuery };
+    return { rows, total, subsetQuery, qb };
   }
 
   getJoinClause(
