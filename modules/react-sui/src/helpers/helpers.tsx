@@ -148,7 +148,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
   // 리스트 필터 state
   const [listParams, setListParams] = useState<T>({
     ...defaultValue,
-    ...query,
+    ...(options?.disableSearchParams !== true ? query : {}),
   });
 
   // 리스트 필터 변경시에 searchParams 변경
