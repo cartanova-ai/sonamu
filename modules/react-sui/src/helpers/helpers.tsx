@@ -360,7 +360,6 @@ export function caller<T extends Function>() {
     },
     call: ((...args: unknown[]) => {
       if (savedFunc) {
-        console.log("call!");
         savedFunc.call(args);
       }
     }) as unknown as T,
