@@ -22,7 +22,7 @@ async function bootstrap() {
   Syncer.getInstance({
     appRootPath,
   });
-  await DB.readKnexfile();
+  await DB.readKnexfile(appRootPath);
 
   const [_0, _1, action, ...args] = process.argv;
   switch (action) {

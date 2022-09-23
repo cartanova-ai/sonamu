@@ -212,11 +212,12 @@ export class UpsertBuilder {
       chunkSize: 500,
     });
 
-    const table = this.tables.get(tableName);
-    if (table === undefined) {
-      throw new Error(`존재하지 않는 테이블 ${tableName}에 updateBatch 요청`);
-    } else if (table.rows.length === 0) {
-      throw new Error(`${tableName}에 updateBatch 할 데이터가 없습니다.`);
+    if (this.hasTable(tableName) === false) {
+      return;
+    }
+    const table = this.tables.get(tableName)!;
+    if (table.rows.length === 0) {
+      return;
     }
 
     const chunks = chunk(table.rows, options.chunkSize);

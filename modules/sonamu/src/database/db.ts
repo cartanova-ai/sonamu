@@ -19,15 +19,13 @@ class DBClass {
   private rdb?: Knex;
   private knexfile?: SonamuDBConfig;
 
-  async readKnexfile(): Promise<SonamuDBConfig> {
+  async readKnexfile(_appRootPath?: string): Promise<SonamuDBConfig> {
     if (this.knexfile) {
       return this.knexfile;
     }
 
-    const configPath: string = path.join(
-      await findAppRootPath(),
-      "/api/dist/configs/db"
-    );
+    const appRootPath = _appRootPath ?? (await findAppRootPath());
+    const configPath: string = path.join(appRootPath, "/api/dist/configs/db");
     try {
       const knexfileModule = await import(configPath);
       this.knexfile = knexfileModule.default as SonamuDBConfig;
