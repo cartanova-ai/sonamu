@@ -214,7 +214,9 @@ export class SMD {
                 to = `${joinAs}.id`;
               } else {
                 from = `${fromTable}.id`;
-                to = `${joinAs}.${relation.name}_id`;
+                to = `${joinAs}.${underscore(
+                  this.names.fs.replace(/\-/g, "_")
+                )}_id`;
               }
             } else {
               from = `${fromTable}.${relation.name}_id`;
