@@ -5,7 +5,7 @@ import _ from "lodash";
 import path from "path";
 import { SMD } from "./smd";
 import { SMDInput } from "../types/types";
-import { Syncer } from "../syncer/syncer";
+import { findAppRootPath } from "../utils/utils";
 
 export type SMDNamesRecord = Record<
   | "fs"
@@ -33,8 +33,9 @@ class SMDManagerClass {
     if (this.isAutoloaded) {
       return;
     }
+    const appRootPath = await findAppRootPath();
     const pathPattern = path.join(
-      Syncer.getInstance().config.appRootPath,
+      appRootPath,
       "/api/dist/application/**/*.smd.js"
     );
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
