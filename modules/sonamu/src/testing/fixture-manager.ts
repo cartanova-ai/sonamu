@@ -21,6 +21,7 @@ export class FixtureManager {
     if (process.env.NODE_ENV === "test") {
       beforeAll(async () => {
         await this.init();
+        await SMDManager.autoload(true);
       });
 
       beforeEach(async () => {
