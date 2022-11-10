@@ -33,10 +33,17 @@ export const ${smdId}BaseListParams = z.object({
   keyword: z.string(),
   orderBy: ${smdId}OrderBy,
   withoutCount: z.boolean(),
-});
+}).partial();
 export type ${smdId}BaseListParams = z.infer<typeof ${smdId}BaseListParams>;
 
+export type ${smdId}SubsetKey = never;
+export type ${smdId}SubsetMapping = {};
+/* BEGIN- Server-side Only */
+import { SubsetQuery } from "sonamu";
+export const ${names.camel}SubsetQueries: { [key in ${smdId}SubsetKey]: SubsetQuery } = {};
+
 export type ${smdId}FieldExpr = string;
+/* END- Server-side Only */
       `.trim(),
       importKeys: [],
     };

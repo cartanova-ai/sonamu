@@ -21,14 +21,14 @@ export class Template__smd extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { p, MDInput } from "sonamu";
+import { p, SMDInput } from "sonamu";
 import { ${smdId}FieldExpr } from "./${names.fs}.generated";
 
 /*
   ${smdId} SMD
 */
 
-export const ${names.camel}MdInput: SMDInput<${smdId}FieldExpr> = {
+export const ${names.camel}SmdInput: SMDInput<${smdId}FieldExpr> = {
   id: "${smdId}",
   title: "${title ?? smdId}",
   props: [

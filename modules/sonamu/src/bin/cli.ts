@@ -12,29 +12,66 @@ import { SMDManager } from "../smd/smd-manager";
 import { Migrator } from "../smd/migrator";
 import { Syncer } from "../syncer/syncer";
 import { FixtureManager } from "../testing/fixture-manager";
+import { tsicli } from "tsicli";
+import { execSync } from "child_process";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
+import { findAppRootPath } from "../utils/utils";
 
 let migrator: Migrator;
 let fixtureManager: FixtureManager;
 
 async function bootstrap() {
   // appRootPath 셋업
-  const appRootPath = path.resolve(process.cwd(), "..");
+  const appRootPath = await findAppRootPath();
   Syncer.getInstance({
     appRootPath,
   });
   await DB.readKnexfile(appRootPath);
+  await SMDManager.autoload();
 
-  const [_0, _1, action, ...args] = process.argv;
-  switch (action) {
-    case "migrate":
-      await migrate(args[0] as MigrateSubAction);
-      break;
-    case "fixture":
-      await fixture(args[0] as FixtureSubAction, args.slice(1));
-      break;
-    default:
-      throw new Error(`Unknown action ${action}`);
-  }
+  await tsicli(process.argv, {
+    types: {
+      "#smdId": {
+        type: "autocomplete",
+        name: "#smdId",
+        message: "Please input #smdId",
+        choices: SMDManager.getAllParentIds().map((smdId) => ({
+          title: smdId,
+          value: smdId,
+        })),
+      },
+      "#recordIds": "number[]",
+      "#name": "string",
+    },
+    args: [
+      ["fixture", "import", "#smdId", "#recordIds"],
+      ["fixture", "sync"],
+      ["migrate", "run"],
+      ["migrate", "rollback"],
+      ["migrate", "reset"],
+      ["migrate", "clear"],
+      ["stub", "practice", "#name"],
+      ["stub", "smd", "#name"],
+      ["scaffold", "model", "#smdId"],
+      ["scaffold", "model_test", "#smdId"],
+      ["scaffold", "view_list", "#smdId"],
+      ["scaffold", "view_form", "#smdId"],
+    ],
+    runners: {
+      migrate_run,
+      migrate_rollback,
+      migrate_clear,
+      migrate_reset,
+      fixture_import,
+      fixture_sync,
+      stub_practice,
+      stub_smd,
+      scaffold_model,
+      scaffold_model_test,
+      // scaffold_view_list,
+      // scaffold_view_form,
+    },
+  });
 }
 bootstrap().finally(async () => {
   if (migrator) {
@@ -49,67 +86,136 @@ bootstrap().finally(async () => {
   console.log(chalk.bgBlue(`END ${new Date()}\n`));
 });
 
-type MigrateSubAction = "run" | "rollback" | "reset" | "clear";
-async function migrate(subAction: MigrateSubAction) {
-  await SMDManager.autoload();
-
+async function setupMigrator() {
   // migrator
   migrator = new Migrator({
     appRootPath: Syncer.getInstance().config.appRootPath,
     knexfile: DB.getKnexfile(),
     mode: "dev",
   });
-
-  switch (subAction) {
-    case "run":
-      await migrator.cleanUpDist();
-      await migrator.run();
-      break;
-    case "rollback":
-      await migrator.rollback();
-      break;
-    case "clear":
-      await migrator.clearPendingList();
-      break;
-    case "reset":
-      await migrator.resetAll();
-      break;
-    default:
-      throw new Error(`Unknown subAction - ${subAction}`);
-  }
 }
 
-type FixtureSubAction = "import" | "sync";
-async function fixture(subAction: FixtureSubAction, extras?: string[]) {
-  await SMDManager.autoload();
-
+async function setupFixtureManager() {
   fixtureManager = new FixtureManager();
+}
 
-  switch (subAction) {
-    case "import":
-      if (!extras || Array.isArray(extras) === false || extras.length !== 2) {
-        throw new Error("Import 대상 smdId와 id가 필요합니다.");
-      }
-      const [smdId, idsString] = extras;
-      let ids: number[] = [];
-      if (idsString.includes(",")) {
-        ids = idsString
-          .split(",")
-          .map((idString) => Number(idString))
-          .filter((id) => Number.isNaN(id) === false);
-      } else {
-        ids = [Number(idsString)];
-      }
-      if (smdId === undefined || idsString === undefined || ids.length === 0) {
-        throw new Error("잘못된 입력");
-      }
-      await fixtureManager.importFixture(smdId, ids);
-      await fixtureManager.sync();
-      break;
-    case "sync":
-      await fixtureManager.sync();
-      break;
-    default:
-      throw new Error(`Unknown subAction - ${subAction}`);
-  }
+async function migrate_run() {
+  await setupMigrator();
+
+  await migrator.cleanUpDist();
+  await migrator.run();
+}
+
+async function migrate_rollback() {
+  await setupMigrator();
+
+  await migrator.rollback();
+}
+
+async function migrate_clear() {
+  await setupMigrator();
+
+  await migrator.clearPendingList();
+}
+
+async function migrate_reset() {
+  await setupMigrator();
+
+  await migrator.resetAll();
+}
+
+async function fixture_import(smdId: string, recordIds: number[]) {
+  await setupFixtureManager();
+
+  await fixtureManager.importFixture(smdId, recordIds);
+  await fixtureManager.sync();
+}
+
+async function fixture_sync() {
+  await setupFixtureManager();
+
+  await fixtureManager.sync();
+}
+
+async function stub_practice(name: string) {
+  console.log({ name });
+  return;
+  const practiceDir = path.join(
+    Syncer.getInstance().config.appRootPath,
+    "api",
+    "src",
+    "practices"
+  );
+  const fileNames = readdirSync(practiceDir);
+
+  const maxSeqNo = (() => {
+    if (existsSync(practiceDir) === false) {
+      mkdirSync(practiceDir, { recursive: true });
+    }
+
+    const filteredSeqs = fileNames
+      .filter(
+        (fileName) => fileName.startsWith("p") && fileName.endsWith(".ts")
+      )
+      .map((fileName) => {
+        const [, seqNo] = fileName.match(/^p([0-9]+)\-/) ?? ["0", "0"];
+        return parseInt(seqNo);
+      })
+      .sort((a, b) => b - a);
+
+    if (filteredSeqs.length > 0) {
+      return filteredSeqs[0];
+    }
+
+    return 0;
+  })();
+
+  const currentSeqNo = maxSeqNo + 1;
+  const fileName = `p${currentSeqNo}-${name}.ts`;
+  const dstPath = path.join(practiceDir, fileName);
+
+  const code = [
+    `import { BaseModel } from "sonamu";`,
+    "",
+    `console.clear();`,
+    `console.log("${fileName}");`,
+    "",
+    `async function bootstrap() {`,
+    ` // TODO`,
+    `}`,
+    `bootstrap().finally(async () => {`,
+    `await BaseModel.destroy();`,
+    `});`,
+  ].join("\n");
+  writeFileSync(dstPath, code);
+
+  execSync(`code ${dstPath}`);
+
+  const runCode = `yarn node -r source-map-support/register dist/practices/${fileName.replace(
+    ".ts",
+    ".js"
+  )}`;
+  console.log(`${chalk.blue(runCode)} copied to clipboard.`);
+  execSync(`echo "${runCode}" | pbcopy`);
+}
+
+async function stub_smd(name: string) {
+  const syncer = Syncer.getInstance();
+  await syncer.generateTemplate("smd", {
+    smdId: name,
+  });
+}
+
+async function scaffold_model(smdId: string) {
+  const syncer = Syncer.getInstance();
+  await syncer.generateTemplate("model", {
+    smdId,
+  });
+}
+
+async function scaffold_model_test(smdId: string) {
+  const syncer = Syncer.getInstance();
+  await syncer.generateTemplate("model_test", {
+    smdId,
+  });
 }

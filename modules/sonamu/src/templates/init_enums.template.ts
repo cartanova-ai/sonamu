@@ -31,7 +31,7 @@ export class Template__init_enums extends Template {
       ...this.getTargetAndPath(names),
       body: `
 import { z } from "zod";
-import { EnumsLabelKo } from "../../types/shared";
+import { EnumsLabelKo } from "sonamu";
 
 ${Object.entries(record)
   .map(
