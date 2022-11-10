@@ -32,6 +32,9 @@ export async function findAppRootPath() {
     throw new Error("Cannot find AppRoot using Sonamu");
   }
   let dir = path.dirname(require.main.path);
+  if (dir.includes("/.yarn/")) {
+    dir = dir.split("/.yarn/")[0];
+  }
   do {
     if (existsSync(path.join(dir, "/package.json"))) {
       return dir.split(path.sep).slice(0, -1).join(path.sep);
