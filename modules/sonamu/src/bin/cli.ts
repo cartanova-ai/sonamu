@@ -7,10 +7,8 @@ dotenv.config();
 
 import path from "path";
 import { BaseModel } from "../database/base-model";
-import { DB } from "../database/db";
 import { SMDManager } from "../smd/smd-manager";
 import { Migrator } from "../smd/migrator";
-import { Syncer } from "../syncer/syncer";
 import { FixtureManager } from "../testing/fixture-manager";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
@@ -83,7 +81,6 @@ bootstrap().finally(async () => {
 async function setupMigrator() {
   // migrator
   migrator = new Migrator({
-    knexfile: DB.getKnexfile(),
     mode: "dev",
   });
 }
