@@ -7,7 +7,7 @@ import { ExtendedApi } from "../api/decorators";
 import { Template } from "./base-template";
 import prettier from "prettier";
 import { DateTime } from "luxon";
-import { Syncer } from "../syncer/syncer";
+import { Sonamu } from "../api/sonamu";
 
 export class Template__generated_http extends Template {
   constructor() {
@@ -23,7 +23,7 @@ export class Template__generated_http extends Template {
 
   render({ smdId }: TemplateOptions["generated"], apis: ExtendedApi[]) {
     const names = SMDManager.getNamesFromId(smdId);
-    const references = Syncer.getInstance().types;
+    const references = Sonamu.syncer.types;
 
     const lines = apis.map((api) => {
       const reqObject = this.resolveApiParams(api, references);

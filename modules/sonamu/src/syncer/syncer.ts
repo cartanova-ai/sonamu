@@ -82,12 +82,8 @@ import { Template__view_enums_buttonset } from "../templates/view_enums_buttonse
 import { Template__view_search_input } from "../templates/view_search_input.template";
 import { Template__view_list_columns } from "../templates/view_list_columns.template";
 import { Template__generated_http } from "../templates/generated_http.template";
+import { Sonamu } from "../api/sonamu";
 
-type SyncerConfig = {
-  appRootPath: string;
-  checksumsPath: string;
-  targets: string[];
-};
 type FileType = "model" | "types" | "enums" | "smd" | "generated";
 type GlobPattern = {
   [key in FileType]: string;
@@ -112,15 +108,6 @@ export type RenderedTemplate = {
 };
 
 export class Syncer {
-  private static instance: Syncer;
-  public static getInstance(config?: Partial<SyncerConfig>) {
-    if (this.instance && config !== undefined) {
-      throw new Error("Syncer has already configured.");
-    }
-    return this.instance ?? (this.instance = new this(config));
-  }
-
-  config: SyncerConfig;
   apis: {
     typeParameters: ApiParamType.TypeParam[];
     parameters: ApiParam[];
@@ -131,22 +118,19 @@ export class Syncer {
     options: ApiDecoratorOptions;
   }[] = [];
   types: { [typeName: string]: z.ZodObject<any> } = {};
+  models: { [modelName: string]: unknown } = {};
 
-  private constructor(config?: Partial<SyncerConfig>) {
-    const appRootPath =
-      config?.appRootPath ?? path.resolve(__dirname, "../../");
-    this.config = {
-      appRootPath,
-      checksumsPath: `${appRootPath}/api/.tf-checksum`,
-      targets: ["web"],
-      ...config,
-    };
+  get checksumsPath(): string {
+    return path.join(Sonamu.apiRootPath, "/.tf-checksum");
   }
+  public constructor() {}
 
   async sync(): Promise<void> {
+    const { targets } = Sonamu.config.sync;
+
     // 트리거와 무관하게 shared 분배
     await Promise.all(
-      this.config.targets.map(async (target) => {
+      targets.map(async (target) => {
         const srcCodePath = path
           .join(__dirname, `../shared/${target}.shared.ts.txt`)
           .replace("/dist/", "/src/");
@@ -155,7 +139,7 @@ export class Syncer {
         }
 
         const dstCodePath = path.join(
-          this.config.appRootPath,
+          Sonamu.appRootPath,
           target,
           "src/services/sonamu.shared.ts"
         );
@@ -233,16 +217,14 @@ export class Syncer {
     // 트리거: model
     if (diffTypes.includes("model")) {
       const smdIds = this.getSMDIdFromPath(diffGroups["model"]);
-
       console.log("// 액션: 서비스 생성");
       await this.actionGenerateServices(smdIds);
-
       console.log("// 액션: HTTP파일 생성");
       await this.actionGenerateHttps(smdIds);
     }
 
     // 저장
-    await this.saveChecksums(currentChecksums);
+    await this.saveChecksums(await this.getCurrentChecksums());
   }
 
   getSMDIdFromPath(filePaths: string[]): string[] {
@@ -328,13 +310,16 @@ export class Syncer {
   }
 
   async actionSyncFilesToTargets(tsPaths: string[]): Promise<string[]> {
+    const { targets } = Sonamu.config.sync;
+    const { dir: apiDir } = Sonamu.config.api;
+
     return (
       await Promise.all(
-        this.config.targets.map(async (target) =>
+        targets.map(async (target) =>
           Promise.all(
             tsPaths.map(async (src) => {
               const dst = src
-                .replace("/api/", `/${target}/`)
+                .replace(`/${apiDir}/`, `/${target}/`)
                 .replace("/application/", "/services/");
               const dir = dirname(dst);
               if (!existsSync(dir)) {
@@ -352,13 +337,12 @@ export class Syncer {
   async getCurrentChecksums(): Promise<PathAndChecksum[]> {
     const PatternGroup: GlobPattern = {
       /* TS 체크 */
-      types: this.config.appRootPath + "/api/src/application/**/*.types.ts",
-      enums: this.config.appRootPath + "/api/src/application/**/*.enums.ts",
-      generated:
-        this.config.appRootPath + "/api/src/application/**/*.generated.ts",
+      types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
+      enums: Sonamu.apiRootPath + "/src/application/**/*.enums.ts",
+      generated: Sonamu.apiRootPath + "/src/application/**/*.generated.ts",
       /* compiled-JS 체크 */
-      model: this.config.appRootPath + "/api/dist/application/**/*.model.js",
-      smd: this.config.appRootPath + "/api/dist/application/**/*.smd.js",
+      model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
+      smd: Sonamu.apiRootPath + "/dist/application/**/*.smd.js",
     };
 
     const filePaths = (
@@ -386,19 +370,19 @@ export class Syncer {
   }
 
   async getPreviousChecksums(): Promise<PathAndChecksum[]> {
-    if (existsSync(this.config.checksumsPath) === false) {
+    if (existsSync(this.checksumsPath) === false) {
       return [];
     }
 
     const previousChecksums = (await readJSON(
-      this.config.checksumsPath
+      this.checksumsPath
     )) as PathAndChecksum[];
     return previousChecksums;
   }
 
   async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
-    await writeJSON(this.config.checksumsPath, checksums);
-    console.debug("checksum saved", this.config.checksumsPath);
+    await writeJSON(this.checksumsPath, checksums);
+    console.debug("checksum saved", this.checksumsPath);
   }
 
   async getChecksumOfFile(filePath: string): Promise<string> {
@@ -671,10 +655,10 @@ export class Syncer {
     return printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
   }
 
-  async autoloadApis(basePath: string) {
+  async autoloadApis() {
     const pathPattern = path.join(
-      basePath,
-      "api/src/application/**/*.model.ts"
+      Sonamu.apiRootPath,
+      "/src/application/**/*.model.ts"
     );
     // console.debug(chalk.yellow(`autoload:APIs @ ${pathPattern}`));
 
@@ -686,12 +670,10 @@ export class Syncer {
     return this.apis;
   }
 
-  async autoloadModels(
-    basePath: string
-  ): Promise<{ [modelName: string]: unknown }> {
+  async autoloadModels(): Promise<{ [modelName: string]: unknown }> {
     const pathPattern = path.join(
-      basePath,
-      "api/dist/application/**/*.model.js"
+      Sonamu.apiRootPath,
+      "dist/application/**/*.model.js"
     );
     // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
 
@@ -700,22 +682,21 @@ export class Syncer {
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
       .flat();
-    return Object.fromEntries(
+    this.models = Object.fromEntries(
       functions.filter(([name]) => name.endsWith("Model"))
     );
+    return this.models;
   }
 
-  async autoloadTypes(
-    basePath: string
-  ): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+  async autoloadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
     if (Object.keys(this.types).length > 0) {
       return this.types;
     }
 
     const pathPatterns = [
-      path.join(basePath, "api/dist/application/**/*.types.js"),
-      path.join(basePath, "api/dist/application/**/*.enums.js"),
-      path.join(basePath, "api/dist/application/**/*.generated.js"),
+      path.join(Sonamu.apiRootPath, "/dist/application/**/*.types.js"),
+      path.join(Sonamu.apiRootPath, "/dist/application/**/*.enums.js"),
+      path.join(Sonamu.apiRootPath, "/dist/application/**/*.generated.js"),
     ];
     // console.debug(chalk.magenta(`autoload:types @ ${pathPatterns.join("\n")}`));
 
@@ -784,9 +765,9 @@ export class Syncer {
     if (key === "service" || key === "generated_http") {
       // service 필요 정보 (API 리스트)
       const smd = SMDManager.get(options.smdId);
-      const modelTsPath = `${path.resolve(
-        this.config.appRootPath,
-        "api/src/application"
+      const modelTsPath = `${path.join(
+        Sonamu.apiRootPath,
+        "/src/application"
       )}/${smd.names.fs}/${smd.names.fs}.model.ts`;
       extra = [await this.readApisFromFile(modelTsPath)];
     } else if (key === "view_list" || key === "model") {
@@ -890,8 +871,8 @@ export class Syncer {
   }
 
   async writeCodeToPath(pathAndCode: PathAndCode): Promise<string[]> {
-    const { appRootPath, targets } = this.config;
-    const filePath = `${appRootPath}/${pathAndCode.path}`;
+    const { targets } = Sonamu.config.sync;
+    const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
 
     const dstFilePaths = uniq(
       targets.map((target) => filePath.replace("/:target/", `/${target}/`))
@@ -949,8 +930,8 @@ export class Syncer {
     } else {
       filteredPathAndCodes = pathAndCodes.filter((pathAndCode, index) => {
         if (index === 0) {
-          const { appRootPath, targets } = this.config;
-          const filePath = `${appRootPath}/${pathAndCode.path}`;
+          const { targets } = Sonamu.config.sync;
+          const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
           const dstFilePaths = targets.map((target) =>
             filePath.replace("/:target/", `/${target}/`)
           );
@@ -991,21 +972,22 @@ export class Syncer {
         enumsKeys.map((componentId) => {
           const { target, path: p } = tpl.getTargetAndPath(names, componentId);
           result[`${key}__${componentId}`] = existsSync(
-            path.join(this.config.appRootPath, target, p)
+            path.join(Sonamu.appRootPath, target, p)
           );
         });
         return result;
       }
 
       const { target, path: p } = tpl.getTargetAndPath(names);
+      const { targets } = Sonamu.config.sync;
       if (target.includes(":target")) {
-        this.config.targets.map((t) => {
+        targets.map((t) => {
           result[`${key}__${t}`] = existsSync(
-            path.join(this.config.appRootPath, target.replace(":target", t), p)
+            path.join(Sonamu.appRootPath, target.replace(":target", t), p)
           );
         });
       } else {
-        result[key] = existsSync(path.join(this.config.appRootPath, target, p));
+        result[key] = existsSync(path.join(Sonamu.appRootPath, target, p));
       }
 
       return result;
@@ -1015,8 +997,7 @@ export class Syncer {
   async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
     const modulePath = SMDManager.getModulePath(zodTypeId);
     const moduleAbsPath = path.join(
-      this.config.appRootPath,
-      "api",
+      Sonamu.apiRootPath,
       "dist",
       "application",
       modulePath + ".js"

@@ -28,6 +28,11 @@ export async function importMultiple(
   );
 }
 export async function findAppRootPath() {
+  const apiRootPath = await findApiRootPath();
+  return apiRootPath.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+export async function findApiRootPath() {
   if (require.main === undefined) {
     throw new Error("Cannot find AppRoot using Sonamu");
   }
@@ -37,7 +42,7 @@ export async function findAppRootPath() {
   }
   do {
     if (existsSync(path.join(dir, "/package.json"))) {
-      return dir.split(path.sep).slice(0, -1).join(path.sep);
+      return dir.split(path.sep).join(path.sep);
     }
     dir = dir.split(path.sep).slice(0, -1).join(path.sep);
   } while (dir.split(path.sep).length > 1);

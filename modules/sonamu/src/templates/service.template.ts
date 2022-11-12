@@ -10,6 +10,7 @@ import {
 } from "../api/code-converters";
 import { ExtendedApi } from "../api/decorators";
 import { Template } from "./base-template";
+import { Sonamu } from "../api/sonamu";
 
 export class Template__service extends Template {
   constructor() {
@@ -44,10 +45,10 @@ export class Template__service extends Template {
     };
   }
 
-  getTypeSource(
-    apis: ExtendedApi[],
-    apiPrefix: string = "/api"
-  ): { lines: string[]; importKeys: string[] } {
+  getTypeSource(apis: ExtendedApi[]): {
+    lines: string[];
+    importKeys: string[];
+  } {
     const importKeys: string[] = [];
 
     // 제네릭에서 선언한 타입, importKeys에서 제외 필요
@@ -95,7 +96,7 @@ export class Template__service extends Template {
               client === "swr" ? 0 : 1
             )
               .map((client) => {
-                const apiBaseUrl = `${apiPrefix}${api.path}`;
+                const apiBaseUrl = `${Sonamu.config.route.prefix}${api.path}`;
                 switch (client) {
                   case "axios":
                     return this.renderAxios(

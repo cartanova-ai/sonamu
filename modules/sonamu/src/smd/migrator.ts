@@ -49,17 +49,13 @@ import {
 import { propIf } from "../utils/lodash-able";
 import { SMDManager } from "./smd-manager";
 import { SMD } from "./smd";
-import { SonamuDBConfig } from "../database/db";
+import { Sonamu } from "../api";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
-  appRootPath: string;
-  knexfile: SonamuDBConfig;
   readonly mode: MigratorMode;
 };
 export class Migrator {
-  appRootPath: string;
-  knexfile: SonamuDBConfig;
   readonly mode: MigratorMode;
 
   targets: {
@@ -70,23 +66,21 @@ export class Migrator {
   };
 
   constructor(options: MigratorOptions) {
-    this.appRootPath = options.appRootPath;
-    this.knexfile = options.knexfile;
     this.mode = options.mode;
+    const { dbConfig } = Sonamu;
 
     if (this.mode === "dev") {
-      const devDB = knex(this.knexfile.development_master);
-      const testDB = knex(this.knexfile.test);
-      const fixtureLocalDB = knex(this.knexfile.fixture_local);
+      const devDB = knex(dbConfig.development_master);
+      const testDB = knex(dbConfig.test);
+      const fixtureLocalDB = knex(dbConfig.fixture_local);
 
       const applyDBs = [devDB, testDB, fixtureLocalDB];
       if (
-        (this.knexfile.fixture_local.connection as Knex.MySql2ConnectionConfig)
+        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
           .host !==
-        (this.knexfile.fixture_remote.connection as Knex.MySql2ConnectionConfig)
-          .host
+        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host
       ) {
-        const fixtureRemoteDB = knex(this.knexfile.fixture_remote);
+        const fixtureRemoteDB = knex(dbConfig.fixture_remote);
         applyDBs.push(fixtureRemoteDB);
       }
 
@@ -97,8 +91,8 @@ export class Migrator {
         apply: applyDBs,
       };
     } else if (this.mode === "deploy") {
-      const productionDB = knex(this.knexfile.production_master);
-      const testDB = knex(this.knexfile.test);
+      const productionDB = knex(Sonamu.dbConfig.production_master);
+      const testDB = knex(Sonamu.dbConfig.test);
 
       this.targets = {
         pending: productionDB,
@@ -118,7 +112,7 @@ export class Migrator {
         directory: string;
       }[]
     ];
-    const migrationsDir = `${this.appRootPath}/api/src/migrations`;
+    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
       return path.join(migrationsDir, df.file).replace(".js", ".ts");
     });
@@ -197,7 +191,7 @@ export class Migrator {
     }
 
     // 실제 코드 생성
-    const migrationsDir = `${this.appRootPath}/api/src/migrations`;
+    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     codes
       .filter((code) => code.formatted)
       .map((code, index) => {
@@ -226,8 +220,7 @@ export class Migrator {
     const files = (["src", "dist"] as const).reduce(
       (r, which) => {
         const migrationPath = path.join(
-          this.appRootPath,
-          "api",
+          Sonamu.apiRootPath,
           which,
           "migrations"
         );
@@ -281,13 +274,7 @@ export class Migrator {
       }
 
       const filesToRm = diffOnDist.map((filename) => {
-        return path.join(
-          this.appRootPath,
-          "api",
-          "dist",
-          "migrations",
-          filename
-        );
+        return path.join(Sonamu.apiRootPath, "dist", "migrations", filename);
       });
       filesToRm.map((filePath) => {
         unlinkSync(filePath);
@@ -298,8 +285,8 @@ export class Migrator {
 
   async runShadowTest(): Promise<boolean> {
     // ShadowDB 생성 후 테스트 진행
-    const tdb = knex(this.knexfile.test);
-    const tdbConn = this.knexfile.test.connection as Knex.ConnectionConfig;
+    const tdb = knex(Sonamu.dbConfig.test);
+    const tdbConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
     const shadowDatabase = tdbConn.database + "__migration_shadow";
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
@@ -330,7 +317,7 @@ export class Migrator {
 
     // shadow db 테스트 진행
     const sdb = knex({
-      ...this.knexfile.test,
+      ...Sonamu.dbConfig.test,
       connection: {
         ...tdbConn,
         database: shadowDatabase,
@@ -378,7 +365,7 @@ export class Migrator {
     console.log({ rollbackAllResult });
     console.timeEnd(chalk.red("rollback-all:"));
 
-    const migrationsDir = `${this.appRootPath}/api/src/migrations`;
+    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     console.time(chalk.red("delete migration files"));
     execSync(`rm -f ${migrationsDir}/*`);
     execSync(`rm -f ${migrationsDir.replace("/src/", "/dist/")}/*`);

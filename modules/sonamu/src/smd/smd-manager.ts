@@ -5,7 +5,7 @@ import _ from "lodash";
 import path from "path";
 import { SMD } from "./smd";
 import { SMDInput } from "../types/types";
-import { findAppRootPath } from "../utils/utils";
+import { Sonamu } from "../api/sonamu";
 
 export type SMDNamesRecord = Record<
   | "fs"
@@ -33,10 +33,9 @@ class SMDManagerClass {
     if (this.isAutoloaded) {
       return;
     }
-    const appRootPath = await findAppRootPath();
     const pathPattern = path.join(
-      appRootPath,
-      "/api/dist/application/**/*.smd.js"
+      Sonamu.apiRootPath,
+      "/dist/application/**/*.smd.js"
     );
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 

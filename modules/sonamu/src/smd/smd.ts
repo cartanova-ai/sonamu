@@ -21,7 +21,7 @@ import path from "path";
 import { existsSync } from "fs";
 import { z } from "zod";
 import { EnumsLabelKo } from "../types/types";
-import { Syncer } from "../syncer";
+import { Sonamu } from "../api/sonamu";
 
 export class SMD {
   id: string;
@@ -437,7 +437,6 @@ export class SMD {
 
   registerModulePaths() {
     const basePath = `${this.names.fs}`;
-    const appRootPath = Syncer.getInstance().config.appRootPath;
 
     // base-scheme
     SMDManager.setModulePath(
@@ -465,9 +464,9 @@ export class SMD {
 
     // types
     const typesModulePath = `${basePath}/${this.names.fs}.types`;
-    const typesFileDistPath = path.resolve(
-      appRootPath,
-      `api/dist/application/${typesModulePath}.js`
+    const typesFileDistPath = path.join(
+      Sonamu.apiRootPath,
+      `dist/application/${typesModulePath}.js`
     );
 
     if (existsSync(typesFileDistPath)) {
@@ -485,9 +484,9 @@ export class SMD {
 
     // enums
     const enumsModulePath = `${basePath}/${this.names.fs}.enums`;
-    const enumsFileDistPath = path.resolve(
-      appRootPath,
-      `api/dist/application/${enumsModulePath}.js`
+    const enumsFileDistPath = path.join(
+      Sonamu.apiRootPath,
+      `/dist/application/${enumsModulePath}.js`
     );
     if (existsSync(enumsFileDistPath)) {
       const importPath = path.relative(__dirname, enumsFileDistPath);

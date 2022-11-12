@@ -15,19 +15,13 @@ import { FixtureManager } from "../testing/fixture-manager";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
-import { findAppRootPath } from "../utils/utils";
+import { Sonamu } from "../api";
 
 let migrator: Migrator;
 let fixtureManager: FixtureManager;
 
 async function bootstrap() {
-  // appRootPath 셋업
-  const appRootPath = await findAppRootPath();
-  Syncer.getInstance({
-    appRootPath,
-  });
-  await DB.readKnexfile(appRootPath);
-  await SMDManager.autoload();
+  await Sonamu.init();
 
   await tsicli(process.argv, {
     types: {
@@ -89,7 +83,6 @@ bootstrap().finally(async () => {
 async function setupMigrator() {
   // migrator
   migrator = new Migrator({
-    appRootPath: Syncer.getInstance().config.appRootPath,
     knexfile: DB.getKnexfile(),
     mode: "dev",
   });
@@ -138,14 +131,7 @@ async function fixture_sync() {
 }
 
 async function stub_practice(name: string) {
-  console.log({ name });
-  return;
-  const practiceDir = path.join(
-    Syncer.getInstance().config.appRootPath,
-    "api",
-    "src",
-    "practices"
-  );
+  const practiceDir = path.join(Sonamu.apiRootPath, "src", "practices");
   const fileNames = readdirSync(practiceDir);
 
   const maxSeqNo = (() => {
@@ -200,22 +186,19 @@ async function stub_practice(name: string) {
 }
 
 async function stub_smd(name: string) {
-  const syncer = Syncer.getInstance();
-  await syncer.generateTemplate("smd", {
+  await Sonamu.syncer.generateTemplate("smd", {
     smdId: name,
   });
 }
 
 async function scaffold_model(smdId: string) {
-  const syncer = Syncer.getInstance();
-  await syncer.generateTemplate("model", {
+  await Sonamu.syncer.generateTemplate("model", {
     smdId,
   });
 }
 
 async function scaffold_model_test(smdId: string) {
-  const syncer = Syncer.getInstance();
-  await syncer.generateTemplate("model_test", {
+  await Sonamu.syncer.generateTemplate("model_test", {
     smdId,
   });
 }
