@@ -224,7 +224,7 @@ export class Syncer {
     }
 
     // 저장
-    await this.saveChecksums(await this.getCurrentChecksums());
+    await this.saveChecksums(currentChecksums);
   }
 
   getSMDIdFromPath(filePaths: string[]): string[] {
@@ -312,6 +312,7 @@ export class Syncer {
   async actionSyncFilesToTargets(tsPaths: string[]): Promise<string[]> {
     const { targets } = Sonamu.config.sync;
     const { dir: apiDir } = Sonamu.config.api;
+    const { appRootPath } = Sonamu;
 
     return (
       await Promise.all(
@@ -325,6 +326,10 @@ export class Syncer {
               if (!existsSync(dir)) {
                 mkdirSync(dir, { recursive: true });
               }
+              console.log(
+                "COPIED ",
+                chalk.blue(dst.replace(appRootPath + "/", ""))
+              );
               await this.copyFileWithReplaceCoreToShared(src, dst);
               return dst;
             })
@@ -872,6 +877,7 @@ export class Syncer {
 
   async writeCodeToPath(pathAndCode: PathAndCode): Promise<string[]> {
     const { targets } = Sonamu.config.sync;
+    const { appRootPath } = Sonamu;
     const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
 
     const dstFilePaths = uniq(
@@ -884,7 +890,10 @@ export class Syncer {
           mkdirSync(dir, { recursive: true });
         }
         writeFileSync(dstFilePath, pathAndCode.code);
-        console.log("GENERATED ", chalk.blue(dstFilePath));
+        console.log(
+          "GENERATED ",
+          chalk.blue(dstFilePath.replace(appRootPath + "/", ""))
+        );
         return dstFilePath;
       })
     );
