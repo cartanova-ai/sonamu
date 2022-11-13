@@ -19,6 +19,7 @@ export type ApiDecoratorOptions = {
   clients?: ServiceClient[];
   path?: string;
   resourceName?: string;
+  guards?: string[];
 };
 export const registeredApis: {
   modelName: string;

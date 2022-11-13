@@ -7,7 +7,7 @@ import { Context } from "./context";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import { SMDManager } from "../smd/smd-manager";
 import { fastifyCaster } from "./caster";
-import { ApiParamType } from "../types/types";
+import { ApiParam, ApiParamType } from "../types/types";
 import { Syncer } from "../syncer/syncer";
 import { isLocal } from "../utils/controller";
 import { DB, SonamuDBConfig } from "../database/db";
@@ -15,6 +15,7 @@ import { BaseModel } from "../database/base-model";
 import { findApiRootPath } from "../utils/utils";
 import path from "path";
 import { existsSync, readFileSync } from "fs";
+import { ApiDecoratorOptions } from "./decorators";
 
 export type SonamuConfig = {
   api: {
@@ -33,6 +34,19 @@ type SonamuFastifyConfig = {
     request: FastifyRequest,
     reply: FastifyReply
   ) => Context;
+  guardHandler: (
+    guard: string,
+    request: FastifyRequest,
+    api: {
+      typeParameters: ApiParamType.TypeParam[];
+      parameters: ApiParam[];
+      returnType: ApiParamType;
+      modelName: string;
+      methodName: string;
+      path: string;
+      options: ApiDecoratorOptions;
+    }
+  ) => void;
 };
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -162,6 +176,11 @@ class SonamuClass {
         method: api.options.httpMethod!,
         url: this.config.route.prefix + api.path,
         handler: async (request, reply): Promise<unknown> => {
+          (api.options.guards ?? []).every((guard) =>
+            config.guardHandler(guard, request, api)
+          );
+
+          // request 파싱
           const which = api.options.httpMethod === "GET" ? "query" : "body";
           let reqBody: {
             [key: string]: unknown;
@@ -180,6 +199,7 @@ class SonamuClass {
             }
           }
 
+          // 결과
           const result = await (model as any)[api.methodName].apply(
             model,
             api.parameters.map((param) => {
