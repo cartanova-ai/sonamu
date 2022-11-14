@@ -129,7 +129,6 @@ class SonamuClass {
     await this.syncer.autoloadApis();
 
     if (isLocal() && !isTest()) {
-      console.log(process.env.NODE_ENV);
       await this.syncer.sync();
     }
 

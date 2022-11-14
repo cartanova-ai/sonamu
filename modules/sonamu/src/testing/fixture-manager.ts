@@ -16,7 +16,10 @@ export class FixtureManagerClass {
     this._tdb = tdb;
   }
   get tdb(): Knex {
-    return this._tdb!;
+    if (this._tdb === null) {
+      throw new Error("FixtureManager has not been initialized");
+    }
+    return this._tdb;
   }
 
   private _fdb: Knex | null = null;
@@ -24,11 +27,14 @@ export class FixtureManagerClass {
     this._fdb = fdb;
   }
   get fdb(): Knex {
-    return this._fdb!;
+    if (this._fdb === null) {
+      throw new Error("FixtureManager has not been initialized");
+    }
+    return this._fdb;
   }
 
   init() {
-    if (this.tdb !== null) {
+    if (this._tdb !== null) {
       return;
     }
     this.tdb = knex(Sonamu.dbConfig.test);
@@ -268,8 +274,14 @@ export class FixtureManagerClass {
   }
 
   async destory() {
-    await this.tdb.destroy();
-    await this.fdb.destroy();
+    if (this._tdb) {
+      await this._tdb.destroy();
+      this._tdb = null;
+    }
+    if (this._fdb) {
+      await this._fdb.destroy();
+      this._fdb = null;
+    }
     await BaseModel.destroy();
   }
 }
