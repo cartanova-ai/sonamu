@@ -33,10 +33,8 @@ export async function findAppRootPath() {
 }
 
 export async function findApiRootPath() {
-  if (require.main === undefined) {
-    throw new Error("Cannot find AppRoot using Sonamu");
-  }
-  let dir = path.dirname(require.main.path);
+  const basePath = require.main?.path ?? __dirname;
+  let dir = path.dirname(basePath);
   if (dir.includes("/.yarn/")) {
     dir = dir.split("/.yarn/")[0];
   }
@@ -46,5 +44,5 @@ export async function findApiRootPath() {
     }
     dir = dir.split(path.sep).slice(0, -1).join(path.sep);
   } while (dir.split(path.sep).length > 1);
-  throw new Error("Cannot find AppRoot using Sonamu");
+  throw new Error("Cannot find AppRoot using Sonamu -2");
 }

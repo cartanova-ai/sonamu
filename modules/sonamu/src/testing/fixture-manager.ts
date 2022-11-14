@@ -10,7 +10,7 @@ import {
   isOneToOneRelationProp,
 } from "../types/types";
 
-export class FixtureManager {
+export class FixtureManagerClass {
   private _tdb: Knex | null = null;
   set tdb(tdb: Knex) {
     this._tdb = tdb;
@@ -27,37 +27,25 @@ export class FixtureManager {
     return this._fdb!;
   }
 
-  constructor(public usingTables?: string[]) {
+  init() {
+    if (this.tdb !== null) {
+      return;
+    }
     this.tdb = knex(Sonamu.dbConfig.test);
     this.fdb = knex(Sonamu.dbConfig.fixture_local);
-
-    if (process.env.NODE_ENV === "test") {
-      beforeAll(async () => {
-        await Sonamu.init();
-      });
-
-      beforeEach(async () => {
-        await this.cleanAndSeed();
-      });
-
-      afterAll(async () => {
-        await this.destory();
-        await BaseModel.destroy();
-      });
-    }
   }
 
-  async cleanAndSeed() {
-    let tableNames: string[] = [];
+  async cleanAndSeed(usingTables?: string[]) {
+    const tableNames = await (async () => {
+      if (usingTables) {
+        return usingTables;
+      }
 
-    if (this.usingTables === undefined) {
       const [tables] = await this.tdb.raw(
         "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
       );
-      tableNames = tables.map((tableInfo: any) => tableInfo["Name"]);
-    } else {
-      tableNames = this.usingTables;
-    }
+      return tables.map((tableInfo: any) => tableInfo["Name"]);
+    })();
 
     await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
     for await (let tableName of tableNames) {
@@ -282,5 +270,7 @@ export class FixtureManager {
   async destory() {
     await this.tdb.destroy();
     await this.fdb.destroy();
+    await BaseModel.destroy();
   }
 }
+export const FixtureManager = new FixtureManagerClass();

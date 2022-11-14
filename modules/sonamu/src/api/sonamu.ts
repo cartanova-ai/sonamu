@@ -9,7 +9,7 @@ import { SMDManager } from "../smd/smd-manager";
 import { fastifyCaster } from "./caster";
 import { ApiParam, ApiParamType } from "../types/types";
 import { Syncer } from "../syncer/syncer";
-import { isLocal } from "../utils/controller";
+import { isLocal, isTest } from "../utils/controller";
 import { DB, SonamuDBConfig } from "../database/db";
 import { BaseModel } from "../database/base-model";
 import { findApiRootPath } from "../utils/utils";
@@ -98,11 +98,11 @@ class SonamuClass {
     return this._config;
   }
 
-  async init() {
+  async init(doSilent: boolean = false) {
     if (this.isInitialized) {
       return;
     }
-    console.time(chalk.cyan("Sonamu.init"));
+    !doSilent && console.time(chalk.cyan("Sonamu.init"));
 
     this.apiRootPath = await findApiRootPath();
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
@@ -115,10 +115,10 @@ class SonamuClass {
 
     // DB 로드
     this.dbConfig = await DB.readKnexfile();
-    console.log(chalk.green("DB Config Loaded!"));
+    !doSilent && console.log(chalk.green("DB Config Loaded!"));
 
     // SMD 로드
-    await SMDManager.autoload();
+    await SMDManager.autoload(doSilent);
 
     // Syncer
     this.syncer = new Syncer();
@@ -128,12 +128,13 @@ class SonamuClass {
     await this.syncer.autoloadTypes();
     await this.syncer.autoloadApis();
 
-    if (isLocal()) {
+    if (isLocal() && !isTest()) {
+      console.log(process.env.NODE_ENV);
       await this.syncer.sync();
     }
 
     this.isInitialized = true;
-    console.timeEnd(chalk.cyan("Sonamu.init"));
+    !doSilent && console.timeEnd(chalk.cyan("Sonamu.init"));
   }
 
   async withFastify(
