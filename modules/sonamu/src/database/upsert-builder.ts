@@ -224,7 +224,8 @@ export class UpsertBuilder {
     for await (const chunk of chunks) {
       await Promise.all(
         chunk.map(async ({ id, ...row }) => {
-          return await wdb(tableName).where("id", id).update(row);
+          const { uuid, ...update } = row;
+          return await wdb(tableName).where("id", id).update(update);
         })
       );
     }

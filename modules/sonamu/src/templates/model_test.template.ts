@@ -20,18 +20,17 @@ export class Template__model_test extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { BadRequestException, FixtureManager } from "sonamu";
-import { ${smdId}ListParams, ${smdId}SaveParams } from "../${names.fs}/${names.fs}.types";
-import { ${smdId}Model } from "../${names.fs}/${names.fs}.model";
+import { FixtureManager } from "sonamu";
+import { describe, test, expect } from "vitest";
 
-describe.skip("${smdId}Model Model", () => {
-  new FixtureManager([
-  ]);
-
+beforeEach(async () => {
+  await FixtureManager.cleanAndSeed([]);
+});
+describe.skip("${smdId}ModelTest", () => {
   test("Query", async () => {
+    expect(true).toBe(true);
   });
 });
-
       `.trim(),
       importKeys: [],
     };

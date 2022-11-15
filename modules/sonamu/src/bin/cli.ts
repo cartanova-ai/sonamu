@@ -16,7 +16,6 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
 import { Sonamu } from "../api";
 
 let migrator: Migrator;
-let fixtureManager: FixtureManager;
 
 async function bootstrap() {
   await Sonamu.init();
@@ -69,9 +68,7 @@ bootstrap().finally(async () => {
   if (migrator) {
     await migrator.destroy();
   }
-  if (fixtureManager) {
-    await fixtureManager.destory();
-  }
+  await FixtureManager.destory();
   await BaseModel.destroy();
 
   /* Global End */
@@ -86,7 +83,7 @@ async function setupMigrator() {
 }
 
 async function setupFixtureManager() {
-  fixtureManager = new FixtureManager();
+  FixtureManager.init();
 }
 
 async function migrate_run() {
@@ -117,14 +114,14 @@ async function migrate_reset() {
 async function fixture_import(smdId: string, recordIds: number[]) {
   await setupFixtureManager();
 
-  await fixtureManager.importFixture(smdId, recordIds);
-  await fixtureManager.sync();
+  await FixtureManager.importFixture(smdId, recordIds);
+  await FixtureManager.sync();
 }
 
 async function fixture_sync() {
   await setupFixtureManager();
 
-  await fixtureManager.sync();
+  await FixtureManager.sync();
 }
 
 async function stub_practice(name: string) {
