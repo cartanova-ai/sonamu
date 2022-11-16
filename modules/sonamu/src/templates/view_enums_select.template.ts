@@ -28,20 +28,18 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${names.constant} } from 'src/services/${names.fs}/${names.fs}.enums';
+import { ${enumId}, ${names.constant} } from 'src/services/${names.fs}/${names.fs}.enums';
 
 export type ${enumId}SelectProps = {
   placeholder?: string;
   textPrefix?: string;
 } & DropdownProps;
 export function ${enumId}Select({placeholder, textPrefix, ...props}: ${enumId}SelectProps) {
-  const typeOptions = Object.entries(${names.constant}.${idConstant}).map(([key, { ko }]) => {
-    return {
-      key,
-      value: key,
-      text: (textPrefix ?? '${label}: ') + ko,
-    };
-  });
+  const typeOptions = ${enumId}.options.map((key) => ({
+    key,
+    value: key,
+    text: (textPrefix ?? '${label}: ') + ${names.constant}.${idConstant}[key].ko,
+  }));
 
   return (
     <Dropdown
