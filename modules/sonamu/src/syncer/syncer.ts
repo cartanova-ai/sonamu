@@ -1146,7 +1146,7 @@ export class Syncer {
       return "boolean";
     } else if (zodType instanceof z.ZodEnum) {
       return "enums";
-    } else if (zodType instanceof z.ZodAny) {
+    } else if (zodType instanceof z.ZodAny || zodType instanceof z.ZodUnknown) {
       return "string-plain";
     } else {
       throw new Error(`타입 파싱 불가 ${key} ${zodType._def.typeName}`);
