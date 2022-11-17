@@ -98,7 +98,7 @@ class SonamuClass {
     return this._config;
   }
 
-  async init(doSilent: boolean = false) {
+  async init(doSilent: boolean = false, enableSync: boolean = true) {
     if (this.isInitialized) {
       return;
     }
@@ -128,7 +128,7 @@ class SonamuClass {
     await this.syncer.autoloadTypes();
     await this.syncer.autoloadApis();
 
-    if (isLocal() && !isTest()) {
+    if (isLocal() && !isTest() && enableSync) {
       await this.syncer.sync();
     }
 
