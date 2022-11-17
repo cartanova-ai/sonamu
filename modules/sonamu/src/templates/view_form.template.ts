@@ -8,6 +8,7 @@ import {
   getEnumInfoFromColName,
   getRelationPropFromColName,
 } from "./view_list.template";
+import { uniq } from "lodash";
 
 export class Template__view_form extends Template {
   constructor() {
@@ -75,6 +76,8 @@ export class Template__view_form extends Template {
         }
       case "string-datetime":
         return `<SQLDateTimeInput ${regExpr} />`;
+      case "string-date":
+        return `<SQLDateInput ${regExpr} />`;
       case "number-id":
         return `<input type="hidden" ${regExpr} />`;
       case "number-plain":
@@ -114,27 +117,9 @@ export class Template__view_form extends Template {
           return `<>${col.name} 찾을 수 없음</>`;
         }
       case "array":
-        return `{form.${col.name}.map((elem, index) => ${this.renderColumn(
-          smdId,
-          col.element!,
-          names,
-          `${parent}${col.name}[\${index}]`
-        )})}`;
+        return `<>${col.name} array</>`;
       case "object":
-        return (
-          `<Form.Group className="${col.name}"${
-            parent !== "" ? " key={index}" : ""
-          }>` +
-          col
-            .children!.map((child) =>
-              this.wrapFC(
-                this.renderColumn(smdId, child, names, `${parent}.`),
-                child.label
-              )
-            )
-            .join("\n") +
-          "</Form.Group>"
-        );
+        return `<>${col.name} object</>`;
       default:
         throw new Error(
           `대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`
@@ -190,26 +175,39 @@ export class Template__view_form extends Template {
       columns as RenderingNode[]
     )
       .filter((col) => {
-        if (
-          col.name !== "id" &&
-          (["enums", "number-id"].includes(col.renderType) ||
-            col.name.endsWith("_id"))
-        ) {
+        if (col.name === "id") {
+          return false;
+        } else if (col.name.endsWith("_id") || col.renderType === "number-id") {
           try {
             getRelationPropFromColName(smdId, col.name.replace("_id", ""));
+            return true;
           } catch {
             return false;
           }
-          return true;
-        } else {
-          return false;
+        } else if (col.renderType === "enums") {
+          try {
+            getEnumInfoFromColName(smdId, col.name);
+            return true;
+          } catch {
+            return false;
+          }
         }
+        return false;
       })
       .map((col) => {
         let key: TemplateKey;
         let targetMdId = smdId;
+        let enumId: string | undefined;
+        let idConstant: string | undefined;
         if (col.renderType === "enums") {
           key = "view_enums_select";
+          const { targetMDNames, id, name } = getEnumInfoFromColName(
+            smdId,
+            col.name
+          );
+          targetMdId = targetMDNames.capital;
+          enumId = id;
+          idConstant = name;
         } else {
           key = "view_id_async_select";
           const relProp = getRelationPropFromColName(
@@ -224,6 +222,8 @@ export class Template__view_form extends Template {
           options: {
             smdId: targetMdId,
             node: col,
+            enumId,
+            idConstant,
           },
         };
       })
@@ -242,7 +242,7 @@ export class Template__view_form extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React, { useEffect, useState, Dispatch, SetStateAction } from 'react';
+import React, { useEffect, useState, Dispatch, SetStateAction, forwardRef, Ref, useImperativeHandle, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Button,
@@ -256,31 +256,26 @@ import {
 } from 'semantic-ui-react';
 import { DateTime } from "luxon";
 
-import { BackLink } from 'src/typeframe/components/BackLink';
-import { LinkInput } from 'src/typeframe/components/LinkInput';
-import { ImageUploader } from 'src/typeframe/components/ImageUploader';
-import { NumberInput } from 'src/typeframe/components/NumberInput';
-import { BooleanToggle } from 'src/typeframe/components/BooleanToggle';
-import { SQLDateTimeInput } from "src/typeframe/components/SQLDateTimeInput";
-import { defCatch } from 'src/typeframe/fetch';
+import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack } from "@sonamu-kit/react-sui";
+import { defaultCatch } from 'src/services/sonamu.shared';
+import { ImageUploader } from 'src/components/core/ImageUploader';
 
 import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
         names.fs
       }.types';
-import { useTypeForm, useGoBack } from 'src/typeframe/helpers';
-import { usePubSub } from 'src/typeframe/pubsub';
 import { ${names.capital}Service } from 'src/services/${names.fs}/${
         names.fs
       }.service';
 import { ${names.capital}SubsetA } from 'src/services/${names.fs}/${
         names.fs
       }.generated';
-${columns
-  .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
-  .map((col) => {
-    return this.renderColumnImport(smdId, col);
-  })
-  .join("\n")}
+${uniq(
+  columns
+    .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
+    .map((col) => {
+      return this.renderColumnImport(smdId, col);
+    })
+).join("\n")}
 
 export default function ${names.capitalPlural}FormPage() {
   // 라우팅 searchParams
@@ -297,9 +292,18 @@ type ${names.capitalPlural}FormProps = {
   id?: number;
   mode?: 'page' | 'modal';
 };
-export function ${names.capitalPlural}Form({ id, mode }: ${
+export type ${names.capitalPlural}FormHandle = { submit: () => void };
+export const ${names.capitalPlural}Form = forwardRef(
+  ({ id, mode }: ${names.capitalPlural}FormProps, ref: Ref<${
         names.capitalPlural
-      }FormProps) {
+      }FormHandle>) => {
+  // 폼 핸들
+  useImperativeHandle(ref, () => ({
+      submit: () => {
+        handleSubmit();
+      },
+    }));
+
   // 편집시 기존 row
   const [row, setRow] = useState<${names.capital}SubsetA | undefined>();
 
@@ -307,7 +311,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
   const { form, setForm, register } = useTypeForm(${
     names.capital
   }SaveParams, ${JSON.stringify(defaultValue).replace(
-        '"now()"',
+        /"now\(\)"/g,
         "DateTime.local().toSQL().slice(0, 19)"
       )});
 
@@ -338,23 +342,13 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
 
   // 저장
   const { goBack } = useGoBack();
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     ${names.capital}Service.save([form]).then(([id]) => {
       if (mode !== 'modal') {
         goBack('/admin/${names.fsPlural}');
       }
-    }).catch(defCatch);
-  };
-
-  // 모달 서브밋 핸들링
-  const { subscribe } = usePubSub();
-  useEffect(() => {
-    if (id) {
-      return subscribe(\`${names.fs}#\${id}.submitted\`, () => {
-        handleSubmit();
-      });
-    }
-  }, [form]);
+    }).catch(defaultCatch);
+  }, [ form, mode, id ]);
 
   return (
     <div className="form">
@@ -388,7 +382,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
       </Segment>
     </div>
   );
-}
+});
       `.trim(),
       importKeys: [],
       preTemplates,

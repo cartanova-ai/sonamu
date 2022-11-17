@@ -40,6 +40,7 @@ export class Template__view_list extends Template {
 
     switch (col.renderType) {
       case "string-plain":
+      case "string-date":
       case "number-id":
         return `<>{${colName}}</>`;
       case "number-fk_id":
@@ -49,12 +50,14 @@ export class Template__view_list extends Template {
         );
         return `<>${relPropFk.with}#{${colName}}</>`;
       case "string-image":
-        return `<img src={${colName}} />`;
+        return `<>{${
+          col.nullable ? `${colName} && ` : ""
+        }<img src={${colName}} />}</>`;
       case "string-datetime":
         if (col.nullable) {
-          return `<span className="text-tiny">{${colName} === null ? '-' : DateTime.fromSQL(${colName}).toFormat('y-MM-dd')}</span>`;
+          return `<span className="text-tiny">{${colName} === null ? '-' : DateTime.fromSQL(${colName}).toSQL().slice(0, 10)}</span>`;
         } else {
-          return `<span className="text-tiny">{DateTime.fromSQL(${colName}).toFormat('y-MM-dd')}</span>`;
+          return `<span className="text-tiny">{DateTime.fromSQL(${colName}).toSQL().slice(0, 10)}</span>`;
         }
       case "boolean":
         return `<>{${colName} ? <Label color='green' circular>O</Label> : <Label color='grey' circular>X</Label> }</>`;
@@ -64,11 +67,11 @@ export class Template__view_list extends Template {
           targetMDNames.constant
         }.${name}[${colName}].ko}</>`;
       case "array-images":
-        return `<>{ ${colName}.map(r => <img src={r} />) }</>`;
+        return `<>{ ${colName}.map(r => ${
+          col.nullable ? `r && ` : ""
+        }<img src={r} />) }</>`;
       case "number-plain":
-        return `<>{${
-          col.nullable ? `${colName} && ` : ""
-        }new Intl.NumberFormat().format(${colName})}</>`;
+        return `<>{${col.nullable ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
         try {
           const relProp = getRelationPropFromColName(smdId, col.name);
@@ -333,7 +336,7 @@ export class Template__view_list extends Template {
       });
     }
 
-    // 리스트 컬럼 프리템플릿
+    // 리스트 컬럼
     const columnImports = uniq(
       columnsNode
         .children!.map((col) => {
@@ -342,14 +345,6 @@ export class Template__view_list extends Template {
         .flat()
         .filter((col) => col !== null)
     ).join("\n");
-    preTemplates.push({
-      key: "view_list_columns",
-      options: {
-        smdId,
-        columns,
-        columnImports,
-      } as TemplateOptions["view_list_columns"],
-    });
 
     // SearchInput
     preTemplates!.push({
@@ -381,13 +376,7 @@ import {
 } from 'semantic-ui-react';
 import classNames from 'classnames';
 import { DateTime } from "luxon";
-import { DelButton } from 'src/typeframe/components/DelButton';
-import { EditButton } from 'src/typeframe/components/EditButton';
-import { AppBreadcrumbs } from 'src/typeframe/components/AppBreadcrumbs';
-import { AddButton } from 'src/typeframe/components/AddButton';
-import { useSelection, useListParams } from 'src/typeframe/helpers';
-import { TFColumn } from "src/typeframe/iso-types";
-import dc from './_columns';
+import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF } from '@sonamu-kit/react-sui';
 
 import { ${names.capital}SubsetA } from "src/services/${names.fs}/${
         names.fs
@@ -463,9 +452,15 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
   } = useSelection((rows ?? []).map((row) => row.id));
 
   // 컬럼
-  const columns:TFColumn<${names.capital}SubsetA>[] = [
-    ${columns.map((col) => `{ ...dc.${col.name} }`).join(",\n")}
-  ]
+  const columns:SonamuCol<${names.capital}SubsetA>[] = [${columns
+        .map((col) => {
+          return [
+            `{ label: "${col.label}",`,
+            `tc: ${col.tc}, `,
+            `collapsing: ${["Title", "Name"].includes(col.label) === false}, }`,
+          ].join("\n");
+        })
+        .join(",\n")}];
 
   return (
     <div className="list ${names.fsPlural}-index">

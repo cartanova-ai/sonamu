@@ -142,7 +142,7 @@ export class Template__service extends Template {
           })
           .join("\n\n");
 
-        return `export namespace ${modelName.replace("Model", "Service")} {
+        return `export namespace ${modelName.replace(/Model$/, "Service")} {
 ${methodCodes}
 }`;
       })

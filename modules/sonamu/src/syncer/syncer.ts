@@ -1131,6 +1131,8 @@ export class Syncer {
         return "string-image";
       } else if (zodType.description === "SQLDateTimeString") {
         return "string-datetime";
+      } else if (key.endsWith("date")) {
+        return "string-date";
       } else {
         return "string-plain";
       }
