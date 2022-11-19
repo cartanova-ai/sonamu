@@ -20,12 +20,10 @@ export class Template__model_test extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { FixtureManager } from "sonamu";
 import { describe, test, expect } from "vitest";
+import { bootstrap } from '../../testing/helpers';
 
-beforeEach(async () => {
-  await FixtureManager.cleanAndSeed([]);
-});
+bootstrap([]);
 describe.skip("${smdId}ModelTest", () => {
   test("Query", async () => {
     expect(true).toBe(true);
