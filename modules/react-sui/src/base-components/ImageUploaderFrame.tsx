@@ -51,6 +51,8 @@ export function ImageUploaderFrame({
   useEffect(() => {
     if (value === null || value === undefined) {
       setImages([]);
+    } else if (value === "") {
+      setImages([]);
     } else if (typeof value === "string") {
       setImages([value]);
     } else {
