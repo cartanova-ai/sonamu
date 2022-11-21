@@ -1106,7 +1106,6 @@ export class Syncer {
         (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
       ) {
         zodType = z.number().int();
-        throw new Error("여기를 들어온다고?");
       }
     } else {
       throw new Error(`prop을 zodType으로 변환하는데 실패 ${prop}}`);

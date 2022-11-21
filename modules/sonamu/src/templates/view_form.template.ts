@@ -366,9 +366,19 @@ export const ${names.capitalPlural}Form = forwardRef(
           </div>
           <Form>
             ${columns
-              .map((col) =>
-                this.wrapFG(this.renderColumn(smdId, col, names), col.label)
-              )
+              .map((col) => {
+                if (col.name === "created_at") {
+                  return `{form.id && (${this.wrapFG(
+                    `<div className="p-8">{form.${col.name}}</div>`,
+                    "등록일시"
+                  )})}`;
+                } else {
+                  return this.wrapFG(
+                    this.renderColumn(smdId, col, names),
+                    col.label
+                  );
+                }
+              })
               .join("\n")}
             {mode !== 'modal' && (
               <Segment basic textAlign="center">
