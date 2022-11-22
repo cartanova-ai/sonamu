@@ -120,6 +120,9 @@ export class SMD {
   /*
    */
   resolveSubsetQuery(prefix: string, fields: string[]): SubsetQuery {
+    // prefix 치환 (prefix는 ToOneRelation이 복수로 붙은 경우 모두 __로 변경됨)
+    prefix = prefix.replace(/\./g, "__");
+
     // 서브셋을 1뎁스만 분리하여 그룹핑
     const subsetGroup = _.groupBy(fields, (field) => {
       if (field.includes(".")) {
@@ -152,11 +155,7 @@ export class SMD {
             // 넘어온 테이블인 경우
             r.select = r.select.concat(
               realFields.map(
-                (field) =>
-                  `${prefix.replace(".", "__")}.${field} as ${prefix.replace(
-                    ".",
-                    "__"
-                  )}__${field}`
+                (field) => `${prefix}.${field} as ${prefix}__${field}`
               )
             );
           }
@@ -417,9 +416,15 @@ export class SMD {
     return this.props
       .map((prop) => {
         const propName = [prefix, prop.name].filter((v) => v !== "").join(".");
-        if (isRelationProp(prop) && maxDepth - 1 >= 0) {
-          // 역방향 relation인 경우 제외
+        if (propName === prefix) {
+          return null;
+        }
+        if (isRelationProp(prop)) {
+          if (maxDepth < 0) {
+            return null;
+          }
           if (froms.includes(prop.with)) {
+            // 역방향 relation인 경우 제외
             return null;
           }
           // 정방향 relation인 경우 recursive 콜

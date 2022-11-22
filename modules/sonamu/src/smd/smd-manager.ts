@@ -125,13 +125,17 @@ class SMDManagerClass {
   }
 
   getNamesFromId(smdId: string): SMDNamesRecord {
+    // smdId가 단복수 동형 단어인 경우 List 붙여서 생성
+    const pluralized =
+      pluralize(smdId) === smdId ? `${smdId}List` : pluralize(smdId);
+
     return {
       fs: dasherize(underscore(smdId)).toLowerCase(),
-      fsPlural: dasherize(underscore(pluralize(smdId))).toLowerCase(),
+      fsPlural: dasherize(underscore(pluralized)).toLowerCase(),
       camel: camelize(smdId, true),
-      camelPlural: pluralize(camelize(smdId, true)),
+      camelPlural: camelize(pluralized, true),
       capital: smdId,
-      capitalPlural: pluralize(smdId),
+      capitalPlural: pluralized,
       upper: smdId.toUpperCase(),
       constant: underscore(smdId).toUpperCase(),
     };
