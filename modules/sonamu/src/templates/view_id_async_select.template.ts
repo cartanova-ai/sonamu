@@ -83,6 +83,13 @@ export function ${names.capital}IdAsyncSelect<T extends ${
     );
   }, [${names.camelPlural}]);
 
+  useEffect(() => {
+    setListParams({
+      ...listParams,
+      ...baseListParams,
+    });
+  }, [baseListParams]);
+
   const handleSearchChange = (
     e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,

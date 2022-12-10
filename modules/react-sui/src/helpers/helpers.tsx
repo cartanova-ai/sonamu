@@ -49,7 +49,7 @@ export function useTypeForm<
   function getEmptyStringTo(
     zType: T,
     objPath: string
-  ): "normal" | "nullable" | "optional" | undefined {
+  ): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
       .replace(/\./g, ".shape.")
       .replace(/\[[0-9]+\]/g, ".element")
@@ -63,7 +63,7 @@ export function useTypeForm<
     }
 
     if (targetZType === undefined) {
-      return undefined;
+      return "normal";
     } else if (targetZType instanceof z.ZodOptional) {
       return "optional";
     } else if (targetZType instanceof z.ZodNullable) {
@@ -75,13 +75,11 @@ export function useTypeForm<
   return {
     form,
     setForm,
-    register: (objPath: string): any => {
-      const emptyStringTo = getEmptyStringTo(zType, objPath);
-      if (emptyStringTo === undefined) {
-        console.error(`TypeForm Register Error: ${objPath}`);
-        return;
-      }
-
+    register: (
+      objPath: string,
+      _emptyStringTo?: "normal" | "nullable" | "optional"
+    ): any => {
+      const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = _.get(form, objPath) as unknown;
 
       const ifError = errorObjPaths.has(objPath)
