@@ -224,7 +224,19 @@ export class BaseModelClass {
     // count
     let countQuery;
     if (params.id === undefined && params.withoutCount !== true) {
-      countQuery = qb.clone().clearOrder().count("*", { as: "total" });
+      const clonedQb = qb.clone().clear("order");
+      const [, matched] =
+        clonedQb
+          .toQuery()
+          .toLowerCase()
+          .match(/select (distinct .+) from/) ?? [];
+      if (matched) {
+        countQuery = clonedQb
+          .clear("select")
+          .select(db.raw(`COUNT(${matched}) as total`));
+      } else {
+        countQuery = clonedQb.count("*", { as: "total" });
+      }
     }
 
     // limit, offset
