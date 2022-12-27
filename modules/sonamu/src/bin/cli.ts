@@ -38,6 +38,7 @@ async function bootstrap() {
       ["fixture", "import", "#smdId", "#recordIds"],
       ["fixture", "sync"],
       ["migrate", "run"],
+      ["migrate", "check"],
       ["migrate", "rollback"],
       ["migrate", "reset"],
       ["migrate", "clear"],
@@ -50,6 +51,7 @@ async function bootstrap() {
     ],
     runners: {
       migrate_run,
+      migrate_check,
       migrate_rollback,
       migrate_clear,
       migrate_reset,
@@ -91,6 +93,13 @@ async function migrate_run() {
 
   await migrator.cleanUpDist();
   await migrator.run();
+}
+
+async function migrate_check() {
+  await setupMigrator();
+
+  await migrator.cleanUpDist();
+  await migrator.check();
 }
 
 async function migrate_rollback() {

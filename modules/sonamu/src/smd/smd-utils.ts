@@ -15,6 +15,7 @@ import {
   JsonProp,
   ManyToManyRelationProp,
   OneToOneRelationProp,
+  SMDIndex,
   StringProp,
   TextProp,
   TimeProp,
@@ -22,6 +23,7 @@ import {
   UuidProp,
   VirtualProp,
 } from "../types/types";
+import { asArray } from "../utils/model";
 
 export const p = {
   integer,
@@ -262,5 +264,24 @@ function relationManyToMany(
     type: "relation",
     relationType: "ManyToMany",
     ...option,
+  };
+}
+
+export const i = {
+  index,
+  unique,
+};
+
+function index(columns: string | string[]): SMDIndex {
+  return {
+    type: "index",
+    columns: asArray(columns),
+  };
+}
+
+function unique(columns: string | string[]): SMDIndex {
+  return {
+    type: "unique",
+    columns: asArray(columns),
   };
 }

@@ -15,6 +15,7 @@ import {
   SMDPropNode,
   isEnumProp,
   StringProp,
+  SMDIndex,
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
@@ -39,6 +40,7 @@ export class SMD {
   relations: {
     [key: string]: RelationProp;
   };
+  indexes: SMDIndex[];
   subsets: {
     [key: string]: string[];
   };
@@ -52,7 +54,15 @@ export class SMD {
     [name: string]: EnumsLabelKo<string>;
   } = {};
 
-  constructor({ id, parentId, table, title, props, subsets }: SMDInput<any>) {
+  constructor({
+    id,
+    parentId,
+    table,
+    title,
+    props,
+    indexes,
+    subsets,
+  }: SMDInput<any>) {
     // id
     this.id = id;
     this.parentId = parentId;
@@ -90,6 +100,9 @@ export class SMD {
       this.propsDict = {};
       this.relations = {};
     }
+
+    // indexes
+    this.indexes = indexes ?? [];
 
     // subsets
     this.subsets = subsets ?? {};
@@ -514,22 +527,11 @@ export class SMD {
 
   registerTableSpecs(): void {
     const uniqueColumns = uniq(
-      this.props
-        .map((prop) => {
-          const propColumn =
-            isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)
-              ? `${prop.name}_id`
-              : prop.name;
-          if (prop.unique === true) {
-            return propColumn;
-          } else if (prop.unique && Array.isArray(prop.unique)) {
-            return propColumn;
-          } else {
-            return null;
-          }
-        })
-        .filter((prop) => prop !== null)
-    ) as string[];
+      this.indexes
+        .filter((idx) => idx.type === "unique")
+        .map((idx) => idx.columns)
+        .flat()
+    );
 
     SMDManager.setTableSpec({
       name: this.table,

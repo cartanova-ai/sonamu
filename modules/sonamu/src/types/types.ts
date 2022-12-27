@@ -122,8 +122,6 @@ type _RelationProp = {
   name: string;
   with: string;
   nullable?: boolean;
-  index?: true | string[];
-  unique?: true | string[];
   toFilter?: true;
 };
 export type OneToOneRelationProp = _RelationProp & {
@@ -180,12 +178,19 @@ export type SMDProp =
   | VirtualProp
   | RelationProp;
 
+export type SMDIndex = {
+  type: "index" | "unique";
+  columns: string[];
+  name?: string;
+};
+
 export type SMDInput<T extends string> = {
   id: string;
   parentId?: string;
   table?: string;
   title?: string;
   props?: SMDProp[];
+  indexes?: SMDIndex[];
   subsets?: {
     [subset: string]: T[];
   };
@@ -352,7 +357,6 @@ export type MigrationColumn = {
 export type MigrationIndex = {
   columns: string[];
   type: "unique" | "index";
-  name?: string;
 };
 export type MigrationForeign = {
   columns: string[];

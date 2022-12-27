@@ -21,7 +21,7 @@ export class Template__smd extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { p, SMDInput } from "sonamu";
+import { p, i, SMDInput } from "sonamu";
 import { ${smdId}FieldExpr } from "./${names.fs}.generated";
 
 /*
@@ -36,6 +36,10 @@ export const ${names.camel}SmdInput: SMDInput<${smdId}FieldExpr> = {
     p.timestamp("created_at", {
       now: true,
     }),
+  ],
+  indexes: [
+    i.index('created_at'),
+    //
   ],
   subsets: {
     A: [ 'id', 'created_at' ]

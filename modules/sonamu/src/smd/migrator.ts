@@ -124,6 +124,18 @@ export class Migrator {
     await this.cleanUpDist(true);
   }
 
+  async check(): Promise<void> {
+    const codes = await this.compareMigrations();
+    if (codes.length === 0) {
+      console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
+      return;
+    }
+
+    // 현재 생성된 코드 표기
+    console.table(codes, ["type", "title"]);
+    console.log(codes[0]);
+  }
+
   async run(): Promise<void> {
     // pending 마이그레이션 확인
     const [, pendingList] = await this.targets.pending.migrate.list();
@@ -439,10 +451,10 @@ export class Migrator {
               console.debug({ smdCreatedAt, dbCreatedAt });
               */
 
-              const smdIndexes = sortBy(smdSet.indexes, (a: any) =>
+              const smdIndexes = sortBy(smdSet.indexes, (a) =>
                 (a as MigrationIndex).columns.join("-")
               );
-              const dbIndexes = sortBy(dbSet.indexes, (a: any) =>
+              const dbIndexes = sortBy(dbSet.indexes, (a) =>
                 (a as MigrationIndex).columns.join("-")
               );
 
@@ -473,6 +485,11 @@ export class Migrator {
                 // TODO FK alter
                 console.log(chalk.red(`FK 다름! ${smdSet.table}`));
                 // console.dir({ smdForeigns, dbForeigns }, { depth: null });
+                return this.generateAlterCode_Foreigns(
+                  smdSet.table,
+                  smdForeigns,
+                  dbForeigns
+                );
               }
             }
             return null;
@@ -550,9 +567,6 @@ export class Migrator {
           columns: currentIndexes.map(
             (currentIndex) => currentIndex.Column_name
           ),
-          ...propIf(currentIndexes.length > 1, {
-            name: keyName,
-          }),
         };
       }
     );
@@ -742,66 +756,6 @@ export class Migrator {
           r.columns.push(column);
         }
 
-        // 일반 컬럼 + ToOne 케이스 컬럼
-        if (
-          !isRelationProp(prop) ||
-          isBelongsToOneRelationProp(prop) ||
-          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-        ) {
-          const propName = !isRelationProp(prop)
-            ? prop.name
-            : `${prop.name}_id`;
-
-          // index 처리
-          if (prop.index !== undefined) {
-            if (prop.index !== true) {
-              prop.index.map((indexName) => {
-                const namedOne = r.indexes.find(
-                  (_index) => _index.name === indexName
-                );
-                if (namedOne) {
-                  namedOne.columns.push(propName);
-                } else {
-                  r.indexes.push({
-                    type: "index",
-                    columns: [propName],
-                    name: indexName,
-                  });
-                }
-              });
-            } else {
-              r.indexes.push({
-                type: "index",
-                columns: [propName],
-              });
-            }
-          }
-          // unique 처리
-          if (prop.unique !== undefined) {
-            if (prop.unique !== true) {
-              prop.unique.map((indexName) => {
-                const namedOne = r.indexes.find(
-                  (_index) => _index.name === indexName
-                );
-                if (namedOne) {
-                  namedOne.columns.push(propName);
-                } else {
-                  r.indexes.push({
-                    type: "unique",
-                    columns: [propName],
-                    name: indexName,
-                  });
-                }
-              });
-            } else {
-              r.indexes.push({
-                type: "unique",
-                columns: [propName],
-              });
-            }
-          }
-        }
-
         if (isManyToManyRelationProp(prop)) {
           // ManyToMany 케이스
           const relMd = SMDManager.get(prop.with);
@@ -888,6 +842,9 @@ export class Migrator {
       }
     );
 
+    // indexes
+    migrationSet.indexes = smd.indexes;
+
     // uuid
     migrationSet.columns = migrationSet.columns.concat({
       name: "uuid",
@@ -949,15 +906,11 @@ export class Migrator {
     }
     const lines = uniq(
       indexes.reduce((r, index) => {
-        if (index.name === undefined) {
-          r.push(`table.${index.type}(['${index.columns[0]}'])`);
-        } else {
-          r.push(
-            `table.${index.type}([${index.columns
-              .map((col) => `'${col}'`)
-              .join(",")}], '${index.name}')`
-          );
-        }
+        r.push(
+          `table.${index.type}([${index.columns
+            .map((col) => `'${col}'`)
+            .join(",")}])`
+        );
         return r;
       }, [] as string[])
     );
@@ -1362,10 +1315,10 @@ export class Migrator {
     };
     const extraIndexes = {
       db: differenceBy(dbIndexes, smdIndexes, (col) =>
-        [col.type, col.name ?? col.columns.join("-")].join("//")
+        [col.type, col.columns.join("-")].join("//")
       ),
       smd: differenceBy(smdIndexes, dbIndexes, (col) =>
-        [col.type, col.name ?? col.columns.join("-")].join("//")
+        [col.type, col.columns.join("-")].join("//")
       ),
     };
     if (extraIndexes.smd.length > 0) {
@@ -1437,6 +1390,87 @@ export class Migrator {
     };
 
     return linesTo;
+  }
+
+  generateAlterCode_Foreigns(
+    table: string,
+    smdForeigns: MigrationForeign[],
+    dbForeigns: MigrationForeign[]
+  ): GenMigrationCode[] {
+    // console.log({ smdForeigns, dbForeigns });
+
+    const getKey = (mf: MigrationForeign): string => {
+      return [mf.columns.join("-"), mf.to].join("///");
+    };
+    const fkTo = smdForeigns.reduce(
+      (result, smdF) => {
+        const matchingDbF = dbForeigns.find(
+          (dbF) => getKey(smdF) === getKey(dbF)
+        );
+        if (!matchingDbF) {
+          result.add.push(smdF);
+          return result;
+        }
+
+        if (equal(smdF, matchingDbF) === false) {
+          result.alterSrc.push(matchingDbF);
+          result.alterDst.push(smdF);
+          return result;
+        }
+        return result;
+      },
+      {
+        add: [] as MigrationForeign[],
+        alterSrc: [] as MigrationForeign[],
+        alterDst: [] as MigrationForeign[],
+      }
+    );
+
+    const linesTo = {
+      add: this.genForeignDefinitions(table, fkTo.add),
+      alterSrc: this.genForeignDefinitions(table, fkTo.alterSrc),
+      alterDst: this.genForeignDefinitions(table, fkTo.alterDst),
+    };
+
+    const lines: string[] = [
+      'import { Knex } from "knex";',
+      "",
+      "export async function up(knex: Knex): Promise<void> {",
+      `return knex.schema.alterTable("${table}", (table) => {`,
+      ...linesTo.add.up,
+      ...linesTo.alterSrc.down,
+      ...linesTo.alterDst.up,
+      "})",
+      "}",
+      "",
+      "export async function down(knex: Knex): Promise<void> {",
+      `return knex.schema.alterTable("${table}", (table) => {`,
+      ...linesTo.add.down,
+      ...linesTo.alterDst.down,
+      ...linesTo.alterSrc.up,
+      "})",
+      "}",
+    ];
+
+    const formatted = prettier.format(lines.join("\n"), {
+      parser: "typescript",
+    });
+
+    const title = [
+      "alter",
+      table,
+      "foreigns",
+      // TODO 바뀌는 부분
+    ].join("_");
+
+    return [
+      {
+        table,
+        title,
+        formatted,
+        type: "normal",
+      },
+    ];
   }
 
   async destroy(): Promise<void> {

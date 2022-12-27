@@ -21,7 +21,7 @@ export class Template__model_test extends Template {
       ...this.getTargetAndPath(names),
       body: `
 import { describe, test, expect } from "vitest";
-import { bootstrap } from '../../testing/helpers';
+import { bootstrap } from '../../testing/bootstrap';
 
 bootstrap([]);
 describe.skip("${smdId}ModelTest", () => {
