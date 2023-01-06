@@ -34,8 +34,8 @@ export function ${names.capital}SearchInput({
 }) {
   const [keyword, setKeyword] = useState<string>(inputValue ?? '');
 
-  const handleKeyDown = (e: { code: string }) => {
-    if (inputOnChange && e.code === 'Enter') {
+  const handleKeyDown = (e: { key: string }) => {
+    if (inputOnChange && e.key === 'Enter') {
       inputOnChange(e as any, {
         value: keyword,
       });
@@ -51,7 +51,7 @@ export function ${names.capital}SearchInput({
       labelPosition="left"
       action={{
         icon: 'search',
-        onClick: () => handleKeyDown({ code: 'Enter' }),
+        onClick: () => handleKeyDown({ key: 'Enter' }),
       }}
       {...inputProps}
       value={keyword}
