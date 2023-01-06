@@ -328,6 +328,17 @@ export type SubsetQuery = {
 };
 
 /* Knex Migration */
+export type KnexError = {
+  code: string;
+  errno: number;
+  sql: string;
+  sqlMessage: string;
+  sqlState: string;
+};
+export function isKnexError(e: any): e is KnexError {
+  return e.code && e.sqlMessage && e.sqlState;
+}
+
 export type KnexColumnType =
   | "string"
   | "text"

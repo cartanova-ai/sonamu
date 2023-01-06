@@ -68,7 +68,14 @@ export class UpsertBuilder {
 
     // 해당 테이블의 unique 컬럼들의 값을 통해 키 생성
     const uniqueKey = table.uniqueColumns
-      .map((unqCol) => row[unqCol as keyof typeof row])
+      .map((unqCol) => {
+        const val = row[unqCol as keyof typeof row];
+        if (isRefField(val)) {
+          return val.uuid;
+        } else {
+          return row[unqCol as keyof typeof row];
+        }
+      })
       .join("---delimiter--");
     if (table.uniqueColumns.length > 0) {
       // 기존 키가 있는 경우 uuid 그대로 사용
@@ -105,6 +112,17 @@ export class UpsertBuilder {
   }
 
   async upsert(wdb: Knex, tableName: string): Promise<number[]> {
+    return this.upsertOrInsert(wdb, tableName, "upsert");
+  }
+  async insertOnly(wdb: Knex, tableName: string): Promise<number[]> {
+    return this.upsertOrInsert(wdb, tableName, "insert");
+  }
+
+  async upsertOrInsert(
+    wdb: Knex,
+    tableName: string,
+    mode: "upsert" | "insert"
+  ): Promise<number[]> {
     if (this.hasTable(tableName) === false) {
       return [];
     }
@@ -136,7 +154,11 @@ export class UpsertBuilder {
 
     // Insert On Duplicate Update
     const q = wdb.insert(targetRows).into(tableName);
-    await q.onDuplicateUpdate.apply(q, Object.keys(targetRows[0]));
+    if (mode === "insert") {
+      await q;
+    } else if (mode === "upsert") {
+      await q.onDuplicateUpdate.apply(q, Object.keys(targetRows[0]));
+    }
 
     // 전체 테이블 순회하여 현재 테이블 참조하는 모든 테이블 추출
     const { references, refTables } = Array.from(this.tables).reduce(
