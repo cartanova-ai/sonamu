@@ -432,14 +432,8 @@ export class Migrator {
           ).map((key) => {
             // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
             if (key === "columnsAndIndexes") {
-              const smdColumns = sortBy(
-                smdSet.columns,
-                (a: any) => (a as MigrationColumn).name
-              );
-              const dbColumns = sortBy(
-                dbSet.columns,
-                (a: any) => (a as MigrationColumn).name
-              );
+              const smdColumns = sortBy(smdSet.columns, (a: any) => a.name);
+              const dbColumns = sortBy(dbSet.columns, (a: any) => a.name);
 
               /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
               const smdCreatedAt = smdSet.columns.find(
@@ -452,10 +446,10 @@ export class Migrator {
               */
 
               const smdIndexes = sortBy(smdSet.indexes, (a) =>
-                (a as MigrationIndex).columns.join("-")
+                [a.type, ...a.columns].join("-")
               );
               const dbIndexes = sortBy(dbSet.indexes, (a) =>
-                (a as MigrationIndex).columns.join("-")
+                [a.type, ...a.columns].join("-")
               );
 
               const isEqualColumns = equal(smdColumns, dbColumns);
@@ -474,16 +468,14 @@ export class Migrator {
                 );
               }
             } else {
-              const smdForeigns = sortBy(smdSet.foreigns, (a: any) =>
-                (a as MigrationForeign).columns.join("-")
+              const smdForeigns = sortBy(smdSet.foreigns, (a) =>
+                [a.to, ...a.columns].join("-")
               );
-              const dbForeigns = sortBy(dbSet.foreigns, (a: any) =>
-                (a as MigrationForeign).columns.join("-")
+              const dbForeigns = sortBy(dbSet.foreigns, (a) =>
+                [a.to, ...a.columns].join("-")
               );
 
               if (equal(smdForeigns, dbForeigns) === false) {
-                // TODO FK alter
-                console.log(chalk.red(`FK 다름! ${smdSet.table}`));
                 // console.dir({ smdForeigns, dbForeigns }, { depth: null });
                 return this.generateAlterCode_Foreigns(
                   smdSet.table,
