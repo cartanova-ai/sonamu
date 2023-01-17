@@ -235,7 +235,7 @@ export class BaseModelClass {
           .clear("select")
           .select(db.raw(`COUNT(${matched}) as total`));
       } else {
-        countQuery = clonedQb.count("*", { as: "total" });
+        countQuery = clonedQb.clear("select").count("*", { as: "total" });
       }
     }
 
