@@ -96,13 +96,13 @@ export class UpsertBuilder {
       if (isRefField(rowValue)) {
         rowValue.use ??= "id";
         table.references.add(rowValue.of + "." + rowValue.use);
+        r[rowKey] = rowValue;
       } else if (typeof rowValue === "object" && rowValue !== null) {
         // object인 경우 JSON으로 변환
         r[rowKey] = JSON.stringify(rowValue);
       } else {
         r[rowKey] = rowValue;
       }
-
       return r;
     }, {} as any);
 
