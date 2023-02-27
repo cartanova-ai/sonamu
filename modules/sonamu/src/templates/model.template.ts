@@ -147,7 +147,7 @@ class ${smdId}ModelClass extends BaseModelClass {
     });
   }
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "POST", guards: [ "admin" ] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getDB("w");
 

@@ -58,7 +58,7 @@ export class UpsertBuilder {
   register<T extends string>(
     tableName: string,
     row: {
-      [key in T]?: UBRef | string | number | boolean | bigint | null;
+      [key in T]?: UBRef | string | number | boolean | bigint | null | object;
     }
   ): UBRef {
     const table = this.getTable(tableName);
@@ -100,8 +100,12 @@ export class UpsertBuilder {
       if (isRefField(rowValue)) {
         rowValue.use ??= "id";
         table.references.add(rowValue.of + "." + rowValue.use);
+      } else if (typeof rowValue === "object" && rowValue !== null) {
+        r[rowKey] = JSON.stringify(rowValue);
+      } else {
+        r[rowKey] = rowValue;
       }
-      r[rowKey] = rowValue;
+
       return r;
     }, {} as any);
 
