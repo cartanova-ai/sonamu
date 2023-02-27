@@ -88,19 +88,16 @@ export class UpsertBuilder {
       table.uniquesMap.set(uniqueKey, uuid);
     }
 
-    table.rows.push({
-      uuid,
-      ...row,
-    });
-
     // 이 테이블에 사용된 RefField를 순회하여, 현재 테이블 정보에 어떤 필드를 참조하는지 추가
     // 이 정보를 나중에 치환할 때 사용
     row = Object.keys(row).reduce((r, rowKey) => {
       const rowValue = row[rowKey as keyof typeof row];
+
       if (isRefField(rowValue)) {
         rowValue.use ??= "id";
         table.references.add(rowValue.of + "." + rowValue.use);
       } else if (typeof rowValue === "object" && rowValue !== null) {
+        // object인 경우 JSON으로 변환
         r[rowKey] = JSON.stringify(rowValue);
       } else {
         r[rowKey] = rowValue;
@@ -108,6 +105,11 @@ export class UpsertBuilder {
 
       return r;
     }, {} as any);
+
+    table.rows.push({
+      uuid,
+      ...row,
+    });
 
     return {
       of: tableName,
