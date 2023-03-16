@@ -83,6 +83,7 @@ export class BaseModelClass {
             .whereIn(loader.manyJoin.toCol, fromIds)
             .select([...loader.select, loader.manyJoin.toCol]);
 
+          // HasMany에서 OneJoin이 있는 경우
           loader.oneJoins.map((join) => {
             if (join.join == "inner") {
               subQ.innerJoin(
@@ -107,6 +108,21 @@ export class BaseModelClass {
             )
             .whereIn(loader.manyJoin.through.fromCol, fromIds)
             .select(uniq([...loader.select, loader.manyJoin.through.fromCol]));
+
+          // ManyToMany에서 OneJoin이 있는 경우
+          loader.oneJoins.map((join) => {
+            if (join.join == "inner") {
+              subQ.innerJoin(
+                `${join.table} as ${join.as}`,
+                this.getJoinClause(db, join)
+              );
+            } else if (join.join == "outer") {
+              subQ.leftOuterJoin(
+                `${join.table} as ${join.as}`,
+                this.getJoinClause(db, join)
+              );
+            }
+          });
           toCol = loader.manyJoin.through.fromCol;
         }
         subRows = await subQ;
