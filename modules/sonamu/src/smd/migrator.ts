@@ -432,8 +432,8 @@ export class Migrator {
           ).map((key) => {
             // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
             if (key === "columnsAndIndexes") {
-              const smdColumns = sortBy(smdSet.columns, (a: any) => a.name);
-              const dbColumns = sortBy(dbSet.columns, (a: any) => a.name);
+              const smdColumns = sortBy(smdSet.columns, (a) => a.name);
+              const dbColumns = sortBy(dbSet.columns, (a) => a.name);
 
               /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
               const smdCreatedAt = smdSet.columns.find(
@@ -446,10 +446,16 @@ export class Migrator {
               */
 
               const smdIndexes = sortBy(smdSet.indexes, (a) =>
-                [a.type, ...a.columns].join("-")
+                [
+                  a.type,
+                  ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
+                ].join("-")
               );
               const dbIndexes = sortBy(dbSet.indexes, (a) =>
-                [a.type, ...a.columns].join("-")
+                [
+                  a.type,
+                  ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
+                ].join("-")
               );
 
               const isEqualColumns = equal(smdColumns, dbColumns);
@@ -771,6 +777,19 @@ export class Migrator {
                 type: "unique",
                 columns: ["uuid"],
               },
+              // 조인 테이블에 걸린 인덱스 찾아와서 연결
+              ...smd.indexes
+                .filter((index) =>
+                  index.columns.find((col) =>
+                    col.includes(prop.joinTable + ".")
+                  )
+                )
+                .map((index) => ({
+                  ...index,
+                  columns: index.columns.map((col) =>
+                    col.replace(prop.joinTable + ".", "")
+                  ),
+                })),
             ],
             columns: [
               {
@@ -835,7 +854,9 @@ export class Migrator {
     );
 
     // indexes
-    migrationSet.indexes = smd.indexes;
+    migrationSet.indexes = smd.indexes.filter((index) =>
+      index.columns.find((col) => col.includes(".") === false)
+    );
 
     // uuid
     migrationSet.columns = migrationSet.columns.concat({
