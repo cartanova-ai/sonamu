@@ -1147,6 +1147,8 @@ export class Syncer {
       return "boolean";
     } else if (zodType instanceof z.ZodEnum) {
       return "enums";
+    } else if (zodType instanceof z.ZodRecord) {
+      return "record";
     } else if (zodType instanceof z.ZodAny || zodType instanceof z.ZodUnknown) {
       return "string-plain";
     } else {

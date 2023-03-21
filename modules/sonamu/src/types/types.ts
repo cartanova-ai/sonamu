@@ -556,7 +556,8 @@ export type RenderingNode = {
     | "array"
     | "array-images"
     | "object"
-    | "object-pick";
+    | "object-pick"
+    | "record";
   zodType: z.ZodTypeAny;
   element?: RenderingNode;
   children?: RenderingNode[];
