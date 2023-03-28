@@ -45,6 +45,7 @@ import {
   isTextProp,
   isEnumProp,
   isIntegerProp,
+  isKnexError,
 } from "../types/types";
 import { propIf } from "../utils/lodash-able";
 import { SMDManager } from "./smd-manager";
@@ -526,7 +527,11 @@ export class Migrator {
     let dbColumns: any[], dbIndexes: any[], dbForeigns: any[];
     try {
       [dbColumns, dbIndexes, dbForeigns] = await this.readTable(table);
-    } catch (e) {
+    } catch (e: unknown) {
+      if (isKnexError(e) && e.code === "ER_NO_SUCH_TABLE") {
+        return null;
+      }
+      console.error(e);
       return null;
     }
 
@@ -678,21 +683,43 @@ export class Migrator {
       const ddl = row["Create Table"];
       const matched = ddl.match(/CONSTRAINT .+/g);
       const foreignKeys = (matched ?? []).map((line: string) => {
+        // 해당 라인을 정규식으로 파싱
         const matched = line.match(
-          /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\) ON DELETE ([A-Z ]+) ON UPDATE ([A-Z ]+)/
+          /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON DELETE [A-Z ]+ ON UPDATE [A-Z ]+)*/
         );
         if (!matched) {
           throw new Error(`인식할 수 없는 FOREIGN KEY CONSTRAINT ${line}`);
         }
-        const [
-          ,
-          keyName,
-          from,
-          referencesTable,
-          referencesField,
-          onDelete,
-          onUpdate,
-        ] = matched;
+        const [, keyName, from, referencesTable, referencesField, _onClause] =
+          matched;
+        const onClause = _onClause ?? "";
+
+        const { onDelete, onUpdate } = (() => {
+          // ON Clause가 둘다 있는 경우
+          if (
+            onClause.includes("ON DELETE") &&
+            onClause.includes("ON UPDATE")
+          ) {
+            const [, onDelete, onUpdate] = onClause.match(
+              /ON DELETE ([A-Z ]+) ON UPDATE ([A-Z ]+)/
+            )!;
+            return {
+              onDelete,
+              onUpdate,
+            };
+          }
+
+          // 각각 있는 경우
+          const onDelete =
+            onClause.match(/ON DELETE ([A-Z ]+)( ON)*/)?.[1] ?? "NO ACTION";
+          const onUpdate =
+            onClause.match(/ON UPDATE ([A-Z ]+)/)?.[1] ?? "NO ACTION";
+          return {
+            onDelete,
+            onUpdate,
+          };
+        })();
+
         return {
           keyName,
           from,
