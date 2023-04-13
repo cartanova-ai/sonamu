@@ -73,7 +73,7 @@ export class UpsertBuilder {
         if (isRefField(val)) {
           return val.uuid;
         } else {
-          return row[unqCol as keyof typeof row];
+          return row[unqCol as keyof typeof row] ?? uuidv4(); // nullable 컬럼은 uuid로 대체
         }
       })
       .join("---delimiter--");
