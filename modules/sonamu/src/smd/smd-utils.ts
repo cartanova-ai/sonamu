@@ -112,6 +112,8 @@ function decimal(
   return {
     name,
     type: "decimal",
+    precision: 8,
+    scale: 2,
     ...option,
   };
 }

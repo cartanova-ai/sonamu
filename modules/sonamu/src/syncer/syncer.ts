@@ -1074,8 +1074,10 @@ export class Syncer {
       zodType = await this.getZodTypeById(prop.id);
     } else if (isStringProp(prop)) {
       zodType = z.string().max(prop.length);
-    } else if (isFloatProp(prop) || isDoubleProp(prop) || isDecimalProp(prop)) {
+    } else if (isFloatProp(prop) || isDoubleProp(prop)) {
       zodType = z.number();
+    } else if (isDecimalProp(prop)) {
+      zodType = z.string();
     } else if (isBooleanProp(prop)) {
       zodType = z.boolean();
     } else if (isDateProp(prop)) {

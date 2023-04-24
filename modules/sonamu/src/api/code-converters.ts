@@ -262,7 +262,9 @@ export function propToZodTypeDef(
     injectImportKeys.push(prop.id);
   } else if (isStringProp(prop)) {
     stmt = `${prop.name}: z.string().max(${prop.length})`;
-  } else if (isFloatProp(prop) || isDoubleProp(prop) || isDecimalProp(prop)) {
+  } else if (isDecimalProp(prop)) {
+    stmt = `${prop.name}: z.string()`;
+  } else if (isFloatProp(prop) || isDoubleProp(prop)) {
     stmt = `${prop.name}: z.number()`;
   } else if (isBooleanProp(prop)) {
     stmt = `${prop.name}: z.boolean()`;

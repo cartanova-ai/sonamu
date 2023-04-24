@@ -42,6 +42,8 @@ import {
   MigrationJoinTable,
   MigrationSet,
   MigrationSetAndJoinTable,
+  isDecimalProp,
+  isFloatProp,
   isTextProp,
   isEnumProp,
   isIntegerProp,
@@ -187,8 +189,8 @@ export class Migrator {
     // 현재 생성된 코드 표기
     console.table(codes, ["type", "title"]);
 
-    /* 디버깅용 코드
-    console.log(codes[0].formatted);
+    /* DEBUG: 디버깅용 코드
+    codes.map((code) => console.log(code.formatted));
     process.exit();
      */
 
@@ -598,7 +600,10 @@ export class Migrator {
   resolveDBColType(
     colType: string,
     colField: string
-  ): Pick<MigrationColumn, "type" | "unsigned" | "length"> {
+  ): Pick<
+    MigrationColumn,
+    "type" | "unsigned" | "length" | "precision" | "scale"
+  > {
     let [rawType, unsigned] = colType.split(" ");
     const matched = rawType.match(/\(([0-9]+)\)/);
     let length;
@@ -619,20 +624,6 @@ export class Migrator {
         return {
           type: "integer",
           unsigned: unsigned === "unsigned",
-        };
-      case "float(8,2)":
-        return {
-          type: "float",
-          ...propIf(unsigned === "unsigned", {
-            unsigned: true,
-          }),
-        };
-      case "decimal(8,2)":
-        return {
-          type: "decimal",
-          ...propIf(unsigned === "unsigned", {
-            unsigned: true,
-          }),
         };
       case "varchar":
         // case "char":
@@ -661,6 +652,30 @@ export class Migrator {
           type: "boolean",
         };
       default:
+        // decimal 처리
+        if (rawType.startsWith("decimal")) {
+          const [, precision, scale] =
+            rawType.match(/decimal\(([0-9]+),([0-9]+)\)/) ?? [];
+          return {
+            type: "decimal",
+            precision: parseInt(precision),
+            scale: parseInt(scale),
+            ...propIf(unsigned === "unsigned", {
+              unsigned: true,
+            }),
+          };
+        } else if (rawType.startsWith("float")) {
+          const [, precision, scale] =
+            rawType.match(/float\(([0-9]+),([0-9]+)\)/) ?? [];
+          return {
+            type: "float",
+            precision: parseInt(precision),
+            scale: parseInt(scale),
+            ...propIf(unsigned === "unsigned", {
+              unsigned: true,
+            }),
+          };
+        }
         throw new Error(`resolve 불가능한 DB컬럼 타입 ${colType} ${rawType}`);
     }
   }
@@ -776,6 +791,13 @@ export class Migrator {
             ...propIf(prop.dbDefault !== undefined, {
               defaultTo: "" + prop.dbDefault,
             }),
+            // Decimal, Float 타입의 경우 precision, scale 추가
+            ...(isDecimalProp(prop) || isFloatProp(prop)
+              ? {
+                  precision: prop.precision ?? 8,
+                  scale: prop.scale ?? 2,
+                }
+              : {}),
           };
 
           r.columns.push(column);
@@ -909,18 +931,24 @@ export class Migrator {
         return `table.increments().primary();`;
       }
 
-      // type, length
-      let columnType = column.type;
-      let extraType: string | undefined;
-      if (columnType.includes("text") && columnType !== "text") {
-        extraType = columnType;
-        columnType = "text";
+      if (column.type === "float" || column.type === "decimal") {
+        chains.push(
+          `${column.type}('${column.name}', ${column.precision}, ${column.scale})`
+        );
+      } else {
+        // type, length
+        let columnType = column.type;
+        let extraType: string | undefined;
+        if (columnType.includes("text") && columnType !== "text") {
+          extraType = columnType;
+          columnType = "text";
+        }
+        chains.push(
+          `${column.type}('${column.name}'${
+            column.length ? `, ${column.length}` : ""
+          }${extraType ? `, '${extraType}'` : ""})`
+        );
       }
-      chains.push(
-        `${column.type}('${column.name}'${
-          column.length ? `, ${column.length}` : ""
-        }${extraType ? `, '${extraType}'` : ""})`
-      );
       if (column.unsigned) {
         chains.push("unsigned()");
       }
@@ -1092,10 +1120,21 @@ export class Migrator {
             "unsigned",
             "length",
             "defaultTo",
+            "precision",
+            "scale",
           ]),
         };
       }),
-      ["name", "type", "nullable", "unsigned", "length", "defaultTo"]
+      [
+        "name",
+        "type",
+        "nullable",
+        "unsigned",
+        "length",
+        "defaultTo",
+        "precision",
+        "scale",
+      ]
     );
 
     if (indexes.length > 0) {
@@ -1136,11 +1175,6 @@ export class Migrator {
     dbColumns: MigrationColumn[],
     dbIndexes: MigrationIndex[]
   ): GenMigrationCode[] {
-    // console.log(chalk.cyan("MigrationColumns from DB"));
-    // showMigrationSet(dbColumns);
-    // console.log(chalk.cyan("MigrationColumns from MD"));
-    // showMigrationSet(smdColumns);
-
     /*
       세부 비교 후 다른점 찾아서 코드 생성
 

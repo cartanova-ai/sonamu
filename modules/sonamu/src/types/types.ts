@@ -69,6 +69,8 @@ export type EnumProp = CommonProp & {
 export type FloatProp = CommonProp & {
   type: "float";
   unsigned?: true;
+  precision: number;
+  scale: number;
 };
 export type DoubleProp = CommonProp & {
   type: "double";
@@ -77,6 +79,8 @@ export type DoubleProp = CommonProp & {
 export type DecimalProp = CommonProp & {
   type: "decimal";
   unsigned?: true;
+  precision: number;
+  scale: number;
 };
 export type BooleanProp = CommonProp & {
   type: "boolean";
@@ -364,6 +368,8 @@ export type MigrationColumn = {
   unsigned?: boolean;
   length?: number;
   defaultTo?: string | number;
+  precision?: number;
+  scale?: number;
 };
 export type MigrationIndex = {
   columns: string[];
