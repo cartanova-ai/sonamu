@@ -52,7 +52,7 @@ export function useTypeForm<
   ): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
       .replace(/\./g, ".shape.")
-      .replace(/\[[0-9]+\]/g, ".element")
+      .replace(/\[[^\]]+\]/g, ".element")
       .replace(/^\.element/, "element");
 
     let targetZType: unknown;
