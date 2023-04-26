@@ -46,10 +46,10 @@ export function api(options: ApiDecoratorOptions = {}) {
   };
 
   return function (target: Object, propertyKey: string) {
-    const modelName = target.constructor.name.match(/(.+)Class/)![1];
+    const modelName = target.constructor.name.match(/(.+)Class$/)![1];
     const methodName = propertyKey;
     const defaultPath = `/${camelize(
-      modelName.replace("Model", ""),
+      modelName.replace(/Model$/, ""),
       true
     )}/${camelize(propertyKey, true)}`;
 
