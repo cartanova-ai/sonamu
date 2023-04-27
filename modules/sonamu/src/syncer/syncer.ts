@@ -455,6 +455,11 @@ export class Syncer {
             );
           }
         );
+        if (node.type === undefined) {
+          throw new Error(
+            `리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`
+          );
+        }
         const returnType = this.resolveTypeNode(node.type!);
 
         methods.push({
@@ -618,6 +623,8 @@ export class Syncer {
           };
         }
         break;
+      case undefined:
+        throw new Error(`typeNode undefined`);
     }
 
     console.debug(typeNode);
