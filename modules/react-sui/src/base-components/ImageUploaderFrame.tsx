@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useEffect, useRef, useState } from "react";
-import { Button } from "semantic-ui-react";
+import { Button, ButtonGroup } from "semantic-ui-react";
 import {
   arrayMove,
   rectSortingStrategy,
@@ -261,7 +261,7 @@ export function UploadedImage({
       ref={setNodeRef}
     >
       <img src={src} onClick={handleImgClick} />
-      <Button.Group size="mini" className="buttons">
+      <ButtonGroup size="mini" className="buttons">
         {handle && (
           <Button
             color="blue"
@@ -274,7 +274,7 @@ export function UploadedImage({
         {onDelButtonClicked && (
           <Button color="red" icon="trash" onClick={onDelButtonClicked} />
         )}
-      </Button.Group>
+      </ButtonGroup>
     </div>
   );
 }
