@@ -1,4 +1,10 @@
-import React, { ChangeEvent, useEffect, useRef, useState } from "react";
+import React, {
+  ChangeEvent,
+  HTMLAttributes,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Button, ButtonGroup } from "semantic-ui-react";
 import {
   arrayMove,
@@ -14,6 +20,7 @@ import {
   DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import classnames from "classnames";
 
 type AllEvent =
   | ChangeEvent<HTMLInputElement>
@@ -21,7 +28,7 @@ type AllEvent =
   | React.MouseEvent<HTMLButtonElement, MouseEvent>;
 type OnChangeSingle = (e: AllEvent, data: { value: string | null }) => void;
 type OnChangeMultiple = (e: AllEvent, data: { value: string[] }) => void;
-export type ImageUploaderFrameProps = {
+export type ImageUploaderFrameProps = ({
   uploader: (domFiles: File[]) => Promise<string[]>;
   maxSize?: number;
 } & (
@@ -35,13 +42,15 @@ export type ImageUploaderFrameProps = {
       value: string | null;
       onChange: OnChangeSingle;
     }
-);
+)) &
+  HTMLAttributes<HTMLDivElement>;
 export function ImageUploaderFrame({
   uploader,
   multiple,
   maxSize,
   value,
   onChange,
+  ...divProps
 }: ImageUploaderFrameProps) {
   const [images, setImages] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -149,7 +158,13 @@ export function ImageUploaderFrame({
   };
 
   return (
-    <div className={`image-uploader ${multiple ? "multiple" : "single"}`}>
+    <div
+      {...divProps}
+      className={classnames(
+        `image-uploader ${multiple ? "multiple" : "single"}`,
+        divProps.className
+      )}
+    >
       <input
         type="file"
         onChange={handleChange}
