@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { intersection, uniq } from "lodash";
+import { intersection, isObject, isObjectLike, uniq } from "lodash";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
@@ -31,11 +31,19 @@ export function paramsToSearchParams<T>(params: T): {
       })
       .map(([key, value]) => {
         if (Array.isArray(value)) {
-          return [key + "[]", value];
+          return [[key + "[]", value]];
+        } else if (isObject(value)) {
+          return Object.keys(value).map((subKey) => {
+            return [
+              `${key}[${subKey}]`,
+              String(value[subKey as keyof typeof value]),
+            ];
+          });
         } else {
-          return [key, String(value)];
+          return [[key, String(value)]];
         }
       })
+      .flat()
   );
 }
 
