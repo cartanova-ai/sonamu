@@ -73,31 +73,7 @@ export class Template__view_list extends Template {
       case "number-plain":
         return `<>{${col.nullable ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
-        try {
-          const relProp = getRelationPropFromColName(smdId, col.name);
-          smdId = relProp.with;
-          names = SMDManager.getNamesFromId(relProp.with);
-          return `
-              <>{${colName} && <Table celled compact>
-                <Table.Body>
-                  ${col
-                    .children!.map((child) => {
-                      return [
-                        `<Table.Row>`,
-                        this.wrapTc(child.label, `${child.name}-0`),
-                        this.wrapTc(
-                          this.renderColumn(smdId, child, names, colName),
-                          `${child.name}-1`
-                        ),
-                        `</Table.Row>`,
-                      ].join("\n");
-                    })
-                    .join("\n")}
-                </Table.Body>
-              </Table>}</>`;
-        } catch {
-          return "<></>";
-        }
+        return `<>{row.${col.name}.id}</>`;
       case "object-pick":
         const pickedChild = col.children!.find(
           (child) => child.name === col.config?.picked
@@ -511,7 +487,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
               </Table.HeaderCell>
               {
                 /* Header */
-                columns.map((col, index) => col.th ?? <Table.HeaderCell key={index}>{ col.label }</Table.HeaderCell>)
+                columns.map((col, index) => col.th ?? <Table.HeaderCell key={index} collapsing={col.collapsing}>{ col.label }</Table.HeaderCell>)
               }
               <Table.HeaderCell>관리</Table.HeaderCell>
             </TableRow>

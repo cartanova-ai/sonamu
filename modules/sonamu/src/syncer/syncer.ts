@@ -1160,6 +1160,10 @@ export class Syncer {
       return "record";
     } else if (zodType instanceof z.ZodAny || zodType instanceof z.ZodUnknown) {
       return "string-plain";
+    } else if (zodType instanceof z.ZodUnion) {
+      return "string-plain";
+    } else if (zodType instanceof z.ZodLiteral) {
+      return "string-plain";
     } else {
       throw new Error(`타입 파싱 불가 ${key} ${zodType._def.typeName}`);
     }

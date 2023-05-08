@@ -92,6 +92,8 @@ function float(
   return {
     name,
     type: "float",
+    precision: 8,
+    scale: 2,
     ...option,
   };
 }

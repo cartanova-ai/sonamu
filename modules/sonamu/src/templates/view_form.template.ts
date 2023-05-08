@@ -259,6 +259,7 @@ import { DateTime } from "luxon";
 import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack } from "@sonamu-kit/react-sui";
 import { defaultCatch } from 'src/services/sonamu.shared';
 import { ImageUploader } from 'src/components/core/ImageUploader';
+import { useCommonModal } from "src/components/core/CommonModal";
 
 import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
         names.fs
@@ -292,18 +293,9 @@ type ${names.capitalPlural}FormProps = {
   id?: number;
   mode?: 'page' | 'modal';
 };
-export type ${names.capitalPlural}FormHandle = { submit: () => void };
-export const ${names.capitalPlural}Form = forwardRef(
-  ({ id, mode }: ${names.capitalPlural}FormProps, ref: Ref<${
+export function ${names.capitalPlural}Form({ id, mode }: ${
         names.capitalPlural
-      }FormHandle>) => {
-  // 폼 핸들
-  useImperativeHandle(ref, () => ({
-      submit: () => {
-        handleSubmit();
-      },
-    }));
-
+      }FormProps) {
   // 편집시 기존 row
   const [row, setRow] = useState<${names.capital}SubsetA | undefined>();
 
@@ -340,15 +332,25 @@ export const ${names.capitalPlural}Form = forwardRef(
     }
   }, [id]);
 
+  // CommonModal
+  const { doneModal, closeModal } = useCommonModal();
+
   // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     ${names.capital}Service.save([form]).then(([id]) => {
-      if (mode !== 'modal') {
+      if( mode === 'modal' ) {
+        doneModal();
+      } else {
         goBack('/admin/${names.fsPlural}');
       }
     }).catch(defaultCatch);
   }, [ form, mode, id ]);
+
+  // 페이지
+  const PAGE = {
+    title: \`${names.capital}\${id ? \`#\${id} 수정\` : ' 등록'}\`,
+  }
 
   return (
     <div className="form">
@@ -356,13 +358,13 @@ export const ${names.capitalPlural}Form = forwardRef(
         <Segment padded color="grey">
           <div className="header-row">
             <Header>
-              ${names.capital}{id ? \`#\${id} 수정 폼\` : ' 작성 폼'}
+              {PAGE.title}
             </Header>
-            <div className="buttons">
-              <BackLink primary size="tiny" to="/admin/${names.fsPlural}">
-                목록
-              </BackLink>
-            </div>
+            { mode !== 'modal' && <div className="buttons">
+              <BackLink primary size="tiny" to="/admin/${
+                names.fsPlural
+              }" content="목록" icon="list" />
+            </div>}
           </div>
           <Form>
             ${columns
@@ -380,19 +382,15 @@ export const ${names.capitalPlural}Form = forwardRef(
                 }
               })
               .join("\n")}
-            {mode !== 'modal' && (
-              <Segment basic textAlign="center">
-                <Button type="submit" primary onClick={handleSubmit}>
-                  저장
-                </Button>
-              </Segment>
-            )}
+            <Segment basic textAlign="center">
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
+            </Segment>
           </Form>
         </Segment>
       </Segment>
     </div>
   );
-});
+};
       `.trim(),
       importKeys: [],
       preTemplates,
