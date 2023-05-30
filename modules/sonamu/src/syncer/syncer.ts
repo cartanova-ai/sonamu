@@ -319,11 +319,10 @@ export class Syncer {
         targets.map(async (target) =>
           Promise.all(
             tsPaths.map(async (src) => {
-              const dst =
-                Sonamu.apiRootPath +
-                src
-                  .replace(`/${apiDir}/`, `/${target}/`)
-                  .replace("/application/", "/services/");
+              const realSrc = Sonamu.apiRootPath + src;
+              const dst = realSrc
+                .replace(`/${apiDir}/`, `/${target}/`)
+                .replace("/application/", "/services/");
               const dir = dirname(dst);
               if (!existsSync(dir)) {
                 mkdirSync(dir, { recursive: true });
@@ -332,7 +331,7 @@ export class Syncer {
                 "COPIED ",
                 chalk.blue(dst.replace(appRootPath + "/", ""))
               );
-              await this.copyFileWithReplaceCoreToShared(src, dst);
+              await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
             })
           )
