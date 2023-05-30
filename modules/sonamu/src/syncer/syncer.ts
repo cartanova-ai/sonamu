@@ -319,9 +319,11 @@ export class Syncer {
         targets.map(async (target) =>
           Promise.all(
             tsPaths.map(async (src) => {
-              const dst = src
-                .replace(`/${apiDir}/`, `/${target}/`)
-                .replace("/application/", "/services/");
+              const dst =
+                Sonamu.apiRootPath +
+                src
+                  .replace(`/${apiDir}/`, `/${target}/`)
+                  .replace("/application/", "/services/");
               const dir = dirname(dst);
               if (!existsSync(dir)) {
                 mkdirSync(dir, { recursive: true });
@@ -366,7 +368,7 @@ export class Syncer {
     }[] = await Promise.all(
       filePaths.map(async (filePath) => {
         return {
-          path: filePath,
+          path: filePath.substring(Sonamu.apiRootPath.length),
           checksum: await this.getChecksumOfFile(filePath),
         };
       })

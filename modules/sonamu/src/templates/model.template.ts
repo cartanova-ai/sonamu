@@ -101,7 +101,9 @@ class ${smdId}ModelClass extends BaseModelClass {
         // search-keyword
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
-            qb.where("${smd.table}.id", "like", \`%\${params.keyword}%\`);
+            qb.where("${smd.table}.id", params.keyword);
+          // } else if (params.search === "field") {
+          //   qb.where("${smd.table}.field", "like", \`%\${params.keyword}%\`);
           } else {
             throw new BadRequestException(
               \`구현되지 않은 검색 필드 \${params.search}\`
