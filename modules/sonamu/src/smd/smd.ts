@@ -240,9 +240,32 @@ export class SMD {
             };
           }
 
+          const outerOrInner = (() => {
+            // 대상 컬럼이 nullable인 경우 outer, 아닌 경우 inner
+            // OneToOneRelation의 경우 joinColumn이 없는 경우 해당 relation을 찾아가 확인해야 함 (customJoin의 경우 고려하지 않음)
+            if (
+              isOneToOneRelationProp(relation) &&
+              relation.hasJoinColumn === false
+            ) {
+              const oppositeRelationProp = relSMD.props.find(
+                (prop) =>
+                  isOneToOneRelationProp(prop) &&
+                  prop.with === this.id &&
+                  prop.hasJoinColumn === true
+              );
+              if (oppositeRelationProp?.nullable === true) {
+                return "outer";
+              } else {
+                return "inner";
+              }
+            }
+
+            return relation.nullable === true ? "outer" : "inner";
+          })();
+
           r.joins.push({
             as: joinAs,
-            join: "outer",
+            join: outerOrInner,
             table: relSMD.table,
             ...joinClause,
           });
