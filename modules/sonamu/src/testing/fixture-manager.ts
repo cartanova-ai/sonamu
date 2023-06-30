@@ -37,6 +37,20 @@ export class FixtureManagerClass {
     if (this._tdb !== null) {
       return;
     }
+    if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
+      const tConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig & {
+        port?: number;
+      };
+      const pConn = Sonamu.dbConfig.production_master
+        .connection as Knex.ConnectionConfig & { port?: number };
+      if (
+        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}` ===
+        `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}`
+      ) {
+        throw new Error("테스트DB와 프로덕션DB의 접속 정보가 동일합니다.");
+      }
+    }
+
     this.tdb = knex(Sonamu.dbConfig.test);
     this.fdb = knex(Sonamu.dbConfig.fixture_local);
   }
