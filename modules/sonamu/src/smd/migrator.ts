@@ -479,13 +479,21 @@ export class Migrator {
             } else {
               const smdForeigns = sortBy(smdSet.foreigns, (a) =>
                 [a.to, ...a.columns].join("-")
-              );
+              ).map((smdForeign) => {
+                // MySQL에서 RESTRICT와 NO ACTION은 동일함
+                const { onDelete, onUpdate } = smdForeign;
+                return {
+                  ...smdForeign,
+                  onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
+                  onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
+                };
+              });
               const dbForeigns = sortBy(dbSet.foreigns, (a) =>
                 [a.to, ...a.columns].join("-")
               );
 
               if (equal(smdForeigns, dbForeigns) === false) {
-                // console.dir({ smdForeigns, dbForeigns }, { depth: null });
+                console.dir({ smdForeigns, dbForeigns }, { depth: null });
                 return this.generateAlterCode_Foreigns(
                   smdSet.table,
                   smdForeigns,
