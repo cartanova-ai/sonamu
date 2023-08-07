@@ -24,7 +24,7 @@ type TableSpec = {
 };
 class SMDManagerClass {
   private SMDs: Map<string, SMD> = new Map();
-  private modulePaths: Map<string, string> = new Map();
+  public modulePaths: Map<string, string> = new Map();
   private tableSpecs: Map<string, TableSpec> = new Map();
   public isAutoloaded: boolean = false;
 

@@ -801,7 +801,7 @@ export class Syncer {
     }
 
     const rendered = template.render(options, ...extra);
-    const resolved = this.resolveRenderedTemplate(key, rendered);
+    const resolved = await this.resolveRenderedTemplate(key, rendered);
 
     let preTemplateResolved: PathAndCode[] = [];
     if (rendered.preTemplates) {
@@ -817,10 +817,10 @@ export class Syncer {
     return [resolved, ...preTemplateResolved];
   }
 
-  resolveRenderedTemplate(
+  async resolveRenderedTemplate(
     key: TemplateKey,
     result: RenderedTemplate
-  ): PathAndCode {
+  ): Promise<PathAndCode> {
     const { target, path: filePath, body, importKeys, customHeaders } = result;
 
     // import 할 대상의 대상 path 추출
@@ -873,7 +873,7 @@ export class Syncer {
     const formatted =
       key === "generated_http"
         ? [header, body].join("\n\n")
-        : prettier.format([header, body].join("\n\n"), {
+        : await prettier.format([header, body].join("\n\n"), {
             parser: "typescript",
           });
 

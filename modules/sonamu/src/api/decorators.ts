@@ -20,6 +20,7 @@ export type ApiDecoratorOptions = {
   path?: string;
   resourceName?: string;
   guards?: string[];
+  description?: string;
 };
 export const registeredApis: {
   modelName: string;

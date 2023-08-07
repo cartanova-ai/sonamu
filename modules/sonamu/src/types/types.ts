@@ -127,6 +127,7 @@ type _RelationProp = {
   with: string;
   nullable?: boolean;
   toFilter?: true;
+  desc?: string;
 };
 export type OneToOneRelationProp = _RelationProp & {
   relationType: "OneToOne";

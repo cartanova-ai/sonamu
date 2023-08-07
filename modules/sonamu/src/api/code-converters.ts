@@ -552,3 +552,73 @@ export function serializeZodType(zt: z.ZodTypeAny): any {
       );
   }
 }
+
+export function zodTypeToTsTypeDef(
+  zt: z.ZodFirstPartySchemaTypes | z.ZodObject<any>
+): string {
+  if (zt._def.description) {
+    return zt._def.description;
+  }
+
+  switch (zt._def.typeName) {
+    case "ZodString":
+      return "string";
+    case "ZodNumber":
+      return "number";
+    case "ZodBoolean":
+      return "boolean";
+    case "ZodBigInt":
+      return "bigint";
+    case "ZodDate":
+      return "date";
+    case "ZodNull":
+      return "null";
+    case "ZodUndefined":
+      return "undefined";
+    case "ZodAny":
+      return "any";
+    case "ZodUnknown":
+      return "unknown";
+    case "ZodNever":
+      return "never";
+    case "ZodNullable":
+      return zodTypeToTsTypeDef(zt._def.innerType) + " | null";
+    case "ZodDefault":
+      return zodTypeToTsTypeDef(zt._def.innerType);
+    case "ZodRecord":
+      return `{ [ key: ${zodTypeToTsTypeDef(
+        zt._def.keyType
+      )} ]: ${zodTypeToTsTypeDef(zt._def.valueType)}}`;
+    case "ZodLiteral":
+      if (typeof zt._def.value === "string") {
+        return `"${zt._def.value}"`;
+      } else {
+        return `${zt._def.value}`;
+      }
+    case "ZodUnion":
+      return `${zt._def.options
+        .map((option: z.ZodTypeAny) => zodTypeToTsTypeDef(option))
+        .join(" | ")}`;
+    case "ZodEnum":
+      return `${zt._def.values.map((val: string) => `"${val}"`).join(" | ")}`;
+    case "ZodArray":
+      return `${zodTypeToTsTypeDef(zt._def.type)}[]`;
+    case "ZodObject":
+      const shape = (zt as any).shape;
+      return [
+        "{",
+        ...Object.keys(shape).map((key) => {
+          if (shape[key]._def.typeName === "ZodOptional") {
+            return `${key}?: ${zodTypeToTsTypeDef(shape[key]._def.innerType)},`;
+          } else {
+            return `${key}: ${zodTypeToTsTypeDef(shape[key])},`;
+          }
+        }),
+        "}",
+      ].join("\n");
+    case "ZodOptional":
+      return zodTypeToTsTypeDef(zt._def.innerType) + " | undefined";
+    default:
+      throw new Error(`처리되지 않은 ZodType ${zt._def.typeName}`);
+  }
+}

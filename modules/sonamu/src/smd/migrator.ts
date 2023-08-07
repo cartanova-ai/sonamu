@@ -48,6 +48,7 @@ import {
   isEnumProp,
   isIntegerProp,
   isKnexError,
+  RelationOn,
 } from "../types/types";
 import { propIf } from "../utils/lodash-able";
 import { SMDManager } from "./smd-manager";
@@ -534,7 +535,7 @@ export class Migrator {
     기존 테이블 정보 읽어서 MigrationSet 형식으로 리턴
   */
   async getMigrationSetFromDB(table: string): Promise<MigrationSet | null> {
-    let dbColumns: any[], dbIndexes: any[], dbForeigns: any[];
+    let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
     try {
       [dbColumns, dbIndexes, dbForeigns] = await this.readTable(table);
     } catch (e: unknown) {
@@ -554,7 +555,7 @@ export class Migrator {
         ...propIf(dbColumn.Default !== null, {
           defaultTo:
             dbColType.type === "float"
-              ? parseFloat(dbColumn.Default).toString()
+              ? parseFloat(dbColumn.Default ?? "0").toString()
               : dbColumn.Default,
         }),
       };
@@ -592,8 +593,8 @@ export class Migrator {
       return {
         columns: [dbForeign.from],
         to: `${dbForeign.referencesTable}.${dbForeign.referencesField}`,
-        onUpdate: dbForeign.onUpdate,
-        onDelete: dbForeign.onDelete,
+        onUpdate: dbForeign.onUpdate as RelationOn,
+        onDelete: dbForeign.onDelete as RelationOn,
       };
     });
 
@@ -691,7 +692,9 @@ export class Migrator {
   /*
     기존 테이블 읽어서 cols, indexes 반환
   */
-  async readTable(tableName: string): Promise<[any, any, any]> {
+  async readTable(
+    tableName: string
+  ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
     // 테이블 정보
     try {
       const [cols] = await this.targets.compare!.raw(
@@ -1563,3 +1566,37 @@ export class Migrator {
     );
   }
 }
+
+type DBColumn = {
+  Field: string;
+  Type: string;
+  Null: string;
+  Key: string;
+  Default: string | null;
+  Extra: string;
+};
+type DBIndex = {
+  Table: string;
+  Non_unique: number;
+  Key_name: string;
+  Seq_in_index: number;
+  Column_name: string;
+  Collation: string | null;
+  Cardinality: number | null;
+  Sub_part: number | null;
+  Packed: string | null;
+  Null: string;
+  Index_type: string;
+  Comment: string;
+  Index_comment: string;
+  Visible: string;
+  Expression: string | null;
+};
+type DBForeign = {
+  keyName: string;
+  from: string;
+  referencesTable: string;
+  referencesField: string;
+  onDelete: string;
+  onUpdate: string;
+};

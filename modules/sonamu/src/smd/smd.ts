@@ -132,7 +132,11 @@ export class SMD {
 
   /*
    */
-  resolveSubsetQuery(prefix: string, fields: string[]): SubsetQuery {
+  resolveSubsetQuery(
+    prefix: string,
+    fields: string[],
+    isAlreadyOuterJoined: boolean = false
+  ): SubsetQuery {
     // prefix 치환 (prefix는 ToOneRelation이 복수로 붙은 경우 모두 __로 변경됨)
     prefix = prefix.replace(/\./g, "__");
 
@@ -203,9 +207,13 @@ export class SMD {
             return r;
           }
 
+          // innerOrOuter
+          const innerOrOuter =
+            isAlreadyOuterJoined || relation.nullable ? "outer" : "inner";
           const relSubsetQuery = relSMD.resolveSubsetQuery(
             `${prefix !== "" ? prefix + "." : ""}${groupKey}`,
-            relFields
+            relFields,
+            innerOrOuter === "outer"
           );
           r.select = r.select.concat(relSubsetQuery.select);
           r.virtual = r.virtual.concat(relSubsetQuery.virtual);
@@ -240,32 +248,9 @@ export class SMD {
             };
           }
 
-          const outerOrInner = (() => {
-            // 대상 컬럼이 nullable인 경우 outer, 아닌 경우 inner
-            // OneToOneRelation의 경우 joinColumn이 없는 경우 해당 relation을 찾아가 확인해야 함 (customJoin의 경우 고려하지 않음)
-            if (
-              isOneToOneRelationProp(relation) &&
-              relation.hasJoinColumn === false
-            ) {
-              const oppositeRelationProp = relSMD.props.find(
-                (prop) =>
-                  isOneToOneRelationProp(prop) &&
-                  prop.with === this.id &&
-                  prop.hasJoinColumn === true
-              );
-              if (oppositeRelationProp?.nullable === true) {
-                return "outer";
-              } else {
-                return "inner";
-              }
-            }
-
-            return relation.nullable === true ? "outer" : "inner";
-          })();
-
           r.joins.push({
             as: joinAs,
-            join: outerOrInner,
+            join: innerOrOuter,
             table: relSMD.table,
             ...joinClause,
           });

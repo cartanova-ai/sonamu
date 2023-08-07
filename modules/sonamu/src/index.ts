@@ -9,6 +9,7 @@ export * from "./exceptions/error-handler";
 export * from "./exceptions/so-exceptions";
 export * from "./smd/smd-manager";
 export * from "./smd/smd-utils";
+export * from "./smd/migrator";
 export * from "./syncer/syncer";
 export * from "./testing/fixture-manager";
 export * from "./types/types";
