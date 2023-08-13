@@ -478,20 +478,22 @@ export class Migrator {
                 );
               }
             } else {
-              const smdForeigns = sortBy(smdSet.foreigns, (a) =>
-                [a.to, ...a.columns].join("-")
-              ).map((smdForeign) => {
+              const replaceNoActionOnMySQL = (f: MigrationForeign) => {
                 // MySQL에서 RESTRICT와 NO ACTION은 동일함
-                const { onDelete, onUpdate } = smdForeign;
+                const { onDelete, onUpdate } = f;
                 return {
-                  ...smdForeign,
+                  ...f,
                   onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
                   onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
                 };
-              });
+              };
+
+              const smdForeigns = sortBy(smdSet.foreigns, (a) =>
+                [a.to, ...a.columns].join("-")
+              ).map((f) => replaceNoActionOnMySQL(f));
               const dbForeigns = sortBy(dbSet.foreigns, (a) =>
                 [a.to, ...a.columns].join("-")
-              );
+              ).map((f) => replaceNoActionOnMySQL(f));
 
               if (equal(smdForeigns, dbForeigns) === false) {
                 console.dir({ smdForeigns, dbForeigns }, { depth: null });

@@ -208,8 +208,28 @@ export class SMD {
           }
 
           // innerOrOuter
-          const innerOrOuter =
-            isAlreadyOuterJoined || relation.nullable ? "outer" : "inner";
+          const innerOrOuter = (() => {
+            if (isAlreadyOuterJoined) {
+              return "outer";
+            }
+
+            if (isOneToOneRelationProp(relation)) {
+              if (
+                relation.hasJoinColumn === true &&
+                (relation.nullable ?? false) === false
+              ) {
+                return "inner";
+              } else {
+                return "outer";
+              }
+            } else {
+              if (relation.nullable) {
+                return "outer";
+              } else {
+                return "inner";
+              }
+            }
+          })();
           const relSubsetQuery = relSMD.resolveSubsetQuery(
             `${prefix !== "" ? prefix + "." : ""}${groupKey}`,
             relFields,
