@@ -1,28 +1,60 @@
 {
   "name": "@sonamu-kit/ui",
   "version": "0.0.1",
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "build": "rimraf dist && yarn build:client && yarn build:node",
+    "build:client": "vite build",
+    "build:node": "rollup -c",
+    "dev:client": "vite",
+    "watch:node": "tsc -w -p ./node/tsconfig.node.json",
+    "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node -r source-map-support/register dist/index.js run\"",
+    "dev": "rollup -c --watch --watch.include=node && nodemon dist/index.js run",
+    "dev:ui": "run-p dev dev:client"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "vite.config.ts"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Minsang Kim",
+    "email": "minsangk@me.com",
+    "url": "https://twitter.com/minsangk"
   },
   "dependencies": {
+    "@fastify/static": "^6.10.2",
+    "@vitejs/plugin-react": "^4.0.3",
+    "fastify": "^4.21.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "sass": "^1.65.1",
+    "sonamu": "^0.0.41",
+    "vite": "^4.4.5"
   },
   "devDependencies": {
+    "@rollup/plugin-alias": "^5.0.0",
+    "@rollup/plugin-commonjs": "^25.0.4",
+    "@rollup/plugin-json": "^6.0.0",
+    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@types/node": "^20.5.0",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@vitejs/plugin-react": "^4.0.3",
-    "eslint": "^8.45.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.3",
-    "typescript": "^5.0.2",
-    "vite": "^4.4.5"
+    "dotenv": "^16.3.1",
+    "esbuild": "^0.19.2",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.0.1",
+    "rimraf": "^5.0.1",
+    "rollup": "^3.28.0",
+    "rollup-plugin-dts": "^5.3.1",
+    "rollup-plugin-esbuild": "^5.0.0",
+    "source-map-support": "^0.5.21",
+    "tsc-watch": "^6.0.4",
+    "typescript": "^5.0.2"
+  },
+  "peerDependencies": {
+    "sonamu": "*"
   },
   "packageManager": "yarn@3.6.1"
 }

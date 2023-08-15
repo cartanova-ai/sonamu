@@ -48,6 +48,7 @@ async function bootstrap() {
       ["scaffold", "model_test", "#smdId"],
       ["scaffold", "view_list", "#smdId"],
       ["scaffold", "view_form", "#smdId"],
+      ["ui"],
     ],
     runners: {
       migrate_run,
@@ -61,6 +62,7 @@ async function bootstrap() {
       stub_smd,
       scaffold_model,
       scaffold_model_test,
+      ui,
       // scaffold_view_list,
       // scaffold_view_form,
     },
@@ -204,4 +206,11 @@ async function scaffold_model_test(smdId: string) {
   await Sonamu.syncer.generateTemplate("model_test", {
     smdId,
   });
+}
+
+async function ui() {
+  const sonamuUI = await import("@sonamu-kit/ui" as any);
+  if (sonamuUI) {
+    sonamuUI.startServers(Sonamu.appRootPath);
+  }
 }
