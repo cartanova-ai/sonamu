@@ -1,7 +1,7 @@
 import path from "path";
 import { createServer, preview } from "vite";
 import fastify from "fastify";
-import { Sonamu } from "sonamu";
+import { createApiServer } from "./api";
 
 const root = __dirname;
 
@@ -30,9 +30,11 @@ async function createPreviewServer() {
     preview: {
       port: WEB_PORT,
       open: true,
-    }
+    },
   });
-  console.log(`sonamu-ui WEB-preview Server is listening on ${HOST}:${WEB_PORT}`);
+  console.log(
+    `sonamu-ui WEB-preview Server is listening on ${HOST}:${WEB_PORT}`
+  );
 }
 
 async function createWebServer() {
@@ -49,38 +51,9 @@ async function createWebServer() {
       host: HOST,
     })
     .then(() => {
-      console.log(`sonamu-ui WEB-static Server is listening on ${HOST}:${WEB_PORT}`);
-    })
-    .catch((err) => {
-      console.error(err);
-      process.exit(1);
-    });
-}
-
-async function createApiServer(appRoot: string) {
-  const server = fastify({});
-
-  server.get("/api", async (_request, _reply) => {
-    return { hello: "world", now: new Date() };
-  });
-
-  server.get('/api/t1', async () => {
-    const { apiRootPath, isInitialized } = Sonamu;
-    return {
-      appRoot,
-      apiRootPath,
-      __dirname,
-      isInitialized
-    }
-  });
-
-  server
-    .listen({
-      port: API_PORT,
-      host: HOST,
-    })
-    .then(() => {
-      console.log(`sonamu-ui API Server is listening on ${HOST}:${API_PORT}`);
+      console.log(
+        `sonamu-ui WEB-static Server is listening on ${HOST}:${WEB_PORT}`
+      );
     })
     .catch((err) => {
       console.error(err);
@@ -92,17 +65,19 @@ export async function startServers(appRoot: string) {
   if (false) {
     await createDevServer();
   }
+
   if (false) {
     await createWebServer();
   }
   if (false) {
     await createPreviewServer();
   }
-  await createApiServer(appRoot);
+
+  await createApiServer({ listen: { port: API_PORT, host: HOST }, appRoot });
 }
 
-if (process.argv[2] === 'run') {
-  const appRoot = process.argv[3] ?? '/Users/minsangk/Development/ride';
+if (process.argv[2] === "run") {
+  const appRoot = process.argv[3] ?? "/Users/minsangk/Development/ride";
   startServers(appRoot).finally(() => {
     console.log("bootstrap finished");
   });
