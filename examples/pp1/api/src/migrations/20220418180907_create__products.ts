@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
     table.integer("brand_id").unsigned().notNullable();
     table.string("type", 32).notNullable();
     table.string("title", 128).notNullable();
-    table.text("description").notNullable();
+    table.text("description", "mediumtext").notNullable();
     table.integer("price").notNullable();
     table.boolean("is_new").notNullable();
     table.timestamp("visible_until_at").notNullable();
