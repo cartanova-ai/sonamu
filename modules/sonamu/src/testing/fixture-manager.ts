@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { execSync } from "child_process";
 import knex, { Knex } from "knex";
 import { uniq } from "lodash";
 import { Sonamu } from "../api";
@@ -104,50 +103,6 @@ export class FixtureManagerClass {
     await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
 
     // console.timeEnd("FIXTURE-CleanAndSeed");
-  }
-
-  // TODO: 추후 작업
-  async initFixtureDB() {
-    const connectArgs = `-uDB_USER -pDB_PASS`;
-
-    console.log("DUMP...");
-    execSync(
-      `mysqldump -hwdb.closedshops.com ${connectArgs} --single-transaction -d --no-create-db --triggers --ignore-table=closedshops.pm_backup closedshops > /tmp/closedshops_scheme.sql`
-    );
-    console.log("SYNC to (TESTING) LOCAL closedshops...");
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} -e 'DROP DATABASE closedshops'`
-    );
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} -e 'CREATE DATABASE closedshops'`
-    );
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} closedshops < /tmp/closedshops_scheme.sql;`
-    );
-    console.log("SED database names...");
-    execSync(
-      `sed -i'' -e 's/\`closedshops\`/\`closedshops_fixture\`/g' /tmp/closedshops_scheme.sql`
-    );
-    console.log("SYNC to (REMOTE FIXTURE) REMOTE closedshops_fixture...");
-    execSync(
-      `mysql -hwdb.closedshops.com ${connectArgs} -e 'DROP DATABASE closedshops_fixture'`
-    );
-    execSync(
-      `mysql -hwdb.closedshops.com ${connectArgs} -e 'CREATE DATABASE closedshops_fixture'`
-    );
-    execSync(
-      `mysql -hwdb.closedshops.com ${connectArgs} closedshops_fixture < /tmp/closedshops_scheme.sql;`
-    );
-    console.log("SYNC to (LOCAL FIXTURE) closedshops_fixture...");
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} -e 'DROP DATABASE closedshops_fixture'`
-    );
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} -e 'CREATE DATABASE closedshops_fixture'`
-    );
-    execSync(
-      `mysql -hlocal.closedshops.com ${connectArgs} closedshops_fixture < /tmp/closedshops_scheme.sql;`
-    );
   }
 
   async getChecksum(db: Knex, tableName: string) {
