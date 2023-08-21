@@ -1,9 +1,10 @@
 console.time("total");
-import { setupErrorHandler, init, Context, destroy } from "sonamu";
+import { Context, Sonamu } from "sonamu";
 import fastify from "fastify";
 import path from "path";
 import { FastifyFile } from "./application/file/file.types";
 import { setupAuth } from "./application/user/auth";
+import { setupErrorHandler } from "./errors/error-handler";
 
 const host = "0.0.0.0";
 const port = 16000;
@@ -27,10 +28,7 @@ setupAuth(server);
 setupErrorHandler(server);
 
 async function bootstrap() {
-  await init(server, {
-    appRootPath: path.join(__dirname, "../.."),
-    prefix: "/api",
-    syncTargets: ["web", "app"],
+  await Sonamu.withFastify(server, {
     contextProvider: (defaultContext, request) => {
       return {
         ...defaultContext,
@@ -40,9 +38,12 @@ async function bootstrap() {
           login: request.login.bind(request) as Context["passport"]["login"],
           logout: request.logout.bind(request),
         },
-        uploadedFile: (request.body as { file: FastifyFile })
-          .file as Context["uploadedFile"],
+        uploadedFile: (request.body as { file?: FastifyFile })
+          ?.file as Context["uploadedFile"],
       };
+    },
+    guardHandler: (_guard, _request, _api) => {
+      console.log("NOTHING YET");
     },
   });
 
@@ -60,6 +61,4 @@ async function bootstrap() {
       process.exit(1);
     });
 }
-bootstrap().finally(async () => {
-  await destroy();
-});
+bootstrap();

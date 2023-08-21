@@ -92,7 +92,7 @@ export const productSubsetQueries: { [key in ProductSubsetKey]: SubsetQuery } =
       joins: [
         {
           as: "brand",
-          join: "outer",
+          join: "inner",
           table: "brands",
           from: "products.brand_id",
           to: "brand.id",

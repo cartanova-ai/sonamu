@@ -44,10 +44,14 @@ export class FixtureManagerClass {
       const pConn = Sonamu.dbConfig.production_master
         .connection as Knex.ConnectionConfig & { port?: number };
       if (
-        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}` ===
-        `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}`
+        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${
+          tConn.database
+        }` ===
+        `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}/${pConn.database}`
       ) {
-        throw new Error("테스트DB와 프로덕션DB의 접속 정보가 동일합니다.");
+        throw new Error(
+          `테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.`
+        );
       }
     }
 

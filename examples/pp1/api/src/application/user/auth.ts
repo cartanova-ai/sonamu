@@ -8,7 +8,7 @@ export function setupAuth(server: FastifyInstance) {
     secret: "sonamumakesusgreat-sonamumakesusgreat",
     salt: "mq9hDxBCDbspDR6n",
     cookie: {
-      domain: ".f9dev.kr",
+      domain: ".sonamu.dev",
       path: "/",
       maxAge: 60 * 60 * 24 * 100,
     },

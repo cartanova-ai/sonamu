@@ -1,4 +1,4 @@
-import { p } from "sonamu";
+import { i, p } from "sonamu";
 import { SMDInput } from "sonamu";
 import { TagFieldExpr } from "./tag.generated";
 
@@ -13,12 +13,12 @@ export const tagSMDInput: SMDInput<TagFieldExpr> = {
     p.integer("id", { unsigned: true }),
     p.string("name", {
       length: 64,
-      unique: true,
     }),
     p.timestamp("created_at", {
       now: true,
     }),
   ],
+  indexes: [i.unique(["name"])],
   subsets: {
     A: ["id", "name", "created_at"],
   },

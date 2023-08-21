@@ -209,8 +209,14 @@ async function scaffold_model_test(smdId: string) {
 }
 
 async function ui() {
-  const sonamuUI = await import("@sonamu-kit/ui" as any);
-  if (sonamuUI) {
+  try {
+    const sonamuUI = await import("@sonamu-kit/ui" as any);
     sonamuUI.startServers(Sonamu.appRootPath);
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes("isn't declared")) {
+      console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
+      return;
+    }
+    throw e;
   }
 }

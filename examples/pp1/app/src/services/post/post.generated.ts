@@ -14,7 +14,7 @@ export const PostBaseSchema = z.object({
   content: z.string().max(65535),
   author_id: z.number().int(),
   status: PostStatus,
-  rating: z.number().nonnegative().nullable(),
+  rating: z.string().nullable(),
   next_post: z.object({
     a: z.string(),
     b: z.number(),
@@ -46,7 +46,7 @@ export const PostSubsetA = z.object({
   type: PostType,
   title: z.string().max(256).nullable(),
   content: z.string().max(65535),
-  rating: z.number().nonnegative().nullable(),
+  rating: z.string().nullable(),
   status: PostStatus,
   next_post: z.object({
     a: z.string(),

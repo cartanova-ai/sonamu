@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { p } from "sonamu";
+import { i, p } from "sonamu";
 import { SMDInput } from "sonamu";
 import { ProductFieldExpr } from "./product.generated";
 
@@ -26,21 +26,14 @@ export const productSMDInput: SMDInput<ProductFieldExpr> = {
     p.text("description", {
       textType: "mediumtext",
     }),
-    p.integer("price", {
-      index: true,
-    }),
-    p.boolean("is_new", {
-      index: true,
-    }),
-    p.timestamp("visible_until_at", {
-      index: true,
-    }),
+    p.integer("price"),
+    p.boolean("is_new"),
+    p.timestamp("visible_until_at"),
     p.enums("status", {
       length: 32,
     }),
     p.timestamp("created_at", {
       now: true,
-      index: true,
     }),
     p.timestamp("checked_at", {
       nullable: true,
@@ -54,6 +47,12 @@ export const productSMDInput: SMDInput<ProductFieldExpr> = {
       onUpdate: "CASCADE",
       onDelete: "CASCADE",
     }),
+  ],
+  indexes: [
+    i.index("price"),
+    i.index("is_new"),
+    i.index("visible_until_at"),
+    i.index("created_at"),
   ],
   subsets: {
     A: [

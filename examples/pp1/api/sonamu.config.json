@@ -1,0 +1,11 @@
+{
+  "api": {
+    "dir": "api"
+  },
+  "sync": {
+    "targets": ["web", "app"]
+  },
+  "route": {
+    "prefix": "/api"
+  }
+}

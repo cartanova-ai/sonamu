@@ -39,8 +39,6 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any
 export type CommonProp = {
   name: string;
   nullable?: boolean;
-  index?: true | string[];
-  unique?: true | string[];
   toFilter?: true;
   desc?: string;
   dbDefault?: string | number | { raw: string };

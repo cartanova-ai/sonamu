@@ -212,10 +212,7 @@ function enums(
 }
 function virtual(
   name: string,
-  option: Omit<
-    VirtualProp,
-    "name" | "type" | "index" | "unique" | "dbDefault" | "toFilter"
-  >
+  option: Omit<VirtualProp, "name" | "type" | "dbDefault" | "toFilter">
 ): VirtualProp {
   return {
     name,

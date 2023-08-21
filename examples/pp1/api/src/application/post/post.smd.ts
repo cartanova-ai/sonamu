@@ -27,8 +27,9 @@ export const postSMDInput: SMDInput<string> = {
       toFilter: true,
     }),
     p.decimal("rating", {
-      unsigned: true,
       nullable: true,
+      precision: 8,
+      scale: 2,
     }),
     p.virtual("next_post", {
       as: z.object({
