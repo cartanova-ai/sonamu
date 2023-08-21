@@ -70,7 +70,7 @@ export const sonamuDBConfig: SonamuDBConfig = {
     connection: {
       ...conf.default.connection,
       ...conf.local,
-      database: `${conf.database}_fixture`,
+      database: `${conf.database}_fixture_local`,
     },
   },
   fixture_remote: {
@@ -78,7 +78,7 @@ export const sonamuDBConfig: SonamuDBConfig = {
     connection: {
       ...conf.default.connection,
       ...conf.remote.master,
-      database: `${conf.database}_fixture`,
+      database: `${conf.database}_fixture_remote`,
     },
   },
   production_master: {

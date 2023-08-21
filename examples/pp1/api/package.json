@@ -30,7 +30,7 @@
     "mysql2": "^3.0.0-rc.1",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
-    "sonamu": "^0.0.41",
+    "sonamu": "^0.0.42",
     "zod": "^3.18.0"
   },
   "devDependencies": {
@@ -47,8 +47,5 @@
     "vite": "^4.4.9",
     "vitest": "^0.34.1"
   },
-  "packageManager": "yarn@3.6.1",
-  "resolutions": {
-    "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
-  }
+  "packageManager": "yarn@3.6.1"
 }

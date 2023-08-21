@@ -43,6 +43,7 @@
     "src/**/*.ignore.ts",
     "wasted_src/**",
     "_templates/**",
-    "**/__mocks__/**"
+    "**/__mocks__/**",
+    "vite.config.ts"
   ]
 }
