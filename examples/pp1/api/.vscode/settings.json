@@ -17,14 +17,12 @@
   "typescript.tsdk": ".yarn/sdks/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "prettier.prettierPath": ".yarn/sdks/prettier/index.js",
-  "jestTestExplorer.pathToJest": "/Users/minsangk/.nvm/versions/node/v14.18.3/bin/yarn jest",
-  "jestTestExplorer.debugOutput": "externalTerminal",
   "rest-client.environmentVariables": {
     "local": {
-      "baseUrl": "http://local.hwlcl-krsel.com"
+      "baseUrl": "http://localhost:16000"
     },
     "production": {
-      "baseUrl": "http://hwlcl-krsel.com"
+      "baseUrl": "http://local.sonamu.dev"
     }
   },
   "rest-client.previewResponsePanelTakeFocus": false
