@@ -41,7 +41,7 @@ export class UserModelClass extends BaseModelClass {
       page: 1,
     });
     if (rows.length == 0) {
-      throw new NotFoundException(`존재하지 않는 포스트ID ${id}`);
+      throw new NotFoundException(`존재하지 않는 유저ID ${id}`);
     }
 
     return rows[0];
