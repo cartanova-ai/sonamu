@@ -3,44 +3,48 @@ import { glob } from "glob";
 import { dasherize, underscore, pluralize, camelize } from "inflection";
 import _ from "lodash";
 import path from "path";
-import { SMD } from "./smd";
-import { SMDInput } from "../types/types";
+import { Entity } from "./entity";
+import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
-import { EntityNamesRecord } from "../entity/entity-manager";
+import { readFileSync } from "fs";
 
+export type EntityNamesRecord = Record<
+  | "fs"
+  | "fsPlural"
+  | "camel"
+  | "camelPlural"
+  | "capital"
+  | "capitalPlural"
+  | "upper"
+  | "constant",
+  string
+>;
 type TableSpec = {
   name: string;
   uniqueColumns: string[];
 };
-class SMDManagerClass {
-  private SMDs: Map<string, SMD> = new Map();
+class EntityManagerClass {
+  private entities: Map<string, Entity> = new Map();
   public modulePaths: Map<string, string> = new Map();
   private tableSpecs: Map<string, TableSpec> = new Map();
   public isAutoloaded: boolean = false;
 
-  // 경로 전달받아 모든 SMD 파일 로드
+  // 경로 전달받아 모든 entity.json 파일 로드
   async autoload(doSilent: boolean = false) {
     if (this.isAutoloaded) {
       return;
     }
     const pathPattern = path.join(
       Sonamu.apiRootPath,
-      "/dist/application/**/*.smd.js"
+      "/src/application/**/*.entity.json"
     );
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
     return new Promise((resolve) => {
       glob(path.resolve(pathPattern!), (_err, files) => {
-        const importPaths = files.map((filePath) =>
-          path.relative(__dirname, filePath)
-        );
         Promise.all(
-          importPaths.map(async (importPath) => {
-            const imported = await import(importPath);
-            Object.values(imported).map((smdInput) =>
-              this.register(smdInput as SMDInput<string>)
-            );
-            return imported;
+          files.map(async (file) => {
+            this.register(JSON.parse(readFileSync(file).toString()));
           })
         ).then(() => {
           resolve("ok");
@@ -50,40 +54,40 @@ class SMDManagerClass {
     });
   }
 
-  register(smdInput: SMDInput<string>): void {
-    const smd = new SMD(smdInput);
-    this.SMDs.set(smdInput.id, smd);
+  register(json: EntityJson): void {
+    const entity = new Entity(json);
+    this.entities.set(json.id, entity);
   }
 
-  get(smdId: string): SMD {
-    const smd = this.SMDs.get(smdId);
-    if (smd === undefined) {
-      throw new Error(`존재하지 않는 SMD 요청 ${smdId}`);
+  get(entityId: string): Entity {
+    const entity = this.entities.get(entityId);
+    if (entity === undefined) {
+      throw new Error(`존재하지 않는 Entity 요청 ${entityId}`);
     }
 
-    return smd;
+    return entity;
   }
 
-  exists(smdId: string): boolean {
-    const smd = this.SMDs.get(smdId);
-    return smd !== undefined;
+  exists(entityId: string): boolean {
+    const entity = this.entities.get(entityId);
+    return entity !== undefined;
   }
 
   getAllIds(): string[] {
-    return Array.from(SMDManager.SMDs.keys());
+    return Array.from(EntityManager.entities.keys());
   }
 
   getAllParentIds(): string[] {
-    return this.getAllIds().filter((smdId) => {
-      const smd = this.get(smdId);
-      return smd.parentId === undefined;
+    return this.getAllIds().filter((entityId) => {
+      const entity = this.get(entityId);
+      return entity.parentId === undefined;
     });
   }
 
   getChildrenIds(parentId: string): string[] {
-    return this.getAllIds().filter((smdId) => {
-      const smd = this.get(smdId);
-      return smd.parentId === parentId;
+    return this.getAllIds().filter((entityId) => {
+      const entity = this.get(entityId);
+      return entity.parentId === parentId;
     });
   }
 
@@ -114,22 +118,24 @@ class SMDManagerClass {
     return tableSpec;
   }
 
-  getNamesFromId(smdId: string): EntityNamesRecord {
+  getNamesFromId(entityId: string): EntityNamesRecord {
     // entityId가 단복수 동형 단어인 경우 List 붙여서 생성
     const pluralized =
-      pluralize(smdId) === smdId ? `${smdId}List` : pluralize(smdId);
+      pluralize(entityId) === entityId
+        ? `${entityId}List`
+        : pluralize(entityId);
 
     return {
-      fs: dasherize(underscore(smdId)).toLowerCase(),
+      fs: dasherize(underscore(entityId)).toLowerCase(),
       fsPlural: dasherize(underscore(pluralized)).toLowerCase(),
-      camel: camelize(smdId, true),
+      camel: camelize(entityId, true),
       camelPlural: camelize(pluralized, true),
-      capital: smdId,
+      capital: entityId,
       capitalPlural: pluralized,
-      upper: smdId.toUpperCase(),
-      constant: underscore(smdId).toUpperCase(),
+      upper: entityId.toUpperCase(),
+      constant: underscore(entityId).toUpperCase(),
     };
   }
 }
 
-export const SMDManager = new SMDManagerClass();
+export const EntityManager = new EntityManagerClass();

@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__init_generated extends Template {
@@ -7,42 +7,41 @@ export class Template__init_generated extends Template {
     super("init_generated");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.generated.ts`,
     };
   }
 
-  render({ smdId }: TemplateOptions["init_generated"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["init_generated"]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
     return {
       ...this.getTargetAndPath(names),
       body: `
 import { z } from "zod";
-import { ${smdId}SearchField, ${smdId}OrderBy } from "./${names.fs}.enums";
 
-export const ${smdId}BaseSchema = z.object({});
-export type ${smdId}BaseSchema = z.infer<typeof ${smdId}BaseSchema>;
+export const ${entityId}BaseSchema = z.object({});
+export type ${entityId}BaseSchema = z.infer<typeof ${entityId}BaseSchema>;
 
-export const ${smdId}BaseListParams = z.object({
+export const ${entityId}BaseListParams = z.object({
   num: z.number().int().min(0),
   page: z.number().int().min(1),
-  search: ${smdId}SearchField,
+  search: ${entityId}SearchField,
   keyword: z.string(),
-  orderBy: ${smdId}OrderBy,
+  orderBy: ${entityId}OrderBy,
   withoutCount: z.boolean(),
 }).partial();
-export type ${smdId}BaseListParams = z.infer<typeof ${smdId}BaseListParams>;
+export type ${entityId}BaseListParams = z.infer<typeof ${entityId}BaseListParams>;
 
-export type ${smdId}SubsetKey = never;
-export type ${smdId}SubsetMapping = {};
+export type ${entityId}SubsetKey = never;
+export type ${entityId}SubsetMapping = {};
 /* BEGIN- Server-side Only */
 import { SubsetQuery } from "sonamu";
-export const ${names.camel}SubsetQueries: { [key in ${smdId}SubsetKey]: SubsetQuery } = {};
+export const ${names.camel}SubsetQueries: { [key in ${entityId}SubsetKey]: SubsetQuery } = {};
 
-export type ${smdId}FieldExpr = string;
+export type ${entityId}FieldExpr = string;
 /* END- Server-side Only */
       `.trim(),
       importKeys: [],

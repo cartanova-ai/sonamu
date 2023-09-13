@@ -7,14 +7,23 @@ dotenv.config();
 
 import path from "path";
 import { BaseModel } from "../database/base-model";
-import { SMDManager } from "../smd/smd-manager";
-import { Migrator } from "../smd/migrator";
+import { EntityManager } from "../entity/entity-manager";
+import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
+import { camelize } from "inflection";
+import prettier from "prettier";
+import { SMDManager } from "../smd/smd-manager";
 
 let migrator: Migrator;
 
@@ -23,13 +32,13 @@ async function bootstrap() {
 
   await tsicli(process.argv, {
     types: {
-      "#smdId": {
+      "#entityId": {
         type: "autocomplete",
-        name: "#smdId",
-        message: "Please input #smdId",
-        choices: SMDManager.getAllParentIds().map((smdId) => ({
-          title: smdId,
-          value: smdId,
+        name: "#entityId",
+        message: "Please input #entityId",
+        choices: EntityManager.getAllParentIds().map((entityId) => ({
+          title: entityId,
+          value: entityId,
         })),
       },
       "#recordIds": "number[]",
@@ -37,7 +46,7 @@ async function bootstrap() {
     },
     args: [
       ["fixture", "init"],
-      ["fixture", "import", "#smdId", "#recordIds"],
+      ["fixture", "import", "#entityId", "#recordIds"],
       ["fixture", "sync"],
       ["migrate", "run"],
       ["migrate", "check"],
@@ -45,12 +54,13 @@ async function bootstrap() {
       ["migrate", "reset"],
       ["migrate", "clear"],
       ["stub", "practice", "#name"],
-      ["stub", "smd", "#name"],
-      ["scaffold", "model", "#smdId"],
-      ["scaffold", "model_test", "#smdId"],
-      ["scaffold", "view_list", "#smdId"],
-      ["scaffold", "view_form", "#smdId"],
+      ["stub", "entity", "#name"],
+      ["scaffold", "model", "#entityId"],
+      ["scaffold", "model_test", "#entityId"],
+      ["scaffold", "view_list", "#entityId"],
+      ["scaffold", "view_form", "#entityId"],
       ["ui"],
+      ["smd_migration"],
     ],
     runners: {
       migrate_run,
@@ -62,12 +72,13 @@ async function bootstrap() {
       fixture_import,
       fixture_sync,
       stub_practice,
-      stub_smd,
+      stub_entity,
       scaffold_model,
       scaffold_model_test,
       ui,
       // scaffold_view_list,
       // scaffold_view_form,
+      smd_migration,
     },
   });
 }
@@ -199,10 +210,10 @@ async function fixture_init() {
   }
 }
 
-async function fixture_import(smdId: string, recordIds: number[]) {
+async function fixture_import(entityId: string, recordIds: number[]) {
   await setupFixtureManager();
 
-  await FixtureManager.importFixture(smdId, recordIds);
+  await FixtureManager.importFixture(entityId, recordIds);
   await FixtureManager.sync();
 }
 
@@ -267,21 +278,21 @@ async function stub_practice(name: string) {
   execSync(`echo "${runCode}" | pbcopy`);
 }
 
-async function stub_smd(name: string) {
-  await Sonamu.syncer.generateTemplate("smd", {
-    smdId: name,
+async function stub_entity(name: string) {
+  await Sonamu.syncer.generateTemplate("entity", {
+    entityId: name,
   });
 }
 
-async function scaffold_model(smdId: string) {
+async function scaffold_model(entityId: string) {
   await Sonamu.syncer.generateTemplate("model", {
-    smdId,
+    entityId,
   });
 }
 
-async function scaffold_model_test(smdId: string) {
+async function scaffold_model_test(entityId: string) {
   await Sonamu.syncer.generateTemplate("model_test", {
-    smdId,
+    entityId,
   });
 }
 
@@ -295,5 +306,122 @@ async function ui() {
       return;
     }
     throw e;
+  }
+}
+
+async function smd_migration() {
+  await SMDManager.autoload();
+  const smdIds = SMDManager.getAllIds();
+
+  function enumLabelsToEntityEnums(
+    entityId: string,
+    enumLabels: {
+      [enumName: string]: { [name: string]: { ko: string } };
+    }
+  ): { [enumName: string]: { [name: string]: string } } {
+    return Object.fromEntries(
+      Object.entries(enumLabels).map(([enumLabelName, enumLabel]) => {
+        const enumName =
+          entityId + camelize(enumLabelName.toLowerCase(), false);
+        return [
+          enumName,
+          Object.fromEntries(
+            Object.entries(enumLabel).map(([name, { ko }]) => [name, ko])
+          ),
+        ];
+      })
+    );
+  }
+  for await (const smdId of smdIds) {
+    const smd = SMDManager.get(smdId);
+    const entityJson = {
+      id: smd.id,
+      ...(smd.parentId ? { parentId: smd.parentId } : {}),
+      name: smd.title,
+      props: smd.props,
+      indexes: smd.indexes,
+      subsets: smd.subsets,
+      enums: enumLabelsToEntityEnums(smd.id, smd.enumLabels),
+    };
+
+    const parentNames = SMDManager.getNamesFromId(smd.parentId ?? smd.id);
+    const names = SMDManager.getNamesFromId(smd.id);
+    const dstPath = path.join(
+      Sonamu.apiRootPath,
+      "src",
+      "application",
+      parentNames.fs,
+      `${names.fs}.entity.json`
+    );
+
+    const formatted = prettier.format(JSON.stringify(entityJson), {
+      parser: "json",
+    });
+    writeFileSync(dstPath, formatted);
+    console.log(chalk.blue(`CREATED: ${dstPath}`));
+
+    // smd.ts, enums.ts, genereated.ts 삭제 (트랜스파일 된 js파일도 삭제)
+    const srcSmdPath = path.join(
+      Sonamu.apiRootPath,
+      "src",
+      "application",
+      parentNames.fs,
+      `${names.fs}.smd.ts`
+    );
+    const dstSmdPath = srcSmdPath
+      .replace("/src/", "/dist/")
+      .replace(/\.ts$/, ".js");
+    const srcEnumsPath = path.join(
+      Sonamu.apiRootPath,
+      "src",
+      "application",
+      parentNames.fs,
+      `${names.fs}.enums.ts`
+    );
+    const dstEnumsPath = srcEnumsPath
+      .replace("/src/", "/dist/")
+      .replace(/\.ts$/, ".js");
+    const srcGeneratedPath = path.join(
+      Sonamu.apiRootPath,
+      "src",
+      "application",
+      parentNames.fs,
+      `${names.fs}.generated.ts`
+    );
+    const dstGeneratedPath = srcGeneratedPath
+      .replace("/src/", "/dist/")
+      .replace(/\.ts$/, ".js");
+
+    [
+      srcSmdPath,
+      dstSmdPath,
+      srcEnumsPath,
+      dstEnumsPath,
+      ...Sonamu.config.sync.targets.map((target) =>
+        srcEnumsPath
+          .replace(Sonamu.apiRootPath, path.join(Sonamu.appRootPath, target))
+          .replace("/src/application/", "/src/services/")
+      ),
+      srcGeneratedPath,
+      dstGeneratedPath,
+    ].map((p) => {
+      if (existsSync(p) === false) {
+        console.log(chalk.yellow(`NOT FOUND: ${p}`));
+        return;
+      }
+      unlinkSync(p);
+      console.log(chalk.red(`DELETED: ${p}`));
+    });
+  }
+
+  // Entity로 reload
+  console.log("Entity로 다시 로드합니다.");
+  EntityManager.isAutoloaded = false;
+  await EntityManager.autoload();
+
+  // Entity를 통해 generated.ts 재생성
+  const entityIds = EntityManager.getAllParentIds();
+  for await (const entityId of entityIds) {
+    await Sonamu.syncer.generateTemplate("generated", { entityId });
   }
 }

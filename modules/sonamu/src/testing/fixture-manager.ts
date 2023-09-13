@@ -3,7 +3,7 @@ import knex, { Knex } from "knex";
 import { uniq } from "lodash";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
-import { SMDManager } from "../smd/smd-manager";
+import { EntityManager } from "../entity/entity-manager";
 import {
   isBelongsToOneRelationProp,
   isOneToOneRelationProp,
@@ -160,12 +160,12 @@ export class FixtureManagerClass {
     await frdb.destroy();
   }
 
-  async importFixture(smdId: string, ids: number[]) {
+  async importFixture(entityId: string, ids: number[]) {
     const queries = uniq(
       (
         await Promise.all(
           ids.map(async (id) => {
-            return await this.getImportQueries(smdId, "id", id);
+            return await this.getImportQueries(entityId, "id", id);
           })
         )
       ).flat()
@@ -182,18 +182,18 @@ export class FixtureManagerClass {
   }
 
   async getImportQueries(
-    smdId: string,
+    entityId: string,
     field: string,
     id: number
   ): Promise<string[]> {
-    console.log({ smdId, field, id });
-    const smd = SMDManager.get(smdId);
+    console.log({ entityId, field, id });
+    const entity = EntityManager.get(entityId);
     const wdb = BaseModel.getDB("w");
 
     // 여기서 실DB의 row 가져옴
-    const [row] = await wdb(smd.table).where(field, id).limit(1);
+    const [row] = await wdb(entity.table).where(field, id).limit(1);
     if (row === undefined) {
-      throw new Error(`${smdId}#${id} row를 찾을 수 없습니다.`);
+      throw new Error(`${entityId}#${id} row를 찾을 수 없습니다.`);
     }
 
     // 픽스쳐DB, 실DB
@@ -202,9 +202,9 @@ export class FixtureManagerClass {
     const realDatabase = (Sonamu.dbConfig.production_master.connection as any)
       .database;
 
-    const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${smd.table}\` (SELECT * FROM \`${realDatabase}\`.\`${smd.table}\` WHERE \`id\` = ${id})`;
+    const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 
-    const args = Object.entries(smd.relations)
+    const args = Object.entries(entity.relations)
       .filter(
         ([, relation]) =>
           isBelongsToOneRelationProp(relation) ||
@@ -230,7 +230,7 @@ export class FixtureManagerClass {
           id = row[`${relation.name}_id`];
         }
         return {
-          smdId: relation.with,
+          entityId: relation.with,
           field,
           id,
         };
@@ -239,7 +239,7 @@ export class FixtureManagerClass {
 
     const relQueries = await Promise.all(
       args.map(async (args) => {
-        return this.getImportQueries(args.smdId, args.field, args.id);
+        return this.getImportQueries(args.entityId, args.field, args.id);
       })
     );
 

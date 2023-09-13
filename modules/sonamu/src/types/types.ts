@@ -162,7 +162,7 @@ export type RelationProp =
   | HasManyRelationProp
   | ManyToManyRelationProp;
 
-export type SMDProp =
+export type EntityProp =
   | IntegerProp
   | BigIntegerProp
   | TextProp
@@ -181,19 +181,36 @@ export type SMDProp =
   | VirtualProp
   | RelationProp;
 
-export type SMDIndex = {
+export type EntityIndex = {
   type: "index" | "unique";
   columns: string[];
   name?: string;
 };
+export type EntityJson = {
+  id: string;
+  parentId?: string;
+  table: string;
+  title?: string;
+  props: EntityProp[];
+  indexes: EntityIndex[];
+  subsets: {
+    [subset: string]: string[];
+  };
+  enums: {
+    [enumId: string]: {
+      [key: string]: string;
+    };
+  };
+};
 
+// SMD Legacy
 export type SMDInput<T extends string> = {
   id: string;
   parentId?: string;
   table?: string;
   title?: string;
-  props?: SMDProp[];
-  indexes?: SMDIndex[];
+  props?: EntityProp[];
+  indexes?: EntityIndex[];
   subsets?: {
     [subset: string]: T[];
   };
@@ -203,15 +220,15 @@ export type SMDInput<T extends string> = {
   PropNode
 */
 
-export type SMDPropNode =
+export type EntityPropNode =
   | {
       nodeType: "plain";
-      prop: SMDProp;
+      prop: EntityProp;
     }
   | {
       nodeType: "object" | "array";
-      prop?: SMDProp;
-      children: SMDPropNode[];
+      prop?: EntityProp;
+      children: EntityPropNode[];
     };
 
 /*
@@ -574,47 +591,47 @@ export type RenderingNode = {
 };
 
 export const TemplateOptions = z.object({
-  smd: z.object({
-    smdId: z.string(),
+  entity: z.object({
+    entityId: z.string(),
     title: z.string(),
     refCode: z.string().optional(),
   }),
   init_enums: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     def: z.record(z.record(z.string())).optional(),
   }),
   init_types: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   init_generated: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   generated: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   generated_http: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   model: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     defaultSearchField: z.string(),
     defaultOrderBy: z.string(),
   }),
   model_test: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   bridge: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   service: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   view_list: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     extra: z.unknown(),
   }),
   view_list_columns: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     columns: z
       .object({
         name: z.string(),
@@ -625,30 +642,30 @@ export const TemplateOptions = z.object({
     columnImports: z.string(),
   }),
   view_search_input: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   view_form: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   view_id_all_select: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
   }),
   view_id_async_select: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     textField: z.string(),
   }),
   view_enums_select: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     enumId: z.string(),
     idConstant: z.string(),
   }),
   view_enums_dropdown: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     enumId: z.string(),
     idConstant: z.string(),
   }),
   view_enums_buttonset: z.object({
-    smdId: z.string(),
+    entityId: z.string(),
     enumId: z.string(),
     idConstant: z.string(),
   }),
@@ -656,7 +673,7 @@ export const TemplateOptions = z.object({
 export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
 export const TemplateKey = z.enum([
-  "smd",
+  "entity",
   "init_enums",
   "init_types",
   "init_generated",

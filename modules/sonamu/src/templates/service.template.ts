@@ -1,7 +1,7 @@
 import { camelize } from "inflection";
 import { groupBy, sortBy, difference, uniq } from "lodash";
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { ApiParamType, ApiParam } from "../types/types";
 import {
   apiParamTypeToTsType,
@@ -17,15 +17,15 @@ export class Template__service extends Template {
     super("service");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: ":target/src/services",
       path: `${names.fs}/${names.fs}.service.ts`,
     };
   }
 
-  render({ smdId }: TemplateOptions["service"], apis: ExtendedApi[]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["service"], apis: ExtendedApi[]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
     // 서비스 TypeSource
     const { lines, importKeys } = this.getTypeSource(apis);

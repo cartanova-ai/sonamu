@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import _, { chunk, defaults, groupBy } from "lodash";
 import { Knex } from "knex";
-import { SMDManager } from "../smd/smd-manager";
+import { EntityManager } from "../entity/entity-manager";
 
 type TableData = {
   references: Set<string>;
@@ -34,7 +34,7 @@ export class UpsertBuilder {
     if (table === undefined) {
       const tableSpec = (() => {
         try {
-          return SMDManager.getTableSpec(tableName);
+          return EntityManager.getTableSpec(tableName);
         } catch {
           return null;
         }

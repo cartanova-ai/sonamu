@@ -13,7 +13,7 @@ import crypto from "crypto";
 import equal from "fast-deep-equal";
 import { differenceWith, groupBy, isEqual, uniq } from "lodash";
 import { camelize } from "inflection";
-import { SMDManager } from "../smd/smd-manager";
+import { EntityManager } from "../entity/entity-manager";
 import * as ts from "typescript";
 import {
   ApiParam,
@@ -37,8 +37,8 @@ import {
   isTimestampProp,
   isUuidProp,
   isVirtualProp,
-  SMDProp,
-  SMDPropNode,
+  EntityProp,
+  EntityPropNode,
   SQLDateTimeString,
 } from "../types/types";
 import {
@@ -64,10 +64,9 @@ import { wrapIf } from "../utils/lodash-able";
 import { getTextTypeLength } from "../api/code-converters";
 import { Template } from "../templates/base-template";
 import { Template__generated } from "../templates/generated.template";
-import { Template__init_enums } from "../templates/init_enums.template";
 import { Template__init_generated } from "../templates/init_generated.template";
 import { Template__init_types } from "../templates/init_types.template";
-import { Template__smd } from "../templates/smd.template";
+import { Template__entity } from "../templates/entity.template";
 import { Template__model } from "../templates/model.template";
 import { Template__model_test } from "../templates/model_test.template";
 import { Template__service } from "../templates/service.template";
@@ -84,7 +83,7 @@ import { Template__view_list_columns } from "../templates/view_list_columns.temp
 import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
 
-type FileType = "model" | "types" | "enums" | "smd" | "generated";
+type FileType = "model" | "types" | "enums" | "enums" | "generated" | "entity";
 type GlobPattern = {
   [key in FileType]: string;
 };
@@ -182,19 +181,19 @@ export class Syncer {
 
     // 다른 부분 찾아 액션
     const diffGroups = groupBy(diffFiles, (r) => {
-      const matched = r.match(/\.(model|types|enums|smd|generated)\.[tj]s/);
+      const matched = r.match(/\.(model|types|enums|entity|generated)\.[tj]s/);
       return matched![1];
     }) as unknown as DiffGroups;
 
     // 변경된 파일들을 타입별로 분리하여 각 타입별 액션 처리
     const diffTypes = Object.keys(diffGroups);
 
-    // 트리거: smd
+    // 트리거: entity
     // 액션: 스키마 생성
-    if (diffTypes.includes("smd")) {
+    if (diffTypes.includes("entity")) {
       console.log("// 액션: 스키마 생성");
-      const smdIds = this.getSMDIdFromPath(diffGroups["smd"]);
-      await this.actionGenerateSchemas(smdIds);
+      const entityIds = this.getEntityIdFromPath(diffGroups["entity"]);
+      await this.actionGenerateSchemas(entityIds);
     }
 
     // 트리거: types, enums, generated 변경시
@@ -216,32 +215,32 @@ export class Syncer {
 
     // 트리거: model
     if (diffTypes.includes("model")) {
-      const smdIds = this.getSMDIdFromPath(diffGroups["model"]);
+      const entityIds = this.getEntityIdFromPath(diffGroups["model"]);
       console.log("// 액션: 서비스 생성");
-      await this.actionGenerateServices(smdIds);
+      await this.actionGenerateServices(entityIds);
       console.log("// 액션: HTTP파일 생성");
-      await this.actionGenerateHttps(smdIds);
+      await this.actionGenerateHttps(entityIds);
     }
 
     // 저장
     await this.saveChecksums(currentChecksums);
   }
 
-  getSMDIdFromPath(filePaths: string[]): string[] {
+  getEntityIdFromPath(filePaths: string[]): string[] {
     return filePaths.map((p) => {
       const matched = p.match(/application\/(.+)\//);
       return camelize(matched![1].replace(/\-/g, "_"));
     });
   }
 
-  async actionGenerateSchemas(smdIds: string[]): Promise<string[]> {
+  async actionGenerateSchemas(entityIds: string[]): Promise<string[]> {
     return (
       await Promise.all(
-        smdIds.map(async (smdId) =>
+        entityIds.map(async (entityId) =>
           this.generateTemplate(
             "generated",
             {
-              smdId,
+              entityId,
             },
             {
               overwrite: true,
@@ -254,14 +253,14 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateServices(smdIds: string[]): Promise<string[]> {
+  async actionGenerateServices(entityIds: string[]): Promise<string[]> {
     return (
       await Promise.all(
-        smdIds.map(async (smdId) =>
+        entityIds.map(async (entityId) =>
           this.generateTemplate(
             "service",
             {
-              smdId,
+              entityId,
             },
             {
               overwrite: true,
@@ -274,14 +273,14 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateHttps(smdIds: string[]): Promise<string[]> {
+  async actionGenerateHttps(entityIds: string[]): Promise<string[]> {
     return (
       await Promise.all(
-        smdIds.map(async (smdId) =>
+        entityIds.map(async (entityId) =>
           this.generateTemplate(
             "generated_http",
             {
-              smdId,
+              entityId,
             },
             {
               overwrite: true,
@@ -342,13 +341,13 @@ export class Syncer {
 
   async getCurrentChecksums(): Promise<PathAndChecksum[]> {
     const PatternGroup: GlobPattern = {
-      /* TS 체크 */
+      /* 원본 체크 */
+      entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
       types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
       enums: Sonamu.apiRootPath + "/src/application/**/*.enums.ts",
       generated: Sonamu.apiRootPath + "/src/application/**/*.generated.ts",
       /* compiled-JS 체크 */
       model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
-      smd: Sonamu.apiRootPath + "/dist/application/**/*.smd.js",
     };
 
     const filePaths = (
@@ -708,7 +707,6 @@ export class Syncer {
 
     const pathPatterns = [
       path.join(Sonamu.apiRootPath, "/dist/application/**/*.types.js"),
-      path.join(Sonamu.apiRootPath, "/dist/application/**/*.enums.js"),
       path.join(Sonamu.apiRootPath, "/dist/application/**/*.generated.js"),
     ];
     // console.debug(chalk.magenta(`autoload:types @ ${pathPatterns.join("\n")}`));
@@ -727,10 +725,8 @@ export class Syncer {
   }
 
   getTemplate(key: TemplateKey): Template {
-    if (key === "smd") {
-      return new Template__smd();
-    } else if (key === "init_enums") {
-      return new Template__init_enums();
+    if (key === "entity") {
+      return new Template__entity();
     } else if (key === "init_types") {
       return new Template__init_types();
     } else if (key === "init_generated") {
@@ -777,24 +773,24 @@ export class Syncer {
     let extra: unknown[] = [];
     if (key === "service" || key === "generated_http") {
       // service 필요 정보 (API 리스트)
-      const smd = SMDManager.get(options.smdId);
+      const entity = EntityManager.get(options.entityId);
       const modelTsPath = `${path.join(
         Sonamu.apiRootPath,
         "/src/application"
-      )}/${smd.names.fs}/${smd.names.fs}.model.ts`;
+      )}/${entity.names.fs}/${entity.names.fs}.model.ts`;
       extra = [await this.readApisFromFile(modelTsPath)];
     } else if (key === "view_list" || key === "model") {
       // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
-      const columnsNode = await this.getColumnsNode(options.smdId, "A");
+      const columnsNode = await this.getColumnsNode(options.entityId, "A");
       const listParamsZodType = await this.getZodTypeById(
-        `${options.smdId}ListParams`
+        `${options.entityId}ListParams`
       );
       const listParamsNode = this.zodTypeToRenderingNode(listParamsZodType);
       extra = [columnsNode, listParamsNode];
     } else if (key === "view_form") {
       // view_form 필요 정보 (세이브파라미터 노드)
       const saveParamsZodType = await this.getZodTypeById(
-        `${options.smdId}SaveParams`
+        `${options.entityId}SaveParams`
       );
       const saveParamsNode = this.zodTypeToRenderingNode(saveParamsZodType);
       extra = [saveParamsNode];
@@ -827,7 +823,7 @@ export class Syncer {
     const importDefs = importKeys
       .reduce(
         (r, importKey) => {
-          const modulePath = SMDManager.getModulePath(importKey);
+          const modulePath = EntityManager.getModulePath(importKey);
           let importPath = modulePath;
           if (modulePath.includes("/")) {
             importPath = wrapIf(
@@ -919,8 +915,8 @@ export class Syncer {
 
     // 키 children
     let keys: TemplateKey[] = [key];
-    if (key === "smd") {
-      keys = ["smd", "init_enums", "init_generated", "init_types"];
+    if (key === "entity") {
+      keys = ["entity", "init_generated", "init_types"];
     }
 
     // 템플릿 렌더
@@ -972,13 +968,13 @@ export class Syncer {
   }
 
   checkExists(
-    smdId: string,
+    entityId: string,
     enums: {
       [name: string]: z.ZodEnum<any>;
     }
   ): Record<`${TemplateKey}${string}`, boolean> {
     const keys: TemplateKey[] = TemplateKey.options;
-    const names = SMDManager.getNamesFromId(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
     const enumsKeys = Object.keys(enums).filter(
       (name) => name !== names.constant
     );
@@ -1012,7 +1008,7 @@ export class Syncer {
   }
 
   async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
-    const modulePath = SMDManager.getModulePath(zodTypeId);
+    const modulePath = EntityManager.getModulePath(zodTypeId);
     const moduleAbsPath = path.join(
       Sonamu.apiRootPath,
       "dist",
@@ -1028,7 +1024,7 @@ export class Syncer {
     return imported[zodTypeId].describe(zodTypeId);
   }
 
-  async propNodeToZodType(propNode: SMDPropNode): Promise<z.ZodTypeAny> {
+  async propNodeToZodType(propNode: EntityPropNode): Promise<z.ZodTypeAny> {
     if (propNode.nodeType === "plain") {
       return this.propToZodType(propNode.prop);
     } else if (propNode.nodeType === "array") {
@@ -1070,7 +1066,7 @@ export class Syncer {
       throw Error;
     }
   }
-  async propToZodType(prop: SMDProp): Promise<z.ZodTypeAny> {
+  async propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     let zodType: z.ZodTypeAny = z.unknown();
     if (isIntegerProp(prop)) {
       zodType = z.number().int();
@@ -1226,14 +1222,14 @@ export class Syncer {
     }
   }
 
-  async getColumnsNode(smdId: string, subsetKey: string) {
-    const smd = await SMDManager.get(smdId);
-    const subsetA = smd.subsets[subsetKey];
+  async getColumnsNode(entityId: string, subsetKey: string) {
+    const entity = await EntityManager.get(entityId);
+    const subsetA = entity.subsets[subsetKey];
     if (subsetA === undefined) {
       throw new ServiceUnavailableException("SubsetA 가 없습니다.");
     }
-    const propNodes = smd.fieldExprsToPropNodes(subsetA);
-    const rootPropNode: SMDPropNode = {
+    const propNodes = entity.fieldExprsToPropNodes(subsetA);
+    const rootPropNode: EntityPropNode = {
       nodeType: "object",
       children: propNodes,
     };

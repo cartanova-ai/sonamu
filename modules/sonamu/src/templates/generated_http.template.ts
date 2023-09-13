@@ -1,7 +1,7 @@
 import qs from "qs";
 import { z } from "zod";
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { getZodObjectFromApi } from "../api/code-converters";
 import { ExtendedApi } from "../api/decorators";
 import { Template } from "./base-template";
@@ -14,15 +14,15 @@ export class Template__generated_http extends Template {
     super("generated_http");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.generated.http`,
     };
   }
 
-  render({ smdId }: TemplateOptions["generated"], apis: ExtendedApi[]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["generated"], apis: ExtendedApi[]) {
+    const names = EntityManager.getNamesFromId(entityId);
     const references = Sonamu.syncer.types;
 
     const lines = apis.map((api) => {

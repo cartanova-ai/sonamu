@@ -1,7 +1,7 @@
 import { camelize } from "inflection";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { RenderedTemplate } from "../syncer/syncer";
 import { Template } from "./base-template";
 import {
@@ -15,7 +15,7 @@ export class Template__view_form extends Template {
     super("view_form");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "web/src/pages/admin",
       path: `${names.fsPlural}/form.tsx`,
@@ -37,17 +37,17 @@ export class Template__view_form extends Template {
     ].join("\n");
   }
 
-  renderColumnImport(smdId: string, col: RenderingNode) {
+  renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
-      const { id, targetMDNames } = getEnumInfoFromColName(smdId, col.name);
+      const { id, targetMDNames } = getEnumInfoFromColName(entityId, col.name);
       const componentId = `${id}Select`;
       return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
     } else if (col.renderType === "number-fk_id") {
       const relProp = getRelationPropFromColName(
-        smdId,
+        entityId,
         col.name.replace("_id", "")
       );
-      const targetNames = SMDManager.getNamesFromId(relProp.with);
+      const targetNames = EntityManager.getNamesFromId(relProp.with);
       const componentId = `${relProp.with}IdAsyncSelect`;
       return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
     } else {
@@ -56,9 +56,9 @@ export class Template__view_form extends Template {
   }
 
   renderColumn(
-    smdId: string,
+    entityId: string,
     col: RenderingNode,
-    names: SMDNamesRecord,
+    names: EntityNamesRecord,
     parent: string = ""
   ): string {
     let regExpr: string = "";
@@ -94,7 +94,7 @@ export class Template__view_form extends Template {
           if (col.name === "orderBy") {
             enumId = `${names.capital}${camelize(col.name)}Select`;
           } else {
-            const { id } = getEnumInfoFromColName(smdId, col.name);
+            const { id } = getEnumInfoFromColName(entityId, col.name);
             enumId = `${id}Select`;
           }
           return `<${enumId} ${regExpr} ${
@@ -106,7 +106,7 @@ export class Template__view_form extends Template {
       case "number-fk_id":
         try {
           const relProp = getRelationPropFromColName(
-            smdId,
+            entityId,
             col.name.replace("_id", "")
           );
           const fkId = `${relProp.with}IdAsyncSelect`;
@@ -160,10 +160,10 @@ export class Template__view_form extends Template {
   }
 
   render(
-    { smdId }: TemplateOptions["view_form"],
+    { entityId }: TemplateOptions["view_form"],
     saveParamsNode: RenderingNode
   ) {
-    const names = SMDManager.getNamesFromId(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
     const columns = (saveParamsNode.children as RenderingNode[]).filter(
       (col) => col.name !== "id"
     );
@@ -179,14 +179,14 @@ export class Template__view_form extends Template {
           return false;
         } else if (col.name.endsWith("_id") || col.renderType === "number-id") {
           try {
-            getRelationPropFromColName(smdId, col.name.replace("_id", ""));
+            getRelationPropFromColName(entityId, col.name.replace("_id", ""));
             return true;
           } catch {
             return false;
           }
         } else if (col.renderType === "enums") {
           try {
-            getEnumInfoFromColName(smdId, col.name);
+            getEnumInfoFromColName(entityId, col.name);
             return true;
           } catch {
             return false;
@@ -196,13 +196,13 @@ export class Template__view_form extends Template {
       })
       .map((col) => {
         let key: TemplateKey;
-        let targetMdId = smdId;
+        let targetMdId = entityId;
         let enumId: string | undefined;
         let idConstant: string | undefined;
         if (col.renderType === "enums") {
           key = "view_enums_select";
           const { targetMDNames, id, name } = getEnumInfoFromColName(
-            smdId,
+            entityId,
             col.name
           );
           targetMdId = targetMDNames.capital;
@@ -211,7 +211,7 @@ export class Template__view_form extends Template {
         } else {
           key = "view_id_async_select";
           const relProp = getRelationPropFromColName(
-            smdId,
+            entityId,
             col.name.replace("_id", "")
           );
           targetMdId = relProp.with;
@@ -220,7 +220,7 @@ export class Template__view_form extends Template {
         return {
           key: key as TemplateKey,
           options: {
-            smdId: targetMdId,
+            entityId: targetMdId,
             node: col,
             enumId,
             idConstant,
@@ -230,7 +230,7 @@ export class Template__view_form extends Template {
       .filter((preTemplate) => {
         if (preTemplate.key === "view_id_async_select") {
           try {
-            SMDManager.get(preTemplate.options.smdId);
+            EntityManager.get(preTemplate.options.entityId);
             return true;
           } catch {
             return false;
@@ -274,7 +274,7 @@ ${uniq(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
     .map((col) => {
-      return this.renderColumnImport(smdId, col);
+      return this.renderColumnImport(entityId, col);
     })
 ).join("\n")}
 
@@ -376,7 +376,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
                   )})}`;
                 } else {
                   return this.wrapFG(
-                    this.renderColumn(smdId, col, names),
+                    this.renderColumn(entityId, col, names),
                     col.label
                   );
                 }

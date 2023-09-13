@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__view_id_async_select extends Template {
@@ -7,25 +7,27 @@ export class Template__view_id_async_select extends Template {
     super("view_id_async_select");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "web/src/components",
       path: `${names.fs}/${names.capital}IdAsyncSelect.tsx`,
     };
   }
 
-  render({ smdId, textField }: TemplateOptions["view_id_async_select"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId, textField }: TemplateOptions["view_id_async_select"]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
-    const smd = SMDManager.get(smdId);
+    const entity = EntityManager.get(entityId);
     if (!textField) {
-      const pickedProp = smd.props.find((prop) =>
+      const pickedProp = entity.props.find((prop) =>
         ["name", "title"].includes(prop.name)
       );
       if (pickedProp) {
         textField = pickedProp.name;
       } else {
-        const candidateProp = smd.props.find((prop) => prop.type === "string");
+        const candidateProp = entity.props.find(
+          (prop) => prop.type === "string"
+        );
         if (candidateProp) {
           textField = candidateProp.name;
         } else {

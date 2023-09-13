@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__view_enums_dropdown extends Template {
@@ -7,7 +7,7 @@ export class Template__view_enums_dropdown extends Template {
     super("view_enums_dropdown");
   }
 
-  getTargetAndPath(names: SMDNamesRecord, enumId: string) {
+  getTargetAndPath(names: EntityNamesRecord, enumId: string) {
     return {
       target: "web/src/components",
       path: `${names.fs}/${enumId}Dropdown.tsx`,
@@ -15,11 +15,11 @@ export class Template__view_enums_dropdown extends Template {
   }
 
   render({
-    smdId,
+    entityId,
     enumId,
     idConstant,
   }: TemplateOptions["view_enums_dropdown"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
     const label = getLabel(idConstant);
 
     return {

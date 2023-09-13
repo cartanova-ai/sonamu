@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__view_search_input extends Template {
@@ -7,15 +7,15 @@ export class Template__view_search_input extends Template {
     super("view_search_input");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "web/src/components",
       path: `${names.fs}/${names.capital}SearchInput.tsx`,
     };
   }
 
-  render({ smdId }: TemplateOptions["view_search_input"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["view_search_input"]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
     return {
       ...this.getTargetAndPath(names),

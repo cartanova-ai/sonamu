@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__init_types extends Template {
@@ -7,29 +7,29 @@ export class Template__init_types extends Template {
     super("init_types");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.types.ts`,
     };
   }
 
-  render({ smdId }: TemplateOptions["init_types"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["init_types"]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
     return {
       ...this.getTargetAndPath(names),
       body: `
 import { z } from "zod";
-import { ${smdId}BaseSchema, ${smdId}BaseListParams } from "./${names.fs}.generated";
+import { ${entityId}BaseSchema, ${entityId}BaseListParams } from "./${names.fs}.generated";
 
-// ${smdId} - ListParams
-export const ${smdId}ListParams = ${smdId}BaseListParams;
-export type ${smdId}ListParams = z.infer<typeof ${smdId}ListParams>;
+// ${entityId} - ListParams
+export const ${entityId}ListParams = ${entityId}BaseListParams;
+export type ${entityId}ListParams = z.infer<typeof ${entityId}ListParams>;
 
-// ${smdId} - SaveParams
-export const ${smdId}SaveParams = ${smdId}BaseSchema.partial({ id: true });
-export type ${smdId}SaveParams = z.infer<typeof ${smdId}SaveParams>;
+// ${entityId} - SaveParams
+export const ${entityId}SaveParams = ${entityId}BaseSchema.partial({ id: true });
+export type ${entityId}SaveParams = z.infer<typeof ${entityId}SaveParams>;
 
       `.trim(),
       importKeys: [],

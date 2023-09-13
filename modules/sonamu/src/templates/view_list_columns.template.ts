@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__view_list_columns extends Template {
@@ -7,7 +7,7 @@ export class Template__view_list_columns extends Template {
     super("view_list_columns");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "web/src/pages/admin",
       path: `${names.fsPlural}/_columns.tsx`,
@@ -16,11 +16,11 @@ export class Template__view_list_columns extends Template {
 
   // 컬럼
   render({
-    smdId,
+    entityId,
     columns,
     columnImports,
   }: TemplateOptions["view_list_columns"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
 
     return {
       ...this.getTargetAndPath(names),

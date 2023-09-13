@@ -1,4 +1,5 @@
 import _, { uniq } from "lodash";
+import { EntityManager as EntityManager } from "./entity-manager";
 import { dasherize, pluralize, underscore } from "inflection";
 import {
   EntityProp,
@@ -14,17 +15,15 @@ import {
   isEnumProp,
   StringProp,
   EntityIndex,
-  EnumsLabelKo,
-  SMDInput,
+  EntityJson,
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
 import { existsSync } from "fs";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
-import { SMDManager } from "./smd-manager";
 
-export class SMD {
+export class Entity {
   id: string;
   parentId?: string;
   table: string;
@@ -48,10 +47,12 @@ export class SMD {
     [name: string]: z.ZodTypeAny;
   } = {};
   enums: {
-    [name: string]: z.ZodEnum<any>;
+    [enumId: string]: z.ZodEnum<any>;
   } = {};
   enumLabels: {
-    [name: string]: EnumsLabelKo<string>;
+    [enumId: string]: {
+      [key: string]: string;
+    };
   } = {};
 
   constructor({
@@ -62,7 +63,8 @@ export class SMD {
     props,
     indexes,
     subsets,
-  }: SMDInput<any>) {
+    enums,
+  }: EntityJson) {
     // id
     this.id = id;
     this.parentId = parentId;
@@ -106,6 +108,19 @@ export class SMD {
 
     // subsets
     this.subsets = subsets ?? {};
+
+    // enums
+    this.enumLabels = enums ?? {};
+    this.enums = Object.fromEntries(
+      Object.entries(this.enumLabels).map(([key, enumLabel]) => {
+        return [
+          key,
+          z.enum(
+            Object.keys(enumLabel) as unknown as readonly [string, ...string[]]
+          ),
+        ];
+      })
+    );
 
     // names
     this.names = {
@@ -184,7 +199,7 @@ export class SMD {
         if (relation === undefined) {
           throw new Error(`존재하지 않는 relation 참조 ${groupKey}`);
         }
-        const relSMD = SMDManager.get(relation.with);
+        const relEntity = EntityManager.get(relation.with);
 
         if (
           isOneToOneRelationProp(relation) ||
@@ -230,7 +245,7 @@ export class SMD {
               }
             }
           })();
-          const relSubsetQuery = relSMD.resolveSubsetQuery(
+          const relSubsetQuery = relEntity.resolveSubsetQuery(
             `${prefix !== "" ? prefix + "." : ""}${groupKey}`,
             relFields,
             innerOrOuter === "outer"
@@ -271,7 +286,7 @@ export class SMD {
           r.joins.push({
             as: joinAs,
             join: innerOrOuter,
-            table: relSMD.table,
+            table: relEntity.table,
             ...joinClause,
           });
 
@@ -300,7 +315,7 @@ export class SMD {
           const relFields = fields.map((field) =>
             field.split(".").slice(1).join(".")
           );
-          const relSubsetQuery = relSMD.resolveSubsetQuery("", relFields);
+          const relSubsetQuery = relEntity.resolveSubsetQuery("", relFields);
 
           let manyJoin: SubsetQuery["loaders"][number]["manyJoin"];
           if (isHasManyRelationProp(relation)) {
@@ -308,7 +323,7 @@ export class SMD {
               fromTable: this.table,
               fromCol: "id",
               idField: prefix === "" ? `id` : `${prefix}__id`,
-              toTable: relSMD.table,
+              toTable: relEntity.table,
               toCol: relation.joinColumn,
             };
           } else if (isManyToManyRelationProp(relation)) {
@@ -323,7 +338,7 @@ export class SMD {
                 fromCol: `${inflection.singularize(table1)}_id`,
                 toCol: `${inflection.singularize(table2)}_id`,
               },
-              toTable: relSMD.table,
+              toTable: relEntity.table,
               toCol: "id",
             };
           } else {
@@ -332,7 +347,7 @@ export class SMD {
 
           r.loaders.push({
             as: groupKey,
-            table: relSMD.table,
+            table: relEntity.table,
             manyJoin,
             oneJoins: relSubsetQuery.joins,
             select: relSubsetQuery.select,
@@ -353,11 +368,11 @@ export class SMD {
   }
 
   /*
-    FieldExpr[] 을 SMDPropNode[] 로 변환
+    FieldExpr[] 을 EntityPropNode[] 로 변환
   */
   fieldExprsToPropNodes(
     fieldExprs: string[],
-    smd: SMD = this
+    entity: Entity = this
   ): EntityPropNode[] {
     const groups = fieldExprs.reduce(
       (result, fieldExpr) => {
@@ -398,7 +413,7 @@ export class SMD {
               };
             }
 
-            const prop = smd.propsDict[propName];
+            const prop = entity.propsDict[propName];
             if (prop === undefined) {
               throw new Error(`${this.id} -- 잘못된 FieldExpr ${propName}`);
             }
@@ -411,17 +426,17 @@ export class SMD {
         }
 
         // relation prop 처리
-        const prop = smd.propsDict[key];
+        const prop = entity.propsDict[key];
         if (!isRelationProp(prop)) {
           throw new Error(`잘못된 FieldExpr ${key}.${group[0]}`);
         }
-        const relSMD = SMDManager.get(prop.with);
+        const relEntity = EntityManager.get(prop.with);
 
         // relation -One 에 id 필드 하나인 경우
         if (isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)) {
           if (group.length == 1 && (group[0] === "id" || group[0] == "id?")) {
             // id 하나만 있는지 체크해서, 하나만 있으면 상위 prop으로 id를 리턴
-            const idProp = relSMD.propsDict.id;
+            const idProp = relEntity.propsDict.id;
             return {
               nodeType: "plain" as const,
               prop: {
@@ -437,7 +452,7 @@ export class SMD {
         // -One 그외의 경우 object로 리턴
         // -Many의 경우 array로 리턴
         // Recursive 로 뎁스 처리
-        const children = this.fieldExprsToPropNodes(group, relSMD);
+        const children = this.fieldExprsToPropNodes(group, relEntity);
         const nodeType =
           isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)
             ? ("object" as const)
@@ -472,7 +487,7 @@ export class SMD {
             return null;
           }
           // 정방향 relation인 경우 recursive 콜
-          const relMd = SMDManager.get(prop.with);
+          const relMd = EntityManager.get(prop.with);
           return relMd.getFieldExprs(propName, maxDepth - 1, [
             ...froms,
             this.id,
@@ -488,23 +503,23 @@ export class SMD {
     const basePath = `${this.names.fs}`;
 
     // base-scheme
-    SMDManager.setModulePath(
+    EntityManager.setModulePath(
       `${this.id}BaseSchema`,
       `${basePath}/${this.names.fs}.generated`
     );
 
     // subset
     if (Object.keys(this.subsets).length > 0) {
-      SMDManager.setModulePath(
+      EntityManager.setModulePath(
         `${this.id}SubsetKey`,
         `${basePath}/${this.names.fs}.generated`
       );
-      SMDManager.setModulePath(
+      EntityManager.setModulePath(
         `${this.id}SubsetMapping`,
         `${basePath}/${this.names.fs}.generated`
       );
       Object.keys(this.subsets).map((subsetKey) => {
-        SMDManager.setModulePath(
+        EntityManager.setModulePath(
           `${this.id}Subset${subsetKey.toUpperCase()}`,
           `${basePath}/${this.names.fs}.generated`
         );
@@ -522,7 +537,7 @@ export class SMD {
       const importPath = path.relative(__dirname, typesFileDistPath);
       import(importPath).then((t) => {
         this.types = Object.keys(t).reduce((result, key) => {
-          SMDManager.setModulePath(key, typesModulePath);
+          EntityManager.setModulePath(key, typesModulePath);
           return {
             ...result,
             [key]: t[key],
@@ -532,28 +547,12 @@ export class SMD {
     }
 
     // enums
-    const enumsModulePath = `${basePath}/${this.names.fs}.enums`;
-    const enumsFileDistPath = path.join(
-      Sonamu.apiRootPath,
-      `/dist/application/${enumsModulePath}.js`
-    );
-    if (existsSync(enumsFileDistPath)) {
-      const importPath = path.relative(__dirname, enumsFileDistPath);
-      import(importPath).then((t) => {
-        this.enums = Object.keys(t).reduce((result, key) => {
-          SMDManager.setModulePath(key, enumsModulePath);
-
-          // Enum Labels 별도 처리
-          if (key === underscore(this.id).toUpperCase()) {
-            this.enumLabels = t[key];
-          }
-          return {
-            ...result,
-            [key]: t[key],
-          };
-        }, {});
-      });
-    }
+    Object.keys(this.enumLabels).map((enumId) => {
+      EntityManager.setModulePath(
+        enumId,
+        `${basePath}/${this.names.fs}.generated`
+      );
+    });
   }
 
   registerTableSpecs(): void {
@@ -564,7 +563,7 @@ export class SMD {
         .flat()
     );
 
-    SMDManager.setTableSpec({
+    EntityManager.setTableSpec({
       name: this.table,
       uniqueColumns,
     });

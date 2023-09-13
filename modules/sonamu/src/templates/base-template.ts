@@ -1,5 +1,5 @@
 import { TemplateKey, TemplateOptions } from "../types/types";
-import { SMDNamesRecord } from "../smd/smd-manager";
+import { EntityNamesRecord } from "../entity/entity-manager";
 import { RenderedTemplate } from "../syncer/syncer";
 
 export abstract class Template {
@@ -10,7 +10,7 @@ export abstract class Template {
   ): RenderedTemplate;
 
   public abstract getTargetAndPath(
-    names: SMDNamesRecord,
+    names: EntityNamesRecord,
     ...extra: unknown[]
   ): {
     target: string;

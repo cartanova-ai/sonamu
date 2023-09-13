@@ -6,9 +6,9 @@ import {
   isTimestampProp,
   TemplateOptions,
 } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
-import { SMD } from "../smd/smd";
-import { SMDPropNode, SubsetQuery } from "../types/types";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
+import { Entity } from "../entity/entity";
+import { EntityPropNode, SubsetQuery } from "../types/types";
 import { propNodeToZodTypeDef } from "../api/code-converters";
 import { Template } from "./base-template";
 
@@ -17,21 +17,25 @@ export class Template__generated extends Template {
     super("generated");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.generated.ts`,
     };
   }
 
-  render({ smdId }: TemplateOptions["generated"]) {
-    const names = SMDManager.getNamesFromId(smdId);
-    const smd = SMDManager.get(smdId);
+  render({ entityId }: TemplateOptions["generated"]) {
+    const entity = EntityManager.get(entityId);
 
     const typeSource = [
-      this.getBaseSchemaTypeSource(smd),
-      this.getBaseListParamsTypeSource(smd),
-      this.getSubsetTypeSource(smd),
+      this.getEnumsTypeSource(entity),
+      this.getBaseSchemaTypeSource(entity),
+      ...(entity.parentId === undefined
+        ? [
+            this.getBaseListParamsTypeSource(entity),
+            this.getSubsetTypeSource(entity),
+          ]
+        : []),
     ].reduce(
       (result, ts) => {
         if (ts === null) {
@@ -48,49 +52,80 @@ export class Template__generated extends Template {
       }
     );
 
-    const fieldExprs = smd
-      .getFieldExprs()
-      .map((fieldExpr) => `"${fieldExpr}"`)
-      .join(" | ");
-    const fieldExprsLine = `export type ${smd.id}FieldExpr = ${
-      fieldExprs.length > 0 ? fieldExprs : "string"
-    }`;
+    // targetAndPath
+    const names = EntityManager.getNamesFromId(entityId);
+    const targetAndPath = this.getTargetAndPath(names);
+
+    // import
+    const sonamuImports = [
+      "zArrayable",
+      ...(entity.props.find(
+        (p) => isTimestampProp(p) || isDateProp(p) || isDateTimeProp(p)
+      )
+        ? ["SQLDateTimeString"]
+        : []),
+    ];
 
     return {
-      ...this.getTargetAndPath(names),
-      body: [...typeSource!.lines, fieldExprsLine, "/* END Server-side Only */"]
+      ...targetAndPath,
+      body: [...typeSource!.lines, "/* END Server-side Only */"]
         .join("\n")
         .trim(),
       importKeys: typeSource?.importKeys ?? [],
       customHeaders: [
         `import { z } from 'zod';`,
-        smd.props.length > 0
-          ? `import { zArrayable${
-              smd.props.find(
-                (p) => isTimestampProp(p) || isDateProp(p) || isDateTimeProp(p)
-              )
-                ? ", SQLDateTimeString"
-                : ""
-            } } from "sonamu";`
+        entity.props.length > 0
+          ? `import { ${sonamuImports.join(",")} } from "sonamu";`
           : "",
       ],
     };
   }
 
+  getEnumsTypeSource(entity: Entity): {
+    lines: string[];
+    importKeys: string[];
+  } {
+    const childrenIds = EntityManager.getChildrenIds(entity.id);
+    const entities = [
+      entity,
+      ...childrenIds.map((id) => EntityManager.get(id)),
+    ];
+
+    return {
+      lines: [
+        "// Enums",
+        ...entities
+          .map((entity) =>
+            Object.entries(entity.enumLabels).map(([enumId, enumLabel]) => [
+              `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
+                (el) => `"${el}"`
+              )}]).describe("${enumId}");`,
+              `export type ${enumId} = z.infer<typeof ${enumId}>`,
+              `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
+            ])
+          )
+          .flat()
+          .flat(),
+        "",
+      ],
+      importKeys: [],
+    };
+  }
+
   getBaseSchemaTypeSource(
-    smd: SMD,
+    entity: Entity,
     depth: number = 0,
     importKeys: string[] = []
   ): {
     lines: string[];
     importKeys: string[];
   } {
-    const childrenIds = SMDManager.getChildrenIds(smd.id);
+    const childrenIds = EntityManager.getChildrenIds(entity.id);
 
-    const schemaName = `${smd.names.module}BaseSchema`;
-    const propNode: SMDPropNode = {
+    const schemaName = `${entity.names.module}BaseSchema`;
+    const propNode: EntityPropNode = {
       nodeType: "object",
-      children: smd.props.map((prop) => {
+      children: entity.props.map((prop) => {
         return {
           nodeType: "plain",
           prop,
@@ -105,7 +140,7 @@ export class Template__generated extends Template {
       `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
       ...childrenIds
         .map((childId) => {
-          const child = SMDManager.get(childId);
+          const child = EntityManager.get(childId);
           const { lines } = this.getBaseSchemaTypeSource(
             child,
             depth + 1,
@@ -122,23 +157,23 @@ export class Template__generated extends Template {
     };
   }
 
-  getBaseListParamsTypeSource(smd: SMD): {
+  getBaseListParamsTypeSource(entity: Entity): {
     lines: string[];
     importKeys: string[];
   } {
     // Prop 없는 MD인 경우 생성 제외
-    if (smd.props.length === 0) {
+    if (entity.props.length === 0) {
       return {
         lines: [],
         importKeys: [],
       };
     }
 
-    const schemaName = `${smd.names.module}BaseListParams`;
+    const schemaName = `${entity.names.module}BaseListParams`;
 
-    const filterProps = smd.props.filter((prop) => prop.toFilter === true);
+    const filterProps = entity.props.filter((prop) => prop.toFilter === true);
 
-    const propNodes: SMDPropNode[] = filterProps.map((prop) => {
+    const propNodes: EntityPropNode[] = filterProps.map((prop) => {
       return {
         nodeType: "plain" as const,
         prop,
@@ -146,7 +181,7 @@ export class Template__generated extends Template {
       };
     });
 
-    const importKeys: string[] = [`${smd.id}SearchField`, `${smd.id}OrderBy`];
+    const importKeys: string[] = [];
     const filterBody = propNodes
       .map((propNode) => propNodeToZodTypeDef(propNode, importKeys))
       .join("\n");
@@ -155,9 +190,9 @@ export class Template__generated extends Template {
 z.object({
   num: z.number().int().nonnegative(),
   page: z.number().int().min(1),
-  search: ${smd.id}SearchField,
+  search: ${entity.id}SearchField,
   keyword: z.string(),
-  orderBy: ${smd.id}OrderBy,
+  orderBy: ${entity.id}OrderBy,
   withoutCount: z.boolean(),
   id: zArrayable(z.number().int().positive()),${filterBody}
 }).partial();
@@ -174,19 +209,19 @@ z.object({
     };
   }
 
-  getSubsetTypeSource(smd: SMD): {
+  getSubsetTypeSource(entity: Entity): {
     lines: string[];
     importKeys: string[];
   } | null {
-    if (Object.keys(smd.subsets).length == 0) {
+    if (Object.keys(entity.subsets).length == 0) {
       return null;
     }
 
-    const subsetKeys = Object.keys(smd.subsets);
+    const subsetKeys = Object.keys(entity.subsets);
 
     const subsetQueryObject = subsetKeys.reduce(
       (r, subsetKey) => {
-        const subsetQuery = smd.getSubsetQuery(subsetKey);
+        const subsetQuery = entity.getSubsetQuery(subsetKey);
         r[subsetKey] = subsetQuery;
         return r;
       },
@@ -201,17 +236,17 @@ z.object({
       ...subsetKeys
         .map((subsetKey) => {
           // 서브셋에서 FieldExpr[] 가져옴
-          const fieldExprs = smd.subsets[subsetKey];
+          const fieldExprs = entity.subsets[subsetKey];
 
-          // FieldExpr[]로 MDPropNode[] 가져옴
-          const propNodes = smd.fieldExprsToPropNodes(fieldExprs);
-          const schemaName = `${smd.names.module}Subset${subsetKey}`;
-          const propNode: SMDPropNode = {
+          // FieldExpr[]로 EntityPropNode[] 가져옴
+          const propNodes = entity.fieldExprsToPropNodes(fieldExprs);
+          const schemaName = `${entity.names.module}Subset${subsetKey}`;
+          const propNode: EntityPropNode = {
             nodeType: "object",
             children: propNodes,
           };
 
-          // MDPropNode[]로 ZodTypeDef(string)을 가져옴
+          // EntityPropNode[]로 ZodTypeDef(string)을 가져옴
           const body = propNodeToZodTypeDef(propNode, importKeys);
 
           return [
@@ -222,20 +257,21 @@ z.object({
         })
         .flat(),
       "",
-      `export type ${smd.names.module}SubsetMapping = {`,
+      `export type ${entity.names.module}SubsetMapping = {`,
       ...subsetKeys.map(
-        (subsetKey) => `  ${subsetKey}: ${smd.names.module}Subset${subsetKey};`
+        (subsetKey) =>
+          `  ${subsetKey}: ${entity.names.module}Subset${subsetKey};`
       ),
       "}",
-      `export const ${smd.names.module}SubsetKey = z.enum([${subsetKeys
+      `export const ${entity.names.module}SubsetKey = z.enum([${subsetKeys
         .map((k) => `"${k}"`)
         .join(",")}]);`,
-      `export type ${smd.names.module}SubsetKey = z.infer<typeof ${smd.names.module}SubsetKey>`,
+      `export type ${entity.names.module}SubsetKey = z.infer<typeof ${entity.names.module}SubsetKey>`,
       "",
       "/* BEGIN- Server-side Only */",
       `import { SubsetQuery } from "sonamu";`,
-      `export const ${camelize(smd.id, true)}SubsetQueries:{ [key in ${
-        smd.names.module
+      `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
+        entity.names.module
       }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
       "",
     ];

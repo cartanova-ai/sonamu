@@ -5,7 +5,7 @@ import { ZodError } from "zod";
 import { getZodObjectFromApi } from "./code-converters";
 import { Context } from "./context";
 import { BadRequestException } from "../exceptions/so-exceptions";
-import { SMDManager } from "../smd/smd-manager";
+import { EntityManager } from "../entity/entity-manager";
 import { fastifyCaster } from "./caster";
 import { ApiParam, ApiParamType } from "../types/types";
 import { Syncer } from "../syncer/syncer";
@@ -117,13 +117,13 @@ class SonamuClass {
     this.dbConfig = await DB.readKnexfile();
     !doSilent && console.log(chalk.green("DB Config Loaded!"));
 
-    // SMD 로드
-    await SMDManager.autoload(doSilent);
+    // Entity 로드
+    await EntityManager.autoload(doSilent);
 
     // Syncer
     this.syncer = new Syncer();
 
-    // Autoload: SMD / Models / Types / APIs
+    // Autoload: Models / Types / APIs
     await this.syncer.autoloadModels();
     await this.syncer.autoloadTypes();
     await this.syncer.autoloadApis();

@@ -1,5 +1,5 @@
 import { RenderingNode, TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 import { Template__view_list } from "./view_list.template";
 
@@ -8,7 +8,7 @@ export class Template__model extends Template {
     super("model");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.model.ts`,
@@ -16,12 +16,12 @@ export class Template__model extends Template {
   }
 
   render(
-    { smdId }: TemplateOptions["model"],
+    { entityId }: TemplateOptions["model"],
     _columnsNode: RenderingNode,
     listParamsNode: RenderingNode
   ) {
-    const names = SMDManager.getNamesFromId(smdId);
-    const smd = SMDManager.get(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
+    const entity = EntityManager.get(entityId);
 
     const vlTpl = new Template__view_list();
     const def = vlTpl.getDefault(listParamsNode.children!);
@@ -31,23 +31,23 @@ export class Template__model extends Template {
       body: `
 import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from 'sonamu';
 import {
-  ${smdId}SubsetKey,
-  ${smdId}SubsetMapping,
+  ${entityId}SubsetKey,
+  ${entityId}SubsetMapping,
   ${names.camel}SubsetQueries,
 } from "./${names.fs}.generated";
-import { ${smdId}ListParams, ${smdId}SaveParams } from "./${names.fs}.types";
+import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
 
 /*
-  ${smdId} Model
+  ${entityId} Model
 */
-class ${smdId}ModelClass extends BaseModelClass {
-  modelName = "${smdId}";
+class ${entityId}ModelClass extends BaseModelClass {
+  modelName = "${entityId}";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${smdId}" })
-  async findById<T extends ${smdId}SubsetKey>(
+  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${entityId}" })
+  async findById<T extends ${entityId}SubsetKey>(
     subset: T,
     id: number
-  ): Promise<${smdId}SubsetMapping[T]> {
+  ): Promise<${entityId}SubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -60,10 +60,10 @@ class ${smdId}ModelClass extends BaseModelClass {
     return rows[0];
   }
 
-  async findOne<T extends ${smdId}SubsetKey>(
+  async findOne<T extends ${entityId}SubsetKey>(
     subset: T,
-    listParams: ${smdId}ListParams
-  ): Promise<${smdId}SubsetMapping[T] | null> {
+    listParams: ${entityId}ListParams
+  ): Promise<${entityId}SubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
       num: 1,
@@ -74,10 +74,10 @@ class ${smdId}ModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${names.capitalPlural}" })
-  async findMany<T extends ${smdId}SubsetKey>(
+  async findMany<T extends ${entityId}SubsetKey>(
     subset: T,
-    params: ${smdId}ListParams = {}
-  ): Promise<ListResult<${smdId}SubsetMapping[T]>> {
+    params: ${entityId}ListParams = {}
+  ): Promise<ListResult<${entityId}SubsetMapping[T]>> {
     // params with defaults
     params = {
       num: 24,
@@ -95,15 +95,15 @@ class ${smdId}ModelClass extends BaseModelClass {
       build: ({ qb }) => {
         // id
         if (params.id) {
-          qb.whereIn("${smd.table}.id", asArray(params.id));
+          qb.whereIn("${entity.table}.id", asArray(params.id));
         }
 
         // search-keyword
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
-            qb.where("${smd.table}.id", params.keyword);
+            qb.where("${entity.table}.id", params.keyword);
           // } else if (params.search === "field") {
-          //   qb.where("${smd.table}.field", "like", \`%\${params.keyword}%\`);
+          //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
           } else {
             throw new BadRequestException(
               \`구현되지 않은 검색 필드 \${params.search}\`
@@ -115,7 +115,7 @@ class ${smdId}ModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("${smd.table}." + orderByField, orderByDirec);
+          qb.orderBy("${entity.table}." + orderByField, orderByDirec);
         }
 
         return qb;
@@ -131,19 +131,19 @@ class ${smdId}ModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(
-    saveParamsArray: ${smdId}SaveParams[]
+    saveParamsArray: ${entityId}SaveParams[]
   ): Promise<number[]> {
     const wdb = this.getDB("w");
     const ub = this.getUpsertBuilder();
 
     // register
     saveParamsArray.map((saveParams) => {
-      ub.register("${smd.table}", saveParams);
+      ub.register("${entity.table}", saveParams);
     });
 
     // transaction
     return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "${smd.table}");
+      const ids = await ub.upsert(trx, "${entity.table}");
 
       return ids;
     });
@@ -155,14 +155,14 @@ class ${smdId}ModelClass extends BaseModelClass {
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("${smd.table}").whereIn("${smd.table}.id", ids).delete();
+      return trx("${entity.table}").whereIn("${entity.table}.id", ids).delete();
     });
 
     return ids.length;
   }
 }
 
-export const ${smdId}Model = new ${smdId}ModelClass();
+export const ${entityId}Model = new ${entityId}ModelClass();
       `.trim(),
       importKeys: [],
     };

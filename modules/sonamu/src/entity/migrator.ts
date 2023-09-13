@@ -51,8 +51,8 @@ import {
   RelationOn,
 } from "../types/types";
 import { propIf } from "../utils/lodash-able";
-import { SMDManager } from "./smd-manager";
-import { SMD } from "./smd";
+import { EntityManager } from "./entity-manager";
+import { Entity } from "./entity";
 import { Sonamu } from "../api";
 
 type MigratorMode = "dev" | "deploy";
@@ -390,43 +390,49 @@ export class Migrator {
 
   async compareMigrations(): Promise<GenMigrationCode[]> {
     // MD 순회하여 싱크
-    const smdIds = SMDManager.getAllIds();
+    const entityIds = EntityManager.getAllIds();
 
     // 조인테이블 포함하여 MD에서 MigrationSet 추출
-    const smdSetsWithJoinTable = smdIds
-      .filter((smdId) => {
-        const smd = SMDManager.get(smdId);
-        return smd.props.length > 0;
+    const entitySetsWithJoinTable = entityIds
+      .filter((entityId) => {
+        const entity = EntityManager.get(entityId);
+        return entity.props.length > 0;
       })
-      .map((smdId) => {
-        const smd = SMDManager.get(smdId);
-        return this.getMigrationSetFromMD(smd);
+      .map((entityId) => {
+        const entity = EntityManager.get(entityId);
+        return this.getMigrationSetFromMD(entity);
       });
 
     // 조인테이블만 추출
     const joinTables = uniqBy(
-      smdSetsWithJoinTable.map((smdSet) => smdSet.joinTables).flat(),
+      entitySetsWithJoinTable.map((entitySet) => entitySet.joinTables).flat(),
       (joinTable) => {
         return joinTable.table;
       }
     );
 
     // 조인테이블 포함하여 MigrationSet 배열
-    const smdSets: MigrationSet[] = [...smdSetsWithJoinTable, ...joinTables];
+    const entitySets: MigrationSet[] = [
+      ...entitySetsWithJoinTable,
+      ...joinTables,
+    ];
 
     let codes: GenMigrationCode[] = (
       await Promise.all(
-        smdSets.map(async (smdSet) => {
-          const dbSet = await this.getMigrationSetFromDB(smdSet.table);
+        entitySets.map(async (entitySet) => {
+          const dbSet = await this.getMigrationSetFromDB(entitySet.table);
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
             return [
               this.generateCreateCode_ColumnAndIndexes(
-                smdSet.table,
-                smdSet.columns,
-                smdSet.indexes
+                entitySet.table,
+                entitySet.columns,
+                entitySet.indexes
               ),
-              ...this.generateCreateCode_Foreign(smdSet.table, smdSet.foreigns),
+              ...this.generateCreateCode_Foreign(
+                entitySet.table,
+                entitySet.foreigns
+              ),
             ];
           }
 
@@ -436,20 +442,20 @@ export class Migrator {
           ).map((key) => {
             // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
             if (key === "columnsAndIndexes") {
-              const smdColumns = sortBy(smdSet.columns, (a) => a.name);
+              const entityColumns = sortBy(entitySet.columns, (a) => a.name);
               const dbColumns = sortBy(dbSet.columns, (a) => a.name);
 
               /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
-              const smdCreatedAt = smdSet.columns.find(
+              const entityCreatedAt = entitySet.columns.find(
                 (col) => col.name === "created_at"
               );
               const dbCreatedAt = dbSet.columns.find(
                 (col) => col.name === "created_at"
               );
-              console.debug({ smdCreatedAt, dbCreatedAt });
+              console.debug({ entityCreatedAt, dbCreatedAt });
               */
 
-              const smdIndexes = sortBy(smdSet.indexes, (a) =>
+              const entityIndexes = sortBy(entitySet.indexes, (a) =>
                 [
                   a.type,
                   ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
@@ -462,17 +468,17 @@ export class Migrator {
                 ].join("-")
               );
 
-              const isEqualColumns = equal(smdColumns, dbColumns);
-              const isEqualIndexes = equal(smdIndexes, dbIndexes);
+              const isEqualColumns = equal(entityColumns, dbColumns);
+              const isEqualIndexes = equal(entityIndexes, dbIndexes);
               if (isEqualColumns && isEqualIndexes) {
                 return null;
               } else {
-                // this.showMigrationSet("MD", smdSet);
+                // this.showMigrationSet("MD", entitySet);
                 // this.showMigrationSet("DB", dbSet);
                 return this.generateAlterCode_ColumnAndIndexes(
-                  smdSet.table,
-                  smdColumns,
-                  smdIndexes,
+                  entitySet.table,
+                  entityColumns,
+                  entityIndexes,
                   dbColumns,
                   dbIndexes
                 );
@@ -488,18 +494,18 @@ export class Migrator {
                 };
               };
 
-              const smdForeigns = sortBy(smdSet.foreigns, (a) =>
+              const entityForeigns = sortBy(entitySet.foreigns, (a) =>
                 [a.to, ...a.columns].join("-")
               ).map((f) => replaceNoActionOnMySQL(f));
               const dbForeigns = sortBy(dbSet.foreigns, (a) =>
                 [a.to, ...a.columns].join("-")
               ).map((f) => replaceNoActionOnMySQL(f));
 
-              if (equal(smdForeigns, dbForeigns) === false) {
-                console.dir({ smdForeigns, dbForeigns }, { depth: null });
+              if (equal(entityForeigns, dbForeigns) === false) {
+                console.dir({ entityForeigns, dbForeigns }, { depth: null });
                 return this.generateAlterCode_Foreigns(
-                  smdSet.table,
-                  smdForeigns,
+                  entitySet.table,
+                  entityForeigns,
                   dbForeigns
                 );
               }
@@ -766,8 +772,8 @@ export class Migrator {
   /*
     MD 내용 읽어서 MigrationSetAndJoinTable 추출
   */
-  getMigrationSetFromMD(smd: SMD): MigrationSetAndJoinTable {
-    const migrationSet: MigrationSetAndJoinTable = smd.props.reduce(
+  getMigrationSetFromMD(entity: Entity): MigrationSetAndJoinTable {
+    const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
       (r, prop) => {
         // virtual 필드 제외
         if (isVirtualProp(prop)) {
@@ -818,10 +824,10 @@ export class Migrator {
 
         if (isManyToManyRelationProp(prop)) {
           // ManyToMany 케이스
-          const relMd = SMDManager.get(prop.with);
+          const relMd = EntityManager.get(prop.with);
           const [table1, table2] = prop.joinTable.split("__");
           const join = {
-            from: `${smd.table}.id`,
+            from: `${entity.table}.id`,
             through: {
               from: `${prop.joinTable}.${singularize(table1)}_id`,
               to: `${prop.joinTable}.${singularize(table2)}_id`,
@@ -840,7 +846,7 @@ export class Migrator {
                 columns: ["uuid"],
               },
               // 조인 테이블에 걸린 인덱스 찾아와서 연결
-              ...smd.indexes
+              ...entity.indexes
                 .filter((index) =>
                   index.columns.find((col) =>
                     col.includes(prop.joinTable + ".")
@@ -907,7 +913,7 @@ export class Migrator {
         return r;
       },
       {
-        table: smd.table,
+        table: entity.table,
         columns: [] as MigrationColumn[],
         indexes: [] as MigrationIndex[],
         foreigns: [] as MigrationForeign[],
@@ -916,7 +922,7 @@ export class Migrator {
     );
 
     // indexes
-    migrationSet.indexes = smd.indexes.filter((index) =>
+    migrationSet.indexes = entity.indexes.filter((index) =>
       index.columns.find((col) => col.includes(".") === false)
     );
 
@@ -1183,8 +1189,8 @@ export class Migrator {
 
   generateAlterCode_ColumnAndIndexes(
     table: string,
-    smdColumns: MigrationColumn[],
-    smdIndexes: MigrationIndex[],
+    entityColumns: MigrationColumn[],
+    entityIndexes: MigrationIndex[],
     dbColumns: MigrationColumn[],
     dbIndexes: MigrationIndex[]
   ): GenMigrationCode[] {
@@ -1201,16 +1207,16 @@ export class Migrator {
     */
 
     // 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
-    const alterColumnsTo = this.getAlterColumnsTo(smdColumns, dbColumns);
+    const alterColumnsTo = this.getAlterColumnsTo(entityColumns, dbColumns);
 
     // 추출된 컬럼들을 기준으로 각각 라인 생성
     const alterColumnLinesTo = this.getAlterColumnLinesTo(
       alterColumnsTo,
-      smdColumns
+      entityColumns
     );
 
     // 인덱스의 add, drop 여부 확인
-    const alterIndexesTo = this.getAlterIndexesTo(smdIndexes, dbIndexes);
+    const alterIndexesTo = this.getAlterIndexesTo(entityIndexes, dbIndexes);
 
     // 추출된 인덱스들을 기준으로 각각 라인 생성
     const alterIndexLinesTo = this.getAlterIndexLinesTo(
@@ -1275,7 +1281,7 @@ export class Migrator {
   }
 
   getAlterColumnsTo(
-    smdColumns: MigrationColumn[],
+    entityColumns: MigrationColumn[],
     dbColumns: MigrationColumn[]
   ) {
     const columnsTo = {
@@ -1286,11 +1292,11 @@ export class Migrator {
 
     // 컬럼명 기준 비교
     const extraColumns = {
-      db: differenceBy(dbColumns, smdColumns, (col) => col.name),
-      smd: differenceBy(smdColumns, dbColumns, (col) => col.name),
+      db: differenceBy(dbColumns, entityColumns, (col) => col.name),
+      entity: differenceBy(entityColumns, dbColumns, (col) => col.name),
     };
-    if (extraColumns.smd.length > 0) {
-      columnsTo.add = columnsTo.add.concat(extraColumns.smd);
+    if (extraColumns.entity.length > 0) {
+      columnsTo.add = columnsTo.add.concat(extraColumns.entity);
     }
     if (extraColumns.db.length > 0) {
       columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
@@ -1299,11 +1305,11 @@ export class Migrator {
     // 동일 컬럼명의 세부 필드 비교
     const sameDbColumns = intersectionBy(
       dbColumns,
-      smdColumns,
+      entityColumns,
       (col) => col.name
     );
     const sameMdColumns = intersectionBy(
-      smdColumns,
+      entityColumns,
       dbColumns,
       (col) => col.name
     );
@@ -1316,7 +1322,7 @@ export class Migrator {
 
   getAlterColumnLinesTo(
     columnsTo: ReturnType<Migrator["getAlterColumnsTo"]>,
-    smdColumns: MigrationColumn[]
+    entityColumns: MigrationColumn[]
   ) {
     let linesTo = {
       add: {
@@ -1356,19 +1362,21 @@ export class Migrator {
     };
     linesTo.alter = columnsTo.alter.reduce(
       (r, dbColumn) => {
-        const smdColumn = smdColumns.find((col) => col.name == dbColumn.name);
-        if (smdColumn === undefined) {
+        const entityColumn = entityColumns.find(
+          (col) => col.name == dbColumn.name
+        );
+        if (entityColumn === undefined) {
           return r;
         }
 
         // 컬럼 변경사항
         const columnDiffUp = difference(
-          this.genColumnDefinitions([smdColumn]),
+          this.genColumnDefinitions([entityColumn]),
           this.genColumnDefinitions([dbColumn])
         );
         const columnDiffDown = difference(
           this.genColumnDefinitions([dbColumn]),
-          this.genColumnDefinitions([smdColumn])
+          this.genColumnDefinitions([entityColumn])
         );
         if (columnDiffUp.length > 0) {
           r.up = [
@@ -1394,22 +1402,25 @@ export class Migrator {
     return linesTo;
   }
 
-  getAlterIndexesTo(smdIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
+  getAlterIndexesTo(
+    entityIndexes: MigrationIndex[],
+    dbIndexes: MigrationIndex[]
+  ) {
     // 인덱스 비교
     let indexesTo = {
       add: [] as MigrationIndex[],
       drop: [] as MigrationIndex[],
     };
     const extraIndexes = {
-      db: differenceBy(dbIndexes, smdIndexes, (col) =>
+      db: differenceBy(dbIndexes, entityIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//")
       ),
-      smd: differenceBy(smdIndexes, dbIndexes, (col) =>
+      entity: differenceBy(entityIndexes, dbIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//")
       ),
     };
-    if (extraIndexes.smd.length > 0) {
-      indexesTo.add = indexesTo.add.concat(extraIndexes.smd);
+    if (extraIndexes.entity.length > 0) {
+      indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
     }
     if (extraIndexes.db.length > 0) {
       indexesTo.drop = indexesTo.drop.concat(extraIndexes.db);
@@ -1481,27 +1492,27 @@ export class Migrator {
 
   generateAlterCode_Foreigns(
     table: string,
-    smdForeigns: MigrationForeign[],
+    entityForeigns: MigrationForeign[],
     dbForeigns: MigrationForeign[]
   ): GenMigrationCode[] {
-    // console.log({ smdForeigns, dbForeigns });
+    // console.log({ entityForeigns, dbForeigns });
 
     const getKey = (mf: MigrationForeign): string => {
       return [mf.columns.join("-"), mf.to].join("///");
     };
-    const fkTo = smdForeigns.reduce(
-      (result, smdF) => {
+    const fkTo = entityForeigns.reduce(
+      (result, entityF) => {
         const matchingDbF = dbForeigns.find(
-          (dbF) => getKey(smdF) === getKey(dbF)
+          (dbF) => getKey(entityF) === getKey(dbF)
         );
         if (!matchingDbF) {
-          result.add.push(smdF);
+          result.add.push(entityF);
           return result;
         }
 
-        if (equal(smdF, matchingDbF) === false) {
+        if (equal(entityF, matchingDbF) === false) {
           result.alterSrc.push(matchingDbF);
-          result.alterDst.push(smdF);
+          result.alterDst.push(entityF);
           return result;
         }
         return result;

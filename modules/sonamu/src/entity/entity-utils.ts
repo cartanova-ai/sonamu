@@ -15,7 +15,7 @@ import {
   JsonProp,
   ManyToManyRelationProp,
   OneToOneRelationProp,
-  SMDIndex,
+  EntityIndex,
   StringProp,
   TextProp,
   TimeProp,
@@ -273,14 +273,14 @@ export const i = {
   unique,
 };
 
-function index(columns: string | string[]): SMDIndex {
+function index(columns: string | string[]): EntityIndex {
   return {
     type: "index",
     columns: asArray(columns),
   };
 }
 
-function unique(columns: string | string[]): SMDIndex {
+function unique(columns: string | string[]): EntityIndex {
   return {
     type: "unique",
     columns: asArray(columns),

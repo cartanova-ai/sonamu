@@ -2,7 +2,7 @@ import { camelize, underscore } from "inflection";
 import { flattenDeep, uniq } from "lodash";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp, RelationProp } from "../types/types";
 import { RenderedTemplate } from "../syncer/syncer";
 import { Template } from "./base-template";
@@ -11,7 +11,7 @@ export class Template__view_list extends Template {
     super("view_list");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "web/src/pages/admin",
       path: `${names.fsPlural}/index.tsx`,
@@ -30,9 +30,9 @@ export class Template__view_list extends Template {
   }
 
   renderColumn(
-    smdId: string,
+    entityId: string,
     col: RenderingNode,
-    names: SMDNamesRecord,
+    names: EntityNamesRecord,
     parentObj: string = "row",
     withoutName: boolean = false
   ): string {
@@ -45,7 +45,7 @@ export class Template__view_list extends Template {
         return `<>{${colName}}</>`;
       case "number-fk_id":
         const relPropFk = getRelationPropFromColName(
-          smdId,
+          entityId,
           col.name.replace("_id", "")
         );
         return `<>${relPropFk.with}#{${colName}}</>`;
@@ -62,7 +62,10 @@ export class Template__view_list extends Template {
       case "boolean":
         return `<>{${colName} ? <Label color='green' circular>O</Label> : <Label color='grey' circular>X</Label> }</>`;
       case "enums":
-        const { targetMDNames, name } = getEnumInfoFromColName(smdId, col.name);
+        const { targetMDNames, name } = getEnumInfoFromColName(
+          entityId,
+          col.name
+        );
         return `<>{${col.nullable ? `${colName} && ` : ""}${
           targetMDNames.constant
         }.${name}[${colName}].ko}</>`;
@@ -82,14 +85,14 @@ export class Template__view_list extends Template {
           throw new Error(`object-pick 선택 실패 (오브젝트: ${col.name})`);
         }
         return this.renderColumn(
-          smdId,
+          entityId,
           pickedChild,
           names,
           `${colName}${col.nullable ? "?" : ""}`
         );
       case "array":
         const elementTableCell = this.renderColumn(
-          smdId,
+          entityId,
           col.element!,
           names,
           "elem",
@@ -102,9 +105,9 @@ export class Template__view_list extends Template {
   }
 
   renderColumnImport(
-    smdId: string,
+    entityId: string,
     col: RenderingNode,
-    names: SMDNamesRecord
+    names: EntityNamesRecord
   ): (string | null)[] {
     if (col.renderType === "enums") {
       const { modulePath, targetMDNames } = getEnumInfoFromColName(
@@ -116,24 +119,28 @@ export class Template__view_list extends Template {
       ];
     } else if (col.renderType === "object") {
       try {
-        const relProp = getRelationPropFromColName(smdId, col.name);
+        const relProp = getRelationPropFromColName(entityId, col.name);
         const result = col.children!.map((child) => {
-          smdId = relProp.with;
-          names = SMDManager.getNamesFromId(relProp.with);
-          return this.renderColumnImport(smdId, child, names);
+          entityId = relProp.with;
+          names = EntityManager.getNamesFromId(relProp.with);
+          return this.renderColumnImport(entityId, child, names);
         });
         return flattenDeep(result);
       } catch {
         return [null];
       }
     } else if (col.renderType === "array") {
-      return this.renderColumnImport(smdId, col.element!, names);
+      return this.renderColumnImport(entityId, col.element!, names);
     }
 
     return [null];
   }
 
-  renderFilterImport(smdId: string, col: RenderingNode, names: SMDNamesRecord) {
+  renderFilterImport(
+    entityId: string,
+    col: RenderingNode,
+    names: EntityNamesRecord
+  ) {
     if (col.name === "search") {
       return `import { ${names.capital}SearchInput } from "src/components/${names.fs}/${names.capital}SearchInput";`;
     } else if (col.renderType === "enums") {
@@ -142,7 +149,10 @@ export class Template__view_list extends Template {
         return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
       } else {
         try {
-          const { id, targetMDNames } = getEnumInfoFromColName(smdId, col.name);
+          const { id, targetMDNames } = getEnumInfoFromColName(
+            entityId,
+            col.name
+          );
           const componentId = `${id}Select`;
           return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
         } catch {
@@ -152,10 +162,10 @@ export class Template__view_list extends Template {
     } else if (col.renderType === "number-fk_id") {
       try {
         const relProp = getRelationPropFromColName(
-          smdId,
+          entityId,
           col.name.replace("_id", "")
         );
-        const targetNames = SMDManager.getNamesFromId(relProp.with);
+        const targetNames = EntityManager.getNamesFromId(relProp.with);
         const componentId = `${relProp.with}IdAsyncSelect`;
         return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
       } catch {
@@ -168,7 +178,7 @@ export class Template__view_list extends Template {
     }
   }
 
-  renderFilter(smdId: string, col: RenderingNode, names: SMDNamesRecord) {
+  renderFilter(entityId: string, col: RenderingNode, names: EntityNamesRecord) {
     if (col.name === "search") {
       return "";
     }
@@ -180,7 +190,7 @@ export class Template__view_list extends Template {
         componentId = `${names.capital}${camelize(col.name)}Select`;
       } else {
         try {
-          const { id } = getEnumInfoFromColName(smdId, col.name);
+          const { id } = getEnumInfoFromColName(entityId, col.name);
           componentId = `${id}Select`;
         } catch {
           return "";
@@ -192,7 +202,7 @@ export class Template__view_list extends Template {
     } else if (col.renderType === "number-fk_id") {
       try {
         const relProp = getRelationPropFromColName(
-          smdId,
+          entityId,
           col.name.replace("_id", "")
         );
         componentId = `${relProp.with}IdAsyncSelect`;
@@ -231,11 +241,11 @@ export class Template__view_list extends Template {
   }
 
   render(
-    { smdId }: TemplateOptions["view_list"],
+    { entityId }: TemplateOptions["view_list"],
     columnsNode: RenderingNode,
     listParamsNode: RenderingNode
   ) {
-    const names = SMDManager.getNamesFromId(smdId);
+    const names = EntityManager.getNamesFromId(entityId);
 
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
@@ -244,7 +254,7 @@ export class Template__view_list extends Template {
         return {
           name: col.name,
           label: col.label,
-          tc: `(row) => ${this.renderColumn(smdId, col, names)}`,
+          tc: `(row) => ${this.renderColumn(entityId, col, names)}`,
         };
       });
 
@@ -265,7 +275,7 @@ export class Template__view_list extends Template {
     const preTemplates: RenderedTemplate["preTemplates"] = [];
     for (let col of filterColumns) {
       let key: TemplateKey;
-      let targetMdId = smdId;
+      let targetMdId = entityId;
       let enumId: string | undefined;
       let idConstant: string | undefined;
 
@@ -279,7 +289,7 @@ export class Template__view_list extends Template {
           key = "view_enums_select";
           try {
             const { targetMDNames, id, name } = getEnumInfoFromColName(
-              smdId,
+              entityId,
               col.name
             );
             targetMdId = targetMDNames.capital;
@@ -293,7 +303,7 @@ export class Template__view_list extends Template {
         key = "view_id_async_select";
         try {
           const relProp = getRelationPropFromColName(
-            smdId,
+            entityId,
             col.name.replace("_id", "")
           );
           targetMdId = relProp.with;
@@ -305,7 +315,7 @@ export class Template__view_list extends Template {
       preTemplates.push({
         key,
         options: {
-          smdId: targetMdId,
+          entityId: targetMdId,
           enumId,
           idConstant,
         },
@@ -316,7 +326,7 @@ export class Template__view_list extends Template {
     const columnImports = uniq(
       columnsNode
         .children!.map((col) => {
-          return this.renderColumnImport(smdId, col, names);
+          return this.renderColumnImport(entityId, col, names);
         })
         .flat()
         .filter((col) => col !== null)
@@ -326,7 +336,7 @@ export class Template__view_list extends Template {
     preTemplates!.push({
       key: "view_search_input",
       options: {
-        smdId,
+        entityId,
       },
     });
 
@@ -366,7 +376,7 @@ import { ${names.capital}ListParams } from 'src/services/${names.fs}/${
 ${columnImports}
 ${filterColumns
   .map((col) => {
-    return this.renderFilterImport(smdId, col, names);
+    return this.renderFilterImport(entityId, col, names);
   })
   .join("\n")}
 
@@ -454,7 +464,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
         <div className="filters-row">
           ${filterColumns
             .map((col) => {
-              return this.renderFilter(smdId, col, names);
+              return this.renderFilter(entityId, col, names);
             })
             .join("&nbsp;\n")}
         </div>
@@ -563,21 +573,21 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
 }
 
 export function getEnumInfoFromColName(
-  smdId: string,
+  entityId: string,
   colName: string
 ): {
   id: string;
-  targetMDNames: SMDNamesRecord;
+  targetMDNames: EntityNamesRecord;
   targetMDId: string;
   modulePath: string;
   name: string;
 } {
-  const baseMd = SMDManager.get(smdId);
+  const baseMd = EntityManager.get(entityId);
   const prop = baseMd.props.find((p) => p.name === colName);
   if (prop && isEnumProp(prop)) {
-    const modulePath = SMDManager.getModulePath(prop.id);
+    const modulePath = EntityManager.getModulePath(prop.id);
     const targetMDId = camelize(modulePath.split("/")[0].replace("-", "_"));
-    const targetMDNames = SMDManager.getNamesFromId(targetMDId);
+    const targetMDNames = EntityManager.getNamesFromId(targetMDId);
     const name = underscore(
       prop.id.replace(targetMDNames.capital, "")
     ).toUpperCase();
@@ -590,17 +600,17 @@ export function getEnumInfoFromColName(
     };
   } else {
     const idCandidate = camelize(
-      underscore(smdId) + "_" + underscore(colName),
+      underscore(entityId) + "_" + underscore(colName),
       false
     );
     try {
-      const modulePath = SMDManager.getModulePath(idCandidate);
-      const targetMDNames = SMDManager.getNamesFromId(smdId);
+      const modulePath = EntityManager.getModulePath(idCandidate);
+      const targetMDNames = EntityManager.getNamesFromId(entityId);
       const name = underscore(colName).toUpperCase();
       return {
         id: idCandidate,
         name,
-        targetMDId: smdId,
+        targetMDId: entityId,
         targetMDNames,
         modulePath,
       };
@@ -610,10 +620,10 @@ export function getEnumInfoFromColName(
 }
 
 export function getRelationPropFromColName(
-  smdId: string,
+  entityId: string,
   colName: string
 ): RelationProp {
-  const baseMd = SMDManager.get(smdId);
+  const baseMd = EntityManager.get(entityId);
   const relProp = baseMd.props.find((prop) => prop.name === colName);
   if (isRelationProp(relProp)) {
     return relProp;

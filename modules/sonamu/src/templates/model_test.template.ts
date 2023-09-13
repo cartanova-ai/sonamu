@@ -1,5 +1,5 @@
 import { TemplateOptions } from "../types/types";
-import { SMDManager, SMDNamesRecord } from "../smd/smd-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 
 export class Template__model_test extends Template {
@@ -7,15 +7,15 @@ export class Template__model_test extends Template {
     super("model_test");
   }
 
-  getTargetAndPath(names: SMDNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord) {
     return {
       target: "api/src/application",
       path: `${names.fs}/${names.fs}.model.test.ts`,
     };
   }
 
-  render({ smdId }: TemplateOptions["model_test"]) {
-    const names = SMDManager.getNamesFromId(smdId);
+  render({ entityId }: TemplateOptions["model_test"]) {
+    const names = EntityManager.getNamesFromId(entityId);
 
     return {
       ...this.getTargetAndPath(names),
@@ -24,7 +24,7 @@ import { describe, test, expect } from "vitest";
 import { bootstrap } from '../../testing/bootstrap';
 
 bootstrap([]);
-describe.skip("${smdId}ModelTest", () => {
+describe.skip("${entityId}ModelTest", () => {
   test("Query", async () => {
     expect(true).toBe(true);
   });

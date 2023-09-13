@@ -21,8 +21,8 @@ import {
   isTimestampProp,
   isUuidProp,
   isVirtualProp,
-  SMDProp,
-  SMDPropNode,
+  EntityProp,
+  EntityPropNode,
   TextProp,
 } from "../types/types";
 import { ExtendedApi } from "./decorators";
@@ -201,7 +201,7 @@ export function getZodTypeFromApiParamType(
 }
 
 export function propNodeToZodTypeDef(
-  propNode: SMDPropNode,
+  propNode: EntityPropNode,
   injectImportKeys: string[]
 ): string {
   if (propNode.nodeType === "plain") {
@@ -247,7 +247,7 @@ export function getTextTypeLength(textType: TextProp["textType"]): number {
 }
 
 export function propToZodTypeDef(
-  prop: SMDProp,
+  prop: EntityProp,
   injectImportKeys: string[]
 ): string {
   let stmt: string;
