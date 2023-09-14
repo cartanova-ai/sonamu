@@ -97,14 +97,14 @@ export type TimestampProp = CommonProp & {
 };
 export type JsonProp = CommonProp & {
   type: "json";
-  as: { ref: string } | z.ZodTypeAny;
+  id: string;
 };
 export type UuidProp = CommonProp & {
   type: "uuid";
 };
 export type VirtualProp = CommonProp & {
   type: "virtual";
-  as: { ref: string } | z.ZodTypeAny;
+  id: string;
 };
 
 export type RelationType =

@@ -337,7 +337,7 @@ async function smd_migration() {
     const entityJson = {
       id: smd.id,
       ...(smd.parentId ? { parentId: smd.parentId } : {}),
-      name: smd.title,
+      title: smd.title,
       props: smd.props,
       indexes: smd.indexes,
       subsets: smd.subsets,

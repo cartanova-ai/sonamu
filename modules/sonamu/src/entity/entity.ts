@@ -19,7 +19,7 @@ import {
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 
@@ -29,6 +29,7 @@ export class Entity {
   table: string;
   title: string;
   names: {
+    parentFs: string;
     fs: string;
     module: string;
   };
@@ -124,10 +125,8 @@ export class Entity {
 
     // names
     this.names = {
-      fs:
-        parentId === undefined
-          ? dasherize(underscore(id)).toLowerCase()
-          : dasherize(parentId).toLowerCase(),
+      parentFs: dasherize(underscore(parentId ?? id)).toLowerCase(),
+      fs: dasherize(underscore(id)).toLowerCase(),
       module: id,
     };
 
@@ -567,5 +566,30 @@ export class Entity {
       name: this.table,
       uniqueColumns,
     });
+  }
+
+  toJson(): EntityJson {
+    return {
+      id: this.id,
+      parentId: this.parentId,
+      table: this.table,
+      title: this.title,
+      props: this.props,
+      indexes: this.indexes,
+      subsets: this.subsets,
+      enums: this.enumLabels,
+    };
+  }
+
+  async save(): Promise<void> {
+    const jsonPath = path.join(
+      Sonamu.apiRootPath,
+      `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
+    );
+    const json = this.toJson();
+    writeFileSync(jsonPath, JSON.stringify(json));
+
+    // reload
+    await EntityManager.register(json);
   }
 }

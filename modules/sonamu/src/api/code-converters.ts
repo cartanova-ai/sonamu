@@ -277,21 +277,13 @@ export function propToZodTypeDef(
   } else if (isTimestampProp(prop)) {
     stmt = `${prop.name}: SQLDateTimeString`;
   } else if (isJsonProp(prop)) {
-    if (prop.as instanceof z.ZodType) {
-      stmt = `${prop.name}: ${zodTypeToZodCode(prop.as)}`;
-    } else {
-      stmt = `${prop.name}: ${prop.as.ref}`;
-      injectImportKeys.push(prop.as.ref);
-    }
+    stmt = `${prop.name}: ${prop.id}`;
+    injectImportKeys.push(prop.id);
   } else if (isUuidProp(prop)) {
     stmt = `${prop.name}: z.string().uuid()`;
   } else if (isVirtualProp(prop)) {
-    if (prop.as instanceof z.ZodType) {
-      stmt = `${prop.name}: ${zodTypeToZodCode(prop.as)}`;
-    } else {
-      stmt = `${prop.name}: ${prop.as.ref}`;
-      injectImportKeys.push(prop.as.ref);
-    }
+    stmt = `${prop.name}: ${prop.id}`;
+    injectImportKeys.push(prop.id);
   } else if (isRelationProp(prop)) {
     if (
       isBelongsToOneRelationProp(prop) ||

@@ -25,26 +25,40 @@
   },
   "dependencies": {
     "@fastify/static": "^6.10.2",
+    "@sonamu-kit/react-sui": "^0.0.12",
     "@vitejs/plugin-react": "^4.0.3",
+    "axios": "^1.5.0",
+    "classnames": "^2.3.2",
     "fastify": "^4.21.0",
+    "jotai": "^2.4.2",
+    "lodash": "^4.17.21",
+    "qs": "^6.11.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "6.3.0",
     "sass": "^1.65.1",
+    "semantic-ui-css": "^2.5.0",
+    "semantic-ui-react": "^2.1.4",
     "sonamu": "^0.0.41",
-    "vite": "^4.4.5"
+    "swr": "^2.2.2",
+    "vite": "^4.4.5",
+    "zod": "^3.22.2"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^5.0.0",
     "@rollup/plugin-commonjs": "^25.0.4",
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.1.0",
+    "@types/lodash": "^4.14.198",
     "@types/node": "^20.5.0",
+    "@types/qs": "^6.9.8",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "dotenv": "^16.3.1",
     "esbuild": "^0.19.2",
     "npm-run-all": "^4.1.5",
     "prettier": "2.7.1",
+    "prop-types": "^15.8.1",
     "rimraf": "^5.0.1",
     "rollup": "^3.28.0",
     "rollup-plugin-dts": "^5.3.1",
@@ -56,5 +70,8 @@
   "peerDependencies": {
     "sonamu": "*"
   },
-  "packageManager": "yarn@3.6.1"
+  "packageManager": "yarn@3.6.1",
+  "resolutions": {
+    "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
+  }
 }

@@ -1,5 +1,5 @@
 import fastify from "fastify";
-import { Sonamu } from "sonamu";
+import { Sonamu, EntityManager, EntityProp } from "sonamu";
 
 export async function createApiServer(options: {
   listen: {
@@ -17,13 +17,50 @@ export async function createApiServer(options: {
   });
 
   server.get("/api/t1", async () => {
+    const entityIds = EntityManager.getAllIds();
     const { apiRootPath, isInitialized } = Sonamu;
     return {
-      appRoot,
       apiRootPath,
-      __dirname,
-      isInitialized,
+      entityIds,
     };
+  });
+
+  server.get("/api/entity/findMany", async () => {
+    const entityIds = EntityManager.getAllIds();
+    const entities = await Promise.all(
+      entityIds.map((entityId) => EntityManager.get(entityId))
+    );
+    return { entities };
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      subsetKey: string;
+      fields: string[];
+    };
+  }>("/api/entity/modifySubset", async (request) => {
+    const { entityId, subsetKey, fields } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.subsets[subsetKey] = fields;
+    await entity.save();
+
+    return { updated: fields };
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      props: EntityProp[];
+    };
+  }>("/api/entity/modifyProps", async (request) => {
+    const { entityId, props } = request.body;
+    const entity = EntityManager.get(entityId);
+    console.log(entityId);
+    entity.props = props;
+    await entity.save();
+
+    return { updated: props };
   });
 
   server.get("/api/all_routes", async () => {
