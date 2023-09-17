@@ -24,6 +24,35 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   const params = useParams<{ entityId: string }>();
   const entity =
     entities?.find((entity) => entity.id === params.entityId) ?? null;
+  const enumLabelsArray: {
+    [enumId: string]: { key: string; label: string }[];
+  } = useMemo(() => {
+    if (!entity) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(entity.enumLabels).map(([enumId, enumLabels]) => [
+        enumId,
+        Object.entries(enumLabels).map(([key, label]) => ({
+          key,
+          label,
+        })),
+      ])
+    );
+  }, [entity]);
+  const enumLabelsArrayToEnumLabels = (enumLabelsArray: {
+    [enumId: string]: { key: string; label: string }[];
+  }) => {
+    if (!entity) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
+        enumId,
+        Object.fromEntries(enumLabels.map(({ key, label }) => [key, label])),
+      ])
+    );
+  };
 
   // commonModal
   const { openModal } = useCommonModal();
@@ -321,11 +350,11 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       return;
     }
 
-    cursorY ??= Object.keys(entity.enumLabels[enumId]).length - 1;
-    entity.enumLabels[enumId] = {
-      ...entity.enumLabels[enumId],
-      "": "",
-    };
+    cursorY ??= Object.keys(enumLabelsArray[enumId]).length - 1;
+    enumLabelsArray[enumId].push({
+      key: "",
+      label: "",
+    });
     setCursor({
       sheet: `enumLabels-${enumId}`,
       y: cursorY + 1,
@@ -354,7 +383,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
               return 0;
             }
             return Math.min(
-              Object.keys(entity.enumLabels[enumId]).length - 1,
+              Object.keys(enumLabelsArray[enumId]).length - 1,
               cursor.y + amount
             );
           }
@@ -486,18 +515,17 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
               if (!enumId) {
                 return;
               }
-              const enumLabels = entity.enumLabels[enumId];
-              const keys = Object.keys(enumLabels);
-              const key = keys[cursor.y];
-              if (key) {
-                delete enumLabels[key];
-                SonamuUIService.modifyEnumLabels(entity.id, entity.enumLabels)
-                  .then(({ updated }) => {
-                    entity.enumLabels = updated;
-                    mutate();
-                  })
-                  .catch(defaultCatch);
-              }
+              const enumLabels = enumLabelsArray[enumId];
+              enumLabels.splice(cursor.y, 1);
+              SonamuUIService.modifyEnumLabels(
+                entity.id,
+                enumLabelsArrayToEnumLabels(enumLabelsArray)
+              )
+                .then(({ updated }) => {
+                  entity.enumLabels = updated;
+                  mutate();
+                })
+                .catch(defaultCatch);
             }
           }
           e.preventDefault();
@@ -714,11 +742,11 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
               </Table>
             </div>
           </div>
-          {entity && Object.keys(entity.enumLabels).length > 0 && (
+          {entity && Object.keys(enumLabelsArray).length > 0 && (
             <div className="enums">
               <h3>Enums</h3>
               <div className="enums-list">
-                {Object.keys(entity.enumLabels).map((enumId, enumsIndex) => (
+                {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
                   <div className="enums-table" key={enumsIndex}>
                     <Table celled>
                       <Table.Header>
@@ -729,8 +757,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         </Table.Row>
                       </Table.Header>
                       <Table.Body>
-                        {Object.entries(entity.enumLabels[enumId]).map(
-                          ([key, value], enumLabelIndex) => (
+                        {enumLabelsArray[enumId].map(
+                          ({ key, label }, enumLabelIndex) => (
                             <Table.Row
                               key={enumLabelIndex}
                               className={classNames({
@@ -767,19 +795,27 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                     `enumLabels-${enumId}/${enumLabelIndex}/0`
                                   }
                                   initialValue={key}
-                                  onChange={(value) => {
+                                  onChange={(newValue) => {
                                     setFocusedCursor(null);
-                                    if (value !== key) {
-                                      // 키 변경
-                                      const newEnumLabels = {
-                                        ...entity.enumLabels,
-                                        [enumId]: {
-                                          ...entity.enumLabels[enumId],
-                                          [value]: "",
-                                        },
-                                      };
-                                      delete newEnumLabels[enumId][key];
-                                      entity.enumLabels = newEnumLabels;
+                                    if (newValue !== key) {
+                                      enumLabelsArray[enumId] = enumLabelsArray[
+                                        enumId
+                                      ].map((item, index) => {
+                                        return index === enumLabelIndex
+                                          ? { key: newValue, label: item.label }
+                                          : item;
+                                      });
+                                      SonamuUIService.modifyEnumLabels(
+                                        entity.id,
+                                        enumLabelsArrayToEnumLabels(
+                                          enumLabelsArray
+                                        )
+                                      )
+                                        .then(({ updated }) => {
+                                          entity.enumLabels = updated;
+                                          mutate();
+                                        })
+                                        .catch(defaultCatch);
 
                                       setCursor({
                                         sheet: `enumLabels-${enumId}`,
@@ -819,16 +855,24 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                     focusedCursor ===
                                     `enumLabels-${enumId}/${enumLabelIndex}/1`
                                   }
-                                  initialValue={value}
+                                  initialValue={label}
                                   onChange={(newValue) => {
                                     setFocusedCursor(null);
-                                    if (newValue !== value) {
+                                    if (newValue !== label) {
                                       // 값 변경
-                                      entity.enumLabels[enumId][key] = newValue;
+                                      enumLabelsArray[enumId] = enumLabelsArray[
+                                        enumId
+                                      ].map((item, index) => {
+                                        return index === enumLabelIndex
+                                          ? { key, label: newValue }
+                                          : item;
+                                      });
 
                                       SonamuUIService.modifyEnumLabels(
                                         entity.id,
-                                        entity.enumLabels
+                                        enumLabelsArrayToEnumLabels(
+                                          enumLabelsArray
+                                        )
                                       )
                                         .then(({ updated }) => {
                                           entity.enumLabels = updated;
