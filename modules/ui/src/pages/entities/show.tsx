@@ -9,7 +9,6 @@ import { EntityPropForm } from "./_prop_form";
 import { EntityIndexForm } from "./_index_form";
 import { EditableInput } from "../../components/EditableInput";
 import { useSheetTable } from "../../components/useSheetTable";
-import { divide } from "lodash";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -82,11 +81,11 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           ]
         : []),
     ],
-    onExecute: (sheet, y, _x) => {
+    onExecute: (sheet, y, x) => {
       if (sheet === "props") {
-        openPropForm("modify", y);
+        openPropForm("modify", y, x);
       } else if (sheet === "indexes") {
-        openIndexForm("modify", y);
+        openIndexForm("modify", y, x);
       }
     },
     onKeywordChanged: (sheet, keyword) => {
@@ -131,7 +130,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         case "N":
           if (e.ctrlKey && e.metaKey && e.shiftKey) {
             if (cursor.sheet === "props") {
-              openPropForm("add", cursor.y);
+              openPropForm("add", cursor.y, 2);
             } else if (cursor.sheet === "indexes") {
               openIndexForm("add", cursor.y);
             } else if (cursor.sheet.includes("enumLabels")) {
@@ -283,7 +282,11 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     });
   }, [params.entityId]);
 
-  const openPropForm = (mode: "add" | "modify", at?: number) => {
+  const openPropForm = (
+    mode: "add" | "modify",
+    at?: number,
+    focusIndex?: number
+  ) => {
     if (!entity) {
       return;
     }
@@ -297,9 +300,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
         // focus
         const focusInput = document.querySelector(
-          `.entity-prop-form ${
-            mode === "add" ? ".type-dropdown" : ".desc-input"
-          } input`
+          `.entity-prop-form .focus-${focusIndex} input`
         );
         if (focusInput) {
           (focusInput as HTMLInputElement).focus();
@@ -366,7 +367,11 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
-  const openIndexForm = (mode: "add" | "modify", at?: number) => {
+  const openIndexForm = (
+    mode: "add" | "modify",
+    at?: number,
+    focusIndex: number = 0
+  ) => {
     if (!entity) {
       return;
     }
@@ -380,9 +385,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
         // focus
         const focusInput = document.querySelector(
-          `.entity-index-form .type-dropdown input`
+          `.entity-index-form .focus-${focusIndex} input`
         );
-        console.log(focusInput);
         if (focusInput) {
           (focusInput as HTMLInputElement).focus();
         }
@@ -574,7 +578,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         content="Add a prop"
                         icon="plus"
                         size="mini"
-                        onClick={() => openPropForm("add")}
+                        onClick={() => openPropForm("add", undefined, 2)}
                       />
                     </Table.Cell>
                   </Table.Row>
@@ -616,7 +620,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         content="Add a index"
                         icon="plus"
                         size="mini"
-                        onClick={() => openIndexForm("add")}
+                        onClick={() => openIndexForm("add", undefined, 0)}
                       />
                     </Table.Cell>
                   </Table.Row>
@@ -624,238 +628,245 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
               </Table>
             </div>
           </div>
-          {entity && Object.keys(enumLabelsArray).length > 0 && (
-            <div className="enums">
-              <h3>Enums</h3>
-              <div className="enums-list">
-                {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
-                  <div className="enums-table" key={enumsIndex}>
-                    <Table celled selectable>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.HeaderCell colSpan={2}>
-                            {enumId}
-                          </Table.HeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {enumLabelsArray[enumId].map(
-                          ({ key, label }, enumLabelIndex) => (
-                            <Table.Row
-                              key={enumLabelIndex}
-                              {...regRow(
-                                `enumLabels-${enumId}`,
-                                enumLabelIndex
-                              )}
-                            >
-                              <Table.Cell
-                                collapsing
-                                {...regCell(
+          <div className="enums-and-subsets">
+            {entity && Object.keys(enumLabelsArray).length > 0 && (
+              <div className="enums">
+                <h3>Enums</h3>
+                <div className="enums-list">
+                  {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
+                    <div className="enums-table" key={enumsIndex}>
+                      <Table celled selectable>
+                        <Table.Header>
+                          <Table.Row>
+                            <Table.HeaderCell colSpan={2}>
+                              {enumId}
+                            </Table.HeaderCell>
+                          </Table.Row>
+                        </Table.Header>
+                        <Table.Body>
+                          {enumLabelsArray[enumId].map(
+                            ({ key, label }, enumLabelIndex) => (
+                              <Table.Row
+                                key={enumLabelIndex}
+                                {...regRow(
                                   `enumLabels-${enumId}`,
-                                  enumLabelIndex,
-                                  0
+                                  enumLabelIndex
                                 )}
                               >
-                                <EditableInput
-                                  editable={
-                                    !!focusedCursor &&
-                                    focusedCursor.sheet ===
-                                      `enumLabels-${enumId}` &&
-                                    focusedCursor.y === enumLabelIndex &&
-                                    focusedCursor.x === 0
-                                  }
-                                  initialValue={key}
-                                  onChange={(newValue) => {
-                                    setFocusedCursor(null);
-                                    if (newValue !== key) {
-                                      enumLabelsArray[enumId] = enumLabelsArray[
-                                        enumId
-                                      ].map((item, index) => {
-                                        return index === enumLabelIndex
-                                          ? { key: newValue, label: item.label }
-                                          : item;
-                                      });
-                                      SonamuUIService.modifyEnumLabels(
-                                        entity.id,
-                                        enumLabelsArrayToEnumLabels(
-                                          enumLabelsArray
-                                        )
-                                      )
-                                        .then(({ updated }) => {
-                                          entity.enumLabels = updated;
-                                          mutate();
-                                        })
-                                        .catch(defaultCatch);
-
-                                      setFocusedCursor({
-                                        sheet: `enumLabels-${enumId}`,
-                                        y: enumLabelIndex,
-                                        x: 1,
-                                      });
+                                <Table.Cell
+                                  {...regCell(
+                                    `enumLabels-${enumId}`,
+                                    enumLabelIndex,
+                                    0
+                                  )}
+                                  collapsing
+                                >
+                                  <EditableInput
+                                    editable={
+                                      !!focusedCursor &&
+                                      focusedCursor.sheet ===
+                                        `enumLabels-${enumId}` &&
+                                      focusedCursor.y === enumLabelIndex &&
+                                      focusedCursor.x === 0
                                     }
-                                  }}
-                                />
-                              </Table.Cell>
-                              <Table.Cell
-                                {...regCell(
-                                  `enumLabels-${enumId}`,
-                                  enumLabelIndex,
-                                  1
-                                )}
-                              >
-                                <EditableInput
-                                  editable={
-                                    !!focusedCursor &&
-                                    focusedCursor.sheet ===
-                                      `enumLabels-${enumId}` &&
-                                    focusedCursor.y === enumLabelIndex &&
-                                    focusedCursor.x === 1
-                                  }
-                                  initialValue={label}
-                                  onChange={(newValue) => {
-                                    setFocusedCursor(null);
-                                    if (newValue !== label) {
-                                      // 값 변경
-                                      enumLabelsArray[enumId] = enumLabelsArray[
-                                        enumId
-                                      ].map((item, index) => {
-                                        return index === enumLabelIndex
-                                          ? { key, label: newValue }
-                                          : item;
-                                      });
-
-                                      SonamuUIService.modifyEnumLabels(
-                                        entity.id,
-                                        enumLabelsArrayToEnumLabels(
-                                          enumLabelsArray
+                                    initialValue={key}
+                                    onChange={(newValue) => {
+                                      setFocusedCursor(null);
+                                      if (newValue !== key) {
+                                        enumLabelsArray[enumId] =
+                                          enumLabelsArray[enumId].map(
+                                            (item, index) => {
+                                              return index === enumLabelIndex
+                                                ? {
+                                                    key: newValue,
+                                                    label: item.label,
+                                                  }
+                                                : item;
+                                            }
+                                          );
+                                        SonamuUIService.modifyEnumLabels(
+                                          entity.id,
+                                          enumLabelsArrayToEnumLabels(
+                                            enumLabelsArray
+                                          )
                                         )
-                                      )
-                                        .then(({ updated }) => {
-                                          entity.enumLabels = updated;
-                                          mutate();
-                                        })
-                                        .catch(defaultCatch);
+                                          .then(({ updated }) => {
+                                            entity.enumLabels = updated;
+                                            mutate();
+                                          })
+                                          .catch(defaultCatch);
+
+                                        setFocusedCursor({
+                                          sheet: `enumLabels-${enumId}`,
+                                          y: enumLabelIndex,
+                                          x: 1,
+                                        });
+                                      }
+                                    }}
+                                  />
+                                </Table.Cell>
+                                <Table.Cell
+                                  {...regCell(
+                                    `enumLabels-${enumId}`,
+                                    enumLabelIndex,
+                                    1
+                                  )}
+                                >
+                                  <EditableInput
+                                    editable={
+                                      !!focusedCursor &&
+                                      focusedCursor.sheet ===
+                                        `enumLabels-${enumId}` &&
+                                      focusedCursor.y === enumLabelIndex &&
+                                      focusedCursor.x === 1
                                     }
-                                  }}
-                                />
-                              </Table.Cell>
-                            </Table.Row>
-                          )
-                        )}
-                        <Table.Row>
-                          <Table.Cell colSpan={2}>
-                            <Button
-                              size="mini"
-                              color="green"
-                              icon="plus"
-                              className="btn-add-enum-label"
-                              onClick={() => addEnumLabelRow(enumId)}
-                            />
-                          </Table.Cell>
-                        </Table.Row>
-                      </Table.Body>
-                    </Table>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {entity && Object.keys(entity.subsets).length > 0 && (
-            <div className="subsets">
-              <h3>
-                Subsets{" "}
-                <Button
-                  size="mini"
-                  icon="plus"
-                  color="blue"
-                  onClick={() => addSubsetKey()}
-                />
-              </h3>
-              {entity && entity.flattenSubsetRows.length > 0 && (
-                <Table celled selectable>
-                  <Table.Header>
-                    <Table.Row>
-                      <Table.HeaderCell>Field</Table.HeaderCell>
-                      {Object.keys(entity.subsets).map((subsetKey) => (
-                        <Table.HeaderCell key={subsetKey}>
-                          {subsetKey}{" "}
-                          {subsetKey !== "A" && (
-                            <Button
-                              icon="trash"
-                              size="mini"
-                              onClick={() => delSubset(subsetKey)}
-                            />
+                                    initialValue={label}
+                                    onChange={(newValue) => {
+                                      setFocusedCursor(null);
+                                      if (newValue !== label) {
+                                        // 값 변경
+                                        enumLabelsArray[enumId] =
+                                          enumLabelsArray[enumId].map(
+                                            (item, index) => {
+                                              return index === enumLabelIndex
+                                                ? { key, label: newValue }
+                                                : item;
+                                            }
+                                          );
+
+                                        SonamuUIService.modifyEnumLabels(
+                                          entity.id,
+                                          enumLabelsArrayToEnumLabels(
+                                            enumLabelsArray
+                                          )
+                                        )
+                                          .then(({ updated }) => {
+                                            entity.enumLabels = updated;
+                                            mutate();
+                                          })
+                                          .catch(defaultCatch);
+                                      }
+                                    }}
+                                  />
+                                </Table.Cell>
+                              </Table.Row>
+                            )
                           )}
-                        </Table.HeaderCell>
-                      ))}
-                    </Table.Row>
-                  </Table.Header>
-                  <Table.Body>
-                    {entity.flattenSubsetRows.map(
-                      (subsetRow, subsetRowIndex) => (
-                        <Table.Row
-                          key={subsetRowIndex}
-                          {...regRow("subsets", subsetRowIndex)}
-                        >
-                          <Table.Cell
-                            {...regCell("subsets", subsetRowIndex, 0)}
-                          >
-                            <span style={{ color: "silver" }}>
-                              {subsetRow.prefixes.join(" > ")}
-                              {subsetRow.prefixes.length > 0 && " > "}
-                            </span>
-                            {subsetRow.field}
-                            {subsetRow.relationEntity && (
+                          <Table.Row>
+                            <Table.Cell colSpan={2}>
                               <Button
-                                color="olive"
                                 size="mini"
-                                className="btn-relation-entity"
-                                onClick={expandRelationEntity(subsetRowIndex)}
-                                icon={subsetRow.isOpen ? "minus" : "plus"}
-                                disabled={subsetRow.isOpen}
-                              >
-                                {subsetRow.relationEntity}
-                              </Button>
+                                color="green"
+                                icon="plus"
+                                className="btn-add-enum-label"
+                                onClick={() => addEnumLabelRow(enumId)}
+                              />
+                            </Table.Cell>
+                          </Table.Row>
+                        </Table.Body>
+                      </Table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {entity && Object.keys(entity.subsets).length > 0 && (
+              <div className="subsets">
+                <h3>
+                  Subsets{" "}
+                  <Button
+                    size="mini"
+                    icon="plus"
+                    color="blue"
+                    onClick={() => addSubsetKey()}
+                  />
+                </h3>
+                {entity && entity.flattenSubsetRows.length > 0 && (
+                  <Table celled selectable>
+                    <Table.Header>
+                      <Table.Row>
+                        <Table.HeaderCell>Field</Table.HeaderCell>
+                        {Object.keys(entity.subsets).map((subsetKey) => (
+                          <Table.HeaderCell key={subsetKey}>
+                            {subsetKey}{" "}
+                            {subsetKey !== "A" && (
+                              <Button
+                                icon="trash"
+                                size="mini"
+                                onClick={() => delSubset(subsetKey)}
+                              />
                             )}
-                          </Table.Cell>
-                          {Object.keys(entity.subsets).map((subsetKey) => (
-                            <Table.Cell key={subsetKey}>
-                              {!subsetRow.relationEntity && (
-                                <Checkbox
-                                  checked={subsetRow.has[subsetKey]}
-                                  onChange={(_e, data) => {
-                                    if (data.checked === false) {
-                                      // 서브셋의 필드 삭제
-                                      omitFieldOnSubset(
-                                        subsetKey,
-                                        [
-                                          ...subsetRow.prefixes,
-                                          subsetRow.field,
-                                        ].join(".")
-                                      );
-                                    } else if (data.checked === true) {
-                                      // 서브셋에 필드 추가
-                                      appendFieldOnSubset(
-                                        subsetKey,
-                                        [
-                                          ...subsetRow.prefixes,
-                                          subsetRow.field,
-                                        ].join(".")
-                                      );
-                                    }
-                                  }}
-                                />
+                          </Table.HeaderCell>
+                        ))}
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {entity.flattenSubsetRows.map(
+                        (subsetRow, subsetRowIndex) => (
+                          <Table.Row
+                            key={subsetRowIndex}
+                            {...regRow("subsets", subsetRowIndex)}
+                          >
+                            <Table.Cell
+                              {...regCell("subsets", subsetRowIndex, 0)}
+                            >
+                              <span style={{ color: "silver" }}>
+                                {subsetRow.prefixes.join(" > ")}
+                                {subsetRow.prefixes.length > 0 && " > "}
+                              </span>
+                              {subsetRow.field}
+                              {subsetRow.relationEntity && (
+                                <Button
+                                  color="olive"
+                                  size="mini"
+                                  className="btn-relation-entity"
+                                  onClick={expandRelationEntity(subsetRowIndex)}
+                                  icon={subsetRow.isOpen ? "minus" : "plus"}
+                                  disabled={subsetRow.isOpen}
+                                >
+                                  {subsetRow.relationEntity}
+                                </Button>
                               )}
                             </Table.Cell>
-                          ))}
-                        </Table.Row>
-                      )
-                    )}
-                  </Table.Body>
-                </Table>
-              )}
-            </div>
-          )}
+                            {Object.keys(entity.subsets).map((subsetKey) => (
+                              <Table.Cell key={subsetKey}>
+                                {!subsetRow.relationEntity && (
+                                  <Checkbox
+                                    checked={subsetRow.has[subsetKey]}
+                                    onChange={(_e, data) => {
+                                      if (data.checked === false) {
+                                        // 서브셋의 필드 삭제
+                                        omitFieldOnSubset(
+                                          subsetKey,
+                                          [
+                                            ...subsetRow.prefixes,
+                                            subsetRow.field,
+                                          ].join(".")
+                                        );
+                                      } else if (data.checked === true) {
+                                        // 서브셋에 필드 추가
+                                        appendFieldOnSubset(
+                                          subsetKey,
+                                          [
+                                            ...subsetRow.prefixes,
+                                            subsetRow.field,
+                                          ].join(".")
+                                        );
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </Table.Cell>
+                            ))}
+                          </Table.Row>
+                        )
+                      )}
+                    </Table.Body>
+                  </Table>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

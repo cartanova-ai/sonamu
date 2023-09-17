@@ -132,16 +132,16 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                     search
                     selection
                     options={typeOptions}
-                    className="type-dropdown"
+                    className="focus-2"
                   />
                 </Form.Field>
                 <Form.Field>
                   <label>Name</label>
-                  <Input {...register("name")} className="name-input" />
+                  <Input {...register("name")} className="focus-0" />
                 </Form.Field>
                 <Form.Field>
                   <label>Description</label>
-                  <Input {...register("desc")} className="desc-input" />
+                  <Input {...register("desc")} className="focus-1" />
                 </Form.Field>
               </Form.Group>
               <Form.Group widths="equal">
@@ -155,7 +155,7 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>DB Default</label>
-                  <Input {...register("dbDefault")} />
+                  <Input {...register("dbDefault")} className="focus-5" />
                 </Form.Field>
               </Form.Group>
               <Divider />
@@ -255,7 +255,7 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                     </Form.Field>
                     <Form.Field>
                       <label>With</label>
-                      <Input {...register("with")} />
+                      <Input {...register("with")} className="focus-4" />
                     </Form.Field>
                   </Form.Group>
                   <Form.Group widths="equal">

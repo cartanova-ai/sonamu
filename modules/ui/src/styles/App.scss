@@ -138,23 +138,48 @@ $gnb-height: 50px;
           }
         }
 
-        .enums-list {
+        .enums-and-subsets {
           display: flex;
-          flex-wrap: wrap;
-          gap: 0.5em;
+          gap: 1em;
 
-          .btn-add-enum-label {
-            display: flex;
-            margin: 0 auto;
-            padding: 0.3em 1em;
+          .enums {
+            flex: 1;
+            .enums-list {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 1em;
+              justify-content: space-around;
+
+              .enums-table {
+                width: 32%;
+                td {
+                  min-width: 10em;
+                  .editable-input {
+                    padding: 0;
+
+                    input {
+                      border: 0;
+                      border-radius: 0;
+                      width: 100%;
+                    }
+                  }
+                }
+              }
+              .btn-add-enum-label {
+                display: flex;
+                margin: 0 auto;
+                padding: 0.3em 1em;
+              }
+            }
           }
-        }
+          .subsets {
+            flex: 0.5;
 
-        .subsets {
-          .btn-relation-entity {
-            font-size: 0.8em;
-            padding: 0.3em 0.7em;
-            margin-left: 0.5em;
+            .btn-relation-entity {
+              font-size: 0.8em;
+              padding: 0.3em 0.7em;
+              margin-left: 0.5em;
+            }
           }
         }
       }

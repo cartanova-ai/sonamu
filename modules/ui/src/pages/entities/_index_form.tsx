@@ -69,19 +69,15 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
                     search
                     selection
                     options={typeOptions}
-                    className="type-dropdown"
+                    className="focus-0"
                   />
                 </Form.Field>
                 <Form.Field>
                   <label>Columns</label>
-                  {/* <StringArrayInput
-                    {...register("columns")}
-                    className="columns-input"
-                  /> */}
                   <TableColumnAsyncSelect
                     {...register("columns")}
                     entityId={entityId}
-                    className="columns-input"
+                    className="focus-1"
                   />
                 </Form.Field>
               </Form.Group>
