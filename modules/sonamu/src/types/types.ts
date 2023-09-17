@@ -202,6 +202,17 @@ export type EntityJson = {
     };
   };
 };
+export type EntitySubsetRow = {
+  field: string;
+  has: {
+    [key: string]: boolean;
+  };
+  children: EntitySubsetRow[];
+  prefixes: string[];
+  relationEntity?: string;
+  isOpen?: boolean;
+};
+export type FlattenSubsetRow = Omit<EntitySubsetRow, "children">;
 
 // SMD Legacy
 export type SMDInput<T extends string> = {

@@ -1,7 +1,7 @@
 import { Entity } from "sonamu/dist/entity/entity";
 import useSWR, { SWRResponse } from "swr";
 import { fetch } from "./sonamu.shared";
-import { EntityIndex, EntityProp } from "sonamu";
+import { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 
 type SWRError = {
   name: string;
@@ -9,9 +9,17 @@ type SWRError = {
   statusCode: number;
 };
 
+type ExtendedEntity = Entity & {
+  flattenSubsetRows: FlattenSubsetRow[];
+};
 export namespace SonamuUIService {
-  export function useEntities(): SWRResponse<{ entities: Entity[] }, SWRError> {
-    return useSWR<{ entities: Entity[] }, SWRError>([`/api/entity/findMany`]);
+  export function useEntities(): SWRResponse<
+    { entities: ExtendedEntity[] },
+    SWRError
+  > {
+    return useSWR<{ entities: ExtendedEntity[] }, SWRError>([
+      `/api/entity/findMany`,
+    ]);
   }
 
   export function modifySubset(
@@ -29,7 +37,6 @@ export namespace SonamuUIService {
       },
     });
   }
-
   export function delSubset(
     entityId: string,
     subsetKey: string

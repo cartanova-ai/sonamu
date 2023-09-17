@@ -16,12 +16,14 @@ import {
   StringProp,
   EntityIndex,
   EntityJson,
+  EntitySubsetRow,
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
 import { existsSync, writeFileSync } from "fs";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
+import prettier from "prettier";
 
 export class Entity {
   id: string;
@@ -591,9 +593,74 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
     );
     const json = this.toJson();
-    writeFileSync(jsonPath, JSON.stringify(json));
+    writeFileSync(
+      jsonPath,
+      prettier.format(JSON.stringify(json), {
+        parser: "json",
+      })
+    );
 
     // reload
     await EntityManager.register(json);
+  }
+
+  getSubsetRows(
+    _subsets?: { [key: string]: string[] },
+    prefixes: string[] = []
+  ): EntitySubsetRow[] {
+    if (prefixes.length > 10) {
+      return [];
+    }
+
+    const subsets = _subsets ?? this.subsets;
+    const subsetKeys = Object.keys(subsets);
+    const allFields = uniq(subsetKeys.map((key) => subsets[key]).flat());
+
+    return this.props.map((prop) => {
+      if (
+        prop.type === "relation" &&
+        allFields.find((f) =>
+          f.startsWith([...prefixes, prop.name].join(".") + ".")
+        )
+      ) {
+        const relEntity = EntityManager.get(prop.with);
+        const children = relEntity.getSubsetRows(subsets, [
+          ...prefixes,
+          `${prop.name}`,
+        ]);
+
+        return {
+          field: prop.name,
+          children,
+          relationEntity: prop.with,
+          prefixes,
+          isOpen: children.length > 0,
+          has: Object.fromEntries(
+            subsetKeys.map((subsetKey) => {
+              return [
+                subsetKey,
+                children.every((child) => child.has[subsetKey] === true),
+              ];
+            })
+          ),
+        };
+      }
+
+      return {
+        field: prop.name,
+        children: [],
+        relationEntity: prop.type === "relation" ? prop.with : undefined,
+        prefixes,
+        has: Object.fromEntries(
+          subsetKeys.map((subsetKey) => {
+            const subsetFields = subsets[subsetKey];
+            const has = subsetFields.some((f) =>
+              f.startsWith([...prefixes, prop.name].join("."))
+            );
+            return [subsetKey, has];
+          })
+        ),
+      };
+    });
   }
 }

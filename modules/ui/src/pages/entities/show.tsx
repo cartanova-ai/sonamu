@@ -1,15 +1,15 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { Button, Checkbox, Input, Label, Table } from "semantic-ui-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import classNames from "classnames";
-import { uniq } from "lodash";
+import { Button, Checkbox, Label, Table } from "semantic-ui-react";
+import { useEffect, useMemo } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { EntityIndex, EntityProp } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityPropForm } from "./_prop_form";
 import { EntityIndexForm } from "./_index_form";
 import { EditableInput } from "../../components/EditableInput";
+import { useSheetTable } from "../../components/useSheetTable";
+import { divide } from "lodash";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -17,7 +17,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   const { entities } = data ?? {};
   const isLoading = !error && !data;
 
-  // navigate
+  // naviagte
   const navigate = useNavigate();
 
   // params & entity
@@ -54,38 +54,143 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     );
   };
 
+  // useSheetTable
+  const {
+    regRow,
+    regCell,
+    cursor,
+    setCursor,
+    focusedCursor,
+    setFocusedCursor,
+    turnKeyHandler,
+  } = useSheetTable({
+    sheets: [
+      {
+        name: "props",
+      },
+      {
+        name: "indexes",
+      },
+      ...Object.keys(entity?.enumLabels ?? {}).map((enumId) => ({
+        name: `enumLabels-${enumId}`,
+      })),
+      ...(entity?.parentId === undefined
+        ? [
+            {
+              name: "subsets",
+            },
+          ]
+        : []),
+    ],
+    onExecute: (sheet, y, _x) => {
+      if (sheet === "props") {
+        openPropForm("modify", y);
+      } else if (sheet === "indexes") {
+        openIndexForm("modify", y);
+      }
+    },
+    onKeywordChanged: (sheet, keyword) => {
+      if (!entity) {
+        return;
+      }
+      setCursor({
+        sheet,
+        y: (() => {
+          if (sheet === "props") {
+            return entity.props.findIndex((prop) =>
+              prop.name.startsWith(keyword)
+            );
+          } else if (sheet === "indexes") {
+            return entity.indexes.findIndex((index) =>
+              index.columns.join(",").includes(keyword)
+            );
+          } else if (sheet === "subsets") {
+            return entity.flattenSubsetRows.findIndex((subsetRow) =>
+              subsetRow.field.startsWith(keyword)
+            );
+          } else if (sheet.startsWith("enumLabels-")) {
+            const enumId = sheet.replace("enumLabels-", "");
+            return enumLabelsArray[enumId].findIndex(
+              (enumLabel) =>
+                enumLabel.key.startsWith(keyword) ||
+                enumLabel.label.startsWith(keyword)
+            );
+          }
+          return 0;
+        })(),
+        x: 0,
+      });
+    },
+    onKeydown: (e) => {
+      if (!entity) {
+        return false;
+      }
+
+      switch (e.key) {
+        case "n":
+        case "N":
+          if (e.ctrlKey && e.metaKey && e.shiftKey) {
+            if (cursor.sheet === "props") {
+              openPropForm("add", cursor.y);
+            } else if (cursor.sheet === "indexes") {
+              openIndexForm("add", cursor.y);
+            } else if (cursor.sheet.includes("enumLabels")) {
+              addEnumLabelRow(cursor.sheet.split("-")[1], cursor.y);
+            }
+            return false;
+          }
+          break;
+
+        case "Backspace":
+          if (e.metaKey) {
+            if (cursor.sheet === "props") {
+              confirmDelProp(cursor.y);
+            } else if (cursor.sheet === "indexes") {
+              confirmDelIndex(cursor.y);
+            } else if (cursor.sheet.startsWith("enumLabels")) {
+              const [, enumId] = /^enumLabels-(.+)$/.exec(cursor.sheet) ?? [];
+              if (!enumId) {
+                return false;
+              }
+              const enumLabels = enumLabelsArray[enumId];
+              enumLabels.splice(cursor.y, 1);
+              SonamuUIService.modifyEnumLabels(
+                entity.id,
+                enumLabelsArrayToEnumLabels(enumLabelsArray)
+              )
+                .then(({ updated }) => {
+                  entity.enumLabels = updated;
+                  mutate();
+                })
+                .catch(defaultCatch);
+            }
+            e.preventDefault();
+            return false;
+          }
+          break;
+        case "p":
+        case "P":
+          if (e.ctrlKey && e.shiftKey && e.metaKey) {
+            const entityId = prompt("어디로 갈래?");
+            if (!entityId) {
+              return false;
+            }
+            const isExists =
+              entities?.some((entity) => entity.id === entityId) ?? false;
+            if (!isExists) {
+              alert(`존재하지 않는 Entity ${entityId}`);
+              return false;
+            }
+            navigate(`/entities/${entityId}`);
+          }
+          break;
+      }
+      return true;
+    },
+  });
   // commonModal
   const { openModal } = useCommonModal();
 
-  // subsets
-  const subsetRows = useMemo(() => {
-    if (!entity) {
-      return [];
-    }
-    const { subsets } = entity;
-    const subsetKeys = Object.keys(subsets);
-
-    const uniqFields = uniq(
-      subsetKeys.map((subsetKey) => subsets[subsetKey]).flat()
-    );
-    return uniqFields.map((field) => {
-      return subsetKeys.reduce(
-        (result, subsetKey) => {
-          result.has[subsetKey] = subsets[subsetKey].includes(field);
-          return result;
-        },
-        {
-          field,
-          has: {},
-        } as {
-          field: string;
-          has: {
-            [subsetKey: string]: boolean;
-          };
-        }
-      );
-    });
-  }, [entity]);
   const appendFieldOnSubset = (
     subsetKey: string,
     field: string,
@@ -131,19 +236,42 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       })
       .catch(defaultCatch);
   };
+  const expandRelationEntity = (at: number) => () => {
+    if (!entities || !entity) {
+      return;
+    }
 
-  // cursor
-  type Cursor = {
-    sheet: "props" | "indexes" | "subsets" | `enumLabels-${string}`;
-    y: number;
-    x: number;
+    const srcRow = entity.flattenSubsetRows[at];
+    const relationEntityId = srcRow.relationEntity;
+    if (!relationEntityId) {
+      return;
+    }
+
+    const srcPrefix = [...srcRow.prefixes, srcRow.field].join(".");
+    const existsOne = entity.flattenSubsetRows.find((r) =>
+      r.prefixes.join(".").startsWith(srcPrefix)
+    );
+    if (existsOne) {
+      return;
+    }
+
+    const relEntity = entities.find((et) => et.id === relationEntityId);
+    if (!relEntity) {
+      return alert(`Cannot find a relation entity named ${relationEntityId}`);
+    }
+
+    const newSubsetRows = relEntity.flattenSubsetRows
+      .filter((r) => r.prefixes.length === 0)
+      .map((r) => ({
+        ...r,
+        prefixes: [...srcRow.prefixes, srcRow.field],
+        has: Object.fromEntries(
+          Object.keys(entity.subsets).map((subsetKey) => [subsetKey, false])
+        ),
+        isOpen: false,
+      }));
+    entity.flattenSubsetRows.splice(at + 1, 0, ...newSubsetRows);
   };
-  const [cursor, setCursor] = useState<Cursor>({
-    sheet: "props",
-    y: 0,
-    x: 0,
-  });
-  const [focusedCursor, setFocusedCursor] = useState<string | null>(null);
 
   // entityId
   useEffect(() => {
@@ -165,7 +293,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     openModal(<EntityPropForm oldOne={oldOne} />, {
       onControlledOpen: () => {
         // keySwitch off
-        keySwitchRef.current = false;
+        turnKeyHandler(false);
 
         // focus
         const focusInput = document.querySelector(
@@ -179,7 +307,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       },
       onControlledClose: () => {
         // keySwitch on
-        keySwitchRef.current = true;
+        turnKeyHandler(true);
       },
       onCompleted: (data: unknown) => {
         const newProps = (() => {
@@ -248,7 +376,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     openModal(<EntityIndexForm entityId={entity.id} oldOne={oldOne} />, {
       onControlledOpen: () => {
         // keySwitch off
-        keySwitchRef.current = false;
+        turnKeyHandler(false);
 
         // focus
         const focusInput = document.querySelector(
@@ -261,7 +389,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       },
       onControlledClose: () => {
         // keySwitch on
-        keySwitchRef.current = true;
+        turnKeyHandler(true);
       },
       onCompleted: (data: unknown) => {
         const newIndexes = (() => {
@@ -360,259 +488,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       y: cursorY + 1,
       x: 0,
     });
-    setFocusedCursor(`enumLabels-${enumId}/${cursorY + 1}/0`);
+    setFocusedCursor({ sheet: `enumLabels-${enumId}`, y: cursorY + 1, x: 0 });
   };
-
-  // key
-  const moveCursorToDown = (amount: number) => {
-    if (!entity) {
-      return;
-    }
-
-    setCursor((cursor) => {
-      return {
-        ...cursor,
-        y: (() => {
-          if (cursor.sheet === "props") {
-            return Math.min(entity.props.length - 1, cursor.y + amount);
-          } else if (cursor.sheet === "indexes") {
-            return Math.min(entity.indexes.length - 1, cursor.y + amount);
-          } else if (cursor.sheet.startsWith("enumLabels-")) {
-            const [, enumId] = /^enumLabels-(.+)$/.exec(cursor.sheet) ?? [];
-            if (!enumId) {
-              return 0;
-            }
-            return Math.min(
-              Object.keys(enumLabelsArray[enumId]).length - 1,
-              cursor.y + amount
-            );
-          }
-          return 0;
-        })(),
-      };
-    });
-    // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  const moveCursorToUp = (amount: number) => {
-    setCursor((cursor) => {
-      return {
-        ...cursor,
-        y: Math.max(0, cursor.y - amount),
-      };
-    });
-    // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  const moveCursorToLeft = (amount: number) => {
-    setCursor((cursor) => {
-      return {
-        ...cursor,
-        x: Math.max(0, cursor.x - amount),
-      };
-    });
-  };
-  const moveCursorToRight = (amount: number) => {
-    if (!entity) {
-      return;
-    }
-
-    setCursor((cursor) => {
-      return {
-        ...cursor,
-        x: (() => {
-          if (cursor.sheet === "props") {
-            return Math.min(7 - 1, cursor.y + amount);
-          } else if (cursor.sheet === "indexes") {
-            return Math.min(2 - 1, cursor.y + amount);
-          } else if (cursor.sheet.startsWith("enumLabels-")) {
-            const [, enumId] = /^enumLabels-(.+)$/.exec(cursor.sheet) ?? [];
-            if (!enumId) {
-              return 0;
-            }
-            return Math.min(2 - 1, cursor.x + amount);
-          }
-          return 0;
-        })(),
-      };
-    });
-    // TODO: 커서 위치에 따라 스크롤 이동
-  };
-  // 키 타이머 (1초 이내 입력인 경우 keyword를 누적하고 아닌 경우 초기화 후 입력)
-  const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>();
-  const keySwitchRef = useRef<boolean>(true);
-  useEffect(() => {
-    // keydown
-    const onKeydown = (e: KeyboardEvent) => {
-      if (!entity) {
-        return;
-      }
-      if (!keySwitchRef.current) {
-        return;
-      }
-
-      switch (e.key) {
-        case "ArrowDown":
-          moveCursorToDown(e.metaKey ? Infinity : 1);
-          e.preventDefault();
-          return;
-        case "ArrowUp":
-          moveCursorToUp(e.metaKey ? Infinity : 1);
-          e.preventDefault();
-          return;
-        case "ArrowLeft":
-          moveCursorToLeft(e.metaKey ? Infinity : 1);
-          e.preventDefault();
-          return;
-        case "ArrowRight":
-          moveCursorToRight(e.metaKey ? Infinity : 1);
-          e.preventDefault();
-          return;
-        case "PageDown":
-          moveCursorToDown(10);
-          e.preventDefault();
-          return;
-        case "PageUp":
-          moveCursorToUp(10);
-          e.preventDefault();
-          return;
-        case "Home":
-          moveCursorToLeft(Infinity);
-          e.preventDefault();
-          return;
-        case "End":
-          moveCursorToRight(Infinity);
-          e.preventDefault();
-          return;
-        case "n":
-        case "N":
-          if (e.ctrlKey && e.metaKey && e.shiftKey) {
-            if (cursor.sheet === "props") {
-              openPropForm("add", cursor.y);
-            } else if (cursor.sheet === "indexes") {
-              openIndexForm("add", cursor.y);
-            } else if (cursor.sheet.includes("enumLabels")) {
-              addEnumLabelRow(cursor.sheet.split("-")[1], cursor.y);
-            }
-            return;
-          }
-          break;
-        case "Enter":
-          if (cursor.sheet === "props") {
-            openPropForm("modify", cursor.y);
-          } else if (cursor.sheet === "indexes") {
-            openIndexForm("modify", cursor.y);
-          } else if (cursor.sheet.startsWith("enumLabels-")) {
-            setFocusedCursor(`${cursor.sheet}/${cursor.y}/${cursor.x}`);
-          }
-          return;
-        case "Backspace":
-          if (e.metaKey) {
-            if (cursor.sheet === "props") {
-              confirmDelProp(cursor.y);
-            } else if (cursor.sheet === "indexes") {
-              confirmDelIndex(cursor.y);
-            } else if (cursor.sheet.startsWith("enumLabels")) {
-              const [, enumId] = /^enumLabels-(.+)$/.exec(cursor.sheet) ?? [];
-              if (!enumId) {
-                return;
-              }
-              const enumLabels = enumLabelsArray[enumId];
-              enumLabels.splice(cursor.y, 1);
-              SonamuUIService.modifyEnumLabels(
-                entity.id,
-                enumLabelsArrayToEnumLabels(enumLabelsArray)
-              )
-                .then(({ updated }) => {
-                  entity.enumLabels = updated;
-                  mutate();
-                })
-                .catch(defaultCatch);
-            }
-          }
-          e.preventDefault();
-          return;
-        case "p":
-        case "P":
-          if (e.ctrlKey && e.shiftKey && e.metaKey) {
-            const entityId = prompt("어디로 갈래?");
-            if (!entityId) {
-              return;
-            }
-            const isExists =
-              entities?.some((entity) => entity.id === entityId) ?? false;
-            if (!isExists) {
-              alert(`존재하지 않는 Entity ${entityId}`);
-              return;
-            }
-            navigate(`/entities/${entityId}`);
-          }
-      }
-
-      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
-        const THRESHOLD = 300; // 연속 키입력 0.3초
-        const nowTimestamp = Date.now();
-        const prevTimestamp = keyTimerRef.current?.timestamp ?? nowTimestamp;
-        const diff = nowTimestamp - prevTimestamp;
-        keyTimerRef.current = {
-          timestamp: nowTimestamp,
-          keyword:
-            diff < THRESHOLD
-              ? (keyTimerRef.current?.keyword ?? "") + e.key
-              : e.key,
-        };
-        const keyword = keyTimerRef.current?.keyword ?? e.key;
-
-        if (cursor.sheet === "props") {
-          const targetProp = entity.props.find((p) =>
-            p.name.startsWith(keyword)
-          );
-          if (!targetProp) {
-            return;
-          }
-          const targetIndex = entity.props.indexOf(targetProp);
-          setCursor({
-            ...cursor,
-            sheet: "props",
-            y: targetIndex,
-          });
-        } else if (cursor.sheet === "subsets") {
-          const targetSubset = subsetRows.find((subsetRow) =>
-            subsetRow.field.startsWith(keyword)
-          );
-          if (!targetSubset) {
-            return;
-          }
-          const targetIndex = subsetRows.indexOf(targetSubset);
-          setCursor({
-            ...cursor,
-            sheet: "subsets",
-            y: targetIndex,
-          });
-        }
-        return;
-      }
-      console.log(`${e.key} pressed`);
-    };
-
-    // outside click
-    const onMousedown = (e: MouseEvent) => {
-      if (focusedCursor === null) {
-        return;
-      } else if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-      setFocusedCursor(null);
-    };
-
-    document.addEventListener("keydown", onKeydown);
-    document.addEventListener("mousedown", onMousedown);
-    return () => {
-      document.removeEventListener("keydown", onKeydown);
-      document.removeEventListener("mousedown", onMousedown);
-    };
-  }, [entity, cursor, focusedCursor]);
 
   return (
     <div className="entities-detail">
@@ -622,7 +499,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           <div className="props-and-indexes">
             <div className="props">
               <h3>Props</h3>
-              <Table celled>
+              <Table celled selectable>
                 <Table.Header>
                   <Table.Row>
                     <Table.HeaderCell>Name</Table.HeaderCell>
@@ -636,28 +513,32 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                 </Table.Header>
                 <Table.Body>
                   {entity.props.map((prop, propIndex) => (
-                    <Table.Row
-                      key={propIndex}
-                      className={classNames({
-                        "cursor-row-pointed":
-                          cursor.sheet === "props" && cursor.y === propIndex,
-                      })}
-                      onClick={() =>
-                        setCursor({ ...cursor, sheet: "props", y: propIndex })
-                      }
-                    >
-                      <Table.Cell>{prop.name}</Table.Cell>
-                      <Table.Cell>{prop.desc}</Table.Cell>
-                      <Table.Cell collapsing>
+                    <Table.Row key={propIndex} {...regRow("props", propIndex)}>
+                      <Table.Cell {...regCell("props", propIndex, 0)}>
+                        {prop.name}
+                      </Table.Cell>
+                      <Table.Cell {...regCell("props", propIndex, 1)}>
+                        {prop.desc}
+                      </Table.Cell>
+                      <Table.Cell
+                        {...regCell("props", propIndex, 2)}
+                        collapsing
+                      >
                         {prop.type}{" "}
                         {(prop.type === "string" || prop.type === "enum") && (
                           <>({prop.length}) </>
                         )}
                       </Table.Cell>
-                      <Table.Cell collapsing>
+                      <Table.Cell
+                        {...regCell("props", propIndex, 3)}
+                        collapsing
+                      >
                         {prop.nullable && <Label>NULL</Label>}
                       </Table.Cell>
-                      <Table.Cell collapsing>
+                      <Table.Cell
+                        {...regCell("props", propIndex, 4)}
+                        collapsing
+                      >
                         {prop.type === "enum" && (
                           <>
                             <Label color="olive">{prop.id}</Label>
@@ -672,10 +553,18 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                       </Table.Cell>
 
-                      <Table.Cell collapsing>
+                      <Table.Cell
+                        {...regCell("props", propIndex, 5)}
+                        collapsing
+                      >
                         {prop.type !== "relation" && <>{prop.dbDefault}</>}
                       </Table.Cell>
-                      <Table.Cell collapsing>{prop.toFilter && "O"}</Table.Cell>
+                      <Table.Cell
+                        {...regCell("props", propIndex, 6)}
+                        collapsing
+                      >
+                        {prop.toFilter && "O"}
+                      </Table.Cell>
                     </Table.Row>
                   ))}
                   <Table.Row>
@@ -694,7 +583,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
             </div>
             <div className="indexes">
               <h3>Indexes</h3>
-              <Table celled>
+              <Table celled selectable>
                 <Table.Header>
                   <Table.Row>
                     <Table.HeaderCell>Type</Table.HeaderCell>
@@ -705,22 +594,15 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                   {entity.indexes.map((index, indexIndex) => (
                     <Table.Row
                       key={indexIndex}
-                      className={classNames({
-                        "cursor-row-pointed":
-                          cursor.sheet === "indexes" && cursor.y === indexIndex,
-                      })}
-                      onClick={() =>
-                        setCursor({
-                          ...cursor,
-                          sheet: "indexes",
-                          y: indexIndex,
-                        })
-                      }
+                      {...regRow("indexes", indexIndex)}
                     >
-                      <Table.Cell collapsing>
+                      <Table.Cell
+                        {...regCell("indexes", indexIndex, 0)}
+                        collapsing
+                      >
                         <strong>{index.type}</strong>
                       </Table.Cell>
-                      <Table.Cell>
+                      <Table.Cell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
                           <Label key={colIndex}>{col}</Label>
                         ))}
@@ -748,7 +630,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
               <div className="enums-list">
                 {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
                   <div className="enums-table" key={enumsIndex}>
-                    <Table celled>
+                    <Table celled selectable>
                       <Table.Header>
                         <Table.Row>
                           <Table.HeaderCell colSpan={2}>
@@ -761,38 +643,26 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                           ({ key, label }, enumLabelIndex) => (
                             <Table.Row
                               key={enumLabelIndex}
-                              className={classNames({
-                                "cursor-row-pointed":
-                                  cursor.sheet === `enumLabels-${enumId}` &&
-                                  cursor.y === enumLabelIndex,
-                              })}
+                              {...regRow(
+                                `enumLabels-${enumId}`,
+                                enumLabelIndex
+                              )}
                             >
                               <Table.Cell
                                 collapsing
-                                className={classNames({
-                                  "cursor-cell-pointed":
-                                    cursor.sheet === `enumLabels-${enumId}` &&
-                                    cursor.y === enumLabelIndex &&
-                                    cursor.x === 0,
-                                })}
-                                onClick={() =>
-                                  setCursor({
-                                    ...cursor,
-                                    sheet: `enumLabels-${enumId}`,
-                                    y: enumLabelIndex,
-                                    x: 0,
-                                  })
-                                }
-                                onDoubleClick={() =>
-                                  setFocusedCursor(
-                                    `enumLabels-${enumId}/${enumLabelIndex}/0`
-                                  )
-                                }
+                                {...regCell(
+                                  `enumLabels-${enumId}`,
+                                  enumLabelIndex,
+                                  0
+                                )}
                               >
                                 <EditableInput
                                   editable={
-                                    focusedCursor ===
-                                    `enumLabels-${enumId}/${enumLabelIndex}/0`
+                                    !!focusedCursor &&
+                                    focusedCursor.sheet ===
+                                      `enumLabels-${enumId}` &&
+                                    focusedCursor.y === enumLabelIndex &&
+                                    focusedCursor.x === 0
                                   }
                                   initialValue={key}
                                   onChange={(newValue) => {
@@ -817,43 +687,29 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                         })
                                         .catch(defaultCatch);
 
-                                      setCursor({
+                                      setFocusedCursor({
                                         sheet: `enumLabels-${enumId}`,
                                         y: enumLabelIndex,
                                         x: 1,
                                       });
-                                      setFocusedCursor(
-                                        `enumLabels-${enumId}/${enumLabelIndex}/1`
-                                      );
                                     }
                                   }}
                                 />
                               </Table.Cell>
                               <Table.Cell
-                                className={classNames({
-                                  "cursor-cell-pointed":
-                                    cursor.sheet === `enumLabels-${enumId}` &&
-                                    cursor.y === enumLabelIndex &&
-                                    cursor.x === 1,
-                                })}
-                                onClick={() =>
-                                  setCursor({
-                                    ...cursor,
-                                    sheet: `enumLabels-${enumId}`,
-                                    y: enumLabelIndex,
-                                    x: 1,
-                                  })
-                                }
-                                onDoubleClick={() =>
-                                  setFocusedCursor(
-                                    `enumLabels-${enumId}/${enumLabelIndex}/1`
-                                  )
-                                }
+                                {...regCell(
+                                  `enumLabels-${enumId}`,
+                                  enumLabelIndex,
+                                  1
+                                )}
                               >
                                 <EditableInput
                                   editable={
-                                    focusedCursor ===
-                                    `enumLabels-${enumId}/${enumLabelIndex}/1`
+                                    !!focusedCursor &&
+                                    focusedCursor.sheet ===
+                                      `enumLabels-${enumId}` &&
+                                    focusedCursor.y === enumLabelIndex &&
+                                    focusedCursor.x === 1
                                   }
                                   initialValue={label}
                                   onChange={(newValue) => {
@@ -915,8 +771,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                   onClick={() => addSubsetKey()}
                 />
               </h3>
-              {entity && subsetRows && (
-                <Table celled>
+              {entity && entity.flattenSubsetRows.length > 0 && (
+                <Table celled selectable>
                   <Table.Header>
                     <Table.Row>
                       <Table.HeaderCell>Field</Table.HeaderCell>
@@ -935,44 +791,66 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                     </Table.Row>
                   </Table.Header>
                   <Table.Body>
-                    {subsetRows.map((subsetRow, subsetRowIndex) => (
-                      <Table.Row
-                        key={subsetRowIndex}
-                        className={classNames({
-                          "cursor-row-pointed":
-                            cursor.sheet === "subsets" &&
-                            cursor.y === subsetRowIndex,
-                        })}
-                        onClick={() =>
-                          setCursor({
-                            ...cursor,
-                            sheet: "subsets",
-                            y: subsetRowIndex,
-                          })
-                        }
-                      >
-                        <Table.Cell>{subsetRow.field}</Table.Cell>
-                        {Object.keys(entity.subsets).map((subsetKey) => (
-                          <Table.Cell key={subsetKey}>
-                            <Checkbox
-                              checked={subsetRow.has[subsetKey]}
-                              onChange={(_e, data) => {
-                                if (data.checked === false) {
-                                  // 서브셋의 필드 삭제
-                                  omitFieldOnSubset(subsetKey, subsetRow.field);
-                                } else if (data.checked === true) {
-                                  // 서브셋에 필드 추가
-                                  appendFieldOnSubset(
-                                    subsetKey,
-                                    subsetRow.field
-                                  );
-                                }
-                              }}
-                            />
+                    {entity.flattenSubsetRows.map(
+                      (subsetRow, subsetRowIndex) => (
+                        <Table.Row
+                          key={subsetRowIndex}
+                          {...regRow("subsets", subsetRowIndex)}
+                        >
+                          <Table.Cell
+                            {...regCell("subsets", subsetRowIndex, 0)}
+                          >
+                            <span style={{ color: "silver" }}>
+                              {subsetRow.prefixes.join(" > ")}
+                              {subsetRow.prefixes.length > 0 && " > "}
+                            </span>
+                            {subsetRow.field}
+                            {subsetRow.relationEntity && (
+                              <Button
+                                color="olive"
+                                size="mini"
+                                className="btn-relation-entity"
+                                onClick={expandRelationEntity(subsetRowIndex)}
+                                icon={subsetRow.isOpen ? "minus" : "plus"}
+                                disabled={subsetRow.isOpen}
+                              >
+                                {subsetRow.relationEntity}
+                              </Button>
+                            )}
                           </Table.Cell>
-                        ))}
-                      </Table.Row>
-                    ))}
+                          {Object.keys(entity.subsets).map((subsetKey) => (
+                            <Table.Cell key={subsetKey}>
+                              {!subsetRow.relationEntity && (
+                                <Checkbox
+                                  checked={subsetRow.has[subsetKey]}
+                                  onChange={(_e, data) => {
+                                    if (data.checked === false) {
+                                      // 서브셋의 필드 삭제
+                                      omitFieldOnSubset(
+                                        subsetKey,
+                                        [
+                                          ...subsetRow.prefixes,
+                                          subsetRow.field,
+                                        ].join(".")
+                                      );
+                                    } else if (data.checked === true) {
+                                      // 서브셋에 필드 추가
+                                      appendFieldOnSubset(
+                                        subsetKey,
+                                        [
+                                          ...subsetRow.prefixes,
+                                          subsetRow.field,
+                                        ].join(".")
+                                      );
+                                    }
+                                  }}
+                                />
+                              )}
+                            </Table.Cell>
+                          ))}
+                        </Table.Row>
+                      )
+                    )}
                   </Table.Body>
                 </Table>
               )}

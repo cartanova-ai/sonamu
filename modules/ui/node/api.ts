@@ -1,5 +1,12 @@
 import fastify from "fastify";
-import { Sonamu, EntityManager, EntityProp, EntityIndex } from "sonamu";
+import { flatten, uniq } from "lodash";
+import {
+  Sonamu,
+  EntityManager,
+  EntityProp,
+  EntityIndex,
+  EntitySubsetRow,
+} from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 
 export async function createApiServer(options: {
@@ -28,8 +35,26 @@ export async function createApiServer(options: {
 
   server.get("/api/entity/findMany", async () => {
     const entityIds = EntityManager.getAllIds();
+
+    function flattenSubsetRows(subsetRows: EntitySubsetRow[]) {
+      return subsetRows
+        .map((subsetRow) => {
+          const { children, ...sRow } = subsetRow;
+          return [sRow, ...flattenSubsetRows(children)];
+        })
+        .flat();
+    }
+
     const entities = await Promise.all(
-      entityIds.map((entityId) => EntityManager.get(entityId))
+      entityIds.map((entityId) => {
+        const entity = EntityManager.get(entityId);
+        const subsetRows = entity.getSubsetRows();
+
+        return {
+          ...entity,
+          flattenSubsetRows: flattenSubsetRows(subsetRows),
+        };
+      })
     );
     return { entities };
   });

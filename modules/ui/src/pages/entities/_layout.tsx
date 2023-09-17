@@ -5,7 +5,7 @@ import { Button, Divider } from "semantic-ui-react";
 
 type EntitiesPageProps = {};
 export default function EntitiesLayout(_props: EntitiesPageProps) {
-  const { data, error, mutate } = SonamuUIService.useEntities();
+  const { data, error } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
   const isLoading = !error && !data;
 
