@@ -1,7 +1,7 @@
 import { Entity } from "sonamu/dist/entity/entity";
 import useSWR, { SWRResponse } from "swr";
 import { fetch } from "./sonamu.shared";
-import { EntityProp } from "sonamu";
+import { EntityIndex, EntityProp } from "sonamu";
 
 type SWRError = {
   name: string;
@@ -30,6 +30,20 @@ export namespace SonamuUIService {
     });
   }
 
+  export function delSubset(
+    entityId: string,
+    subsetKey: string
+  ): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/delSubset`,
+      data: {
+        entityId,
+        subsetKey,
+      },
+    });
+  }
+
   export function modifyProps(
     entityId: string,
     props: EntityProp[]
@@ -40,6 +54,56 @@ export namespace SonamuUIService {
       data: {
         entityId,
         props,
+      },
+    });
+  }
+
+  export function modifyIndexes(
+    entityId: string,
+    indexes: EntityIndex[]
+  ): Promise<{ updated: EntityIndex[] }> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/modifyIndexes`,
+      data: {
+        entityId,
+        indexes,
+      },
+    });
+  }
+
+  export function modifyEnumLabels(
+    entityId: string,
+    enumLabels: {
+      [enumId: string]: {
+        [key: string]: string;
+      };
+    }
+  ): Promise<{
+    updated: {
+      [enumId: string]: {
+        [key: string]: string;
+      };
+    };
+  }> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/modifyEnumLabels`,
+      data: {
+        entityId,
+        enumLabels,
+      },
+    });
+  }
+
+  export function getTableColumns(
+    entityId: string
+  ): Promise<{ columns: string[] }> {
+    return fetch({
+      method: "GET",
+      url: `/api/entity/getTableColumns`,
+      params: {
+        entityId,
       },
     });
   }

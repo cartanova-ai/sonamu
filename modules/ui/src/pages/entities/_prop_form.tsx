@@ -168,7 +168,10 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                   {form.type === "enum" ? (
                     <Form.Field>
                       <label>Enum ID</label>
-                      <Input {...register("id")} />
+                      <div className="flex">
+                        <Input {...register("id")} />
+                        <Button icon="plus" size="mini" />
+                      </div>
                     </Form.Field>
                   ) : (
                     <Form.Field>&nbsp;</Form.Field>

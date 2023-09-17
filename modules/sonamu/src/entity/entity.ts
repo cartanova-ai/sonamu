@@ -498,35 +498,39 @@ export class Entity {
       .filter((f) => f !== null) as string[];
   }
 
+  getTableColumns(): string[] {
+    return this.props.map((prop) => prop.name);
+  }
+
   registerModulePaths() {
-    const basePath = `${this.names.fs}`;
+    const basePath = `${this.names.parentFs}`;
 
     // base-scheme
     EntityManager.setModulePath(
       `${this.id}BaseSchema`,
-      `${basePath}/${this.names.fs}.generated`
+      `${basePath}/${this.names.parentFs}.generated`
     );
 
     // subset
     if (Object.keys(this.subsets).length > 0) {
       EntityManager.setModulePath(
         `${this.id}SubsetKey`,
-        `${basePath}/${this.names.fs}.generated`
+        `${basePath}/${this.names.parentFs}.generated`
       );
       EntityManager.setModulePath(
         `${this.id}SubsetMapping`,
-        `${basePath}/${this.names.fs}.generated`
+        `${basePath}/${this.names.parentFs}.generated`
       );
       Object.keys(this.subsets).map((subsetKey) => {
         EntityManager.setModulePath(
           `${this.id}Subset${subsetKey.toUpperCase()}`,
-          `${basePath}/${this.names.fs}.generated`
+          `${basePath}/${this.names.parentFs}.generated`
         );
       });
     }
 
     // types
-    const typesModulePath = `${basePath}/${this.names.fs}.types`;
+    const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
     const typesFileDistPath = path.join(
       Sonamu.apiRootPath,
       `dist/application/${typesModulePath}.js`
@@ -549,7 +553,7 @@ export class Entity {
     Object.keys(this.enumLabels).map((enumId) => {
       EntityManager.setModulePath(
         enumId,
-        `${basePath}/${this.names.fs}.generated`
+        `${basePath}/${this.names.parentFs}.generated`
       );
     });
   }

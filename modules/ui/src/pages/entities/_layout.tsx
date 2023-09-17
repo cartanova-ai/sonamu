@@ -1,14 +1,17 @@
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { Link, Outlet, useParams } from "react-router-dom";
 import classnames from "classnames";
+import { Button, Divider } from "semantic-ui-react";
 
 type EntitiesPageProps = {};
 export default function EntitiesLayout(_props: EntitiesPageProps) {
-  const { data, error } = SonamuUIService.useEntities();
+  const { data, error, mutate } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
   const isLoading = !error && !data;
 
   const params = useParams<{ entityId: string }>();
+
+  const addEntity = () => {};
 
   return (
     <div className="entities-layout">
@@ -27,6 +30,16 @@ export default function EntitiesLayout(_props: EntitiesPageProps) {
               {entity.id}
             </Link>
           ))}
+        <Divider />
+        <div className="text-center">
+          <Button
+            icon="plus"
+            size="mini"
+            content="Entity"
+            color="green"
+            onClick={() => addEntity()}
+          />
+        </div>
       </div>
       <Outlet />
     </div>

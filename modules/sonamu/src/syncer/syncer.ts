@@ -1093,19 +1093,11 @@ export class Syncer {
     } else if (isTimestampProp(prop)) {
       zodType = SQLDateTimeString;
     } else if (isJsonProp(prop)) {
-      if (prop.as instanceof z.ZodType) {
-        zodType = prop.as;
-      } else {
-        zodType = await this.getZodTypeById(prop.as.ref);
-      }
+      zodType = await this.getZodTypeById(prop.id);
     } else if (isUuidProp(prop)) {
       zodType = z.string().uuid();
     } else if (isVirtualProp(prop)) {
-      if (prop.as instanceof z.ZodType) {
-        zodType = prop.as;
-      } else {
-        zodType = await this.getZodTypeById(prop.as.ref);
-      }
+      zodType = await this.getZodTypeById(prop.id);
     } else if (isRelationProp(prop)) {
       if (
         isBelongsToOneRelationProp(prop) ||

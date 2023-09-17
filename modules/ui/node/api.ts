@@ -1,5 +1,6 @@
 import fastify from "fastify";
-import { Sonamu, EntityManager, EntityProp } from "sonamu";
+import { Sonamu, EntityManager, EntityProp, EntityIndex } from "sonamu";
+import { Entity } from "sonamu/dist/entity/entity";
 
 export async function createApiServer(options: {
   listen: {
@@ -51,16 +52,68 @@ export async function createApiServer(options: {
   server.post<{
     Body: {
       entityId: string;
+      subsetKey: string;
+    };
+  }>("/api/entity/delSubset", async (request) => {
+    const { entityId, subsetKey } = request.body;
+    const entity = EntityManager.get(entityId);
+    delete entity.subsets[subsetKey];
+    await entity.save();
+
+    return 1;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
       props: EntityProp[];
     };
   }>("/api/entity/modifyProps", async (request) => {
     const { entityId, props } = request.body;
     const entity = EntityManager.get(entityId);
-    console.log(entityId);
     entity.props = props;
     await entity.save();
 
     return { updated: props };
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      indexes: EntityIndex[];
+    };
+  }>("/api/entity/modifyIndexes", async (request) => {
+    const { entityId, indexes } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.indexes = indexes;
+    await entity.save();
+
+    return { updated: indexes };
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      enumLabels: Entity["enumLabels"];
+    };
+  }>("/api/entity/modifyEnumLabels", async (request) => {
+    const { entityId, enumLabels } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.enumLabels = enumLabels;
+    await entity.save();
+
+    return { updated: enumLabels };
+  });
+
+  server.get<{
+    Querystring: {
+      entityId: string;
+    };
+  }>("/api/entity/getTableColumns", async (request) => {
+    const { entityId } = request.query;
+    const entity = EntityManager.get(entityId);
+    const columns = await entity.getTableColumns();
+    return { columns };
   });
 
   server.get("/api/all_routes", async () => {
