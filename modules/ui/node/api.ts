@@ -6,6 +6,7 @@ import {
   EntityProp,
   EntityIndex,
   EntitySubsetRow,
+  Migrator,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 
@@ -70,6 +71,27 @@ export async function createApiServer(options: {
       return 0;
     });
     return { entities };
+  });
+
+  server.post<{
+    Body: {
+      form: {
+        id: string;
+        title: string;
+        table: string;
+        parentId?: string;
+      };
+    };
+  }>("/api/entity/create", async (request) => {
+    const { form } = request.body;
+    await Sonamu.syncer.createEntity(
+      form.id,
+      form.parentId,
+      form.table,
+      form.title
+    );
+
+    return 1;
   });
 
   server.post<{
@@ -172,6 +194,27 @@ export async function createApiServer(options: {
     const entity = EntityManager.get(entityId);
     const columns = await entity.getTableColumns();
     return { columns };
+  });
+
+  const migrator = new Migrator({
+    mode: "dev",
+  });
+  server.get("/api/migrations/findMany", async () => {
+    const connections = Object.entries(Sonamu.dbConfig).map(
+      ([connKey, conn]) => {
+        return {
+          connKey,
+          ...conn,
+        };
+      }
+    );
+
+    const [, pendingList] = (await migrator.targets.pending.migrate.list()) as [
+      unknown,
+      { file: string; directory: string }[]
+    ];
+
+    return { connections, pendingList };
   });
 
   server.get("/api/all_routes", async () => {

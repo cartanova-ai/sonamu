@@ -604,17 +604,11 @@ export type RenderingNode = {
 export const TemplateOptions = z.object({
   entity: z.object({
     entityId: z.string(),
+    parentId: z.string().optional(),
     title: z.string(),
-    refCode: z.string().optional(),
-  }),
-  init_enums: z.object({
-    entityId: z.string(),
-    def: z.record(z.record(z.string())).optional(),
+    table: z.string().optional(),
   }),
   init_types: z.object({
-    entityId: z.string(),
-  }),
-  init_generated: z.object({
     entityId: z.string(),
   }),
   generated: z.object({
@@ -685,9 +679,7 @@ export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
 export const TemplateKey = z.enum([
   "entity",
-  "init_enums",
   "init_types",
-  "init_generated",
   "generated",
   "generated_http",
   "model",

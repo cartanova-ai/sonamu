@@ -64,7 +64,6 @@ import { wrapIf } from "../utils/lodash-able";
 import { getTextTypeLength } from "../api/code-converters";
 import { Template } from "../templates/base-template";
 import { Template__generated } from "../templates/generated.template";
-import { Template__init_generated } from "../templates/init_generated.template";
 import { Template__init_types } from "../templates/init_types.template";
 import { Template__entity } from "../templates/entity.template";
 import { Template__model } from "../templates/model.template";
@@ -729,8 +728,6 @@ export class Syncer {
       return new Template__entity();
     } else if (key === "init_types") {
       return new Template__init_types();
-    } else if (key === "init_generated") {
-      return new Template__init_generated();
     } else if (key === "generated") {
       return new Template__generated();
     } else if (key === "generated_http") {
@@ -866,12 +863,15 @@ export class Syncer {
       ),
     ].join("\n");
 
-    const formatted =
-      key === "generated_http"
-        ? [header, body].join("\n\n")
-        : await prettier.format([header, body].join("\n\n"), {
-            parser: "typescript",
-          });
+    const formatted = await (async () => {
+      if (key === "generated_http") {
+        return [header, body].join("\n\n");
+      } else {
+        return await prettier.format([header, body].join("\n\n"), {
+          parser: key === "entity" ? "json" : "typescript",
+        });
+      }
+    })();
 
     return {
       path: target + "/" + filePath,
@@ -915,9 +915,9 @@ export class Syncer {
 
     // 키 children
     let keys: TemplateKey[] = [key];
-    if (key === "entity") {
-      keys = ["entity", "init_generated", "init_types"];
-    }
+    // if (key === "entity") {
+    //   keys = ["entity", "init_generated", "init_types"];
+    // }
 
     // 템플릿 렌더
     const pathAndCodes = (
@@ -1274,5 +1274,31 @@ export class Syncer {
     });
 
     return columnsNode;
+  }
+
+  async createEntity(
+    entityId: string,
+    parentId?: string,
+    table?: string,
+    title?: string
+  ) {
+    await this.generateTemplate("entity", {
+      entityId,
+      parentId,
+      table,
+      title,
+    });
+
+    // reload entities
+    EntityManager.isAutoloaded = false;
+    await EntityManager.autoload();
+
+    // generate schemas
+    await this.actionGenerateSchemas([entityId]);
+
+    // generate types
+    await this.generateTemplate("init_types", {
+      entityId,
+    });
   }
 }

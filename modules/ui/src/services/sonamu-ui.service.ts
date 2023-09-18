@@ -22,6 +22,19 @@ export namespace SonamuUIService {
     ]);
   }
 
+  export function createEntity(form: {
+    id: string;
+    title: string;
+    table: string;
+    parentId?: string;
+  }) {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/create`,
+      data: { form },
+    });
+  }
+
   export function modifyEntityBase(
     entityId: string,
     newValues: {

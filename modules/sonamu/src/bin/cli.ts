@@ -278,10 +278,8 @@ async function stub_practice(name: string) {
   execSync(`echo "${runCode}" | pbcopy`);
 }
 
-async function stub_entity(name: string) {
-  await Sonamu.syncer.generateTemplate("entity", {
-    entityId: name,
-  });
+async function stub_entity(entityId: string) {
+  await Sonamu.syncer.createEntity(entityId);
 }
 
 async function scaffold_model(entityId: string) {
