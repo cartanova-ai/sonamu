@@ -10,6 +10,7 @@ import { EntityIndexForm } from "./_index_form";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { EditableInput } from "../../components/EditableInput";
+import { EntitySelector } from "./_entity_selector";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -60,9 +61,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     regCell,
     cursor,
     setCursor,
-    focusedCursor,
     setFocusedCursor,
     turnKeyHandler,
+    isFocused,
   } = useSheetTable({
     sheets: [
       {
@@ -171,17 +172,17 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         case "p":
         case "P":
           if (e.ctrlKey && e.shiftKey && e.metaKey) {
-            const entityId = prompt("어디로 갈래?");
-            if (!entityId) {
-              return false;
-            }
-            const isExists =
-              entities?.some((entity) => entity.id === entityId) ?? false;
-            if (!isExists) {
-              alert(`존재하지 않는 Entity ${entityId}`);
-              return false;
-            }
-            navigate(`/entities/${entityId}`);
+            openModal(<EntitySelector />, {
+              onControlledOpen: () => {
+                turnKeyHandler(false);
+              },
+              onControlledClose: () => {
+                turnKeyHandler(true);
+              },
+              onCompleted: (entityId) => {
+                navigate(`/entities/${entityId}`);
+              },
+            });
           }
           break;
       }
@@ -282,6 +283,35 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     });
   }, [params.entityId]);
 
+  // base
+  const handleEntityBaseOnEnter = (which: "parentId" | "title" | "table") => {
+    return (
+      _e: React.KeyboardEvent<HTMLInputElement>,
+      { value }: { value: string }
+    ): Promise<void> => {
+      if (!entity) {
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve, reject) => {
+        SonamuUIService.modifyEntityBase(entity.id, {
+          title: entity.title,
+          table: entity.table,
+          parentId: entity.parentId === "" ? undefined : entity.parentId,
+          [which]: value,
+        })
+          .then(() => {
+            mutate();
+            return resolve();
+          })
+          .catch((e) => {
+            return reject(e);
+          });
+      });
+    };
+  };
+
+  // props
   const openPropForm = (
     mode: "add" | "modify",
     at?: number,
@@ -367,6 +397,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  // indexes
   const openIndexForm = (
     mode: "add" | "modify",
     at?: number,
@@ -450,6 +481,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  // subsets
   const addSubsetKey = () => {
     const subsetKey = prompt("Subset key?");
     if (!subsetKey) {
@@ -477,6 +509,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  // enums
   const addEnumLabelRow = (enumId: string, cursorY?: number) => {
     if (!entity) {
       return;
@@ -494,32 +527,102 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     });
     setFocusedCursor({ sheet: `enumLabels-${enumId}`, y: cursorY + 1, x: 0 });
   };
+  const modifyEnumLabels = (
+    enumId: string,
+    at: number,
+    which: "key" | "label",
+    newValue: string
+  ) => {
+    if (!entity) {
+      return;
+    }
 
-  const handleEntityBaseOnEnter = (which: "parentId" | "title" | "table") => {
-    return (
-      _e: React.KeyboardEvent<HTMLInputElement>,
-      { value }: { value: string }
-    ): Promise<void> => {
-      if (!entity) {
-        return Promise.resolve();
-      }
+    enumLabelsArray[enumId] = enumLabelsArray[enumId].map((item, index) => {
+      return index === at
+        ? {
+            ...item,
+            [which]: newValue,
+          }
+        : item;
+    });
+    SonamuUIService.modifyEnumLabels(
+      entity.id,
+      enumLabelsArrayToEnumLabels(enumLabelsArray)
+    )
+      .then(({ updated }) => {
+        entity.enumLabels = updated;
+        mutate();
+      })
+      .catch(defaultCatch);
+  };
+  const editEnumId = (oldEnumId: string, newEnumId: string) => {
+    if (!entity) {
+      return;
+    }
+    const newEnumLabelsArray = Object.fromEntries(
+      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
+        enumId === oldEnumId ? newEnumId : enumId,
+        enumLabels,
+      ])
+    );
 
-      return new Promise((resolve, reject) => {
-        SonamuUIService.modifyEntityBase(entity.id, {
-          title: entity.title,
-          table: entity.table,
-          parentId: entity.parentId === "" ? undefined : entity.parentId,
-          [which]: value,
-        })
-          .then(() => {
-            mutate();
-            return resolve();
-          })
-          .catch((e) => {
-            return reject(e);
-          });
-      });
-    };
+    SonamuUIService.modifyEnumLabels(
+      entity.id,
+      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
+    )
+      .then(({ updated }) => {
+        entity.enumLabels = updated;
+        mutate();
+      })
+      .catch(defaultCatch);
+  };
+  const confirmDelEnum = (enumId: string) => {
+    if (!entity) {
+      return;
+    }
+    const answer = confirm(`Are you sure to delete "${enumId}"?`);
+    if (!answer) {
+      return;
+    }
+
+    const newEnumLabelsArray = Object.fromEntries(
+      Object.entries(enumLabelsArray).filter(
+        ([_enumId, _enumLabels]) => _enumId !== enumId
+      )
+    );
+
+    SonamuUIService.modifyEnumLabels(
+      entity.id,
+      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
+    )
+      .then(({ updated }) => {
+        entity.enumLabels = updated;
+        mutate();
+      })
+      .catch(defaultCatch);
+  };
+  const openCreateNewEnum = () => {
+    if (!entity) {
+      return;
+    }
+
+    const newEnumId = prompt("New enum id?");
+    if (!newEnumId) {
+      return;
+    }
+
+    const newEnumLabelsArray = Object.fromEntries(
+      Object.entries(enumLabelsArray).concat([[newEnumId, []]])
+    );
+    SonamuUIService.modifyEnumLabels(
+      entity.id,
+      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
+    )
+      .then(({ updated }) => {
+        entity.enumLabels = updated;
+        mutate();
+      })
+      .catch(defaultCatch);
   };
 
   return (
@@ -698,15 +801,42 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           <div className="enums-and-subsets">
             {entity && Object.keys(enumLabelsArray).length > 0 && (
               <div className="enums">
-                <h3>Enums</h3>
+                <h3>
+                  Enums{" "}
+                  <Button
+                    size="mini"
+                    icon="plus"
+                    color="blue"
+                    onClick={() => openCreateNewEnum()}
+                  />
+                </h3>
                 <div className="enums-list">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
                     <div className="enums-table" key={enumsIndex}>
                       <Table celled selectable>
                         <Table.Header>
                           <Table.Row>
-                            <Table.HeaderCell colSpan={2}>
+                            <Table.HeaderCell
+                              colSpan={2}
+                              onDoubleClick={() => {
+                                const newEnumId = prompt(
+                                  "You want to change the EnumID?",
+                                  enumId
+                                );
+                                if (!newEnumId) {
+                                  return;
+                                }
+                                editEnumId(enumId, newEnumId);
+                              }}
+                            >
                               {enumId}
+                              <Button
+                                size="mini"
+                                icon="trash"
+                                color="red"
+                                className="btn-del-enum"
+                                onClick={() => confirmDelEnum(enumId)}
+                              />
                             </Table.HeaderCell>
                           </Table.Row>
                         </Table.Header>
@@ -729,39 +859,21 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   collapsing
                                 >
                                   <SheetCellInput
-                                    editable={
-                                      !!focusedCursor &&
-                                      focusedCursor.sheet ===
-                                        `enumLabels-${enumId}` &&
-                                      focusedCursor.y === enumLabelIndex &&
-                                      focusedCursor.x === 0
-                                    }
+                                    editable={isFocused(
+                                      `enumLabels-${enumId}`,
+                                      enumLabelIndex,
+                                      0
+                                    )}
                                     initialValue={key}
                                     onChange={(newValue) => {
                                       setFocusedCursor(null);
                                       if (newValue !== key) {
-                                        enumLabelsArray[enumId] =
-                                          enumLabelsArray[enumId].map(
-                                            (item, index) => {
-                                              return index === enumLabelIndex
-                                                ? {
-                                                    key: newValue,
-                                                    label: item.label,
-                                                  }
-                                                : item;
-                                            }
-                                          );
-                                        SonamuUIService.modifyEnumLabels(
-                                          entity.id,
-                                          enumLabelsArrayToEnumLabels(
-                                            enumLabelsArray
-                                          )
-                                        )
-                                          .then(({ updated }) => {
-                                            entity.enumLabels = updated;
-                                            mutate();
-                                          })
-                                          .catch(defaultCatch);
+                                        modifyEnumLabels(
+                                          enumId,
+                                          enumLabelIndex,
+                                          "key",
+                                          newValue
+                                        );
 
                                         setFocusedCursor({
                                           sheet: `enumLabels-${enumId}`,
@@ -780,38 +892,21 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   )}
                                 >
                                   <SheetCellInput
-                                    editable={
-                                      !!focusedCursor &&
-                                      focusedCursor.sheet ===
-                                        `enumLabels-${enumId}` &&
-                                      focusedCursor.y === enumLabelIndex &&
-                                      focusedCursor.x === 1
-                                    }
+                                    editable={isFocused(
+                                      `enumLabels-${enumId}`,
+                                      enumLabelIndex,
+                                      1
+                                    )}
                                     initialValue={label}
                                     onChange={(newValue) => {
                                       setFocusedCursor(null);
                                       if (newValue !== label) {
-                                        // 값 변경
-                                        enumLabelsArray[enumId] =
-                                          enumLabelsArray[enumId].map(
-                                            (item, index) => {
-                                              return index === enumLabelIndex
-                                                ? { key, label: newValue }
-                                                : item;
-                                            }
-                                          );
-
-                                        SonamuUIService.modifyEnumLabels(
-                                          entity.id,
-                                          enumLabelsArrayToEnumLabels(
-                                            enumLabelsArray
-                                          )
-                                        )
-                                          .then(({ updated }) => {
-                                            entity.enumLabels = updated;
-                                            mutate();
-                                          })
-                                          .catch(defaultCatch);
+                                        modifyEnumLabels(
+                                          enumId,
+                                          enumLabelIndex,
+                                          "label",
+                                          newValue
+                                        );
                                       }
                                     }}
                                   />

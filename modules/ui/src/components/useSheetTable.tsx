@@ -219,6 +219,12 @@ export function useSheetTable(options: {
           e.preventDefault();
           return;
         case "Enter":
+          if (
+            e.target instanceof HTMLInputElement ||
+            e.target instanceof HTMLTextAreaElement
+          ) {
+            return;
+          }
           setFocusedCursor(cursor);
           if (onExecute) {
             onExecute(cursor.sheet, cursor.y, cursor.x);
@@ -327,6 +333,11 @@ export function useSheetTable(options: {
     setCursor,
     focusedCursor,
     setFocusedCursor,
+    isFocused: (sheet: string, y: number, x: number) =>
+      !!focusedCursor &&
+      focusedCursor?.sheet === sheet &&
+      focusedCursor?.y === y &&
+      focusedCursor?.x === x,
     execute: () => {},
   };
 }

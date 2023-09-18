@@ -110,7 +110,8 @@ $gnb-height: 50px;
 
           tr.cursor-row-pointed {
             background-color: #f1fff5;
-            td {
+            td,
+            th {
               font-weight: 600;
               &.cursor-cell-pointed {
                 background-color: #b1f3c4;
@@ -147,6 +148,7 @@ $gnb-height: 50px;
 
           .enums {
             flex: 1;
+
             .enums-list {
               display: flex;
               flex-wrap: wrap;
@@ -154,6 +156,17 @@ $gnb-height: 50px;
 
               .enums-table {
                 width: 20em;
+
+                th {
+                  position: relative;
+                  .ui.btn-del-enum {
+                    position: absolute;
+                    top: 0.4em;
+                    right: 0.2em;
+                    font-size: 0.7em;
+                    margin-left: 0.5em;
+                  }
+                }
                 td {
                   width: 10em;
                   .sheet-cell-input {
