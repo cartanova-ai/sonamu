@@ -62,6 +62,26 @@ export async function createApiServer(options: {
   server.post<{
     Body: {
       entityId: string;
+      newValues: {
+        title: string;
+        table: string;
+        parentId?: string;
+      };
+    };
+  }>("/api/entity/modifyEntityBase", async (request) => {
+    const { entityId, newValues } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.title = newValues.title;
+    entity.table = newValues.table;
+    entity.parentId = newValues.parentId;
+    await entity.save();
+
+    return 1;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
       subsetKey: string;
       fields: string[];
     };

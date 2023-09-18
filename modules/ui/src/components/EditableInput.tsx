@@ -1,54 +1,53 @@
+import classNames from "classnames";
 import { useEffect, useState } from "react";
-import { Input } from "semantic-ui-react";
+import { Input, InputProps } from "semantic-ui-react";
 
-type EditableInputProps = {
-  editable: boolean;
-  initialValue: string;
-  onChange: (value: string) => void;
+type EditableInputProps = Omit<InputProps, "onChange"> & {
+  value: string;
+  onChange: (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    data: { value: string }
+  ) => Promise<void>;
 };
 export function EditableInput({
-  editable,
-  initialValue,
   onChange,
+  value: originValue,
+  ...inputProps
 }: EditableInputProps) {
-  const [value, setValue] = useState(initialValue);
-
-  const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-  };
-  const handleOnKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      onChange(value);
-    } else if (e.key === "Escape") {
-      setValue(initialValue);
-      onChange(initialValue);
-    }
-    e.stopPropagation();
-  };
+  const [loading, setLoading] = useState(false);
+  const [value, setValue] = useState<string>(inputProps.originValue);
 
   useEffect(() => {
-    if (editable) {
-      setTimeout(() => {
-        const input = document.querySelector(
-          `.editable-input input`
-        ) as HTMLInputElement;
-        input?.focus();
-      });
+    if (value !== originValue) {
+      setValue(originValue);
     }
-  }, [editable]);
+  }, [originValue]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    if (event.key === "Enter") {
+      if (value === originValue) {
+        return;
+      }
+      setLoading(true);
+      onChange(event, { value: event.currentTarget.value }).finally(() => {
+        setLoading(false);
+      });
+    } else if (event.key === "Escape") {
+      setValue(originValue);
+    }
+  };
 
   return (
-    <>
-      {editable ? (
-        <Input
-          value={value}
-          onChange={handleOnChange}
-          onKeyDown={handleOnKeyDown}
-          className="editable-input"
-        />
-      ) : (
-        <>{initialValue}&nbsp;</>
-      )}
-    </>
+    <Input
+      {...inputProps}
+      loading={loading}
+      onKeyDown={handleKeyDown}
+      value={value ?? ""}
+      onChange={(_e, data) => setValue(data.value)}
+      className={classNames("editable-input", {
+        "is-dirty": !!originValue && originValue !== value,
+      })}
+    />
   );
 }

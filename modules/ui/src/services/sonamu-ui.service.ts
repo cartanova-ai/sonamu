@@ -22,6 +22,24 @@ export namespace SonamuUIService {
     ]);
   }
 
+  export function modifyEntityBase(
+    entityId: string,
+    newValues: {
+      title: string;
+      table: string;
+      parentId?: string;
+    }
+  ): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/modifyEntityBase`,
+      data: {
+        entityId,
+        newValues,
+      },
+    });
+  }
+
   export function modifySubset(
     entityId: string,
     subsetKey: string,

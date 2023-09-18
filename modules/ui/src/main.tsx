@@ -6,6 +6,7 @@ import axios from "axios";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
+import MigrationsIndex from "./pages/migrations/index.tsx";
 
 export async function swrFetcher(
   url: string,
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/entities" element={<EntitiesLayout />}>
             <Route path=":entityId" element={<EntitiesShowPage />} />
           </Route>
+          <Route path="/migrations" element={<MigrationsIndex />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>

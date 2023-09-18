@@ -1,14 +1,15 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { Button, Checkbox, Label, Table } from "semantic-ui-react";
+import { Button, Checkbox, Form, Input, Label, Table } from "semantic-ui-react";
 import { useEffect, useMemo } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { EntityIndex, EntityProp } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityPropForm } from "./_prop_form";
 import { EntityIndexForm } from "./_index_form";
-import { EditableInput } from "../../components/EditableInput";
+import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
+import { EditableInput } from "../../components/EditableInput";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -274,7 +275,6 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
   // entityId
   useEffect(() => {
-    console.log(`entityId changed ${params.entityId}`);
     setCursor({
       sheet: "props",
       y: 0,
@@ -495,11 +495,71 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     setFocusedCursor({ sheet: `enumLabels-${enumId}`, y: cursorY + 1, x: 0 });
   };
 
+  const handleEntityBaseOnEnter = (which: "title" | "table") => {
+    return (
+      _e: React.KeyboardEvent<HTMLInputElement>,
+      { value }: { value: string }
+    ): Promise<void> => {
+      if (!entity) {
+        return Promise.resolve();
+      }
+
+      return new Promise((resolve, reject) => {
+        SonamuUIService.modifyEntityBase(entity.id, {
+          title: entity.title,
+          table: entity.table,
+          parentId: entity.parentId,
+          [which]: value,
+        })
+          .then(() => {
+            mutate();
+            return resolve();
+          })
+          .catch((e) => {
+            return reject(e);
+          });
+      });
+    };
+  };
+
   return (
     <div className="entities-detail">
       {isLoading && <div>Loading</div>}
       {entity && (
         <>
+          <div>
+            <h3>Entity</h3>
+            <div className="entity-base">
+              <Form>
+                <Form.Group widths="equal">
+                  <Form.Field>
+                    <label>ID</label>
+                    <Input value={entity.id} readOnly />
+                  </Form.Field>
+                  <Form.Field>
+                    <label>Title</label>
+                    <EditableInput
+                      value={entity.title}
+                      onChange={handleEntityBaseOnEnter("title")}
+                    />
+                  </Form.Field>
+                  <Form.Field>
+                    <label>TableName</label>
+                    <EditableInput
+                      value={entity.table}
+                      onChange={handleEntityBaseOnEnter("table")}
+                    />
+                  </Form.Field>
+                  <Form.Field>
+                    {/* <EditableInput
+                      originValue={entity.table}
+                      onEnter={handleEntityBaseOnEnter}
+                    /> */}
+                  </Form.Field>
+                </Form.Group>
+              </Form>
+            </div>
+          </div>
           <div className="props-and-indexes">
             <div className="props">
               <h3>Props</h3>
@@ -661,7 +721,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   )}
                                   collapsing
                                 >
-                                  <EditableInput
+                                  <SheetCellInput
                                     editable={
                                       !!focusedCursor &&
                                       focusedCursor.sheet ===
@@ -712,7 +772,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                     1
                                   )}
                                 >
-                                  <EditableInput
+                                  <SheetCellInput
                                     editable={
                                       !!focusedCursor &&
                                       focusedCursor.sheet ===
@@ -823,9 +883,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   onClick={expandRelationEntity(subsetRowIndex)}
                                   icon={subsetRow.isOpen ? "minus" : "plus"}
                                   disabled={subsetRow.isOpen}
-                                >
-                                  {subsetRow.relationEntity}
-                                </Button>
+                                  content={subsetRow.relationEntity}
+                                />
                               )}
                             </Table.Cell>
                             {Object.keys(entity.subsets).map((subsetKey) => (

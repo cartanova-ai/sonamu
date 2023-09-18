@@ -24,6 +24,7 @@ $gnb-height: 50px;
     left: 0;
     display: flex;
     align-items: center;
+    z-index: 100;
 
     .title {
       padding: 1em;
@@ -40,6 +41,7 @@ $gnb-height: 50px;
         padding: 1em 3em;
         cursor: pointer;
         text-align: center;
+        color: white;
 
         &:hover {
           background-color: #1e4d2b;
@@ -53,6 +55,7 @@ $gnb-height: 50px;
   }
   .content {
     width: 100%;
+    min-height: calc(100vh - $gnb-height);
     background-color: rgb(212, 223, 219);
 
     .entities-layout {
@@ -140,21 +143,20 @@ $gnb-height: 50px;
 
         .enums-and-subsets {
           display: flex;
-          gap: 1em;
+          gap: 2em;
 
           .enums {
             flex: 1;
             .enums-list {
               display: flex;
               flex-wrap: wrap;
-              gap: 1em;
-              justify-content: space-around;
+              gap: 2em;
 
               .enums-table {
-                width: 32%;
+                width: 20em;
                 td {
-                  min-width: 10em;
-                  .editable-input {
+                  width: 10em;
+                  .sheet-cell-input {
                     padding: 0;
 
                     input {
@@ -187,7 +189,7 @@ $gnb-height: 50px;
   }
 }
 
-.ui.input.editable-input {
+.ui.input.sheet-cell-input {
   > input {
     padding: 0.2em 0.4em;
   }
@@ -261,5 +263,14 @@ code {
     padding-left: 0.2em !important;
     margin: 0;
     border: 0 !important;
+  }
+}
+
+.ui.form .ui.input.editable-input {
+  &.is-dirty {
+    input {
+      border: 1px solid red;
+      background-color: rgb(255, 217, 217);
+    }
   }
 }

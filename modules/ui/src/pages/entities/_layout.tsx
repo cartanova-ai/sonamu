@@ -3,8 +3,8 @@ import { Link, Outlet, useParams } from "react-router-dom";
 import classnames from "classnames";
 import { Button, Divider } from "semantic-ui-react";
 
-type EntitiesPageProps = {};
-export default function EntitiesLayout(_props: EntitiesPageProps) {
+type EntitiesLayoutProps = {};
+export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const { data, error } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
   const isLoading = !error && !data;
