@@ -495,7 +495,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     setFocusedCursor({ sheet: `enumLabels-${enumId}`, y: cursorY + 1, x: 0 });
   };
 
-  const handleEntityBaseOnEnter = (which: "title" | "table") => {
+  const handleEntityBaseOnEnter = (which: "parentId" | "title" | "table") => {
     return (
       _e: React.KeyboardEvent<HTMLInputElement>,
       { value }: { value: string }
@@ -508,7 +508,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         SonamuUIService.modifyEntityBase(entity.id, {
           title: entity.title,
           table: entity.table,
-          parentId: entity.parentId,
+          parentId: entity.parentId === "" ? undefined : entity.parentId,
           [which]: value,
         })
           .then(() => {
@@ -535,6 +535,13 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                   <Form.Field>
                     <label>ID</label>
                     <Input value={entity.id} readOnly />
+                  </Form.Field>
+                  <Form.Field>
+                    <label>ParentID</label>
+                    <EditableInput
+                      value={entity.parentId ?? ""}
+                      onChange={handleEntityBaseOnEnter("parentId")}
+                    />
                   </Form.Field>
                   <Form.Field>
                     <label>Title</label>

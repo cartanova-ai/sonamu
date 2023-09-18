@@ -56,6 +56,19 @@ export async function createApiServer(options: {
         };
       })
     );
+
+    entities.sort((a, b) => {
+      const aId = a.parentId ?? a.id;
+      const bId = b.parentId ?? b.id;
+      if (aId < bId) return -1;
+      if (aId > bId) return 1;
+      if (aId === bId) {
+        if (a.parentId === undefined) return -1;
+        if (b.parentId === undefined) return 1;
+        return 0;
+      }
+      return 0;
+    });
     return { entities };
   });
 

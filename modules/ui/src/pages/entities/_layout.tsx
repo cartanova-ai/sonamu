@@ -27,6 +27,11 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
               })}
               to={`/entities/${entity.id}`}
             >
+              {entity.parentId && (
+                <span style={{ color: "silver" }}>
+                  {entity.parentId} {"> "}
+                </span>
+              )}
               {entity.id}
             </Link>
           ))}
