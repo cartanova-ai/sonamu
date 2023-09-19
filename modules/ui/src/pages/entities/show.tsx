@@ -25,34 +25,28 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   const params = useParams<{ entityId: string }>();
   const entity =
     entities?.find((entity) => entity.id === params.entityId) ?? null;
-  const enumLabelsArray: {
-    [enumId: string]: { key: string; label: string }[];
-  } = useMemo(() => {
+  useEffect(() => {
+    setCursor({
+      sheet: "props",
+      y: 0,
+      x: 0,
+    });
+  }, [params.entityId]);
+  const delEntity = () => {
     if (!entity) {
-      return {};
+      return;
     }
-    return Object.fromEntries(
-      Object.entries(entity.enumLabels).map(([enumId, enumLabels]) => [
-        enumId,
-        Object.entries(enumLabels).map(([key, label]) => ({
-          key,
-          label,
-        })),
-      ])
-    );
-  }, [entity]);
-  const enumLabelsArrayToEnumLabels = (enumLabelsArray: {
-    [enumId: string]: { key: string; label: string }[];
-  }) => {
-    if (!entity) {
-      return {};
+    const answer = confirm(`Are you sure to delete an entity "${entity.id}"?`);
+    if (!answer) {
+      return;
     }
-    return Object.fromEntries(
-      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
-        enumId,
-        Object.fromEntries(enumLabels.map(({ key, label }) => [key, label])),
-      ])
-    );
+
+    SonamuUIService.delEntity(entity.id)
+      .then(() => {
+        mutate();
+        navigate("/entities");
+      })
+      .catch(defaultCatch);
   };
 
   // useSheetTable
@@ -192,6 +186,36 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   // commonModal
   const { openModal } = useCommonModal();
 
+  // subsets
+  const enumLabelsArray: {
+    [enumId: string]: { key: string; label: string }[];
+  } = useMemo(() => {
+    if (!entity) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(entity.enumLabels).map(([enumId, enumLabels]) => [
+        enumId,
+        Object.entries(enumLabels).map(([key, label]) => ({
+          key,
+          label,
+        })),
+      ])
+    );
+  }, [entity]);
+  const enumLabelsArrayToEnumLabels = (enumLabelsArray: {
+    [enumId: string]: { key: string; label: string }[];
+  }) => {
+    if (!entity) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
+        enumId,
+        Object.fromEntries(enumLabels.map(({ key, label }) => [key, label])),
+      ])
+    );
+  };
   const appendFieldOnSubset = (
     subsetKey: string,
     field: string,
@@ -273,15 +297,6 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       }));
     entity.flattenSubsetRows.splice(at + 1, 0, ...newSubsetRows);
   };
-
-  // entityId
-  useEffect(() => {
-    setCursor({
-      sheet: "props",
-      y: 0,
-      x: 0,
-    });
-  }, [params.entityId]);
 
   // base
   const handleEntityBaseOnEnter = (which: "parentId" | "title" | "table") => {
@@ -630,45 +645,53 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       {isLoading && <div>Loading</div>}
       {entity && (
         <>
-          <div>
-            <h3>Entity</h3>
-            <div className="entity-base">
-              <Form>
-                <Form.Group widths="equal">
-                  <Form.Field>
-                    <label>ID</label>
-                    <Input value={entity.id} readOnly />
-                  </Form.Field>
-                  <Form.Field>
-                    <label>ParentID</label>
-                    <EditableInput
-                      value={entity.parentId ?? ""}
-                      onChange={handleEntityBaseOnEnter("parentId")}
-                    />
-                  </Form.Field>
-                  <Form.Field>
-                    <label>Title</label>
-                    <EditableInput
-                      value={entity.title}
-                      onChange={handleEntityBaseOnEnter("title")}
-                    />
-                  </Form.Field>
-                  <Form.Field>
-                    <label>TableName</label>
-                    <EditableInput
-                      value={entity.table}
-                      onChange={handleEntityBaseOnEnter("table")}
-                    />
-                  </Form.Field>
-                  <Form.Field>
-                    {/* <EditableInput
-                      originValue={entity.table}
-                      onEnter={handleEntityBaseOnEnter}
-                    /> */}
-                  </Form.Field>
-                </Form.Group>
-              </Form>
-            </div>
+          <div className="entity-base">
+            <h3>
+              Entity{" "}
+              <Button
+                size="mini"
+                color="red"
+                icon="trash"
+                content="Delete"
+                className="btn-del-entity"
+                onClick={() => delEntity()}
+              />
+            </h3>
+            <Form>
+              <Form.Group widths="equal">
+                <Form.Field>
+                  <label>ID</label>
+                  <Input value={entity.id} readOnly />
+                </Form.Field>
+                <Form.Field>
+                  <label>ParentID</label>
+                  <EditableInput
+                    value={entity.parentId ?? ""}
+                    onChange={handleEntityBaseOnEnter("parentId")}
+                  />
+                </Form.Field>
+                <Form.Field>
+                  <label>Title</label>
+                  <EditableInput
+                    value={entity.title}
+                    onChange={handleEntityBaseOnEnter("title")}
+                  />
+                </Form.Field>
+                <Form.Field>
+                  <label>TableName</label>
+                  <EditableInput
+                    value={entity.table}
+                    onChange={handleEntityBaseOnEnter("table")}
+                  />
+                </Form.Field>
+                <Form.Field>
+                  {/* <EditableInput
+                    originValue={entity.table}
+                    onEnter={handleEntityBaseOnEnter}
+                  /> */}
+                </Form.Field>
+              </Form.Group>
+            </Form>
           </div>
           <div className="props-and-indexes">
             <div className="props">

@@ -130,6 +130,17 @@ $gnb-height: 50px;
           padding: 0.3em 0.7em;
         }
 
+        .entity-base {
+          position: relative;
+
+          .btn-del-entity {
+            position: absolute;
+            font-size: 0.4em;
+            right: 0;
+            top: 0;
+          }
+        }
+
         .props-and-indexes {
           display: flex;
           gap: 1em;

@@ -35,6 +35,14 @@ export namespace SonamuUIService {
     });
   }
 
+  export function delEntity(entityId: string): Promise<{ delPaths: string[] }> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/del`,
+      data: { entityId },
+    });
+  }
+
   export function modifyEntityBase(
     entityId: string,
     newValues: {

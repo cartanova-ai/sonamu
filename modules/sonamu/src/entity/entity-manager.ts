@@ -54,6 +54,15 @@ class EntityManagerClass {
     });
   }
 
+  async reload(doSilent: boolean = false) {
+    this.entities.clear();
+    this.modulePaths.clear();
+    this.tableSpecs.clear();
+    this.isAutoloaded = false;
+
+    return this.autoload(doSilent);
+  }
+
   register(json: EntityJson): void {
     const entity = new Entity(json);
     this.entities.set(json.id, entity);

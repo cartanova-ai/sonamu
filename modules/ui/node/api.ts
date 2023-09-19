@@ -9,6 +9,7 @@ import {
   Migrator,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
+import knex from "knex";
 
 export async function createApiServer(options: {
   listen: {
@@ -92,6 +93,15 @@ export async function createApiServer(options: {
     );
 
     return 1;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+    };
+  }>("/api/entity/del", async (request) => {
+    const { entityId } = request.body;
+    return Sonamu.syncer.delEntity(entityId);
   });
 
   server.post<{
@@ -209,12 +219,45 @@ export async function createApiServer(options: {
       }
     );
 
-    const [, pendingList] = (await migrator.targets.pending.migrate.list()) as [
-      unknown,
-      { file: string; directory: string }[]
-    ];
+    const list = await Promise.all(
+      Object.keys(Sonamu.dbConfig).map(async (connKey) => {
+        const knexOptions = Sonamu.dbConfig[connKey];
+        const tConn = knex(knexOptions);
 
-    return { connections, pendingList };
+        const status = await (async () => {
+          try {
+            return tConn.migrate.status();
+          } catch (err) {
+            return "error";
+          }
+        })();
+
+        const list = await (async () => {
+          try {
+            return tConn.migrate.list();
+          } catch (err) {
+            return [];
+          }
+        })();
+
+        const currentVersion = await (async () => {
+          try {
+            return tConn.migrate.currentVersion();
+          } catch (err) {
+            return "error";
+          }
+        })();
+
+        return {
+          connKey,
+          status,
+          list,
+          currentVersion,
+        };
+      })
+    );
+
+    return { list };
   });
 
   server.get("/api/all_routes", async () => {

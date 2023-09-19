@@ -81,6 +81,7 @@ import { Template__view_search_input } from "../templates/view_search_input.temp
 import { Template__view_list_columns } from "../templates/view_list_columns.template";
 import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
+import { execSync } from "child_process";
 
 type FileType = "model" | "types" | "enums" | "enums" | "generated" | "entity";
 type GlobPattern = {
@@ -1290,8 +1291,7 @@ export class Syncer {
     });
 
     // reload entities
-    EntityManager.isAutoloaded = false;
-    await EntityManager.autoload();
+    await EntityManager.reload();
 
     // generate schemas
     await this.actionGenerateSchemas([entityId]);
@@ -1300,5 +1300,41 @@ export class Syncer {
     await this.generateTemplate("init_types", {
       entityId,
     });
+  }
+
+  async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
+    const entity = EntityManager.get(entityId);
+
+    const delPaths = (() => {
+      if (entity.parentId) {
+        return [
+          `${Sonamu.apiRootPath}/src/application/${entity.names.parentFs}/${entity.names.fs}.entity.json`,
+        ];
+      } else {
+        return [
+          `${Sonamu.apiRootPath}/src/application/${entity.names.fs}`,
+          `${Sonamu.apiRootPath}/dist/application/${entity.names.fs}`,
+          ...Sonamu.config.sync.targets
+            .map((target) => [
+              `${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`,
+            ])
+            .flat(),
+        ];
+      }
+    })(); // iife
+
+    for await (const delPath of delPaths) {
+      if (existsSync(delPath)) {
+        console.log(chalk.red(`DELETE ${delPath}`));
+        execSync(`rm -rf ${delPath}`);
+      } else {
+        console.log(chalk.yellow(`NOT_EXISTS ${delPath}`));
+      }
+    }
+
+    // reload entities
+    await EntityManager.reload();
+
+    return { delPaths };
   }
 }
