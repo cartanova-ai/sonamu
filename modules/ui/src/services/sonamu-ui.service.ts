@@ -1,7 +1,12 @@
 import { Entity } from "sonamu/dist/entity/entity";
 import useSWR, { SWRResponse } from "swr";
 import { fetch } from "./sonamu.shared";
-import { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
+import {
+  EntityIndex,
+  EntityProp,
+  FlattenSubsetRow,
+  MigrationStatus,
+} from "sonamu";
 
 type SWRError = {
   name: string;
@@ -151,6 +156,53 @@ export namespace SonamuUIService {
       params: {
         entityId,
       },
+    });
+  }
+
+  export function useMigrationStatus(): SWRResponse<
+    { status: MigrationStatus },
+    SWRError
+  > {
+    return useSWR<{ status: MigrationStatus }, SWRError>([
+      `/api/migrations/status`,
+    ]);
+  }
+
+  export function migrationsRunAction(
+    action: "latest" | "rollback" | "shadow",
+    targets: string[]
+  ): Promise<
+    {
+      connKey: string;
+      batchNo: number;
+      applied: string[];
+    }[]
+  > {
+    return fetch({
+      method: "POST",
+      url: `/api/migrations/runAction`,
+      data: {
+        action,
+        targets,
+      },
+    });
+  }
+
+  export function migrationsDelCodes(codeNames: string[]): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/migrations/delCodes`,
+      data: {
+        codeNames,
+      },
+    });
+  }
+
+  export function migrationsGeneratePreparedCodes(): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/migrations/generatePreparedCodes`,
+      data: {},
     });
   }
 }

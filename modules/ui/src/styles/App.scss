@@ -234,7 +234,9 @@ code {
   display: block;
   background-color: #e0eae0;
   padding: 1em;
+  margin: 1em;
   font-size: 0.8em !important;
+  text-align: left;
 }
 
 .ui.common-modal {
@@ -296,5 +298,130 @@ code {
       border: 1px solid red;
       background-color: rgb(255, 217, 217);
     }
+  }
+}
+
+.migrations-index {
+  padding: 2em;
+
+  .error-box {
+    width: 50em;
+    margin: 30vh auto;
+    white-space: pre-line;
+    border: 2px solid red;
+    padding: 3em;
+    background-color: white;
+    line-height: 2em;
+  }
+
+  .tools {
+    display: flex;
+    gap: 2em;
+
+    .code-buttons {
+      flex: 1;
+    }
+    .conn-preset-buttons {
+      text-align: right;
+    }
+  }
+
+  .ui.table {
+    font-size: 0.9em;
+    th {
+      padding: 0.5em 0.8em;
+    }
+    td {
+      padding: 0.5em 0.8em;
+    }
+
+    th,
+    td {
+      &.conn-status {
+        text-align: center;
+      }
+      &.conn-selected {
+        background-color: #dafde6;
+      }
+    }
+  }
+
+  .prepared {
+    padding: 1em;
+
+    h3 {
+      position: relative;
+
+      .buttons {
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+    }
+  }
+  .codes {
+    padding: 1em;
+  }
+  .conns {
+    padding: 1em;
+  }
+}
+
+// semantic-ui-react Table에서 rowSpan한 경우 보더 라인이 깨지는 현상을 해결하기 위한 스타일
+.ui.table {
+  &.ui.celled.table tr td:first-child,
+  &.ui.celled.table tr th:first-child {
+    border-left: 1px solid rgba(34, 36, 38, 0.1);
+  }
+}
+
+.ui.table .table-empty {
+  td {
+    text-align: center;
+    padding: 1em;
+  }
+}
+
+.code-viewer {
+  display: flex;
+  align-items: flex-start;
+
+  code {
+    flex: 1;
+    margin: 0.2em;
+  }
+
+  div {
+    margin: 0 auto;
+  }
+}
+
+.migration-commit-form {
+  .conns {
+    display: flex;
+    width: 100%;
+    gap: 0.5em;
+    margin: 1em;
+
+    .conn {
+      flex: 1;
+      text-align: center;
+      padding: 1em;
+      background-color: #f1fff5;
+      border: 1px solid #b1f3c4;
+      border-radius: 0.3em;
+      opacity: 0.3;
+
+      &.is-targeted {
+        background-color: #b1f3c4;
+        color: green;
+        font-weight: bold;
+        opacity: 1;
+      }
+    }
+  }
+
+  .ui.form {
+    width: auto;
   }
 }
