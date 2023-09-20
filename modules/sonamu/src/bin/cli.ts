@@ -24,6 +24,7 @@ import knex, { Knex } from "knex";
 import { camelize } from "inflection";
 import prettier from "prettier";
 import { SMDManager } from "../smd/smd-manager";
+import process from "process";
 
 let migrator: Migrator;
 
@@ -296,7 +297,9 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
-    const sonamuUI = await import("@sonamu-kit/ui" as any);
+    const sonamuUI: {
+      startServers: (appRootPath: string) => void;
+    } = await import("@sonamu-kit/ui" as string);
     sonamuUI.startServers(Sonamu.appRootPath);
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {

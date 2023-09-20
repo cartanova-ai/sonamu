@@ -46,3 +46,7 @@ export async function findApiRootPath() {
   } while (dir.split(path.sep).length > 1);
   throw new Error("Cannot find AppRoot using Sonamu -2");
 }
+
+export function nonNullable<T>(value: T): value is NonNullable<T> {
+  return value !== null && value !== undefined;
+}

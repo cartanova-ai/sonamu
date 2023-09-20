@@ -3,9 +3,11 @@ import _, {
   differenceBy,
   differenceWith,
   groupBy,
+  intersection,
   intersectionBy,
   pick,
   sortBy,
+  sum,
   uniq,
   uniqBy,
 } from "lodash";
@@ -54,11 +56,31 @@ import { propIf } from "../utils/lodash-able";
 import { EntityManager } from "./entity-manager";
 import { Entity } from "./entity";
 import { Sonamu } from "../api";
+import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+import { nonNullable } from "../utils/utils";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
   readonly mode: MigratorMode;
 };
+type MigrationCode = {
+  name: string;
+  path: string;
+};
+type ConnString = `${"mysql2"}://${string}@${string}:${number}/${string}`; // mysql2://account@host:port/database
+export type MigrationStatus = {
+  codes: MigrationCode[];
+  conns: {
+    name: string;
+    connKey: string;
+    connString: ConnString;
+    currentVersion: string;
+    status: string | number;
+    pending: string[];
+  }[];
+  preparedCodes: GenMigrationCode[];
+};
+
 export class Migrator {
   readonly mode: MigratorMode;
 
@@ -108,6 +130,279 @@ export class Migrator {
     }
   }
 
+  async getMigrationCodes(): Promise<{
+    normal: MigrationCode[];
+    onlyTs: MigrationCode[];
+    onlyJs: MigrationCode[];
+  }> {
+    const srcMigrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
+    const distMigrationsDir = `${Sonamu.apiRootPath}/dist/migrations`;
+    const srcMigrations = readdirSync(srcMigrationsDir)
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => f.split(".")[0]);
+    const distMigrations = readdirSync(distMigrationsDir)
+      .filter((f) => f.endsWith(".js"))
+      .map((f) => f.split(".")[0]);
+
+    const normal = intersection(srcMigrations, distMigrations)
+      .map((filename) => {
+        return {
+          name: filename,
+          path: path.join(srcMigrationsDir, filename) + ".ts",
+        };
+      })
+      .sort((a, b) => (a > b ? 1 : -1));
+
+    const onlyTs = difference(srcMigrations, distMigrations).map((filename) => {
+      return {
+        name: filename,
+        path: path.join(srcMigrationsDir, filename) + ".ts",
+      };
+    });
+
+    const onlyJs = difference(distMigrations, srcMigrations).map((filename) => {
+      return {
+        name: filename,
+        path: path.join(distMigrationsDir, filename) + ".js",
+      };
+    });
+
+    return {
+      normal,
+      onlyTs,
+      onlyJs,
+    };
+  }
+
+  async getStatus(): Promise<MigrationStatus> {
+    const { normal, onlyTs, onlyJs } = await this.getMigrationCodes();
+    if (onlyTs.length > 0) {
+      console.debug({ onlyTs });
+      throw new ServiceUnavailableException(
+        `There is an un-compiled TS migration files.\nPlease run the dev:serve\n\n${onlyTs
+          .map((f) => f.name)
+          .join("\n")}`
+      );
+    }
+    if (onlyJs.length > 0) {
+      console.debug({ onlyJs });
+      await Promise.all(
+        onlyJs.map(async (f) => {
+          execSync(
+            `rm -f ${f.path.replace("/src/", "/dist/").replace(".ts", ".js")}`
+          );
+        })
+      );
+    }
+
+    const connKeys = Object.keys(Sonamu.dbConfig).filter(
+      (key) => key.endsWith("_slave") === false
+    ) as (keyof typeof Sonamu.dbConfig)[];
+
+    const statuses = await Promise.all(
+      connKeys.map(async (connKey) => {
+        const knexOptions = Sonamu.dbConfig[connKey];
+        const tConn = knex(knexOptions);
+        const status = await (async () => {
+          try {
+            return tConn.migrate.status();
+          } catch (err) {
+            return "error";
+          }
+        })();
+        const pending = await (async () => {
+          try {
+            const [, fdList] = await tConn.migrate.list();
+            return fdList.map((fd: { file: string }) =>
+              fd.file.replace(".js", "")
+            );
+          } catch (err) {
+            return [];
+          }
+        })();
+        const currentVersion = await (async () => {
+          try {
+            return tConn.migrate.currentVersion();
+          } catch (err) {
+            return "error";
+          }
+        })();
+
+        const connection =
+          knexOptions.connection as Knex.MySql2ConnectionConfig;
+
+        await tConn.destroy();
+
+        return {
+          name: connKey.replace("_master", ""),
+          connKey,
+          connString: `${knexOptions.client}://${connection.user ?? ""}@${
+            connection.host
+          }:${connection.port ?? 3306}/${connection.database}` as ConnString,
+          currentVersion,
+          status,
+          pending,
+        };
+      })
+    );
+
+    const preparedCodes: GenMigrationCode[] = await (async () => {
+      const status0conn = statuses.find((status) => status.status === 0);
+      if (status0conn === undefined) {
+        return [];
+      }
+
+      const compareDBconn = knex(Sonamu.dbConfig[status0conn.connKey]);
+      const genCodes = await this.compareMigrations(compareDBconn);
+
+      await compareDBconn.destroy();
+
+      return genCodes;
+    })();
+
+    return {
+      conns: statuses,
+      codes: normal,
+      preparedCodes,
+    };
+    /*
+      TS/JS 코드 컴파일 상태 확인
+      1. 원본 파일 없는 JS파일이 존재하는 경우: 삭제
+      2. 컴파일 되지 않은 TS파일이 존재하는 경우: throw 쳐서 데브 서버 오픈 요청
+
+      DB 마이그레이션 상태 확인
+      1. 전체 DB설정에 대해서 현재 마이그레이션 상태 확인
+        - connKey: string
+        - status: number
+        - currentVersion: string
+        - list: { file: string; directory: string }[]
+
+    */
+  }
+
+  async runAction(
+    action: "latest" | "rollback",
+    targets: string[]
+  ): Promise<
+    {
+      connKey: string;
+      batchNo: number;
+      applied: string[];
+    }[]
+  > {
+    // get connections
+    const conns = (
+      await Promise.all(
+        targets.map(async (target) => {
+          const knexOptions =
+            Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig];
+          if (knexOptions === undefined) {
+            return null;
+          }
+
+          return {
+            connKey: target,
+            knex: knex(knexOptions),
+          };
+        })
+      )
+    ).filter(nonNullable);
+
+    // action
+    const result = await (async () => {
+      switch (action) {
+        case "latest":
+          return Promise.all(
+            conns.map(async ({ connKey, knex }) => {
+              const [batchNo, applied] = await knex.migrate.latest();
+              return {
+                connKey,
+                batchNo,
+                applied,
+              };
+            })
+          );
+        case "rollback":
+          return Promise.all(
+            conns.map(async ({ connKey, knex }) => {
+              const [batchNo, applied] = await knex.migrate.rollback();
+              return {
+                connKey,
+                batchNo,
+                applied,
+              };
+            })
+          );
+      }
+    })();
+
+    // destroy
+    await Promise.all(
+      conns.map(({ knex }) => {
+        return knex.destroy();
+      })
+    );
+
+    return result;
+  }
+
+  async delCodes(codeNames: string[]): Promise<number> {
+    const { conns } = await this.getStatus();
+    if (
+      conns.some((conn) => {
+        return codeNames.some(
+          (codeName) => conn.pending.includes(codeName) === false
+        );
+      })
+    ) {
+      throw new Error(
+        "You cannot delete a migration file if there is already applied."
+      );
+    }
+
+    const delFiles = codeNames
+      .map((codeName) => [
+        `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`,
+        `${Sonamu.apiRootPath}/dist/migrations/${codeName}.js`,
+      ])
+      .flat();
+
+    const res = await Promise.all(
+      delFiles.map((delFile) => {
+        if (existsSync(delFile)) {
+          console.log(chalk.red(`DELETE: ${delFile}`));
+          unlinkSync(delFile);
+          return delFiles.includes(".ts") ? 1 : 0;
+        }
+        return 0;
+      })
+    );
+    return sum(res);
+  }
+
+  async generatePreparedCodes(): Promise<number> {
+    const { preparedCodes } = await this.getStatus();
+    if (preparedCodes.length === 0) {
+      console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
+      return 0;
+    }
+
+    // 실제 코드 생성
+    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
+    preparedCodes
+      .filter((pcode) => pcode.formatted)
+      .map((pcode, index) => {
+        const dateTag = DateTime.local()
+          .plus({ seconds: index })
+          .toFormat("yyyyMMddHHmmss");
+        const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
+        writeFileSync(filePath, pcode.formatted!);
+        console.log(chalk.green(`MIGRTAION CRETATED ${filePath}`));
+      });
+
+    return preparedCodes.length;
+  }
+
   async clearPendingList(): Promise<void> {
     const [, pendingList] = (await this.targets.pending.migrate.list()) as [
       unknown,
@@ -129,7 +424,7 @@ export class Migrator {
   }
 
   async check(): Promise<void> {
-    const codes = await this.compareMigrations();
+    const codes = await this.compareMigrations(this.targets.compare!);
     if (codes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return;
@@ -161,27 +456,24 @@ export class Migrator {
       }
 
       console.time(chalk.blue("Migrator - runShadowTest"));
-      const result = await this.runShadowTest();
+      await this.runShadowTest();
       console.timeEnd(chalk.blue("Migrator - runShadowTest"));
-      if (result === true) {
-        await Promise.all(
-          this.targets.apply.map(async (applyDb) => {
-            const label = chalk.green(
-              `APPLIED ${
-                applyDb.client.connectionSettings.host
-              } ${applyDb.client.database()}`
-            );
-            console.time(label);
-            const [,] = await applyDb.migrate.latest();
-            console.timeEnd(label);
-          })
-        );
-      }
-      return;
+      await Promise.all(
+        this.targets.apply.map(async (applyDb) => {
+          const label = chalk.green(
+            `APPLIED ${
+              applyDb.client.connectionSettings.host
+            } ${applyDb.client.database()}`
+          );
+          console.time(label);
+          const [,] = await applyDb.migrate.latest();
+          console.timeEnd(label);
+        })
+      );
     }
 
     // MD-DB간 비교하여 코드 생성 리턴
-    const codes = await this.compareMigrations();
+    const codes = await this.compareMigrations(this.targets.compare!);
     if (codes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return;
@@ -299,7 +591,13 @@ export class Migrator {
     }
   }
 
-  async runShadowTest(): Promise<boolean> {
+  async runShadowTest(): Promise<
+    {
+      connKey: string;
+      batchNo: number;
+      applied: string[];
+    }[]
+  > {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
@@ -341,20 +639,26 @@ export class Migrator {
     });
 
     try {
-      const [batchNo, log] = await sdb.migrate.latest();
+      const [batchNo, applied] = await sdb.migrate.latest();
       console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
         batchNo,
-        log,
+        applied,
       });
 
       // 생성한 Shadow DB 삭제
       console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       await sdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase};`);
 
-      return true;
+      return [
+        {
+          connKey: "shadow",
+          batchNo,
+          applied,
+        },
+      ];
     } catch (e) {
-      console.error(chalk.red("Shadow DB 테스트 진행 중 에러"), e);
-      return false;
+      console.error(e);
+      throw new ServiceUnavailableException("Shadow DB 테스트 진행 중 에러");
     } finally {
       await sdb.destroy();
     }
@@ -388,7 +692,7 @@ export class Migrator {
     console.timeEnd(chalk.red("delete migration files"));
   }
 
-  async compareMigrations(): Promise<GenMigrationCode[]> {
+  async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
     // MD 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
@@ -420,7 +724,10 @@ export class Migrator {
     let codes: GenMigrationCode[] = (
       await Promise.all(
         entitySets.map(async (entitySet) => {
-          const dbSet = await this.getMigrationSetFromDB(entitySet.table);
+          const dbSet = await this.getMigrationSetFromDB(
+            compareDB,
+            entitySet.table
+          );
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
             return [
@@ -542,10 +849,16 @@ export class Migrator {
   /*
     기존 테이블 정보 읽어서 MigrationSet 형식으로 리턴
   */
-  async getMigrationSetFromDB(table: string): Promise<MigrationSet | null> {
+  async getMigrationSetFromDB(
+    compareDB: Knex,
+    table: string
+  ): Promise<MigrationSet | null> {
     let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
     try {
-      [dbColumns, dbIndexes, dbForeigns] = await this.readTable(table);
+      [dbColumns, dbIndexes, dbForeigns] = await this.readTable(
+        compareDB,
+        table
+      );
     } catch (e: unknown) {
       if (isKnexError(e) && e.code === "ER_NO_SUCH_TABLE") {
         return null;
@@ -701,19 +1014,14 @@ export class Migrator {
     기존 테이블 읽어서 cols, indexes 반환
   */
   async readTable(
+    compareDB: Knex,
     tableName: string
   ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
     // 테이블 정보
     try {
-      const [cols] = await this.targets.compare!.raw(
-        `SHOW FIELDS FROM ${tableName}`
-      );
-      const [indexes] = await this.targets.compare!.raw(
-        `SHOW INDEX FROM ${tableName}`
-      );
-      const [[row]] = await this.targets.compare!.raw(
-        `SHOW CREATE TABLE ${tableName}`
-      );
+      const [cols] = await compareDB.raw(`SHOW FIELDS FROM ${tableName}`);
+      const [indexes] = await compareDB.raw(`SHOW INDEX FROM ${tableName}`);
+      const [[row]] = await compareDB.raw(`SHOW CREATE TABLE ${tableName}`);
       const ddl = row["Create Table"];
       const matched = ddl.match(/CONSTRAINT .+/g);
       const foreignKeys = (matched ?? []).map((line: string) => {

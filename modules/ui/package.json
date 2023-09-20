@@ -53,7 +53,7 @@
     "@rollup/plugin-node-resolve": "^15.1.0",
     "@types/inflection": "^1.13.0",
     "@types/lodash": "^4.14.198",
-    "@types/node": "^20.5.0",
+    "@types/node": "^20.6.3",
     "@types/qs": "^6.9.8",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
@@ -68,12 +68,12 @@
     "rollup-plugin-esbuild": "^5.0.0",
     "source-map-support": "^0.5.21",
     "tsc-watch": "^6.0.4",
-    "typescript": "^5.0.2"
+    "typescript": "^5.2.2"
   },
   "peerDependencies": {
     "sonamu": "*"
   },
-  "packageManager": "yarn@3.6.1",
+  "packageManager": "yarn@3.6.3",
   "resolutions": {
     "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
   }
