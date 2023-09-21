@@ -8,6 +8,7 @@ import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
 import MigrationsIndex from "./pages/migrations/index.tsx";
 import qs from "qs";
+import { ScaffoldingIndex } from "./pages/scaffolding/index.tsx";
 
 export async function swrFetcher(args: [string, object]): Promise<any> {
   try {
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path=":entityId" element={<EntitiesShowPage />} />
           </Route>
           <Route path="/migrations" element={<MigrationsIndex />} />
+          <Route path="/scaffolding" element={<ScaffoldingIndex />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>
