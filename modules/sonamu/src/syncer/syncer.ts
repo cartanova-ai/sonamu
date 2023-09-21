@@ -83,7 +83,7 @@ import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
 import { execSync } from "child_process";
 
-type FileType = "model" | "types" | "enums" | "enums" | "generated" | "entity";
+type FileType = "model" | "types" | "functions" | "generated" | "entity";
 type GlobPattern = {
   [key in FileType]: string;
 };
@@ -181,7 +181,9 @@ export class Syncer {
 
     // 다른 부분 찾아 액션
     const diffGroups = groupBy(diffFiles, (r) => {
-      const matched = r.match(/\.(model|types|enums|entity|generated)\.[tj]s/);
+      const matched = r.match(
+        /\.(model|types|functions|entity|generated)\.[tj]s/
+      );
       return matched![1];
     }) as unknown as DiffGroups;
 
@@ -200,14 +202,14 @@ export class Syncer {
     // 액션: 파일 싱크 types, enums, generated
     if (
       diffTypes.includes("types") ||
-      diffTypes.includes("enums") ||
+      diffTypes.includes("functions") ||
       diffTypes.includes("generated")
     ) {
-      console.log("// 액션: 파일 싱크 types / enums / generated");
+      console.log("// 액션: 파일 싱크 types / functions / generated");
 
       const tsPaths = [
         ...(diffGroups["types"] ?? []),
-        ...(diffGroups["enums"] ?? []),
+        ...(diffGroups["functions"] ?? []),
         ...(diffGroups["generated"] ?? []),
       ].map((p) => p.replace("/dist/", "/src/").replace(".js", ".ts"));
       await this.actionSyncFilesToTargets(tsPaths);
@@ -344,8 +346,8 @@ export class Syncer {
       /* 원본 체크 */
       entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
       types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
-      enums: Sonamu.apiRootPath + "/src/application/**/*.enums.ts",
       generated: Sonamu.apiRootPath + "/src/application/**/*.generated.ts",
+      functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
       /* compiled-JS 체크 */
       model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
     };

@@ -228,7 +228,7 @@ export function propNodeToZodTypeDef(
         )
         .join("\n"),
       "",
-      "}),",
+      `})${propNode.prop && propNode.prop.nullable ? ".nullable()" : ""},`,
     ].join("\n");
   } else {
     throw Error;
