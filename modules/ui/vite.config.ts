@@ -11,4 +11,7 @@ export default defineConfig({
       "/api": "http://0.0.0.0:57001",
     },
   },
+  build: {
+    outDir: "build",
+  },
 });

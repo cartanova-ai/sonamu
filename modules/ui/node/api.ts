@@ -18,11 +18,15 @@ export async function createApiServer(options: {
     host: string;
     port: number;
   };
-  appRoot: string;
+  apiRootPath: string;
 }) {
-  const { listen, appRoot } = options;
+  const { listen, apiRootPath } = options;
 
   const server = fastify();
+  server.register(require("@fastify/cors"), {
+    origin: true,
+    credentials: true,
+  });
 
   server.get("/api", async (_request, _reply) => {
     return { hello: "world", now: new Date() };

@@ -2,27 +2,12 @@ import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { SWRConfig } from "swr";
-import axios from "axios";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
 import MigrationsIndex from "./pages/migrations/index.tsx";
-import qs from "qs";
 import { ScaffoldingIndex } from "./pages/scaffolding/index.tsx";
-
-export async function swrFetcher(args: [string, object]): Promise<any> {
-  try {
-    const [url, params] = args;
-    const res = await axios.get(url + "?" + qs.stringify(params));
-    return res.data;
-  } catch (e: any) {
-    const error: any = new Error(
-      e.response.data.message ?? e.response.message ?? "Unknown"
-    );
-    error.statusCode = e.response?.data.statusCode ?? e.response.status;
-    throw error;
-  }
-}
+import { swrFetcher } from "./services/sonamu.shared.ts";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <SWRConfig
