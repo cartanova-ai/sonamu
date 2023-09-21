@@ -98,13 +98,17 @@ class SonamuClass {
     return this._config;
   }
 
-  async init(doSilent: boolean = false, enableSync: boolean = true) {
+  async init(
+    doSilent: boolean = false,
+    enableSync: boolean = true,
+    apiRootPath?: string
+  ) {
     if (this.isInitialized) {
       return;
     }
     !doSilent && console.time(chalk.cyan("Sonamu.init"));
 
-    this.apiRootPath = await findApiRootPath();
+    this.apiRootPath = apiRootPath ?? (await findApiRootPath());
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
     if (existsSync(configPath) === false) {
       throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
