@@ -338,7 +338,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
     const oldOne = mode === "add" ? undefined : entity.props[at!];
 
-    openModal(<EntityPropForm oldOne={oldOne} />, {
+    openModal(<EntityPropForm entityId={entity.id} oldOne={oldOne} />, {
       onControlledOpen: () => {
         // keySwitch off
         turnKeyHandler(false);
@@ -972,12 +972,14 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Table.Row>
                         <Table.HeaderCell>Field</Table.HeaderCell>
                         {Object.keys(entity.subsets).map((subsetKey) => (
-                          <Table.HeaderCell key={subsetKey}>
+                          <Table.HeaderCell key={subsetKey} collapsing>
                             {subsetKey}{" "}
                             {subsetKey !== "A" && (
                               <Button
                                 icon="trash"
                                 size="mini"
+                                color="red"
+                                className="btn-del-subset"
                                 onClick={() => delSubset(subsetKey)}
                               />
                             )}

@@ -7,13 +7,12 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
 import MigrationsIndex from "./pages/migrations/index.tsx";
+import qs from "qs";
 
-export async function swrFetcher(
-  url: string,
-  params: string = ""
-): Promise<any> {
+export async function swrFetcher(args: [string, object]): Promise<any> {
   try {
-    const res = await axios.get(url + "?" + params);
+    const [url, params] = args;
+    const res = await axios.get(url + "?" + qs.stringify(params));
     return res.data;
   } catch (e: any) {
     const error: any = new Error(

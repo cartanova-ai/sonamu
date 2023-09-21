@@ -13,9 +13,12 @@ import { z } from "zod";
 import { EntityProp } from "sonamu";
 import { useEffect } from "react";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
+import { TypeIdAsyncSelect } from "../../components/TypeIdAsyncSelect";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../../services/sonamu.shared";
 
-type EntityPropFormProps = { oldOne?: EntityProp };
-export function EntityPropForm({ oldOne }: EntityPropFormProps) {
+type EntityPropFormProps = { entityId: string; oldOne?: EntityProp };
+export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   // CommonModal
   const { doneModal } = useCommonModal();
 
@@ -113,6 +116,13 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
     doneModal(result.data);
   };
 
+  const openVscodePreset = (preset: "types") => {
+    SonamuUIService.openVscode({
+      entityId,
+      preset,
+    }).catch(defaultCatch);
+  };
+
   return (
     <div className="form entity-prop-form">
       <Segment padded basic>
@@ -169,8 +179,12 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                     <Form.Field>
                       <label>Enum ID</label>
                       <div className="flex">
-                        <Input {...register("id")} />
-                        <Button icon="plus" size="mini" />
+                        <TypeIdAsyncSelect
+                          {...register("id")}
+                          search
+                          filter="enums"
+                          withAddEnumButton={{ entityId }}
+                        />
                       </div>
                     </Form.Field>
                   ) : (
@@ -226,8 +240,12 @@ export function EntityPropForm({ oldOne }: EntityPropFormProps) {
                   <Form.Field>
                     <label>CustomType ID</label>
                     <div className="flex">
-                      <Input {...register("id")} className="flex-1" />
-                      <Button icon="plus" size="mini" />
+                      <TypeIdAsyncSelect {...register("id")} search />
+                      <Button
+                        icon="code"
+                        size="mini"
+                        onClick={() => openVscodePreset("types")}
+                      />
                     </div>
                   </Form.Field>
                 </Form.Group>

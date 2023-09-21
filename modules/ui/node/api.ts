@@ -10,6 +10,8 @@ import {
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 import knex from "knex";
+import { z } from "zod";
+import { execSync } from "child_process";
 
 export async function createApiServer(options: {
   listen: {
@@ -33,6 +35,32 @@ export async function createApiServer(options: {
       apiRootPath,
       entityIds,
     };
+  });
+
+  server.get<{
+    Querystring: {
+      entityId: string;
+      preset: "types" | "entity.json" | "generated";
+    };
+  }>("/api/tools/openVscode", async (request) => {
+    const { entityId, preset } = request.query;
+    const entity = EntityManager.get(entityId);
+    const { names } = entity;
+
+    const { apiRootPath } = Sonamu;
+    const filename = (() => {
+      switch (preset) {
+        case "types":
+          return `${names.fs}.types.ts`;
+        case "entity.json":
+          return `${names.fs}.entity.json`;
+        case "generated":
+          return `${names.fs}.generated.ts`;
+      }
+    })();
+    execSync(
+      `code ${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`
+    );
   });
 
   server.get("/api/entity/findMany", async () => {
@@ -72,6 +100,44 @@ export async function createApiServer(options: {
       return 0;
     });
     return { entities };
+  });
+
+  server.get<{
+    Querystring: {
+      filter?: "enums" | "types";
+    };
+  }>("/api/entity/typeIds", async (request): Promise<{ typeIds: string[] }> => {
+    const { filter } = request.query;
+
+    const typeIds = (() => {
+      const typeIds = Object.entries(Sonamu.syncer.types)
+        .filter(
+          ([_typeId, zodType]) =>
+            (zodType._def.typeName as string) !== "ZodEnum"
+        )
+        .map(([typeId, _zodType]) => typeId);
+
+      if (filter === "types") {
+        return typeIds;
+      }
+
+      const enumIds = EntityManager.getAllIds()
+        .map((entityId) => {
+          const entity = EntityManager.get(entityId);
+          return Object.keys(entity.enumLabels);
+        })
+        .flat();
+
+      if (filter === "enums") {
+        return enumIds;
+      } else {
+        return [...typeIds, ...enumIds];
+      }
+    })();
+
+    return {
+      typeIds,
+    };
   });
 
   server.post<{
@@ -193,6 +259,22 @@ export async function createApiServer(options: {
     await entity.save();
 
     return { updated: enumLabels };
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      newEnumId: string;
+    };
+  }>("/api/entity/createEnumId", async (request) => {
+    const { entityId, newEnumId } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.enumLabels[newEnumId] = {
+      "": "",
+    };
+    await entity.save();
+
+    return 1;
   });
 
   server.get<{

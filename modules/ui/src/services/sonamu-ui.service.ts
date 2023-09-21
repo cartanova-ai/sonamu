@@ -17,6 +17,7 @@ type SWRError = {
 type ExtendedEntity = Entity & {
   flattenSubsetRows: FlattenSubsetRow[];
 };
+
 export namespace SonamuUIService {
   export function useEntities(): SWRResponse<
     { entities: ExtendedEntity[] },
@@ -24,6 +25,15 @@ export namespace SonamuUIService {
   > {
     return useSWR<{ entities: ExtendedEntity[] }, SWRError>([
       `/api/entity/findMany`,
+    ]);
+  }
+
+  export function useTypeIds(
+    filter?: "enums" | "types"
+  ): SWRResponse<{ typeIds: string[] }, SWRError> {
+    return useSWR<{ typeIds: string[] }, SWRError>([
+      `/api/entity/typeIds`,
+      { filter },
     ]);
   }
 
@@ -147,6 +157,17 @@ export namespace SonamuUIService {
     });
   }
 
+  export function createEnumId(params: {
+    entityId: string;
+    newEnumId: string;
+  }): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/createEnumId`,
+      data: params,
+    });
+  }
+
   export function getTableColumns(
     entityId: string
   ): Promise<{ columns: string[] }> {
@@ -203,6 +224,17 @@ export namespace SonamuUIService {
       method: "POST",
       url: `/api/migrations/generatePreparedCodes`,
       data: {},
+    });
+  }
+
+  export function openVscode(params: {
+    entityId: string;
+    preset: "types" | "entity.json" | "generated";
+  }): Promise<void> {
+    return fetch({
+      method: "GET",
+      url: `/api/tools/openVscode`,
+      params,
     });
   }
 }
