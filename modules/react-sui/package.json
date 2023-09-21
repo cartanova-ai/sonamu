@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/react-sui",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": "https://github.com/ping-alive/sonamu",

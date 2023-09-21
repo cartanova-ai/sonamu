@@ -1,42 +1,42 @@
-import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import React, { ReactNode, HTMLAttributes } from "react";
 import {
-  Segment,
   Header,
-  Divider,
-  SemanticCOLORS,
-  SemanticTEXTALIGNMENTS,
-  HeaderProps,
   Grid,
-} from 'semantic-ui-react';
+  HeaderProps,
+  Segment,
+  SegmentProps,
+} from "semantic-ui-react";
+import classnames from "classnames";
 
 type PanelProps = {
-  title: string;
+  title?: string;
   headerProps?: HeaderProps;
   buttons?: ReactNode;
-  children?: ReactNode;
-  noMargin?: boolean;
-};
+} & SegmentProps;
 export function Panel({
   title,
   headerProps,
   buttons,
   children,
-  noMargin,
+  style,
+  className,
+  ...segmentProps
 }: PanelProps) {
+  const hasHeader = !!(title || buttons);
   return (
-    <div className="panel" style={{ margin: noMargin ? 0 : undefined }}>
-      <Grid>
-        <Grid.Row columns="equal">
-          <Grid.Column verticalAlign="middle">
-            <Header {...headerProps}>{title}</Header>
-          </Grid.Column>
-          <Grid.Column textAlign="right">{buttons}</Grid.Column>
-        </Grid.Row>
-        <Grid.Row>
-          <Grid.Column>{children}</Grid.Column>
-        </Grid.Row>
-      </Grid>
-    </div>
+    <Segment
+      basic
+      className={classnames("panel", className)}
+      style={style}
+      {...segmentProps}
+    >
+      {hasHeader && (
+        <div className="panel-header">
+          <Header {...headerProps}>{title}</Header>
+          {buttons && <div className="panel-buttons">{buttons}</div>}
+        </div>
+      )}
+      <div className="panel-content">{children}</div>
+    </Segment>
   );
 }
