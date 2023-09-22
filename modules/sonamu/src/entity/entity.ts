@@ -663,4 +663,112 @@ export class Entity {
       };
     });
   }
+
+  async createProp(prop: EntityProp, at?: number): Promise<void> {
+    if (!at) {
+      this.props.push(prop);
+    } else {
+      this.props.splice(at, 0, prop);
+    }
+    await this.save();
+  }
+
+  async modifyProp(newProp: EntityProp, at: number): Promise<void> {
+    // 프롭 수정
+    const oldName = this.props[at].name;
+    this.props[at] = newProp;
+
+    // 저장할 엔티티
+    const entities: Entity[] = [this];
+
+    // 이름이 바뀐 경우
+    if (oldName !== newProp.name) {
+      // 전체 엔티티에서 현재 수정된 프롭을 참조하고 있는 모든 서브셋필드 찾아서 수정
+      const allEntityIds = EntityManager.getAllIds();
+      for (const relEntityId of allEntityIds) {
+        const relEntity = EntityManager.get(relEntityId);
+        const relEntitySubsetKeys = Object.keys(relEntity.subsets);
+        for (const subsetKey of relEntitySubsetKeys) {
+          const subset = relEntity.subsets[subsetKey];
+          const oldSubsetFields = subset.filter(
+            (field) =>
+              field.endsWith(oldName) &&
+              relEntity.getEntityIdFromSubsetField(field) === this.id
+          );
+          if (oldSubsetFields.length > 0) {
+            relEntity.subsets[subsetKey] = relEntity.subsets[subsetKey].map(
+              (oldField) =>
+                oldSubsetFields.includes(oldField)
+                  ? oldField.replace(`${oldName}`, `${newProp.name}`)
+                  : oldField
+            );
+            entities.push(relEntity);
+          }
+        }
+      }
+    }
+
+    await Promise.all(entities.map(async (entity) => entity.save()));
+  }
+
+  async delProp(at: number): Promise<void> {
+    const oldName = this.props[at].name;
+    this.props.splice(at, 1);
+
+    // 저장할 엔티티
+    const entities: Entity[] = [this];
+
+    // 전체 엔티티에서 현재 삭제된 프롭을 참조하고 있는 모든 서브셋필드 찾아서 제외
+    const allEntityIds = EntityManager.getAllIds();
+    for (const relEntityId of allEntityIds) {
+      const relEntity = EntityManager.get(relEntityId);
+      const relEntitySubsetKeys = Object.keys(relEntity.subsets);
+      for (const subsetKey of relEntitySubsetKeys) {
+        const subset = relEntity.subsets[subsetKey];
+        const oldSubsetFields = subset.filter(
+          (field) =>
+            field.endsWith(oldName) &&
+            relEntity.getEntityIdFromSubsetField(field) === this.id
+        );
+        if (oldSubsetFields.length > 0) {
+          relEntity.subsets[subsetKey] = relEntity.subsets[subsetKey].filter(
+            (oldField) => oldSubsetFields.includes(oldField) === false
+          );
+          entities.push(relEntity);
+        }
+      }
+    }
+
+    await Promise.all(entities.map(async (entity) => entity.save()));
+  }
+
+  getEntityIdFromSubsetField(subsetField: string): string {
+    if (subsetField.includes(".") === false) {
+      return this.id;
+    }
+
+    // 서브셋 필드의 마지막은 프롭이므로 제외
+    const arr = subsetField.split(".").slice(0, -1);
+
+    // 서브셋 필드를 내려가면서 마지막으로 relation된 엔티티를 찾음
+    const lastEntity = arr.reduce((entity, field) => {
+      const relProp = entity.props.find((p) => p.name === field);
+      if (!relProp || relProp.type !== "relation") {
+        console.debug({ arr, thisId: this.id });
+        throw new Error(`잘못된 서브셋키 ${subsetField}`);
+      }
+      return EntityManager.get(relProp.with);
+    }, this as Entity);
+    return lastEntity.id;
+  }
+
+  async moveProp(at: number, to: number): Promise<void> {
+    const prop = this.props[at];
+    const newProps = [...this.props];
+    newProps.splice(to, 0, prop);
+    newProps.splice(at < to ? at : at + 1, 1);
+    this.props = newProps;
+
+    await this.save();
+  }
 }

@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { Button, Checkbox, Form, Input, Label, Table } from "semantic-ui-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { EntityIndex, EntityProp } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
@@ -11,6 +11,7 @@ import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { EditableInput } from "../../components/EditableInput";
 import { EntitySelector } from "./_entity_selector";
+import classNames from "classnames";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -23,6 +24,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
   // params & entity
   const params = useParams<{ entityId: string }>();
+
   const entity =
     entities?.find((entity) => entity.id === params.entityId) ?? null;
   useEffect(() => {
@@ -355,37 +357,25 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         // keySwitch on
         turnKeyHandler(true);
       },
-      onCompleted: (data: unknown) => {
-        const newProps = (() => {
-          const newProps = [...entity.props];
-          if (mode === "add") {
-            at ??= newProps.length - 1;
-            newProps.splice(at + 1, 0, data as EntityProp);
-            return newProps;
-          } else {
-            return newProps.map((prop, index) =>
-              index === at ? (data as EntityProp) : prop
-            );
-          }
-        })();
+      onCompleted: async (data: unknown) => {
+        if (oldOne) {
+          await SonamuUIService.modifyProp(entity.id, data as EntityProp, at!);
+        } else {
+          await SonamuUIService.createProp(entity.id, data as EntityProp, at);
+        }
 
-        SonamuUIService.modifyProps(entity.id, newProps)
-          .then(({ updated }) => {
-            entity.props = updated;
-            mutate();
-            setTimeout(() => {
-              setCursor({
-                ...cursor,
-                sheet: "props",
-                y: at! + 1,
-              });
-            }, 100);
-          })
-          .catch(defaultCatch);
+        mutate();
+        setTimeout(() => {
+          setCursor({
+            ...cursor,
+            sheet: "props",
+            y: at! + 1,
+          });
+        }, 100);
       },
     });
   };
-  const confirmDelProp = (at: number) => {
+  const confirmDelProp = async (at: number) => {
     if (!entity) {
       return;
     }
@@ -396,20 +386,15 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       return;
     }
 
-    const newProps = entity.props.filter((_p, index) => index !== at);
-    SonamuUIService.modifyProps(entity.id, newProps)
-      .then(({ updated }) => {
-        entity.props = updated;
-        mutate();
-        setTimeout(() => {
-          setCursor({
-            ...cursor,
-            sheet: "props",
-            y: Math.min(at, entity.props.length - 1),
-          });
-        });
-      })
-      .catch(defaultCatch);
+    await SonamuUIService.delProp(entity.id, at);
+    mutate();
+    setTimeout(() => {
+      setCursor({
+        ...cursor,
+        sheet: "props",
+        y: Math.min(at, entity.props.length - 1),
+      });
+    });
   };
 
   // indexes
@@ -640,6 +625,10 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  // Props Drag&Drop
+  const dragStartPropIndex = useRef<number | null>();
+  const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
+
   return (
     <div className="entities-detail">
       {isLoading && <div>Loading</div>}
@@ -710,7 +699,38 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                 </Table.Header>
                 <Table.Body>
                   {entity.props.map((prop, propIndex) => (
-                    <Table.Row key={propIndex} {...regRow("props", propIndex)}>
+                    <Table.Row
+                      key={propIndex}
+                      {...regRow(
+                        "props",
+                        propIndex,
+                        classNames({
+                          "drag-enter": dragEnterPropIndex === propIndex,
+                        })
+                      )}
+                      draggable={true}
+                      onDragStart={() => {
+                        dragStartPropIndex.current = propIndex;
+                      }}
+                      onDragEnter={(e: DragEvent) => {
+                        e.preventDefault();
+                        setDragEnterPropIndex(propIndex);
+                      }}
+                      onDragEnd={() => {
+                        const at = dragStartPropIndex.current;
+                        const to = dragEnterPropIndex;
+                        if (!entity || !at || !to) {
+                          return;
+                        }
+
+                        SonamuUIService.moveProp(entity.id, at, to).then(() => {
+                          mutate();
+
+                          dragStartPropIndex.current = null;
+                          setDragEnterPropIndex(null);
+                        });
+                      }}
+                    >
                       <Table.Cell {...regCell("props", propIndex, 0)}>
                         {prop.name}
                       </Table.Cell>

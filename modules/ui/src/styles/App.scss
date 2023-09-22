@@ -432,3 +432,11 @@ code {
     width: auto;
   }
 }
+
+.ui.table tr {
+  &.drag-enter {
+    td {
+      border-top: 1px solid red !important;
+    }
+  }
+}

@@ -35,7 +35,9 @@ export async function createApiServer(options: {
   server.get("/api/t1", async () => {
     const entityIds = EntityManager.getAllIds();
     const { apiRootPath, isInitialized } = Sonamu;
+
     return {
+      t1: "t1",
       apiRootPath,
       entityIds,
     };
@@ -226,29 +228,60 @@ export async function createApiServer(options: {
   server.post<{
     Body: {
       entityId: string;
-      props: EntityProp[];
+      newProp: EntityProp;
+      at?: number;
     };
-  }>("/api/entity/modifyProps", async (request) => {
-    const { entityId, props } = request.body;
-    const entity = EntityManager.get(entityId);
-    entity.props = props;
-    await entity.save();
+  }>("/api/entity/createProp", async (request) => {
+    const { entityId, at, newProp } = request.body;
 
-    return { updated: props };
+    const entity = EntityManager.get(entityId);
+    await entity.createProp(newProp, at);
+
+    return true;
   });
 
   server.post<{
     Body: {
       entityId: string;
-      indexes: EntityIndex[];
+      newProp: EntityProp;
+      at: number;
     };
-  }>("/api/entity/modifyIndexes", async (request) => {
-    const { entityId, indexes } = request.body;
-    const entity = EntityManager.get(entityId);
-    entity.indexes = indexes;
-    await entity.save();
+  }>("/api/entity/modifyProp", async (request) => {
+    const { entityId, at, newProp } = request.body;
 
-    return { updated: indexes };
+    const entity = EntityManager.get(entityId);
+    entity.modifyProp(newProp, at);
+
+    return true;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      at: number;
+    };
+  }>("/api/entity/delProp", async (request) => {
+    const { entityId, at } = request.body;
+
+    const entity = EntityManager.get(entityId);
+    entity.delProp(at);
+
+    return true;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      at: number;
+      to: number;
+    };
+  }>("/api/entity/moveProp", async (request) => {
+    const { entityId, at, to } = request.body;
+
+    const entity = EntityManager.get(entityId);
+    entity.moveProp(at, to);
+
+    return true;
   });
 
   server.post<{

@@ -14,7 +14,7 @@ type SWRError = {
   statusCode: number;
 };
 
-type ExtendedEntity = Entity & {
+export type ExtendedEntity = Entity & {
   flattenSubsetRows: FlattenSubsetRow[];
 };
 
@@ -105,16 +105,61 @@ export namespace SonamuUIService {
     });
   }
 
-  export function modifyProps(
+  export function createProp(
     entityId: string,
-    props: EntityProp[]
-  ): Promise<{ updated: EntityProp[] }> {
+    newProp: EntityProp,
+    at?: number
+  ): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyProps`,
+      url: `/api/entity/createProp`,
       data: {
         entityId,
-        props,
+        at,
+        newProp,
+      },
+    });
+  }
+
+  export function modifyProp(
+    entityId: string,
+    newProp: EntityProp,
+    at: number
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/modifyProp`,
+      data: {
+        entityId,
+        at,
+        newProp,
+      },
+    });
+  }
+
+  export function delProp(entityId: string, at: number): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/delProp`,
+      data: {
+        entityId,
+        at,
+      },
+    });
+  }
+
+  export function moveProp(
+    entityId: string,
+    at: number,
+    to: number
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/moveProp`,
+      data: {
+        entityId,
+        at,
+        to,
       },
     });
   }

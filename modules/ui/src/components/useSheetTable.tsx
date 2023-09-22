@@ -275,7 +275,7 @@ export function useSheetTable(options: {
   }, [options, cursor, focusedCursor]);
 
   return {
-    regRow: (sheet: string, y: number) => {
+    regRow: (sheet: string, y: number, className?: string) => {
       const sheetConfig = sheetConfigsRef.current.find(
         (sheetConfig) => sheetConfig.name === sheet
       );
@@ -284,7 +284,7 @@ export function useSheetTable(options: {
       }
 
       return {
-        className: classNames({
+        className: classNames(className, {
           "cursor-row-pointed": cursor.sheet === sheet && cursor.y === y,
         }),
       };
