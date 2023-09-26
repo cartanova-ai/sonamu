@@ -282,4 +282,15 @@ export namespace SonamuUIService {
       params,
     });
   }
+
+  export function getSuggestion(params: {
+    origin: string;
+    entityId?: string;
+  }): Promise<{ suggested: string }> {
+    return fetch({
+      method: "GET",
+      url: `/api/tools/getSuggestion`,
+      params,
+    });
+  }
 }

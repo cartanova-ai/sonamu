@@ -41,7 +41,7 @@ export type CommonProp = {
   nullable?: boolean;
   toFilter?: true;
   desc?: string;
-  dbDefault?: string | number | { raw: string };
+  dbDefault?: string;
 };
 export type IntegerProp = CommonProp & {
   type: "integer";
@@ -73,6 +73,8 @@ export type FloatProp = CommonProp & {
 export type DoubleProp = CommonProp & {
   type: "double";
   unsigned?: true;
+  precision: number;
+  scale: number;
 };
 export type DecimalProp = CommonProp & {
   type: "decimal";
@@ -113,7 +115,6 @@ export type RelationType =
   | "ManyToMany"
   | "OneToOne";
 export type RelationOn =
-  | "UPDATE"
   | "CASCADE"
   | "SET NULL"
   | "NO ACTION"
@@ -394,7 +395,7 @@ export type MigrationColumn = {
   nullable: boolean;
   unsigned?: boolean;
   length?: number;
-  defaultTo?: string | number;
+  defaultTo?: string;
   precision?: number;
   scale?: number;
 };

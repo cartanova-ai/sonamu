@@ -1,5 +1,5 @@
 import fastify from "fastify";
-import { flatten, uniq } from "lodash";
+import { flatten, range, uniq } from "lodash";
 import {
   Sonamu,
   EntityManager,
@@ -7,11 +7,13 @@ import {
   EntityIndex,
   EntitySubsetRow,
   Migrator,
+  nonNullable,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 import knex from "knex";
 import { z } from "zod";
 import { execSync } from "child_process";
+import { pluralize, underscore } from "inflection";
 
 export async function createApiServer(options: {
   listen: {
@@ -37,7 +39,7 @@ export async function createApiServer(options: {
     const { apiRootPath, isInitialized } = Sonamu;
 
     return {
-      t1: "t1",
+      t1: "t4",
       apiRootPath,
       entityIds,
     };
@@ -67,6 +69,129 @@ export async function createApiServer(options: {
     execSync(
       `code ${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`
     );
+  });
+
+  server.get<{
+    Querystring: {
+      origin: string;
+      entityId?: string;
+    };
+  }>("/api/tools/getSuggestion", async (request) => {
+    const { origin, entityId } = request.query;
+
+    // 치환 용어집
+    const glossary = new Map<string, string>([
+      ["status", "상태"],
+      ["type", "타입"],
+      ["image", "이미지"],
+      ["images", "이미지리스트"],
+      ["url", "URL"],
+      ["id", "ID"],
+      ["name", `{EntityID}명`],
+      ["title", "{EntityID}명"],
+      ["parent", "상위{EntityID}"],
+      ["desc", "설명"],
+      ["at", "일시"],
+      ["created", "등록"],
+      ["updated", "수정"],
+      ["deleted", "삭제"],
+      ["by", "유저"],
+      ["date", "일자"],
+      ["time", "시간"],
+      ["ko", "(한글)"],
+      ["en", "(영문)"],
+      ["krw", "(원)"],
+      ["usd", "(USD)"],
+      ["color", "컬러"],
+      ["code", "코드"],
+      ["x", "X좌표"],
+      ["y", "Y좌표"],
+      ["current", "현재"],
+      ["stock", "재고"],
+      ["total", "총"],
+      ["admin", "관리자"],
+      ["group", "그룹"],
+      ["item", "아이템"],
+      ["cnt", "수량"],
+      ["price", "가격"],
+      ["preset", "프리셋"],
+      ["acct", "계좌"],
+      ["tel", "전화번호"],
+      ["no", "번호"],
+      ["body", "내용"],
+      ["content", "내용"],
+      ["orderno", "정렬순서"],
+      ["priority", "우선순위"],
+      ["text", "텍스트"],
+      ["key", "키"],
+      ["sum", "합산"],
+      ["expected", "예상"],
+      ["actual", "실제"],
+    ]);
+    // 전체 엔티티 순회하며, 엔티티 타이틀과 프롭 설명을 치환 용어집에 추가
+    for (const entityId of EntityManager.getAllIds()) {
+      const entity = EntityManager.get(entityId);
+      if ((entity.title ?? "") !== "") {
+        glossary.set(underscore(entity.id), entity.title);
+        glossary.set(underscore(pluralize(entity.id)), entity.title + "리스트");
+      }
+
+      entity.props.map((prop) => {
+        if (glossary.has(prop.name)) {
+          return;
+        }
+        if (prop.desc) {
+          glossary.set(
+            prop.name,
+            prop.desc.replace(entity.title ?? "", "{EntityID}")
+          );
+        }
+      });
+    }
+
+    const suggested = (() => {
+      // 단어 분리, 가능한 조합 생성
+      const words = origin.split("_");
+      const combinations = range(words.length, 0, -1)
+        .map((len) => {
+          return range(0, words.length - len + 1).map((start) => {
+            return {
+              len,
+              w: words.slice(start, start + len).join("_"),
+            };
+          });
+        })
+        .flat();
+
+      // 조합을 순회하며, 치환 용어집에 있는 단어가 포함된 경우, 치환 용어로 치환
+      const REPLACED_PREFIX = "#REPLACED//"; // 치환된 단어를 join 이후에도 식별하기 위해 prefix 추가
+      let remainArr: string[] = [...words];
+      for (const comb of combinations) {
+        const remainStr = remainArr.join("_");
+        if (remainStr.includes(comb.w) && glossary.has(comb.w)) {
+          remainArr = remainStr
+            .replace(comb.w, REPLACED_PREFIX + glossary.get(comb.w)!)
+            .split("_");
+        }
+      }
+
+      return remainArr
+        .map((r) => {
+          if (r.startsWith(REPLACED_PREFIX)) {
+            return r.replace(REPLACED_PREFIX, "");
+          } else {
+            return r.toUpperCase();
+          }
+        })
+        .join("")
+        .replace(
+          /{EntityID}/g,
+          entityId ? EntityManager.get(entityId).title : ""
+        );
+    })();
+
+    console.log({ entityId, origin, suggested });
+    return { suggested };
   });
 
   server.get("/api/entity/findMany", async () => {
@@ -265,7 +390,6 @@ export async function createApiServer(options: {
 
     const entity = EntityManager.get(entityId);
     entity.delProp(at);
-
     return true;
   });
 
@@ -282,6 +406,20 @@ export async function createApiServer(options: {
     entity.moveProp(at, to);
 
     return true;
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      indexes: EntityIndex[];
+    };
+  }>("/api/entity/modifyIndexes", async (request) => {
+    const { entityId, indexes } = request.body;
+    const entity = EntityManager.get(entityId);
+    entity.indexes = indexes;
+    await entity.save();
+
+    return { updated: indexes };
   });
 
   server.post<{
@@ -306,8 +444,20 @@ export async function createApiServer(options: {
   }>("/api/entity/createEnumId", async (request) => {
     const { entityId, newEnumId } = request.body;
     const entity = EntityManager.get(entityId);
+
+    if (entity.enumLabels[newEnumId]) {
+      throw new Error(`이미 존재하는 enumId입니다: ${newEnumId}`);
+    }
+
     entity.enumLabels[newEnumId] = {
-      "": "",
+      ...(newEnumId.endsWith("Status")
+        ? {
+            active: "노출",
+            hidden: "숨김",
+          }
+        : {
+            "": "",
+          }),
     };
     await entity.save();
 

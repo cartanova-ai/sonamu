@@ -6,6 +6,7 @@ import {
   Form,
   Header,
   Input,
+  Label,
   Segment,
 } from "semantic-ui-react";
 import { BooleanToggle, NumberInput, useTypeForm } from "@sonamu-kit/react-sui";
@@ -16,6 +17,7 @@ import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
 import { TypeIdAsyncSelect } from "../../components/TypeIdAsyncSelect";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
+import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 
 type EntityPropFormProps = { entityId: string; oldOne?: EntityProp };
 export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
@@ -30,9 +32,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       desc: z.string().optional(),
       nullable: z.boolean().optional(),
       toFilter: z.boolean().optional(),
-      dbDefault: z
-        .union([z.string(), z.number(), z.object({ raw: z.string() })])
-        .optional(),
+      dbDefault: z.string().optional(),
       length: z.number().optional(),
       unsigned: z.boolean().optional(),
       textType: z.enum(["text", "mediumtext", "longtext"]).optional(),
@@ -65,6 +65,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     "text",
     "integer",
     "bigInteger",
+    "boolean",
     "float",
     "double",
     "decimal",
@@ -151,7 +152,12 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>Description</label>
-                  <Input {...register("desc")} className="focus-1" />
+                  <InputWithSuggestion
+                    {...register("desc")}
+                    className="focus-1"
+                    origin={form.name}
+                    entityId={entityId}
+                  />
                 </Form.Field>
               </Form.Group>
               <Form.Group widths="equal">
@@ -165,7 +171,31 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>DB Default</label>
-                  <Input {...register("dbDefault")} className="focus-5" />
+                  <Input
+                    {...register("dbDefault")}
+                    className="focus-5"
+                    labelPosition="left"
+                    label={
+                      <Label>
+                        {(() => {
+                          if (form.dbDefault === undefined) {
+                            return "undefined";
+                          } else if (
+                            Number.isNaN(Number(form.dbDefault)) === false
+                          ) {
+                            return "number";
+                          } else if (
+                            form.dbDefault.startsWith('"') &&
+                            form.dbDefault.endsWith('"')
+                          ) {
+                            return "string";
+                          } else {
+                            return "raw";
+                          }
+                        })()}
+                      </Label>
+                    }
+                  />
                 </Form.Field>
               </Form.Group>
               <Divider />
@@ -183,7 +213,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                           {...register("id")}
                           search
                           filter="enums"
-                          withAddEnumButton={{ entityId }}
+                          withAddEnumButton={{ entityId, propName: form.name }}
                         />
                       </div>
                     </Form.Field>

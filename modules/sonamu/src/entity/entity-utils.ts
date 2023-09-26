@@ -104,6 +104,8 @@ function double(
   return {
     name,
     type: "double",
+    precision: 8,
+    scale: 2,
     ...option,
   };
 }

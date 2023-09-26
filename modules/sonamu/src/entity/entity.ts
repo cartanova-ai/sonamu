@@ -24,6 +24,7 @@ import { existsSync, writeFileSync } from "fs";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import prettier from "prettier";
+import { nonNullable } from "../utils/utils";
 
 export class Entity {
   id: string;
@@ -414,9 +415,10 @@ export class Entity {
               };
             }
 
-            const prop = entity.propsDict[propName];
+            const prop = entity.props.find((p) => p.name === propName);
             if (prop === undefined) {
-              throw new Error(`${this.id} -- 잘못된 FieldExpr ${propName}`);
+              console.log({ propName, groups });
+              throw new Error(`${entity.id} -- 잘못된 FieldExpr ${propName}`);
             }
             return {
               nodeType: "plain" as const,
@@ -501,7 +503,21 @@ export class Entity {
   }
 
   getTableColumns(): string[] {
-    return this.props.map((prop) => prop.name);
+    return this.props
+      .map((prop) => {
+        if (prop.type === "relation") {
+          if (
+            prop.relationType === "BelongsToOne" ||
+            (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
+          ) {
+            return `${prop.name}_id`;
+          } else {
+            return null;
+          }
+        }
+        return prop.name;
+      })
+      .filter(nonNullable);
   }
 
   registerModulePaths() {
@@ -673,10 +689,40 @@ export class Entity {
     await this.save();
   }
 
+  analyzeSubsetField(subsetField: string): {
+    entityId: string;
+    propName: string;
+  }[] {
+    const arr = subsetField.split(".");
+
+    let entityId = this.id;
+    const result: {
+      entityId: string;
+      propName: string;
+    }[] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const propName = arr[i];
+      result.push({
+        entityId,
+        propName,
+      });
+
+      const prop = EntityManager.get(entityId).props.find(
+        (p) => p.name === propName
+      );
+      if (!prop) {
+        throw new Error(`${entityId}의 잘못된 서브셋키 ${subsetField}`);
+      }
+      if (isRelationProp(prop)) {
+        entityId = prop.with;
+      }
+    }
+    return result;
+  }
+
   async modifyProp(newProp: EntityProp, at: number): Promise<void> {
-    // 프롭 수정
+    // 이전 프롭 이름 저장
     const oldName = this.props[at].name;
-    this.props[at] = newProp;
 
     // 저장할 엔티티
     const entities: Entity[] = [this];
@@ -690,30 +736,39 @@ export class Entity {
         const relEntitySubsetKeys = Object.keys(relEntity.subsets);
         for (const subsetKey of relEntitySubsetKeys) {
           const subset = relEntity.subsets[subsetKey];
-          const oldSubsetFields = subset.filter(
-            (field) =>
-              field.endsWith(oldName) &&
-              relEntity.getEntityIdFromSubsetField(field) === this.id
-          );
-          if (oldSubsetFields.length > 0) {
-            relEntity.subsets[subsetKey] = relEntity.subsets[subsetKey].map(
-              (oldField) =>
-                oldSubsetFields.includes(oldField)
-                  ? oldField.replace(`${oldName}`, `${newProp.name}`)
-                  : oldField
+
+          // 서브셋 필드를 순회하며, 엔티티-프롭 단위로 분석한 후 현재 엔티티-프롭과 일치하는 경우 수정 처리
+          const modifiedSubsetFields = subset.map((subsetField) => {
+            const analyzed = relEntity.analyzeSubsetField(subsetField);
+            const modified = analyzed.map((a) =>
+              a.propName === oldName && a.entityId === this.id
+                ? {
+                    ...a,
+                    propName: newProp.name,
+                  }
+                : a
             );
+            // 분석한 필드를 다시 서브셋 필드로 복구
+            return modified.map((a) => a.propName).join(".");
+          });
+
+          if (subset.join(",") !== modifiedSubsetFields.join(",")) {
+            relEntity.subsets[subsetKey] = modifiedSubsetFields;
             entities.push(relEntity);
           }
         }
       }
     }
 
+    // 프롭 수정
+    this.props[at] = newProp;
+
     await Promise.all(entities.map(async (entity) => entity.save()));
   }
 
   async delProp(at: number): Promise<void> {
+    // 이전 프롭 이름 저장
     const oldName = this.props[at].name;
-    this.props.splice(at, 1);
 
     // 저장할 엔티티
     const entities: Entity[] = [this];
@@ -725,19 +780,31 @@ export class Entity {
       const relEntitySubsetKeys = Object.keys(relEntity.subsets);
       for (const subsetKey of relEntitySubsetKeys) {
         const subset = relEntity.subsets[subsetKey];
-        const oldSubsetFields = subset.filter(
-          (field) =>
-            field.endsWith(oldName) &&
-            relEntity.getEntityIdFromSubsetField(field) === this.id
-        );
-        if (oldSubsetFields.length > 0) {
-          relEntity.subsets[subsetKey] = relEntity.subsets[subsetKey].filter(
-            (oldField) => oldSubsetFields.includes(oldField) === false
-          );
+        // 서브셋 필드를 순회하며, 엔티티-프롭 단위로 분석한 후 현재 엔티티-프롭과 일치하는 경우 이후의 필드를 제외
+        const modifiedSubsetFields = subset
+          .map((subsetField) => {
+            const analyzed = relEntity.analyzeSubsetField(subsetField);
+            if (
+              analyzed.find(
+                (a) => a.propName === oldName && a.entityId === this.id
+              )
+            ) {
+              return null;
+            } else {
+              return subsetField;
+            }
+          })
+          .filter(nonNullable);
+
+        if (subset.join(",") !== modifiedSubsetFields.join(",")) {
+          relEntity.subsets[subsetKey] = modifiedSubsetFields;
           entities.push(relEntity);
         }
       }
     }
+
+    // 프롭 삭제
+    this.props.splice(at, 1);
 
     await Promise.all(entities.map(async (entity) => entity.save()));
   }
@@ -751,15 +818,17 @@ export class Entity {
     const arr = subsetField.split(".").slice(0, -1);
 
     // 서브셋 필드를 내려가면서 마지막으로 relation된 엔티티를 찾음
-    const lastEntity = arr.reduce((entity, field) => {
-      const relProp = entity.props.find((p) => p.name === field);
+    const lastEntityId = arr.reduce((entityId, field) => {
+      const relProp = EntityManager.get(entityId).props.find(
+        (p) => p.name === field
+      );
       if (!relProp || relProp.type !== "relation") {
-        console.debug({ arr, thisId: this.id });
+        console.debug({ arr, thisId: this.id, entityId, field });
         throw new Error(`잘못된 서브셋키 ${subsetField}`);
       }
-      return EntityManager.get(relProp.with);
-    }, this as Entity);
-    return lastEntity.id;
+      return relProp.with;
+    }, this.id);
+    return lastEntityId;
   }
 
   async moveProp(at: number, to: number): Promise<void> {

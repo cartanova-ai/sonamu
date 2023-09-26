@@ -9,7 +9,7 @@ import {
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
 import { EntityPropNode, SubsetQuery } from "../types/types";
-import { propNodeToZodTypeDef } from "../api/code-converters";
+import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
 import { Template } from "./base-template";
 
 export class Template__generated extends Template {
@@ -33,7 +33,7 @@ export class Template__generated extends Template {
       ...(entity.parentId === undefined
         ? [
             this.getBaseListParamsTypeSource(entity),
-            this.getSubsetTypeSource(entity),
+            this.getSubsetTypeSource(entity)!,
           ]
         : []),
     ].reduce(
@@ -51,6 +51,31 @@ export class Template__generated extends Template {
         importKeys: [],
       }
     );
+
+    // .types.ts의 타입을 참조하는 경우 순환참조(상호참조)가 발생하므로 해당 타입을 가져와 인라인 처리
+    const entityTypeKeys = Object.keys(entity.types);
+    const cdImportKeys = uniq(typeSource.importKeys).filter((importKey) =>
+      entityTypeKeys.includes(importKey)
+    );
+    if (cdImportKeys.length > 0) {
+      typeSource.lines = [
+        ...cdImportKeys
+          .map((importKey) => [
+            `// Imported CustomScalar: ${importKey}`,
+            `const ${importKey} = ${zodTypeToZodCode(
+              entity.types[importKey]
+            )};`,
+            `type ${importKey} = z.infer<typeof ${importKey}>`,
+            "",
+          ])
+          .flat(),
+        "",
+        ...typeSource.lines,
+      ];
+      typeSource.importKeys = typeSource.importKeys.filter(
+        (importKey) => !cdImportKeys.includes(importKey)
+      );
+    }
 
     // targetAndPath
     const names = EntityManager.getNamesFromId(entityId);

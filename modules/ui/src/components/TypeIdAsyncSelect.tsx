@@ -2,6 +2,7 @@ import { DropdownProps, Dropdown, Button } from "semantic-ui-react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SyntheticEvent } from "react";
+import { camelize } from "inflection";
 
 export function TypeIdAsyncSelect({
   filter,
@@ -11,6 +12,7 @@ export function TypeIdAsyncSelect({
   filter?: "enums" | "types";
   withAddEnumButton?: {
     entityId: string;
+    propName: string;
   };
 }) {
   const { data, isLoading, mutate } = SonamuUIService.useTypeIds(filter);
@@ -20,7 +22,11 @@ export function TypeIdAsyncSelect({
     if (!withAddEnumButton) {
       return;
     }
-    const newEnumId = prompt("New Enum ID");
+
+    const defEnumId = `${withAddEnumButton.entityId}${camelize(
+      withAddEnumButton.propName
+    )}`;
+    const newEnumId = prompt("New Enum ID", defEnumId);
     if (!newEnumId) {
       return;
     }

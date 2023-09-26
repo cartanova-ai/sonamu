@@ -7,10 +7,10 @@ export class Template__entity extends Template {
     super("entity");
   }
 
-  getTargetAndPath(names: EntityNamesRecord) {
+  getTargetAndPath(names: EntityNamesRecord, parentNames?: EntityNamesRecord) {
     return {
       target: "api/src/application",
-      path: `${names.fs}/${names.fs}.entity.json`,
+      path: `${(parentNames ?? names).fs}/${names.fs}.entity.json`,
     };
   }
 
@@ -18,30 +18,63 @@ export class Template__entity extends Template {
     const { entityId, title, parentId, table } = options;
     const names = EntityManager.getNamesFromId(entityId);
 
+    const parent = (() => {
+      if (parentId) {
+        return {
+          names: EntityManager.getNamesFromId(parentId),
+          entity: EntityManager.get(parentId),
+        };
+      } else {
+        return null;
+      }
+    })();
+
     return {
-      ...this.getTargetAndPath(names),
+      ...this.getTargetAndPath(names, parent?.names ?? names),
       body: JSON.stringify({
         id: entityId,
         title: title ?? entityId,
         parentId,
         table: table ?? names.fsPlural.replace(/\-/g, "_"),
         props: [
-          { name: "id", type: "integer", unsigned: true },
+          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          ...(parent
+            ? [
+                {
+                  type: "relation",
+                  name: parent.names.camel,
+                  relationType: "BelongsToOne",
+                  with: parentId,
+                  onUpdate: "CASCADE",
+                  onDelete: "CASCADE",
+                  desc: parent.entity.title,
+                },
+              ]
+            : []),
           {
             name: "created_at",
             type: "timestamp",
+            desc: "등록일시",
             dbDefault: "CURRENT_TIMESTAMP",
           },
         ],
         indexes: [],
         subsets: {
-          A: ["id", "created_at"],
+          ...(parentId
+            ? {}
+            : {
+                A: ["id", "created_at"],
+              }),
         },
         enums: {
-          [`${names.capital}OrderBy`]: {
-            "id-desc": "ID최신순",
-          },
-          [`${names.capital}SearchField`]: { id: "ID" },
+          ...(parentId
+            ? {}
+            : {
+                [`${names.capital}OrderBy`]: {
+                  "id-desc": "ID최신순",
+                },
+                [`${names.capital}SearchField`]: { id: "ID" },
+              }),
         },
       }).trim(),
       importKeys: [],

@@ -5,6 +5,7 @@ import { useCommonModal } from "../../components/core/CommonModal";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { pluralize, underscore } from "inflection";
+import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 
 type EntityCreateFormProps = {};
 export function EntityCreateForm({}: EntityCreateFormProps) {
@@ -50,7 +51,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>ParentID</label>
-                  <Input {...register("parent_id")} />
+                  <Input {...register("parentId")} />
                 </Form.Field>
               </Form.Group>
               <Form.Group widths="equal">
@@ -70,7 +71,10 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>Title</label>
-                  <Input {...register("title")} />
+                  <InputWithSuggestion
+                    {...register("title")}
+                    origin={underscore(form.id)}
+                  />
                 </Form.Field>
               </Form.Group>
               <div className="text-center">

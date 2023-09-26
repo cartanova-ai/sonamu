@@ -159,7 +159,7 @@ export class Syncer {
     );
 
     // 현재 checksums
-    const currentChecksums = await this.getCurrentChecksums();
+    let currentChecksums = await this.getCurrentChecksums();
     // 이전 checksums
     const previousChecksums = await this.getPreviousChecksums();
 
@@ -190,12 +190,26 @@ export class Syncer {
     // 변경된 파일들을 타입별로 분리하여 각 타입별 액션 처리
     const diffTypes = Object.keys(diffGroups);
 
-    // 트리거: entity
+    // 트리거: entity, types
     // 액션: 스키마 생성
-    if (diffTypes.includes("entity")) {
+    if (diffTypes.includes("entity") || diffTypes.includes("types")) {
       console.log("// 액션: 스키마 생성");
-      const entityIds = this.getEntityIdFromPath(diffGroups["entity"]);
+      const entityIds = this.getEntityIdFromPath([
+        ...(diffGroups["entity"] ?? []),
+        ...(diffGroups["types"] ?? []),
+      ]);
       await this.actionGenerateSchemas(entityIds);
+
+      // 타입이 변경된 경우 generated 싱크까지 동시에 처리 후 체크섬 갱신
+      if (diffTypes.includes("types")) {
+        diffGroups["generated"] = uniq([
+          ...(diffGroups["generated"] ?? []),
+          ...diffGroups["types"].map((p) =>
+            p.replace(".types.ts", ".generated.ts")
+          ),
+        ]);
+        currentChecksums = await this.getCurrentChecksums();
+      }
     }
 
     // 트리거: types, enums, generated 변경시
@@ -207,11 +221,13 @@ export class Syncer {
     ) {
       console.log("// 액션: 파일 싱크 types / functions / generated");
 
-      const tsPaths = [
-        ...(diffGroups["types"] ?? []),
-        ...(diffGroups["functions"] ?? []),
-        ...(diffGroups["generated"] ?? []),
-      ].map((p) => p.replace("/dist/", "/src/").replace(".js", ".ts"));
+      const tsPaths = uniq(
+        [
+          ...(diffGroups["types"] ?? []),
+          ...(diffGroups["functions"] ?? []),
+          ...(diffGroups["generated"] ?? []),
+        ].map((p) => p.replace("/dist/", "/src/").replace(".js", ".ts"))
+      );
       await this.actionSyncFilesToTargets(tsPaths);
     }
 
@@ -229,10 +245,12 @@ export class Syncer {
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
-    return filePaths.map((p) => {
-      const matched = p.match(/application\/(.+)\//);
-      return camelize(matched![1].replace(/\-/g, "_"));
-    });
+    return uniq(
+      filePaths.map((p) => {
+        const matched = p.match(/application\/(.+)\//);
+        return camelize(matched![1].replace(/\-/g, "_"));
+      })
+    );
   }
 
   async actionGenerateSchemas(entityIds: string[]): Promise<string[]> {
@@ -1296,12 +1314,14 @@ export class Syncer {
     await EntityManager.reload();
 
     // generate schemas
-    await this.actionGenerateSchemas([entityId]);
+    await this.actionGenerateSchemas([parentId ?? entityId]);
 
     // generate types
-    await this.generateTemplate("init_types", {
-      entityId,
-    });
+    if (parentId === undefined) {
+      await this.generateTemplate("init_types", {
+        entityId,
+      });
+    }
   }
 
   async delEntity(entityId: string): Promise<{ delPaths: string[] }> {

@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { Button, Checkbox, Form, Input, Label, Table } from "semantic-ui-react";
+import { Button, Checkbox, Form, Icon, Label, Table } from "semantic-ui-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { EntityIndex, EntityProp } from "sonamu";
@@ -128,7 +128,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         case "N":
           if (e.ctrlKey && e.metaKey && e.shiftKey) {
             if (cursor.sheet === "props") {
-              openPropForm("add", cursor.y, 2);
+              openPropForm("add", undefined, 2);
             } else if (cursor.sheet === "indexes") {
               openIndexForm("add", cursor.y);
             } else if (cursor.sheet.includes("enumLabels")) {
@@ -636,7 +636,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         <>
           <div className="entity-base">
             <h3>
-              Entity{" "}
+              <span>
+                Entity: <strong style={{ color: "green" }}>{entity.id}</strong>
+              </span>
               <Button
                 size="mini"
                 color="red"
@@ -648,10 +650,6 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
             </h3>
             <Form>
               <Form.Group widths="equal">
-                <Form.Field>
-                  <label>ID</label>
-                  <Input value={entity.id} readOnly />
-                </Form.Field>
                 <Form.Field>
                   <label>ParentID</label>
                   <EditableInput
@@ -692,7 +690,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                     <Table.HeaderCell>Desc</Table.HeaderCell>
                     <Table.HeaderCell>Type</Table.HeaderCell>
                     <Table.HeaderCell>Nullable</Table.HeaderCell>
-                    <Table.HeaderCell>With</Table.HeaderCell>
+                    <Table.HeaderCell>With/As</Table.HeaderCell>
                     <Table.HeaderCell>Default</Table.HeaderCell>
                     <Table.HeaderCell>Filter</Table.HeaderCell>
                   </Table.Row>
@@ -742,8 +740,21 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         collapsing
                       >
                         {prop.type}{" "}
+                        {(prop.type === "integer" ||
+                          prop.type === "bigInteger" ||
+                          prop.type === "float" ||
+                          prop.type === "double" ||
+                          prop.type === "decimal") &&
+                          prop.unsigned && <>unsigned </>}
                         {(prop.type === "string" || prop.type === "enum") && (
                           <>({prop.length}) </>
+                        )}
+                        {(prop.type === "float" ||
+                          prop.type === "double" ||
+                          prop.type === "decimal") && (
+                          <>
+                            ({prop.precision},{prop.scale}){" "}
+                          </>
                         )}
                       </Table.Cell>
                       <Table.Cell
@@ -758,12 +769,23 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       >
                         {prop.type === "enum" && (
                           <>
-                            <Label color="olive">{prop.id}</Label>
+                            <Label color="teal">{prop.id}</Label>
+                          </>
+                        )}
+                        {prop.type === "json" && (
+                          <>
+                            <Label color="brown">{prop.id}</Label>
                           </>
                         )}
                         {prop.type === "relation" && (
                           <>
-                            <Label color="orange">
+                            <Label
+                              color={
+                                prop.relationType.endsWith("ToOne")
+                                  ? "orange"
+                                  : "purple"
+                              }
+                            >
                               {prop.relationType}: {prop.with}
                             </Label>
                           </>
@@ -780,7 +802,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         {...regCell("props", propIndex, 6)}
                         collapsing
                       >
-                        {prop.toFilter && "O"}
+                        {prop.toFilter && <Icon name="check" />}
                       </Table.Cell>
                     </Table.Row>
                   ))}

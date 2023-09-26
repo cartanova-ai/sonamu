@@ -122,6 +122,18 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
     );
   };
 
+  const toggleAllFiles = () => {
+    if (!codes) {
+      return;
+    }
+
+    if (selectedCodeNames.length === 0) {
+      setSelectedCodeNames(codes.map((code) => code.name));
+    } else {
+      setSelectedCodeNames([]);
+    }
+  };
+
   if (error) {
     return (
       <div className="migrations-index">
@@ -240,7 +252,15 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
             <Table celled selectable>
               <Table.Header>
                 <Table.Row>
-                  <Table.HeaderCell>Name</Table.HeaderCell>
+                  <Table.HeaderCell>
+                    Name{" "}
+                    <Button
+                      icon="check"
+                      size="mini"
+                      color="blue"
+                      onClick={() => toggleAllFiles()}
+                    />
+                  </Table.HeaderCell>
                   {conns.map((conn, connIndex) => (
                     <Table.HeaderCell
                       key={connIndex}

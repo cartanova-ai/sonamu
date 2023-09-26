@@ -874,12 +874,14 @@ export class Migrator {
         name: dbColumn.Field,
         nullable: dbColumn.Null !== "NO",
         ...dbColType,
-        ...propIf(dbColumn.Default !== null, {
-          defaultTo:
-            dbColType.type === "float"
-              ? parseFloat(dbColumn.Default ?? "0").toString()
-              : dbColumn.Default,
-        }),
+        ...(() => {
+          if (dbColumn.Default !== null) {
+            return {
+              defaultTo: dbColumn.Default,
+            };
+          }
+          return {};
+        })(),
       };
     });
 
@@ -1020,7 +1022,23 @@ export class Migrator {
   ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
     // 테이블 정보
     try {
-      const [cols] = await compareDB.raw(`SHOW FIELDS FROM ${tableName}`);
+      const [_cols] = (await compareDB.raw(
+        `SHOW FIELDS FROM ${tableName}`
+      )) as [DBColumn[]];
+      const cols = _cols.map((col) => ({
+        ...col,
+        // Default 값은 숫자나 MySQL Expression이 아닌 경우 ""로 감싸줌
+        ...(col.Default !== null
+          ? {
+              Default:
+                col.Default.replace(/[0-9]+/g, "").length > 0 &&
+                col.Extra !== "DEFAULT_GENERATED"
+                  ? `"${col.Default}"`
+                  : col.Default,
+            }
+          : {}),
+      }));
+
       const [indexes] = await compareDB.raw(`SHOW INDEX FROM ${tableName}`);
       const [[row]] = await compareDB.raw(`SHOW CREATE TABLE ${tableName}`);
       const ddl = row["Create Table"];
@@ -1115,10 +1133,14 @@ export class Migrator {
               ? { length: prop.length }
               : {}),
             nullable: prop.nullable === true,
-            // DB에선 무조건 string으로 리턴되므로 반드시 string 처리
-            ...propIf(prop.dbDefault !== undefined, {
-              defaultTo: "" + prop.dbDefault,
-            }),
+            ...(() => {
+              if (prop.dbDefault !== undefined) {
+                return {
+                  defaultTo: prop.dbDefault,
+                };
+              }
+              return {};
+            })(),
             // Decimal, Float 타입의 경우 precision, scale 추가
             ...(isDecimalProp(prop) || isFloatProp(prop)
               ? {
@@ -1286,7 +1308,14 @@ export class Migrator {
 
       // defaultTo
       if (column.defaultTo !== undefined) {
-        chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
+        if (
+          typeof column.defaultTo === "string" &&
+          column.defaultTo.startsWith(`"`)
+        ) {
+          chains.push(`defaultTo(${column.defaultTo})`);
+        } else {
+          chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
+        }
       }
 
       return `table.${chains.join(".")};`;

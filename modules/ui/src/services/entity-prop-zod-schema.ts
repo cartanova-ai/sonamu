@@ -80,7 +80,6 @@ export namespace EntityPropZodSchema {
     id: z.string(),
   });
   export const RelationOn = z.enum([
-    "UPDATE",
     "CASCADE",
     "SET NULL",
     "NO ACTION",
@@ -101,10 +100,10 @@ export namespace EntityPropZodSchema {
   });
   export const OneToOneRelationProp = z.union([
     OneToOneRelationCommon.extend({
-      hasJoinColumn: z.literal(true).optional(),
+      hasJoinColumn: z.literal(false).optional(),
     }),
     OneToOneRelationCommon.extend({
-      hasJoinColumn: z.literal(false).optional(),
+      hasJoinColumn: z.literal(true).optional(),
       onUpdate: RelationOn,
       onDelete: RelationOn,
     }),
