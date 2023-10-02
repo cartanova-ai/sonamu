@@ -14,11 +14,15 @@ export function globAsync(pathPattern: string): Promise<string[]> {
   });
 }
 export async function importMultiple(
-  filePaths: string[]
+  filePaths: string[],
+  doRefresh: boolean = false
 ): Promise<{ filePath: string; imported: any }[]> {
   return Promise.all(
     filePaths.map(async (filePath) => {
       const importPath = "./" + path.relative(__dirname, filePath);
+      if (doRefresh) {
+        delete require.cache[require.resolve(importPath)];
+      }
       const imported = await import(importPath);
       return {
         filePath,

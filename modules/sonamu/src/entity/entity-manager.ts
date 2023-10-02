@@ -55,12 +55,11 @@ class EntityManagerClass {
   }
 
   async reload(doSilent: boolean = false) {
+    console.log("reload");
     this.entities.clear();
     this.modulePaths.clear();
     this.tableSpecs.clear();
     this.isAutoloaded = false;
-    console.log("reload");
-    console.log(this.entities);
 
     return this.autoload(doSilent);
   }

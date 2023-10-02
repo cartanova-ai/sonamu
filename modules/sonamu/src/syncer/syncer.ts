@@ -720,8 +720,10 @@ export class Syncer {
     return this.models;
   }
 
-  async autoloadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
-    if (Object.keys(this.types).length > 0) {
+  async autoloadTypes(
+    doRefresh: boolean = false
+  ): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+    if (!doRefresh && Object.keys(this.types).length > 0) {
       return this.types;
     }
 
@@ -734,7 +736,7 @@ export class Syncer {
     const filePaths = (
       await Promise.all(pathPatterns.map((pattern) => globAsync(pattern)))
     ).flat();
-    const modules = await importMultiple(filePaths);
+    const modules = await importMultiple(filePaths, doRefresh);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
       .flat();

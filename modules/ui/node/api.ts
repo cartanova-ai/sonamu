@@ -236,9 +236,14 @@ export async function createApiServer(options: {
   server.get<{
     Querystring: {
       filter?: "enums" | "types";
+      reload?: "1";
     };
   }>("/api/entity/typeIds", async (request): Promise<{ typeIds: string[] }> => {
-    const { filter } = request.query;
+    const { filter, reload } = request.query;
+
+    if (reload === "1") {
+      await Sonamu.syncer.autoloadTypes(true);
+    }
 
     const typeIds = (() => {
       const typeIds = Object.entries(Sonamu.syncer.types)

@@ -3,7 +3,7 @@ import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { Button, Checkbox, Form, Icon, Label, Table } from "semantic-ui-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
-import { EntityIndex, EntityProp } from "sonamu";
+import { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityPropForm } from "./_prop_form";
 import { EntityIndexForm } from "./_index_form";
@@ -12,6 +12,7 @@ import { useSheetTable } from "../../components/useSheetTable";
 import { EditableInput } from "../../components/EditableInput";
 import { EntitySelector } from "./_entity_selector";
 import classNames from "classnames";
+import { uniq } from "lodash";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -298,6 +299,62 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         isOpen: false,
       }));
     entity.flattenSubsetRows.splice(at + 1, 0, ...newSubsetRows);
+
+    srcRow.isOpen = true;
+  };
+  const toggleAllFieldsOnSubset = (
+    subsetKey: string,
+    subsetRow?: FlattenSubsetRow
+  ) => {
+    if (!entity) {
+      return;
+    }
+
+    const newSubset = (() => {
+      const oldSubset = entity.subsets[subsetKey];
+      if (subsetRow === undefined) {
+        const targetFields = entity.flattenSubsetRows
+          .filter((sr) => sr.prefixes.length === 0)
+          .map((sr) => sr.field);
+        const toAppend = targetFields.filter(
+          (field) => !entity.subsets[subsetKey].includes(field)
+        );
+        if (toAppend.length === 0) {
+          // 모두 선택된 경우 아무 것도 하지 않음
+          return oldSubset;
+        } else {
+          // 선택 추가
+          return uniq([...oldSubset, ...toAppend]);
+        }
+      } else {
+        const targetFields = entity.flattenSubsetRows
+          .filter(
+            (sr) =>
+              sr.prefixes.join(".") ===
+              subsetRow.prefixes.concat(subsetRow.field).join(".")
+          )
+          .map((sr) => sr.prefixes.concat(sr.field).join("."));
+        const toAppend = targetFields.filter(
+          (field) => !entity.subsets[subsetKey].includes(field)
+        );
+        if (toAppend.length === 0) {
+          // 모두 선택된 경우 전체 선택 해제
+          return oldSubset.filter(
+            (field) => targetFields.includes(field) === false
+          );
+        } else {
+          // 선택 추가
+          return uniq([...oldSubset, ...toAppend]);
+        }
+      }
+    })();
+
+    SonamuUIService.modifySubset(entity.id, subsetKey, newSubset)
+      .then(({ updated }) => {
+        entity.subsets[subsetKey] = updated;
+        mutate();
+      })
+      .catch(defaultCatch);
   };
 
   // base
@@ -772,7 +829,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                             <Label color="teal">{prop.id}</Label>
                           </>
                         )}
-                        {prop.type === "json" && (
+                        {(prop.type === "json" || prop.type === "virtual") && (
                           <>
                             <Label color="brown">{prop.id}</Label>
                           </>
@@ -1015,7 +1072,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         <Table.HeaderCell>Field</Table.HeaderCell>
                         {Object.keys(entity.subsets).map((subsetKey) => (
                           <Table.HeaderCell key={subsetKey} collapsing>
-                            {subsetKey}{" "}
+                            Subset{subsetKey}{" "}
                             {subsetKey !== "A" && (
                               <Button
                                 icon="trash"
@@ -1030,6 +1087,20 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </Table.Row>
                     </Table.Header>
                     <Table.Body>
+                      <Table.Row>
+                        <Table.Cell></Table.Cell>
+                        {Object.keys(entity.subsets).map((subsetKey) => (
+                          <Table.Cell key={subsetKey}>
+                            <Button
+                              size="mini"
+                              content="!"
+                              circular
+                              style={{ fontSize: ".5em" }}
+                              onClick={() => toggleAllFieldsOnSubset(subsetKey)}
+                            />
+                          </Table.Cell>
+                        ))}
+                      </Table.Row>
                       {entity.flattenSubsetRows.map(
                         (subsetRow, subsetRowIndex) => (
                           <Table.Row
@@ -1058,7 +1129,24 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                             </Table.Cell>
                             {Object.keys(entity.subsets).map((subsetKey) => (
                               <Table.Cell key={subsetKey}>
-                                {!subsetRow.relationEntity && (
+                                {subsetRow.relationEntity ? (
+                                  <>
+                                    {subsetRow.isOpen && (
+                                      <Button
+                                        size="mini"
+                                        content="!"
+                                        circular
+                                        style={{ fontSize: ".5em" }}
+                                        onClick={() =>
+                                          toggleAllFieldsOnSubset(
+                                            subsetKey,
+                                            subsetRow
+                                          )
+                                        }
+                                      />
+                                    )}
+                                  </>
+                                ) : (
                                   <Checkbox
                                     checked={subsetRow.has[subsetKey]}
                                     onChange={(_e, data) => {

@@ -64,6 +64,7 @@ export function TypeIdAsyncSelect({
         selectOnBlur={false}
         {...props}
       />
+      <Button icon="refresh" size="mini" onClick={() => mutate()} />
       {withAddEnumButton && (
         <Button icon="plus" size="mini" onClick={() => promptAddEnum()} />
       )}

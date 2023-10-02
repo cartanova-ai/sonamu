@@ -33,7 +33,7 @@ export namespace SonamuUIService {
   ): SWRResponse<{ typeIds: string[] }, SWRError> {
     return useSWR<{ typeIds: string[] }, SWRError>([
       `/api/entity/typeIds`,
-      { filter },
+      { filter, reload: "1" },
     ]);
   }
 
