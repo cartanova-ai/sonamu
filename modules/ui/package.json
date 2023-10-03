@@ -76,8 +76,5 @@
   "peerDependencies": {
     "sonamu": "^0.1.2"
   },
-  "packageManager": "yarn@3.6.3",
-  "resolutions": {
-    "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
-  }
+  "packageManager": "yarn@3.6.3"
 }
