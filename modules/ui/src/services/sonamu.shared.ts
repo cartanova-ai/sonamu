@@ -37,6 +37,20 @@ export async function swrFetcher(args: [string, object]): Promise<any> {
   }
 }
 
+export async function swrPostFetcher(args: [string, object]): Promise<any> {
+  try {
+    const [url, params] = args;
+    const res = await axios.post(`${baseURL}${url}`, params);
+    return res.data;
+  } catch (e: any) {
+    const error: any = new Error(
+      e.response.data.message ?? e.response.message ?? "Unknown"
+    );
+    error.statusCode = e.response?.data.statusCode ?? e.response.status;
+    throw error;
+  }
+}
+
 export class SonamuError extends Error {
   isSonamuError: boolean;
 

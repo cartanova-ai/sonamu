@@ -308,18 +308,24 @@ code {
   }
 }
 
+.message-box {
+  width: 50em;
+  margin: 30vh auto;
+  white-space: pre-line;
+  padding: 3em;
+  background-color: white;
+  line-height: 2em;
+
+  &.error {
+    border: 2px solid red;
+  }
+  &.warning {
+    border: 2px solid orange;
+  }
+}
+
 .migrations-index {
   padding: 2em;
-
-  .error-box {
-    width: 50em;
-    margin: 30vh auto;
-    white-space: pre-line;
-    border: 2px solid red;
-    padding: 3em;
-    background-color: white;
-    line-height: 2em;
-  }
 
   .tools {
     display: flex;
@@ -437,6 +443,164 @@ code {
   &.drag-enter {
     td {
       border-top: 1px solid red !important;
+    }
+  }
+}
+
+.scaffolding-index {
+  display: flex;
+  justify-content: flex-start;
+  min-height: calc(100vh - 50px);
+
+  h3,
+  h4 {
+    margin-bottom: 0.2em;
+  }
+
+  .ui.checkbox label,
+  .ui.checkbox + label {
+    color: white !important;
+
+    &:hover,
+    &:active {
+      color: white;
+    }
+  }
+
+  .ui.checkbox {
+    padding: 0.4em;
+    display: flex;
+
+    label {
+      // width: 14em;
+      opacity: 0.7;
+      flex: 1;
+    }
+
+    &.checked label {
+      font-weight: bold;
+      opacity: 1;
+    }
+  }
+
+  .entities {
+    color: white;
+    background-color: #112c15;
+    padding: 1em;
+    padding-right: 0;
+    width: 420px;
+    height: calc(100vh - $gnb-height);
+    position: sticky;
+    left: 0;
+    top: $gnb-height;
+    width: 250px;
+    overflow-y: scroll;
+
+    .entity {
+      cursor: pointer;
+      &:hover {
+        background-color: #1e4d2b;
+      }
+    }
+  }
+
+  .button-set {
+    padding: 0.3em;
+    text-align: center;
+
+    .ui.button {
+      display: block;
+      margin: 0.5em auto;
+    }
+
+    .selected-count {
+      color: white;
+      font-size: 0.9em;
+      height: 1.5em;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+
+      &.is-showing {
+        opacity: 1;
+      }
+    }
+  }
+
+  .template-groups {
+    background-color: #112c15;
+    padding: 0.3em;
+    padding-left: 2em;
+    border-left: 1px solid #85aa8a;
+    height: calc(100vh - $gnb-height);
+    position: sticky;
+    left: 0;
+    top: $gnb-height;
+    color: white;
+    width: 250px;
+    overflow-y: scroll;
+
+    .template-group {
+      padding: 1em 0;
+    }
+
+    .template-key {
+      cursor: pointer;
+      &:hover {
+        background-color: #1e4d2b;
+      }
+    }
+  }
+
+  .enums-list {
+    background-color: #112c15;
+    padding: 1em;
+    padding-left: 2em;
+    border-left: 1px solid #85aa8a;
+    height: calc(100vh - $gnb-height);
+    position: sticky;
+    left: 0;
+    top: $gnb-height;
+    color: white;
+    width: 250px;
+    overflow-y: scroll;
+
+    .enums {
+      cursor: pointer;
+      &:hover {
+        background-color: #1e4d2b;
+      }
+
+      .ui.checkbox {
+        font-size: 0.8em;
+      }
+    }
+  }
+
+  .content {
+    flex: 1;
+    padding: 1em;
+    .message-box {
+      width: auto;
+    }
+
+    .statuses {
+      .ui.table {
+        font-size: 0.9em;
+
+        th {
+          padding: 0.5em 0.8em;
+        }
+        td {
+          padding: 0.5em 0.8em;
+        }
+
+        tr.negative {
+          td:nth-child(1),
+          td:nth-child(2) {
+            opacity: 0.4;
+          }
+        }
+      }
     }
   }
 }

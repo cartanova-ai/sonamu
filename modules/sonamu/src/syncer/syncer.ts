@@ -937,10 +937,7 @@ export class Syncer {
     };
 
     // 키 children
-    let keys: TemplateKey[] = [key];
-    // if (key === "entity") {
-    //   keys = ["entity", "init_generated", "init_types"];
-    // }
+    const keys: TemplateKey[] = [key];
 
     // 템플릿 렌더
     const pathAndCodes = (
@@ -960,27 +957,30 @@ export class Syncer {
      - 옵션3 : 메인 파일만 그대로 두고, 파생 파일은 전부 생성함 => 이게 맞지 않나?
     */
 
-    let filteredPathAndCodes: PathAndCode[] = [];
-    if (generateOptions.overwrite === true) {
-      filteredPathAndCodes = pathAndCodes;
-    } else {
-      filteredPathAndCodes = pathAndCodes.filter((pathAndCode, index) => {
-        if (index === 0) {
-          const { targets } = Sonamu.config.sync;
-          const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-          const dstFilePaths = targets.map((target) =>
-            filePath.replace("/:target/", `/${target}/`)
-          );
-          return dstFilePaths.every((dstPath) => existsSync(dstPath) === false);
-        } else {
-          return true;
-        }
-      });
-      if (filteredPathAndCodes.length === 0) {
-        throw new AlreadyProcessedException(
-          "이미 경로에 모든 파일이 존재합니다."
-        );
+    const filteredPathAndCodes: PathAndCode[] = (() => {
+      if (generateOptions.overwrite === true) {
+        return pathAndCodes;
+      } else {
+        return pathAndCodes.filter((pathAndCode, index) => {
+          if (index === 0) {
+            const { targets } = Sonamu.config.sync;
+            const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
+            const dstFilePaths = targets.map((target) =>
+              filePath.replace("/:target/", `/${target}/`)
+            );
+            return dstFilePaths.every(
+              (dstPath) => existsSync(dstPath) === false
+            );
+          } else {
+            return true;
+          }
+        });
       }
+    })();
+    if (filteredPathAndCodes.length === 0) {
+      throw new AlreadyProcessedException(
+        "이미 경로에 모든 파일이 존재합니다."
+      );
     }
 
     return Promise.all(
@@ -988,6 +988,24 @@ export class Syncer {
         this.writeCodeToPath(pathAndCode)
       )
     );
+  }
+
+  checkExistsGenCode(
+    entityId: string,
+    templateKey: TemplateKey,
+    enumId?: string
+  ): { subPath: string; fullPath: string; isExists: boolean } {
+    const { target, path: genPath } = this.getTemplate(
+      templateKey
+    ).getTargetAndPath(EntityManager.getNamesFromId(entityId), enumId);
+
+    const fullPath = path.join(Sonamu.appRootPath, target, genPath);
+    const subPath = path.join(target, genPath);
+    return {
+      subPath,
+      fullPath,
+      isExists: existsSync(fullPath),
+    };
   }
 
   checkExists(

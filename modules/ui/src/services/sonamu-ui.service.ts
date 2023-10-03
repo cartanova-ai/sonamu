@@ -1,6 +1,6 @@
 import { Entity } from "sonamu/dist/entity/entity";
 import useSWR, { SWRResponse } from "swr";
-import { fetch } from "./sonamu.shared";
+import { fetch, swrPostFetcher } from "./sonamu.shared";
 import {
   EntityIndex,
   EntityProp,
@@ -272,10 +272,16 @@ export namespace SonamuUIService {
     });
   }
 
-  export function openVscode(params: {
-    entityId: string;
-    preset: "types" | "entity.json" | "generated";
-  }): Promise<void> {
+  export function openVscode(
+    params:
+      | {
+          entityId: string;
+          preset: "types" | "entity.json" | "generated";
+        }
+      | {
+          absPath: string;
+        }
+  ): Promise<void> {
     return fetch({
       method: "GET",
       url: `/api/tools/openVscode`,
@@ -293,4 +299,56 @@ export namespace SonamuUIService {
       params,
     });
   }
+
+  export function useScaffoldingStatus(
+    params: ScaffoldingGetStatusParams
+  ): SWRResponse<{ statuses: ScaffoldingStatus[] }, SWRError> {
+    const route = (() => {
+      if (params.entityIds.length === 0 && params.templateKeys.length === 0) {
+        return null;
+      } else if (
+        params.templateGroupName === "Enums" &&
+        params.enumIds.length === 0
+      ) {
+        return null;
+      }
+      return [`/api/scaffolding/getStatus`, params];
+    })();
+    return useSWR<{ statuses: ScaffoldingStatus[] }, SWRError>(
+      route,
+      swrPostFetcher
+    );
+  }
+  export function scaffoldingGenerate(
+    options: ScaffoldingGenerateOptions[]
+  ): Promise<number> {
+    return fetch({
+      method: "POST",
+      url: `/api/scaffolding/generate`,
+      data: {
+        options,
+      },
+    });
+  }
 }
+
+type ScaffoldingStatus = {
+  entityId: string;
+  templateGroupName: string;
+  templateKey: string;
+  enumId?: string;
+  subPath: string;
+  fullPath: string;
+  isExists: boolean;
+};
+export type ScaffoldingGetStatusParams = {
+  templateGroupName: "Entity" | "Enums";
+  entityIds: string[];
+  templateKeys: string[];
+  enumIds: string[];
+};
+export type ScaffoldingGenerateOptions = {
+  entityId: string;
+  templateKey: string;
+  enumId?: string;
+};

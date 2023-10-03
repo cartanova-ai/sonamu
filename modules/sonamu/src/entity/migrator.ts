@@ -137,6 +137,17 @@ export class Migrator {
   }> {
     const srcMigrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const distMigrationsDir = `${Sonamu.apiRootPath}/dist/migrations`;
+
+    if (existsSync(srcMigrationsDir) === false) {
+      mkdirSync(srcMigrationsDir, {
+        recursive: true,
+      });
+    }
+    if (existsSync(distMigrationsDir) === false) {
+      mkdirSync(distMigrationsDir, {
+        recursive: true,
+      });
+    }
     const srcMigrations = readdirSync(srcMigrationsDir)
       .filter((f) => f.endsWith(".ts"))
       .map((f) => f.split(".")[0]);
@@ -203,9 +214,10 @@ export class Migrator {
       connKeys.map(async (connKey) => {
         const knexOptions = Sonamu.dbConfig[connKey];
         const tConn = knex(knexOptions);
+
         const status = await (async () => {
           try {
-            return tConn.migrate.status();
+            return await tConn.migrate.status();
           } catch (err) {
             return "error";
           }

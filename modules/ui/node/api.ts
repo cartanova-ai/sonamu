@@ -1,5 +1,5 @@
 import fastify from "fastify";
-import { flatten, range, uniq } from "lodash";
+import { flatten, range, template, uniq } from "lodash";
 import {
   Sonamu,
   EntityManager,
@@ -8,6 +8,11 @@ import {
   EntitySubsetRow,
   Migrator,
   nonNullable,
+  BadRequestException,
+  TemplateKey,
+  TemplateOptions,
+  isSoException,
+  ServiceUnavailableException,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 import knex from "knex";
@@ -25,6 +30,7 @@ export async function createApiServer(options: {
   const { listen, apiRootPath } = options;
 
   const server = fastify();
+  server.register(require("fastify-qs"));
   server.register(require("@fastify/cors"), {
     origin: true,
     credentials: true,
@@ -47,28 +53,38 @@ export async function createApiServer(options: {
 
   server.get<{
     Querystring: {
-      entityId: string;
-      preset: "types" | "entity.json" | "generated";
+      entityId?: string;
+      preset?: "types" | "entity.json" | "generated" | "path";
+      absPath?: string;
     };
   }>("/api/tools/openVscode", async (request) => {
-    const { entityId, preset } = request.query;
-    const entity = EntityManager.get(entityId);
-    const { names } = entity;
+    const { entityId, preset, absPath } = request.query;
 
-    const { apiRootPath } = Sonamu;
-    const filename = (() => {
-      switch (preset) {
-        case "types":
-          return `${names.fs}.types.ts`;
-        case "entity.json":
-          return `${names.fs}.entity.json`;
-        case "generated":
-          return `${names.fs}.generated.ts`;
+    const targetPath = (() => {
+      if (entityId && preset) {
+        const entity = EntityManager.get(entityId);
+        const { names } = entity;
+
+        const { apiRootPath } = Sonamu;
+        const filename = (() => {
+          switch (preset) {
+            case "types":
+              return `${names.fs}.types.ts`;
+            case "entity.json":
+              return `${names.fs}.entity.json`;
+            case "generated":
+              return `${names.fs}.generated.ts`;
+          }
+        })();
+        return `${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`;
+      } else {
+        if (!absPath) {
+          throw new BadRequestException("preset or absPath must be provided");
+        }
+        return absPath;
       }
     })();
-    execSync(
-      `code ${apiRootPath}/src/application/${entity.names.parentFs}/${filename}`
-    );
+    execSync(`code ${targetPath}`);
   });
 
   server.get<{
@@ -530,6 +546,116 @@ export async function createApiServer(options: {
     Body: {};
   }>("/api/migrations/generatePreparedCodes", async (request) => {
     return await migrator.generatePreparedCodes();
+  });
+
+  server.post<{
+    Body: {
+      templateGroupName: "Entity" | "Enums";
+      entityIds: string[];
+      templateKeys: string[];
+      enumIds: string[];
+    };
+  }>("/api/scaffolding/getStatus", async (request) => {
+    const {
+      templateGroupName,
+      entityIds,
+      templateKeys: _templateKeys,
+      enumIds,
+    } = request.body;
+    if ((entityIds ?? []).length === 0) {
+      throw new BadRequestException("entityIds must be provided");
+    } else if ((_templateKeys ?? []).length === 0) {
+      throw new BadRequestException("templateKeys must be provided");
+    } else if (templateGroupName === "Enums" && (enumIds ?? []).length === 0) {
+      throw new BadRequestException("enumIds must be provided");
+    }
+
+    // sorting
+    entityIds.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const templateKeys = TemplateKey.options.filter((tk) =>
+      _templateKeys.includes(tk)
+    );
+
+    const combinations = entityIds
+      .map((entityId) => {
+        if (templateGroupName === "Enums") {
+          const allEnumIds = Object.keys(
+            EntityManager.get(entityId).enumLabels
+          );
+          return templateKeys
+            .map((templateKey) =>
+              allEnumIds
+                .filter((enumId) => enumIds.includes(enumId))
+                .map((enumId) => [entityId, templateKey, enumId])
+            )
+            .flat();
+        } else {
+          return templateKeys.map((templateKey) => [entityId, templateKey]);
+        }
+      })
+      .flat();
+
+    const statuses = combinations.map(([entityId, templateKey, enumId]) => {
+      const { subPath, fullPath, isExists } = Sonamu.syncer.checkExistsGenCode(
+        entityId,
+        templateKey as TemplateKey,
+        enumId
+      );
+      return {
+        entityId,
+        templateGroupName,
+        templateKey,
+        enumId,
+        subPath,
+        fullPath,
+        isExists,
+      };
+    });
+    return { statuses };
+  });
+
+  server.post<{
+    Body: {
+      options: {
+        entityId: string;
+        templateKey: string;
+        enumId?: string;
+      }[];
+    };
+  }>("/api/scaffolding/generate", async (request) => {
+    const { options } = request.body;
+    if (options.length === 0) {
+      throw new BadRequestException("options must be provided");
+    }
+
+    const result = await Promise.all(
+      options.map(async ({ entityId, templateKey, enumId }) => {
+        try {
+          return await Sonamu.syncer.generateTemplate(
+            templateKey as TemplateKey,
+            {
+              entityId,
+              enumId,
+            } as any,
+            {
+              overwrite: false,
+            }
+          );
+        } catch (e) {
+          if (isSoException(e) && e.statusCode === 641) {
+            return null;
+          }
+        }
+      })
+    );
+    console.log(result);
+
+    if (result.filter(nonNullable).length === 0) {
+      throw new ServiceUnavailableException(
+        "이미 모든 파일이 생성된 상태입니다."
+      );
+    }
+    return result;
   });
 
   server.get("/api/all_routes", async () => {

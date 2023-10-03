@@ -137,7 +137,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   if (error) {
     return (
       <div className="migrations-index">
-        <div className="error-box">{error.message}</div>
+        <div className="message-box error">{error.message}</div>
       </div>
     );
   }
@@ -187,7 +187,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                   <Table.Row key={pcodeIndex} className="prepared-code">
                     <Table.Cell collapsing>{pcode.type}</Table.Cell>
                     <Table.Cell collapsing>{pcode.table}</Table.Cell>
-                    <Table.Cell>{pcode.title}</Table.Cell>
+                    <Table.Cell collapsing>{pcode.title}</Table.Cell>
                     <Table.Cell
                       style={{ padding: 0, width: 700, textAlign: "center" }}
                     >
