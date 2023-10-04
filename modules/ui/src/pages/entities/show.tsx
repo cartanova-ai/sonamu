@@ -314,7 +314,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       const oldSubset = entity.subsets[subsetKey];
       if (subsetRow === undefined) {
         const targetFields = entity.flattenSubsetRows
-          .filter((sr) => sr.prefixes.length === 0)
+          .filter((sr) => sr.prefixes.length === 0 && !sr.relationEntity)
           .map((sr) => sr.field);
         const toAppend = targetFields.filter(
           (field) => !entity.subsets[subsetKey].includes(field)
@@ -323,6 +323,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           // 모두 선택된 경우 아무 것도 하지 않음
           return oldSubset;
         } else {
+          console.log({ toAppend });
           // 선택 추가
           return uniq([...oldSubset, ...toAppend]);
         }
@@ -331,7 +332,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           .filter(
             (sr) =>
               sr.prefixes.join(".") ===
-              subsetRow.prefixes.concat(subsetRow.field).join(".")
+                subsetRow.prefixes.concat(subsetRow.field).join(".") &&
+              !sr.relationEntity
           )
           .map((sr) => sr.prefixes.concat(sr.field).join("."));
         const toAppend = targetFields.filter(
@@ -343,6 +345,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
             (field) => targetFields.includes(field) === false
           );
         } else {
+          console.log({ toAppend });
           // 선택 추가
           return uniq([...oldSubset, ...toAppend]);
         }
