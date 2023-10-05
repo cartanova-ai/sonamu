@@ -40,7 +40,7 @@ export class Template__service extends Template {
         `import { z } from 'zod';`,
         `import qs from "qs";`,
         `import useSWR, { SWRResponse } from "swr";`,
-        `import { fetch, ListResult, SWRError, SwrOptions, handleConditional } from '../sonamu.shared';`,
+        `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher } from '../sonamu.shared';`,
       ],
     };
   }
@@ -241,10 +241,12 @@ export async function ${api.methodName}${typeParamsDef}(
     )}${typeParamsDef}(${[paramsDef, "options?: SwrOptions"]
       .filter((p) => p !== "")
       .join(",")}, ): SWRResponse<${returnTypeDef}, SWRError> {
-    return useSWR<${returnTypeDef}, SWRError>(handleConditional([
+    return useSWR(handleConditional([
       \`${apiBaseUrl}\`,
-      qs.stringify(${payloadDef}),
-    ], options?.conditional));
+      ${payloadDef},
+    ], options?.conditional)${
+      api.options.httpMethod === "POST" ? ", swrPostFetcher" : ""
+    });
   }`;
   }
 

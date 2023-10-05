@@ -1255,7 +1255,10 @@ export class Syncer {
     }
   }
 
-  async getColumnsNode(entityId: string, subsetKey: string) {
+  async getColumnsNode(
+    entityId: string,
+    subsetKey: string
+  ): Promise<RenderingNode> {
     const entity = await EntityManager.get(entityId);
     const subsetA = entity.subsets[subsetKey];
     if (subsetA === undefined) {

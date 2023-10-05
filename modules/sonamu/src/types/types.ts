@@ -663,17 +663,14 @@ export const TemplateOptions = z.object({
   view_enums_select: z.object({
     entityId: z.string(),
     enumId: z.string(),
-    idConstant: z.string(),
   }),
   view_enums_dropdown: z.object({
     entityId: z.string(),
     enumId: z.string(),
-    idConstant: z.string(),
   }),
   view_enums_buttonset: z.object({
     entityId: z.string(),
     enumId: z.string(),
-    idConstant: z.string(),
   }),
 });
 export type TemplateOptions = z.infer<typeof TemplateOptions>;

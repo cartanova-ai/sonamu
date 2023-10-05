@@ -163,10 +163,17 @@ export class Template__view_form extends Template {
     { entityId }: TemplateOptions["view_form"],
     saveParamsNode: RenderingNode
   ) {
+    const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
-    const columns = (saveParamsNode.children as RenderingNode[]).filter(
-      (col) => col.name !== "id"
-    );
+    const columns = (saveParamsNode.children as RenderingNode[])
+      .filter((col) => col.name !== "id")
+      .map((col) => {
+        const propCandidate = entity.props.find(
+          (prop) => prop.name === col.name
+        );
+        col.label = propCandidate?.desc ?? col.label;
+        return col;
+      });
 
     const defaultValue = this.resolveDefaultValue(columns);
 
@@ -198,16 +205,14 @@ export class Template__view_form extends Template {
         let key: TemplateKey;
         let targetMdId = entityId;
         let enumId: string | undefined;
-        let idConstant: string | undefined;
         if (col.renderType === "enums") {
           key = "view_enums_select";
-          const { targetMDNames, id, name } = getEnumInfoFromColName(
+          const { targetMDNames, id } = getEnumInfoFromColName(
             entityId,
             col.name
           );
           targetMdId = targetMDNames.capital;
           enumId = id;
-          idConstant = name;
         } else {
           key = "view_id_async_select";
           const relProp = getRelationPropFromColName(
@@ -223,7 +228,6 @@ export class Template__view_form extends Template {
             entityId: targetMdId,
             node: col,
             enumId,
-            idConstant,
           },
         };
       })
@@ -258,8 +262,8 @@ import { DateTime } from "luxon";
 
 import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack } from "@sonamu-kit/react-sui";
 import { defaultCatch } from 'src/services/sonamu.shared';
-import { ImageUploader } from 'src/components/core/ImageUploader';
-import { useCommonModal } from "src/components/core/CommonModal";
+import { ImageUploader } from 'src/admin-common/ImageUploader';
+import { useCommonModal } from "src/admin-common/CommonModal";
 
 import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
         names.fs
@@ -349,7 +353,9 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
 
   // 페이지
   const PAGE = {
-    title: \`${names.capital}\${id ? \`#\${id} 수정\` : ' 등록'}\`,
+    title: \`${
+      entity.title ?? names.capital
+    }\${id ? \`#\${id} 수정\` : ' 등록'}\`,
   }
 
   return (

@@ -4,6 +4,7 @@
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { z, ZodIssue } from "zod";
+import qs from 'qs';
 
 export async function fetch(options: AxiosRequestConfig) {
   try {
@@ -71,12 +72,23 @@ export type SWRError = {
   message: string;
   statusCode: number;
 };
-export async function swrFetcher(
-  url: string,
-  params: string = ""
-): Promise<any> {
+export async function swrFetcher(args: [string, object]): Promise<any> {
   try {
-    const res = await axios.get(url + "?" + params);
+    const [url, params] = args;
+    const res = await axios.get(`${url}?${qs.stringify(params)}`);
+    return res.data;
+  } catch (e: any) {
+    const error: any = new Error(
+      e.response.data.message ?? e.response.message ?? "Unknown"
+    );
+    error.statusCode = e.response?.data.statusCode ?? e.response.status;
+    throw error;
+  }
+}
+export async function swrPostFetcher(args: [string, object]): Promise<any> {
+  try {
+    const [url, params] = args;
+    const res = await axios.post(url, params);
     return res.data;
   } catch (e: any) {
     const error: any = new Error(
@@ -87,13 +99,13 @@ export async function swrFetcher(
   }
 }
 export function handleConditional(
-  route: string | string[],
+  args: [string, object],
   conditional?: () => boolean
-): string | string[] | null {
+): [string, object] | null {
   if (conditional) {
-    return conditional() ? route : null;
+    return conditional() ? args : null;
   }
-  return route;
+  return args;
 }
 
 /*

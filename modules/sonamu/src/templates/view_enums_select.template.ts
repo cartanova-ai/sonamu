@@ -15,13 +15,9 @@ export class Template__view_enums_select extends Template {
     };
   }
 
-  render({
-    entityId,
-    enumId,
-    idConstant,
-  }: TemplateOptions["view_enums_select"]) {
+  render({ entityId, enumId }: TemplateOptions["view_enums_select"]) {
     const names = EntityManager.getNamesFromId(entityId);
-    const label = getLabel(idConstant);
+    const label = getLabel(enumId);
 
     return {
       ...this.getTargetAndPath(names, enumId),
@@ -32,7 +28,7 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${enumId}, ${names.constant} } from 'src/services/${names.fs}/${names.fs}.enums';
+import { ${enumId}, ${enumId}Label } from 'src/services/${names.fs}/${names.fs}.generated';
 
 export type ${enumId}SelectProps = {
   placeholder?: string;
@@ -42,7 +38,7 @@ export function ${enumId}Select({placeholder, textPrefix, ...props}: ${enumId}Se
   const typeOptions = ${enumId}.options.map((key) => ({
     key,
     value: key,
-    text: (textPrefix ?? '${label}: ') + ${names.constant}.${idConstant}[key].ko,
+    text: (textPrefix ?? '${label}: ') + ${enumId}Label[key],
   }));
 
   return (

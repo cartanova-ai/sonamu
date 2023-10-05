@@ -6,6 +6,7 @@ import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp, RelationProp } from "../types/types";
 import { RenderedTemplate } from "../syncer/syncer";
 import { Template } from "./base-template";
+
 export class Template__view_list extends Template {
   constructor() {
     super("view_list");
@@ -55,20 +56,17 @@ export class Template__view_list extends Template {
         }<img src={${colName}} />}</>`;
       case "string-datetime":
         if (col.nullable) {
-          return `<span className="text-tiny">{${colName} === null ? '-' : DateTime.fromSQL(${colName}).toSQL().slice(0, 10)}</span>`;
+          return `<span className="text-tiny">{${colName} === null ? '-' : dateF(${colName})}</span>`;
         } else {
-          return `<span className="text-tiny">{DateTime.fromSQL(${colName}).toSQL().slice(0, 10)}</span>`;
+          return `<span className="text-tiny">{dateF(${colName})}</span>`;
         }
       case "boolean":
         return `<>{${colName} ? <Label color='green' circular>O</Label> : <Label color='grey' circular>X</Label> }</>`;
       case "enums":
-        const { targetMDNames, name } = getEnumInfoFromColName(
-          entityId,
-          col.name
-        );
-        return `<>{${col.nullable ? `${colName} && ` : ""}${
-          targetMDNames.constant
-        }.${name}[${colName}].ko}</>`;
+        const { id: enumId } = getEnumInfoFromColName(entityId, col.name);
+        return `<>{${
+          col.nullable ? `${colName} && ` : ""
+        }${enumId}Label[${colName}]}</>`;
       case "array-images":
         return `<>{ ${colName}.map(r => ${
           col.nullable ? `r && ` : ""
@@ -110,13 +108,11 @@ export class Template__view_list extends Template {
     names: EntityNamesRecord
   ): (string | null)[] {
     if (col.renderType === "enums") {
-      const { modulePath, targetMDNames } = getEnumInfoFromColName(
+      const { modulePath, id: enumId } = getEnumInfoFromColName(
         names.capital,
         col.name
       );
-      return [
-        `import { ${targetMDNames.constant} } from 'src/services/${modulePath}';`,
-      ];
+      return [`import { ${enumId}Label } from 'src/services/${modulePath}';`];
     } else if (col.renderType === "object") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name);
@@ -246,14 +242,16 @@ export class Template__view_list extends Template {
     listParamsNode: RenderingNode
   ) {
     const names = EntityManager.getNamesFromId(entityId);
+    const entity = EntityManager.get(entityId);
 
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
       .filter((col) => col.name !== "id")
       .map((col) => {
+        const propCandidate = entity.props.find((p) => p.name === col.name);
         return {
           name: col.name,
-          label: col.label,
+          label: propCandidate?.desc ?? col.label,
           tc: `(row) => ${this.renderColumn(entityId, col, names)}`,
         };
       });
@@ -277,24 +275,21 @@ export class Template__view_list extends Template {
       let key: TemplateKey;
       let targetMdId = entityId;
       let enumId: string | undefined;
-      let idConstant: string | undefined;
 
       if (col.renderType === "enums") {
         if (col.name === "search") {
           key = "view_enums_dropdown";
           enumId = `${names.capital}SearchField`;
           targetMdId = names.capital;
-          idConstant = "SEARCH_FIELD";
         } else {
           key = "view_enums_select";
           try {
-            const { targetMDNames, id, name } = getEnumInfoFromColName(
+            const { targetMDNames, id } = getEnumInfoFromColName(
               entityId,
               col.name
             );
             targetMdId = targetMDNames.capital;
             enumId = id;
-            idConstant = name;
           } catch {
             continue;
           }
@@ -317,7 +312,6 @@ export class Template__view_list extends Template {
         options: {
           entityId: targetMdId,
           enumId,
-          idConstant,
         },
       });
     }
@@ -362,7 +356,7 @@ import {
 } from 'semantic-ui-react';
 import classNames from 'classnames';
 import { DateTime } from "luxon";
-import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF } from '@sonamu-kit/react-sui';
+import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, dateF, datetimeF } from '@sonamu-kit/react-sui';
 
 import { ${names.capital}SubsetA } from "src/services/${names.fs}/${
         names.fs
@@ -391,11 +385,10 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, error } = ${names.capital}Service.use${
+  const { data, mutate, error, isLoading } = ${names.capital}Service.use${
         names.capitalPlural
       }('A', listParams);
   const { rows, total } = data ?? {};
-  const isLoading = !error && !data;
 
   // 삭제
   const confirmDel = (ids: number[]) => {
@@ -424,7 +417,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: '/admin/${names.fsPlural}',
-    title: '${names.capital}',
+    title: '${entity.title ?? names.capital}',
   };
 
   // 선택

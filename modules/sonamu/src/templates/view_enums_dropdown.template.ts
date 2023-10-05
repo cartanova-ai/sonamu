@@ -14,13 +14,9 @@ export class Template__view_enums_dropdown extends Template {
     };
   }
 
-  render({
-    entityId,
-    enumId,
-    idConstant,
-  }: TemplateOptions["view_enums_dropdown"]) {
+  render({ entityId, enumId }: TemplateOptions["view_enums_dropdown"]) {
     const names = EntityManager.getNamesFromId(entityId);
-    const label = getLabel(idConstant);
+    const label = getLabel(enumId);
 
     return {
       ...this.getTargetAndPath(names, enumId),
@@ -31,14 +27,14 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${names.constant} } from 'src/services/${names.fs}/${names.fs}.enums';
+import { ${enumId}Label } from 'src/services/${names.fs}/${names.fs}.generated';
 
 export function ${enumId}Dropdown(props: DropdownProps) {
-  const options = Object.entries(${names.constant}.${idConstant}).map(([key, { ko }]) => {
+  const options = Object.entries(${enumId}Label).map(([key, label]) => {
     return {
       key,
       value: key,
-      text: "${label}: " + ko,
+      text: "${label}: " + label,
     };
   });
   return (
@@ -55,13 +51,12 @@ export function ${enumId}Dropdown(props: DropdownProps) {
   }
 }
 
-export function getLabel(idConstant: string): string {
-  switch (idConstant) {
-    case "ORDER_BY":
-      return "정렬";
-    case "SEARCH_FIELD":
-      return "검색";
-    default:
-      return idConstant;
+export function getLabel(enumId: string): string {
+  if (enumId.endsWith("OrderBy")) {
+    return "정렬";
+  } else if (enumId.endsWith("SearchField")) {
+    return "검색";
+  } else {
+    return enumId;
   }
 }
