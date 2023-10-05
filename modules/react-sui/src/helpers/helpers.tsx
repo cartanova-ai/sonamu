@@ -314,6 +314,23 @@ export function numF(
   return num && new Intl.NumberFormat().format(num);
 }
 
+export function dateF(sqlDateString: string | null | undefined): string | null {
+  if (sqlDateString === null || sqlDateString === undefined) {
+    return null;
+  } else {
+    return sqlDateString.slice(0, 10);
+  }
+}
+export function datetimeF(
+  sqlDateString: string | null | undefined
+): string | null {
+  if (sqlDateString === null || sqlDateString === undefined) {
+    return null;
+  } else {
+    return sqlDateString.slice(0, 19);
+  }
+}
+
 export function arrayableToArray<T extends number | string | boolean>(
   val: T | T[] | undefined
 ): T[] {
