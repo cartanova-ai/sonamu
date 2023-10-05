@@ -209,7 +209,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
             )}
           </div>
           {filteredEnumIds.map((enumId) => (
-            <div className="enums">
+            <div className="enums" key={enumId}>
               <Checkbox
                 label={enumId}
                 checked={selected.enumIds.includes(enumId)}

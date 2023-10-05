@@ -304,7 +304,7 @@ export namespace SonamuUIService {
     params: ScaffoldingGetStatusParams
   ): SWRResponse<{ statuses: ScaffoldingStatus[] }, SWRError> {
     const route = (() => {
-      if (params.entityIds.length === 0 && params.templateKeys.length === 0) {
+      if (params.entityIds.length === 0 || params.templateKeys.length === 0) {
         return null;
       } else if (
         params.templateGroupName === "Enums" &&
