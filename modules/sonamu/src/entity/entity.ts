@@ -1,4 +1,4 @@
-import _, { uniq } from "lodash";
+import { groupBy, uniq } from "lodash";
 import { EntityManager as EntityManager } from "./entity-manager";
 import { dasherize, pluralize, underscore } from "inflection";
 import {
@@ -158,7 +158,7 @@ export class Entity {
     prefix = prefix.replace(/\./g, "__");
 
     // 서브셋을 1뎁스만 분리하여 그룹핑
-    const subsetGroup = _.groupBy(fields, (field) => {
+    const subsetGroup = groupBy(fields, (field) => {
       if (field.includes(".")) {
         const [rel] = field.split(".");
         return rel;
@@ -604,6 +604,18 @@ export class Entity {
   }
 
   async save(): Promise<void> {
+    // sort: subsets
+    const subsetRows = this.getSubsetRows();
+    this.subsets = Object.fromEntries(
+      Object.entries(this.subsets).map(([subsetKey]) => {
+        return [
+          subsetKey,
+          this.subsetRowsToSubsetFields(subsetRows, subsetKey),
+        ];
+      })
+    );
+
+    // save
     const jsonPath = path.join(
       Sonamu.apiRootPath,
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
@@ -678,6 +690,24 @@ export class Entity {
         ),
       };
     });
+  }
+
+  subsetRowsToSubsetFields(
+    subsetRows: EntitySubsetRow[],
+    subsetKey: string
+  ): string[] {
+    return subsetRows
+      .map((subsetRow) => {
+        if (subsetRow.children.length > 0) {
+          return this.subsetRowsToSubsetFields(subsetRow.children, subsetKey);
+        } else if (subsetRow.has[subsetKey]) {
+          return subsetRow.prefixes.concat(subsetRow.field).join(".");
+        } else {
+          return null;
+        }
+      })
+      .filter(nonNullable)
+      .flat();
   }
 
   async createProp(prop: EntityProp, at?: number): Promise<void> {
