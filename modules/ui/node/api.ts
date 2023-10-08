@@ -13,6 +13,7 @@ import {
   TemplateOptions,
   isSoException,
   ServiceUnavailableException,
+  PathAndCode,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
 import knex from "knex";
@@ -45,7 +46,7 @@ export async function createApiServer(options: {
     const { apiRootPath, isInitialized } = Sonamu;
 
     return {
-      t1: "t4",
+      t1: "t5",
       apiRootPath,
       entityIds,
     };
@@ -579,9 +580,15 @@ export async function createApiServer(options: {
     const combinations = entityIds
       .map((entityId) => {
         if (templateGroupName === "Enums") {
-          const allEnumIds = Object.keys(
-            EntityManager.get(entityId).enumLabels
-          );
+          const entityIds = [
+            entityId,
+            ...EntityManager.getChildrenIds(entityId),
+          ];
+          const allEnumIds = entityIds
+            .map((entityId) =>
+              Object.keys(EntityManager.get(entityId).enumLabels)
+            )
+            .flat();
           return templateKeys
             .map((templateKey) =>
               allEnumIds
@@ -620,6 +627,7 @@ export async function createApiServer(options: {
         entityId: string;
         templateKey: string;
         enumId?: string;
+        overwrite?: boolean;
       }[];
     };
   }>("/api/scaffolding/generate", async (request) => {
@@ -629,21 +637,27 @@ export async function createApiServer(options: {
     }
 
     const result = await Promise.all(
-      options.map(async ({ entityId, templateKey, enumId }) => {
+      options.map(async ({ entityId, templateKey, enumId, overwrite }) => {
         try {
           return await Sonamu.syncer.generateTemplate(
             templateKey as TemplateKey,
             {
               entityId,
               enumId,
-            } as any,
+            } as {
+              entityId: string;
+              enumId?: string;
+            },
             {
-              overwrite: false,
+              overwrite,
             }
           );
         } catch (e) {
           if (isSoException(e) && e.statusCode === 641) {
             return null;
+          } else {
+            console.error(e);
+            throw e;
           }
         }
       })
@@ -657,6 +671,34 @@ export async function createApiServer(options: {
     }
     return result;
   });
+
+  server.post<{
+    Body: {
+      option: {
+        entityId: string;
+        templateKey: string;
+        enumId?: string;
+      };
+    };
+  }>(
+    "/api/scaffolding/preview",
+    async (request): Promise<{ pathAndCodes: PathAndCode[] }> => {
+      const { option } = request.body;
+
+      try {
+        const { templateKey, ...templateOptions } = option;
+        const pathAndCodes = await Sonamu.syncer.renderTemplate(
+          templateKey as TemplateKey,
+          templateOptions
+        );
+
+        return { pathAndCodes };
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    }
+  );
 
   server.get("/api/all_routes", async () => {
     return {

@@ -1,5 +1,8 @@
-import { Button, Checkbox, Icon, Table } from "semantic-ui-react";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { Button, Checkbox, Form, Icon, Modal, Table } from "semantic-ui-react";
+import {
+  ScaffoldingStatus,
+  SonamuUIService,
+} from "../../services/sonamu-ui.service";
 import { useState } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
 
@@ -20,6 +23,20 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     enumIds: [],
   });
 
+  const [previewModalState, setPreviewModalState] = useState<{
+    open: boolean;
+    pathAndCodes: { path: string; code: string }[] | null;
+  }>({
+    open: false,
+    pathAndCodes: null,
+  });
+
+  const [generateOptions, setGenerateOptions] = useState<{
+    [key: string]: {
+      overwrite: boolean;
+    };
+  }>({});
+
   const entities = (allEntities ?? []).filter((e) => !e.parentId);
   const templateGroups = [
     {
@@ -38,8 +55,13 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       templateKeys: ["view_enums_select", "view_enums_dropdown"],
     },
   ];
-  const filteredEnumIds = entities
-    .filter((e) => selected.entityIds.includes(e.id))
+
+  const filteredEnumIds = (allEntities ?? [])
+    .filter(
+      (e) =>
+        selected.entityIds.includes(e.id) ||
+        selected.entityIds.includes(e.parentId ?? "")
+    )
     .map((e) => Object.keys(e.enumLabels))
     .flat();
   const setEntityIds = (entityIds: string[]) => {
@@ -80,6 +102,32 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   } = SonamuUIService.useScaffoldingStatus(selected);
   const { statuses } = scaffoldingData ?? {};
 
+  const getScaffoldingKey = (status: ScaffoldingStatus) =>
+    [status.entityId, status.templateKey, status.enumId].join("///");
+
+  const toggleOverwrite = () => {
+    if (!statuses) {
+      return;
+    }
+
+    const filtered = statuses.filter((st) => st.isExists);
+    const allOverwrite = filtered.every(
+      (st) => generateOptions[getScaffoldingKey(st)]?.overwrite ?? false
+    );
+    if (allOverwrite) {
+      setGenerateOptions({});
+    } else {
+      setGenerateOptions(
+        filtered.reduce((acc, st) => {
+          acc[getScaffoldingKey(st)] = {
+            overwrite: true,
+          };
+          return acc;
+        }, {} as { [key: string]: { overwrite: boolean } })
+      );
+    }
+  };
+
   const generate = () => {
     if (!statuses) {
       return;
@@ -89,10 +137,22 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       entityId: st.entityId,
       templateKey: st.templateKey,
       enumId: st.enumId,
+      overwrite: generateOptions[getScaffoldingKey(st)]?.overwrite ?? false,
     }));
     SonamuUIService.scaffoldingGenerate(options)
       .then(() => {
         scaffoldMutate();
+      })
+      .catch(defaultCatch);
+  };
+
+  const openPreviewModal = (status: ScaffoldingStatus) => {
+    SonamuUIService.scaffoldingPreview(status)
+      .then(({ pathAndCodes }) => {
+        setPreviewModalState({
+          open: true,
+          pathAndCodes,
+        });
       })
       .catch(defaultCatch);
   };
@@ -226,72 +286,134 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         </div>
       )}
       <div className="content">
-        {!statuses && !scaffoldingIsLoading && (
-          <div className="message-box warning">
-            Please select EntityIDs / TemplateKeys
-            {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to
-            generate
-          </div>
-        )}
-        {statuses && (
-          <div className="statuses">
-            {statuses.length > 0 && (
-              <Button
-                size="small"
-                color="green"
-                icon="play"
-                content={`Generate ${statuses.length} template(s)`}
-                onClick={() => generate()}
-              />
-            )}
-            <Table celled selectable>
-              <Table.Header>
-                <Table.Row>
-                  <Table.HeaderCell>Entity</Table.HeaderCell>
-                  <Table.HeaderCell>TemplateKey</Table.HeaderCell>
-                  {selected.templateGroupName === "Enums" && (
-                    <Table.HeaderCell>EnumId</Table.HeaderCell>
-                  )}
-                  <Table.HeaderCell>Path</Table.HeaderCell>
-                  <Table.HeaderCell>IsExists</Table.HeaderCell>
-                </Table.Row>
-              </Table.Header>
-              <Table.Body>
-                {statuses.map((status, statusIndex) => (
-                  <Table.Row
-                    key={statusIndex}
-                    positive={!status.isExists}
-                    negative={status.isExists}
-                  >
-                    <Table.Cell collapsing>{status.entityId}</Table.Cell>
-                    <Table.Cell collapsing>{status.templateKey}</Table.Cell>
+        <Form>
+          {!statuses && !scaffoldingIsLoading && (
+            <div className="message-box warning">
+              Please select EntityIDs / TemplateKeys
+              {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to
+              generate
+            </div>
+          )}
+          {statuses && (
+            <div className="statuses">
+              {statuses.length > 0 && (
+                <Button
+                  size="small"
+                  color="green"
+                  icon="play"
+                  content={`Generate ${statuses.length} template(s) — ${
+                    Object.keys(generateOptions).length
+                  } overwrite`}
+                  onClick={() => generate()}
+                />
+              )}
+              <Table celled selectable>
+                <Table.Header>
+                  <Table.Row>
+                    <Table.HeaderCell>Entity</Table.HeaderCell>
+                    <Table.HeaderCell>TemplateKey</Table.HeaderCell>
                     {selected.templateGroupName === "Enums" && (
-                      <Table.Cell collapsing>{status.enumId}</Table.Cell>
+                      <Table.HeaderCell>EnumId</Table.HeaderCell>
                     )}
-                    <Table.Cell>{status.subPath}</Table.Cell>
-                    <Table.Cell>
-                      {status.isExists ? (
-                        <Button
-                          icon="code"
-                          size="mini"
-                          color="blue"
-                          onClick={() => {
-                            SonamuUIService.openVscode({
-                              absPath: status.fullPath,
-                            });
-                          }}
-                        />
-                      ) : (
-                        <Icon name="x" />
-                      )}
-                    </Table.Cell>
+                    <Table.HeaderCell>Path</Table.HeaderCell>
+                    <Table.HeaderCell>IsExists</Table.HeaderCell>
+                    <Table.HeaderCell collapsing>
+                      <Button
+                        size="mini"
+                        icon="check"
+                        content="Overwrite"
+                        onClick={() => toggleOverwrite()}
+                      />
+                    </Table.HeaderCell>
+                    <Table.HeaderCell>Preview</Table.HeaderCell>
                   </Table.Row>
-                ))}
-              </Table.Body>
-            </Table>
-          </div>
-        )}
+                </Table.Header>
+                <Table.Body>
+                  {statuses.map((status, statusIndex) => (
+                    <Table.Row
+                      key={statusIndex}
+                      positive={!status.isExists}
+                      negative={status.isExists}
+                    >
+                      <Table.Cell collapsing>{status.entityId}</Table.Cell>
+                      <Table.Cell collapsing>{status.templateKey}</Table.Cell>
+                      {selected.templateGroupName === "Enums" && (
+                        <Table.Cell collapsing>{status.enumId}</Table.Cell>
+                      )}
+                      <Table.Cell>{status.subPath}</Table.Cell>
+                      <Table.Cell>
+                        {status.isExists ? (
+                          <Button
+                            icon="code"
+                            size="mini"
+                            color="blue"
+                            onClick={() => {
+                              SonamuUIService.openVscode({
+                                absPath: status.fullPath,
+                              });
+                            }}
+                          />
+                        ) : (
+                          <Icon name="x" />
+                        )}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {status.isExists && (
+                          <Form.Group>
+                            <Form.Field>
+                              <Checkbox
+                                checked={
+                                  generateOptions[getScaffoldingKey(status)]
+                                    ?.overwrite ?? false
+                                }
+                                onChange={(_e, { checked }) => {
+                                  setGenerateOptions({
+                                    ...generateOptions,
+                                    [getScaffoldingKey(status)]: {
+                                      overwrite: checked ?? false,
+                                    },
+                                  });
+                                }}
+                              />
+                            </Form.Field>
+                          </Form.Group>
+                        )}
+                      </Table.Cell>
+                      <Table.Cell collapsing>
+                        <Button
+                          size="mini"
+                          content="Preview"
+                          color="purple"
+                          onClick={() => openPreviewModal(status)}
+                        />
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table>
+            </div>
+          )}
+        </Form>
       </div>
+      <Modal
+        open={previewModalState.open}
+        onClose={() => {
+          setPreviewModalState({ open: false, pathAndCodes: null });
+        }}
+      >
+        <Modal.Header>Preview</Modal.Header>
+        <Modal.Content>
+          <Modal.Description>
+            {previewModalState.pathAndCodes &&
+              previewModalState.pathAndCodes.map((pnc) => (
+                <div className="preview-item">
+                  <h4>{pnc.path}</h4>
+                  <code>{pnc.code}</code>
+                </div>
+              ))}
+          </Modal.Description>
+        </Modal.Content>
+      </Modal>
     </div>
   );
 }

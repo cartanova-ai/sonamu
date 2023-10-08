@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/ui",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "SonamuUI — Interactive UI Server Toolkit for Sonamu",
   "scripts": {
     "build": "rimraf dist && rimraf build && yarn build:client && yarn build:node",

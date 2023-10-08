@@ -6,6 +6,7 @@ import {
   EntityProp,
   FlattenSubsetRow,
   MigrationStatus,
+  PathAndCode,
 } from "sonamu";
 
 type SWRError = {
@@ -330,9 +331,21 @@ export namespace SonamuUIService {
       },
     });
   }
+
+  export function scaffoldingPreview(
+    option: ScaffoldingGenerateOptions
+  ): Promise<{ pathAndCodes: PathAndCode[] }> {
+    return fetch({
+      method: "POST",
+      url: `/api/scaffolding/preview`,
+      data: {
+        option,
+      },
+    });
+  }
 }
 
-type ScaffoldingStatus = {
+export type ScaffoldingStatus = {
   entityId: string;
   templateGroupName: string;
   templateKey: string;
@@ -351,4 +364,5 @@ export type ScaffoldingGenerateOptions = {
   entityId: string;
   templateKey: string;
   enumId?: string;
+  overwrite?: boolean;
 };
