@@ -1,152 +1,158 @@
-import { camelize } from "inflection";
 import { uniq } from "lodash";
-import {
-  isDateProp,
-  isDateTimeProp,
-  isTimestampProp,
-  TemplateOptions,
-} from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
+import { TemplateOptions } from "../types/types";
+import { EntityManager } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
-import { EntityPropNode, SubsetQuery } from "../types/types";
+import { EntityPropNode } from "../types/types";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
 import { Template } from "./base-template";
+import { nonNullable } from "../utils/utils";
 
+export type SourceCode = {
+  label: string;
+  lines: string[];
+  importKeys: string[];
+};
 export class Template__generated extends Template {
   constructor() {
     super("generated");
   }
 
-  getTargetAndPath(names: EntityNamesRecord) {
+  getTargetAndPath() {
     return {
       target: "api/src/application",
-      path: `${names.fs}/${names.fs}.generated.ts`,
+      path: `sonamu.generated.ts`,
     };
   }
 
-  render({ entityId }: TemplateOptions["generated"]) {
-    const entity = EntityManager.get(entityId);
+  render({}: TemplateOptions["generated"]) {
+    const entityIds = EntityManager.getAllIds();
+    const entities = entityIds.map((id) => EntityManager.get(id));
 
-    const typeSource = [
-      this.getEnumsTypeSource(entity),
-      this.getBaseSchemaTypeSource(entity),
-      ...(entity.parentId === undefined
-        ? [
-            this.getBaseListParamsTypeSource(entity),
-            this.getSubsetTypeSource(entity)!,
-          ]
-        : []),
-    ].reduce(
+    // 전체 SourceCode 생성
+    const sourceCodes = entities
+      .map((entity) => {
+        return [
+          this.getEnumsSourceCode(entity),
+          this.getBaseSchemaSourceCode(entity),
+          this.getBaseListParamsSourceCode(entity),
+          this.getSubsetSourceCode(entity),
+        ].filter(nonNullable);
+      })
+      .flat();
+
+    // Sort
+    const LABEL_KEY_ORDER = [
+      "Enums",
+      "BaseSchema",
+      "BaseListParams",
+      "Subsets",
+      "SubsetQueries",
+    ];
+    sourceCodes.sort((a, b) => {
+      const [aKey] = a.label.split(":");
+      const [bKey] = b.label.split(":");
+      const aIndex = LABEL_KEY_ORDER.indexOf(aKey);
+      const bIndex = LABEL_KEY_ORDER.indexOf(bKey);
+      if (aIndex > bIndex) {
+        return 1;
+      } else if (aIndex < bIndex) {
+        return -1;
+      } else {
+        return 0;
+      }
+    });
+
+    const sourceCode = sourceCodes.reduce(
       (result, ts) => {
         if (ts === null) {
           return result;
         }
         return {
-          lines: [...result!.lines, ...ts.lines],
+          lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
           importKeys: uniq([...result!.importKeys, ...ts.importKeys]),
         };
       },
       {
         lines: [],
         importKeys: [],
-      }
+      } as Omit<SourceCode, "label">
     );
 
-    // .types.ts의 타입을 참조하는 경우 순환참조(상호참조)가 발생하므로 해당 타입을 가져와 인라인 처리
-    const entityTypeKeys = Object.keys(entity.types);
-    const cdImportKeys = uniq(typeSource.importKeys).filter((importKey) =>
-      entityTypeKeys.includes(importKey)
+    // .types.ts의 타입을 참조하는 경우 순환참조(상호참조)가 발생하므로 타입을 가져와 인라인 처리
+    const allTypeKeys = entities
+      .map((entity) => Object.keys(entity.types))
+      .flat();
+    const cdImportKeys = sourceCode.importKeys.filter((importKey) =>
+      allTypeKeys.includes(importKey)
     );
     if (cdImportKeys.length > 0) {
-      typeSource.lines = [
-        ...cdImportKeys
-          .map((importKey) => [
-            `// Imported CustomScalar: ${importKey}`,
-            `const ${importKey} = ${zodTypeToZodCode(
-              entity.types[importKey]
-            )};`,
+      const customScalarLines = cdImportKeys
+        .map((importKey) => {
+          const entity = entities.find((entity) => entity.types[importKey]);
+          if (!entity) {
+            throw new Error(`ZodType not found ${importKey}`);
+          }
+          const zodType = entity.types[importKey]!;
+
+          return [
+            `// CustomScalar: ${importKey}`,
+            `const ${importKey} = ${zodTypeToZodCode(zodType)};`,
             `type ${importKey} = z.infer<typeof ${importKey}>`,
             "",
-          ])
-          .flat(),
-        "",
-        ...typeSource.lines,
-      ];
-      typeSource.importKeys = typeSource.importKeys.filter(
+          ];
+        })
+        .flat();
+      sourceCode.lines = [...customScalarLines, ...sourceCode.lines];
+      sourceCode.importKeys = sourceCode.importKeys.filter(
         (importKey) => !cdImportKeys.includes(importKey)
       );
     }
 
-    // targetAndPath
-    const names = EntityManager.getNamesFromId(entityId);
-    const targetAndPath = this.getTargetAndPath(names);
+    const body = sourceCode.lines.join("\n");
 
     // import
     const sonamuImports = [
       "zArrayable",
-      ...(entity.props.find(
-        (p) => isTimestampProp(p) || isDateProp(p) || isDateTimeProp(p)
-      )
-        ? ["SQLDateTimeString"]
-        : []),
-    ];
+      "SQLDateTimeString",
+      "SubsetQuery",
+    ].filter((mod) => body.includes(mod));
 
     return {
-      ...targetAndPath,
-      body: [...typeSource!.lines, "/* END Server-side Only */"]
-        .join("\n")
-        .trim(),
-      importKeys: typeSource?.importKeys ?? [],
+      ...this.getTargetAndPath(),
+      body,
+      importKeys: sourceCode.importKeys,
       customHeaders: [
         `import { z } from 'zod';`,
-        entity.props.length > 0
-          ? `import { ${sonamuImports.join(",")} } from "sonamu";`
-          : "",
+        `import { ${sonamuImports.join(",")} } from "sonamu";`,
       ],
     };
   }
 
-  getEnumsTypeSource(entity: Entity): {
-    lines: string[];
-    importKeys: string[];
-  } {
-    const childrenIds = EntityManager.getChildrenIds(entity.id);
-    const entities = [
-      entity,
-      ...childrenIds.map((id) => EntityManager.get(id)),
-    ];
-
+  getEnumsSourceCode(entity: Entity): SourceCode | null {
+    if (Object.keys(entity.enumLabels).length === 0) {
+      return null;
+    }
     return {
+      label: `Enums: ${entity.id}`,
       lines: [
-        "// Enums",
-        ...entities
-          .map((entity) =>
-            Object.entries(entity.enumLabels).map(([enumId, enumLabel]) => [
-              `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
-                (el) => `"${el}"`
-              )}]).describe("${enumId}");`,
-              `export type ${enumId} = z.infer<typeof ${enumId}>`,
-              `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
-            ])
-          )
-          .flat()
+        ...Object.entries(entity.enumLabels)
+          .map(([enumId, enumLabel]) => [
+            `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
+              (el) => `"${el}"`
+            )}]).describe("${enumId}");`,
+            `export type ${enumId} = z.infer<typeof ${enumId}>`,
+            `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
+          ])
           .flat(),
-        "",
       ],
       importKeys: [],
     };
   }
 
-  getBaseSchemaTypeSource(
+  getBaseSchemaSourceCode(
     entity: Entity,
-    depth: number = 0,
     importKeys: string[] = []
-  ): {
-    lines: string[];
-    importKeys: string[];
-  } {
-    const childrenIds = EntityManager.getChildrenIds(entity.id);
-
+  ): SourceCode {
     const schemaName = `${entity.names.module}BaseSchema`;
     const propNode: EntityPropNode = {
       nodeType: "object",
@@ -163,35 +169,21 @@ export class Template__generated extends Template {
     const lines = [
       `export const ${schemaName} = ${schemaBody}`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
-      ...childrenIds
-        .map((childId) => {
-          const child = EntityManager.get(childId);
-          const { lines } = this.getBaseSchemaTypeSource(
-            child,
-            depth + 1,
-            importKeys
-          );
-          return lines;
-        })
-        .flat(),
     ];
 
     return {
+      label: `BaseSchema: ${entity.id}`,
       importKeys,
       lines,
     };
   }
 
-  getBaseListParamsTypeSource(entity: Entity): {
-    lines: string[];
-    importKeys: string[];
-  } {
+  getBaseListParamsSourceCode(entity: Entity): SourceCode | null {
     // Prop 없는 MD인 경우 생성 제외
     if (entity.props.length === 0) {
-      return {
-        lines: [],
-        importKeys: [],
-      };
+      return null;
+    } else if (entity.parentId !== undefined) {
+      return null;
     }
 
     const schemaName = `${entity.names.module}BaseListParams`;
@@ -229,35 +221,23 @@ z.object({
     ];
 
     return {
+      label: `BaseListParams: ${entity.id}`,
       importKeys,
       lines,
     };
   }
 
-  getSubsetTypeSource(entity: Entity): {
-    lines: string[];
-    importKeys: string[];
-  } | null {
+  getSubsetSourceCode(entity: Entity): SourceCode | null {
     if (Object.keys(entity.subsets).length == 0) {
+      return null;
+    } else if (entity.parentId !== undefined) {
       return null;
     }
 
     const subsetKeys = Object.keys(entity.subsets);
-
-    const subsetQueryObject = subsetKeys.reduce(
-      (r, subsetKey) => {
-        const subsetQuery = entity.getSubsetQuery(subsetKey);
-        r[subsetKey] = subsetQuery;
-        return r;
-      },
-      {} as {
-        [key: string]: SubsetQuery;
-      }
-    );
-
     const importKeys: string[] = [];
     const lines: string[] = [
-      "",
+      // `// Subsets: ${entity.id}`,
       ...subsetKeys
         .map((subsetKey) => {
           // 서브셋에서 FieldExpr[] 가져옴
@@ -277,11 +257,9 @@ z.object({
           return [
             `export const ${schemaName} = ${body}`,
             `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
-            "",
           ];
         })
         .flat(),
-      "",
       `export type ${entity.names.module}SubsetMapping = {`,
       ...subsetKeys.map(
         (subsetKey) =>
@@ -293,14 +271,33 @@ z.object({
         .join(",")}]);`,
       `export type ${entity.names.module}SubsetKey = z.infer<typeof ${entity.names.module}SubsetKey>`,
       "",
-      "/* BEGIN- Server-side Only */",
-      `import { SubsetQuery } from "sonamu";`,
-      `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
-        entity.names.module
-      }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
-      "",
+      // "/* BEGIN- Server-side Only */",
+      // // `import { SubsetQuery } from "sonamu";`,
+      // `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
+      //   entity.names.module
+      // }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
+      // "",
     ];
+
+    // ServerSide Only
+    // const subsetQueryObject = subsetKeys.reduce(
+    //   (r, subsetKey) => {
+    //     const subsetQuery = entity.getSubsetQuery(subsetKey);
+    //     r[subsetKey] = subsetQuery;
+    //     return r;
+    //   },
+    //   {} as {
+    //     [key: string]: SubsetQuery;
+    //   }
+    // );
+    // const lines2: string[] = [
+    //   `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
+    //     entity.names.module
+    //   }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
+    // ];
+
     return {
+      label: `Subsets: ${entity.id}`,
       lines,
       importKeys: uniq(importKeys),
     };

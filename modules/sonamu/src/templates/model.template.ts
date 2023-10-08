@@ -24,7 +24,10 @@ export class Template__model extends Template {
     const entity = EntityManager.get(entityId);
 
     const vlTpl = new Template__view_list();
-    const def = vlTpl.getDefault(listParamsNode.children!);
+    if (listParamsNode?.children === undefined) {
+      throw new Error(`listParamsNode가 없습니다. ${entityId}`);
+    }
+    const def = vlTpl.getDefault(listParamsNode.children);
 
     return {
       ...this.getTargetAndPath(names),
@@ -33,9 +36,13 @@ import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestExcep
 import {
   ${entityId}SubsetKey,
   ${entityId}SubsetMapping,
+} from "../sonamu.generated";
+import {
   ${names.camel}SubsetQueries,
-} from "./${names.fs}.generated";
-import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
+} from "../sonamu.generated.sso";
+import { ${entityId}ListParams, ${entityId}SaveParams } from "./${
+        names.fs
+      }.types";
 
 /*
   ${entityId} Model
@@ -73,7 +80,9 @@ class ${entityId}ModelClass extends BaseModelClass {
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${names.capitalPlural}" })
+  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${
+    names.capitalPlural
+  }" })
   async findMany<T extends ${entityId}SubsetKey>(
     subset: T,
     params: ${entityId}ListParams = {}
@@ -103,7 +112,9 @@ class ${entityId}ModelClass extends BaseModelClass {
           if (params.search === "id") {
             qb.where("${entity.table}.id", params.keyword);
           // } else if (params.search === "field") {
-          //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
+          //   qb.where("${
+            entity.table
+          }.field", "like", \`%\${params.keyword}%\`);
           } else {
             throw new BadRequestException(
               \`구현되지 않은 검색 필드 \${params.search}\`
@@ -137,9 +148,28 @@ class ${entityId}ModelClass extends BaseModelClass {
     const ub = this.getUpsertBuilder();
 
     // register
-    saveParamsArray.map((saveParams) => {
+    ${(() => {
+      const jsonProps = entity.props.filter((prop) => prop.type === "json");
+      if (jsonProps.length === 0) {
+        return `saveParamsArray.map((saveParams) => {
       ub.register("${entity.table}", saveParams);
-    });
+    });`;
+      } else {
+        return `saveParamsArray.map(({${jsonProps
+          .map((prop) => prop.name)
+          .join(", ")}, ...saveParams}) => {
+      ub.register("${entity.table}", {
+        ${jsonProps
+          .map(
+            (prop) =>
+              `${prop.name}: ${prop.name} === null ? null : JSON.stringify(${prop.name}),`
+          )
+          .join(",\n")}
+        ...saveParams
+      });
+    });`;
+      }
+    })()}
 
     // transaction
     return wdb.transaction(async (trx) => {

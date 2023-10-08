@@ -82,6 +82,7 @@ import { Template__view_list_columns } from "../templates/view_list_columns.temp
 import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
 import { execSync } from "child_process";
+import { Template__generated_sso } from "../templates/generated_sso.template";
 
 type FileType = "model" | "types" | "functions" | "generated" | "entity";
 type GlobPattern = {
@@ -194,11 +195,7 @@ export class Syncer {
     // 액션: 스키마 생성
     if (diffTypes.includes("entity") || diffTypes.includes("types")) {
       console.log("// 액션: 스키마 생성");
-      const entityIds = this.getEntityIdFromPath([
-        ...(diffGroups["entity"] ?? []),
-        ...(diffGroups["types"] ?? []),
-      ]);
-      await this.actionGenerateSchemas(entityIds);
+      await this.actionGenerateSchemas();
 
       // 타입이 변경된 경우 generated 싱크까지 동시에 처리 후 체크섬 갱신
       if (diffTypes.includes("types")) {
@@ -253,21 +250,12 @@ export class Syncer {
     );
   }
 
-  async actionGenerateSchemas(entityIds: string[]): Promise<string[]> {
+  async actionGenerateSchemas(): Promise<string[]> {
     return (
-      await Promise.all(
-        entityIds.map(async (entityId) =>
-          this.generateTemplate(
-            "generated",
-            {
-              entityId,
-            },
-            {
-              overwrite: true,
-            }
-          )
-        )
-      )
+      await Promise.all([
+        this.generateTemplate("generated_sso", {}, { overwrite: true }),
+        this.generateTemplate("generated", {}, { overwrite: true }),
+      ])
     )
       .flat()
       .flat();
@@ -319,12 +307,10 @@ export class Syncer {
     }
 
     const oldFileContent = readFileSync(fromPath).toString();
-    const newFileContent = oldFileContent
-      .replace(/from "sonamu"/g, `from "../sonamu.shared"`)
-      .replace(
-        /\/\* BEGIN- Server-side Only \*\/[\s\S]*\/\* END Server-side Only \*\/\n*/g,
-        ""
-      );
+    const newFileContent = oldFileContent.replace(
+      /from "sonamu"/g,
+      `from "src/services/sonamu.shared"`
+    );
     return writeFile(toPath, newFileContent);
   }
 
@@ -364,7 +350,7 @@ export class Syncer {
       /* 원본 체크 */
       entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
       types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
-      generated: Sonamu.apiRootPath + "/src/application/**/*.generated.ts",
+      generated: Sonamu.apiRootPath + "/src/application/sonamu.generated.ts",
       functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
       /* compiled-JS 체크 */
       model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
@@ -753,6 +739,8 @@ export class Syncer {
       return new Template__init_types();
     } else if (key === "generated") {
       return new Template__generated();
+    } else if (key === "generated_sso") {
+      return new Template__generated_sso();
     } else if (key === "generated_http") {
       return new Template__generated_http();
     } else if (key === "model") {
@@ -784,36 +772,44 @@ export class Syncer {
     }
   }
 
-  async renderTemplate(
-    key: TemplateKey,
-    options: TemplateOptions[TemplateKey]
+  async renderTemplate<T extends keyof TemplateOptions>(
+    key: T,
+    options: TemplateOptions[T]
   ): Promise<PathAndCode[]> {
     const template: Template = this.getTemplate(key);
 
     let extra: unknown[] = [];
-    if (key === "service" || key === "generated_http") {
-      // service 필요 정보 (API 리스트)
-      const entity = EntityManager.get(options.entityId);
-      const modelTsPath = `${path.join(
-        Sonamu.apiRootPath,
-        "/src/application"
-      )}/${entity.names.fs}/${entity.names.fs}.model.ts`;
-      extra = [await this.readApisFromFile(modelTsPath)];
-    } else if (key === "view_list" || key === "model") {
-      // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
-      const columnsNode = await this.getColumnsNode(options.entityId, "A");
-      const listParamsZodType = await this.getZodTypeById(
-        `${options.entityId}ListParams`
-      );
-      const listParamsNode = this.zodTypeToRenderingNode(listParamsZodType);
-      extra = [columnsNode, listParamsNode];
-    } else if (key === "view_form") {
-      // view_form 필요 정보 (세이브파라미터 노드)
-      const saveParamsZodType = await this.getZodTypeById(
-        `${options.entityId}SaveParams`
-      );
-      const saveParamsNode = this.zodTypeToRenderingNode(saveParamsZodType);
-      extra = [saveParamsNode];
+    if (
+      ["service", "generated_http", "model", "view_list", "view_form"].includes(
+        key
+      )
+    ) {
+      const entityId = (options as TemplateOptions["service"]).entityId;
+
+      if (key === "service" || key === "generated_http") {
+        // service 필요 정보 (API 리스트)
+        const entity = EntityManager.get(entityId!);
+        const modelTsPath = `${path.join(
+          Sonamu.apiRootPath,
+          "/src/application"
+        )}/${entity.names.fs}/${entity.names.fs}.model.ts`;
+        extra = [await this.readApisFromFile(modelTsPath)];
+      } else if (key === "view_list" || key === "model") {
+        // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
+        const columnsNode = await this.getColumnsNode(entityId, "A");
+        const listParamsZodType = await this.getZodTypeById(
+          `${entityId}ListParams`
+        );
+        const listParamsNode = this.zodTypeToRenderingNode(listParamsZodType);
+        extra = [columnsNode, listParamsNode];
+      } else if (key === "view_form") {
+        // view_form 필요 정보 (세이브파라미터 노드)
+        const saveParamsZodType = await this.getZodTypeById(
+          `${entityId}SaveParams`
+        );
+        const saveParamsNode = this.zodTypeToRenderingNode(saveParamsZodType);
+        extra = [saveParamsNode];
+      }
     }
 
     const rendered = template.render(options, ...extra);
@@ -845,7 +841,7 @@ export class Syncer {
         (r, importKey) => {
           const modulePath = EntityManager.getModulePath(importKey);
           let importPath = modulePath;
-          if (modulePath.includes("/")) {
+          if (modulePath.includes("/") || modulePath.includes(".")) {
             importPath = wrapIf(
               path.relative(path.dirname(filePath), modulePath),
               (p) => [p.startsWith(".") === false, "./" + p]
@@ -943,7 +939,7 @@ export class Syncer {
     const pathAndCodes = (
       await Promise.all(
         keys.map(async (key) => {
-          return this.renderTemplate(key, templateOptions);
+          return await this.renderTemplate(key, templateOptions);
         })
       )
     ).flat();
@@ -978,6 +974,7 @@ export class Syncer {
       }
     })();
     if (filteredPathAndCodes.length === 0) {
+      console.log("요거란 말이지?");
       throw new AlreadyProcessedException(
         "이미 경로에 모든 파일이 존재합니다."
       );
@@ -1337,7 +1334,7 @@ export class Syncer {
     await EntityManager.reload();
 
     // generate schemas
-    await this.actionGenerateSchemas([parentId ?? entityId]);
+    await this.actionGenerateSchemas();
 
     // generate types
     if (parentId === undefined) {

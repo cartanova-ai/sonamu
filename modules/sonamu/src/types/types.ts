@@ -612,9 +612,8 @@ export const TemplateOptions = z.object({
   init_types: z.object({
     entityId: z.string(),
   }),
-  generated: z.object({
-    entityId: z.string(),
-  }),
+  generated: z.object({}),
+  generated_sso: z.object({}),
   generated_http: z.object({
     entityId: z.string(),
   }),
@@ -679,6 +678,7 @@ export const TemplateKey = z.enum([
   "entity",
   "init_types",
   "generated",
+  "generated_sso",
   "generated_http",
   "model",
   "model_test",

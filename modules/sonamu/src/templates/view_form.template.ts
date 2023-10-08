@@ -39,17 +39,24 @@ export class Template__view_form extends Template {
 
   renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
-      const { id, targetMDNames } = getEnumInfoFromColName(entityId, col.name);
+      const { id, targetEntityNames: targetMDNames } = getEnumInfoFromColName(
+        entityId,
+        col.name
+      );
       const componentId = `${id}Select`;
       return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
     } else if (col.renderType === "number-fk_id") {
-      const relProp = getRelationPropFromColName(
-        entityId,
-        col.name.replace("_id", "")
-      );
-      const targetNames = EntityManager.getNamesFromId(relProp.with);
-      const componentId = `${relProp.with}IdAsyncSelect`;
-      return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
+      try {
+        const relProp = getRelationPropFromColName(
+          entityId,
+          col.name.replace("_id", "")
+        );
+        const targetNames = EntityManager.getNamesFromId(relProp.with);
+        const componentId = `${relProp.with}IdAsyncSelect`;
+        return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
+      } catch {
+        return "";
+      }
     } else {
       throw new Error(`렌더 불가능한 임포트 ${col.name} ${col.renderType}`);
     }
@@ -99,7 +106,7 @@ export class Template__view_form extends Template {
           }
           return `<${enumId} ${regExpr} ${
             col.optional || col.nullable ? "clearable" : ""
-          } />`;
+          } textPrefix="" />`;
         } catch {
           return `<>찾을 수 없는 Enum ${col.name}</>`;
         }
@@ -114,7 +121,7 @@ export class Template__view_form extends Template {
             col.optional || col.nullable ? "clearable" : ""
           } subset="A" />`;
         } catch {
-          return `<>${col.name} 찾을 수 없음</>`;
+          return `<Input ${regExpr} />`;
         }
       case "array":
         return `<>${col.name} array</>`;
@@ -207,10 +214,8 @@ export class Template__view_form extends Template {
         let enumId: string | undefined;
         if (col.renderType === "enums") {
           key = "view_enums_select";
-          const { targetMDNames, id } = getEnumInfoFromColName(
-            entityId,
-            col.name
-          );
+          const { targetEntityNames: targetMDNames, id } =
+            getEnumInfoFromColName(entityId, col.name);
           targetMdId = targetMDNames.capital;
           enumId = id;
         } else {
@@ -271,9 +276,7 @@ import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
 import { ${names.capital}Service } from 'src/services/${names.fs}/${
         names.fs
       }.service';
-import { ${names.capital}SubsetA } from 'src/services/${names.fs}/${
-        names.fs
-      }.generated';
+import { ${names.capital}SubsetA } from 'src/services/sonamu.generated';
 ${uniq(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
@@ -308,7 +311,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
     names.capital
   }SaveParams, ${JSON.stringify(defaultValue).replace(
         /"now\(\)"/g,
-        "DateTime.local().toSQL().slice(0, 19)"
+        "DateTime.local().toSQL()!.slice(0, 19)"
       )});
 
   // 수정일 때 기존 row 콜
@@ -383,7 +386,19 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
                 } else {
                   return this.wrapFG(
                     this.renderColumn(entityId, col, names),
-                    col.label
+                    (() => {
+                      if (col.label.endsWith("Id")) {
+                        try {
+                          const entity = EntityManager.get(
+                            col.label.replace("Id", "")
+                          );
+                          return entity.title ?? col.label;
+                        } catch {
+                          return col.label;
+                        }
+                      }
+                      return col.label;
+                    })()
                   );
                 }
               })

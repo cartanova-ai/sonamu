@@ -17,7 +17,7 @@ export class Template__view_enums_select extends Template {
 
   render({ entityId, enumId }: TemplateOptions["view_enums_select"]) {
     const names = EntityManager.getNamesFromId(entityId);
-    const label = getLabel(enumId);
+    const label = getLabel(entityId, enumId);
 
     return {
       ...this.getTargetAndPath(names, enumId),
@@ -28,7 +28,7 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${enumId}, ${enumId}Label } from 'src/services/${names.fs}/${names.fs}.generated';
+import { ${enumId}, ${enumId}Label } from 'src/services/sonamu.generated';
 
 export type ${enumId}SelectProps = {
   placeholder?: string;

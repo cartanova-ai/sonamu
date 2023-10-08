@@ -147,6 +147,7 @@ ${methodCodes}
 }`;
       })
       .join("\n\n");
+
     return {
       lines: [body],
       importKeys: difference(uniq(importKeys), typeParamNames),

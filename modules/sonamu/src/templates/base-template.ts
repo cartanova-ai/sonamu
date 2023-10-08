@@ -10,7 +10,7 @@ export abstract class Template {
   ): RenderedTemplate;
 
   public abstract getTargetAndPath(
-    names: EntityNamesRecord,
+    names?: EntityNamesRecord,
     ...extra: unknown[]
   ): {
     target: string;

@@ -21,7 +21,7 @@ export class Template__generated_http extends Template {
     };
   }
 
-  render({ entityId }: TemplateOptions["generated"], apis: ExtendedApi[]) {
+  render({ entityId }: TemplateOptions["generated_http"], apis: ExtendedApi[]) {
     const names = EntityManager.getNamesFromId(entityId);
     const references = Sonamu.syncer.types;
 

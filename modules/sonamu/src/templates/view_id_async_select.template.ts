@@ -43,7 +43,7 @@ import React, { useState, useEffect, SyntheticEvent } from "react";
 import { DropdownProps, DropdownItemProps, DropdownOnSearchChangeData, Dropdown } from "semantic-ui-react";
 import { ${names.capital}SubsetKey, ${
         names.capital
-      }SubsetMapping } from "src/services/${names.fs}/${names.fs}.generated";
+      }SubsetMapping } from "src/services/sonamu.generated";
 import { ${names.capital}Service } from "src/services/${names.fs}/${
         names.fs
       }.service";
@@ -104,7 +104,7 @@ export function ${names.capital}IdAsyncSelect<T extends ${
 
   return (
     <Dropdown
-      placeholder="${names.constant}"
+      placeholder="${entity.title ?? names.constant}"
       selection
       options={options}
       onSearchChange={handleSearchChange}

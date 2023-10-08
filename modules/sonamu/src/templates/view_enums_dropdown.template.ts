@@ -1,6 +1,7 @@
 import { TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
+import { camelize } from "inflection";
 
 export class Template__view_enums_dropdown extends Template {
   constructor() {
@@ -16,7 +17,7 @@ export class Template__view_enums_dropdown extends Template {
 
   render({ entityId, enumId }: TemplateOptions["view_enums_dropdown"]) {
     const names = EntityManager.getNamesFromId(entityId);
-    const label = getLabel(enumId);
+    const label = getLabel(entityId, enumId);
 
     return {
       ...this.getTargetAndPath(names, enumId),
@@ -27,7 +28,7 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${enumId}Label } from 'src/services/${names.fs}/${names.fs}.generated';
+import { ${enumId}Label } from 'src/services/sonamu.generated';
 
 export function ${enumId}Dropdown(props: DropdownProps) {
   const options = Object.entries(${enumId}Label).map(([key, label]) => {
@@ -51,12 +52,18 @@ export function ${enumId}Dropdown(props: DropdownProps) {
   }
 }
 
-export function getLabel(enumId: string): string {
+export function getLabel(entityId: string, enumId: string): string {
   if (enumId.endsWith("OrderBy")) {
     return "정렬";
   } else if (enumId.endsWith("SearchField")) {
     return "검색";
   } else {
+    const enumProp = EntityManager.get(entityId).props.find(
+      (prop) => `${entityId}${camelize(prop.name)}` === enumId
+    );
+    if (enumProp && enumProp.desc) {
+      return enumProp.desc;
+    }
     return enumId;
   }
 }

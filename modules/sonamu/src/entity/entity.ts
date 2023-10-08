@@ -524,28 +524,27 @@ export class Entity {
     const basePath = `${this.names.parentFs}`;
 
     // base-scheme
-    EntityManager.setModulePath(
-      `${this.id}BaseSchema`,
-      `${basePath}/${this.names.parentFs}.generated`
-    );
+    EntityManager.setModulePath(`${this.id}BaseSchema`, `sonamu.generated`);
 
     // subset
     if (Object.keys(this.subsets).length > 0) {
-      EntityManager.setModulePath(
-        `${this.id}SubsetKey`,
-        `${basePath}/${this.names.parentFs}.generated`
-      );
+      EntityManager.setModulePath(`${this.id}SubsetKey`, `sonamu.generated`);
       EntityManager.setModulePath(
         `${this.id}SubsetMapping`,
-        `${basePath}/${this.names.parentFs}.generated`
+        `sonamu.generated`
       );
       Object.keys(this.subsets).map((subsetKey) => {
         EntityManager.setModulePath(
           `${this.id}Subset${subsetKey.toUpperCase()}`,
-          `${basePath}/${this.names.parentFs}.generated`
+          `sonamu.generated`
         );
       });
     }
+
+    // enums
+    Object.keys(this.enumLabels).map((enumId) => {
+      EntityManager.setModulePath(enumId, `sonamu.generated`);
+    });
 
     // types
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
@@ -566,14 +565,6 @@ export class Entity {
         }, {});
       });
     }
-
-    // enums
-    Object.keys(this.enumLabels).map((enumId) => {
-      EntityManager.setModulePath(
-        enumId,
-        `${basePath}/${this.names.parentFs}.generated`
-      );
-    });
   }
 
   registerTableSpecs(): void {

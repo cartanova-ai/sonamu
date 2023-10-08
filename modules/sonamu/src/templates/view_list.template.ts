@@ -74,7 +74,7 @@ export class Template__view_list extends Template {
       case "number-plain":
         return `<>{${col.nullable ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
-        return `<>{row.${col.name}.id}</>`;
+        return `<>{/* object ${colName} */}</>`;
       case "object-pick":
         const pickedChild = col.children!.find(
           (child) => child.name === col.config?.picked
@@ -89,14 +89,7 @@ export class Template__view_list extends Template {
           `${colName}${col.nullable ? "?" : ""}`
         );
       case "array":
-        const elementTableCell = this.renderColumn(
-          entityId,
-          col.element!,
-          names,
-          "elem",
-          true
-        );
-        return `<>{ ${colName} && ${colName}.map((elem, index) => <span key={index} className="ui button mini compact active">${elementTableCell}</span>) }</>`;
+        return `<>{ /* array ${colName} */ }</>`;
       default:
         throw new Error(`렌더 불가 컬럼 ${col.renderType}`);
     }
@@ -108,11 +101,10 @@ export class Template__view_list extends Template {
     names: EntityNamesRecord
   ): (string | null)[] {
     if (col.renderType === "enums") {
-      const { modulePath, id: enumId } = getEnumInfoFromColName(
-        names.capital,
-        col.name
-      );
-      return [`import { ${enumId}Label } from 'src/services/${modulePath}';`];
+      const { id: enumId } = getEnumInfoFromColName(names.capital, col.name);
+      return [
+        `import { ${enumId}Label } from 'src/services/sonamu.generated';`,
+      ];
     } else if (col.renderType === "object") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name);
@@ -145,10 +137,8 @@ export class Template__view_list extends Template {
         return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
       } else {
         try {
-          const { id, targetMDNames } = getEnumInfoFromColName(
-            entityId,
-            col.name
-          );
+          const { id, targetEntityNames: targetMDNames } =
+            getEnumInfoFromColName(entityId, col.name);
           const componentId = `${id}Select`;
           return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
         } catch {
@@ -273,22 +263,22 @@ export class Template__view_list extends Template {
     const preTemplates: RenderedTemplate["preTemplates"] = [];
     for (let col of filterColumns) {
       let key: TemplateKey;
-      let targetMdId = entityId;
+      let targetEntityId = entityId;
       let enumId: string | undefined;
 
       if (col.renderType === "enums") {
         if (col.name === "search") {
           key = "view_enums_dropdown";
           enumId = `${names.capital}SearchField`;
-          targetMdId = names.capital;
+          targetEntityId = names.capital;
         } else {
           key = "view_enums_select";
           try {
-            const { targetMDNames, id } = getEnumInfoFromColName(
+            const { targetEntityNames, id } = getEnumInfoFromColName(
               entityId,
               col.name
             );
-            targetMdId = targetMDNames.capital;
+            targetEntityId = targetEntityNames.capital;
             enumId = id;
           } catch {
             continue;
@@ -301,7 +291,7 @@ export class Template__view_list extends Template {
             entityId,
             col.name.replace("_id", "")
           );
-          targetMdId = relProp.with;
+          targetEntityId = relProp.with;
         } catch {
           continue;
         }
@@ -310,7 +300,7 @@ export class Template__view_list extends Template {
       preTemplates.push({
         key,
         options: {
-          entityId: targetMdId,
+          entityId: targetEntityId,
           enumId,
         },
       });
@@ -358,9 +348,7 @@ import classNames from 'classnames';
 import { DateTime } from "luxon";
 import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, dateF, datetimeF } from '@sonamu-kit/react-sui';
 
-import { ${names.capital}SubsetA } from "src/services/${names.fs}/${
-        names.fs
-      }.generated";
+import { ${names.capital}SubsetA } from "src/services/sonamu.generated";
 import { ${names.capital}Service } from 'src/services/${names.fs}/${
         names.fs
       }.service';
@@ -570,42 +558,32 @@ export function getEnumInfoFromColName(
   colName: string
 ): {
   id: string;
-  targetMDNames: EntityNamesRecord;
-  targetMDId: string;
-  modulePath: string;
-  name: string;
+  targetEntityNames: EntityNamesRecord;
+  targetEntityId: string;
+  title: string;
 } {
-  const baseMd = EntityManager.get(entityId);
-  const prop = baseMd.props.find((p) => p.name === colName);
+  const baseEntity = EntityManager.get(entityId);
+  const prop = baseEntity.props.find((p) => p.name === colName);
   if (prop && isEnumProp(prop)) {
-    const modulePath = EntityManager.getModulePath(prop.id);
-    const targetMDId = camelize(modulePath.split("/")[0].replace("-", "_"));
-    const targetMDNames = EntityManager.getNamesFromId(targetMDId);
-    const name = underscore(
-      prop.id.replace(targetMDNames.capital, "")
-    ).toUpperCase();
     return {
       id: prop.id,
-      name,
-      targetMDId,
-      targetMDNames,
-      modulePath,
+      targetEntityId: entityId,
+      targetEntityNames: EntityManager.getNamesFromId(entityId),
+      title: prop.desc ?? prop.id,
     };
   } else {
     const idCandidate = camelize(
       underscore(entityId) + "_" + underscore(colName),
       false
     );
+    console.log({ idCandidate });
     try {
-      const modulePath = EntityManager.getModulePath(idCandidate);
       const targetMDNames = EntityManager.getNamesFromId(entityId);
-      const name = underscore(colName).toUpperCase();
       return {
         id: idCandidate,
-        name,
-        targetMDId: entityId,
-        targetMDNames,
-        modulePath,
+        targetEntityId: entityId,
+        targetEntityNames: targetMDNames,
+        title: idCandidate,
       };
     } catch {}
     throw new Error(`찾을 수 없는 EnumProp ${colName}`);
@@ -616,9 +594,13 @@ export function getRelationPropFromColName(
   entityId: string,
   colName: string
 ): RelationProp {
-  const baseMd = EntityManager.get(entityId);
-  const relProp = baseMd.props.find((prop) => prop.name === colName);
+  const baseEntity = EntityManager.get(entityId);
+  const relProp = baseEntity.props.find((prop) => prop.name === colName);
   if (isRelationProp(relProp)) {
+    const relEntity = EntityManager.get(relProp.with);
+    if (relEntity.parentId !== undefined) {
+      throw new Error("Only parent entities can be used as relation props");
+    }
     return relProp;
   } else {
     throw new Error(`찾을 수 없는 Relation ${colName}`);
