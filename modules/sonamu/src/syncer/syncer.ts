@@ -197,16 +197,13 @@ export class Syncer {
       console.log("// 액션: 스키마 생성");
       await this.actionGenerateSchemas();
 
-      // 타입이 변경된 경우 generated 싱크까지 동시에 처리 후 체크섬 갱신
-      if (diffTypes.includes("types")) {
-        diffGroups["generated"] = uniq([
-          ...(diffGroups["generated"] ?? []),
-          ...diffGroups["types"].map((p) =>
-            p.replace(".types.ts", ".generated.ts")
-          ),
-        ]);
-        currentChecksums = await this.getCurrentChecksums();
-      }
+      // generated 싱크까지 동시에 처리 후 체크섬 갱신
+      diffGroups["generated"] = uniq([
+        ...(diffGroups["generated"] ?? []),
+        "/src/application/sonamu.generated.ts",
+      ]);
+      diffTypes.push("generated");
+      currentChecksums = await this.getCurrentChecksums();
     }
 
     // 트리거: types, enums, generated 변경시

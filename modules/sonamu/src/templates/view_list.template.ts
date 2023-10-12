@@ -578,11 +578,11 @@ export function getEnumInfoFromColName(
     );
     console.log({ idCandidate });
     try {
-      const targetMDNames = EntityManager.getNamesFromId(entityId);
+      const targetEntityNames = EntityManager.getNamesFromId(entityId);
       return {
         id: idCandidate,
         targetEntityId: entityId,
-        targetEntityNames: targetMDNames,
+        targetEntityNames: targetEntityNames,
         title: idCandidate,
       };
     } catch {}

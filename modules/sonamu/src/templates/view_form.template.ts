@@ -39,12 +39,12 @@ export class Template__view_form extends Template {
 
   renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
-      const { id, targetEntityNames: targetMDNames } = getEnumInfoFromColName(
+      const { id, targetEntityNames } = getEnumInfoFromColName(
         entityId,
         col.name
       );
       const componentId = `${id}Select`;
-      return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
+      return `import { ${componentId} } from "src/components/${targetEntityNames.fs}/${componentId}";`;
     } else if (col.renderType === "number-fk_id") {
       try {
         const relProp = getRelationPropFromColName(
@@ -380,7 +380,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
               .map((col) => {
                 if (col.name === "created_at") {
                   return `{form.id && (${this.wrapFG(
-                    `<div className="p-8">{form.${col.name}}</div>`,
+                    `<div className="p-8px">{form.${col.name}}</div>`,
                     "등록일시"
                   )})}`;
                 } else {
