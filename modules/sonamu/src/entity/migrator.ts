@@ -762,18 +762,36 @@ export class Migrator {
           ).map((key) => {
             // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
             if (key === "columnsAndIndexes") {
-              const entityColumns = sortBy(entitySet.columns, (a) => a.name);
-              const dbColumns = sortBy(dbSet.columns, (a) => a.name);
+              const replaceColumnDefaultTo = (col: MigrationColumn) => {
+                // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
+                if (
+                  col.type === "float" &&
+                  col.defaultTo &&
+                  col.defaultTo.includes('"') === false
+                ) {
+                  col.defaultTo = `"${Number(col.defaultTo).toFixed(
+                    col.scale ?? 2
+                  )}"`;
+                }
+                return col;
+              };
+              const entityColumns = sortBy(
+                entitySet.columns,
+                (a) => a.name
+              ).map(replaceColumnDefaultTo);
+              const dbColumns = sortBy(dbSet.columns, (a) => a.name).map(
+                replaceColumnDefaultTo
+              );
 
               /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
-              const entityCreatedAt = entitySet.columns.find(
-                (col) => col.name === "created_at"
+              const entityColumn = entitySet.columns.find(
+                (col) => col.name === "price_krw"
               );
-              const dbCreatedAt = dbSet.columns.find(
-                (col) => col.name === "created_at"
+              const dbColumn = dbSet.columns.find(
+                (col) => col.name === "price_krw"
               );
-              console.debug({ entityCreatedAt, dbCreatedAt });
-              */
+              console.debug({ entityColumn, dbColumn });
+               */
 
               const entityIndexes = sortBy(entitySet.indexes, (a) =>
                 [
