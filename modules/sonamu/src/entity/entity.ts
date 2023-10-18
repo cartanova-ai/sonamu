@@ -673,9 +673,10 @@ export class Entity {
         has: Object.fromEntries(
           subsetKeys.map((subsetKey) => {
             const subsetFields = subsets[subsetKey];
-            const has = subsetFields.some((f) =>
-              f.startsWith([...prefixes, prop.name].join("."))
-            );
+            const has = subsetFields.some((f) => {
+              const field = [...prefixes, prop.name].join(".");
+              return f === field || f.startsWith(field + ".");
+            });
             return [subsetKey, has];
           })
         ),
