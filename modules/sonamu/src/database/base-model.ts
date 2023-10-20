@@ -79,9 +79,10 @@ export class BaseModelClass {
 
         if (loader.manyJoin.through === undefined) {
           // HasMany
+          const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
           subQ = db(loader.manyJoin.toTable)
-            .whereIn(loader.manyJoin.toCol, fromIds)
-            .select([...loader.select, loader.manyJoin.toCol]);
+            .whereIn(idColumn, fromIds)
+            .select([...loader.select, idColumn]);
 
           // HasMany에서 OneJoin이 있는 경우
           loader.oneJoins.map((join) => {
@@ -100,14 +101,15 @@ export class BaseModelClass {
           toCol = loader.manyJoin.toCol;
         } else {
           // ManyToMany
+          const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
           subQ = db(loader.manyJoin.through.table)
             .join(
               loader.manyJoin.toTable,
               `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
               `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
             )
-            .whereIn(loader.manyJoin.through.fromCol, fromIds)
-            .select(uniq([...loader.select, loader.manyJoin.through.fromCol]));
+            .whereIn(idColumn, fromIds)
+            .select(uniq([...loader.select, idColumn]));
 
           // ManyToMany에서 OneJoin이 있는 경우
           loader.oneJoins.map((join) => {
