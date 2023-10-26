@@ -578,6 +578,8 @@ export class Syncer {
               return this.resolveParamDec({
                 name: (member as ts.PropertySignature).name as ts.Identifier,
                 type: (member as ts.PropertySignature).type as ts.TypeNode,
+                optional:
+                  (member as ts.PropertySignature).questionToken !== undefined,
               });
             }
           }),
@@ -971,7 +973,6 @@ export class Syncer {
       }
     })();
     if (filteredPathAndCodes.length === 0) {
-      console.log("요거란 말이지?");
       throw new AlreadyProcessedException(
         "이미 경로에 모든 파일이 존재합니다."
       );

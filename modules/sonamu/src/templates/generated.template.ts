@@ -115,6 +115,7 @@ export class Template__generated extends Template {
       "zArrayable",
       "SQLDateTimeString",
       "SubsetQuery",
+      "SonamuQueryMode",
     ].filter((mod) => body.includes(mod));
 
     return {
@@ -210,7 +211,7 @@ z.object({
   search: ${entity.id}SearchField,
   keyword: z.string(),
   orderBy: ${entity.id}OrderBy,
-  withoutCount: z.boolean(),
+  queryMode: SonamuQueryMode,
   id: zArrayable(z.number().int().positive()),${filterBody}
 }).partial();
 `.trim();
@@ -237,7 +238,6 @@ z.object({
     const subsetKeys = Object.keys(entity.subsets);
     const importKeys: string[] = [];
     const lines: string[] = [
-      // `// Subsets: ${entity.id}`,
       ...subsetKeys
         .map((subsetKey) => {
           // 서브셋에서 FieldExpr[] 가져옴
@@ -271,30 +271,7 @@ z.object({
         .join(",")}]);`,
       `export type ${entity.names.module}SubsetKey = z.infer<typeof ${entity.names.module}SubsetKey>`,
       "",
-      // "/* BEGIN- Server-side Only */",
-      // // `import { SubsetQuery } from "sonamu";`,
-      // `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
-      //   entity.names.module
-      // }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
-      // "",
     ];
-
-    // ServerSide Only
-    // const subsetQueryObject = subsetKeys.reduce(
-    //   (r, subsetKey) => {
-    //     const subsetQuery = entity.getSubsetQuery(subsetKey);
-    //     r[subsetKey] = subsetQuery;
-    //     return r;
-    //   },
-    //   {} as {
-    //     [key: string]: SubsetQuery;
-    //   }
-    // );
-    // const lines2: string[] = [
-    //   `export const ${camelize(entity.id, true)}SubsetQueries:{ [key in ${
-    //     entity.names.module
-    //   }SubsetKey]: SubsetQuery} = ${JSON.stringify(subsetQueryObject)}`,
-    // ];
 
     return {
       label: `Subsets: ${entity.id}`,

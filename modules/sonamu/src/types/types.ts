@@ -359,6 +359,10 @@ export type SubsetQuery = {
   loaders: SubsetLoader[];
 };
 
+/* BaseModel */
+export const SonamuQueryMode = z.enum(["both", "list", "count"]);
+export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
+
 /* Knex Migration */
 export type KnexError = {
   code: string;

@@ -67,7 +67,7 @@ export class FixtureManagerClass {
       const [tables] = await this.tdb.raw(
         "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
       );
-      return tables.map((tableInfo: any) => tableInfo["Name"]);
+      return tables.map((tableInfo: any) => tableInfo["Name"] as string);
     })();
 
     await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);

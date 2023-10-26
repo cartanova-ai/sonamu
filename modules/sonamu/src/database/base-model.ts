@@ -214,6 +214,8 @@ export class BaseModelClass {
   }> {
     const db = this.getDB(subset.startsWith("A") ? "w" : "r");
     baseTable = baseTable ?? pluralize(underscore(this.modelName));
+    const queryMode =
+      params.queryMode ?? (params.id !== undefined ? "list" : "both");
 
     const { select, virtual, joins, loaders } = subsetQuery;
     const qb = build({
@@ -239,54 +241,54 @@ export class BaseModelClass {
       }
     });
 
-    // count
-    let countQuery;
-    if (params.id === undefined && params.withoutCount !== true) {
+    // listQuery
+    const rows = await (async () => {
+      if (queryMode === "count") {
+        return [];
+      }
+
+      // limit, offset
+      if (params.num !== 0) {
+        qb.limit(params.num!);
+        qb.offset(params.num! * (params.page! - 1));
+      }
+
+      // select, rows
+      const listQuery = qb.clone().select(select);
+
+      let rows = await listQuery;
+      // debug: listQuery
+      if (debug === true || debug === "list") {
+        console.debug(
+          "DEBUG: list query",
+          chalk.blue(listQuery.toQuery().toString())
+        );
+      }
+
+      rows = await this.useLoaders(db, rows, loaders);
+      rows = this.hydrate(rows);
+      return rows;
+    })();
+
+    // countQuery
+    const total = await (async () => {
+      if (queryMode === "list") {
+        return undefined;
+      }
+
       const clonedQb = qb.clone().clear("order");
       const [, matched] =
         clonedQb
           .toQuery()
           .toLowerCase()
           .match(/select (distinct .+) from/) ?? [];
-      if (matched) {
-        countQuery = clonedQb
-          .clear("select")
-          .select(db.raw(`COUNT(${matched}) as total`));
-      } else {
-        countQuery = clonedQb.clear("select").count("*", { as: "total" });
-      }
-    }
-
-    // limit, offset
-    if (params.num !== 0) {
-      qb.limit(params.num!);
-      qb.offset(params.num! * (params.page! - 1));
-    }
-
-    // select, rows
-    qb.select(select);
-    const listQuery = qb.clone();
-
-    // debug: listQuery
-    if (debug === true || debug === "list") {
-      console.debug(
-        "DEBUG: list query",
-        chalk.blue(listQuery.toQuery().toString())
-      );
-    }
-
-    // listQuery
-    let rows = await listQuery;
-    rows = await this.useLoaders(db, rows, loaders);
-    rows = this.hydrate(rows);
-
-    // countQuery
-    let total = 0;
-    if (countQuery) {
-      const countResult = await countQuery;
-      if (countResult && countResult[0] && countResult[0].total) {
-        total = countResult[0].total;
-      }
+      const countQuery = matched
+        ? clonedQb
+            .clear("select")
+            .select(db.raw(`COUNT(${matched}) as total`))
+            .first()
+        : clonedQb.clear("select").count("*", { as: "total" }).first();
+      const countRow: { total?: number } = await countQuery;
 
       // debug: countQuery
       if (debug === true || debug === "count") {
@@ -295,7 +297,9 @@ export class BaseModelClass {
           chalk.blue(countQuery.toQuery().toString())
         );
       }
-    }
+
+      return countRow?.total ?? 0;
+    })();
 
     return { rows, total, subsetQuery, qb };
   }

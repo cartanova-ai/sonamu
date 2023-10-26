@@ -55,11 +55,8 @@ export type ListResult<T> = {
   rows: T[];
   total?: number;
 };
-
-export type EnumsLabel<T extends string, L extends "ko" | "en"> = {
-  [key in T]: { [lang in L]: string };
-};
-export type EnumsLabelKo<T extends string> = EnumsLabel<T, "ko">;
+export const SonamuQueryMode = z.enum(["both", "list", "count"]);
+export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
 
 /*
   SWR

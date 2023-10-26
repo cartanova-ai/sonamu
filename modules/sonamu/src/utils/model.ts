@@ -24,10 +24,10 @@ export function objToMap<T>(obj: { [k: string]: T }) {
   }
 }
 
-export class BaseListParams {
+export interface BaseListParams {
   id?: number | number[];
   num?: number;
   page?: number;
   keyword?: string;
-  withoutCount?: boolean;
+  queryMode?: "list" | "count" | "both";
 }
