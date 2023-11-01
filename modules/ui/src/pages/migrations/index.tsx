@@ -318,6 +318,16 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                           }
                         }}
                       />
+                      &nbsp;{" "}
+                      <Button
+                        size="mini"
+                        icon="code"
+                        onClick={() => {
+                          SonamuUIService.openVscode({
+                            absPath: code.path,
+                          });
+                        }}
+                      />
                     </Table.Cell>
                     {conns.map((conn, connIndex) => (
                       <Table.Cell
