@@ -251,6 +251,7 @@ export class Template__view_list extends Template {
       .filter(
         (col) =>
           col.name !== "id" &&
+          col.name !== "queryMode" &&
           (["enums", "number-id"].includes(col.renderType) ||
             col.name.endsWith("_id"))
       )
@@ -576,7 +577,6 @@ export function getEnumInfoFromColName(
       underscore(entityId) + "_" + underscore(colName),
       false
     );
-    console.log({ idCandidate });
     try {
       const targetEntityNames = EntityManager.getNamesFromId(entityId);
       return {

@@ -840,7 +840,7 @@ export class Migrator {
               ).map((f) => replaceNoActionOnMySQL(f));
 
               if (equal(entityForeigns, dbForeigns) === false) {
-                console.dir({ entityForeigns, dbForeigns }, { depth: null });
+                // console.dir({ entityForeigns, dbForeigns }, { depth: null });
                 return this.generateAlterCode_Foreigns(
                   entitySet.table,
                   entityForeigns,
@@ -1076,40 +1076,23 @@ export class Migrator {
       const foreignKeys = (matched ?? []).map((line: string) => {
         // 해당 라인을 정규식으로 파싱
         const matched = line.match(
-          /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON DELETE [A-Z ]+ ON UPDATE [A-Z ]+)*/
+          /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON [A-Z ]+)*/
         );
         if (!matched) {
           throw new Error(`인식할 수 없는 FOREIGN KEY CONSTRAINT ${line}`);
         }
-        const [, keyName, from, referencesTable, referencesField, _onClause] =
+        const [, keyName, from, referencesTable, referencesField, onClause] =
           matched;
-        const onClause = _onClause ?? "";
+        // console.debug({ tableName, line, onClause });
 
-        const { onDelete, onUpdate } = (() => {
-          // ON Clause가 둘다 있는 경우
-          if (
-            onClause.includes("ON DELETE") &&
-            onClause.includes("ON UPDATE")
-          ) {
-            const [, onDelete, onUpdate] = onClause.match(
-              /ON DELETE ([A-Z ]+) ON UPDATE ([A-Z ]+)/
-            )!;
-            return {
-              onDelete,
-              onUpdate,
-            };
-          }
+        const [onUpdateFull, _onUpdate] =
+          (onClause ?? "").match(/ON UPDATE ([A-Z ]+)$/) ?? [];
+        const onUpdate = _onUpdate ?? "NO ACTION";
 
-          // 각각 있는 경우
-          const onDelete =
-            onClause.match(/ON DELETE ([A-Z ]+)( ON)*/)?.[1] ?? "NO ACTION";
-          const onUpdate =
-            onClause.match(/ON UPDATE ([A-Z ]+)/)?.[1] ?? "NO ACTION";
-          return {
-            onDelete,
-            onUpdate,
-          };
-        })();
+        const onDelete =
+          (onClause ?? "")
+            .replace(onUpdateFull ?? "", "")
+            .match(/ON DELETE ([A-Z ]+) /)?.[1] ?? "NO ACTION";
 
         return {
           keyName,
