@@ -549,6 +549,9 @@ export namespace ApiParamType {
   export function isContext(v: any): v is ApiParamType.Context {
     return v?.t === "ref" && v.id === "Context";
   }
+  export function isRefKnex(v: any): v is ApiParamType.Ref {
+    return v?.t === "ref" && v.id === "Knex";
+  }
   export function isTypeParam(v: any): v is ApiParamType.TypeParam {
     return v?.t === "type-param";
   }

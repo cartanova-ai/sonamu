@@ -69,80 +69,82 @@ export class BaseModelClass {
   }
 
   async useLoaders(db: Knex, rows: any[], loaders: SubsetQuery["loaders"]) {
-    if (loaders.length > 0) {
-      for (let loader of loaders) {
-        let subQ: any;
-        let subRows: any[];
-        let toCol: string;
+    if (loaders.length === 0) {
+      return rows;
+    }
 
-        const fromIds = rows.map((row) => row[loader.manyJoin.idField]);
+    for (let loader of loaders) {
+      let subQ: any;
+      let subRows: any[];
+      let toCol: string;
 
-        if (loader.manyJoin.through === undefined) {
-          // HasMany
-          const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
-          subQ = db(loader.manyJoin.toTable)
-            .whereIn(idColumn, fromIds)
-            .select([...loader.select, idColumn]);
+      const fromIds = rows.map((row) => row[loader.manyJoin.idField]);
 
-          // HasMany에서 OneJoin이 있는 경우
-          loader.oneJoins.map((join) => {
-            if (join.join == "inner") {
-              subQ.innerJoin(
-                `${join.table} as ${join.as}`,
-                this.getJoinClause(db, join)
-              );
-            } else if (join.join == "outer") {
-              subQ.leftOuterJoin(
-                `${join.table} as ${join.as}`,
-                this.getJoinClause(db, join)
-              );
-            }
-          });
-          toCol = loader.manyJoin.toCol;
-        } else {
-          // ManyToMany
-          const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
-          subQ = db(loader.manyJoin.through.table)
-            .join(
-              loader.manyJoin.toTable,
-              `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
-              `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
-            )
-            .whereIn(idColumn, fromIds)
-            .select(uniq([...loader.select, idColumn]));
+      if (loader.manyJoin.through === undefined) {
+        // HasMany
+        const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
+        subQ = db(loader.manyJoin.toTable)
+          .whereIn(idColumn, fromIds)
+          .select([...loader.select, idColumn]);
 
-          // ManyToMany에서 OneJoin이 있는 경우
-          loader.oneJoins.map((join) => {
-            if (join.join == "inner") {
-              subQ.innerJoin(
-                `${join.table} as ${join.as}`,
-                this.getJoinClause(db, join)
-              );
-            } else if (join.join == "outer") {
-              subQ.leftOuterJoin(
-                `${join.table} as ${join.as}`,
-                this.getJoinClause(db, join)
-              );
-            }
-          });
-          toCol = loader.manyJoin.through.fromCol;
-        }
-        subRows = await subQ;
-
-        if (loader.loaders) {
-          // 추가 -Many 케이스가 있는 경우 recursion 처리
-          subRows = await this.useLoaders(db, subRows, loader.loaders);
-        }
-
-        // 불러온 row들을 참조ID 기준으로 분류 배치
-        const subRowGroups = groupBy(subRows, toCol);
-        rows = rows.map((row) => {
-          row[loader.as] = (
-            subRowGroups[row[loader.manyJoin.idField]] ?? []
-          ).map((r) => omit(r, toCol));
-          return row;
+        // HasMany에서 OneJoin이 있는 경우
+        loader.oneJoins.map((join) => {
+          if (join.join == "inner") {
+            subQ.innerJoin(
+              `${join.table} as ${join.as}`,
+              this.getJoinClause(db, join)
+            );
+          } else if (join.join == "outer") {
+            subQ.leftOuterJoin(
+              `${join.table} as ${join.as}`,
+              this.getJoinClause(db, join)
+            );
+          }
         });
+        toCol = loader.manyJoin.toCol;
+      } else {
+        // ManyToMany
+        const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
+        subQ = db(loader.manyJoin.through.table)
+          .join(
+            loader.manyJoin.toTable,
+            `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
+            `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
+          )
+          .whereIn(idColumn, fromIds)
+          .select(uniq([...loader.select, idColumn]));
+
+        // ManyToMany에서 OneJoin이 있는 경우
+        loader.oneJoins.map((join) => {
+          if (join.join == "inner") {
+            subQ.innerJoin(
+              `${join.table} as ${join.as}`,
+              this.getJoinClause(db, join)
+            );
+          } else if (join.join == "outer") {
+            subQ.leftOuterJoin(
+              `${join.table} as ${join.as}`,
+              this.getJoinClause(db, join)
+            );
+          }
+        });
+        toCol = loader.manyJoin.through.fromCol;
       }
+      subRows = await subQ;
+
+      if (loader.loaders) {
+        // 추가 -Many 케이스가 있는 경우 recursion 처리
+        subRows = await this.useLoaders(db, subRows, loader.loaders);
+      }
+
+      // 불러온 row들을 참조ID 기준으로 분류 배치
+      const subRowGroups = groupBy(subRows, toCol);
+      rows = rows.map((row) => {
+        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map(
+          (r) => omit(r, toCol)
+        );
+        return row;
+      });
     }
     return rows;
   }

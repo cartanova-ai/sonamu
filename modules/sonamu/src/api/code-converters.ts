@@ -49,7 +49,11 @@ export function getZodObjectFromApi(
   }
 
   const ReqType = getZodObjectFromApiParams(
-    api.parameters.filter((param) => !ApiParamType.isContext(param.type)),
+    api.parameters.filter(
+      (param) =>
+        !ApiParamType.isContext(param.type) &&
+        !ApiParamType.isRefKnex(param.type)
+    ),
     references
   );
   return ReqType;

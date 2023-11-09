@@ -62,7 +62,9 @@ export class Template__service extends Template {
           .map((api) => {
             // 컨텍스트 제외된 파라미터 리스트
             const paramsWithoutContext = api.parameters.filter(
-              (param) => !ApiParamType.isContext(param.type)
+              (param) =>
+                !ApiParamType.isContext(param.type) &&
+                !ApiParamType.isRefKnex(param.type)
             );
 
             // 파라미터 타입 정의
