@@ -58,7 +58,15 @@ export class UpsertBuilder {
   register<T extends string>(
     tableName: string,
     row: {
-      [key in T]?: UBRef | string | number | boolean | bigint | null | object;
+      [key in T]?:
+        | UBRef
+        | string
+        | number
+        | boolean
+        | bigint
+        | null
+        | object
+        | unknown;
     }
   ): UBRef {
     const table = this.getTable(tableName);
@@ -97,9 +105,9 @@ export class UpsertBuilder {
         rowValue.use ??= "id";
         table.references.add(rowValue.of + "." + rowValue.use);
         r[rowKey] = rowValue;
-      } else if (typeof rowValue === "object" && rowValue !== null) {
+      } else if (typeof rowValue === "object") {
         // object인 경우 JSON으로 변환
-        r[rowKey] = JSON.stringify(rowValue);
+        r[rowKey] = rowValue === null ? null : JSON.stringify(rowValue);
       } else {
         r[rowKey] = rowValue;
       }
