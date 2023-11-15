@@ -278,7 +278,7 @@ export class BaseModelClass {
         return undefined;
       }
 
-      const clonedQb = qb.clone().clear("order");
+      const clonedQb = qb.clone().clear("order").clear("offset").clear("limit");
       const [, matched] =
         clonedQb
           .toQuery()

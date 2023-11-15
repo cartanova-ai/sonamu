@@ -40,9 +40,7 @@ import {
 import {
   ${names.camel}SubsetQueries,
 } from "../sonamu.generated.sso";
-import { ${entityId}ListParams, ${entityId}SaveParams } from "./${
-        names.fs
-      }.types";
+import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
 
 /*
   ${entityId} Model
@@ -80,9 +78,7 @@ class ${entityId}ModelClass extends BaseModelClass {
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${
-    names.capitalPlural
-  }" })
+  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${names.capitalPlural}" })
   async findMany<T extends ${entityId}SubsetKey>(
     subset: T,
     params: ${entityId}ListParams = {}
@@ -112,9 +108,7 @@ class ${entityId}ModelClass extends BaseModelClass {
           if (params.search === "id") {
             qb.where("${entity.table}.id", params.keyword);
           // } else if (params.search === "field") {
-          //   qb.where("${
-            entity.table
-          }.field", "like", \`%\${params.keyword}%\`);
+          //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
           } else {
             throw new BadRequestException(
               \`구현되지 않은 검색 필드 \${params.search}\`
@@ -142,34 +136,15 @@ class ${entityId}ModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(
-    saveParamsArray: ${entityId}SaveParams[]
+    spa: ${entityId}SaveParams[]
   ): Promise<number[]> {
     const wdb = this.getDB("w");
     const ub = this.getUpsertBuilder();
 
     // register
-    ${(() => {
-      const jsonProps = entity.props.filter((prop) => prop.type === "json");
-      if (jsonProps.length === 0) {
-        return `saveParamsArray.map((saveParams) => {
-      ub.register("${entity.table}", saveParams);
-    });`;
-      } else {
-        return `saveParamsArray.map(({${jsonProps
-          .map((prop) => prop.name)
-          .join(", ")}, ...saveParams}) => {
-      ub.register("${entity.table}", {
-        ${jsonProps
-          .map(
-            (prop) =>
-              `${prop.name}: ${prop.name} === null ? null : JSON.stringify(${prop.name}),`
-          )
-          .join(",\n")}
-        ...saveParams
-      });
-    });`;
-      }
-    })()}
+    spa.map((sp) => {
+      ub.register("${entity.table}", sp);
+    });
 
     // transaction
     return wdb.transaction(async (trx) => {
