@@ -287,7 +287,7 @@ export class BaseModelClass {
       const countQuery = matched
         ? clonedQb
             .clear("select")
-            .select(db.raw(`COUNT(${matched}) as total`))
+            .select(db.raw(`COUNT(${matched.split(",")[0]}) as total`))
             .first()
         : clonedQb.clear("select").count("*", { as: "total" }).first();
       const countRow: { total?: number } = await countQuery;
