@@ -58,6 +58,10 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
       return r;
     }, {} as any);
   } else if (zodType instanceof z.ZodOptional) {
+    // optional
+    return caster(zodType._def.innerType, raw);
+  } else if (zodType instanceof z.ZodNullable) {
+    // nullable
     return caster(zodType._def.innerType, raw);
   } else {
     // 나머지는 처리 안함
