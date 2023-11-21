@@ -51,7 +51,11 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
   } else if (zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (zodType instanceof z.ZodObject && typeof raw === "object") {
+  } else if (
+    zodType instanceof z.ZodObject &&
+    typeof raw === "object" &&
+    raw !== null
+  ) {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {
       r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
