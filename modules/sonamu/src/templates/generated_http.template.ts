@@ -1,12 +1,10 @@
 import qs from "qs";
 import { z } from "zod";
 import { TemplateOptions } from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { getZodObjectFromApi } from "../api/code-converters";
 import { ExtendedApi } from "../api/decorators";
 import { Template } from "./base-template";
 import prettier from "prettier";
-import { DateTime } from "luxon";
 import { Sonamu } from "../api/sonamu";
 
 export class Template__generated_http extends Template {
@@ -14,46 +12,55 @@ export class Template__generated_http extends Template {
     super("generated_http");
   }
 
-  getTargetAndPath(names: EntityNamesRecord) {
+  getTargetAndPath() {
     return {
       target: "api/src/application",
-      path: `${names.fs}/${names.fs}.generated.http`,
+      path: `sonamu.generated.http`,
     };
   }
 
-  render({ entityId }: TemplateOptions["generated_http"], apis: ExtendedApi[]) {
-    const names = EntityManager.getNamesFromId(entityId);
-    const references = Sonamu.syncer.types;
+  render({}: TemplateOptions["generated_http"]) {
+    const { types, apis } = Sonamu.syncer;
 
     const lines = apis.map((api) => {
-      const reqObject = this.resolveApiParams(api, references);
+      const reqObject = this.resolveApiParams(api, types);
 
-      let qsLines: string[] = [];
-      let bodyLines: string[] = [];
-      if ((api.options.httpMethod ?? "GET") === "GET") {
-        qsLines = [
-          qs.stringify(reqObject, { encode: false }).split("&").join("\n\t&"),
-        ];
-      } else {
-        bodyLines = [
-          "",
-          prettier.format(JSON.stringify(reqObject), {
-            parser: "json",
-          }),
-        ];
-      }
+      const dataLines = (() => {
+        if ((api.options.httpMethod ?? "GET") === "GET") {
+          return {
+            querystring: [
+              qs
+                .stringify(reqObject, { encode: false })
+                .split("&")
+                .join("\n\t&"),
+            ],
+            body: [],
+          };
+        } else {
+          return {
+            querystring: [],
+            body: [
+              "",
+              prettier.format(JSON.stringify(reqObject), {
+                parser: "json",
+              }),
+            ],
+          };
+        }
+      })();
+
       return [
         [
           `${api.options.httpMethod ?? "GET"} {{baseUrl}}/api${api.path}`,
-          ...qsLines,
+          ...dataLines.querystring,
         ].join("\n\t?"),
         `Content-Type: ${api.options.contentType ?? "application/json"}`,
-        ...bodyLines,
+        ...dataLines.body,
       ].join("\n");
     });
 
     return {
-      ...this.getTargetAndPath(names),
+      ...this.getTargetAndPath(),
       body: lines.join("\n\n###\n\n"),
       importKeys: [],
     };
@@ -71,7 +78,7 @@ export class Template__generated_http extends Template {
       return [this.zodTypeToReqDefault(zodType.element, name)];
     } else if (zodType instanceof z.ZodString) {
       if (name.endsWith("_at") || name.endsWith("_date") || name === "range") {
-        return DateTime.local().toSQL().slice(0, 10);
+        return "2000-01-01";
       } else {
         return name.toUpperCase();
       }

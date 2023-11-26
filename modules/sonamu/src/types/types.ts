@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { z } from "zod";
 
 /* 
@@ -345,11 +346,11 @@ type SubsetLoader = {
     join: "inner" | "outer";
     table: string;
   } & JoinClause)[];
-  select: string[];
+  select: (string | Knex.Raw)[];
   loaders?: SubsetLoader[];
 };
 export type SubsetQuery = {
-  select: string[];
+  select: (string | Knex.Raw)[];
   virtual: string[];
   joins: ({
     as: string;

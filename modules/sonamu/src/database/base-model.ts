@@ -202,7 +202,7 @@ export class BaseModelClass {
     build: (buildParams: {
       qb: Knex.QueryBuilder;
       db: Knex;
-      select: string[];
+      select: (string | Knex.Raw)[];
       joins: SubsetQuery["joins"];
       virtual: string[];
     }) => Knex.QueryBuilder;
