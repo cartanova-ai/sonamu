@@ -274,6 +274,7 @@ export function UploadedImage({
         opacity: isDragging ? 0.3 : 1,
       }}
       ref={setNodeRef}
+      onClick={() => window.open(src)}
     >
       <img src={src} onClick={handleImgClick} />
       <ButtonGroup size="mini" className="buttons">
@@ -285,9 +286,23 @@ export function UploadedImage({
             {...attributes}
           ></Button>
         )}
-        <Button color="grey" icon="copy" onClick={handleCopyClick} />
+        <Button
+          color="grey"
+          icon="copy"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCopyClick();
+          }}
+        />
         {onDelButtonClicked && (
-          <Button color="red" icon="trash" onClick={onDelButtonClicked} />
+          <Button
+            color="red"
+            icon="trash"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelButtonClicked(e);
+            }}
+          />
         )}
       </ButtonGroup>
     </div>
