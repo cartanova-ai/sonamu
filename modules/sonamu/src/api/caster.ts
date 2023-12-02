@@ -48,7 +48,7 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
   ) {
     // boolean
     return raw === "true";
-  } else if (zodType instanceof z.ZodArray) {
+  } else if (raw !== null && zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
   } else if (

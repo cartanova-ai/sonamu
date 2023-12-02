@@ -201,7 +201,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
     const formDataDef = [
       'formData.append("file", file);',
       ...paramsWithoutContext.map(
-        (param) => `formData.append('${param.name}', ${param.name});`
+        (param) => `formData.append('${param.name}', String(${param.name}));`
       ),
     ].join("\n");
 
