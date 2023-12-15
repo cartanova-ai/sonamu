@@ -1,4 +1,3 @@
-import { isNil } from "lodash";
 import { DateTime } from "luxon";
 import React, { ReactNode } from "react";
 import SemanticDatepicker from "react-semantic-ui-datepickers";
@@ -33,7 +32,7 @@ export function SQLDateRangePicker({
               value: (() => {
                 if (Array.isArray(data.value)) {
                   return data.value.map((v) =>
-                    DateTime.fromJSDate(v).toSQL().slice(0, 10)
+                    DateTime.fromJSDate(v).toSQL()!.slice(0, 10)
                   );
                 } else {
                   return [];

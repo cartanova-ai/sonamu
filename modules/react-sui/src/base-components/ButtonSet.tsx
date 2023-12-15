@@ -1,5 +1,4 @@
-import React from 'react';
-import { Button, ButtonProps, SemanticCOLORS } from 'semantic-ui-react';
+import { Button, ButtonProps, SemanticCOLORS } from "semantic-ui-react";
 
 export type ButtonSetProps = {
   options?: {
@@ -20,7 +19,7 @@ export function ButtonSet({
   selectedColor,
   baseColor,
 }: ButtonSetProps) {
-  selectedColor ??= 'grey';
+  selectedColor ??= "grey";
 
   return (
     <div className="button-set-wrapper">

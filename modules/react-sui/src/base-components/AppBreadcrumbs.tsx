@@ -1,6 +1,6 @@
-import React, { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { Breadcrumb } from 'semantic-ui-react';
+import { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { Breadcrumb } from "semantic-ui-react";
 
 type AppBreadcrumbsProps = {
   children?: ReactNode;

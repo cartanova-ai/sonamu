@@ -1,20 +1,19 @@
-import React from 'react';
-import { InputProps, Input } from 'semantic-ui-react';
+import { InputProps, Input } from "semantic-ui-react";
 
 export function NumberInput({
   inputType,
   onChange,
   ...props
 }: InputProps & {
-  inputType?: 'text' | 'number';
+  inputType?: "text" | "number";
   onChange?: (
     event: React.ChangeEvent<HTMLInputElement>,
-    data: { value: number | '' },
+    data: { value: number | "" }
   ) => void;
 }) {
   return (
     <Input
-      type={inputType ?? 'text'}
+      type={inputType ?? "text"}
       inputMode="numeric"
       {...props}
       onChange={(e, data) => {
@@ -22,9 +21,9 @@ export function NumberInput({
           return onChange(e, {
             ...data,
             value:
-              data.value === ''
-                ? ''
-                : Number(data.value.replace(/[^0-9.]/g, '')),
+              data.value === ""
+                ? ""
+                : Number(data.value.replace(/[^0-9.]/g, "")),
           });
         }
       }}

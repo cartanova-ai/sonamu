@@ -1,6 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button, ButtonProps, Icon, SemanticICONS } from 'semantic-ui-react';
+import { Link } from "react-router-dom";
+import { Button, ButtonProps, Icon, SemanticICONS } from "semantic-ui-react";
 
 type AddButtonProps = ButtonProps & {
   currentRoute: string;

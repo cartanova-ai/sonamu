@@ -123,7 +123,7 @@ export function ImageUploaderFrame({
   };
 
   const handleButtonClick = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    _e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     ref.current?.click();
   };
@@ -131,7 +131,7 @@ export function ImageUploaderFrame({
   const getHandlerImageDelButtonClicked = (index: number) => {
     return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       setImagesWithOnChange(e, (images) =>
-        images.filter((image, _index) => _index !== index)
+        images.filter((_image, _index) => _index !== index)
       );
     };
   };

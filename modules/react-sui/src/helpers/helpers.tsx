@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { intersection, isObject, isObjectLike, uniq } from "lodash";
+import { intersection, isObject, uniq } from "lodash";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
@@ -49,7 +49,7 @@ export function paramsToSearchParams<T>(params: T): {
 
 export function useTypeForm<
   T extends z.ZodObject<any> | z.ZodArray<any>,
-  U extends z.infer<T>
+  U extends z.infer<T>,
 >(zType: T, defaultValue: U) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjPaths, setErrorObjPaths] = useState<Set<string>>(new Set([]));
@@ -98,7 +98,7 @@ export function useTypeForm<
 
       return {
         value: srcValue === undefined || srcValue === null ? "" : srcValue,
-        onChange: (e: any, prop: any) => {
+        onChange: (_e: any, prop: any) => {
           if (ifError.error === true) {
             setErrorObjPaths((p) => {
               p.delete(objPath);
@@ -209,7 +209,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
             listParams[name] === undefined || listParams[name] === null
               ? ""
               : listParams[name],
-          onChange: (e: any, prop: any) => {
+          onChange: (_e: any, prop: any) => {
             setListParams({
               ...listParams,
               page: 1,
@@ -251,7 +251,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
 
     setSelection(
       new Map(
-        Array.from(selection).filter(([key, value]) => allKeys.includes(key))
+        Array.from(selection).filter(([key, _value]) => allKeys.includes(key))
       )
     );
   }, [allKeys, selection]);

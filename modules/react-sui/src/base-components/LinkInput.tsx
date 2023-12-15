@@ -1,21 +1,20 @@
-import React from 'react';
-import { isNil } from 'lodash';
-import { InputProps, Input, Button } from 'semantic-ui-react';
+import { isNil } from "lodash";
+import { InputProps, Input, Button } from "semantic-ui-react";
 
 export function LinkInput(
   props: InputProps & {
     handleButtonClick?: (
-      e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
     ) => void;
     onChange?: (
       event: React.ChangeEvent<HTMLInputElement>,
-      data: { value: string | null },
+      data: { value: string | null }
     ) => void;
-  },
+  }
 ) {
   const handleButtonClick =
     props.handleButtonClick ??
-    ((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    ((_e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       if (isValidUrl(props.value)) {
         window.open(props.value);
       }
@@ -43,12 +42,12 @@ export function LinkInput(
         </Button>
       }
       labelPosition="right"
-      value={isNil(props.value) ? '' : props.value}
+      value={isNil(props.value) ? "" : props.value}
       onChange={(e, data) => {
         if (props.onChange) {
           return props.onChange(e, {
             ...data,
-            value: data.value === '' ? null : data.value,
+            value: data.value === "" ? null : data.value,
           });
         }
       }}
