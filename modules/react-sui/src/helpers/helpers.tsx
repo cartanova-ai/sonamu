@@ -1,12 +1,12 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { intersection, isObject, uniq } from "lodash";
+import { intersection, isObject, uniq } from "lodash-es";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
 import equal from "fast-deep-equal";
 import qs from "qs";
-import _ from "lodash";
+import _ from "lodash-es";
 import { caster } from "./caster";
 
 export function hidden(condition: boolean | undefined): string {

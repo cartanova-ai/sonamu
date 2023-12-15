@@ -17,11 +17,16 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, "src/index.tsx"),
       name: "@sonamu-kit/react-sui",
-      formats: ["es", "cjs"],
+      formats: ["es"],
       fileName: (format) => `react-sui.${format}.js`,
     },
     rollupOptions: {
-      external: ["react", "react-dom", "react-router-dom"],
+      external: [
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "react-semantic-ui-datepickers",
+      ],
       output: {
         globals: {
           react: "React",

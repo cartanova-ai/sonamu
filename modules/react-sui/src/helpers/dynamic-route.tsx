@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _ from "lodash-es";
 import React, { ComponentType } from "react";
 import { Route } from "react-router-dom";
 
@@ -49,7 +49,7 @@ export function loadDynamicRoutes(
                 index: true,
               }
             : {
-                path: child.path,
+                path: child.path as string,
               };
         return <Route key={key} {...prop} element={element} />;
       } else if (child.module && typeof child.module === "object") {
@@ -62,7 +62,7 @@ export function loadDynamicRoutes(
                 index: true,
               }
             : {
-                path: child.path,
+                path: child.path as string,
               };
         return <Route key={key} {...prop} element={element} />;
       } else {

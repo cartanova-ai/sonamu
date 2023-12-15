@@ -304,10 +304,19 @@ export class Syncer {
     }
 
     const oldFileContent = readFileSync(fromPath).toString();
-    const newFileContent = oldFileContent.replace(
-      /from "sonamu"/g,
-      `from "src/services/sonamu.shared"`
-    );
+
+    const newFileContent = (() => {
+      const nfc = oldFileContent.replace(
+        /from "sonamu"/g,
+        `from "src/services/sonamu.shared"`
+      );
+
+      if (toPath.includes("/web/")) {
+        return nfc.replace(/from "lodash";/g, `from "lodash-es";`);
+      } else {
+        return nfc;
+      }
+    })();
     return writeFile(toPath, newFileContent);
   }
 

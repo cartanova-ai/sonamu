@@ -1,4 +1,4 @@
-import { isNil } from "lodash";
+import { isNil } from "lodash-es";
 import { DateTime } from "luxon";
 import { InputProps, Input } from "semantic-ui-react";
 

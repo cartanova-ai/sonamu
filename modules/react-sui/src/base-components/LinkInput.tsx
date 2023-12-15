@@ -1,4 +1,4 @@
-import { isNil } from "lodash";
+import { isNil } from "lodash-es";
 import { InputProps, Input, Button } from "semantic-ui-react";
 
 export function LinkInput(
