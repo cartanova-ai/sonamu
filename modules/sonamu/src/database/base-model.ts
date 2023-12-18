@@ -195,6 +195,7 @@ export class BaseModelClass {
     subsetQuery,
     build,
     debug,
+    db: _db,
   }: {
     subset: U;
     params: T;
@@ -208,13 +209,14 @@ export class BaseModelClass {
     }) => Knex.QueryBuilder;
     baseTable?: string;
     debug?: boolean | "list" | "count";
+    db?: Knex;
   }): Promise<{
     rows: any[];
     total?: number | undefined;
     subsetQuery: SubsetQuery;
     qb: Knex.QueryBuilder;
   }> {
-    const db = this.getDB(subset.startsWith("A") ? "w" : "r");
+    const db = _db ?? this.getDB(subset.startsWith("A") ? "w" : "r");
     baseTable = baseTable ?? pluralize(underscore(this.modelName));
     const queryMode =
       params.queryMode ?? (params.id !== undefined ? "list" : "both");
