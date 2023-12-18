@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // optional, nullable 무관하게 ZodNumber 체크
 function isZodNumberAnyway(zodType: z.ZodType<any>) {
@@ -26,7 +26,7 @@ function isZodNumberAnyway(zodType: z.ZodType<any>) {
 
 // ZodType을 이용해 raw를 Type Coercing
 export function caster(zodType: z.ZodType<any>, raw: any): any {
-  if (isZodNumberAnyway(zodType) && typeof raw === 'string') {
+  if (isZodNumberAnyway(zodType) && typeof raw === "string") {
     // number
     return Number(raw);
   } else if (
@@ -36,7 +36,7 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
     // zArrayable Number 케이스 처리
     if (Array.isArray(raw)) {
       const numType = zodType.options.find(
-        (opt: z.ZodType<any>) => opt instanceof z.ZodNumber,
+        (opt: z.ZodType<any>) => opt instanceof z.ZodNumber
       );
       return raw.map((elem: any) => caster(numType, elem));
     } else {
@@ -44,14 +44,14 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
     }
   } else if (
     zodType instanceof z.ZodBoolean &&
-    (raw === 'true' || raw === 'false')
+    (raw === "true" || raw === "false")
   ) {
     // boolean
-    return raw === 'true';
+    return raw === "true";
   } else if (zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (zodType instanceof z.ZodObject && typeof raw === 'object') {
+  } else if (zodType instanceof z.ZodObject && typeof raw === "object") {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {
       r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
