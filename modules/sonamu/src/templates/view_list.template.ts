@@ -417,6 +417,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
     toggle,
     selectAll,
     deselectAll,
+    handleCheckboxClick,
   } = useSelection((rows ?? []).map((row) => row.id));
 
   // 컬럼
@@ -493,6 +494,9 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
                       label={row.id}
                       checked={getSelected(row.id)}
                       onChange={() => toggle(row.id)}
+                      onClick={(e) =>
+                        handleCheckboxClick(e, rowIndex)
+                      }
                     />
                   </Table.Cell>
                   {
