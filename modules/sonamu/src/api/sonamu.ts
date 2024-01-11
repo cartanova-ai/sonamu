@@ -47,6 +47,24 @@ type SonamuFastifyConfig = {
       options: ApiDecoratorOptions;
     }
   ) => void;
+  cache?: {
+    get: (key: string) => Promise<unknown | null>;
+    put: (key: string, value: unknown, ttl?: number) => Promise<void>;
+    resolveKey: (
+      path: string,
+      reqBody: {
+        [key: string]: unknown;
+      }
+    ) =>
+      | {
+          cache: false;
+        }
+      | {
+          cache: true;
+          key: string;
+          ttl?: number;
+        };
+  };
 };
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -203,6 +221,28 @@ class SonamuClass {
             }
           }
 
+          // Content-Type
+          reply.type(api.options.contentType ?? "application/json");
+
+          // 캐시
+          const { cacheKey, cacheTtl, cachedData } = await (async () => {
+            if (config.cache) {
+              const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
+              if (cacheKeyRes.cache === false) {
+                return { cacheKey: null, cachedData: null };
+              }
+
+              const cacheKey = cacheKeyRes.key;
+              const cacheTtl = cacheKeyRes.ttl;
+              const cachedData = await config.cache.get(cacheKey);
+              return { cacheKey, cacheTtl, cachedData };
+            }
+            return { cacheKey: null, cachedData: null };
+          })();
+          if (cachedData !== null) {
+            return cachedData;
+          }
+
           // 결과
           const result = await (model as any)[api.methodName].apply(
             model,
@@ -223,6 +263,11 @@ class SonamuClass {
             })
           );
           reply.type(api.options.contentType ?? "application/json");
+
+          // 캐시 키 있는 경우 갱신 후 저장
+          if (config.cache && cacheKey) {
+            await config.cache.put(cacheKey, result, cacheTtl);
+          }
           return result;
         },
       }); // END server.route
