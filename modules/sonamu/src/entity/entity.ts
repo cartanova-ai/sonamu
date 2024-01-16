@@ -321,10 +321,11 @@ export class Entity {
 
           let manyJoin: SubsetQuery["loaders"][number]["manyJoin"];
           if (isHasManyRelationProp(relation)) {
+            const fromCol = relation?.fromColumn ?? "id";
             manyJoin = {
               fromTable: this.table,
-              fromCol: "id",
-              idField: prefix === "" ? `id` : `${prefix}__id`,
+              fromCol,
+              idField: prefix === "" ? `${fromCol}` : `${prefix}__${fromCol}`,
               toTable: relEntity.table,
               toCol: relation.joinColumn,
             };

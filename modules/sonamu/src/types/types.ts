@@ -151,6 +151,7 @@ export type BelongsToOneRelationProp = _RelationProp & {
 export type HasManyRelationProp = _RelationProp & {
   relationType: "HasMany";
   joinColumn: string;
+  fromColumn?: string;
 };
 export type ManyToManyRelationProp = _RelationProp & {
   relationType: "ManyToMany";
