@@ -117,6 +117,7 @@ export namespace EntityPropZodSchema {
   export const HasManyRelationProp = _RelationProp.extend({
     relationType: z.literal("HasMany"),
     joinColumn: z.string(),
+    fromColumn: z.string().optional(),
   });
   export const ManyToManyRelationProp = _RelationProp.extend({
     relationType: z.literal("ManyToMany"),

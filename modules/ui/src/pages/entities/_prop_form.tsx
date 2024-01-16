@@ -46,6 +46,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       customJoinClause: z.string().optional(),
       hasJoinColumn: z.boolean().optional(),
       joinColumn: z.string().optional(),
+      fromColumn: z.string().optional(),
       joinTable: z.string().optional(),
       onUpdate: EntityPropZodSchema.RelationOn.optional(),
       onDelete: EntityPropZodSchema.RelationOn.optional(),
@@ -58,6 +59,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       ...oldOne,
     }
   );
+  console.log({ oldOne, form });
 
   const typeOptions = [
     "string",
@@ -350,10 +352,16 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                       </>
                     )}
                     {form.relationType === "HasMany" && (
-                      <Form.Field>
-                        <label>JoinColumn</label>
-                        <Input {...register("joinColumn")} />
-                      </Form.Field>
+                      <>
+                        <Form.Field>
+                          <label>JoinColumn</label>
+                          <Input {...register("joinColumn")} />
+                        </Form.Field>
+                        <Form.Field>
+                          <label>FromColumn</label>
+                          <Input {...register("fromColumn")} />
+                        </Form.Field>
+                      </>
                     )}
                     {form.relationType === "ManyToMany" && (
                       <Form.Field>
