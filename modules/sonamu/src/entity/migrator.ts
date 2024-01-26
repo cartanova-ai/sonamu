@@ -409,7 +409,7 @@ export class Migrator {
           .toFormat("yyyyMMddHHmmss");
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
         writeFileSync(filePath, pcode.formatted!);
-        console.log(chalk.green(`MIGRTAION CRETATED ${filePath}`));
+        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       });
 
     return preparedCodes.length;
@@ -520,7 +520,7 @@ export class Migrator {
           .toFormat("yyyyMMddHHmmss");
         const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
         writeFileSync(filePath, code.formatted!);
-        console.log(chalk.green(`MIGRTAION CRETATED ${filePath}`));
+        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       });
   }
 

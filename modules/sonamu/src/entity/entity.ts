@@ -330,16 +330,14 @@ export class Entity {
               toCol: relation.joinColumn,
             };
           } else if (isManyToManyRelationProp(relation)) {
-            const [table1, table2] = relation.joinTable.split("__");
-
             manyJoin = {
               fromTable: this.table,
               fromCol: "id",
               idField: prefix === "" ? `id` : `${prefix}__id`,
               through: {
                 table: relation.joinTable,
-                fromCol: `${inflection.singularize(table1)}_id`,
-                toCol: `${inflection.singularize(table2)}_id`,
+                fromCol: `${inflection.singularize(this.table)}_id`,
+                toCol: `${inflection.singularize(relEntity.table)}_id`,
               },
               toTable: relEntity.table,
               toCol: "id",
