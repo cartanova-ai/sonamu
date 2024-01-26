@@ -330,14 +330,37 @@ export class Entity {
               toCol: relation.joinColumn,
             };
           } else if (isManyToManyRelationProp(relation)) {
+            const [table1, table2] = relation.joinTable.split("__");
+            const throughTables = (() => {
+              // 동일 테이블 릴레이션인 경우
+              if (this.table === relEntity.table) {
+                if (table1 === this.table) {
+                  return {
+                    fromCol: `${inflection.singularize(table1)}_id`,
+                    toCol: `${inflection.singularize(table2)}_id`,
+                  };
+                } else {
+                  return {
+                    fromCol: `${inflection.singularize(table2)}_id`,
+                    toCol: `${inflection.singularize(table1)}_id`,
+                  };
+                }
+              } else {
+                // 서로 다른 테이블인 경우 릴레이션 테이블 유지
+                return {
+                  fromCol: `${inflection.singularize(this.table)}_id`,
+                  toCol: `${inflection.singularize(relEntity.table)}_id`,
+                };
+              }
+            })();
+
             manyJoin = {
               fromTable: this.table,
               fromCol: "id",
               idField: prefix === "" ? `id` : `${prefix}__id`,
               through: {
                 table: relation.joinTable,
-                fromCol: `${inflection.singularize(this.table)}_id`,
-                toCol: `${inflection.singularize(relEntity.table)}_id`,
+                ...throughTables,
               },
               toTable: relEntity.table,
               toCol: "id",
