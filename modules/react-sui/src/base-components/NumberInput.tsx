@@ -17,6 +17,9 @@ export function NumberInput({
       inputMode="numeric"
       {...props}
       onChange={(e, data) => {
+        if (data.value && data.value !== "" && data.value.endsWith(".")) {
+          return;
+        }
         if (onChange) {
           return onChange(e, {
             ...data,

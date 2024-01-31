@@ -6,7 +6,7 @@ export function SQLDateInput(
   props: InputProps & {
     onChange?: (
       event: React.ChangeEvent<HTMLInputElement>,
-      data: { value: string | null }
+      data: { value: string }
     ) => void;
   }
 ) {
@@ -25,8 +25,8 @@ export function SQLDateInput(
             ...data,
             value:
               data.value === ""
-                ? null
-                : DateTime.fromISO(data.value).toSQLDate(),
+                ? ""
+                : DateTime.fromISO(data.value).toSQLDate() ?? "",
           });
         }
       }}
