@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { InputProps, Input } from "semantic-ui-react";
 
 export function NumberInput({
@@ -11,16 +12,23 @@ export function NumberInput({
     data: { value: number | "" }
   ) => void;
 }) {
+  const [str, setStr] = useState<string>("");
+
+  useEffect(() => {
+    if (Number(str.replace(/[.]/g, "")) !== props.value) {
+      setStr(props.value);
+    }
+  }, [props.value]);
+
   return (
     <Input
       type={inputType ?? "text"}
       inputMode="numeric"
       {...props}
+      value={str}
       onChange={(e, data) => {
-        if (data.value && data.value !== "" && data.value.endsWith(".")) {
-          return;
-        }
         if (onChange) {
+          setStr(data.value);
           return onChange(e, {
             ...data,
             value:

@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/react-sui",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "type": "module",
   "repository": "https://github.com/ping-alive/sonamu",
   "author": "Minsang Kim",
@@ -55,6 +55,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "prettier": "^3.1.1",
     "scss": "^0.2.4",
+    "semantic-ui-css": "^2.5.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.6.4",

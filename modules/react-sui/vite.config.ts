@@ -27,6 +27,7 @@ export default defineConfig({
         "react-router-dom",
         "react-semantic-ui-datepickers",
         "zod",
+        "semantic-ui-css",
       ],
       output: {
         globals: {
