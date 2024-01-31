@@ -398,7 +398,9 @@ export class Syncer {
   }
 
   async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
-    await writeJSON(this.checksumsPath, checksums);
+    await writeJSON(this.checksumsPath, checksums, {
+      spaces: 2,
+    });
     console.debug("checksum saved", this.checksumsPath);
   }
 
