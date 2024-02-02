@@ -12,7 +12,7 @@ export default function App() {
       n3: z.number().optional(),
     }),
     {
-      n1: 0,
+      n1: 300,
       n2: null,
       n3: undefined,
     }
