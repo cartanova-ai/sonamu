@@ -15,8 +15,8 @@ export function NumberInput({
   const [str, setStr] = useState<string>("");
 
   useEffect(() => {
-    if (Number(str.replace(/[.]/g, "")) !== props.value) {
-      setStr(props.value);
+    if (Number((str ?? "").replace(/[.]/g, "")) !== props.value) {
+      setStr(props.value ?? "");
     }
   }, [props.value]);
 
