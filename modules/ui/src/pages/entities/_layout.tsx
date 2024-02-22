@@ -60,7 +60,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
             </Link>
           ))}
         <Divider />
-        <div className="text-center">
+        <div className="text-center footer-buttons">
           <Button
             icon="plus"
             size="mini"
