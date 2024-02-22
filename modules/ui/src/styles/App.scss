@@ -70,7 +70,7 @@ $gnb-height: 50px;
         position: sticky;
         left: 0;
         top: $gnb-height;
-        height: calc(100vh - $gnb-height);
+        min-height: calc(100vh - $gnb-height);
 
         .entity-list-item {
           padding: 0.3em 0.8em;
