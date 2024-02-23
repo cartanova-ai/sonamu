@@ -178,7 +178,13 @@ export class BaseModelClass {
             .slice(1)
             .map((part) => `[${part}]`)
             .join("");
-        set(r, objPath, row[field]);
+        set(
+          r,
+          objPath,
+          row[field] && Array.isArray(row[field]) && isObject(row[field][0])
+            ? this.hydrate(row[field])
+            : row[field]
+        );
 
         return r;
       }, {} as any);
