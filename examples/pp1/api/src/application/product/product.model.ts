@@ -1,13 +1,10 @@
 import { BaseModelClass } from "sonamu";
 import { ListResult, asArray } from "sonamu";
 import { NotFoundException, BadRequestException } from "sonamu";
-import {
-  ProductSubsetKey,
-  ProductSubsetMapping,
-  productSubsetQueries,
-} from "./product.generated";
 import { ProductListParams, ProductSaveParams } from "./product.types";
 import { api } from "sonamu";
+import { ProductSubsetKey, ProductSubsetMapping } from "../sonamu.generated";
+import { productSubsetQueries } from "../sonamu.generated.sso";
 
 /*
   Product Model

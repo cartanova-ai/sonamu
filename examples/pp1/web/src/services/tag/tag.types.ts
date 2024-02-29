@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TagBaseSchema, TagBaseListParams } from "./tag.generated";
+import { TagBaseSchema, TagBaseListParams } from "../sonamu.generated";
 
 // Tag - ListParams
 export const TagListParams = TagBaseListParams;

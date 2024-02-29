@@ -1,1 +1,78 @@
-[{"path":"/dist/application/brand/brand.model.js","checksum":"37bd6fbb97c2fdd2872159c732448d8a6ea3f67e"},{"path":"/dist/application/brand/brand.smd.js","checksum":"8f9975bc974e5d056825ad4e698535f9706815b0"},{"path":"/dist/application/file/file.model.js","checksum":"9c39393af3db4eade5e1e8ce4e5b3bc30358f673"},{"path":"/dist/application/file/file.smd.js","checksum":"4484a0531fd4334c29cfdacd7ca3cd07386bea6d"},{"path":"/dist/application/post/post.model.js","checksum":"63a376765663665f9b6bcb003ea1106f649e72d7"},{"path":"/dist/application/post/post.smd.js","checksum":"81b704159752d02b8d1e7ff23cbe35b7ef7afab8"},{"path":"/dist/application/practice/practice.model.js","checksum":"aa64488597ef19d58b48c87d01fea1582bb346e1"},{"path":"/dist/application/practice/practice.smd.js","checksum":"658ef228a2dfe46c8e526a0c089a1dcd227c5bdc"},{"path":"/dist/application/product/product.model.js","checksum":"9c57855b5a85f91641cf9d318355fc9ae10a19bf"},{"path":"/dist/application/product/product.smd.js","checksum":"14ebc7b2af3e41cfd6a7e441c7c289e1d8d2fc0a"},{"path":"/dist/application/tag/tag.model.js","checksum":"3b9e0b9886b1c7d1caf2db217729cc62e71a5622"},{"path":"/dist/application/tag/tag.smd.js","checksum":"9b70e739cbd497324260af3568e64fdb9d1b972e"},{"path":"/dist/application/typeframe/typeframe.model.js","checksum":"fdbb5fe594db389f1fa34f921664a03020e46bcd"},{"path":"/dist/application/typeframe/typeframe.smd.js","checksum":"b626d55442bdcce7cd7c5b24d1c632b27c39d456"},{"path":"/dist/application/user/user.model.js","checksum":"90d5486417b37d6c9b21a95c1b4a3b59703b8667"},{"path":"/dist/application/user/user.smd.js","checksum":"42c6aa8f6d4a013a6541df3668df961cb8d16fbf"},{"path":"/src/application/brand/brand.enums.ts","checksum":"d98a1a1c6af32229009b31a5105092b634b2b731"},{"path":"/src/application/brand/brand.generated.ts","checksum":"29c3261518b20b4c06235df02f4558270170c2e1"},{"path":"/src/application/brand/brand.types.ts","checksum":"7ef64886e40807b77f2ed3e85eee9c12dbc9cf72"},{"path":"/src/application/file/file.enums.ts","checksum":"abd9d118c92068bccd399cf66bb14d85d5d0e800"},{"path":"/src/application/file/file.generated.ts","checksum":"659969394febb723c5028e12ed1282dd59efb083"},{"path":"/src/application/file/file.types.ts","checksum":"d3f0f6426a6829e94eb5b0032c0b5d2cf38300c8"},{"path":"/src/application/post/post.enums.ts","checksum":"f9305066c5738aa09b291978557740956fa0497d"},{"path":"/src/application/post/post.generated.ts","checksum":"8534ac9e7c93752d4254775e2ce3607c22e5b7d9"},{"path":"/src/application/post/post.types.ts","checksum":"f6ce005c705c161c72cebce20922fb623d056810"},{"path":"/src/application/practice/practice.generated.ts","checksum":"62c04a4c808725ea330f22571de4bdbc9b84eac1"},{"path":"/src/application/practice/practice.types.ts","checksum":"c144194971d0c4cb916a6a70d42fc10abd498e1b"},{"path":"/src/application/product/product.enums.ts","checksum":"f3b436bdad25a8d82e794607f3a35621e1c825a2"},{"path":"/src/application/product/product.generated.ts","checksum":"3c11f4910324a25172815f873116375fa36f96d1"},{"path":"/src/application/product/product.types.ts","checksum":"f00f79c01f9602171e580d7cf720c395410cbeac"},{"path":"/src/application/tag/tag.enums.ts","checksum":"63dd40d9b99524f91dd2cbec8189ec6ab4a4ed04"},{"path":"/src/application/tag/tag.generated.ts","checksum":"4db1c29b463cf5fbfe937a068ec862a11cf507c0"},{"path":"/src/application/tag/tag.types.ts","checksum":"b05885c1d8e33d273f881cabd59f4689c7b58b5a"},{"path":"/src/application/typeframe/typeframe.generated.ts","checksum":"f84b65a408490b142511f1ab04d4b6e8ea04d632"},{"path":"/src/application/typeframe/typeframe.types.ts","checksum":"d6b05057023b46fdc1c30ca3b47d6542b99c3c4c"},{"path":"/src/application/user/user.enums.ts","checksum":"cee3b676f27ae256ab765ca2a89a18b12ba110ff"},{"path":"/src/application/user/user.generated.ts","checksum":"cd5ac8fe14d82af3879d1516402e2057b1085787"},{"path":"/src/application/user/user.types.ts","checksum":"63c056519f6917a3c606a3303d5184a0f4b278f0"}]
+[
+  {
+    "path": "/dist/application/brand/brand.model.js",
+    "checksum": "6f844e77fc4efc048f76cce55af4d44725b9a0e1"
+  },
+  {
+    "path": "/dist/application/file/file.model.js",
+    "checksum": "9dbb3cb33a67f856079d9bf394e9037a7b85460f"
+  },
+  {
+    "path": "/dist/application/post/post.model.js",
+    "checksum": "5be74d2e699eeda2202c836d9d5692f5a0b18043"
+  },
+  {
+    "path": "/dist/application/product/product.model.js",
+    "checksum": "5244c09c8e240af650b65347d76afd1682161547"
+  },
+  {
+    "path": "/dist/application/tag/tag.model.js",
+    "checksum": "c20adcb7ce0f5d59ed19334d22b92240fe6258dc"
+  },
+  {
+    "path": "/dist/application/user/user.model.js",
+    "checksum": "1459f7a7191635891c7693a0eabc5ed614f9d4e6"
+  },
+  {
+    "path": "/src/application/brand/brand.entity.json",
+    "checksum": "7e33a9252402eb764473971027b863d61c9d3e75"
+  },
+  {
+    "path": "/src/application/brand/brand.types.ts",
+    "checksum": "17e5344449ca739ca7853cab1e0084307e96e627"
+  },
+  {
+    "path": "/src/application/file/file.entity.json",
+    "checksum": "f779c9b0d33b3c3ecfbb20eaad387ad3733bd708"
+  },
+  {
+    "path": "/src/application/file/file.types.ts",
+    "checksum": "d3f0f6426a6829e94eb5b0032c0b5d2cf38300c8"
+  },
+  {
+    "path": "/src/application/post/post.entity.json",
+    "checksum": "f2d5fa0be6b0c96917dcd3439b4e590f23854150"
+  },
+  {
+    "path": "/src/application/post/post.types.ts",
+    "checksum": "de71754b30ed64b86523b36b25741ba87d6aba02"
+  },
+  {
+    "path": "/src/application/product/product.entity.json",
+    "checksum": "ada4dbb730fda24e821b7989a94e34913185099a"
+  },
+  {
+    "path": "/src/application/product/product.types.ts",
+    "checksum": "24b35dc02a97c0d563f6fc5e39b0fb3acde89607"
+  },
+  {
+    "path": "/src/application/sonamu.generated.ts",
+    "checksum": "d2c343815cb55ae3f135f7975c4ee869cdb97c5c"
+  },
+  {
+    "path": "/src/application/tag/tag.entity.json",
+    "checksum": "68b5a73686fe4badec525be4e4252210b0b64711"
+  },
+  {
+    "path": "/src/application/tag/tag.types.ts",
+    "checksum": "4752d98bb96941cf0d1e7d69bc965d8755544779"
+  },
+  {
+    "path": "/src/application/user/user.entity.json",
+    "checksum": "0802eb804750b5aa4d6bbfcbeb2a68833e15854d"
+  },
+  {
+    "path": "/src/application/user/user.types.ts",
+    "checksum": "a7417c95ad448e2f4136e0c9117c0dd787add909"
+  }
+]

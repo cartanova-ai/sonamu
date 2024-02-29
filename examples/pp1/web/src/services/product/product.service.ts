@@ -7,8 +7,9 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
-import { ProductSubsetKey, ProductSubsetMapping } from "./product.generated";
+import { ProductSubsetKey, ProductSubsetMapping } from "../sonamu.generated";
 import { ProductListParams, ProductSaveParams } from "./product.types";
 
 export namespace ProductService {
@@ -17,9 +18,9 @@ export namespace ProductService {
     id: number,
     options?: SwrOptions
   ): SWRResponse<ProductSubsetMapping[T], SWRError> {
-    return useSWR<ProductSubsetMapping[T], SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/product/findById`, qs.stringify({ subset, id })],
+        [`/api/product/findById`, { subset, id }],
         options?.conditional
       )
     );
@@ -39,9 +40,9 @@ export namespace ProductService {
     params: ProductListParams = {},
     options?: SwrOptions
   ): SWRResponse<ListResult<ProductSubsetMapping[T]>, SWRError> {
-    return useSWR<ListResult<ProductSubsetMapping[T]>, SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/product/findMany`, qs.stringify({ subset, params })],
+        [`/api/product/findMany`, { subset, params }],
         options?.conditional
       )
     );

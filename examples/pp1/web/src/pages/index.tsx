@@ -1,4 +1,5 @@
 import React from "react";
+import BrandsList from "../BrandsList";
 
 type PublicIndexPageProps = {};
 export default function PublicIndexPage(props: PublicIndexPageProps) {
@@ -12,7 +13,8 @@ export default function PublicIndexPage(props: PublicIndexPageProps) {
         <br />
         based on <strong>Node.js/TypeScript</strong>.
       </div>
-      {/* <BrandsList /> */}
+      <br />
+      <BrandsList />
     </div>
   );
 }

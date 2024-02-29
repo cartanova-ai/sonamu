@@ -7,8 +7,9 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
-import { BrandSubsetKey, BrandSubsetMapping } from "./brand.generated";
+import { BrandSubsetKey, BrandSubsetMapping } from "../sonamu.generated";
 import { BrandListParams, BrandSaveParams } from "./brand.types";
 
 export namespace BrandService {
@@ -17,9 +18,9 @@ export namespace BrandService {
     id: number,
     options?: SwrOptions
   ): SWRResponse<BrandSubsetMapping[T], SWRError> {
-    return useSWR<BrandSubsetMapping[T], SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/brand/findById`, qs.stringify({ subset, id })],
+        [`/api/brand/findById`, { subset, id }],
         options?.conditional
       )
     );
@@ -39,9 +40,9 @@ export namespace BrandService {
     params: BrandListParams = {},
     options?: SwrOptions
   ): SWRResponse<ListResult<BrandSubsetMapping[T]>, SWRError> {
-    return useSWR<ListResult<BrandSubsetMapping[T]>, SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/brand/findMany`, qs.stringify({ subset, params })],
+        [`/api/brand/findMany`, { subset, params }],
         options?.conditional
       )
     );

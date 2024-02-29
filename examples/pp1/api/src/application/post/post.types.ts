@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { zArrayable } from "sonamu";
-import { PostType } from "./post.enums";
-import { PostBaseListParams, PostBaseSchema } from "./post.generated";
+import {
+  PostType,
+  PostBaseListParams,
+  PostBaseSchema,
+} from "../sonamu.generated";
 
 export const PostListParams = PostBaseListParams.extend({
   type: zArrayable(PostType).optional(),
@@ -12,7 +15,9 @@ export const PostSaveParams = PostBaseSchema.partial({
   id: true,
   created_at: true,
 }).omit({
-  next_post: true,
   author_id: true,
 });
 export type PostSaveParams = z.infer<typeof PostSaveParams>;
+
+export const StringArray = z.string().array();
+export type StringArray = z.infer<typeof StringArray>;

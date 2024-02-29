@@ -5,7 +5,7 @@ import { PostModel } from "./post.model";
 bootstrap(["users", "posts"]);
 describe("PostModelTest", () => {
   test("등록/수정", async () => {
-    PostModel.getDB("w");
+    await PostModel.getDB("w");
     expect(true).toBe(true);
   });
 });

@@ -1,0 +1,74 @@
+{
+  "id": "User",
+  "title": "유저",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true },
+    { "name": "role", "type": "enum", "id": "UserRole", "length": 32 },
+    { "name": "string_id", "type": "string", "length": 128 },
+    { "name": "pw", "type": "string", "length": 256 },
+    { "name": "name", "type": "string", "length": 64 },
+    {
+      "name": "birthyear",
+      "type": "integer",
+      "dbDefault": 1900,
+      "unsigned": true
+    },
+    { "name": "status", "type": "enum", "id": "UserStatus", "length": 64 },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    {
+      "name": "posts",
+      "type": "relation",
+      "relationType": "HasMany",
+      "with": "Post",
+      "joinColumn": "author_id"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "role",
+      "string_id",
+      "pw",
+      "name",
+      "birthyear",
+      "status",
+      "created_at",
+      "posts.id",
+      "posts.title"
+    ],
+    "D": [
+      "id",
+      "role",
+      "string_id",
+      "name",
+      "birthyear",
+      "status",
+      "created_at"
+    ],
+    "SS": [
+      "id",
+      "role",
+      "string_id",
+      "name",
+      "birthyear",
+      "status",
+      "created_at"
+    ]
+  },
+  "enums": {
+    "UserRole": {
+      "normal": "일반",
+      "staff": "스탭",
+      "supervisor": "최고관리자"
+    },
+    "UserStatus": { "ready": "대기", "active": "활성", "held": "중지" },
+    "UserPublicStatus": { "ready": "대기", "active": "활성" },
+    "UserOrderBy": { "id-desc": "최신순" },
+    "UserSearchField": { "name": "이름", "string_id": "로그인ID" }
+  }
+}

@@ -1,13 +1,10 @@
 import { BaseModelClass } from "sonamu";
 import { ListResult, asArray } from "sonamu";
 import { NotFoundException, BadRequestException } from "sonamu";
-import {
-  BrandSubsetKey,
-  BrandSubsetMapping,
-  brandSubsetQueries,
-} from "./brand.generated";
 import { BrandListParams, BrandSaveParams } from "./brand.types";
 import { api } from "sonamu";
+import { BrandSubsetKey, BrandSubsetMapping } from "../sonamu.generated";
+import { brandSubsetQueries } from "../sonamu.generated.sso";
 
 /*
   Brand Model

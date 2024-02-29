@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BrandBaseSchema, BrandBaseListParams } from "./brand.generated";
+import { BrandBaseListParams, BrandBaseSchema } from "../sonamu.generated";
 
 // Brand - ListParams
 export const BrandListParams = BrandBaseListParams;

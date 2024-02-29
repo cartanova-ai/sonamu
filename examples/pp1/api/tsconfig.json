@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     /* Basic Options */
-    "target": "ES2015",
+    "target": "esnext",
     "module": "commonjs",
     "outDir": "dist",
     "sourceMap": true,
@@ -33,8 +33,11 @@
 
     /* Advanced Options */
     "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true
+    "noErrorTruncation": true,
+
+    "resolveJsonModule": true
   },
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "exclude": [
     "node_modules",
     "dist/*",
@@ -44,6 +47,8 @@
     "wasted_src/**",
     "_templates/**",
     "**/__mocks__/**",
-    "vite.config.ts"
+    "vite.config.ts",
+    "public/bfp/**",
+    "public/lual/**"
   ]
 }

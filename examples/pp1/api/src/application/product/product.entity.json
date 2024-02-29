@@ -1,0 +1,80 @@
+{
+  "id": "Product",
+  "table": "products",
+  "title": "상품",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true },
+    {
+      "name": "brand",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "Brand",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    { "name": "type", "type": "enum", "id": "ProductType", "length": 32 },
+    { "name": "title", "type": "string", "length": 128 },
+    { "name": "description", "type": "text", "textType": "mediumtext" },
+    { "name": "price", "type": "integer" },
+    { "name": "is_new", "type": "boolean" },
+    { "name": "visible_until_at", "type": "timestamp" },
+    { "name": "status", "type": "enum", "id": "ProductStatus", "length": 32 },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "checked_at", "type": "timestamp", "nullable": true },
+    {
+      "name": "tags",
+      "type": "relation",
+      "relationType": "ManyToMany",
+      "with": "Tag",
+      "joinTable": "products__tags",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "images",
+      "desc": "이미지리스트",
+      "type": "json",
+      "id": "StringArray"
+    }
+  ],
+  "indexes": [
+    { "type": "index", "columns": ["price"] },
+    { "type": "index", "columns": ["is_new"] },
+    { "type": "index", "columns": ["visible_until_at"] },
+    { "type": "index", "columns": ["created_at"] }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "brand.id",
+      "brand.name",
+      "type",
+      "title",
+      "description",
+      "price",
+      "is_new",
+      "visible_until_at",
+      "status",
+      "created_at",
+      "checked_at",
+      "tags.id",
+      "tags.name",
+      "tags.created_at",
+      "images"
+    ]
+  },
+  "enums": {
+    "ProductStatus": { "active": "활성", "held": "홀드", "hidden": "숨김" },
+    "ProductType": { "craft": "제작", "buy": "사입" },
+    "ProductOrderBy": {
+      "id-desc": "최신순",
+      "price-desc": "가격 높은순",
+      "price-asc": "가격 낮은순"
+    },
+    "ProductSearchField": { "title": "상품명" }
+  }
+}

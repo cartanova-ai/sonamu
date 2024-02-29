@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { zArrayable } from "sonamu";
+import {
+  ProductStatus,
+  ProductType,
+  ProductBaseSchema,
+  ProductBaseListParams,
+} from "../sonamu.generated";
 import { TagSaveParams } from "../tag/tag.types";
-import { ProductStatus, ProductType } from "./product.enums";
-import { ProductBaseSchema, ProductBaseListParams } from "./product.generated";
 
 // Product - ListParams
 export const ProductListParams = ProductBaseListParams.extend({

@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { zArrayable } from "sonamu";
-import { UserRole, UserStatus } from "./user.enums";
-import { UserBaseListParams, UserBaseSchema } from "./user.generated";
+import {
+  UserRole,
+  UserStatus,
+  UserBaseListParams,
+  UserBaseSchema,
+} from "../sonamu.generated";
 
 export const UserListParams = UserBaseListParams.extend({
   role: UserRole.optional(),

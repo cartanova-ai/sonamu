@@ -2,8 +2,7 @@ import { clone } from "lodash";
 import { DateTime } from "luxon";
 import { Context, FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
-import { UserSubsetSS } from "../application/user/user.generated";
-import { UserModel } from "../application/user/user.model";
+import { UserSubsetSS } from "../application/sonamu.generated";
 
 export function bootstrap(tableNames?: string[]) {
   beforeAll(async () => {
@@ -33,6 +32,10 @@ export const mockedContext: Context = {
 } as unknown as Context;
 
 export async function loginContext(userId: number) {
+  const { UserModel } = await import(
+    "../application/user/user.model?ver=2" as string
+  );
+
   return {
     ...clone(mockedContext),
     user: await UserModel.findById("SS", userId),

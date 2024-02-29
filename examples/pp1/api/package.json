@@ -30,10 +30,12 @@
     "mysql2": "^3.0.0-rc.1",
     "passport": "^0.6.0",
     "passport-local": "^1.0.0",
-    "sonamu": "^0.0.42",
+    "sonamu": "^0.2.27",
     "zod": "^3.18.0"
   },
   "devDependencies": {
+    "@sonamu-kit/react-sui": "^0.0.14",
+    "@sonamu-kit/ui": "^0.2.4",
     "@types/lodash": "^4.14.176",
     "@types/luxon": "^2.0.5",
     "@types/node": "^18.14.6",

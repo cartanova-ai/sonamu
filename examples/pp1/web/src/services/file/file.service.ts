@@ -7,6 +7,7 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
 
 export namespace FileService {

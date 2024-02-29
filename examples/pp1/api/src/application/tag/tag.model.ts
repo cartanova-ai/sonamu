@@ -1,13 +1,10 @@
 import { BaseModelClass } from "sonamu";
 import { ListResult, asArray } from "sonamu";
 import { NotFoundException, BadRequestException } from "sonamu";
-import {
-  TagSubsetKey,
-  TagSubsetMapping,
-  tagSubsetQueries,
-} from "./tag.generated";
 import { TagListParams, TagSaveParams } from "./tag.types";
 import { api } from "sonamu";
+import { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import { tagSubsetQueries } from "../sonamu.generated.sso";
 
 /*
   Tag Model

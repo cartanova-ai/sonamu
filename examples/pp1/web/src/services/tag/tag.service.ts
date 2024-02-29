@@ -7,8 +7,9 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
-import { TagSubsetKey, TagSubsetMapping } from "./tag.generated";
+import { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { TagListParams, TagSaveParams } from "./tag.types";
 
 export namespace TagService {
@@ -17,9 +18,9 @@ export namespace TagService {
     id: number,
     options?: SwrOptions
   ): SWRResponse<TagSubsetMapping[T], SWRError> {
-    return useSWR<TagSubsetMapping[T], SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/tag/findById`, qs.stringify({ subset, id })],
+        [`/api/tag/findById`, { subset, id }],
         options?.conditional
       )
     );
@@ -39,9 +40,9 @@ export namespace TagService {
     params: TagListParams = {},
     options?: SwrOptions
   ): SWRResponse<ListResult<TagSubsetMapping[T]>, SWRError> {
-    return useSWR<ListResult<TagSubsetMapping[T]>, SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/tag/findMany`, qs.stringify({ subset, params })],
+        [`/api/tag/findMany`, { subset, params }],
         options?.conditional
       )
     );

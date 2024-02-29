@@ -8,12 +8,9 @@ import {
   Context,
   UnauthorizedException,
 } from "sonamu";
-import {
-  PostSubsetKey,
-  PostSubsetMapping,
-  postSubsetQueries,
-} from "./post.generated";
 import { PostListParams, PostSaveParams } from "./post.types";
+import { PostSubsetKey, PostSubsetMapping } from "../sonamu.generated";
+import { postSubsetQueries } from "../sonamu.generated.sso";
 
 /*
   포스트 모델

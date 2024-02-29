@@ -1,0 +1,79 @@
+{
+  "id": "Post",
+  "table": "posts",
+  "title": "포스트",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true },
+    {
+      "name": "type",
+      "type": "enum",
+      "id": "PostType",
+      "length": 64,
+      "toFilter": true
+    },
+    { "name": "title", "type": "string", "length": 256, "nullable": true },
+    { "name": "content", "type": "text", "textType": "text" },
+    {
+      "name": "author",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "User",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "id": "PostStatus",
+      "length": 64,
+      "toFilter": true
+    },
+    {
+      "name": "rating",
+      "type": "decimal",
+      "precision": 8,
+      "scale": 2,
+      "nullable": true
+    },
+    { "name": "source_url", "type": "string", "length": 512, "nullable": true },
+    { "name": "is_public", "type": "boolean" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    {
+      "name": "images",
+      "desc": "이미지리스트",
+      "type": "json",
+      "id": "StringArray"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "type",
+      "title",
+      "content",
+      "author.id",
+      "author.name",
+      "status",
+      "rating",
+      "source_url",
+      "is_public",
+      "created_at",
+      "images"
+    ],
+    "D": ["id", "type", "title", "content", "author.id", "created_at", "images"]
+  },
+  "enums": {
+    "PostOrderBy": { "id-desc": "최신순" },
+    "PostSearchField": { "title": "제목", "content": "내용" },
+    "PostRangeBy": { "created_at": "등록일시" },
+    "PostType": { "a-notice": "공지사항", "p-board": "자유게시판" },
+    "PostStatus": { "ready": "대기", "active": "활성", "held": "중지" },
+    "PostPublicStatus": { "ready": "대기", "active": "활성" },
+    "PostImageType": { "header": "헤더", "embed": "삽입", "footer": "푸터" }
+  }
+}

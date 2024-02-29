@@ -1,0 +1,19 @@
+{
+  "id": "Tag",
+  "title": "태그",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true },
+    { "name": "name", "type": "string", "length": 64 },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "indexes": [{ "type": "unique", "columns": ["name"] }],
+  "subsets": { "A": ["id", "name", "created_at"] },
+  "enums": {
+    "TagOrderBy": { "id-desc": "최신순" },
+    "TagSearchField": { "id": "ID", "name": "태그명" }
+  }
+}

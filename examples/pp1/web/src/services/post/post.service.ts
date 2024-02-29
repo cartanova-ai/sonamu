@@ -7,8 +7,9 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
-import { PostSubsetKey, PostSubsetMapping } from "./post.generated";
+import { PostSubsetKey, PostSubsetMapping } from "../sonamu.generated";
 import { PostListParams, PostSaveParams } from "./post.types";
 
 export namespace PostService {
@@ -17,9 +18,9 @@ export namespace PostService {
     id: number,
     options?: SwrOptions
   ): SWRResponse<PostSubsetMapping[T], SWRError> {
-    return useSWR<PostSubsetMapping[T], SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/post/findById`, qs.stringify({ subset, id })],
+        [`/api/post/findById`, { subset, id }],
         options?.conditional
       )
     );
@@ -39,9 +40,9 @@ export namespace PostService {
     params: PostListParams = {},
     options?: SwrOptions
   ): SWRResponse<ListResult<PostSubsetMapping[T]>, SWRError> {
-    return useSWR<ListResult<PostSubsetMapping[T]>, SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/post/findMany`, qs.stringify({ subset, params })],
+        [`/api/post/findMany`, { subset, params }],
         options?.conditional
       )
     );

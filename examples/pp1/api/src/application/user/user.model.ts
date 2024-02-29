@@ -1,12 +1,6 @@
 import { DateTime } from "luxon";
 import { UserListParams, UserLoginParams } from "./user.types";
 import {
-  UserSubsetKey,
-  UserSubsetMapping,
-  userSubsetQueries,
-  UserSubsetSS,
-} from "./user.generated";
-import {
   api,
   asArray,
   BadRequestException,
@@ -16,6 +10,12 @@ import {
   Context,
   UnauthorizedException,
 } from "sonamu";
+import {
+  UserSubsetSS,
+  UserSubsetKey,
+  UserSubsetMapping,
+} from "../sonamu.generated";
+import { userSubsetQueries } from "../sonamu.generated.sso";
 
 const MOCKED_USER: UserSubsetSS = {
   id: 1000,

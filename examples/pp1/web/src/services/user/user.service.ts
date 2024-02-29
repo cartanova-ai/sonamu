@@ -7,12 +7,13 @@ import {
   SWRError,
   SwrOptions,
   handleConditional,
+  swrPostFetcher,
 } from "../sonamu.shared";
 import {
   UserSubsetKey,
   UserSubsetMapping,
   UserSubsetSS,
-} from "./user.generated";
+} from "../sonamu.generated";
 import { UserListParams, UserLoginParams } from "./user.types";
 
 export namespace UserService {
@@ -21,9 +22,9 @@ export namespace UserService {
     id: number,
     options?: SwrOptions
   ): SWRResponse<UserSubsetMapping[T], SWRError> {
-    return useSWR<UserSubsetMapping[T], SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/user/findById`, qs.stringify({ subset, id })],
+        [`/api/user/findById`, { subset, id }],
         options?.conditional
       )
     );
@@ -43,9 +44,9 @@ export namespace UserService {
     params: UserListParams = {},
     options?: SwrOptions
   ): SWRResponse<ListResult<UserSubsetMapping[T]>, SWRError> {
-    return useSWR<ListResult<UserSubsetMapping[T]>, SWRError>(
+    return useSWR(
       handleConditional(
-        [`/api/user/findMany`, qs.stringify({ subset, params })],
+        [`/api/user/findMany`, { subset, params }],
         options?.conditional
       )
     );
@@ -62,7 +63,7 @@ export namespace UserService {
 
   export async function login(
     loginParams: UserLoginParams
-  ): Promise<{ success: boolean; user: UserSubsetSS }> {
+  ): Promise<{ success: boolean; user?: UserSubsetSS }> {
     return fetch({
       method: "POST",
       url: `/api/user/login`,
@@ -73,11 +74,8 @@ export namespace UserService {
   export function useMe(
     options?: SwrOptions
   ): SWRResponse<UserSubsetSS | null, SWRError> {
-    return useSWR<UserSubsetSS | null, SWRError>(
-      handleConditional(
-        [`/api/user/me`, qs.stringify({})],
-        options?.conditional
-      )
+    return useSWR(
+      handleConditional([`/api/user/me`, {}], options?.conditional)
     );
   }
   export async function me(): Promise<UserSubsetSS | null> {

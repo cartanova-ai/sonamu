@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import fastifyPassport from "@fastify/passport";
 import fastifySecureSession from "@fastify/secure-session";
-import { UserSubsetSS } from "./user.generated";
+import { UserSubsetSS } from "../sonamu.generated";
 
 export function setupAuth(server: FastifyInstance) {
   server.register(fastifySecureSession, {

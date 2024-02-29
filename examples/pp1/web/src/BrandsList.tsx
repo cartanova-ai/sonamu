@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { BrandService } from "./services/brand/brand.service";
-import { BrandSaveParams } from "./services/brand/brand.types";
 import { defaultCatch } from "./services/sonamu.shared";
+import { BrandService } from "src/services/brand/brand.service";
+import { BrandSaveParams } from "src/services/brand/brand.types";
+import { Button, Input } from "semantic-ui-react";
 
 type BrandsListProps = {};
 export default function BrandsList(props: BrandsListProps) {
@@ -54,10 +55,9 @@ export default function BrandsList(props: BrandsListProps) {
 
   return (
     <>
-      <button onClick={() => setEnable(!enable)}>Toggle Call</button>
+      <Button onClick={() => setEnable(!enable)} content="Toggle Call" />
       {isLoading && <>Loading</>}
-      <input
-        type="text"
+      <Input
         value={form.name}
         onChange={(e) =>
           setForm({
@@ -65,7 +65,7 @@ export default function BrandsList(props: BrandsListProps) {
             name: e.target.value,
           })
         }
-        onKeyUp={(e) => e.key === "Enter" && submitForm()}
+        onKeyUp={(e: KeyboardEvent) => e.key === "Enter" && submitForm()}
       />
       <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap" }}>
         {rows &&
@@ -82,8 +82,8 @@ export default function BrandsList(props: BrandsListProps) {
               }}
             >
               {row.name}
-              <button onClick={() => delBrand(row.id)}>X</button>
-              <button onClick={() => attachBrand(row.id)}>O</button>
+              <Button icon="trash" onClick={() => delBrand(row.id)} />
+              <Button icon="attach" onClick={() => attachBrand(row.id)} />
             </div>
           ))}
       </div>

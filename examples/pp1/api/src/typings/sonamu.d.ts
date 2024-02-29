@@ -1,5 +1,5 @@
 import { FastifyFile } from "../application/file/file.types";
-import { UserSubsetSS } from "../application/user/user.generated";
+import { UserSubsetSS } from "../application/sonamu.generated";
 import { Session } from "@fastify/secure-session";
 
 declare module "sonamu" {
