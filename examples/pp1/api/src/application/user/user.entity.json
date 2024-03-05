@@ -10,7 +10,7 @@
     {
       "name": "birthyear",
       "type": "integer",
-      "dbDefault": 1900,
+      "dbDefault": "1900",
       "unsigned": true
     },
     { "name": "status", "type": "enum", "id": "UserStatus", "length": 64 },
