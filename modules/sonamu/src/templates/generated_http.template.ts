@@ -20,7 +20,12 @@ export class Template__generated_http extends Template {
   }
 
   render({}: TemplateOptions["generated_http"]) {
-    const { types, apis } = Sonamu.syncer;
+    const {
+      syncer: { types, apis },
+      config: {
+        route: { prefix },
+      },
+    } = Sonamu;
 
     const lines = apis.map((api) => {
       const reqObject = this.resolveApiParams(api, types);
@@ -51,7 +56,7 @@ export class Template__generated_http extends Template {
 
       return [
         [
-          `${api.options.httpMethod ?? "GET"} {{baseUrl}}/api${api.path}`,
+          `${api.options.httpMethod ?? "GET"} {{baseUrl}}${prefix}${api.path}`,
           ...dataLines.querystring,
         ].join("\n\t?"),
         `Content-Type: ${api.options.contentType ?? "application/json"}`,
