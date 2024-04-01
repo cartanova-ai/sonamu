@@ -773,6 +773,10 @@ export class Migrator {
                     col.scale ?? 2
                   )}"`;
                 }
+                // string인 경우 기본값이 빈 스트링인 경우 대응
+                if (col.type === "string" && col.defaultTo === "") {
+                  col.defaultTo = '""';
+                }
                 return col;
               };
               const entityColumns = sortBy(
