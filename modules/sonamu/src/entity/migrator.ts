@@ -104,7 +104,12 @@ export class Migrator {
       if (
         (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
           .host !==
-        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host
+          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
+            .host ||
+        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
+          .database !==
+          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
+            .database
       ) {
         const fixtureRemoteDB = knex(dbConfig.fixture_remote);
         applyDBs.push(fixtureRemoteDB);
