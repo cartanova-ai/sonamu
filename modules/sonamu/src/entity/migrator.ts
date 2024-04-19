@@ -195,7 +195,7 @@ export class Migrator {
     if (onlyTs.length > 0) {
       console.debug({ onlyTs });
       throw new ServiceUnavailableException(
-        `There is an un-compiled TS migration files.\nPlease run the dev:serve\n\n${onlyTs
+        `There is an un-compiled TS migration files.\nPlease compile them first.\n\n${onlyTs
           .map((f) => f.name)
           .join("\n")}`
       );
@@ -634,8 +634,8 @@ export class Migrator {
 
     // 기존 ShadowDB 리셋
     console.log(chalk.magenta(`${shadowDatabase} 리셋`));
-    await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase};`);
-    await tdb.raw(`CREATE DATABASE ${shadowDatabase};`);
+    await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
+    await tdb.raw(`CREATE DATABASE \`${shadowDatabase}\`;`);
 
     // ShadowDB 테이블 + 데이터 생성
     console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
@@ -665,7 +665,7 @@ export class Migrator {
 
       // 생성한 Shadow DB 삭제
       console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-      await sdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase};`);
+      await sdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
 
       return [
         {
