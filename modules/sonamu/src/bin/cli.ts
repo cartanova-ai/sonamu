@@ -203,9 +203,19 @@ async function fixture_init() {
 
     console.log(`SYNC to ${label}...`);
     const mysqlCmd = `mysql -h${conn.host} -u${conn.user} -p${conn.password}`;
-    execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS ${conn.database}'`);
-    execSync(`${mysqlCmd} -e 'CREATE DATABASE ${conn.database}'`);
+    execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
+    execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
     execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
+
+    // 3. knex migration 정보 복사
+    await Promise.all(
+      ["knex_migrations", "knex_migrations_lock"].map(async (tableName) => {
+        await db.raw(
+          `INSERT INTO \`${conn.database}\`.${tableName}
+          SELECT * FROM \`${srcConn.database}\`.${tableName}`
+        );
+      })
+    );
 
     await db.destroy();
   }
