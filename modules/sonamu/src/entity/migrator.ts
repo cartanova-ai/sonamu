@@ -57,7 +57,6 @@ import { EntityManager } from "./entity-manager";
 import { Entity } from "./entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import { nonNullable } from "../utils/utils";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
@@ -307,23 +306,27 @@ export class Migrator {
       applied: string[];
     }[]
   > {
-    // get connections
-    const conns = (
-      await Promise.all(
-        targets.map(async (target) => {
-          const knexOptions =
-            Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig];
-          if (knexOptions === undefined) {
-            return null;
-          }
+    // get uniq knex configs
+    const configs = uniqBy(
+      targets
+        .map((target) => ({
+          connKey: target,
+          options: Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig],
+        }))
+        .filter((c) => c.options !== undefined),
+      ({ options }) =>
+        `${(options.connection as Knex.MySql2ConnectionConfig).host}:${
+          (options.connection as Knex.MySql2ConnectionConfig).port ?? 3306
+        }/${(options.connection as Knex.MySql2ConnectionConfig).database}`
+    );
 
-          return {
-            connKey: target,
-            knex: knex(knexOptions),
-          };
-        })
-      )
-    ).filter(nonNullable);
+    // get connections
+    const conns = await Promise.all(
+      configs.map(async (config) => ({
+        connKey: config.connKey,
+        knex: knex(config.options),
+      }))
+    );
 
     // action
     const result = await (async () => {
