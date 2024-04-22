@@ -195,7 +195,7 @@ async function fixture_init() {
     const [[row]] = await db.raw(`SHOW DATABASES LIKE "${conn.database}"`);
     if (row) {
       console.log(
-        chalk.yellow(`${label}: Database "${conn.database} Already exists`)
+        chalk.yellow(`${label}: Database "${conn.database}" Already exists`)
       );
       await db.destroy();
       continue;
