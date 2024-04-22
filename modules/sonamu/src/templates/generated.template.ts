@@ -6,6 +6,7 @@ import { EntityPropNode } from "../types/types";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
 import { Template } from "./base-template";
 import { nonNullable } from "../utils/utils";
+import { Sonamu } from "../api";
 
 export type SourceCode = {
   label: string;
@@ -18,8 +19,10 @@ export class Template__generated extends Template {
   }
 
   getTargetAndPath() {
+    const { dir } = Sonamu.config.api;
+
     return {
-      target: "api/src/application",
+      target: `${dir}/src/application`,
       path: `sonamu.generated.ts`,
     };
   }

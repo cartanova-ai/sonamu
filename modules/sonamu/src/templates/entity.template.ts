@@ -1,6 +1,7 @@
 import { TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
+import { Sonamu } from "../api";
 
 export class Template__entity extends Template {
   constructor() {
@@ -8,8 +9,10 @@ export class Template__entity extends Template {
   }
 
   getTargetAndPath(names: EntityNamesRecord, parentNames?: EntityNamesRecord) {
+    const { dir } = Sonamu.config.api;
+
     return {
-      target: "api/src/application",
+      target: `${dir}/src/application`,
       path: `${(parentNames ?? names).fs}/${names.fs}.entity.json`,
     };
   }

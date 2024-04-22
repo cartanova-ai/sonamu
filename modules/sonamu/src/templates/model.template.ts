@@ -2,6 +2,7 @@ import { RenderingNode, TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
 import { Template__view_list } from "./view_list.template";
+import { Sonamu } from "../api";
 
 export class Template__model extends Template {
   constructor() {
@@ -9,8 +10,10 @@ export class Template__model extends Template {
   }
 
   getTargetAndPath(names: EntityNamesRecord) {
+    const { dir } = Sonamu.config.api;
+
     return {
-      target: "api/src/application",
+      target: `${dir}/src/application`,
       path: `${names.fs}/${names.fs}.model.ts`,
     };
   }
