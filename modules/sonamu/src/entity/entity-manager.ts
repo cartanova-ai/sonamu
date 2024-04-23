@@ -61,6 +61,14 @@ class EntityManagerClass {
     this.tableSpecs.clear();
     this.isAutoloaded = false;
 
+    const sonamuPath = path.join(
+      Sonamu.apiRootPath,
+      "dist/application/sonamu.generated.js"
+    );
+    if (require.cache[sonamuPath]) {
+      delete require.cache[sonamuPath];
+    }
+
     return this.autoload(doSilent);
   }
 
