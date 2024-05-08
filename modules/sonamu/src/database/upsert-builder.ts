@@ -207,7 +207,6 @@ export class UpsertBuilder {
     const uuidMap = new Map<string, any>(
       upsertedRows.map((row: any) => [row.uuid, row])
     );
-    console.table(uuidMap.entries());
 
     // 해당 테이블 참조를 실제 밸류로 변경
     refTables.map((table) => {
