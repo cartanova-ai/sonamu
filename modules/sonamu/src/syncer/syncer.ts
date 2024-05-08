@@ -1332,6 +1332,12 @@ export class Syncer {
     table?: string,
     title?: string
   ) {
+    if (/^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(entityId) === false) {
+      throw new BadRequestException(
+        "entityId는 자바스크립트 변수명 규칙을 따라야 합니다."
+      );
+    }
+
     await this.generateTemplate("entity", {
       entityId,
       parentId,

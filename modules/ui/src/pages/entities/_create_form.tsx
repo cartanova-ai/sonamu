@@ -2,7 +2,7 @@ import { Segment, Header, Form, Input, Button } from "semantic-ui-react";
 import { z } from "zod";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { useCommonModal } from "../../components/core/CommonModal";
-import { defaultCatch } from "../../services/sonamu.shared";
+import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { pluralize, underscore } from "inflection";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
@@ -31,7 +31,13 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
       .then(() => {
         doneModal(form.id);
       })
-      .catch(defaultCatch);
+      .catch(e => {
+        if (isSonamuError(e) && e.code === 641) {
+          alert("이미 존재하는 테이블명입니다.");
+        } else {
+          defaultCatch(e);
+        }
+      });
   };
 
   return (

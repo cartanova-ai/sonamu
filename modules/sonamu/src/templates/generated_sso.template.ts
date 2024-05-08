@@ -5,6 +5,7 @@ import { camelize } from "inflection";
 import { SourceCode } from "./generated.template";
 import { uniq } from "lodash";
 import { nonNullable } from "../utils/utils";
+import { Sonamu } from "../api";
 
 export class Template__generated_sso extends Template {
   constructor() {
@@ -12,8 +13,10 @@ export class Template__generated_sso extends Template {
   }
 
   getTargetAndPath() {
+    const { dir } = Sonamu.config.api;
+
     return {
-      target: "api/src/application",
+      target: `${dir}/src/application`,
       path: `sonamu.generated.sso.ts`,
     };
   }

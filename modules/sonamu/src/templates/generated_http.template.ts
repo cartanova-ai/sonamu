@@ -13,8 +13,10 @@ export class Template__generated_http extends Template {
   }
 
   getTargetAndPath() {
+    const { dir } = Sonamu.config.api;
+
     return {
-      target: "api/src/application",
+      target: `${dir}/src/application`,
       path: `sonamu.generated.http`,
     };
   }
