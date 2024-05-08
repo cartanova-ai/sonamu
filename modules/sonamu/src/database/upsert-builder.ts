@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import _, { chunk, defaults, groupBy } from "lodash";
 import { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
+import { nonNullable } from "../utils/utils";
 
 type TableData = {
   references: Set<string>;
@@ -81,9 +82,10 @@ export class UpsertBuilder {
         if (isRefField(val)) {
           return val.uuid;
         } else {
-          return row[unqCol as keyof typeof row] ?? uuidv4(); // nullable 컬럼은 uuid로 대체
+          return row[unqCol as keyof typeof row];
         }
       })
+      .filter(nonNullable) // nullable인 경우 unique 체크에서 제외
       .join("---delimiter--");
     if (table.uniqueColumns.length > 0) {
       // 기존 키가 있는 경우 uuid 그대로 사용
@@ -205,6 +207,7 @@ export class UpsertBuilder {
     const uuidMap = new Map<string, any>(
       upsertedRows.map((row: any) => [row.uuid, row])
     );
+    console.table(uuidMap.entries());
 
     // 해당 테이블 참조를 실제 밸류로 변경
     refTables.map((table) => {

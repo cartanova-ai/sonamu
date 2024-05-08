@@ -150,7 +150,7 @@ export class FixtureManagerClass {
               )
               .into(tableName);
             console.log("OK");
-            await transaction.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+            await transaction.raw(`SET FOREIGN_KEY_CHECKS = 1`);
           });
         }
       })
