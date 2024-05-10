@@ -7,7 +7,7 @@ import { nonNullable } from "../utils/utils";
 type TableData = {
   references: Set<string>;
   rows: any[];
-  uniqueColumns: string[];
+  uniqueIndexes: { name?: string; columns: string[] }[];
   uniquesMap: Map<string, string>;
 };
 export type UBRef = {
@@ -44,7 +44,7 @@ export class UpsertBuilder {
       this.tables.set(tableName, {
         references: new Set(),
         rows: [],
-        uniqueColumns: tableSpec?.uniqueColumns ?? [],
+        uniqueIndexes: tableSpec?.uniqueIndexes ?? [],
         uniquesMap: new Map<string, string>(),
       });
     }
@@ -72,30 +72,48 @@ export class UpsertBuilder {
   ): UBRef {
     const table = this.getTable(tableName);
 
-    // uuid 생성 로직
-    let uuid: string | undefined;
+    // 해당 테이블의 unique 인덱스를 순회하며 키 생성
+    const uniqueKeys = table.uniqueIndexes
+      .map((unqIndex) => {
+        const uniqueKeyArray = unqIndex.columns
+          .map((unqCol) => {
+            const val = row[unqCol as keyof typeof row];
+            if (isRefField(val)) {
+              return val.uuid;
+            } else {
+              return row[unqCol as keyof typeof row];
+            }
+          })
+          .filter(nonNullable); // nullable인 경우 unique 체크에서 제외
 
-    // 해당 테이블의 unique 컬럼들의 값을 통해 키 생성
-    const uniqueKey = table.uniqueColumns
-      .map((unqCol) => {
-        const val = row[unqCol as keyof typeof row];
-        if (isRefField(val)) {
-          return val.uuid;
-        } else {
-          return row[unqCol as keyof typeof row];
+        // 값이 모두 null인 경우 키 생성 패스
+        if (uniqueKeyArray.length === 0) {
+          return null;
         }
+        return uniqueKeyArray.join("---delimiter--");
       })
-      .filter(nonNullable) // nullable인 경우 unique 체크에서 제외
-      .join("---delimiter--");
-    if (table.uniqueColumns.length > 0) {
-      // 기존 키가 있는 경우 uuid 그대로 사용
-      uuid = table.uniquesMap.get(uniqueKey);
-    }
+      .filter(nonNullable);
 
-    // 없는 경우 uuid 생성하고, 생성한 uuid를 uniquesMap에 보관
-    if (!uuid) {
-      uuid = uuidv4();
-      table.uniquesMap.set(uniqueKey, uuid);
+    // uuid 생성 로직
+    const uuid: string = (() => {
+      // 키를 순회하여 이미 존재하는 키가 있는지 확인
+      if (uniqueKeys.length > 0) {
+        for (const uniqueKey of uniqueKeys) {
+          if (table.uniquesMap.has(uniqueKey)) {
+            return table.uniquesMap.get(uniqueKey)!; // 이미 has 체크를 했으므로 undefined 불가능
+          }
+        }
+      }
+
+      // 찾을 수 없는 경우 생성
+      return uuidv4();
+    })();
+
+    // 모든 유니크키에 대해 유니크맵에 uuid 저장
+    if (uniqueKeys.length > 0) {
+      for (const uniqueKey of uniqueKeys) {
+        table.uniquesMap.set(uniqueKey, uuid);
+      }
     }
 
     // 이 테이블에 사용된 RefField를 순회하여, 현재 테이블 정보에 어떤 필드를 참조하는지 추가

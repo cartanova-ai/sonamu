@@ -590,16 +590,11 @@ export class Entity {
   }
 
   registerTableSpecs(): void {
-    const uniqueColumns = uniq(
-      this.indexes
-        .filter((idx) => idx.type === "unique")
-        .map((idx) => idx.columns)
-        .flat()
-    );
+    const uniqueIndexes = this.indexes.filter((idx) => idx.type === "unique");
 
     EntityManager.setTableSpec({
       name: this.table,
-      uniqueColumns,
+      uniqueIndexes,
     });
   }
 

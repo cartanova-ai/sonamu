@@ -21,7 +21,7 @@ export type EntityNamesRecord = Record<
 >;
 type TableSpec = {
   name: string;
-  uniqueColumns: string[];
+  uniqueIndexes: { name?: string; columns: string[] }[];
 };
 class EntityManagerClass {
   private entities: Map<string, Entity> = new Map();
