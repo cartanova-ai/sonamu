@@ -70,6 +70,7 @@ export async function startServers(apiRootPath: string) {
   await createApiServer({
     listen: { port: API_PORT, host: HOST },
     apiRootPath,
+    watch: true,
   });
 }
 

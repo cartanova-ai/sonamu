@@ -1,5 +1,7 @@
 import fastify from "fastify";
 import { flatten, range, template, uniq } from "lodash";
+import chokidar from "chokidar";
+import path from "path";
 import {
   Sonamu,
   EntityManager,
@@ -20,6 +22,7 @@ import knex from "knex";
 import { z } from "zod";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
+import { readFileSync } from "fs";
 
 export async function createApiServer(options: {
   listen: {
@@ -27,8 +30,25 @@ export async function createApiServer(options: {
     port: number;
   };
   apiRootPath: string;
+  watch?: boolean;
 }) {
-  const { listen, apiRootPath } = options;
+  const { listen, apiRootPath, watch } = options;
+
+  if (watch) {
+    const entityPath = path.join(
+      apiRootPath,
+      "/src/application/**/*.entity.json"
+    );
+    chokidar
+      .watch(entityPath, {
+        ignoreInitial: true,
+      })
+      .on("all", (_, path) => {
+        delete require.cache[path];
+        const json = JSON.parse(readFileSync(path).toString());
+        EntityManager.register(json);
+      });
+  }
 
   const server = fastify();
   server.register(require("fastify-qs"));
