@@ -310,7 +310,7 @@ async function ui() {
     const sonamuUI: {
       startServers: (appRootPath: string) => void;
     } = await import("@sonamu-kit/ui" as string);
-    sonamuUI.startServers(Sonamu.appRootPath);
+    sonamuUI.startServers(Sonamu.apiRootPath);
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {
       console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
