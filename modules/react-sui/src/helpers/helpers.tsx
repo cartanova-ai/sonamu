@@ -47,12 +47,16 @@ export function paramsToSearchParams<T>(params: T): {
   );
 }
 
+type ErrorObj = {
+  content: string;
+  pointing?: "above" | "below" | "left" | "right";
+};
 export function useTypeForm<
   T extends z.ZodObject<any> | z.ZodArray<any>,
   U extends z.infer<T>,
 >(zType: T, defaultValue: U) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
-  const [errorObjPaths, setErrorObjPaths] = useState<Set<string>>(new Set([]));
+  const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
 
   function getEmptyStringTo(
     zType: T,
@@ -90,19 +94,15 @@ export function useTypeForm<
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = _.get(form, objPath) as unknown;
 
-      const ifError = errorObjPaths.has(objPath)
-        ? {
-            error: true,
-          }
-        : {};
-
+      const error = errorObjs.get(objPath);
       return {
         value: srcValue === undefined || srcValue === null ? "" : srcValue,
         onChange: (_e: any, prop: any) => {
-          if (ifError.error === true) {
-            setErrorObjPaths((p) => {
-              p.delete(objPath);
-              return new Set(p);
+          if (error !== undefined) {
+            setErrorObjs((p) => {
+              const newP = new Map(p);
+              newP.delete(objPath);
+              return newP;
             });
           }
           let newValue = prop.value;
@@ -116,23 +116,30 @@ export function useTypeForm<
           _.set(newForm, objPath, newValue);
           setForm(newForm);
         },
-        ...ifError,
+        ...(error && { error }),
       };
     },
-    addError: (objPath: string): void => {
-      setErrorObjPaths((p) => {
-        p.add(objPath);
-        return new Set(p);
+    addError: (objPath: string, errorMessage: string | ErrorObj): void => {
+      setErrorObjs((p) => {
+        const newP = new Map(p);
+        newP.set(
+          objPath,
+          typeof errorMessage === "string"
+            ? { content: errorMessage }
+            : errorMessage
+        );
+        return newP;
       });
     },
     removeError: (objPath: string): void => {
-      setErrorObjPaths((p) => {
-        p.delete(objPath);
-        return new Set(p);
+      setErrorObjs((p) => {
+        const newP = new Map(p);
+        newP.delete(objPath);
+        return newP;
       });
     },
     clearError: (): void => {
-      setErrorObjPaths(new Set([]));
+      setErrorObjs(new Map());
     },
     reset: (): void => {
       setForm(defaultValue);
