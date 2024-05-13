@@ -77,5 +77,8 @@
   "peerDependencies": {
     "sonamu": "^0.2.4"
   },
-  "packageManager": "yarn@3.6.3"
+  "packageManager": "yarn@3.6.3",
+  "resolutions": {
+    "@sonamu-kit/react-sui@^0.1.13": "patch:@sonamu-kit/react-sui@npm%3A0.1.13#./.yarn/patches/@sonamu-kit-react-sui-npm-0.1.13-fcda84163f.patch"
+  }
 }
