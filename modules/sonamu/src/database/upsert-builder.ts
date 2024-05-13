@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
-import _, { chunk, defaults, groupBy } from "lodash";
+import { defaults, groupBy, uniq } from "lodash";
 import { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";
+import { RowWithId, batchUpdate } from "./_batch_update";
 
 type TableData = {
   references: Set<string>;
@@ -213,14 +214,14 @@ export class UpsertBuilder {
       }
     );
 
-    const extractFields = _.uniq(references).map(
+    const extractFields = uniq(references).map(
       (reference) => reference.split(".")[1]
     );
 
     // UUID 기준으로 id 추출
     const uuids = table.rows.map((row) => row.uuid);
     const upsertedRows = await wdb(tableName)
-      .select(_.uniq(["uuid", "id", ...extractFields]))
+      .select(uniq(["uuid", "id", ...extractFields]))
       .whereIn("uuid", uuids);
     const uuidMap = new Map<string, any>(
       upsertedRows.map((row: any) => [row.uuid, row])
@@ -266,6 +267,7 @@ export class UpsertBuilder {
   ): Promise<void> {
     options = defaults(options, {
       chunkSize: 500,
+      where: "id",
     });
 
     if (this.hasTable(tableName) === false) {
@@ -276,14 +278,16 @@ export class UpsertBuilder {
       return;
     }
 
-    const chunks = chunk(table.rows, options.chunkSize);
-    for await (const chunk of chunks) {
-      await Promise.all(
-        chunk.map(async ({ id, ...row }) => {
-          const { uuid, ...update } = row;
-          return await wdb(tableName).where("id", id).update(update);
-        })
-      );
-    }
+    const rows = table.rows.map((_row) => {
+      const { uuid, ...row } = _row;
+      return row as RowWithId<string>;
+    });
+    await batchUpdate(
+      wdb,
+      tableName,
+      options.where ?? "id",
+      rows,
+      options.chunkSize
+    );
   }
 }
