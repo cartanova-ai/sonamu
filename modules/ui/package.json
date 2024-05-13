@@ -27,7 +27,7 @@
   "dependencies": {
     "@fastify/cors": "^8.4.0",
     "@fastify/static": "^6.10.2",
-    "@sonamu-kit/react-sui": "^0.0.14",
+    "@sonamu-kit/react-sui": "^0.1.13",
     "@vitejs/plugin-react": "^4.0.3",
     "axios": "^1.5.0",
     "chokidar": "^3.6.0",
