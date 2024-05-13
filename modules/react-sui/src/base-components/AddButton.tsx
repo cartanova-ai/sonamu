@@ -1,28 +1,23 @@
 import { Link } from "react-router-dom";
-import { Button, ButtonProps, Icon, SemanticICONS } from "semantic-ui-react";
+import { Button, ButtonProps, SemanticICONS } from "semantic-ui-react";
 
 type AddButtonProps = ButtonProps & {
   currentRoute: string;
-  icon: SemanticICONS;
   label: string;
 };
-export function AddButton({
-  currentRoute,
-  icon,
-  label,
-  ...props
-}: AddButtonProps) {
+export function AddButton({ currentRoute, label, ...props }: AddButtonProps) {
   return (
     <Button
       color="blue"
       size="tiny"
       as={Link}
-      to={`${currentRoute}/form`}
+      to={
+        `${currentRoute.split("?")[0]}/form` +
+        (currentRoute.includes("?") ? "?" + currentRoute.split("?")[1] : "")
+      }
       state={{ from: currentRoute }}
+      content={label}
       {...props}
-    >
-      <Icon name={icon} />
-      {label}
-    </Button>
+    ></Button>
   );
 }
