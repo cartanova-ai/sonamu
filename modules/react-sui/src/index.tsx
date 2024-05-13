@@ -12,6 +12,7 @@ export * from "./base-components/EditButton";
 export * from "./base-components/ImageUploaderFrame";
 export * from "./base-components/LinkInput";
 export * from "./base-components/NumberInput";
+export * from "./base-components/FormNumberInput";
 export * from "./base-components/Panel";
 export * from "./base-components/SQLDateInput";
 export * from "./base-components/SQLDateRangePicker";
