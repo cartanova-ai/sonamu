@@ -2,22 +2,25 @@ import { useCommonModal } from "../../components/core/CommonModal";
 import {
   Button,
   Divider,
-  Dropdown,
   Form,
   Header,
   Input,
   Label,
   Segment,
 } from "semantic-ui-react";
-import { BooleanToggle, NumberInput, useTypeForm } from "@sonamu-kit/react-sui";
+import {
+  BooleanToggle,
+  FormNumberInput,
+  useTypeForm,
+} from "@sonamu-kit/react-sui";
 import { z } from "zod";
 import { EntityProp } from "sonamu";
 import { useEffect } from "react";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
-import { TypeIdAsyncSelect } from "../../components/TypeIdAsyncSelect";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
+import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
 
 type EntityPropFormProps = { entityId: string; oldOne?: EntityProp };
 export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
@@ -25,7 +28,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   const { doneModal } = useCommonModal();
 
   // TypeForm
-  const { form, setForm, register } = useTypeForm(
+  const { form, setForm, register, addError } = useTypeForm(
     z.object({
       name: z.string(),
       type: z.string(),
@@ -111,8 +114,23 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   const handleSubmit = () => {
     const result = EntityPropZodSchema.safeParse(form);
     if (!result.success) {
-      alert("Validation Error");
       console.error(result.error);
+      result.error.errors.forEach((e) => {
+        if (e.path.length) {
+          addError(e.path[0].toString(), {
+            content: e.message,
+            pointing: "above",
+          });
+        }
+        if (e.code === "invalid_union") {
+          e.unionErrors[0].issues.forEach((i) => {
+            addError(i.path[0].toString(), {
+              content: i.message,
+              pointing: "above",
+            });
+          });
+        }
+      });
       return;
     }
 
@@ -138,9 +156,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
             <br />
             <Form>
               <Form.Group widths="equal">
-                <Form.Field>
+                <Form.Field required>
                   <label>Type</label>
-                  <Dropdown
+                  <Form.Dropdown
                     {...register("type")}
                     search
                     selection
@@ -148,9 +166,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                     className="focus-2"
                   />
                 </Form.Field>
-                <Form.Field>
+                <Form.Field required>
                   <label>Name</label>
-                  <Input {...register("name")} className="focus-0" />
+                  <Form.Input {...register("name")} className="focus-0" />
                 </Form.Field>
                 <Form.Field>
                   <label>Description</label>
@@ -203,15 +221,15 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               <Divider />
               {(form.type === "string" || form.type === "enum") && (
                 <Form.Group widths="equal">
-                  <Form.Field>
+                  <Form.Field required>
                     <label>Length</label>
-                    <NumberInput {...register("length")} />
+                    <FormNumberInput {...register("length")} />
                   </Form.Field>
                   {form.type === "enum" ? (
-                    <Form.Field>
+                    <Form.Field required>
                       <label>Enum ID</label>
                       <div className="flex">
-                        <TypeIdAsyncSelect
+                        <FormTypeIdAsyncSelect
                           {...register("id")}
                           search
                           filter="enums"
@@ -226,9 +244,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               )}
               {form.type === "text" && (
                 <Form.Group widths="equal">
-                  <Form.Field>
+                  <Form.Field required>
                     <label>Text Type</label>
-                    <Dropdown
+                    <Form.Dropdown
                       {...register("textType")}
                       search
                       selection
@@ -255,13 +273,13 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                     form.type === "double" ||
                     form.type === "decimal") && (
                     <>
-                      <Form.Field>
+                      <Form.Field required>
                         <label>Precision</label>
-                        <NumberInput {...register("precision")} />
+                        <FormNumberInput {...register("precision")} />
                       </Form.Field>
-                      <Form.Field>
+                      <Form.Field required>
                         <label>Scale</label>
-                        <NumberInput {...register("scale")} />
+                        <FormNumberInput {...register("scale")} />
                       </Form.Field>
                     </>
                   )}
@@ -269,10 +287,10 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               )}
               {(form.type === "json" || form.type === "virtual") && (
                 <Form.Group widths="equal">
-                  <Form.Field>
+                  <Form.Field required>
                     <label>CustomType ID</label>
                     <div className="flex">
-                      <TypeIdAsyncSelect {...register("id")} search />
+                      <FormTypeIdAsyncSelect {...register("id")} search />
                       <Button
                         icon="code"
                         size="mini"
@@ -285,9 +303,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               {form.type === "relation" && (
                 <>
                   <Form.Group widths="equal">
-                    <Form.Field>
+                    <Form.Field required>
                       <label>Relation Type</label>
-                      <Dropdown
+                      <Form.Dropdown
                         {...register("relationType")}
                         search
                         selection
@@ -303,9 +321,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                         }))}
                       />
                     </Form.Field>
-                    <Form.Field>
+                    <Form.Field required>
                       <label>With</label>
-                      <Input {...register("with")} className="focus-4" />
+                      <Form.Input {...register("with")} className="focus-4" />
                     </Form.Field>
                   </Form.Group>
                   <Form.Group widths="equal">
@@ -319,9 +337,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                       form.relationType === "BelongsToOne" ||
                       form.relationType === "ManyToMany") && (
                       <>
-                        <Form.Field>
+                        <Form.Field required>
                           <label>ON UPDATE</label>
-                          <Dropdown
+                          <Form.Dropdown
                             {...register("onUpdate")}
                             search
                             selection
@@ -334,9 +352,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                             )}
                           />
                         </Form.Field>
-                        <Form.Field>
+                        <Form.Field required>
                           <label>ON DELETE</label>
-                          <Dropdown
+                          <Form.Dropdown
                             {...register("onDelete")}
                             search
                             selection
@@ -353,9 +371,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                     )}
                     {form.relationType === "HasMany" && (
                       <>
-                        <Form.Field>
+                        <Form.Field required>
                           <label>JoinColumn</label>
-                          <Input {...register("joinColumn")} />
+                          <Form.Input {...register("joinColumn")} />
                         </Form.Field>
                         <Form.Field>
                           <label>FromColumn</label>
@@ -364,9 +382,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                       </>
                     )}
                     {form.relationType === "ManyToMany" && (
-                      <Form.Field>
+                      <Form.Field required>
                         <label>JoinTable</label>
-                        <Input {...register("joinTable")} />
+                        <Form.Input {...register("joinTable")} />
                       </Form.Field>
                     )}
                   </Form.Group>

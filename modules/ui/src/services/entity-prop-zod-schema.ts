@@ -165,11 +165,21 @@ export namespace EntityPropZodSchema {
             case "OneToOne":
               return EntityPropZodSchema.OneToOneRelationProp;
             case "BelongsToOne":
-              return EntityPropZodSchema.BelongsToOneRelationProp.partial();
+              return EntityPropZodSchema.BelongsToOneRelationProp;
             case "HasMany":
-              return EntityPropZodSchema.HasManyRelationProp.partial();
+              return EntityPropZodSchema.HasManyRelationProp;
             case "ManyToMany":
-              return EntityPropZodSchema.ManyToManyRelationProp.partial();
+              return EntityPropZodSchema.ManyToManyRelationProp;
+            case undefined:
+              return z.object({
+                name: z.string().nonempty(),
+                relationType: z.enum([
+                  "OneToOne",
+                  "BelongsToOne",
+                  "HasMany",
+                  "ManyToMany",
+                ]),
+              });
           }
           break;
       }
