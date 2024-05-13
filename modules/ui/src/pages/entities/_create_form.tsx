@@ -1,18 +1,19 @@
-import { Segment, Header, Form, Input, Button } from "semantic-ui-react";
+import { Segment, Header, Form, Button } from "semantic-ui-react";
 import { z } from "zod";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { pluralize, underscore } from "inflection";
-import { InputWithSuggestion } from "../../components/InputWithSuggestion";
+import { FormInputWithSuggestion } from "../../components/FormInputWithSuggestion";
+import { camelize } from "inflection";
 
 type EntityCreateFormProps = {};
 export function EntityCreateForm({}: EntityCreateFormProps) {
   // useCommonModal
   const { doneModal } = useCommonModal();
 
-  const { form, setForm, register } = useTypeForm(
+  const { form, setForm, register, addError } = useTypeForm(
     z.object({
       id: z.string(),
       parentId: z.string().optional(),
@@ -31,9 +32,11 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
       .then(() => {
         doneModal(form.id);
       })
-      .catch(e => {
+      .catch((e) => {
         if (isSonamuError(e) && e.code === 641) {
-          alert("이미 존재하는 테이블명입니다.");
+          addError("table", "이미 존재하는 테이블명입니다.");
+        } else if (e.code === 400) {
+          addError("id", e.message);
         } else {
           defaultCatch(e);
         }
@@ -51,19 +54,19 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
             <br />
             <Form>
               <Form.Group widths="equal">
-                <Form.Field>
+                <Form.Field required>
                   <label>ID</label>
-                  <Input {...register("id")} className="focus-0" />
+                  <Form.Input {...register("id")} className="focus-0" />
                 </Form.Field>
                 <Form.Field>
                   <label>ParentID</label>
-                  <Input {...register("parentId")} />
+                  <Form.Input {...register("parentId")} />
                 </Form.Field>
               </Form.Group>
               <Form.Group widths="equal">
-                <Form.Field>
+                <Form.Field required>
                   <label>Table</label>
-                  <Input
+                  <Form.Input
                     {...register("table")}
                     onFocus={() => {
                       if (form.table === "" && form.id !== "") {
@@ -75,9 +78,9 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                     }}
                   />
                 </Form.Field>
-                <Form.Field>
+                <Form.Field required>
                   <label>Title</label>
-                  <InputWithSuggestion
+                  <FormInputWithSuggestion
                     {...register("title")}
                     origin={underscore(form.id)}
                   />
@@ -86,7 +89,24 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
               <div className="text-center">
                 <Button
                   color="blue"
-                  onClick={() => handleSubmit()}
+                  onClick={() => {
+                    const ifError = ["id", "table", "title"]
+                      .map((key) => {
+                        if (!form[key as keyof typeof form]) {
+                          addError(key, {
+                            content: `${camelize(key)} is required.`,
+                            pointing: "above",
+                          });
+                          return true;
+                        }
+                      })
+                      .some((e) => e === true);
+                    if (ifError) {
+                      return;
+                    }
+
+                    handleSubmit();
+                  }}
                   icon="plus"
                   content="Create"
                 />
