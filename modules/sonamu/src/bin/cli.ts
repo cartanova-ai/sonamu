@@ -29,7 +29,7 @@ import process from "process";
 let migrator: Migrator;
 
 async function bootstrap() {
-  await Sonamu.init();
+  await Sonamu.init(false, false);
 
   await tsicli(process.argv, {
     types: {
