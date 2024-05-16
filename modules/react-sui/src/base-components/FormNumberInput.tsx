@@ -29,12 +29,15 @@ export function FormNumberInput({
       onChange={(e, data) => {
         if (onChange) {
           setStr(data.value);
+          if (data.value === "-") {
+            return;
+          }
           return onChange(e, {
             ...data,
             value:
               data.value === ""
                 ? ""
-                : Number(data.value.replace(/[^0-9.]/g, "")),
+                : Number(data.value.replace(/[^0-9.-]/g, "")),
           });
         }
       }}
