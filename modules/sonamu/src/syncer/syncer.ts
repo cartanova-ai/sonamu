@@ -121,7 +121,7 @@ export class Syncer {
   models: { [modelName: string]: unknown } = {};
 
   get checksumsPath(): string {
-    return path.join(Sonamu.apiRootPath, "/.tf-checksum");
+    return path.join(Sonamu.apiRootPath, "/.so-checksum");
   }
   public constructor() {}
 
