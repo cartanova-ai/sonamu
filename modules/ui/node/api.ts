@@ -39,15 +39,17 @@ export async function createApiServer(options: {
       apiRootPath,
       "/src/application/**/*.entity.json"
     );
+    const reloadEntity = (path: string) => {
+      delete require.cache[path];
+      const json = JSON.parse(readFileSync(path).toString());
+      EntityManager.register(json);
+    };
     chokidar
       .watch(entityPath, {
         ignoreInitial: true,
       })
-      .on("all", (_, path) => {
-        delete require.cache[path];
-        const json = JSON.parse(readFileSync(path).toString());
-        EntityManager.register(json);
-      });
+      .on("add", reloadEntity)
+      .on("change", reloadEntity);
   }
 
   const server = fastify();
