@@ -705,7 +705,12 @@ export class Syncer {
     );
     // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
 
-    const filePaths = await globAsync(pathPattern);
+    const filePaths = (await globAsync(pathPattern)).filter((path) => {
+      // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
+      // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return existsSync(srcPath);
+    });
     const modules = await importMultiple(filePaths);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -731,7 +736,14 @@ export class Syncer {
 
     const filePaths = (
       await Promise.all(pathPatterns.map((pattern) => globAsync(pattern)))
-    ).flat();
+    )
+      .flat()
+      .filter((path) => {
+        // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
+        // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
+        const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+        return existsSync(srcPath);
+      });
     const modules = await importMultiple(filePaths, doRefresh);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
