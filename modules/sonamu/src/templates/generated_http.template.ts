@@ -21,7 +21,7 @@ export class Template__generated_http extends Template {
     };
   }
 
-  render({}: TemplateOptions["generated_http"]) {
+  async render({}: TemplateOptions["generated_http"]) {
     const {
       syncer: { types, apis },
       config: {
@@ -29,42 +29,44 @@ export class Template__generated_http extends Template {
       },
     } = Sonamu;
 
-    const lines = apis.map((api) => {
-      const reqObject = this.resolveApiParams(api, types);
+    const lines = await Promise.all(
+      apis.map(async (api) => {
+        const reqObject = this.resolveApiParams(api, types);
 
-      const dataLines = (() => {
-        if ((api.options.httpMethod ?? "GET") === "GET") {
-          return {
-            querystring: [
-              qs
-                .stringify(reqObject, { encode: false })
-                .split("&")
-                .join("\n\t&"),
-            ],
-            body: [],
-          };
-        } else {
-          return {
-            querystring: [],
-            body: [
-              "",
-              prettier.format(JSON.stringify(reqObject), {
-                parser: "json",
-              }),
-            ],
-          };
-        }
-      })();
+        const dataLines = await (async () => {
+          if ((api.options.httpMethod ?? "GET") === "GET") {
+            return {
+              querystring: [
+                qs
+                  .stringify(reqObject, { encode: false })
+                  .split("&")
+                  .join("\n\t&"),
+              ],
+              body: [],
+            };
+          } else {
+            return {
+              querystring: [],
+              body: [
+                "",
+                await prettier.format(JSON.stringify(reqObject), {
+                  parser: "json",
+                }),
+              ],
+            };
+          }
+        })();
 
-      return [
-        [
-          `${api.options.httpMethod ?? "GET"} {{baseUrl}}${prefix}${api.path}`,
-          ...dataLines.querystring,
-        ].join("\n\t?"),
-        `Content-Type: ${api.options.contentType ?? "application/json"}`,
-        ...dataLines.body,
-      ].join("\n");
-    });
+        return [
+          [
+            `${api.options.httpMethod ?? "GET"} {{baseUrl}}${prefix}${api.path}`,
+            ...dataLines.querystring,
+          ].join("\n\t?"),
+          `Content-Type: ${api.options.contentType ?? "application/json"}`,
+          ...dataLines.body,
+        ].join("\n");
+      })
+    );
 
     return {
       ...this.getTargetAndPath(),

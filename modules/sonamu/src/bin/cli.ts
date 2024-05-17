@@ -365,7 +365,7 @@ async function smd_migration() {
       `${names.fs}.entity.json`
     );
 
-    const formatted = prettier.format(JSON.stringify(entityJson), {
+    const formatted = await prettier.format(JSON.stringify(entityJson), {
       parser: "json",
     });
     writeFileSync(dstPath, formatted);
