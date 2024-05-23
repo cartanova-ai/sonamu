@@ -210,10 +210,15 @@ async function fixture_init() {
     // 3. knex migration 정보 복사
     await Promise.all(
       ["knex_migrations", "knex_migrations_lock"].map(async (tableName) => {
-        await db.raw(
-          `INSERT INTO \`${conn.database}\`.${tableName}
-          SELECT * FROM \`${srcConn.database}\`.${tableName}`
+        const [table] = await db.raw(
+          `SHOW TABLES FROM \`${srcConn.database}\` LIKE '${tableName}'`
         );
+        if (table?.length) {
+          await db.raw(
+            `INSERT INTO \`${conn.database}\`.${tableName}
+          SELECT * FROM \`${srcConn.database}\`.${tableName}`
+          );
+        }
       })
     );
 
