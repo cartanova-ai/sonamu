@@ -202,6 +202,7 @@ export class BaseModelClass {
     build,
     debug,
     db: _db,
+    optimizeCountQuery,
   }: {
     subset: U;
     params: T;
@@ -216,6 +217,7 @@ export class BaseModelClass {
     baseTable?: string;
     debug?: boolean | "list" | "count";
     db?: Knex;
+    optimizeCountQuery?: boolean;
   }): Promise<{
     rows: any[];
     total?: number | undefined;
@@ -236,49 +238,24 @@ export class BaseModelClass {
       virtual,
     });
 
-    // join
-    joins.map((join) => {
-      if (join.join == "inner") {
-        qb.innerJoin(
-          `${join.table} as ${join.as}`,
-          this.getJoinClause(db, join)
-        );
-      } else if (join.join == "outer") {
-        qb.leftOuterJoin(
-          `${join.table} as ${join.as}`,
-          this.getJoinClause(db, join)
-        );
-      }
-    });
-
-    // listQuery
-    const rows = await (async () => {
-      if (queryMode === "count") {
-        return [];
-      }
-
-      // limit, offset
-      if (params.num !== 0) {
-        qb.limit(params.num!);
-        qb.offset(params.num! * (params.page! - 1));
-      }
-
-      // select, rows
-      const listQuery = qb.clone().select(select);
-
-      let rows = await listQuery;
-      // debug: listQuery
-      if (debug === true || debug === "list") {
-        console.debug(
-          "DEBUG: list query",
-          chalk.blue(listQuery.toQuery().toString())
-        );
-      }
-
-      rows = await this.useLoaders(db, rows, loaders);
-      rows = this.hydrate(rows);
-      return rows;
-    })();
+    const applyJoinClause = (
+      qb: Knex.QueryBuilder,
+      joins: SubsetQuery["joins"]
+    ) => {
+      joins.map((join) => {
+        if (join.join == "inner") {
+          qb.innerJoin(
+            `${join.table} as ${join.as}`,
+            this.getJoinClause(db, join)
+          );
+        } else if (join.join == "outer") {
+          qb.leftOuterJoin(
+            `${join.table} as ${join.as}`,
+            this.getJoinClause(db, join)
+          );
+        }
+      });
+    };
 
     // countQuery
     const total = await (async () => {
@@ -287,6 +264,21 @@ export class BaseModelClass {
       }
 
       const clonedQb = qb.clone().clear("order").clear("offset").clear("limit");
+
+      // optmizeCountQuery가 true인 경우 다른 clause에 영향을 주지 않는 모든 join을 제외함
+      if (optimizeCountQuery) {
+        const queryThatNotYetAppliedJoins = clonedQb.toQuery();
+        const afterWhereClause = queryThatNotYetAppliedJoins.split("where")[1];
+        applyJoinClause(
+          clonedQb,
+          joins.filter((j) => {
+            return afterWhereClause.includes(`\`${j.as}\``);
+          })
+        );
+      } else {
+        applyJoinClause(clonedQb, joins);
+      }
+
       const [, matched] =
         clonedQb
           .toQuery()
@@ -309,6 +301,38 @@ export class BaseModelClass {
       }
 
       return countRow?.total ?? 0;
+    })();
+
+    // listQuery
+    const rows = await (async () => {
+      if (queryMode === "count") {
+        return [];
+      }
+
+      // limit, offset
+      if (params.num !== 0) {
+        qb.limit(params.num!);
+        qb.offset(params.num! * (params.page! - 1));
+      }
+
+      // select, rows
+      const listQuery = qb.clone().select(select);
+
+      // join
+      applyJoinClause(listQuery, joins);
+
+      let rows = await listQuery;
+      // debug: listQuery
+      if (debug === true || debug === "list") {
+        console.debug(
+          "DEBUG: list query",
+          chalk.blue(listQuery.toQuery().toString())
+        );
+      }
+
+      rows = await this.useLoaders(db, rows, loaders);
+      rows = this.hydrate(rows);
+      return rows;
     })();
 
     return { rows, total, subsetQuery, qb };

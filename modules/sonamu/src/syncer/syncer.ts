@@ -954,32 +954,17 @@ export class Syncer {
       )
     ).flat();
 
-    /*
-    overwrite가 true일 때
-    - 생각하지 않고 그냥 다 덮어씀
-    overwrite가 false일 때
-     - 옵션1 (현재구현): 그냥 파일 하나라도 있으면 코드 생성 안함
-     - 옵션2 : 있는 파일은 전부 그대로 두고 없는 파일만 싹 생성함
-     - 옵션3 : 메인 파일만 그대로 두고, 파생 파일은 전부 생성함 => 이게 맞지 않나?
-    */
-
     const filteredPathAndCodes: PathAndCode[] = (() => {
       if (generateOptions.overwrite === true) {
         return pathAndCodes;
       } else {
-        return pathAndCodes.filter((pathAndCode, index) => {
-          if (index === 0) {
-            const { targets } = Sonamu.config.sync;
-            const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-            const dstFilePaths = targets.map((target) =>
-              filePath.replace("/:target/", `/${target}/`)
-            );
-            return dstFilePaths.every(
-              (dstPath) => existsSync(dstPath) === false
-            );
-          } else {
-            return true;
-          }
+        return pathAndCodes.filter((pathAndCode) => {
+          const { targets } = Sonamu.config.sync;
+          const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
+          const dstFilePaths = targets.map((target) =>
+            filePath.replace("/:target/", `/${target}/`)
+          );
+          return dstFilePaths.every((dstPath) => existsSync(dstPath) === false);
         });
       }
     })();
