@@ -121,7 +121,7 @@ export class Syncer {
   models: { [modelName: string]: unknown } = {};
 
   get checksumsPath(): string {
-    return path.join(Sonamu.apiRootPath, "/.tf-checksum");
+    return path.join(Sonamu.apiRootPath, "/.so-checksum");
   }
   public constructor() {}
 
@@ -705,7 +705,12 @@ export class Syncer {
     );
     // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
 
-    const filePaths = await globAsync(pathPattern);
+    const filePaths = (await globAsync(pathPattern)).filter((path) => {
+      // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
+      // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return existsSync(srcPath);
+    });
     const modules = await importMultiple(filePaths);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -731,7 +736,14 @@ export class Syncer {
 
     const filePaths = (
       await Promise.all(pathPatterns.map((pattern) => globAsync(pattern)))
-    ).flat();
+    )
+      .flat()
+      .filter((path) => {
+        // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
+        // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
+        const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+        return existsSync(srcPath);
+      });
     const modules = await importMultiple(filePaths, doRefresh);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -822,7 +834,7 @@ export class Syncer {
       }
     }
 
-    const rendered = template.render(options, ...extra);
+    const rendered = await template.render(options, ...extra);
     const resolved = await this.resolveRenderedTemplate(key, rendered);
 
     let preTemplateResolved: PathAndCode[] = [];
@@ -896,7 +908,7 @@ export class Syncer {
       if (key === "generated_http") {
         return [header, body].join("\n\n");
       } else {
-        return await prettier.format([header, body].join("\n\n"), {
+        return prettier.format([header, body].join("\n\n"), {
           parser: key === "entity" ? "json" : "typescript",
         });
       }
@@ -1011,32 +1023,38 @@ export class Syncer {
       (name) => name !== names.constant
     );
 
-    return keys.reduce((result, key) => {
-      const tpl = this.getTemplate(key);
-      if (key.startsWith("view_enums")) {
-        enumsKeys.map((componentId) => {
-          const { target, path: p } = tpl.getTargetAndPath(names, componentId);
-          result[`${key}__${componentId}`] = existsSync(
-            path.join(Sonamu.appRootPath, target, p)
-          );
-        });
+    return keys.reduce(
+      (result, key) => {
+        const tpl = this.getTemplate(key);
+        if (key.startsWith("view_enums")) {
+          enumsKeys.map((componentId) => {
+            const { target, path: p } = tpl.getTargetAndPath(
+              names,
+              componentId
+            );
+            result[`${key}__${componentId}`] = existsSync(
+              path.join(Sonamu.appRootPath, target, p)
+            );
+          });
+          return result;
+        }
+
+        const { target, path: p } = tpl.getTargetAndPath(names);
+        const { targets } = Sonamu.config.sync;
+        if (target.includes(":target")) {
+          targets.map((t) => {
+            result[`${key}__${t}`] = existsSync(
+              path.join(Sonamu.appRootPath, target.replace(":target", t), p)
+            );
+          });
+        } else {
+          result[key] = existsSync(path.join(Sonamu.appRootPath, target, p));
+        }
+
         return result;
-      }
-
-      const { target, path: p } = tpl.getTargetAndPath(names);
-      const { targets } = Sonamu.config.sync;
-      if (target.includes(":target")) {
-        targets.map((t) => {
-          result[`${key}__${t}`] = existsSync(
-            path.join(Sonamu.appRootPath, target.replace(":target", t), p)
-          );
-        });
-      } else {
-        result[key] = existsSync(path.join(Sonamu.appRootPath, target, p));
-      }
-
-      return result;
-    }, {} as Record<`${TemplateKey}${string}`, boolean>);
+      },
+      {} as Record<`${TemplateKey}${string}`, boolean>
+    );
   }
 
   async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
@@ -1081,9 +1099,8 @@ export class Syncer {
       const obj = await propNode.children.reduce(
         async (promise, childPropNode) => {
           const result = await promise;
-          result[childPropNode.prop!.name] = await this.propNodeToZodType(
-            childPropNode
-          );
+          result[childPropNode.prop!.name] =
+            await this.propNodeToZodType(childPropNode);
           return result;
         },
         {} as any
@@ -1317,10 +1334,8 @@ export class Syncer {
     table?: string,
     title?: string
   ) {
-    if (/^[a-zA-Z_$][a-zA-Z_$0-9]*$/.test(entityId) === false) {
-      throw new BadRequestException(
-        "entityId는 자바스크립트 변수명 규칙을 따라야 합니다."
-      );
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(entityId)) {
+      throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
     }
 
     await this.generateTemplate("entity", {

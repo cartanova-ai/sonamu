@@ -631,7 +631,7 @@ export class Entity {
     const json = this.toJson();
     writeFileSync(
       jsonPath,
-      prettier.format(JSON.stringify(json), {
+      await prettier.format(JSON.stringify(json), {
         parser: "json",
       })
     );

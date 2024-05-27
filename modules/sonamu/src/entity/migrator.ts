@@ -429,7 +429,7 @@ export class Migrator {
       {
         file: string;
         directory: string;
-      }[]
+      }[],
     ];
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
@@ -752,50 +752,50 @@ export class Migrator {
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
             return [
-              this.generateCreateCode_ColumnAndIndexes(
+              await this.generateCreateCode_ColumnAndIndexes(
                 entitySet.table,
                 entitySet.columns,
                 entitySet.indexes
               ),
-              ...this.generateCreateCode_Foreign(
+              ...(await this.generateCreateCode_Foreign(
                 entitySet.table,
                 entitySet.foreigns
-              ),
+              )),
             ];
           }
 
           // 기존 테이블 존재하는 케이스
-          const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = (
-            ["columnsAndIndexes", "foreigns"] as const
-          ).map((key) => {
-            // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
-            if (key === "columnsAndIndexes") {
-              const replaceColumnDefaultTo = (col: MigrationColumn) => {
-                // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
-                if (
-                  col.type === "float" &&
-                  col.defaultTo &&
-                  col.defaultTo.includes('"') === false
-                ) {
-                  col.defaultTo = `"${Number(col.defaultTo).toFixed(
-                    col.scale ?? 2
-                  )}"`;
-                }
-                // string인 경우 기본값이 빈 스트링인 경우 대응
-                if (col.type === "string" && col.defaultTo === "") {
-                  col.defaultTo = '""';
-                }
-                return col;
-              };
-              const entityColumns = sortBy(
-                entitySet.columns,
-                (a) => a.name
-              ).map(replaceColumnDefaultTo);
-              const dbColumns = sortBy(dbSet.columns, (a) => a.name).map(
-                replaceColumnDefaultTo
-              );
+          const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] =
+            await Promise.all(
+              (["columnsAndIndexes", "foreigns"] as const).map((key) => {
+                // 배열 원소의 순서가 달라서 불일치가 발생하는걸 방지하기 위해 각 항목별로 정렬 처리 후 비교
+                if (key === "columnsAndIndexes") {
+                  const replaceColumnDefaultTo = (col: MigrationColumn) => {
+                    // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
+                    if (
+                      col.type === "float" &&
+                      col.defaultTo &&
+                      col.defaultTo.includes('"') === false
+                    ) {
+                      col.defaultTo = `"${Number(col.defaultTo).toFixed(
+                        col.scale ?? 2
+                      )}"`;
+                    }
+                    // string인 경우 기본값이 빈 스트링인 경우 대응
+                    if (col.type === "string" && col.defaultTo === "") {
+                      col.defaultTo = '""';
+                    }
+                    return col;
+                  };
+                  const entityColumns = sortBy(
+                    entitySet.columns,
+                    (a) => a.name
+                  ).map(replaceColumnDefaultTo);
+                  const dbColumns = sortBy(dbSet.columns, (a) => a.name).map(
+                    replaceColumnDefaultTo
+                  );
 
-              /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
+                  /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
               const entityColumn = entitySet.columns.find(
                 (col) => col.name === "price_krw"
               );
@@ -805,63 +805,66 @@ export class Migrator {
               console.debug({ entityColumn, dbColumn });
                */
 
-              const entityIndexes = sortBy(entitySet.indexes, (a) =>
-                [
-                  a.type,
-                  ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
-                ].join("-")
-              );
-              const dbIndexes = sortBy(dbSet.indexes, (a) =>
-                [
-                  a.type,
-                  ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
-                ].join("-")
-              );
+                  const entityIndexes = sortBy(entitySet.indexes, (a) =>
+                    [
+                      a.type,
+                      ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
+                    ].join("-")
+                  );
+                  const dbIndexes = sortBy(dbSet.indexes, (a) =>
+                    [
+                      a.type,
+                      ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
+                    ].join("-")
+                  );
 
-              const isEqualColumns = equal(entityColumns, dbColumns);
-              const isEqualIndexes = equal(entityIndexes, dbIndexes);
-              if (isEqualColumns && isEqualIndexes) {
+                  const isEqualColumns = equal(entityColumns, dbColumns);
+                  const isEqualIndexes = equal(entityIndexes, dbIndexes);
+                  if (isEqualColumns && isEqualIndexes) {
+                    return null;
+                  } else {
+                    // this.showMigrationSet("MD", entitySet);
+                    // this.showMigrationSet("DB", dbSet);
+                    return this.generateAlterCode_ColumnAndIndexes(
+                      entitySet.table,
+                      entityColumns,
+                      entityIndexes,
+                      dbColumns,
+                      dbIndexes
+                    );
+                  }
+                } else {
+                  const replaceNoActionOnMySQL = (f: MigrationForeign) => {
+                    // MySQL에서 RESTRICT와 NO ACTION은 동일함
+                    const { onDelete, onUpdate } = f;
+                    return {
+                      ...f,
+                      onUpdate:
+                        onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
+                      onDelete:
+                        onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
+                    };
+                  };
+
+                  const entityForeigns = sortBy(entitySet.foreigns, (a) =>
+                    [a.to, ...a.columns].join("-")
+                  ).map((f) => replaceNoActionOnMySQL(f));
+                  const dbForeigns = sortBy(dbSet.foreigns, (a) =>
+                    [a.to, ...a.columns].join("-")
+                  ).map((f) => replaceNoActionOnMySQL(f));
+
+                  if (equal(entityForeigns, dbForeigns) === false) {
+                    // console.dir({ entityForeigns, dbForeigns }, { depth: null });
+                    return this.generateAlterCode_Foreigns(
+                      entitySet.table,
+                      entityForeigns,
+                      dbForeigns
+                    );
+                  }
+                }
                 return null;
-              } else {
-                // this.showMigrationSet("MD", entitySet);
-                // this.showMigrationSet("DB", dbSet);
-                return this.generateAlterCode_ColumnAndIndexes(
-                  entitySet.table,
-                  entityColumns,
-                  entityIndexes,
-                  dbColumns,
-                  dbIndexes
-                );
-              }
-            } else {
-              const replaceNoActionOnMySQL = (f: MigrationForeign) => {
-                // MySQL에서 RESTRICT와 NO ACTION은 동일함
-                const { onDelete, onUpdate } = f;
-                return {
-                  ...f,
-                  onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
-                  onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
-                };
-              };
-
-              const entityForeigns = sortBy(entitySet.foreigns, (a) =>
-                [a.to, ...a.columns].join("-")
-              ).map((f) => replaceNoActionOnMySQL(f));
-              const dbForeigns = sortBy(dbSet.foreigns, (a) =>
-                [a.to, ...a.columns].join("-")
-              ).map((f) => replaceNoActionOnMySQL(f));
-
-              if (equal(entityForeigns, dbForeigns) === false) {
-                // console.dir({ entityForeigns, dbForeigns }, { depth: null });
-                return this.generateAlterCode_Foreigns(
-                  entitySet.table,
-                  entityForeigns,
-                  dbForeigns
-                );
-              }
-            }
-            return null;
-          });
+              })
+            );
           if (alterCodes.every((alterCode) => alterCode === null)) {
             return null;
           } else {
@@ -1398,11 +1401,11 @@ export class Migrator {
   /*
     테이블 생성하는 케이스 - 컬럼/인덱스 생성
   */
-  generateCreateCode_ColumnAndIndexes(
+  async generateCreateCode_ColumnAndIndexes(
     table: string,
     columns: MigrationColumn[],
     indexes: MigrationIndex[]
-  ): GenMigrationCode {
+  ): Promise<GenMigrationCode> {
     // 컬럼, 인덱스 처리
     const lines: string[] = [
       'import { Knex } from "knex";',
@@ -1425,7 +1428,7 @@ export class Migrator {
       table,
       type: "normal",
       title: `create__${table}`,
-      formatted: prettier.format(lines.join("\n"), {
+      formatted: await prettier.format(lines.join("\n"), {
         parser: "typescript",
       }),
     };
@@ -1433,10 +1436,10 @@ export class Migrator {
   /*
   테이블 생성하는 케이스 - FK 생성
 */
-  generateCreateCode_Foreign(
+  async generateCreateCode_Foreign(
     table: string,
     foreigns: MigrationForeign[]
-  ): GenMigrationCode[] {
+  ): Promise<GenMigrationCode[]> {
     if (foreigns.length === 0) {
       return [];
     }
@@ -1473,7 +1476,7 @@ export class Migrator {
         table,
         type: "foreign",
         title: `foreign__${table}__${foreignKeysString}`,
-        formatted: prettier.format(lines.join("\n"), {
+        formatted: await prettier.format(lines.join("\n"), {
           parser: "typescript",
         }),
       },
@@ -1550,13 +1553,13 @@ export class Migrator {
     }
   }
 
-  generateAlterCode_ColumnAndIndexes(
+  async generateAlterCode_ColumnAndIndexes(
     table: string,
     entityColumns: MigrationColumn[],
     entityIndexes: MigrationIndex[],
     dbColumns: MigrationColumn[],
     dbIndexes: MigrationIndex[]
-  ): GenMigrationCode[] {
+  ): Promise<GenMigrationCode[]> {
     /*
       세부 비교 후 다른점 찾아서 코드 생성
 
@@ -1615,7 +1618,7 @@ export class Migrator {
       "}",
     ];
 
-    const formatted = prettier.format(lines.join("\n"), {
+    const formatted = await prettier.format(lines.join("\n"), {
       parser: "typescript",
     });
 
@@ -1853,11 +1856,11 @@ export class Migrator {
     return linesTo;
   }
 
-  generateAlterCode_Foreigns(
+  async generateAlterCode_Foreigns(
     table: string,
     entityForeigns: MigrationForeign[],
     dbForeigns: MigrationForeign[]
-  ): GenMigrationCode[] {
+  ): Promise<GenMigrationCode[]> {
     // console.log({ entityForeigns, dbForeigns });
 
     const getKey = (mf: MigrationForeign): string => {
@@ -1913,7 +1916,7 @@ export class Migrator {
       "}",
     ];
 
-    const formatted = prettier.format(lines.join("\n"), {
+    const formatted = await prettier.format(lines.join("\n"), {
       parser: "typescript",
     });
 

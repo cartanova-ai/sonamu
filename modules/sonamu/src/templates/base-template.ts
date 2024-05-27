@@ -7,7 +7,7 @@ export abstract class Template {
   public abstract render(
     options: TemplateOptions[TemplateKey],
     ...extra: unknown[]
-  ): RenderedTemplate;
+  ): RenderedTemplate | Promise<RenderedTemplate>;
 
   public abstract getTargetAndPath(
     names?: EntityNamesRecord,

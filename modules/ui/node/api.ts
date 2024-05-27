@@ -1,6 +1,5 @@
 import fastify from "fastify";
 import { flatten, range, template, uniq } from "lodash";
-import chokidar from "chokidar";
 import path from "path";
 import {
   Sonamu,
@@ -34,30 +33,19 @@ export async function createApiServer(options: {
 }) {
   const { listen, apiRootPath, watch } = options;
 
-  if (watch) {
-    const entityPath = path.join(
-      apiRootPath,
-      "/src/application/**/*.entity.json"
-    );
-    const reloadEntity = (path: string) => {
-      delete require.cache[path];
-      const json = JSON.parse(readFileSync(path).toString());
-      EntityManager.register(json);
-    };
-    chokidar
-      .watch(entityPath, {
-        ignoreInitial: true,
-      })
-      .on("add", reloadEntity)
-      .on("change", reloadEntity);
-  }
-
   const server = fastify();
   server.register(require("fastify-qs"));
   server.register(require("@fastify/cors"), {
     origin: true,
     credentials: true,
   });
+
+  if (watch) {
+    server.get("/api/reload", async () => {
+      await EntityManager.reload();
+      return true;
+    });
+  }
 
   server.get("/api", async (_request, _reply) => {
     return { hello: "world", now: new Date() };

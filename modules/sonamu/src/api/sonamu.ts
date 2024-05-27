@@ -152,6 +152,10 @@ class SonamuClass {
 
     if (isLocal() && !isTest() && enableSync) {
       await this.syncer.sync();
+
+      fetch("http://localhost:57001/api/reload", {
+        method: "GET",
+      }).catch(() => console.log("Failed to reload Sonamu UI"));
     }
 
     this.isInitialized = true;

@@ -29,7 +29,7 @@ import process from "process";
 let migrator: Migrator;
 
 async function bootstrap() {
-  await Sonamu.init();
+  await Sonamu.init(false, false);
 
   await tsicli(process.argv, {
     types: {
@@ -210,10 +210,15 @@ async function fixture_init() {
     // 3. knex migration 정보 복사
     await Promise.all(
       ["knex_migrations", "knex_migrations_lock"].map(async (tableName) => {
-        await db.raw(
-          `INSERT INTO \`${conn.database}\`.${tableName}
-          SELECT * FROM \`${srcConn.database}\`.${tableName}`
+        const [table] = await db.raw(
+          `SHOW TABLES FROM \`${srcConn.database}\` LIKE '${tableName}'`
         );
+        if (table?.length) {
+          await db.raw(
+            `INSERT INTO \`${conn.database}\`.${tableName}
+          SELECT * FROM \`${srcConn.database}\`.${tableName}`
+          );
+        }
       })
     );
 
@@ -365,7 +370,7 @@ async function smd_migration() {
       `${names.fs}.entity.json`
     );
 
-    const formatted = prettier.format(JSON.stringify(entityJson), {
+    const formatted = await prettier.format(JSON.stringify(entityJson), {
       parser: "json",
     });
     writeFileSync(dstPath, formatted);
