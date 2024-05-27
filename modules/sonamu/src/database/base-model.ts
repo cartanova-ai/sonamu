@@ -268,7 +268,8 @@ export class BaseModelClass {
       // optmizeCountQuery가 true인 경우 다른 clause에 영향을 주지 않는 모든 join을 제외함
       if (optimizeCountQuery) {
         const queryThatNotYetAppliedJoins = clonedQb.toQuery();
-        const afterWhereClause = queryThatNotYetAppliedJoins.split("where")[1];
+        const afterWhereClause =
+          queryThatNotYetAppliedJoins.split("where")[1] ?? "";
         applyJoinClause(
           clonedQb,
           joins.filter((j) => {
