@@ -5,7 +5,3 @@ export function wrapIf(
   const [ok, wrapped] = predicate(source);
   return ok ? wrapped : source;
 }
-
-export function propIf(expression: boolean, obj: any) {
-  return expression ? obj : {};
-}

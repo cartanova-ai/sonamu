@@ -352,7 +352,7 @@ async function smd_migration() {
     const smd = SMDManager.get(smdId);
     const entityJson = {
       id: smd.id,
-      ...(smd.parentId ? { parentId: smd.parentId } : {}),
+      ...(smd.parentId && { parentId: smd.parentId }),
       title: smd.title,
       props: smd.props,
       indexes: smd.indexes,

@@ -52,7 +52,6 @@ import {
   isKnexError,
   RelationOn,
 } from "../types/types";
-import { propIf } from "../utils/lodash-able";
 import { EntityManager } from "./entity-manager";
 import { Entity } from "./entity";
 import { Sonamu } from "../api";
@@ -993,7 +992,6 @@ export class Migrator {
     if (rawType === "char" && colField === "uuid") {
       return {
         type: "uuid",
-        ...propIf(length !== undefined, {}),
       };
     }
 
@@ -1007,7 +1005,7 @@ export class Migrator {
         // case "char":
         return {
           type: "string",
-          ...propIf(length !== undefined, {
+          ...(length !== undefined && {
             length,
           }),
         };
@@ -1038,7 +1036,7 @@ export class Migrator {
             type: "decimal",
             precision: parseInt(precision),
             scale: parseInt(scale),
-            ...propIf(unsigned === "unsigned", {
+            ...(unsigned === "unsigned" && {
               unsigned: true,
             }),
           };
@@ -1049,7 +1047,7 @@ export class Migrator {
             type: "float",
             precision: parseInt(precision),
             scale: parseInt(scale),
-            ...propIf(unsigned === "unsigned", {
+            ...(unsigned === "unsigned" && {
               unsigned: true,
             }),
           };
@@ -1073,15 +1071,13 @@ export class Migrator {
       const cols = _cols.map((col) => ({
         ...col,
         // Default 값은 숫자나 MySQL Expression이 아닌 경우 ""로 감싸줌
-        ...(col.Default !== null
-          ? {
-              Default:
-                col.Default.replace(/[0-9]+/g, "").length > 0 &&
-                col.Extra !== "DEFAULT_GENERATED"
-                  ? `"${col.Default}"`
-                  : col.Default,
-            }
-          : {}),
+        ...(col.Default !== null && {
+          Default:
+            col.Default.replace(/[0-9]+/g, "").length > 0 &&
+            col.Extra !== "DEFAULT_GENERATED"
+              ? `"${col.Default}"`
+              : col.Default,
+        }),
       }));
 
       const [indexes] = await compareDB.raw(`SHOW INDEX FROM ${tableName}`);
@@ -1154,12 +1150,10 @@ export class Migrator {
           const column = {
             name: prop.name,
             type,
-            ...(isIntegerProp(prop)
-              ? { unsigned: prop.unsigned === true }
-              : {}),
-            ...(isStringProp(prop) || isEnumProp(prop)
-              ? { length: prop.length }
-              : {}),
+            ...(isIntegerProp(prop) && { unsigned: prop.unsigned === true }),
+            ...((isStringProp(prop) || isEnumProp(prop)) && {
+              length: prop.length,
+            }),
             nullable: prop.nullable === true,
             ...(() => {
               if (prop.dbDefault !== undefined) {
@@ -1170,12 +1164,10 @@ export class Migrator {
               return {};
             })(),
             // Decimal, Float 타입의 경우 precision, scale 추가
-            ...(isDecimalProp(prop) || isFloatProp(prop)
-              ? {
-                  precision: prop.precision ?? 8,
-                  scale: prop.scale ?? 2,
-                }
-              : {}),
+            ...((isDecimalProp(prop) || isFloatProp(prop)) && {
+              precision: prop.precision ?? 8,
+              scale: prop.scale ?? 2,
+            }),
           };
 
           r.columns.push(column);
