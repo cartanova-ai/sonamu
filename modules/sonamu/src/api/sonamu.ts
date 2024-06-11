@@ -155,7 +155,9 @@ class SonamuClass {
 
       fetch("http://127.0.0.1:57001/api/reload", {
         method: "GET",
-      }).catch(() => console.log("Failed to reload Sonamu UI"));
+      }).catch((e) =>
+        console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`))
+      );
     }
 
     this.isInitialized = true;
