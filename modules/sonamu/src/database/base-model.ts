@@ -9,6 +9,8 @@ import { BaseListParams } from "../utils/model";
 import { pluralize, underscore } from "inflection";
 import chalk from "chalk";
 import { UpsertBuilder } from "./upsert-builder";
+import { Parser } from "node-sql-parser";
+import { getTableNamesFromWhere } from "../utils/sql-parser";
 
 export class BaseModelClass {
   public modelName: string = "Unknown";
@@ -267,14 +269,12 @@ export class BaseModelClass {
 
       // optmizeCountQuery가 true인 경우 다른 clause에 영향을 주지 않는 모든 join을 제외함
       if (optimizeCountQuery) {
-        const queryThatNotYetAppliedJoins = clonedQb.toQuery();
-        const afterWhereClause =
-          queryThatNotYetAppliedJoins.split("where")[1] ?? "";
+        const parser = new Parser();
+        const parsedQuery = parser.astify(clonedQb.toQuery());
+        const tables = getTableNamesFromWhere(parsedQuery);
         applyJoinClause(
           clonedQb,
-          joins.filter((j) => {
-            return afterWhereClause.includes(`\`${j.as}\``);
-          })
+          joins.filter((j) => tables.includes(j.table))
         );
       } else {
         applyJoinClause(clonedQb, joins);
