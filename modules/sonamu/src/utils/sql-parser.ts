@@ -1,5 +1,14 @@
 import { uniq } from "lodash";
-import { AST, Expr, ExpressionValue, Select } from "node-sql-parser";
+import { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
+
+export function getTableName(expr: ColumnRef) {
+  if ("table" in expr && expr.table !== null) {
+    return typeof expr.table === "string"
+      ? expr.table
+      : (expr.table as { type: string; value: string }).value;
+  }
+  return null;
+}
 
 // where 조건에 사용된 테이블명을 추출
 export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
@@ -9,17 +18,9 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
     }
 
     const extractTableName = (expr: Expr | ExpressionValue): string[] => {
-      if (
-        expr.type === "column_ref" &&
-        "table" in expr &&
-        expr.table !== null
-      ) {
-        // table이 object로 들어오는 경우가 있음 { value: 'table_name'}
-        return [
-          typeof expr.table === "string"
-            ? expr.table
-            : (expr.table as { type: string; value: string }).value,
-        ];
+      if (expr.type === "column_ref") {
+        const table = getTableName(expr as ColumnRef);
+        return table ? [table] : [];
       } else if (expr.type === "binary_expr" && "left" in expr) {
         return extractTableNames(expr);
       }
@@ -31,7 +32,9 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
 
   return uniq(
     (Array.isArray(ast) ? ast : [ast]).flatMap((a) =>
-      a.type === "select" ? extractTableNames(a.where) : []
+      a.type === "select" || a.type === "update" || a.type === "delete"
+        ? extractTableNames(a.where)
+        : []
     )
   );
 }
