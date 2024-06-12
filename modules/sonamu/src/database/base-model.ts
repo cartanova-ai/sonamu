@@ -272,9 +272,13 @@ export class BaseModelClass {
         const parser = new Parser();
         const parsedQuery = parser.astify(clonedQb.toQuery());
         const tables = getTableNamesFromWhere(parsedQuery);
+        // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
+        const needToJoin = uniq(
+          tables.flatMap((table) => table.split("__").map((t) => pluralize(t)))
+        );
         applyJoinClause(
           clonedQb,
-          joins.filter((j) => tables.includes(j.table))
+          joins.filter((j) => needToJoin.includes(j.table))
         );
       } else {
         applyJoinClause(clonedQb, joins);
