@@ -241,13 +241,13 @@ export async function ${api.methodName}${typeParamsDef}(
     return `  export function ${camelize(
       methodNameSwr,
       true
-    )}${typeParamsDef}(${[paramsDef, "options?: SwrOptions"]
+    )}${typeParamsDef}(${[paramsDef, "swrOptions?: SwrOptions"]
       .filter((p) => p !== "")
       .join(",")}, ): SWRResponse<${returnTypeDef}, SWRError> {
     return useSWR(handleConditional([
       \`${apiBaseUrl}\`,
       ${payloadDef},
-    ], options?.conditional)${
+    ], swrOptions?.conditional)${
       api.options.httpMethod === "POST" ? ", swrPostFetcher" : ""
     });
   }`;
