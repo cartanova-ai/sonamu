@@ -9,6 +9,8 @@ import { BaseListParams } from "../utils/model";
 import { pluralize, underscore } from "inflection";
 import chalk from "chalk";
 import { UpsertBuilder } from "./upsert-builder";
+import { Parser } from "node-sql-parser";
+import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
 
 export class BaseModelClass {
   public modelName: string = "Unknown";
@@ -264,33 +266,41 @@ export class BaseModelClass {
       }
 
       const clonedQb = qb.clone().clear("order").clear("offset").clear("limit");
+      const parser = new Parser();
 
       // optmizeCountQuery가 true인 경우 다른 clause에 영향을 주지 않는 모든 join을 제외함
       if (optimizeCountQuery) {
-        const queryThatNotYetAppliedJoins = clonedQb.toQuery();
-        const afterWhereClause =
-          queryThatNotYetAppliedJoins.split("where")[1] ?? "";
+        const parsedQuery = parser.astify(clonedQb.toQuery());
+        const tables = getTableNamesFromWhere(parsedQuery);
+        // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
+        const needToJoin = uniq(
+          tables.flatMap((table) => table.split("__").map((t) => pluralize(t)))
+        );
         applyJoinClause(
           clonedQb,
-          joins.filter((j) => {
-            return afterWhereClause.includes(`\`${j.as}\``);
-          })
+          joins.filter((j) => needToJoin.includes(j.table))
         );
       } else {
         applyJoinClause(clonedQb, joins);
       }
 
-      const [, matched] =
-        clonedQb
-          .toQuery()
-          .toLowerCase()
-          .match(/select (distinct .+) from/) ?? [];
-      const countQuery = matched
-        ? clonedQb
-            .clear("select")
-            .select(db.raw(`COUNT(${matched.split(",")[0]}) as total`))
-            .first()
-        : clonedQb.clear("select").count("*", { as: "total" }).first();
+      const parsedQuery = parser.astify(clonedQb.toQuery());
+      const q = Array.isArray(parsedQuery) ? parsedQuery[0] : parsedQuery;
+      if (q.type !== "select") {
+        throw new Error("Invalid query");
+      }
+
+      const countQuery =
+        q.distinct !== null
+          ? clonedQb
+              .clear("select")
+              .select(
+                db.raw(
+                  `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`
+                )
+              )
+              .first()
+          : clonedQb.clear("select").count("*", { as: "total" }).first();
       const countRow: { total?: number } = await countQuery;
 
       // debug: countQuery
