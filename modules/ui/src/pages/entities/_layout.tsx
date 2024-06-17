@@ -4,6 +4,8 @@ import classnames from "classnames";
 import { Button, Divider } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityCreateForm } from "./_create_form";
+import { useEffect, useState } from "react";
+import SearchModal from "../../components/SearchModal";
 
 type EntitiesLayoutProps = {};
 export default function EntitiesLayout(_props: EntitiesLayoutProps) {
@@ -37,8 +39,31 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
     });
   };
 
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleKeyDown = (event: any) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+      event.preventDefault();
+      setModalOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   return (
     <div className="entities-layout">
+      {entities && (
+        <SearchModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          entities={JSON.parse(JSON.stringify(entities))}
+        />
+      )}
       <div className="sidemenu">
         {isLoading && <div>Loading...</div>}
         {error && <div>Error: {error.message}</div>}

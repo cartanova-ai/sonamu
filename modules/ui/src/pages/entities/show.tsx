@@ -758,6 +758,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                 <Table.Body>
                   {entity.props.map((prop, propIndex) => (
                     <Table.Row
+                      id={`prop-${prop.name}`}
                       key={propIndex}
                       {...regRow(
                         "props",
@@ -938,7 +939,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                 <div className="enums-list">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
                     <div className="enums-table" key={enumsIndex}>
-                      <Table celled selectable>
+                      <Table celled selectable id={`enum-${enumId}`}>
                         <Table.Header>
                           <Table.Row>
                             <Table.HeaderCell
@@ -969,6 +970,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                           {enumLabelsArray[enumId].map(
                             ({ key, label }, enumLabelIndex) => (
                               <Table.Row
+                                id={`enum-${enumId}-${key}`}
                                 key={enumLabelIndex}
                                 {...regRow(
                                   `enumLabels-${enumId}`,
@@ -1107,6 +1109,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       {entity.flattenSubsetRows.map(
                         (subsetRow, subsetRowIndex) => (
                           <Table.Row
+                            id={[...subsetRow.prefixes, subsetRow.field].join(
+                              "."
+                            )}
                             key={subsetRowIndex}
                             {...regRow("subsets", subsetRowIndex)}
                           >

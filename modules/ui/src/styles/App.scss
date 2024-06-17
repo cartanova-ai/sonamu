@@ -608,3 +608,21 @@ code {
     }
   }
 }
+
+.search-modal {
+  .search-result {
+    background-color: #f3f3f3 !important;
+    margin-top: 0.3em !important;
+    padding-left: 1em !important;
+
+    .sub-item {
+      margin-left: 1em;
+    }
+
+    .click-item {
+      &:hover {
+        background-color: #d0dbb0 !important;
+      }
+    }
+  }
+}
