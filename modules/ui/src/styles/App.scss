@@ -220,6 +220,15 @@ $gnb-height: 50px;
           }
         }
       }
+
+      .move-to-top {
+        position: fixed;
+        right: 1em;
+        bottom: 1em;
+        z-index: 1000;
+        background-color: #112c15;
+        color: white;
+      }
     }
   }
 }

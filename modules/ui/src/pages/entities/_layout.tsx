@@ -56,7 +56,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   }, []);
 
   return (
-    <div className="entities-layout">
+    <div className="entities-layout" id="scroller">
       {entities && (
         <SearchModal
           open={modalOpen}
@@ -96,6 +96,16 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
         </div>
       </div>
       <Outlet />
+      <Button
+        icon="arrow up"
+        circular
+        className="move-to-top"
+        onClick={() =>
+          document
+            .getElementById("scroller")
+            ?.scrollIntoView({ behavior: "smooth" })
+        }
+      />
     </div>
   );
 }
