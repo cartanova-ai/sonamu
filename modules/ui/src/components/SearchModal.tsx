@@ -112,6 +112,18 @@ export default function SearchModal({
             ])
         );
         return doc;
+      })
+      .sort((a, b) => {
+        // Entity 정보에 query가 포함되어 있는 경우 우선순위를 높게 함
+        // EntityId가 query와 일치하는 경우 우선순위를 가장 높게 함
+        if (a.id.toLowerCase() === q) return -1;
+        if (b.id.toLowerCase() === q) return 1;
+
+        const aMatch = isMatchEntity(a);
+        const bMatch = isMatchEntity(b);
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
       });
   };
 
