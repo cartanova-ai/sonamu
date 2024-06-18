@@ -21,8 +21,12 @@ import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
+import { EntityIdSelect } from "../../components/EntityIdSelect";
 
-type EntityPropFormProps = { entityId: string; oldOne?: EntityProp };
+type EntityPropFormProps = {
+  entityId: string;
+  oldOne?: EntityProp;
+};
 export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   // CommonModal
   const { doneModal } = useCommonModal();
@@ -323,7 +327,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                     </Form.Field>
                     <Form.Field required>
                       <label>With</label>
-                      <Form.Input {...register("with")} className="focus-4" />
+                      <EntityIdSelect {...register("with")} search clearable />
                     </Form.Field>
                   </Form.Group>
                   <Form.Group widths="equal">
