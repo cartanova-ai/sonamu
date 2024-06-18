@@ -20,7 +20,7 @@ export default function SearchModal({
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    setResults(searchDocuments(documents, value));
+    setResults(searchDocuments(JSON.parse(JSON.stringify(documents)), value));
   };
 
   const handleResultClick = (url: string, id?: string) => {
@@ -116,7 +116,15 @@ export default function SearchModal({
   };
 
   return (
-    <Modal className="search-modal" open={open} onClose={onClose}>
+    <Modal
+      className="search-modal"
+      open={open}
+      onClose={() => {
+        setQuery("");
+        setResults([]);
+        onClose();
+      }}
+    >
       <Modal.Header>Search</Modal.Header>
       <Modal.Content>
         <Input
