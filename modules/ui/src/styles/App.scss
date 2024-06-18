@@ -26,6 +26,12 @@ $gnb-height: 50px;
     align-items: center;
     z-index: 100;
 
+    justify-content: space-between;
+
+    .menu {
+      display: flex;
+    }
+
     .title {
       padding: 1em;
       font-weight: bold;
@@ -50,6 +56,32 @@ $gnb-height: 50px;
           background-color: #205428;
           font-weight: bold;
         }
+      }
+    }
+
+    .search {
+      margin-right: 1em;
+      padding: 0.5em;
+      border-radius: 2em;
+      box-sizing: border-box;
+      border: 2px solid transparent;
+      cursor: pointer;
+      color: #cacaca;
+
+      &:hover {
+        border: 2px solid #85aa8a;
+        background-color: #1e4d2b;
+        color: #e9e9e9;
+      }
+
+      & > * {
+        margin-right: 0.5em;
+      }
+
+      .keycap {
+        margin-right: 0.3em;
+        position: relative;
+        top: -1.3px;
       }
     }
   }
@@ -634,4 +666,16 @@ code {
       }
     }
   }
+}
+
+.keycap {
+  font-size: 0.8em;
+  padding: 0.2em 0.4em;
+  border-radius: 0.3em;
+  margin: 0.2em;
+  border: 1.4px solid #909090;
+  background-color: #d1d1d1;
+  color: #333;
+  box-shadow: 0 2px 2px 0.5px #05050563;
+  border-bottom: 2.5px solid #808080;
 }

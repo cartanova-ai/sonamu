@@ -1,26 +1,24 @@
 import React, { useState, ChangeEvent } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
-import { ExtendedEntity } from "../services/sonamu-ui.service";
+import { ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
 
 type SearchModalProps = {
   open: boolean;
   onClose: () => void;
-  entities: ExtendedEntity[];
 };
-export default function SearchModal({
-  open,
-  onClose,
-  entities: documents,
-}: SearchModalProps) {
+export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ExtendedEntity[]>([]);
   const navigate = useNavigate();
 
+  const { data, error, mutate } = SonamuUIService.useEntities();
+  const { entities: documents } = data ?? {};
+
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setQuery(value);
-    setResults(searchDocuments(JSON.parse(JSON.stringify(documents)), value));
+    setQuery(value.toLowerCase());
+    setResults(searchDocuments(JSON.parse(JSON.stringify(documents))));
   };
 
   const handleResultClick = (url: string, id?: string) => {
@@ -54,24 +52,20 @@ export default function SearchModal({
     return text.replace(regex, '<span style="color: green;">$1</span>');
   };
 
-  const searchDocuments = (
-    documents: ExtendedEntity[],
-    query: string
-  ): ExtendedEntity[] => {
+  const searchDocuments = (documents: ExtendedEntity[]): ExtendedEntity[] => {
     if (!query) return [];
 
-    const q = query.toLowerCase();
-
     const isMatch = (subset: string[]) =>
-      subset.some((item) => item.toLowerCase().includes(q));
+      subset.some((item) => item.toLowerCase().includes(query));
     const isMatchEntity = ({ id, title }: ExtendedEntity) =>
-      id.toLowerCase().includes(q) || title.toLowerCase().includes(q);
+      id.toLowerCase().includes(query) || title.toLowerCase().includes(query);
     const isMatchProp = ({ name, desc }: ExtendedEntity["props"][0]) =>
-      name.toLowerCase().includes(q) || desc?.toLowerCase().includes(q);
+      name.toLowerCase().includes(query) || desc?.toLowerCase().includes(query);
     const isMatchEnum = (enumLabel: ExtendedEntity["enumLabels"][0]) =>
       Object.entries(enumLabel).some(
         ([key, value]) =>
-          key.toLowerCase().includes(q) || value.toLowerCase().includes(q)
+          key.toLowerCase().includes(query) ||
+          value.toLowerCase().includes(query)
       );
 
     return documents
@@ -82,7 +76,7 @@ export default function SearchModal({
           Object.values(doc.subsets).some((subset) => isMatch(subset)) ||
           Object.entries(doc.enumLabels).some(
             ([enumId, enumLabels]) =>
-              enumId.toLowerCase().includes(q) || isMatchEnum(enumLabels)
+              enumId.toLowerCase().includes(query) || isMatchEnum(enumLabels)
           )
       )
       .map((doc) => {
@@ -97,7 +91,7 @@ export default function SearchModal({
           Object.entries(doc.enumLabels)
             .filter(
               ([enumId, enumLabels]) =>
-                enumId.toLowerCase().includes(q) ||
+                enumId.toLowerCase().includes(query) ||
                 Object.entries(enumLabels).some(([key, value]) =>
                   isMatch([key, value])
                 )
@@ -116,8 +110,8 @@ export default function SearchModal({
       .sort((a, b) => {
         // Entity 정보에 query가 포함되어 있는 경우 우선순위를 높게 함
         // EntityId가 query와 일치하는 경우 우선순위를 가장 높게 함
-        if (a.id.toLowerCase() === q) return -1;
-        if (b.id.toLowerCase() === q) return 1;
+        if (a.id.toLowerCase() === query) return -1;
+        if (b.id.toLowerCase() === query) return 1;
 
         const aMatch = isMatchEntity(a);
         const bMatch = isMatchEntity(b);
@@ -137,11 +131,10 @@ export default function SearchModal({
         onClose();
       }}
     >
-      <Modal.Header>Search</Modal.Header>
       <Modal.Content>
         <Input
           icon="search"
-          placeholder="Search..."
+          placeholder="Search docs"
           value={query}
           onChange={handleChange}
           fluid
@@ -150,12 +143,11 @@ export default function SearchModal({
         {results.length > 0 && (
           <List selection>
             {results.map((result) => (
-              <List.Item
-                key={result.id}
-                onClick={() => handleResultClick(`/entities/${result.id}`)}
-                className="search-result"
-              >
-                <div className="click-item">
+              <List.Item key={result.id} className="search-result">
+                <div
+                  className="click-item"
+                  onClick={() => handleResultClick(`/entities/${result.id}`)}
+                >
                   <List.Header
                     dangerouslySetInnerHTML={{
                       __html: highlightText(result.id, query),
@@ -167,6 +159,23 @@ export default function SearchModal({
                     }}
                   />
                 </div>
+
+                {(result.id.toLowerCase().includes(query) ||
+                  result.title.toLowerCase().includes(query)) && (
+                  <List.Description
+                    className="click-item sub-item"
+                    onClick={() => handleResultClick("/scaffolding", result.id)}
+                  >
+                    <strong
+                      dangerouslySetInnerHTML={{
+                        __html: highlightText(
+                          `Scaffolding > ${result.id}(${result.title})`,
+                          query
+                        ),
+                      }}
+                    />
+                  </List.Description>
+                )}
 
                 <div>
                   {/* Props */}
@@ -236,7 +245,11 @@ export default function SearchModal({
                             )
                           }
                         >
-                          <strong>{`Enum${enumId} >`}</strong>
+                          <strong
+                            dangerouslySetInnerHTML={{
+                              __html: highlightText(`Enum${enumId} >`, query),
+                            }}
+                          />
                         </List.Description>
                         {Object.entries(enumLabels).map(([key, value]) => (
                           <List.Description

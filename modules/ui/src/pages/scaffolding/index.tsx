@@ -180,7 +180,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         </div>
 
         {entities.map((entity) => (
-          <div className="entity" key={entity.id}>
+          <div className="entity" key={entity.id} id={entity.id}>
             <Checkbox
               label={entity.id}
               checked={selected.entityIds.includes(entity.id)}
