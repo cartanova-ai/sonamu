@@ -140,6 +140,7 @@ export class Template__generated extends Template {
       label: `Enums: ${entity.id}`,
       lines: [
         ...Object.entries(entity.enumLabels)
+          .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
           .map(([enumId, enumLabel]) => [
             `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
               (el) => `"${el}"`
