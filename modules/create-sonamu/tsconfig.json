@@ -1,0 +1,10 @@
+{
+  "include": ["index.ts"],
+  "compilerOptions": {
+    "strict": false,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "module": "ESNext",
+    "esModuleInterop": true
+  }
+}
