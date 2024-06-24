@@ -1,7 +1,6 @@
 {
-  "name": "@nakkim/create-test",
-  "version": "0.2.12",
-  "description": "Practice npm initializer",
+  "name": "create-sonamu",
+  "version": "0.0.1",
   "type": "module",
   "bin": "index.js",
   "files": [
@@ -17,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rurruur/create-test"
+    "url": "https://github.com/ping-alive/sonamu"
   },
   "publishConfig": {
     "access": "public"
