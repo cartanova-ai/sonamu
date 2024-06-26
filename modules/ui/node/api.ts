@@ -1,6 +1,5 @@
 import fastify from "fastify";
-import { flatten, range, template, uniq } from "lodash";
-import path from "path";
+import _ from "lodash";
 import {
   Sonamu,
   EntityManager,
@@ -11,17 +10,13 @@ import {
   nonNullable,
   BadRequestException,
   TemplateKey,
-  TemplateOptions,
   isSoException,
   ServiceUnavailableException,
   PathAndCode,
 } from "sonamu";
 import { Entity } from "sonamu/dist/entity/entity";
-import knex from "knex";
-import { z } from "zod";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
-import { readFileSync } from "fs";
 
 export async function createApiServer(options: {
   listen: {
@@ -34,8 +29,8 @@ export async function createApiServer(options: {
   const { listen, apiRootPath, watch } = options;
 
   const server = fastify();
-  server.register(require("fastify-qs"));
-  server.register(require("@fastify/cors"), {
+  server.register(import("fastify-qs"));
+  server.register(import("@fastify/cors"), {
     origin: true,
     credentials: true,
   });
@@ -179,9 +174,9 @@ export async function createApiServer(options: {
     const suggested = (() => {
       // 단어 분리, 가능한 조합 생성
       const words = origin.split("_");
-      const combinations = range(words.length, 0, -1)
+      const combinations = _.range(words.length, 0, -1)
         .map((len) => {
-          return range(0, words.length - len + 1).map((start) => {
+          return _.range(0, words.length - len + 1).map((start) => {
             return {
               len,
               w: words.slice(start, start + len).join("_"),

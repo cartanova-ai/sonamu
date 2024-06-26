@@ -27,7 +27,7 @@ async function createDevServer() {
 async function createWebServer() {
   const server = fastify({});
 
-  server.register(require("@fastify/static"), {
+  server.register(import("@fastify/static"), {
     root: path.join(webRoot, "assets"),
     prefix: "/assets",
   });
