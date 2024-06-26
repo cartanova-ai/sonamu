@@ -1,5 +1,5 @@
-import { camelize } from "inflection";
-import { groupBy, sortBy, difference, uniq } from "lodash";
+import inflection from "inflection";
+import _ from "lodash";
 import { TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { ApiParamType, ApiParam } from "../types/types";
@@ -54,7 +54,7 @@ export class Template__service extends Template {
     // 제네릭에서 선언한 타입, importKeys에서 제외 필요
     let typeParamNames: string[] = [];
 
-    const groups = groupBy(apis, (api) => api.modelName);
+    const groups = _.groupBy(apis, (api) => api.modelName);
     const body = Object.keys(groups)
       .map((modelName) => {
         const methods = groups[modelName];
@@ -94,7 +94,7 @@ export class Template__service extends Template {
               .map((param) => param.name)
               .join(", ")} }`;
 
-            return sortBy(api.options.clients, (client) =>
+            return _.sortBy(api.options.clients, (client) =>
               client === "swr" ? 0 : 1
             )
               .map((client) => {
@@ -137,7 +137,7 @@ export class Template__service extends Template {
                     );
                   case "socketio":
                   default:
-                    return `// Not supported ${camelize(client, true)} yet.`;
+                    return `// Not supported ${inflection.camelize(client, true)} yet.`;
                 }
               })
               .join("\n");
@@ -152,7 +152,7 @@ ${methodCodes}
 
     return {
       lines: [body],
-      importKeys: difference(uniq(importKeys), typeParamNames),
+      importKeys: _.difference(_.uniq(importKeys), typeParamNames),
     };
   }
 
@@ -165,7 +165,7 @@ ${methodCodes}
     payloadDef: string
   ) {
     const methodNameAxios = api.options.resourceName
-      ? "get" + camelize(api.options.resourceName)
+      ? "get" + inflection.camelize(api.options.resourceName)
       : api.methodName;
 
     if (api.options.httpMethod === "GET") {
@@ -236,9 +236,9 @@ export async function ${api.methodName}${typeParamsDef}(
     payloadDef: string
   ) {
     const methodNameSwr = api.options.resourceName
-      ? "use" + camelize(api.options.resourceName)
-      : "use" + camelize(api.methodName);
-    return `  export function ${camelize(
+      ? "use" + inflection.camelize(api.options.resourceName)
+      : "use" + inflection.camelize(api.methodName);
+    return `  export function ${inflection.camelize(
       methodNameSwr,
       true
     )}${typeParamsDef}(${[paramsDef, "swrOptions?: SwrOptions"]

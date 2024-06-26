@@ -1,4 +1,4 @@
-import { uniq } from "lodash";
+import _ from "lodash";
 import { TemplateOptions } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
@@ -72,7 +72,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: uniq([...result!.importKeys, ...ts.importKeys]),
+          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys]),
         };
       },
       {
@@ -280,7 +280,7 @@ z.object({
     return {
       label: `Subsets: ${entity.id}`,
       lines,
-      importKeys: uniq(importKeys),
+      importKeys: _.uniq(importKeys),
     };
   }
 }

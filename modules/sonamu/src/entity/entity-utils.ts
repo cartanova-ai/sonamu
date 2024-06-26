@@ -1,4 +1,4 @@
-import { camelize } from "inflection";
+import inflection from "inflection";
 import {
   BelongsToOneRelationProp,
   BigIntegerProp,
@@ -208,7 +208,7 @@ function enums(
   return {
     name,
     type: "enum",
-    id: option.id ?? `$Model${camelize(name)}`,
+    id: option.id ?? `$Model${inflection.camelize(name)}`,
     ...option,
   };
 }

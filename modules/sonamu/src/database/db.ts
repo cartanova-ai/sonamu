@@ -21,7 +21,7 @@ class DBClass {
   async readKnexfile(): Promise<SonamuDBConfig> {
     const dbConfigPath: string = path.join(
       Sonamu.apiRootPath,
-      "/dist/configs/db"
+      "/dist/configs/db.js"
     );
     try {
       const knexfileModule = await import(dbConfigPath);

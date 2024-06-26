@@ -1,12 +1,12 @@
 import chalk from "chalk";
-import { glob } from "glob";
-import { dasherize, underscore, pluralize, camelize } from "inflection";
+import glob from "glob";
+import inflection from "inflection";
 import _ from "lodash";
 import path from "path";
 import { Entity } from "./entity";
 import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
-import { readFileSync } from "fs";
+import fs from "fs-extra";
 
 export type EntityNamesRecord = Record<
   | "fs"
@@ -41,10 +41,10 @@ class EntityManagerClass {
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
     return new Promise((resolve) => {
-      glob(path.resolve(pathPattern!), (_err, files) => {
+      glob.glob(path.resolve(pathPattern!), (_err, files) => {
         Promise.all(
           files.map(async (file) => {
-            this.register(JSON.parse(readFileSync(file).toString()));
+            this.register(JSON.parse(fs.readFileSync(file).toString()));
           })
         ).then(() => {
           resolve("ok");
@@ -139,19 +139,21 @@ class EntityManagerClass {
   getNamesFromId(entityId: string): EntityNamesRecord {
     // entityId가 단복수 동형 단어인 경우 List 붙여서 생성
     const pluralized =
-      pluralize(entityId) === entityId
+      inflection.pluralize(entityId) === entityId
         ? `${entityId}List`
-        : pluralize(entityId);
+        : inflection.pluralize(entityId);
 
     return {
-      fs: dasherize(underscore(entityId)).toLowerCase(),
-      fsPlural: dasherize(underscore(pluralized)).toLowerCase(),
-      camel: camelize(entityId, true),
-      camelPlural: camelize(pluralized, true),
+      fs: inflection.dasherize(inflection.underscore(entityId)).toLowerCase(),
+      fsPlural: inflection
+        .dasherize(inflection.underscore(pluralized))
+        .toLowerCase(),
+      camel: inflection.camelize(entityId, true),
+      camelPlural: inflection.camelize(pluralized, true),
       capital: entityId,
       capitalPlural: pluralized,
       upper: entityId.toUpperCase(),
-      constant: underscore(entityId).toUpperCase(),
+      constant: inflection.underscore(entityId).toUpperCase(),
     };
   }
 }

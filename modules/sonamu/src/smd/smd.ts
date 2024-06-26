@@ -1,5 +1,4 @@
-import _, { uniq } from "lodash";
-import { dasherize, pluralize, underscore } from "inflection";
+import _ from "lodash";
 import {
   EntityProp,
   RelationProp,
@@ -19,7 +18,7 @@ import {
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
-import { existsSync } from "fs";
+import fs from "fs-extra";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { SMDManager } from "./smd-manager";
@@ -67,7 +66,7 @@ export class SMD {
     this.id = id;
     this.parentId = parentId;
     this.title = title ?? this.id;
-    this.table = table ?? underscore(pluralize(id));
+    this.table = table ?? inflection.underscore(inflection.pluralize(id));
 
     // props
     if (props) {
@@ -111,8 +110,8 @@ export class SMD {
     this.names = {
       fs:
         parentId === undefined
-          ? dasherize(underscore(id)).toLowerCase()
-          : dasherize(parentId).toLowerCase(),
+          ? inflection.dasherize(inflection.underscore(id)).toLowerCase()
+          : inflection.dasherize(parentId).toLowerCase(),
       module: id,
     };
 
@@ -254,7 +253,7 @@ export class SMD {
                 to = `${joinAs}.id`;
               } else {
                 from = `${fromTable}.id`;
-                to = `${joinAs}.${underscore(
+                to = `${joinAs}.${inflection.underscore(
                   this.names.fs.replace(/\-/g, "_")
                 )}_id`;
               }
@@ -518,7 +517,7 @@ export class SMD {
       `dist/application/${typesModulePath}.js`
     );
 
-    if (existsSync(typesFileDistPath)) {
+    if (fs.existsSync(typesFileDistPath)) {
       const importPath = path.relative(__dirname, typesFileDistPath);
       import(importPath).then((t) => {
         this.types = Object.keys(t).reduce((result, key) => {
@@ -537,14 +536,14 @@ export class SMD {
       Sonamu.apiRootPath,
       `/dist/application/${enumsModulePath}.js`
     );
-    if (existsSync(enumsFileDistPath)) {
+    if (fs.existsSync(enumsFileDistPath)) {
       const importPath = path.relative(__dirname, enumsFileDistPath);
       import(importPath).then((t) => {
         this.enums = Object.keys(t).reduce((result, key) => {
           SMDManager.setModulePath(key, enumsModulePath);
 
           // Enum Labels 별도 처리
-          if (key === underscore(this.id).toUpperCase()) {
+          if (key === inflection.underscore(this.id).toUpperCase()) {
             this.enumLabels = t[key];
           }
           return {
@@ -557,7 +556,7 @@ export class SMD {
   }
 
   registerTableSpecs(): void {
-    const uniqueColumns = uniq(
+    const uniqueColumns = _.uniq(
       this.indexes
         .filter((idx) => idx.type === "unique")
         .map((idx) => idx.columns)

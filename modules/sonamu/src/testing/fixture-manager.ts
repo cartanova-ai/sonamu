@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import knex, { Knex } from "knex";
-import { uniq } from "lodash";
+import _ from "lodash";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import { EntityManager } from "../entity/entity-manager";
@@ -161,7 +161,7 @@ export class FixtureManagerClass {
   }
 
   async importFixture(entityId: string, ids: number[]) {
-    const queries = uniq(
+    const queries = _.uniq(
       (
         await Promise.all(
           ids.map(async (id) => {
@@ -243,7 +243,7 @@ export class FixtureManagerClass {
       })
     );
 
-    return [...uniq(relQueries.reverse().flat()), selfQuery];
+    return [..._.uniq(relQueries.reverse().flat()), selfQuery];
   }
 
   async destory() {

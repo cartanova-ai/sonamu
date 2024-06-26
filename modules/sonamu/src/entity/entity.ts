@@ -1,6 +1,5 @@
-import { groupBy, uniq } from "lodash";
+import _ from "lodash";
 import { EntityManager as EntityManager } from "./entity-manager";
-import { dasherize, pluralize, underscore } from "inflection";
 import {
   EntityProp,
   RelationProp,
@@ -20,7 +19,7 @@ import {
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
-import { existsSync, writeFileSync } from "fs";
+import fs from "fs-extra";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import prettier from "prettier";
@@ -73,7 +72,7 @@ export class Entity {
     this.id = id;
     this.parentId = parentId;
     this.title = title ?? this.id;
-    this.table = table ?? underscore(pluralize(id));
+    this.table = table ?? inflection.underscore(inflection.pluralize(id));
 
     // props
     if (props) {
@@ -128,8 +127,10 @@ export class Entity {
 
     // names
     this.names = {
-      parentFs: dasherize(underscore(parentId ?? id)).toLowerCase(),
-      fs: dasherize(underscore(id)).toLowerCase(),
+      parentFs: inflection
+        .dasherize(inflection.underscore(parentId ?? id))
+        .toLowerCase(),
+      fs: inflection.dasherize(inflection.underscore(id)).toLowerCase(),
       module: id,
     };
 
@@ -158,7 +159,7 @@ export class Entity {
     prefix = prefix.replace(/\./g, "__");
 
     // 서브셋을 1뎁스만 분리하여 그룹핑
-    const subsetGroup = groupBy(fields, (field) => {
+    const subsetGroup = _.groupBy(fields, (field) => {
       if (field.includes(".")) {
         const [rel] = field.split(".");
         return rel;
@@ -271,7 +272,7 @@ export class Entity {
                 to = `${joinAs}.id`;
               } else {
                 from = `${fromTable}.id`;
-                to = `${joinAs}.${underscore(
+                to = `${joinAs}.${inflection.underscore(
                   this.names.fs.replace(/\-/g, "_")
                 )}_id`;
               }
@@ -575,7 +576,7 @@ export class Entity {
       `dist/application/${typesModulePath}.js`
     );
 
-    if (existsSync(typesFileDistPath)) {
+    if (fs.existsSync(typesFileDistPath)) {
       const importPath = path.relative(__dirname, typesFileDistPath);
       import(importPath).then((t) => {
         this.types = Object.keys(t).reduce((result, key) => {
@@ -629,7 +630,7 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
     );
     const json = this.toJson();
-    writeFileSync(
+    fs.writeFileSync(
       jsonPath,
       await prettier.format(JSON.stringify(json), {
         parser: "json",
@@ -650,7 +651,7 @@ export class Entity {
 
     const subsets = _subsets ?? this.subsets;
     const subsetKeys = Object.keys(subsets);
-    const allFields = uniq(subsetKeys.map((key) => subsets[key]).flat());
+    const allFields = _.uniq(subsetKeys.map((key) => subsets[key]).flat());
 
     return this.props.map((prop) => {
       if (

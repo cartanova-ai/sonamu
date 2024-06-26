@@ -1,7 +1,7 @@
 import { TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { Template } from "./base-template";
-import { camelize } from "inflection";
+import inflection from "inflection";
 
 export class Template__view_enums_dropdown extends Template {
   constructor() {
@@ -59,7 +59,7 @@ export function getLabel(entityId: string, enumId: string): string {
     return "검색";
   } else {
     const enumProp = EntityManager.get(entityId).props.find(
-      (prop) => `${entityId}${camelize(prop.name)}` === enumId
+      (prop) => `${entityId}${inflection.camelize(prop.name)}` === enumId
     );
     if (enumProp && enumProp.desc) {
       return enumProp.desc;
