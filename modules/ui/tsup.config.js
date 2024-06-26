@@ -11,11 +11,4 @@ export default defineConfig({
   shims: true,
   platform: "node",
   splitting: true,
-  banner(ctx) {
-    if (ctx.format === "esm") {
-      return {
-        js: `const require = (await import('module')).createRequire(import.meta.url);`,
-      };
-    }
-  },
 });

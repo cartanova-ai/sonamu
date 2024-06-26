@@ -2,8 +2,8 @@ import { createServer } from "vite";
 import fastify from "fastify";
 import { createApiServer } from "./api";
 
-const path = require("path");
-const fs = require("fs");
+import fs from "fs";
+import path from "path";
 
 const HOST = "0.0.0.0";
 const WEB_PORT = 57000;
