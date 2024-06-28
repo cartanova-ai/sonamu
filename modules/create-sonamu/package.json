@@ -1,0 +1,45 @@
+{
+  "name": "create-sonamu",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": "index.js",
+  "files": [
+    "index.js",
+    "template"
+  ],
+  "engines": {
+    "node": ">=v18.0.0"
+  },
+  "author": {
+    "name": "nakkim",
+    "email": "nakkim.dev@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ping-alive/sonamu"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node index.js",
+    "prepublishOnly": "yarn zx ./scripts/prepublish.mjs",
+    "clean": "rm index.js"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.3",
+    "@types/node": "^20.11.30",
+    "@types/prompts": "^2",
+    "esbuild": "^0.20.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.3",
+    "zx": "^7.2.3"
+  },
+  "packageManager": "yarn@4.1.1",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1",
+    "prompts": "^2.4.2"
+  }
+}
