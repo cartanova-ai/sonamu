@@ -76,16 +76,14 @@ export class UpsertBuilder {
     // 해당 테이블의 unique 인덱스를 순회하며 키 생성
     const uniqueKeys = table.uniqueIndexes
       .map((unqIndex) => {
-        const uniqueKeyArray = unqIndex.columns
-          .map((unqCol) => {
-            const val = row[unqCol as keyof typeof row];
-            if (isRefField(val)) {
-              return val.uuid;
-            } else {
-              return row[unqCol as keyof typeof row];
-            }
-          })
-          .filter(nonNullable); // nullable인 경우 unique 체크에서 제외
+        const uniqueKeyArray = unqIndex.columns.map((unqCol) => {
+          const val = row[unqCol as keyof typeof row];
+          if (isRefField(val)) {
+            return val.uuid;
+          } else {
+            return row[unqCol as keyof typeof row] ?? uuidv4(); // nullable인 경우 uuid로 랜덤값 삽입
+          }
+        });
 
         // 값이 모두 null인 경우 키 생성 패스
         if (uniqueKeyArray.length === 0) {
