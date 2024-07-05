@@ -5,7 +5,7 @@ export function createKnexProxy(
   signal: AbortSignal,
   originalKnex: Knex | null = null
 ): Knex {
-  const DEBUG = false;
+  const DEBUG = true;
 
   function checkAbort(signal: AbortSignal) {
     if (signal.aborted) {
@@ -13,22 +13,19 @@ export function createKnexProxy(
     }
   }
 
-  async function getConnectionId(knexInstance: Knex): Promise<string> {
-    const result = await knexInstance.raw("SELECT CONNECTION_ID()");
-    return result[0][0]["CONNECTION_ID()"];
-  }
-
-  async function initializeConnectionId() {
-    const connectionId = await getConnectionId(knexInstance);
-    DEBUG && console.log(`Connection ID: ${connectionId}`);
-
+  function setupAbortHandler() {
     signal.addEventListener("abort", async () => {
       DEBUG && console.log("중단 이벤트 받음");
+
+      const currentInstance = originalKnex ?? knexInstance;
+      // console.log((currentInstance as any).context.client.pool);
+      const usedPools = (currentInstance as any).context.client.pool.used;
+      const threadId = usedPools[usedPools.length - 1].resource.threadId;
       try {
-        await (originalKnex ?? knexInstance).raw(`KILL ${connectionId}`);
-        DEBUG && console.log(`Connection ${connectionId} killed.`);
+        await currentInstance.raw(`KILL CONNECTION ${threadId}`);
+        DEBUG && console.log(`Connection ${threadId} killed.`);
       } catch {
-        DEBUG && console.log(`Connection ${connectionId} already killed.`);
+        DEBUG && console.log(`Connection ${threadId} already killed.`);
       }
     });
   }
@@ -38,7 +35,7 @@ export function createKnexProxy(
       get(target, prop, receiver) {
         if (prop === "then") {
           return async function (onFulfilled: any, onRejected: any) {
-            await initializeConnectionId();
+            setupAbortHandler();
             checkAbort(signal);
             return target.then(onFulfilled, onRejected);
           };
