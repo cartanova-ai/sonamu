@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
 import { ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
@@ -14,12 +14,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
   const { data, error, mutate } = SonamuUIService.useEntities();
   const { entities: documents } = data ?? {};
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuery(value.toLowerCase());
-    setResults(searchDocuments(JSON.parse(JSON.stringify(documents))));
-  };
 
   const handleResultClick = (url: string, id?: string) => {
     setQuery("");
@@ -121,6 +115,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       });
   };
 
+  useEffect(() => {
+    if (documents) {
+      setResults(searchDocuments(documents));
+    }
+  }, [query, documents]);
+
   return (
     <Modal
       className="search-modal"
@@ -136,7 +136,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           icon="search"
           placeholder="Search docs"
           value={query}
-          onChange={handleChange}
+          onChange={(e) => {
+            setQuery(e.target.value.toLowerCase());
+          }}
           fluid
           autoFocus
         />
