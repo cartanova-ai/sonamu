@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
 import _ from "lodash";
@@ -12,6 +12,9 @@ type SearchModalProps = {
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1); // 현재 선택된 검색 결과의 인덱스
+  const [selectedIndex2, setSelectedIndex2] = useState(-1); // 현재 선택된 검색 결과의 하위인덱스
+
   const navigate = useNavigate();
 
   const { data, error, mutate } = SonamuUIService.useEntities();
@@ -22,9 +25,15 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     ngramSize: 2,
   });
 
+  const resetIndex = () => {
+    setSelectedIndex(-1);
+    setSelectedIndex2(-1);
+  };
+
   const handleResultClick = (url: string, id?: string) => {
     setQuery("");
     setResults([]);
+    resetIndex();
     onClose();
     navigate(url);
     if (id) {
@@ -62,10 +71,89 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   useEffect(() => {
     if (documents) {
       const entity = window.location.pathname.split("/entities/")[1];
+      resetIndex();
       setSearchItems(Object.assign([], documents));
       setResults(search(query, entity));
     }
   }, [query]);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!open) return;
+
+      switch (event.key) {
+        case "ArrowDown":
+          if (selectedIndex !== -1) {
+            setSelectedIndex2((prevIndex2) =>
+              prevIndex2 < results[selectedIndex].fields.length - 1
+                ? prevIndex2 + 1
+                : prevIndex2
+            );
+          }
+          setSelectedIndex((prevIndex) => {
+            if (prevIndex === -1) {
+              return results.length > 0 ? 0 : -1;
+            }
+            if (results[prevIndex].fields.length === selectedIndex2 + 1) {
+              setSelectedIndex2(-1);
+              return prevIndex < results.length - 1 ? prevIndex + 1 : 0;
+            }
+
+            return prevIndex;
+          });
+          break;
+        case "ArrowUp":
+          setSelectedIndex((prevIndex) => {
+            let nextIndex = prevIndex;
+            if (prevIndex === -1) {
+              nextIndex = results.length > 0 ? results.length - 1 : -1;
+            }
+            if (selectedIndex2 === -1) {
+              nextIndex = prevIndex > 0 ? prevIndex - 1 : results.length - 1;
+            }
+
+            setSelectedIndex2((prevIndex2) => {
+              if (results.length === 0) return -1;
+              if (prevIndex2 === -1) {
+                return (
+                  results[nextIndex > -1 ? nextIndex : results.length - 1]
+                    .fields.length - 1
+                );
+              }
+              return prevIndex2 - 1;
+            });
+
+            return nextIndex;
+          });
+          break;
+        case "Enter":
+          if (selectedIndex >= 0 && selectedIndex < results.length) {
+            const result = results[selectedIndex];
+            if (selectedIndex2 === -1) {
+              handleResultClick(`/entities/${result.item.id}`);
+            }
+
+            const field = result.fields[selectedIndex2];
+            if (field.type === "scaffolding") {
+              handleResultClick("/scaffolding", result.item.id);
+            } else {
+              handleResultClick(`/entities/${result.item.id}`, field.id);
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    },
+    [open, results, selectedIndex, selectedIndex2]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   return (
     <Modal
@@ -74,6 +162,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       onClose={() => {
         setQuery("");
         setResults([]);
+        resetIndex();
         onClose();
       }}
     >
@@ -93,7 +182,11 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             {results.map(({ item: result, fields }, index) => (
               <List.Item
                 key={`${result.id}-${index}`}
-                className="search-result"
+                className={`search-result ${
+                  index === selectedIndex && selectedIndex2 === -1
+                    ? "selected"
+                    : ""
+                }`}
               >
                 <div
                   className="click-item"
@@ -113,7 +206,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
                 {!!fields?.filter((f) => f.type === "scaffolding")?.length && (
                   <List.Description
-                    className="click-item sub-item"
+                    className={`click-item sub-item ${
+                      index === selectedIndex &&
+                      selectedIndex2 !== -1 &&
+                      selectedIndex2 === 0
+                        ? "selected"
+                        : ""
+                    }`}
                     onClick={() => handleResultClick("/scaffolding", result.id)}
                   >
                     <strong
@@ -133,7 +232,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                       <List.Description>
                         <strong>{"props >"}</strong>
                       </List.Description>
-                      {fields?.map((field) => {
+                      {fields?.map((field, fieldIndex) => {
                         if (field.type !== "props") return;
 
                         return (
@@ -145,7 +244,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                                 query
                               ),
                             }}
-                            className="click-item sub-item"
+                            className={`click-item sub-item ${
+                              index === selectedIndex &&
+                              selectedIndex2 !== -1 &&
+                              selectedIndex2 === fieldIndex
+                                ? "selected"
+                                : ""
+                            }`}
                             onClick={() =>
                               handleResultClick(
                                 `/entities/${result.id}`,
@@ -173,7 +278,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                                 dangerouslySetInnerHTML={{
                                   __html: highlightText(field.desc, query),
                                 }}
-                                className="click-item sub-item"
+                                className={`click-item sub-item ${
+                                  index === selectedIndex &&
+                                  selectedIndex2 !== -1 &&
+                                  selectedIndex2 === fields.indexOf(field)
+                                    ? "selected"
+                                    : ""
+                                }`}
                                 onClick={() =>
                                   handleResultClick(
                                     `/entities/${result.id}`,
@@ -201,7 +312,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                             dangerouslySetInnerHTML={{
                               __html: highlightText(field.key, query),
                             }}
-                            className="click-item sub-item"
+                            className={`click-item sub-item ${
+                              index === selectedIndex &&
+                              selectedIndex2 !== -1 &&
+                              selectedIndex2 === fields.indexOf(field)
+                                ? "selected"
+                                : ""
+                            }`}
                             onClick={() =>
                               handleResultClick(
                                 `/entities/${result.id}`,

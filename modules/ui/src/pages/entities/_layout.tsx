@@ -1,5 +1,11 @@
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { Link, Outlet, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  Outlet,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router-dom";
 import classnames from "classnames";
 import { Button, Divider } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
@@ -7,6 +13,8 @@ import { EntityCreateForm } from "./_create_form";
 
 type EntitiesLayoutProps = {};
 export default function EntitiesLayout(_props: EntitiesLayoutProps) {
+  const context = useOutletContext<{ showSearch: boolean }>();
+
   const { data, error, mutate } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
   const isLoading = !error && !data;
@@ -70,7 +78,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
           />
         </div>
       </div>
-      <Outlet />
+      <Outlet context={context} />
       <Button
         icon="arrow up"
         circular

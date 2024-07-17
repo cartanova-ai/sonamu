@@ -8,8 +8,9 @@ export function useSheetTable(options: {
   onExecute?: (sheet: string, y: number, x: number) => void;
   onKeywordChanged?: (sheet: string, keyword: string) => void;
   onKeydown: (e: KeyboardEvent) => boolean;
+  disable?: boolean;
 }) {
-  const { sheets, onExecute, onKeywordChanged, onKeydown } = options;
+  const { sheets, onExecute, onKeywordChanged, onKeydown, disable } = options;
 
   const sheetConfigsRef = useRef<
     {
@@ -172,6 +173,10 @@ export function useSheetTable(options: {
   const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>();
   const keySwitchRef = useRef<boolean>(true);
   useEffect(() => {
+    if (disable) {
+      return;
+    }
+
     // keydown
     const applyingOnKeyDown = (e: KeyboardEvent) => {
       if (!keySwitchRef.current) {
@@ -272,7 +277,7 @@ export function useSheetTable(options: {
       document.removeEventListener("keydown", applyingOnKeyDown);
       document.removeEventListener("mousedown", onMousedown);
     };
-  }, [options, cursor, focusedCursor]);
+  }, [options, cursor, focusedCursor, disable]);
 
   return {
     regRow: (sheet: string, y: number, className?: string) => {

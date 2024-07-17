@@ -27,13 +27,21 @@ type Item = Pick<
 >;
 export type SearchResult = {
   item: Pick<Item, "id" | "title">;
-  fields?: {
+  fields: {
     type: "props" | "subsets" | "enums" | "scaffolding";
     key: string;
     desc: string;
+    id: string;
   }[];
   score: number;
 };
+
+const fieldTypeOrder = {
+  scaffolding: 0,
+  props: 1,
+  subsets: 2,
+  enums: 3,
+} as const;
 
 export function useEntitySearch(options?: {
   items?: Item[];
@@ -150,7 +158,7 @@ export function useEntitySearch(options?: {
       }
       searchResult.push({
         item: { id: item.id, title: item.title },
-        fields: [{ type: "scaffolding", key: "", desc: "" }],
+        fields: [{ type: "scaffolding", key: "", desc: "", id: "" }],
         score: maxScore,
       });
 
@@ -169,6 +177,7 @@ export function useEntitySearch(options?: {
                 type: "props",
                 key: prop.name,
                 desc: prop.desc!,
+                id: `prop-${prop.name}`,
               },
             ],
             score: Math.max(nameScore, descScore),
@@ -196,6 +205,7 @@ export function useEntitySearch(options?: {
                   type: "subsets",
                   key,
                   desc: value,
+                  id: value,
                 },
               ],
               score: maxSubsetScore,
@@ -218,6 +228,7 @@ export function useEntitySearch(options?: {
                 type: "enums",
                 key,
                 desc: "",
+                id: `enum-${key}`,
               },
             ],
             score: keyScore,
@@ -273,6 +284,12 @@ export function useEntitySearch(options?: {
           } else {
             acc.push(cur);
           }
+
+          // fields 정렬 - scaffolding -> props -> subsets -> enums 순서로
+          prev.fields = prev.fields.sort((a, b) => {
+            return fieldTypeOrder[a.type] - fieldTypeOrder[b.type];
+          });
+
           return acc;
         }, [] as SearchResult[]);
     },
