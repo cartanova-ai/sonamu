@@ -774,7 +774,7 @@ export class Migrator {
                     if (
                       col.type === "float" &&
                       col.defaultTo &&
-                      col.defaultTo.includes('"') === false
+                      String(col.defaultTo).includes('"') === false
                     ) {
                       col.defaultTo = `"${Number(col.defaultTo).toFixed(
                         col.scale ?? 2
@@ -1600,10 +1600,10 @@ export class Migrator {
       ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.down : []),
       ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.down : []),
       ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.down : []),
-      ...(alterIndexLinesTo.add.down.length > 1
+      ...(alterIndexLinesTo.add.down.length > 0
         ? alterIndexLinesTo.add.down
         : []),
-      ...(alterIndexLinesTo.drop.down.length > 1
+      ...(alterIndexLinesTo.drop.down.length > 0
         ? alterIndexLinesTo.drop.down
         : []),
       "})",
