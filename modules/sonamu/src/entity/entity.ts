@@ -303,6 +303,7 @@ export class Entity {
                 manyJoin: loader.manyJoin,
                 oneJoins: loader.oneJoins,
                 select: loader.select,
+                loaders: loader.loaders,
               };
             });
 
