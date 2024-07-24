@@ -1,4 +1,4 @@
-import { camelize } from "inflection";
+import inflection from "inflection";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
@@ -8,7 +8,7 @@ import {
   getEnumInfoFromColName,
   getRelationPropFromColName,
 } from "./view_list.template";
-import { uniq } from "lodash";
+import _ from "lodash";
 
 export class Template__view_form extends Template {
   constructor() {
@@ -99,7 +99,7 @@ export class Template__view_form extends Template {
         try {
           let enumId: string;
           if (col.name === "orderBy") {
-            enumId = `${names.capital}${camelize(col.name)}Select`;
+            enumId = `${names.capital}${inflection.camelize(col.name)}Select`;
           } else {
             const { id } = getEnumInfoFromColName(entityId, col.name);
             enumId = `${id}Select`;
@@ -135,35 +135,38 @@ export class Template__view_form extends Template {
   }
 
   resolveDefaultValue(columns: RenderingNode[]): object {
-    return columns.reduce((result, col) => {
-      if (col.optional) {
-        return result;
-      }
-
-      let value: unknown;
-      if (col.nullable === true) {
-        value = null;
-      } else if (col.zodType instanceof z.ZodNumber) {
-        value = 0;
-      } else if (col.zodType instanceof z.ZodEnum) {
-        value = Object.keys(col.zodType.Enum)[0];
-      } else if (col.zodType instanceof z.ZodBoolean) {
-        value = false;
-      } else if (col.zodType instanceof z.ZodString) {
-        if (col.renderType === "string-datetime") {
-          value = "now()";
-        } else {
-          value = "";
+    return columns.reduce(
+      (result, col) => {
+        if (col.optional) {
+          return result;
         }
-      } else if (col.zodType instanceof z.ZodArray) {
-        value = [];
-      } else if (col.zodType instanceof z.ZodObject) {
-        value = {};
-      }
 
-      result[col.name] = value;
-      return result;
-    }, {} as { [key: string]: unknown });
+        let value: unknown;
+        if (col.nullable === true) {
+          value = null;
+        } else if (col.zodType instanceof z.ZodNumber) {
+          value = 0;
+        } else if (col.zodType instanceof z.ZodEnum) {
+          value = Object.keys(col.zodType.Enum)[0];
+        } else if (col.zodType instanceof z.ZodBoolean) {
+          value = false;
+        } else if (col.zodType instanceof z.ZodString) {
+          if (col.renderType === "string-datetime") {
+            value = "now()";
+          } else {
+            value = "";
+          }
+        } else if (col.zodType instanceof z.ZodArray) {
+          value = [];
+        } else if (col.zodType instanceof z.ZodObject) {
+          value = {};
+        }
+
+        result[col.name] = value;
+        return result;
+      },
+      {} as { [key: string]: unknown }
+    );
   }
 
   render(
@@ -277,7 +280,7 @@ import { ${names.capital}Service } from 'src/services/${names.fs}/${
         names.fs
       }.service';
 import { ${names.capital}SubsetA } from 'src/services/sonamu.generated';
-${uniq(
+${_.uniq(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
     .map((col) => {
@@ -310,9 +313,9 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
   const { form, setForm, register } = useTypeForm(${
     names.capital
   }SaveParams, ${JSON.stringify(defaultValue).replace(
-        /"now\(\)"/g,
-        "DateTime.local().toSQL()!.slice(0, 19)"
-      )});
+    /"now\(\)"/g,
+    "DateTime.local().toSQL()!.slice(0, 19)"
+  )});
 
   // 수정일 때 기존 row 콜
   useEffect(() => {

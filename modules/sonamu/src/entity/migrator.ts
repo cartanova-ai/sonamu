@@ -1,29 +1,11 @@
-import _, {
-  difference,
-  differenceBy,
-  differenceWith,
-  groupBy,
-  intersection,
-  intersectionBy,
-  pick,
-  sortBy,
-  sum,
-  uniq,
-  uniqBy,
-} from "lodash";
+import _ from "lodash";
 import knex, { Knex } from "knex";
 import prettier from "prettier";
 import chalk from "chalk";
 import { DateTime } from "luxon";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  unlinkSync,
-  writeFileSync,
-} from "fs";
+import fs from "fs-extra";
 import equal from "fast-deep-equal";
-import { capitalize, pluralize, singularize, underscore } from "inflection";
+import inflection from "inflection";
 import prompts from "prompts";
 import { execSync } from "child_process";
 import path from "path";
@@ -141,24 +123,26 @@ export class Migrator {
     const srcMigrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const distMigrationsDir = `${Sonamu.apiRootPath}/dist/migrations`;
 
-    if (existsSync(srcMigrationsDir) === false) {
-      mkdirSync(srcMigrationsDir, {
+    if (fs.existsSync(srcMigrationsDir) === false) {
+      fs.mkdirSync(srcMigrationsDir, {
         recursive: true,
       });
     }
-    if (existsSync(distMigrationsDir) === false) {
-      mkdirSync(distMigrationsDir, {
+    if (fs.existsSync(distMigrationsDir) === false) {
+      fs.mkdirSync(distMigrationsDir, {
         recursive: true,
       });
     }
-    const srcMigrations = readdirSync(srcMigrationsDir)
+    const srcMigrations = fs
+      .readdirSync(srcMigrationsDir)
       .filter((f) => f.endsWith(".ts"))
       .map((f) => f.split(".")[0]);
-    const distMigrations = readdirSync(distMigrationsDir)
+    const distMigrations = fs
+      .readdirSync(distMigrationsDir)
       .filter((f) => f.endsWith(".js"))
       .map((f) => f.split(".")[0]);
 
-    const normal = intersection(srcMigrations, distMigrations)
+    const normal = _.intersection(srcMigrations, distMigrations)
       .map((filename) => {
         return {
           name: filename,
@@ -167,19 +151,23 @@ export class Migrator {
       })
       .sort((a, b) => (a > b ? 1 : -1));
 
-    const onlyTs = difference(srcMigrations, distMigrations).map((filename) => {
-      return {
-        name: filename,
-        path: path.join(srcMigrationsDir, filename) + ".ts",
-      };
-    });
+    const onlyTs = _.difference(srcMigrations, distMigrations).map(
+      (filename) => {
+        return {
+          name: filename,
+          path: path.join(srcMigrationsDir, filename) + ".ts",
+        };
+      }
+    );
 
-    const onlyJs = difference(distMigrations, srcMigrations).map((filename) => {
-      return {
-        name: filename,
-        path: path.join(distMigrationsDir, filename) + ".js",
-      };
-    });
+    const onlyJs = _.difference(distMigrations, srcMigrations).map(
+      (filename) => {
+        return {
+          name: filename,
+          path: path.join(distMigrationsDir, filename) + ".js",
+        };
+      }
+    );
 
     return {
       normal,
@@ -306,7 +294,7 @@ export class Migrator {
     }[]
   > {
     // get uniq knex configs
-    const configs = uniqBy(
+    const configs = _.uniqBy(
       targets
         .map((target) => ({
           connKey: target,
@@ -388,15 +376,15 @@ export class Migrator {
 
     const res = await Promise.all(
       delFiles.map((delFile) => {
-        if (existsSync(delFile)) {
+        if (fs.existsSync(delFile)) {
           console.log(chalk.red(`DELETE: ${delFile}`));
-          unlinkSync(delFile);
+          fs.unlinkSync(delFile);
           return delFiles.includes(".ts") ? 1 : 0;
         }
         return 0;
       })
     );
-    return sum(res);
+    return _.sum(res);
   }
 
   async generatePreparedCodes(): Promise<number> {
@@ -415,7 +403,7 @@ export class Migrator {
           .plus({ seconds: index })
           .toFormat("yyyyMMddHHmmss");
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
-        writeFileSync(filePath, pcode.formatted!);
+        fs.writeFileSync(filePath, pcode.formatted!);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       });
 
@@ -435,8 +423,8 @@ export class Migrator {
       return path.join(migrationsDir, df.file).replace(".js", ".ts");
     });
     for (let p of delList) {
-      if (existsSync(p)) {
-        unlinkSync(p);
+      if (fs.existsSync(p)) {
+        fs.unlinkSync(p);
       }
     }
     await this.cleanUpDist(true);
@@ -526,7 +514,7 @@ export class Migrator {
           .plus({ seconds: index })
           .toFormat("yyyyMMddHHmmss");
         const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
-        writeFileSync(filePath, code.formatted!);
+        fs.writeFileSync(filePath, code.formatted!);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       });
   }
@@ -551,14 +539,14 @@ export class Migrator {
           which,
           "migrations"
         );
-        if (existsSync(migrationPath) === false) {
-          mkdirSync(migrationPath, {
+        if (fs.existsSync(migrationPath) === false) {
+          fs.mkdirSync(migrationPath, {
             recursive: true,
           });
         }
-        const files = readdirSync(migrationPath).filter(
-          (filename) => filename.startsWith(".") === false
-        );
+        const files = fs
+          .readdirSync(migrationPath)
+          .filter((filename) => filename.startsWith(".") === false);
         r[which] = files;
         return r;
       },
@@ -568,7 +556,7 @@ export class Migrator {
       }
     );
 
-    const diffOnSrc = differenceBy(
+    const diffOnSrc = _.differenceBy(
       files.src,
       files.dist,
       (filename) => filename.split(".")[0]
@@ -579,7 +567,7 @@ export class Migrator {
       );
     }
 
-    const diffOnDist = differenceBy(
+    const diffOnDist = _.differenceBy(
       files.dist,
       files.src,
       (filename) => filename.split(".")[0]
@@ -604,7 +592,7 @@ export class Migrator {
         return path.join(Sonamu.apiRootPath, "dist", "migrations", filename);
       });
       filesToRm.map((filePath) => {
-        unlinkSync(filePath);
+        fs.unlinkSync(filePath);
       });
       console.log(chalk.green(`${filesToRm.length}건 삭제되었습니다!`));
     }
@@ -728,7 +716,7 @@ export class Migrator {
       });
 
     // 조인테이블만 추출
-    const joinTables = uniqBy(
+    const joinTables = _.uniqBy(
       entitySetsWithJoinTable.map((entitySet) => entitySet.joinTables).flat(),
       (joinTable) => {
         return joinTable.table;
@@ -786,11 +774,11 @@ export class Migrator {
                     }
                     return col;
                   };
-                  const entityColumns = sortBy(
+                  const entityColumns = _.sortBy(
                     entitySet.columns,
                     (a) => a.name
                   ).map(replaceColumnDefaultTo);
-                  const dbColumns = sortBy(dbSet.columns, (a) => a.name).map(
+                  const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(
                     replaceColumnDefaultTo
                   );
 
@@ -804,13 +792,13 @@ export class Migrator {
               console.debug({ entityColumn, dbColumn });
                */
 
-                  const entityIndexes = sortBy(entitySet.indexes, (a) =>
+                  const entityIndexes = _.sortBy(entitySet.indexes, (a) =>
                     [
                       a.type,
                       ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
                     ].join("-")
                   );
-                  const dbIndexes = sortBy(dbSet.indexes, (a) =>
+                  const dbIndexes = _.sortBy(dbSet.indexes, (a) =>
                     [
                       a.type,
                       ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1)),
@@ -845,10 +833,10 @@ export class Migrator {
                     };
                   };
 
-                  const entityForeigns = sortBy(entitySet.foreigns, (a) =>
+                  const entityForeigns = _.sortBy(entitySet.foreigns, (a) =>
                     [a.to, ...a.columns].join("-")
                   ).map((f) => replaceNoActionOnMySQL(f));
-                  const dbForeigns = sortBy(dbSet.foreigns, (a) =>
+                  const dbForeigns = _.sortBy(dbSet.foreigns, (a) =>
                     [a.to, ...a.columns].join("-")
                   ).map((f) => replaceNoActionOnMySQL(f));
 
@@ -929,7 +917,7 @@ export class Migrator {
       };
     });
 
-    const dbIndexesGroup = groupBy(
+    const dbIndexesGroup = _.groupBy(
       dbIndexes.filter(
         (dbIndex) =>
           dbIndex.Key_name !== "PRIMARY" &&
@@ -1180,8 +1168,8 @@ export class Migrator {
           const join = {
             from: `${entity.table}.id`,
             through: {
-              from: `${prop.joinTable}.${singularize(table1)}_id`,
-              to: `${prop.joinTable}.${singularize(table2)}_id`,
+              from: `${prop.joinTable}.${inflection.singularize(table1)}_id`,
+              to: `${prop.joinTable}.${inflection.singularize(table2)}_id`,
               onUpdate: prop.onUpdate,
               onDelete: prop.onDelete,
             },
@@ -1255,7 +1243,7 @@ export class Migrator {
           });
           r.foreigns.push({
             columns: [idColumnName],
-            to: `${underscore(pluralize(prop.with)).toLowerCase()}.id`,
+            to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
             onUpdate: prop.onUpdate,
             onDelete: prop.onDelete,
           });
@@ -1349,7 +1337,7 @@ export class Migrator {
     if (indexes.length === 0) {
       return [];
     }
-    const lines = uniq(
+    const lines = _.uniq(
       indexes.reduce((r, index) => {
         r.push(
           `table.${index.type}([${index.columns
@@ -1490,7 +1478,7 @@ export class Migrator {
     console.table(
       columns.map((column) => {
         return {
-          ...pick(column, [
+          ..._.pick(column, [
             "name",
             "type",
             "nullable",
@@ -1523,7 +1511,7 @@ export class Migrator {
       console.table(
         indexes.map((index) => {
           return {
-            ...pick(index, ["type", "columns", "name"]),
+            ..._.pick(index, ["type", "columns", "name"]),
           };
         })
       );
@@ -1538,7 +1526,7 @@ export class Migrator {
       console.table(
         foreigns.map((foreign) => {
           return {
-            ...pick(foreign, ["columns", "to", "onUpdate", "onDelete"]),
+            ..._.pick(foreign, ["columns", "to", "onUpdate", "onDelete"]),
           };
         })
       );
@@ -1650,8 +1638,8 @@ export class Migrator {
 
     // 컬럼명 기준 비교
     const extraColumns = {
-      db: differenceBy(dbColumns, entityColumns, (col) => col.name),
-      entity: differenceBy(entityColumns, dbColumns, (col) => col.name),
+      db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
+      entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
     };
     if (extraColumns.entity.length > 0) {
       columnsTo.add = columnsTo.add.concat(extraColumns.entity);
@@ -1661,17 +1649,17 @@ export class Migrator {
     }
 
     // 동일 컬럼명의 세부 필드 비교
-    const sameDbColumns = intersectionBy(
+    const sameDbColumns = _.intersectionBy(
       dbColumns,
       entityColumns,
       (col) => col.name
     );
-    const sameMdColumns = intersectionBy(
+    const sameMdColumns = _.intersectionBy(
       entityColumns,
       dbColumns,
       (col) => col.name
     );
-    columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
+    columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
       equal(a, b)
     );
 
@@ -1728,11 +1716,11 @@ export class Migrator {
         }
 
         // 컬럼 변경사항
-        const columnDiffUp = difference(
+        const columnDiffUp = _.difference(
           this.genColumnDefinitions([entityColumn]),
           this.genColumnDefinitions([dbColumn])
         );
-        const columnDiffDown = difference(
+        const columnDiffDown = _.difference(
           this.genColumnDefinitions([dbColumn]),
           this.genColumnDefinitions([entityColumn])
         );
@@ -1770,10 +1758,10 @@ export class Migrator {
       drop: [] as MigrationIndex[],
     };
     const extraIndexes = {
-      db: differenceBy(dbIndexes, entityIndexes, (col) =>
+      db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//")
       ),
-      entity: differenceBy(entityIndexes, dbIndexes, (col) =>
+      entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//")
       ),
     };
@@ -1816,7 +1804,7 @@ export class Migrator {
           )
           .map(
             (index) =>
-              `table.drop${capitalize(index.type)}([${index.columns
+              `table.drop${inflection.capitalize(index.type)}([${index.columns
                 .map((columnName) => `'${columnName}'`)
                 .join(",")}])`
           ),
@@ -1834,7 +1822,7 @@ export class Migrator {
           )
           .map(
             (index) =>
-              `table.drop${capitalize(index.type)}([${index.columns
+              `table.drop${inflection.capitalize(index.type)}([${index.columns
                 .map((columnName) => `'${columnName}'`)
                 .join(",")}])`
           ),

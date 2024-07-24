@@ -130,7 +130,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     // docker-compose 실행
     const databaseRoot = path.join(targetRoot, "api", "database");
     const envFile = path.join(targetRoot, "api", ".env");
-    const command = `docker-compose --env-file ${envFile} up -d`;
+    const command = `docker compose --env-file ${envFile} up -d`;
 
     const [c, ...args] = command.split(" ");
 
@@ -145,7 +145,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
         `To set up a database using Docker, run the following commands:\n`,
       );
       console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
-      console.log(chalk.gray(`  $ docker-compose --env-file ${envFile} up -d`));
+      console.log(chalk.gray(`  $ docker compose --env-file ${envFile} up -d`));
       console.log(`\nOr use your preferred database management tool.`);
     }
   } else {
@@ -153,7 +153,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
       `\nTo set up a database using Docker, run the following commands:\n`,
     );
     console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
-    console.log(chalk.gray(`  $ docker-compose -p ${targetDir} up -d`));
+    console.log(chalk.gray(`  $ docker compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
   }
 }

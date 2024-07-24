@@ -23,12 +23,12 @@ function App() {
   ];
   const location = useLocation();
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const handleKeyDown = (event: any) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "k") {
       event.preventDefault();
-      setModalOpen(true);
+      setShowSearch(true);
     }
   };
 
@@ -59,7 +59,7 @@ function App() {
               ))}
             </div>
           </div>
-          <div className="search" onClick={() => setModalOpen(true)}>
+          <div className="search" onClick={() => setShowSearch(true)}>
             <span>🔍</span>
             <span>Search</span>
             <kbd className="keycap">⌘</kbd>
@@ -67,10 +67,10 @@ function App() {
           </div>
         </div>
         <div className="content">
-          <Outlet />
+          <Outlet context={{ showSearch }} />
         </div>
       </div>
-      <SearchModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <SearchModal open={showSearch} onClose={() => setShowSearch(false)} />
       <CommonModal />
     </>
   );

@@ -1,6 +1,6 @@
 import path from "path";
 import glob from "glob";
-import { existsSync } from "fs";
+import fs from "fs-extra";
 
 export function globAsync(pathPattern: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -43,7 +43,7 @@ export async function findApiRootPath() {
     dir = dir.split("/.yarn/")[0];
   }
   do {
-    if (existsSync(path.join(dir, "/package.json"))) {
+    if (fs.existsSync(path.join(dir, "/package.json"))) {
       return dir.split(path.sep).join(path.sep);
     }
     dir = dir.split(path.sep).slice(0, -1).join(path.sep);

@@ -679,3 +679,9 @@ code {
   box-shadow: 0 2px 2px 0.5px #05050563;
   border-bottom: 2.5px solid #808080;
 }
+
+.search-modal {
+  .selected {
+    background-color: #d0dbb0 !important;
+  }
+}

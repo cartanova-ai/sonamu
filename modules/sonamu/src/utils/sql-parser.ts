@@ -1,4 +1,4 @@
-import { uniq } from "lodash";
+import _ from "lodash";
 import { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
 
 export function getTableName(expr: ColumnRef) {
@@ -30,7 +30,7 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
     return [...extractTableName(where.left), ...extractTableName(where.right)];
   };
 
-  return uniq(
+  return _.uniq(
     (Array.isArray(ast) ? ast : [ast]).flatMap((a) =>
       a.type === "select" || a.type === "update" || a.type === "delete"
         ? extractTableNames(a.where)

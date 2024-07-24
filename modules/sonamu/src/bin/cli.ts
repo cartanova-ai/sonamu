@@ -12,16 +12,10 @@ import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  unlinkSync,
-  writeFileSync,
-} from "fs";
+import fs from "fs-extra";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
-import { camelize } from "inflection";
+import inflection from "inflection";
 import prettier from "prettier";
 import { SMDManager } from "../smd/smd-manager";
 import process from "process";
@@ -241,11 +235,11 @@ async function fixture_sync() {
 
 async function stub_practice(name: string) {
   const practiceDir = path.join(Sonamu.apiRootPath, "src", "practices");
-  const fileNames = readdirSync(practiceDir);
+  const fileNames = fs.readdirSync(practiceDir);
 
   const maxSeqNo = (() => {
-    if (existsSync(practiceDir) === false) {
-      mkdirSync(practiceDir, { recursive: true });
+    if (fs.existsSync(practiceDir) === false) {
+      fs.mkdirSync(practiceDir, { recursive: true });
     }
 
     const filteredSeqs = fileNames
@@ -282,7 +276,7 @@ async function stub_practice(name: string) {
     `await BaseModel.destroy();`,
     `});`,
   ].join("\n");
-  writeFileSync(dstPath, code);
+  fs.writeFileSync(dstPath, code);
 
   execSync(`code ${dstPath}`);
 
@@ -338,7 +332,7 @@ async function smd_migration() {
     return Object.fromEntries(
       Object.entries(enumLabels).map(([enumLabelName, enumLabel]) => {
         const enumName =
-          entityId + camelize(enumLabelName.toLowerCase(), false);
+          entityId + inflection.camelize(enumLabelName.toLowerCase(), false);
         return [
           enumName,
           Object.fromEntries(
@@ -373,7 +367,7 @@ async function smd_migration() {
     const formatted = await prettier.format(JSON.stringify(entityJson), {
       parser: "json",
     });
-    writeFileSync(dstPath, formatted);
+    fs.writeFileSync(dstPath, formatted);
     console.log(chalk.blue(`CREATED: ${dstPath}`));
 
     // smd.ts, enums.ts, genereated.ts 삭제 (트랜스파일 된 js파일도 삭제)
@@ -421,11 +415,11 @@ async function smd_migration() {
       srcGeneratedPath,
       dstGeneratedPath,
     ].map((p) => {
-      if (existsSync(p) === false) {
+      if (fs.existsSync(p) === false) {
         console.log(chalk.yellow(`NOT FOUND: ${p}`));
         return;
       }
-      unlinkSync(p);
+      fs.unlinkSync(p);
       console.log(chalk.red(`DELETED: ${p}`));
     });
   }

@@ -1,5 +1,5 @@
-import { camelize, underscore } from "inflection";
-import { flattenDeep, uniq } from "lodash";
+import inflection from "inflection";
+import _ from "lodash";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
@@ -113,7 +113,7 @@ export class Template__view_list extends Template {
           names = EntityManager.getNamesFromId(relProp.with);
           return this.renderColumnImport(entityId, child, names);
         });
-        return flattenDeep(result);
+        return _.flattenDeep(result);
       } catch {
         return [null];
       }
@@ -133,7 +133,7 @@ export class Template__view_list extends Template {
       return `import { ${names.capital}SearchInput } from "src/components/${names.fs}/${names.capital}SearchInput";`;
     } else if (col.renderType === "enums") {
       if (col.name === "orderBy") {
-        const componentId = `${names.capital}${camelize(col.name)}Select`;
+        const componentId = `${names.capital}${inflection.camelize(col.name)}Select`;
         return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
       } else {
         try {
@@ -173,7 +173,7 @@ export class Template__view_list extends Template {
     let componentId: string;
     if (col.renderType === "enums") {
       if (col.name === "orderBy") {
-        componentId = `${names.capital}${camelize(col.name)}Select`;
+        componentId = `${names.capital}${inflection.camelize(col.name)}Select`;
       } else {
         try {
           const { id } = getEnumInfoFromColName(entityId, col.name);
@@ -308,7 +308,7 @@ export class Template__view_list extends Template {
     }
 
     // 리스트 컬럼
-    const columnImports = uniq(
+    const columnImports = _.uniq(
       columnsNode
         .children!.map((col) => {
           return this.renderColumnImport(entityId, col, names);
@@ -375,8 +375,8 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
 
   // 리스트 쿼리
   const { data, mutate, error, isLoading } = ${names.capital}Service.use${
-        names.capitalPlural
-      }('A', listParams);
+    names.capitalPlural
+  }('A', listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -422,14 +422,14 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
 
   // 컬럼
   const columns:SonamuCol<${names.capital}SubsetA>[] = [${columns
-        .map((col) => {
-          return [
-            `{ label: "${col.label}",`,
-            `tc: ${col.tc}, `,
-            `collapsing: ${["Title", "Name"].includes(col.label) === false}, }`,
-          ].join("\n");
-        })
-        .join(",\n")}];
+    .map((col) => {
+      return [
+        `{ label: "${col.label}",`,
+        `tc: ${col.tc}, `,
+        `collapsing: ${["Title", "Name"].includes(col.label) === false}, }`,
+      ].join("\n");
+    })
+    .join(",\n")}];
 
   return (
     <div className="list ${names.fsPlural}-index">
@@ -577,8 +577,8 @@ export function getEnumInfoFromColName(
       title: prop.desc ?? prop.id,
     };
   } else {
-    const idCandidate = camelize(
-      underscore(entityId) + "_" + underscore(colName),
+    const idCandidate = inflection.camelize(
+      inflection.underscore(entityId) + "_" + inflection.underscore(colName),
       false
     );
     try {

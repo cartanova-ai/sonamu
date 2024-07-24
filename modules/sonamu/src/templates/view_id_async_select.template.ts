@@ -67,8 +67,8 @@ export function ${names.capital}IdAsyncSelect<T extends ${
   );
 
   const { data, error } = ${names.capital}Service.use${
-        names.capitalPlural
-      }(subset, listParams);
+    names.capitalPlural
+  }(subset, listParams);
   const { rows: ${names.camelPlural}, total } = data ?? {};
 
   useEffect(() => {
@@ -78,8 +78,8 @@ export function ${names.capital}IdAsyncSelect<T extends ${
           key: ${names.camel}.id,
           value: ${names.camel}[valueField ?? 'id'] as string | number,
           text: String(${names.camel}[textField${
-        textField ? ` ?? '${textField}'` : ""
-      }]),
+            textField ? ` ?? '${textField}'` : ""
+          }]),
         };
       }),
     );

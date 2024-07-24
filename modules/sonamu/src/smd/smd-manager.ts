@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import { glob } from "glob";
-import { dasherize, underscore, pluralize, camelize } from "inflection";
+import glob from "glob";
+import inflection from "inflection";
 import _ from "lodash";
 import path from "path";
 import { SMD } from "./smd";
@@ -30,7 +30,7 @@ class SMDManagerClass {
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
     return new Promise((resolve) => {
-      glob(path.resolve(pathPattern!), (_err, files) => {
+      glob.glob(path.resolve(pathPattern!), (_err, files) => {
         const importPaths = files.map((filePath) =>
           path.relative(__dirname, filePath)
         );
@@ -117,17 +117,21 @@ class SMDManagerClass {
   getNamesFromId(smdId: string): EntityNamesRecord {
     // entityId가 단복수 동형 단어인 경우 List 붙여서 생성
     const pluralized =
-      pluralize(smdId) === smdId ? `${smdId}List` : pluralize(smdId);
+      inflection.pluralize(smdId) === smdId
+        ? `${smdId}List`
+        : inflection.pluralize(smdId);
 
     return {
-      fs: dasherize(underscore(smdId)).toLowerCase(),
-      fsPlural: dasherize(underscore(pluralized)).toLowerCase(),
-      camel: camelize(smdId, true),
-      camelPlural: camelize(pluralized, true),
+      fs: inflection.dasherize(inflection.underscore(smdId)).toLowerCase(),
+      fsPlural: inflection
+        .dasherize(inflection.underscore(pluralized))
+        .toLowerCase(),
+      camel: inflection.camelize(smdId, true),
+      camelPlural: inflection.camelize(pluralized, true),
       capital: smdId,
       capitalPlural: pluralized,
       upper: smdId.toUpperCase(),
-      constant: underscore(smdId).toUpperCase(),
+      constant: inflection.underscore(smdId).toUpperCase(),
     };
   }
 }

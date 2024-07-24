@@ -14,7 +14,7 @@ import { DB, SonamuDBConfig } from "../database/db";
 import { BaseModel } from "../database/base-model";
 import { findApiRootPath } from "../utils/utils";
 import path from "path";
-import { existsSync, readFileSync } from "fs";
+import fs from "fs-extra";
 import { ApiDecoratorOptions } from "./decorators";
 
 export type SonamuConfig = {
@@ -128,11 +128,11 @@ class SonamuClass {
 
     this.apiRootPath = apiRootPath ?? (await findApiRootPath());
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
-    if (existsSync(configPath) === false) {
+    if (fs.existsSync(configPath) === false) {
       throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
     }
     this.config = JSON.parse(
-      readFileSync(configPath).toString()
+      fs.readFileSync(configPath).toString()
     ) as SonamuConfig;
 
     // DB 로드

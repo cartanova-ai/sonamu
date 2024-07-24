@@ -1,20 +1,12 @@
 import path, { dirname } from "path";
 import { globAsync, importMultiple } from "../utils/utils";
-import fs, {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readJSON,
-  writeFile,
-  writeFileSync,
-  writeJSON,
-} from "fs-extra";
+import fs from "fs-extra";
 import crypto from "crypto";
 import equal from "fast-deep-equal";
-import { differenceWith, groupBy, isEqual, uniq } from "lodash";
-import { camelize } from "inflection";
+import _ from "lodash";
+import inflection from "inflection";
 import { EntityManager } from "../entity/entity-manager";
-import * as ts from "typescript";
+import ts from "typescript";
 import {
   ApiParam,
   ApiParamType,
@@ -134,7 +126,7 @@ export class Syncer {
         const srcCodePath = path
           .join(__dirname, `../shared/${target}.shared.ts.txt`)
           .replace("/dist/", "/src/");
-        if (!existsSync(srcCodePath)) {
+        if (!fs.existsSync(srcCodePath)) {
           return;
         }
 
@@ -146,7 +138,7 @@ export class Syncer {
 
         const srcChecksum = await this.getChecksumOfFile(srcCodePath);
         const dstChecksum = await (async () => {
-          if (existsSync(dstCodePath) === false) {
+          if (fs.existsSync(dstCodePath) === false) {
             return "";
           }
           return this.getChecksumOfFile(dstCodePath);
@@ -155,7 +147,7 @@ export class Syncer {
         if (srcChecksum === dstChecksum) {
           return;
         }
-        writeFileSync(dstCodePath, readFileSync(srcCodePath));
+        fs.writeFileSync(dstCodePath, fs.readFileSync(srcCodePath));
       })
     );
 
@@ -176,12 +168,16 @@ export class Syncer {
     }
 
     // 변경된 파일 찾기
-    const diff = differenceWith(currentChecksums, previousChecksums, isEqual);
+    const diff = _.differenceWith(
+      currentChecksums,
+      previousChecksums,
+      _.isEqual
+    );
     const diffFiles = diff.map((r) => r.path);
     console.log("Changed Files: ", diffFiles);
 
     // 다른 부분 찾아 액션
-    const diffGroups = groupBy(diffFiles, (r) => {
+    const diffGroups = _.groupBy(diffFiles, (r) => {
       const matched = r.match(
         /\.(model|types|functions|entity|generated)\.[tj]s/
       );
@@ -198,7 +194,7 @@ export class Syncer {
       await this.actionGenerateSchemas();
 
       // generated 싱크까지 동시에 처리 후 체크섬 갱신
-      diffGroups["generated"] = uniq([
+      diffGroups["generated"] = _.uniq([
         ...(diffGroups["generated"] ?? []),
         "/src/application/sonamu.generated.ts",
       ]);
@@ -215,7 +211,7 @@ export class Syncer {
     ) {
       console.log("// 액션: 파일 싱크 types / functions / generated");
 
-      const tsPaths = uniq(
+      const tsPaths = _.uniq(
         [
           ...(diffGroups["types"] ?? []),
           ...(diffGroups["functions"] ?? []),
@@ -239,10 +235,10 @@ export class Syncer {
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
-    return uniq(
+    return _.uniq(
       filePaths.map((p) => {
         const matched = p.match(/application\/(.+)\//);
-        return camelize(matched![1].replace(/\-/g, "_"));
+        return inflection.camelize(matched![1].replace(/\-/g, "_"));
       })
     );
   }
@@ -299,11 +295,11 @@ export class Syncer {
   }
 
   async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
-    if (!existsSync(fromPath)) {
+    if (!fs.existsSync(fromPath)) {
       return;
     }
 
-    const oldFileContent = readFileSync(fromPath).toString();
+    const oldFileContent = fs.readFileSync(fromPath).toString();
 
     const newFileContent = (() => {
       const nfc = oldFileContent.replace(
@@ -317,7 +313,7 @@ export class Syncer {
         return nfc;
       }
     })();
-    return writeFile(toPath, newFileContent);
+    return fs.writeFile(toPath, newFileContent);
   }
 
   async actionSyncFilesToTargets(tsPaths: string[]): Promise<string[]> {
@@ -335,8 +331,8 @@ export class Syncer {
                 .replace(`/${apiDir}/`, `/${target}/`)
                 .replace("/application/", "/services/");
               const dir = dirname(dst);
-              if (!existsSync(dir)) {
-                mkdirSync(dir, { recursive: true });
+              if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
               }
               console.log(
                 "COPIED ",
@@ -387,18 +383,18 @@ export class Syncer {
   }
 
   async getPreviousChecksums(): Promise<PathAndChecksum[]> {
-    if (existsSync(this.checksumsPath) === false) {
+    if (fs.existsSync(this.checksumsPath) === false) {
       return [];
     }
 
-    const previousChecksums = (await readJSON(
+    const previousChecksums = (await fs.readJSON(
       this.checksumsPath
     )) as PathAndChecksum[];
     return previousChecksums;
   }
 
   async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
-    await writeJSON(this.checksumsPath, checksums, {
+    await fs.writeJSON(this.checksumsPath, checksums, {
       spaces: 2,
     });
     console.debug("checksum saved", this.checksumsPath);
@@ -421,7 +417,7 @@ export class Syncer {
   async readApisFromFile(filePath: string) {
     const sourceFile = ts.createSourceFile(
       filePath,
-      readFileSync(filePath).toString(),
+      fs.readFileSync(filePath).toString(),
       ts.ScriptTarget.Latest
     );
 
@@ -455,6 +451,8 @@ export class Syncer {
         const parameters: ApiParam[] = node.parameters.map(
           (paramDec, index) => {
             const defaultDef = this.printNode(paramDec.initializer, sourceFile);
+
+            // 기본값이 있는 경우 paramDec.type가 undefined로 나옴
 
             return this.resolveParamDec(
               {
@@ -709,7 +707,7 @@ export class Syncer {
       // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
       // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
       const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-      return existsSync(srcPath);
+      return fs.existsSync(srcPath);
     });
     const modules = await importMultiple(filePaths);
     const functions = modules
@@ -742,7 +740,7 @@ export class Syncer {
         // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
         // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
         const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-        return existsSync(srcPath);
+        return fs.existsSync(srcPath);
       });
     const modules = await importMultiple(filePaths, doRefresh);
     const functions = modules
@@ -875,7 +873,7 @@ export class Syncer {
             (importDef) => importDef.from === importPath
           );
           if (existsOne) {
-            existsOne.keys = uniq(existsOne.keys.concat(importKey));
+            existsOne.keys = _.uniq(existsOne.keys.concat(importKey));
           } else {
             r.push({
               keys: [importKey],
@@ -925,16 +923,16 @@ export class Syncer {
     const { appRootPath } = Sonamu;
     const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
 
-    const dstFilePaths = uniq(
+    const dstFilePaths = _.uniq(
       targets.map((target) => filePath.replace("/:target/", `/${target}/`))
     );
     return await Promise.all(
       dstFilePaths.map(async (dstFilePath) => {
         const dir = path.dirname(dstFilePath);
-        if (existsSync(dir) === false) {
-          mkdirSync(dir, { recursive: true });
+        if (fs.existsSync(dir) === false) {
+          fs.mkdirSync(dir, { recursive: true });
         }
-        writeFileSync(dstFilePath, pathAndCode.code);
+        fs.writeFileSync(dstFilePath, pathAndCode.code);
         console.log(
           "GENERATED ",
           chalk.blue(dstFilePath.replace(appRootPath + "/", ""))
@@ -976,7 +974,9 @@ export class Syncer {
           const dstFilePaths = targets.map((target) =>
             filePath.replace("/:target/", `/${target}/`)
           );
-          return dstFilePaths.every((dstPath) => existsSync(dstPath) === false);
+          return dstFilePaths.every(
+            (dstPath) => fs.existsSync(dstPath) === false
+          );
         });
       }
     })();
@@ -1007,7 +1007,7 @@ export class Syncer {
     return {
       subPath,
       fullPath,
-      isExists: existsSync(fullPath),
+      isExists: fs.existsSync(fullPath),
     };
   }
 
@@ -1032,7 +1032,7 @@ export class Syncer {
               names,
               componentId
             );
-            result[`${key}__${componentId}`] = existsSync(
+            result[`${key}__${componentId}`] = fs.existsSync(
               path.join(Sonamu.appRootPath, target, p)
             );
           });
@@ -1043,12 +1043,12 @@ export class Syncer {
         const { targets } = Sonamu.config.sync;
         if (target.includes(":target")) {
           targets.map((t) => {
-            result[`${key}__${t}`] = existsSync(
+            result[`${key}__${t}`] = fs.existsSync(
               path.join(Sonamu.appRootPath, target.replace(":target", t), p)
             );
           });
         } else {
-          result[key] = existsSync(path.join(Sonamu.appRootPath, target, p));
+          result[key] = fs.existsSync(path.join(Sonamu.appRootPath, target, p));
         }
 
         return result;
@@ -1212,7 +1212,7 @@ export class Syncer {
   ): RenderingNode {
     const def = {
       name: baseKey,
-      label: camelize(baseKey, false),
+      label: inflection.camelize(baseKey, false),
       zodType,
     };
     if (zodType instanceof z.ZodObject) {
@@ -1381,7 +1381,7 @@ export class Syncer {
     })(); // iife
 
     for await (const delPath of delPaths) {
-      if (existsSync(delPath)) {
+      if (fs.existsSync(delPath)) {
         console.log(chalk.red(`DELETE ${delPath}`));
         execSync(`rm -rf ${delPath}`);
       } else {

@@ -1,9 +1,9 @@
 import { SubsetQuery, TemplateOptions } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
 import { Template } from "./base-template";
-import { camelize } from "inflection";
+import inflection from "inflection";
 import { SourceCode } from "./generated.template";
-import { uniq } from "lodash";
+import _ from "lodash";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
 
@@ -49,7 +49,7 @@ export class Template__generated_sso extends Template {
         return {
           label: `SubsetQuery: ${entity.id}`,
           lines: [
-            `export const ${camelize(
+            `export const ${inflection.camelize(
               entity.id,
               true
             )}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
@@ -69,7 +69,7 @@ export class Template__generated_sso extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: uniq([...result!.importKeys, ...ts.importKeys]),
+          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys]),
         };
       },
       {

@@ -5,11 +5,23 @@
   "scripts": {
     "build": "rimraf dist && rimraf build && yarn build:client && yarn build:node",
     "build:client": "vite build",
-    "build:node": "rollup -c",
+    "build:node": "tsup --config ./tsup.config.js",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
     "dev:client": "vite",
     "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node -r source-map-support/register dist/index.js run\"",
     "dev": "run-p dev:node dev:client"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.mjs",
+        "types": "./dist/index.d.mts"
+      },
+      "require": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -71,6 +83,7 @@
     "rollup-plugin-esbuild": "^5.0.0",
     "source-map-support": "^0.5.21",
     "tsc-watch": "^6.0.4",
+    "tsup": "^8.1.0",
     "typescript": "^5.2.2"
   },
   "peerDependencies": {

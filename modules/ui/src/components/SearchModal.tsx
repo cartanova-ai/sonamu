@@ -1,7 +1,9 @@
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
-import { ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
+import _ from "lodash";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { SearchResult, useEntitySearch } from "./useEntitySearch";
 
 type SearchModalProps = {
   open: boolean;
@@ -9,21 +11,29 @@ type SearchModalProps = {
 };
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ExtendedEntity[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1); // 현재 선택된 검색 결과의 인덱스
+  const [selectedIndex2, setSelectedIndex2] = useState(-1); // 현재 선택된 검색 결과의 하위인덱스
+
   const navigate = useNavigate();
 
   const { data, error, mutate } = SonamuUIService.useEntities();
   const { entities: documents } = data ?? {};
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuery(value.toLowerCase());
-    setResults(searchDocuments(JSON.parse(JSON.stringify(documents))));
+  const { search, setSearchItems } = useEntitySearch({
+    items: documents,
+    ngramSize: 2,
+  });
+
+  const resetIndex = () => {
+    setSelectedIndex(-1);
+    setSelectedIndex2(-1);
   };
 
   const handleResultClick = (url: string, id?: string) => {
     setQuery("");
     setResults([]);
+    resetIndex();
     onClose();
     navigate(url);
     if (id) {
@@ -46,80 +56,104 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     }, 100);
   };
 
-  const highlightText = (text: string, query: string) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi");
-    return text.replace(regex, '<span style="color: green;">$1</span>');
+  const highlightText = (target: string, query: string) => {
+    if (!query) return target;
+
+    const escapedQuery = query.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const regex = new RegExp(`[${escapedQuery}]`, "gi");
+
+    return target.replace(
+      regex,
+      (match) => `<span style="color: green;">${match}</span>`
+    );
   };
 
-  const searchDocuments = (documents: ExtendedEntity[]): ExtendedEntity[] => {
-    if (!query) return [];
+  useEffect(() => {
+    if (documents) {
+      const entity = window.location.pathname.split("/entities/")[1];
+      resetIndex();
+      setSearchItems(Object.assign([], documents));
+      setResults(search(query, entity));
+    }
+  }, [query]);
 
-    const isMatch = (subset: string[]) =>
-      subset.some((item) => item.toLowerCase().includes(query));
-    const isMatchEntity = ({ id, title }: ExtendedEntity) =>
-      id.toLowerCase().includes(query) || title.toLowerCase().includes(query);
-    const isMatchProp = ({ name, desc }: ExtendedEntity["props"][0]) =>
-      name.toLowerCase().includes(query) || desc?.toLowerCase().includes(query);
-    const isMatchEnum = (enumLabel: ExtendedEntity["enumLabels"][0]) =>
-      Object.entries(enumLabel).some(
-        ([key, value]) =>
-          key.toLowerCase().includes(query) ||
-          value.toLowerCase().includes(query)
-      );
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (!open) return;
 
-    return documents
-      .filter(
-        (doc) =>
-          isMatchEntity(doc) ||
-          doc.props.some((prop) => isMatchProp(prop)) ||
-          Object.values(doc.subsets).some((subset) => isMatch(subset)) ||
-          Object.entries(doc.enumLabels).some(
-            ([enumId, enumLabels]) =>
-              enumId.toLowerCase().includes(query) || isMatchEnum(enumLabels)
-          )
-      )
-      .map((doc) => {
-        doc.props = doc.props.filter((prop) => isMatchProp(prop));
-        doc.subsets = Object.fromEntries(
-          Object.entries(doc.subsets).map(([subsetName, subset]) => [
-            subsetName,
-            subset.filter((item) => isMatch([item])),
-          ])
-        );
-        doc.enumLabels = Object.fromEntries(
-          Object.entries(doc.enumLabels)
-            .filter(
-              ([enumId, enumLabels]) =>
-                enumId.toLowerCase().includes(query) ||
-                Object.entries(enumLabels).some(([key, value]) =>
-                  isMatch([key, value])
-                )
-            )
-            .map(([enumId, enumLabels]) => [
-              enumId,
-              Object.fromEntries(
-                Object.entries(enumLabels).filter(([key, value]) =>
-                  isMatch([key, value])
-                )
-              ),
-            ])
-        );
-        return doc;
-      })
-      .sort((a, b) => {
-        // Entity 정보에 query가 포함되어 있는 경우 우선순위를 높게 함
-        // EntityId가 query와 일치하는 경우 우선순위를 가장 높게 함
-        if (a.id.toLowerCase() === query) return -1;
-        if (b.id.toLowerCase() === query) return 1;
+      switch (event.key) {
+        case "ArrowDown":
+          if (selectedIndex !== -1) {
+            setSelectedIndex2((prevIndex2) =>
+              prevIndex2 < results[selectedIndex].fields.length - 1
+                ? prevIndex2 + 1
+                : prevIndex2
+            );
+          }
+          setSelectedIndex((prevIndex) => {
+            if (prevIndex === -1) {
+              return results.length > 0 ? 0 : -1;
+            }
+            if (results[prevIndex].fields.length === selectedIndex2 + 1) {
+              setSelectedIndex2(-1);
+              return prevIndex < results.length - 1 ? prevIndex + 1 : 0;
+            }
 
-        const aMatch = isMatchEntity(a);
-        const bMatch = isMatchEntity(b);
-        if (aMatch && !bMatch) return -1;
-        if (!aMatch && bMatch) return 1;
-        return 0;
-      });
-  };
+            return prevIndex;
+          });
+          break;
+        case "ArrowUp":
+          setSelectedIndex((prevIndex) => {
+            let nextIndex = prevIndex;
+            if (prevIndex === -1) {
+              nextIndex = results.length > 0 ? results.length - 1 : -1;
+            }
+            if (selectedIndex2 === -1) {
+              nextIndex = prevIndex > 0 ? prevIndex - 1 : results.length - 1;
+            }
+
+            setSelectedIndex2((prevIndex2) => {
+              if (results.length === 0) return -1;
+              if (prevIndex2 === -1) {
+                return (
+                  results[nextIndex > -1 ? nextIndex : results.length - 1]
+                    .fields.length - 1
+                );
+              }
+              return prevIndex2 - 1;
+            });
+
+            return nextIndex;
+          });
+          break;
+        case "Enter":
+          if (selectedIndex >= 0 && selectedIndex < results.length) {
+            const result = results[selectedIndex];
+            if (selectedIndex2 === -1) {
+              handleResultClick(`/entities/${result.item.id}`);
+            }
+
+            const field = result.fields[selectedIndex2];
+            if (field.type === "scaffolding") {
+              handleResultClick("/scaffolding", result.item.id);
+            } else {
+              handleResultClick(`/entities/${result.item.id}`, field.id);
+            }
+          }
+          break;
+        default:
+          break;
+      }
+    },
+    [open, results, selectedIndex, selectedIndex2]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   return (
     <Modal
@@ -128,6 +162,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       onClose={() => {
         setQuery("");
         setResults([]);
+        resetIndex();
         onClose();
       }}
     >
@@ -136,14 +171,23 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           icon="search"
           placeholder="Search docs"
           value={query}
-          onChange={handleChange}
+          onChange={(e) => {
+            setQuery(e.target.value.toLowerCase());
+          }}
           fluid
           autoFocus
         />
         {results.length > 0 && (
           <List selection>
-            {results.map((result) => (
-              <List.Item key={result.id} className="search-result">
+            {results.map(({ item: result, fields }, index) => (
+              <List.Item
+                key={`${result.id}-${index}`}
+                className={`search-result ${
+                  index === selectedIndex && selectedIndex2 === -1
+                    ? "selected"
+                    : ""
+                }`}
+              >
                 <div
                   className="click-item"
                   onClick={() => handleResultClick(`/entities/${result.id}`)}
@@ -160,10 +204,15 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   />
                 </div>
 
-                {(result.id.toLowerCase().includes(query) ||
-                  result.title.toLowerCase().includes(query)) && (
+                {!!fields?.filter((f) => f.type === "scaffolding")?.length && (
                   <List.Description
-                    className="click-item sub-item"
+                    className={`click-item sub-item ${
+                      index === selectedIndex &&
+                      selectedIndex2 !== -1 &&
+                      selectedIndex2 === 0
+                        ? "selected"
+                        : ""
+                    }`}
                     onClick={() => handleResultClick("/scaffolding", result.id)}
                   >
                     <strong
@@ -178,96 +227,108 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 )}
 
                 <div>
-                  {/* Props */}
-                  {result.props.length > 0 && (
+                  {!!fields?.filter((f) => f.type === "props")?.length && (
                     <div className="sub-item">
                       <List.Description>
                         <strong>{"props >"}</strong>
                       </List.Description>
-                      {result.props.map((prop) => (
-                        <List.Description
-                          key={prop.name}
-                          dangerouslySetInnerHTML={{
-                            __html: highlightText(
-                              `${prop.name}(${prop.desc})`,
-                              query
-                            ),
-                          }}
-                          className="click-item sub-item"
-                          onClick={() =>
-                            handleResultClick(
-                              `/entities/${result.id}`,
-                              `prop-${prop.name}`
-                            )
-                          }
-                        />
-                      ))}
-                    </div>
-                  )}
+                      {fields?.map((field, fieldIndex) => {
+                        if (field.type !== "props") return;
 
-                  {/* Subsets */}
-                  {Object.entries(result.subsets).map(
-                    ([subsetName, subset]) =>
-                      subset.length > 0 && (
-                        <div key={subsetName} className="sub-item">
-                          <List.Description>
-                            <strong>{`Subset${subsetName} >`}</strong>
-                          </List.Description>
-                          {subset.map((item) => (
-                            <List.Description
-                              key={item}
-                              dangerouslySetInnerHTML={{
-                                __html: highlightText(item, query),
-                              }}
-                              className="click-item sub-item"
-                              onClick={() =>
-                                handleResultClick(
-                                  `/entities/${result.id}`,
-                                  item
-                                )
-                              }
-                            />
-                          ))}
-                        </div>
-                      )
-                  )}
-
-                  {/* Enums */}
-                  {Object.entries(result.enumLabels).map(
-                    ([enumId, enumLabels]) => (
-                      <div key={enumId} className="sub-item">
-                        <List.Description
-                          className="click-item"
-                          onClick={() =>
-                            handleResultClick(
-                              `/entities/${result.id}`,
-                              `enum-${enumId}`
-                            )
-                          }
-                        >
-                          <strong
-                            dangerouslySetInnerHTML={{
-                              __html: highlightText(`Enum${enumId} >`, query),
-                            }}
-                          />
-                        </List.Description>
-                        {Object.entries(enumLabels).map(([key, value]) => (
+                        return (
                           <List.Description
-                            key={key}
+                            key={field.key}
                             dangerouslySetInnerHTML={{
-                              __html: highlightText(`${key}(${value})`, query),
+                              __html: highlightText(
+                                `${field.key}(${field.desc})`,
+                                query
+                              ),
                             }}
-                            className="click-item sub-item"
+                            className={`click-item sub-item ${
+                              index === selectedIndex &&
+                              selectedIndex2 !== -1 &&
+                              selectedIndex2 === fieldIndex
+                                ? "selected"
+                                : ""
+                            }`}
                             onClick={() =>
                               handleResultClick(
                                 `/entities/${result.id}`,
-                                `enum-${enumId}-${key}`
+                                `prop-${field.key}`
                               )
                             }
                           />
-                        ))}
-                      </div>
-                    )
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {!!fields?.filter((f) => f.type === "subsets")?.length &&
+                    _(fields?.filter((f) => f.type === "subsets"))
+                      .groupBy("key")
+                      .map((group, key) => {
+                        return (
+                          <div key={key} className="sub-item">
+                            <List.Description>
+                              <strong>{`Subset${key} >`}</strong>
+                            </List.Description>
+                            {group.map((field) => (
+                              <List.Description
+                                key={field.desc}
+                                dangerouslySetInnerHTML={{
+                                  __html: highlightText(field.desc, query),
+                                }}
+                                className={`click-item sub-item ${
+                                  index === selectedIndex &&
+                                  selectedIndex2 !== -1 &&
+                                  selectedIndex2 === fields.indexOf(field)
+                                    ? "selected"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  handleResultClick(
+                                    `/entities/${result.id}`,
+                                    field.desc
+                                  )
+                                }
+                              />
+                            ))}
+                          </div>
+                        );
+                      })
+                      .value()}
+
+                  {!!fields?.filter((f) => f.type === "enums")?.length && (
+                    <div className="sub-item">
+                      <List.Description>
+                        <strong>{"enums >"}</strong>
+                      </List.Description>
+                      {fields?.map((field) => {
+                        if (field.type !== "enums") return;
+
+                        return (
+                          <List.Description
+                            key={field.key}
+                            dangerouslySetInnerHTML={{
+                              __html: highlightText(field.key, query),
+                            }}
+                            className={`click-item sub-item ${
+                              index === selectedIndex &&
+                              selectedIndex2 !== -1 &&
+                              selectedIndex2 === fields.indexOf(field)
+                                ? "selected"
+                                : ""
+                            }`}
+                            onClick={() =>
+                              handleResultClick(
+                                `/entities/${result.id}`,
+                                `enum-${field.key}`
+                              )
+                            }
+                          />
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </List.Item>

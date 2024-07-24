@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { Button, Checkbox, Form, Icon, Label, Table } from "semantic-ui-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +16,8 @@ import { uniq } from "lodash";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
+  const { showSearch } = useOutletContext<{ showSearch: boolean }>();
+
   const { data, error, mutate } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
   const isLoading = !error && !data;
@@ -185,6 +187,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       }
       return true;
     },
+    disable: showSearch,
   });
   // commonModal
   const { openModal } = useCommonModal();

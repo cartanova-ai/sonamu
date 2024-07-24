@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { defaults, groupBy, uniq } from "lodash";
+import _ from "lodash";
 import { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";
@@ -178,7 +178,7 @@ export class UpsertBuilder {
     }
 
     // 내부 참조 있는 경우 필터하여 분리
-    const groups = groupBy(table.rows, (row) =>
+    const groups = _.groupBy(table.rows, (row) =>
       Object.entries(row).some(([, value]) => isRefField(value))
         ? "selfRef"
         : "normal"
@@ -212,14 +212,14 @@ export class UpsertBuilder {
       }
     );
 
-    const extractFields = uniq(references).map(
+    const extractFields = _.uniq(references).map(
       (reference) => reference.split(".")[1]
     );
 
     // UUID 기준으로 id 추출
     const uuids = table.rows.map((row) => row.uuid);
     const upsertedRows = await wdb(tableName)
-      .select(uniq(["uuid", "id", ...extractFields]))
+      .select(_.uniq(["uuid", "id", ...extractFields]))
       .whereIn("uuid", uuids);
     const uuidMap = new Map<string, any>(
       upsertedRows.map((row: any) => [row.uuid, row])
@@ -263,7 +263,7 @@ export class UpsertBuilder {
       where?: string;
     }
   ): Promise<void> {
-    options = defaults(options, {
+    options = _.defaults(options, {
       chunkSize: 500,
       where: "id",
     });
