@@ -18,4 +18,12 @@ export default defineConfig({
       };
     }
   },
+  external: [
+    "zod",
+    "fastify",
+    "inflection",
+    "source-map-support",
+    "typescript",
+    "prettier",
+  ],
 });
