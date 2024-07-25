@@ -1,26 +1,13 @@
 {
   "name": "sonamu",
-  "version": "0.2.44",
+  "version": "0.2.46",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "typescript",
     "framework",
     "orm"
   ],
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    }
-  },
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
   "scripts": {
     "dev": "yarn tsc -w -p ./tsconfig.json",
     "build": "tsup --config ./tsup.config.js"
@@ -35,7 +22,7 @@
     "type": "git",
     "url": "https://github.com/ping-alive/sonamu.git"
   },
-  "bin": "./dist/bin/cli-wrapper.mjs",
+  "bin": "./dist/bin/cli.js",
   "dependencies": {
     "chalk": "^4.1.2",
     "dotenv": "^16.0.2",
@@ -44,7 +31,7 @@
     "fs-extra": "^10.1.0",
     "glob": "^8.0.3",
     "inflection": "^1.13.2",
-    "knex": "^2.5.1",
+    "knex": "^3.1.0",
     "lodash": "^4.17.21",
     "luxon": "^3.0.3",
     "mysql2": "^3.6.1",
@@ -72,9 +59,9 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "fastify": "^4.5.3",
-    "knex": "^2.3.0",
-    "mysql2": "^2.3.3"
+    "fastify": "^4.23.2",
+    "knex": "^3.1.0",
+    "mysql2": "^3.6.1"
   },
   "packageManager": "yarn@3.6.3"
 }

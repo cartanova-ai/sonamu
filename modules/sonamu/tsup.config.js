@@ -4,7 +4,10 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: ["src/index.ts", "src/bin/cli.ts", "src/bin/cli-wrapper.ts"],
   dts: true,
-  format: ["esm", "cjs"],
+  format: [
+    // "esm",
+    "cjs",
+  ],
   target: "es2020",
   clean: true,
   sourcemap: true,
