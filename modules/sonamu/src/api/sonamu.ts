@@ -16,6 +16,7 @@ import { findApiRootPath } from "../utils/utils";
 import path from "path";
 import fs from "fs-extra";
 import { ApiDecoratorOptions } from "./decorators";
+import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
 
 export type SonamuConfig = {
   api: {
@@ -138,6 +139,7 @@ class SonamuClass {
     // DB 로드
     this.dbConfig = await DB.readKnexfile();
     !doSilent && console.log(chalk.green("DB Config Loaded!"));
+    attachOnDuplicateUpdate();
 
     // Entity 로드
     await EntityManager.autoload(doSilent);
