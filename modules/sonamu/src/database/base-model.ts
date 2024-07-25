@@ -1,8 +1,8 @@
 import { DateTime } from "luxon";
 import { Knex } from "knex";
-import _, { once } from "lodash";
+import _ from "lodash";
 import { attachOnDuplicateUpdate } from "./knex-plugins/knex-on-duplicate-update";
-once(() => attachOnDuplicateUpdate());
+_.once(() => attachOnDuplicateUpdate());
 import { DBPreset, DB } from "./db";
 import { isCustomJoinClause, SubsetQuery } from "../types/types";
 import { BaseListParams } from "../utils/model";
