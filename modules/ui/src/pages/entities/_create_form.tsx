@@ -33,7 +33,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
         doneModal(form.id);
       })
       .catch((e) => {
-        if (isSonamuError(e) && e.code === 641) {
+        if (isSonamuError(e) && e.code === 541) {
           addError("table", "이미 존재하는 테이블명입니다.");
         } else if (e.code === 400) {
           addError("id", e.message);

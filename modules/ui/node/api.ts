@@ -658,7 +658,7 @@ export async function createApiServer(options: {
             }
           );
         } catch (e) {
-          if (isSoException(e) && e.statusCode === 641) {
+          if (isSoException(e) && e.statusCode === 541) {
             return null;
           } else {
             console.error(e);
