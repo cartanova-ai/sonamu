@@ -7,6 +7,7 @@ export * from "./database/db";
 export * from "./database/upsert-builder";
 export * from "./exceptions/error-handler";
 export * from "./exceptions/so-exceptions";
+export * from "./entity/entity";
 export * from "./entity/entity-manager";
 export * from "./entity/entity-utils";
 export * from "./entity/migrator";

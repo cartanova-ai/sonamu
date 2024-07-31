@@ -1023,38 +1023,32 @@ export class Syncer {
       (name) => name !== names.constant
     );
 
-    return keys.reduce(
-      (result, key) => {
-        const tpl = this.getTemplate(key);
-        if (key.startsWith("view_enums")) {
-          enumsKeys.map((componentId) => {
-            const { target, path: p } = tpl.getTargetAndPath(
-              names,
-              componentId
-            );
-            result[`${key}__${componentId}`] = fs.existsSync(
-              path.join(Sonamu.appRootPath, target, p)
-            );
-          });
-          return result;
-        }
-
-        const { target, path: p } = tpl.getTargetAndPath(names);
-        const { targets } = Sonamu.config.sync;
-        if (target.includes(":target")) {
-          targets.map((t) => {
-            result[`${key}__${t}`] = fs.existsSync(
-              path.join(Sonamu.appRootPath, target.replace(":target", t), p)
-            );
-          });
-        } else {
-          result[key] = fs.existsSync(path.join(Sonamu.appRootPath, target, p));
-        }
-
+    return keys.reduce((result, key) => {
+      const tpl = this.getTemplate(key);
+      if (key.startsWith("view_enums")) {
+        enumsKeys.map((componentId) => {
+          const { target, path: p } = tpl.getTargetAndPath(names, componentId);
+          result[`${key}__${componentId}`] = fs.existsSync(
+            path.join(Sonamu.appRootPath, target, p)
+          );
+        });
         return result;
-      },
-      {} as Record<`${TemplateKey}${string}`, boolean>
-    );
+      }
+
+      const { target, path: p } = tpl.getTargetAndPath(names);
+      const { targets } = Sonamu.config.sync;
+      if (target.includes(":target")) {
+        targets.map((t) => {
+          result[`${key}__${t}`] = fs.existsSync(
+            path.join(Sonamu.appRootPath, target.replace(":target", t), p)
+          );
+        });
+      } else {
+        result[key] = fs.existsSync(path.join(Sonamu.appRootPath, target, p));
+      }
+
+      return result;
+    }, {} as Record<`${TemplateKey}${string}`, boolean>);
   }
 
   async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
@@ -1099,8 +1093,9 @@ export class Syncer {
       const obj = await propNode.children.reduce(
         async (promise, childPropNode) => {
           const result = await promise;
-          result[childPropNode.prop!.name] =
-            await this.propNodeToZodType(childPropNode);
+          result[childPropNode.prop!.name] = await this.propNodeToZodType(
+            childPropNode
+          );
           return result;
         },
         {} as any
@@ -1329,21 +1324,13 @@ export class Syncer {
   }
 
   async createEntity(
-    entityId: string,
-    parentId?: string,
-    table?: string,
-    title?: string
+    form: Omit<TemplateOptions["entity"], "title"> & { title?: string }
   ) {
-    if (!/^[A-Z][a-zA-Z0-9]*$/.test(entityId)) {
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
       throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
     }
 
-    await this.generateTemplate("entity", {
-      entityId,
-      parentId,
-      table,
-      title,
-    });
+    await this.generateTemplate("entity", form);
 
     // reload entities
     await EntityManager.reload();
@@ -1352,9 +1339,9 @@ export class Syncer {
     await this.actionGenerateSchemas();
 
     // generate types
-    if (parentId === undefined) {
+    if (form.parentId === undefined) {
       await this.generateTemplate("init_types", {
-        entityId,
+        entityId: form.entityId,
       });
     }
   }

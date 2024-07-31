@@ -39,37 +39,39 @@ export class Template__entity extends Template {
         title: title ?? entityId,
         parentId,
         table: table ?? names.fsPlural.replace(/\-/g, "_"),
-        props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
-          ...(parent
-            ? [
-                {
-                  type: "relation",
-                  name: parent.names.camel,
-                  relationType: "BelongsToOne",
-                  with: parentId,
-                  onUpdate: "CASCADE",
-                  onDelete: "CASCADE",
-                  desc: parent.entity.title,
-                },
-              ]
-            : []),
-          {
-            name: "created_at",
-            type: "timestamp",
-            desc: "등록일시",
-            dbDefault: "CURRENT_TIMESTAMP",
-          },
-        ],
-        indexes: [],
-        subsets: {
+        props: options.props?.length
+          ? options.props
+          : [
+              { name: "id", type: "integer", unsigned: true, desc: "ID" },
+              ...(parent
+                ? [
+                    {
+                      type: "relation",
+                      name: parent.names.camel,
+                      relationType: "BelongsToOne",
+                      with: parentId,
+                      onUpdate: "CASCADE",
+                      onDelete: "CASCADE",
+                      desc: parent.entity.title,
+                    },
+                  ]
+                : []),
+              {
+                name: "created_at",
+                type: "timestamp",
+                desc: "등록일시",
+                dbDefault: "CURRENT_TIMESTAMP",
+              },
+            ],
+        indexes: [...(options.indexes ?? [])],
+        subsets: options.subsets ?? {
           ...(parentId
             ? {}
             : {
                 A: ["id", "created_at"],
               }),
         },
-        enums: {
+        enums: options.enums ?? {
           ...(parentId
             ? {}
             : {

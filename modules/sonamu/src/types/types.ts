@@ -617,6 +617,10 @@ export const TemplateOptions = z.object({
     parentId: z.string().optional(),
     title: z.string(),
     table: z.string().optional(),
+    props: z.array(z.object({})).optional(),
+    indexes: z.array(z.object({})).optional(),
+    subsets: z.object({}).optional(),
+    enums: z.object({}).optional(),
   }),
   init_types: z.object({
     entityId: z.string(),
