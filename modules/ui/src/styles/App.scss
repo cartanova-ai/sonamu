@@ -685,3 +685,88 @@ code {
     background-color: #d0dbb0 !important;
   }
 }
+
+.chat {
+  .chat-box {
+    height: calc(100vh - $gnb-height);
+    overflow-y: scroll;
+    padding-top: 1em;
+    padding-bottom: 5em;
+
+    .chat-list {
+      display: flex;
+      flex-direction: column;
+      width: 700px;
+      margin: 0 auto;
+
+      .chat-item {
+        gap: 1em;
+        margin-bottom: 1.5em;
+        text-align: left;
+        padding: 1em 1.3em !important;
+        border-radius: 1.5em;
+        background-color: #f5f5f5;
+
+        code {
+          all: initial;
+          /* width 넘을 경우 줄바꿈 */
+          white-space: pre-wrap;
+        }
+
+        li > p {
+          margin: 0;
+        }
+
+        li {
+          margin: 0.2em 0;
+        }
+
+        .content {
+          min-height: 0 !important;
+          height: fit-content !important;
+        }
+      }
+
+      .me {
+        background-color: #98d389;
+        align-self: flex-end;
+        max-width: 90%;
+      }
+    }
+  }
+
+  .chat-form {
+    z-index: 100;
+    width: 750px;
+    position: absolute !important;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+    .form-box {
+      position: relative;
+      flex: 1;
+    }
+
+    .ui.textarea {
+      width: 100%;
+      padding-right: 3em;
+    }
+
+    .ui.button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  }
+
+  .ui.dropdown {
+    position: absolute !important;
+
+    .menu {
+      max-height: 200px;
+      overflow-y: scroll;
+    }
+  }
+}

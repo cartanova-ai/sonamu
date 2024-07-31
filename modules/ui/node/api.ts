@@ -13,10 +13,12 @@ import {
   isSoException,
   ServiceUnavailableException,
   PathAndCode,
+  Entity,
 } from "sonamu";
-import { Entity } from "sonamu/dist/entity/entity";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
+import OpenAI from "openai";
+import { inspect } from "util";
 
 export async function createApiServer(options: {
   listen: {
@@ -34,11 +36,92 @@ export async function createApiServer(options: {
     origin: true,
     credentials: true,
   });
+  server.register(import("@fastify/cookie"));
 
   if (watch) {
     server.get("/api/reload", async () => {
       await EntityManager.reload();
       return true;
+    });
+  }
+
+  if (true) {
+    server.post("/api/openai/setApiKey", async (request, reply) => {
+      const { apiKey } = request.body as { apiKey: string };
+      if (!apiKey) {
+        throw new BadRequestException("apiKey must be provided");
+      }
+
+      reply
+        .setCookie("openai_api_key", apiKey, {
+          httpOnly: true,
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+        })
+        .send({ apiKey });
+    });
+
+    server.post("/api/openai/createThread", async (request, reply) => {
+      const apiKey = request.cookies["openai_api_key"];
+      if (!apiKey) {
+        throw new BadRequestException("apiKey must be provided");
+      }
+
+      const openai = new OpenAI({ apiKey });
+      const response = await openai.beta.threads.create();
+
+      reply
+        .setCookie("openai_thread_id", response.id, {
+          httpOnly: true,
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+        })
+        .send({ threadId: response.id });
+    });
+
+    server.get("/api/openai/config", async (request, reply) => {
+      const apiKey = request.cookies["openai_api_key"];
+      const threadId = request.cookies["openai_thread_id"];
+
+      return { apiKey, threadId };
+    });
+
+    server.get("/api/openai/messages", async (request, reply) => {
+      const apiKey = request.cookies["openai_api_key"];
+      const threadId = request.cookies["openai_thread_id"];
+      if (!apiKey || !threadId) {
+        throw new BadRequestException("apiKey and threadId must be provided");
+      }
+
+      const openai = new OpenAI({ apiKey });
+      const messages = await openai.beta.threads.messages.list(threadId, {
+        order: "asc",
+      });
+
+      return { messages };
+    });
+
+    server.post("/api/openai/sendMessage", async (request, reply) => {
+      const apiKey = request.cookies["openai_api_key"];
+      const threadId = request.cookies["openai_thread_id"];
+      const { message } = request.body as { message: string };
+      if (!apiKey || !threadId) {
+        throw new BadRequestException("apiKey and threadId must be provided");
+      }
+
+      const openai = new OpenAI({ apiKey });
+      await openai.beta.threads.messages.create(threadId, {
+        role: "user",
+        content: message,
+      });
+      const runner = openai.beta.threads.runs.stream(threadId, {
+        assistant_id: "asst_PxyHJOKmI4CRYAaoNwKbxbTI",
+      });
+      for await (const message of runner) {
+        console.log(inspect(message, false, null, true));
+      }
     });
   }
 
@@ -309,12 +392,7 @@ export async function createApiServer(options: {
     };
   }>("/api/entity/create", async (request) => {
     const { form } = request.body;
-    await Sonamu.syncer.createEntity(
-      form.id,
-      form.parentId,
-      form.table,
-      form.title
-    );
+    await Sonamu.syncer.createEntity({ ...form, entityId: form.id });
 
     return 1;
   });

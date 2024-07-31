@@ -1,4 +1,3 @@
-import { Entity } from "sonamu/dist/entity/entity";
 import useSWR, { SWRResponse } from "swr";
 import { fetch, swrPostFetcher } from "./sonamu.shared";
 import {
@@ -7,7 +6,9 @@ import {
   FlattenSubsetRow,
   MigrationStatus,
   PathAndCode,
+  Entity,
 } from "sonamu";
+import { MessagesPage } from "openai/resources/beta/threads/messages.mjs";
 
 type SWRError = {
   name: string;
@@ -341,6 +342,50 @@ export namespace SonamuUIService {
       data: {
         option,
       },
+    });
+  }
+
+  export function setOpenAIKey(apiKey: string): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/openai/setApiKey`,
+      data: {
+        apiKey,
+      },
+      withCredentials: true,
+    });
+  }
+
+  export function createThread(): Promise<{ threadId: string }> {
+    return fetch({
+      method: "POST",
+      url: `/api/openai/createThread`,
+      withCredentials: true,
+    });
+  }
+
+  export function getConfig(): Promise<{ threadId: string; apiKey: string }> {
+    return fetch({
+      method: "GET",
+      url: `/api/openai/config`,
+      withCredentials: true,
+    });
+  }
+
+  export function getMessages(): Promise<{ messages: MessagesPage }> {
+    return fetch({
+      method: "GET",
+      url: `/api/openai/messages`,
+      withCredentials: true,
+    });
+  }
+
+  export function sendMessage(message: string): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/openai/sendMessage`,
+      data: { message },
+      withCredentials: true,
     });
   }
 }
