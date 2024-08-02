@@ -9,6 +9,7 @@ import {
   Entity,
 } from "sonamu";
 import { MessagesPage } from "openai/resources/beta/threads/messages.mjs";
+import { Message } from "../pages/chat";
 
 type SWRError = {
   name: string;
@@ -372,7 +373,7 @@ export namespace SonamuUIService {
     });
   }
 
-  export function getMessages(): Promise<{ messages: MessagesPage }> {
+  export function getMessages(): Promise<Message[]> {
     return fetch({
       method: "GET",
       url: `/api/openai/messages`,
@@ -380,10 +381,10 @@ export namespace SonamuUIService {
     });
   }
 
-  export function sendMessage(message: string): Promise<void> {
+  export function chat(message: string): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/openai/sendMessage`,
+      url: `/api/openai/chat`,
       data: { message },
       withCredentials: true,
     });

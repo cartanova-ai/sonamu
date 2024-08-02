@@ -18,7 +18,6 @@ import {
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import OpenAI from "openai";
-import { inspect } from "util";
 
 export async function createApiServer(options: {
   listen: {
@@ -37,6 +36,7 @@ export async function createApiServer(options: {
     credentials: true,
   });
   server.register(import("@fastify/cookie"));
+  server.register(import("fastify-sse-v2"));
 
   if (watch) {
     server.get("/api/reload", async () => {
@@ -100,10 +100,16 @@ export async function createApiServer(options: {
         order: "asc",
       });
 
-      return { messages };
+      return messages.data.map((message) => ({
+        role: message.role,
+        content:
+          message.content[0].type === "text"
+            ? message.content[0].text.value
+            : "",
+      }));
     });
 
-    server.post("/api/openai/sendMessage", async (request, reply) => {
+    server.post("/api/openai/chat", async (request) => {
       const apiKey = request.cookies["openai_api_key"];
       const threadId = request.cookies["openai_thread_id"];
       const { message } = request.body as { message: string };
@@ -116,11 +122,35 @@ export async function createApiServer(options: {
         role: "user",
         content: message,
       });
+
+      return true;
+    });
+
+    server.get("/api/openai/chat", async (request, reply) => {
+      const apiKey = request.cookies["openai_api_key"];
+      const threadId = request.cookies["openai_thread_id"];
+      if (!apiKey || !threadId) {
+        throw new BadRequestException("apiKey and threadId must be provided");
+      }
+
+      const openai = new OpenAI({ apiKey });
       const runner = openai.beta.threads.runs.stream(threadId, {
         assistant_id: "asst_PxyHJOKmI4CRYAaoNwKbxbTI",
       });
+
       for await (const message of runner) {
-        console.log(inspect(message, false, null, true));
+        if (
+          message.event === "thread.message.delta" &&
+          message.data.delta.content?.length
+        ) {
+          reply.sse({
+            data:
+              (message.data.delta.content[0].type === "text"
+                ? message.data.delta.content[0].text?.value
+                : ""
+              )?.replace(/\n/g, "\\n") ?? "",
+          });
+        }
       }
     });
   }

@@ -1,13 +1,17 @@
 import { List, Form, TextArea, Button, Dropdown } from "semantic-ui-react";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { defaultCatch } from "../../services/sonamu.shared";
-import { MessagesPage } from "openai/resources/beta/threads/messages.mjs";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import themeList from "react-syntax-highlighter/dist/cjs/styles/prism";
 import remarkGfm from "remark-gfm";
 import { useNavigate } from "react-router-dom";
+
+export type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 type ChatIndexProps = {};
 export default function ChatIndex({}: ChatIndexProps) {
@@ -16,9 +20,12 @@ export default function ChatIndex({}: ChatIndexProps) {
   const [loading, setLoading] = useState(false);
   const [key, setKey] = useState("");
   const [config, setConfig] = useState({ threadId: "", apiKey: "" });
-  const [messages, setMessages] = useState<MessagesPage | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>("");
   const [theme, setTheme] = useState(localStorage.getItem("theme") ?? "cb");
+
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const chatBoxRef = useRef<HTMLDivElement>(null);
 
   const setAPIKey = () => {
     setLoading(true);
@@ -39,24 +46,57 @@ export default function ChatIndex({}: ChatIndexProps) {
 
   const getMessages = () => {
     SonamuUIService.getMessages()
-      .then(({ messages }) => setMessages(messages))
+      .then(setMessages)
       .catch((e) => {
         console.log(e);
         if (e.message.includes("threadId")) {
-          setMessages(null);
+          setMessages([]);
         }
       });
   };
 
   const sendMessage = () => {
-    setLoading(true);
-    SonamuUIService.sendMessage(message)
+    setMessages([
+      ...(messages ?? []),
+      {
+        role: "user",
+        content: message,
+      },
+    ]);
+    setMessage("");
+
+    SonamuUIService.chat(message)
       .then(() => {
-        setMessage("");
-        getMessages();
+        const event = new EventSource(
+          "http://localhost:57001/api/openai/chat",
+          {
+            withCredentials: true,
+          }
+        );
+        event.onmessage = (e) => {
+          const data = e.data.replace(/\\n/g, "\n");
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            if (
+              newMessages.length > 0 &&
+              newMessages[newMessages.length - 1].role === "assistant"
+            ) {
+              newMessages[newMessages.length - 1].content += data;
+            } else {
+              newMessages.push({
+                role: "assistant",
+                content: data,
+              });
+            }
+            return newMessages;
+          });
+        };
+        event.onerror = function () {
+          event.close();
+        };
       })
-      .catch(defaultCatch)
-      .finally(() => setLoading(false));
+      .catch(defaultCatch);
   };
 
   const writeEntity = (s: any) => {
@@ -89,7 +129,25 @@ export default function ChatIndex({}: ChatIndexProps) {
     getMessages();
   }, [config]);
 
-  // 채팅방
+  useEffect(() => {
+    const chatBox = chatBoxRef.current;
+    if (!chatBox) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = chatBox;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
+      setShouldAutoScroll(isAtBottom);
+    };
+
+    chatBox.addEventListener("scroll", handleScroll);
+
+    if (shouldAutoScroll) {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    chatBox.removeEventListener("scroll", handleScroll);
+  }, [messages]);
+
   return (
     <div className="chat">
       {!config.apiKey && (
@@ -123,10 +181,8 @@ export default function ChatIndex({}: ChatIndexProps) {
         />
       )}
 
-      {/* 채팅 */}
       {config.apiKey && config.threadId && (
         <>
-          {/* 코드 테마 선택 드롭다운 */}
           <Dropdown
             placeholder="Select Theme"
             options={Object.keys(themeList).map((theme) => ({
@@ -141,20 +197,16 @@ export default function ChatIndex({}: ChatIndexProps) {
             value={theme}
           />
 
-          <div className="chat-box">
+          <div className="chat-box" ref={chatBoxRef}>
             <List className="chat-list">
-              {messages?.data.map((chat, index) => (
+              {messages.map((chat, index) => (
                 <List.Item
                   key={index}
                   className={`chat-item ${chat.role === "user" ? "me" : ""}`}
                 >
                   <ReactMarkdown
                     remarkPlugins={[[remarkGfm, { singleTilde: false }]]}
-                    children={
-                      chat.content[0].type === "text"
-                        ? chat.content[0].text.value
-                        : ""
-                    }
+                    children={chat.content}
                     components={{
                       code(props) {
                         const { children, className, node, ref, ...rest } =
@@ -172,7 +224,7 @@ export default function ChatIndex({}: ChatIndexProps) {
                               PreTag="div"
                               language={match[1]}
                             >
-                              {String(children).replace(/\n$/, "")}
+                              {String(children)}
                             </SyntaxHighlighter>
                             <Button onClick={() => writeEntity(children)}>
                               엔티티 파일 생성
