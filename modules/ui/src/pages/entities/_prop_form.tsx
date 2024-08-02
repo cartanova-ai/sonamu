@@ -269,10 +269,12 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 form.type === "double" ||
                 form.type === "decimal") && (
                 <Form.Group widths="equal">
-                  <Form.Field>
-                    <label>Unsigned</label>
-                    <BooleanToggle {...register("unsigned")} />
-                  </Form.Field>
+                  {form.type !== "decimal" && (
+                    <Form.Field>
+                      <label>Unsigned</label>
+                      <BooleanToggle {...register("unsigned")} />
+                    </Form.Field>
+                  )}
                   {(form.type === "float" ||
                     form.type === "double" ||
                     form.type === "decimal") && (
