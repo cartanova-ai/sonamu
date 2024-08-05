@@ -844,6 +844,11 @@ export class Entity {
       }
     }
 
+    // 현재 엔티티의 인덱스에서 제외
+    EntityManager.get(this.id).indexes.map((index) => {
+      index.columns = index.columns.filter((col) => col !== oldName);
+    });
+
     // 프롭 삭제
     this.props.splice(at, 1);
 
