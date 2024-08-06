@@ -8,7 +8,6 @@ import {
   PathAndCode,
   Entity,
 } from "sonamu";
-import { MessagesPage } from "openai/resources/beta/threads/messages.mjs";
 import { Message } from "../pages/chat";
 
 type SWRError = {

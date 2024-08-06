@@ -17,11 +17,19 @@ type ChatIndexProps = {};
 export default function ChatIndex({}: ChatIndexProps) {
   const navigate = useNavigate();
 
+  const { data: entitiesData } = SonamuUIService.useEntities();
+
   const [loading, setLoading] = useState(false);
+
+  // API Key
   const [key, setKey] = useState("");
   const [config, setConfig] = useState({ threadId: "", apiKey: "" });
+
+  // Chat
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>("");
+
+  // Theme
   const [theme, setTheme] = useState(localStorage.getItem("theme") ?? "cb");
 
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -56,6 +64,7 @@ export default function ChatIndex({}: ChatIndexProps) {
   };
 
   const sendMessage = () => {
+    setLoading(true);
     setMessages([
       ...(messages ?? []),
       {
@@ -73,6 +82,11 @@ export default function ChatIndex({}: ChatIndexProps) {
             withCredentials: true,
           }
         );
+
+        event.addEventListener("end", () => {
+          setLoading(false);
+          event.close();
+        });
         event.onmessage = (e) => {
           const data = e.data.replace(/\\n/g, "\n");
 
@@ -114,6 +128,108 @@ export default function ChatIndex({}: ChatIndexProps) {
         if (answer) {
           navigate(`/entities/${entity.id}`);
         }
+      })
+      .catch(defaultCatch);
+  };
+
+  const modifyProp = (s: any) => {
+    const entity = JSON.parse(s);
+    if (!entity.props) {
+      alert("프로퍼티 정의가 누락되었습니다.");
+      return;
+    }
+
+    const exProps = entitiesData?.entities.find(
+      (e) => e.id === entity.id
+    )?.props;
+    if (!exProps) {
+      alert("해당 엔티티가 존재하지 않습니다.");
+      return;
+    }
+
+    // exProps에 존재하는 경우 수정
+    // exProps에 존재하지 않는 경우 추가
+    // exProps에 존재하는데 props에 존재하지 않는 경우 삭제
+    entity.props.forEach((prop: any) => {
+      const index = exProps.findIndex((e) => e.name === prop.name);
+      if (index === -1) {
+        SonamuUIService.createProp(entity.id, prop).catch(defaultCatch);
+      } else {
+        SonamuUIService.modifyProp(entity.id, prop, index)
+          .then(() => {
+            exProps.splice(index, 1);
+          })
+          .catch(defaultCatch);
+      }
+    });
+    exProps.forEach((prop, i) => {
+      const index = entity.props.findIndex((e: any) => e.name === prop.name);
+      if (index === -1) {
+        SonamuUIService.delProp(entity.id, i).catch(defaultCatch);
+      }
+    });
+    alert("수정되었습니다.");
+  };
+
+  const modifyIndex = (s: any) => {
+    const entity = JSON.parse(s);
+    if (!entity.id) {
+      alert("ID가 누락되었습니다.");
+      return;
+    }
+    if (!entity.indexes) {
+      alert("인덱스 정의가 누락되었습니다.");
+      return;
+    }
+
+    SonamuUIService.modifyIndexes(entity.id, entity.indexes)
+      .then(() => {
+        alert("수정되었습니다.");
+      })
+      .catch(defaultCatch);
+  };
+
+  const modifySubset = (s: any) => {
+    const entity = JSON.parse(s);
+    if (!entity.id) {
+      alert("ID가 누락되었습니다.");
+      return;
+    }
+    if (!entity.subsets) {
+      alert("서브셋 정의가 누락되었습니다.");
+      return;
+    }
+
+    Object.keys(entity.subsets).forEach((subset) => {
+      const subsetProps = entity.subsets[subset];
+      SonamuUIService.modifySubset(entity.id, subset, subsetProps)
+        .then(() => {
+          alert("수정되었습니다.");
+        })
+        .catch(defaultCatch);
+    });
+  };
+
+  const modifyEnum = (s: any) => {
+    const entity = JSON.parse(s);
+    if (!entity.id) {
+      alert("ID가 누락되었습니다.");
+      return;
+    }
+    if (!entity.enums) {
+      alert("Enum 정의가 누락되었습니다.");
+      return;
+    }
+
+    const exEnums = entitiesData?.entities.find(
+      (e) => e.id === entity.id
+    )?.enums;
+    SonamuUIService.modifyEnumLabels(entity.id, {
+      ...exEnums,
+      ...entity.enums,
+    })
+      .then(() => {
+        alert("수정되었습니다.");
       })
       .catch(defaultCatch);
   };
@@ -226,9 +342,33 @@ export default function ChatIndex({}: ChatIndexProps) {
                             >
                               {String(children)}
                             </SyntaxHighlighter>
-                            <Button onClick={() => writeEntity(children)}>
-                              엔티티 파일 생성
-                            </Button>
+                            {!loading &&
+                              (entitiesData?.entities.length &&
+                              entitiesData.entities.find((e) => {
+                                const entity = JSON.parse(children as string);
+                                return entity.id === e.id;
+                              }) ? (
+                                <>
+                                  <Button onClick={() => modifyProp(children)}>
+                                    Prop 수정
+                                  </Button>
+                                  <Button
+                                    onClick={() => modifySubset(children)}
+                                  >
+                                    Subset 수정
+                                  </Button>
+                                  <Button onClick={() => modifyIndex(children)}>
+                                    Index 수정
+                                  </Button>
+                                  <Button onClick={() => modifyEnum(children)}>
+                                    Enum 수정
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button onClick={() => writeEntity(children)}>
+                                  엔티티 파일 생성
+                                </Button>
+                              ))}
                           </>
                         ) : (
                           <code

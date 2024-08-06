@@ -152,6 +152,8 @@ export async function createApiServer(options: {
           });
         }
       }
+
+      reply.sse({ data: " ", event: "end" });
     });
   }
 

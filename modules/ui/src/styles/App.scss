@@ -754,7 +754,7 @@ code {
     }
 
     .ui.button {
-      position: absolute;
+      position: absolute !important;
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
