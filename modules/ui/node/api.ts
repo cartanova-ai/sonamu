@@ -135,7 +135,7 @@ export async function createApiServer(options: {
 
       const openai = new OpenAI({ apiKey });
       const runner = openai.beta.threads.runs.stream(threadId, {
-        assistant_id: "asst_PxyHJOKmI4CRYAaoNwKbxbTI",
+        assistant_id: "asst_O0mUFjko16upPY9NgbTAic7G",
       });
 
       for await (const message of runner) {
