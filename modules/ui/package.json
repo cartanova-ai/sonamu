@@ -46,7 +46,6 @@
     "classnames": "^2.3.2",
     "fastify": "^4.21.0",
     "fastify-qs": "^4.0.2",
-    "fastify-sse-v2": "^4.0.0",
     "inflection": "^2.0.1",
     "jotai": "^2.4.2",
     "knex": "^2.5.1",

@@ -106,7 +106,8 @@ export default function ChatIndex({}: ChatIndexProps) {
             return newMessages;
           });
         };
-        event.onerror = function () {
+        event.onerror = (e) => {
+          console.log(e);
           event.close();
         };
       })

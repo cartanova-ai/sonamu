@@ -36,7 +36,6 @@ export async function createApiServer(options: {
     credentials: true,
   });
   server.register(import("@fastify/cookie"));
-  server.register(import("fastify-sse-v2"));
 
   if (watch) {
     server.get("/api/reload", async () => {
@@ -138,22 +137,30 @@ export async function createApiServer(options: {
         assistant_id: "asst_O0mUFjko16upPY9NgbTAic7G",
       });
 
+      reply.raw.writeHead(200, {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "Access-Control-Allow-Origin": "http://localhost:57000",
+        "Access-Control-Allow-Credentials": "true",
+      });
+
       for await (const message of runner) {
         if (
           message.event === "thread.message.delta" &&
           message.data.delta.content?.length
         ) {
-          reply.sse({
-            data:
-              (message.data.delta.content[0].type === "text"
-                ? message.data.delta.content[0].text?.value
-                : ""
-              )?.replace(/\n/g, "\\n") ?? "",
-          });
+          const data =
+            (message.data.delta.content[0].type === "text"
+              ? message.data.delta.content[0].text?.value
+              : ""
+            )?.replace(/\n/g, "\\n") ?? "";
+          reply.raw.write(`data: ${data}\n\n`);
         }
       }
 
-      reply.sse({ data: " ", event: "end" });
+      reply.raw.write("event: end\n");
+      reply.raw.write("data: Stream end\n\n");
     });
   }
 
