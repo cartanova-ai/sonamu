@@ -10,6 +10,7 @@ import classnames from "classnames";
 import { Button, Divider } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityCreateForm } from "./_create_form";
+import { AICreateEntityForm } from "./_ai_create_entity_form";
 
 type EntitiesLayoutProps = {};
 export default function EntitiesLayout(_props: EntitiesLayoutProps) {
@@ -31,6 +32,25 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
       onControlledOpen: () => {
         const focusInput = document.querySelector(
           ".entity-create-form .focus-0 input"
+        ) as HTMLInputElement;
+        if (focusInput) {
+          focusInput.focus();
+        }
+      },
+      onCompleted: (newEntityId) => {
+        mutate();
+        setTimeout(() => {
+          navigate(`/entities/${newEntityId}`);
+        }, 200);
+      },
+    });
+  };
+
+  const createEntityWithAI = () => {
+    openModal(<AICreateEntityForm />, {
+      onControlledOpen: () => {
+        const focusInput = document.querySelector(
+          ".create-ai-form textarea"
         ) as HTMLInputElement;
         if (focusInput) {
           focusInput.focus();
@@ -75,6 +95,13 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
             content="Entity"
             color="green"
             onClick={() => createEntity()}
+          />
+          <Button
+            icon="comment alternate outline"
+            size="mini"
+            content="Create Entity With AI"
+            color="blue"
+            onClick={() => createEntityWithAI()}
           />
         </div>
       </div>

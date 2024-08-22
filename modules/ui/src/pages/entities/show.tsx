@@ -13,6 +13,7 @@ import { EditableInput } from "../../components/EditableInput";
 import { EntitySelector } from "./_entity_selector";
 import classNames from "classnames";
 import { uniq } from "lodash";
+import { AICreateEnumForm } from "./_ai_create_enum_form";
 
 type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
@@ -53,6 +54,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       })
       .catch(defaultCatch);
   };
+
+  // commonModal
+  const { openModal, open } = useCommonModal();
 
   // useSheetTable
   const {
@@ -187,10 +191,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       }
       return true;
     },
-    disable: showSearch,
+    disable: showSearch || open,
   });
-  // commonModal
-  const { openModal } = useCommonModal();
 
   // subsets
   const enumLabelsArray: {
@@ -688,6 +690,29 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
+  const openCreateNewEnumWithAI = () => {
+    if (!entity) {
+      return;
+    }
+
+    openModal(
+      <AICreateEnumForm entityId={entity.id} enumLables={entity.enumLabels} />,
+      {
+        onControlledOpen: () => {
+          const focusInput = document.querySelector(
+            ".create-ai-form textarea"
+          ) as HTMLInputElement;
+          if (focusInput) {
+            focusInput.focus();
+          }
+        },
+        onCompleted: () => {
+          mutate();
+        },
+      }
+    );
+  };
+
   // Props Drag&Drop
   const dragStartPropIndex = useRef<number | null>();
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
@@ -937,6 +962,12 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                     icon="plus"
                     color="blue"
                     onClick={() => openCreateNewEnum()}
+                  />
+                  <Button
+                    size="mini"
+                    icon="comment alternate outline"
+                    color="blue"
+                    onClick={() => openCreateNewEnumWithAI()}
                   />
                 </h3>
                 <div className="enums-list">

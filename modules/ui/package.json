@@ -28,7 +28,8 @@
   "files": [
     "dist",
     "build",
-    "vite.config.ts"
+    "vite.config.ts",
+    "openai.instructions.md"
   ],
   "license": "MIT",
   "author": {
@@ -37,7 +38,6 @@
     "url": "https://twitter.com/minsangk"
   },
   "dependencies": {
-    "@fastify/cookie": "^9.3.1",
     "@fastify/cors": "^8.4.0",
     "@fastify/static": "^6.10.2",
     "@sonamu-kit/react-sui": "^0.1.14",

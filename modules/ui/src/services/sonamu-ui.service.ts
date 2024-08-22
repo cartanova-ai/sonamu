@@ -8,7 +8,6 @@ import {
   PathAndCode,
   Entity,
 } from "sonamu";
-import { Message } from "../pages/chat";
 
 type SWRError = {
   name: string;
@@ -41,7 +40,7 @@ export namespace SonamuUIService {
 
   export function createEntity(form: {
     id: string;
-    title: string;
+    title?: string;
     table: string;
     parentId?: string;
   }) {
@@ -345,47 +344,32 @@ export namespace SonamuUIService {
     });
   }
 
-  export function setOpenAIKey(apiKey: string): Promise<void> {
-    return fetch({
-      method: "POST",
-      url: `/api/openai/setApiKey`,
-      data: {
-        apiKey,
-      },
-      withCredentials: true,
-    });
-  }
-
-  export function createThread(): Promise<{ threadId: string }> {
-    return fetch({
-      method: "POST",
-      url: `/api/openai/createThread`,
-      withCredentials: true,
-    });
-  }
-
-  export function getConfig(): Promise<{ threadId: string; apiKey: string }> {
+  export function getMessage(id: string): Promise<{
+    id: string;
+    content: string;
+  }> {
     return fetch({
       method: "GET",
-      url: `/api/openai/config`,
-      withCredentials: true,
+      url: `/api/openai/message`,
+      params: { id },
     });
   }
 
-  export function getMessages(): Promise<Message[]> {
-    return fetch({
-      method: "GET",
-      url: `/api/openai/messages`,
-      withCredentials: true,
-    });
-  }
-
-  export function chat(message: string): Promise<void> {
+  export function chat(message: string): Promise<{
+    id: string;
+    content: string;
+  }> {
     return fetch({
       method: "POST",
       url: `/api/openai/chat`,
       data: { message },
-      withCredentials: true,
+    });
+  }
+
+  export function clearThread(): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/openai/clearThread`,
     });
   }
 }

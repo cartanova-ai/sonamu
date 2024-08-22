@@ -17,7 +17,7 @@ import {
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
-import OpenAI from "openai";
+import { openai } from "./openai";
 
 export async function createApiServer(options: {
   listen: {
@@ -35,7 +35,6 @@ export async function createApiServer(options: {
     origin: true,
     credentials: true,
   });
-  server.register(import("@fastify/cookie"));
 
   if (watch) {
     server.get("/api/reload", async () => {
@@ -44,98 +43,28 @@ export async function createApiServer(options: {
     });
   }
 
-  if (true) {
-    server.post("/api/openai/setApiKey", async (request, reply) => {
-      const { apiKey } = request.body as { apiKey: string };
-      if (!apiKey) {
-        throw new BadRequestException("apiKey must be provided");
-      }
+  if (Sonamu.secrets) {
+    await openai.init();
 
-      reply
-        .setCookie("openai_api_key", apiKey, {
-          httpOnly: true,
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 365,
-        })
-        .send({ apiKey });
-    });
+    server.get("/api/openai/message", async (request) => {
+      const { id } = request.query as { id: string };
 
-    server.post("/api/openai/createThread", async (request, reply) => {
-      const apiKey = request.cookies["openai_api_key"];
-      if (!apiKey) {
-        throw new BadRequestException("apiKey must be provided");
-      }
-
-      const openai = new OpenAI({ apiKey });
-      const response = await openai.beta.threads.create();
-
-      reply
-        .setCookie("openai_thread_id", response.id, {
-          httpOnly: true,
-          domain: "localhost",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 365,
-        })
-        .send({ threadId: response.id });
-    });
-
-    server.get("/api/openai/config", async (request, reply) => {
-      const apiKey = request.cookies["openai_api_key"];
-      const threadId = request.cookies["openai_thread_id"];
-
-      return { apiKey, threadId };
-    });
-
-    server.get("/api/openai/messages", async (request, reply) => {
-      const apiKey = request.cookies["openai_api_key"];
-      const threadId = request.cookies["openai_thread_id"];
-      if (!apiKey || !threadId) {
-        throw new BadRequestException("apiKey and threadId must be provided");
-      }
-
-      const openai = new OpenAI({ apiKey });
-      const messages = await openai.beta.threads.messages.list(threadId, {
-        order: "asc",
-      });
-
-      return messages.data.map((message) => ({
-        role: message.role,
-        content:
-          message.content[0].type === "text"
-            ? message.content[0].text.value
-            : "",
-      }));
+      return openai.getMessage(id);
     });
 
     server.post("/api/openai/chat", async (request) => {
-      const apiKey = request.cookies["openai_api_key"];
-      const threadId = request.cookies["openai_thread_id"];
-      const { message } = request.body as { message: string };
-      if (!apiKey || !threadId) {
-        throw new BadRequestException("apiKey and threadId must be provided");
-      }
+      const { message } = request.body as {
+        message: string;
+      };
 
-      const openai = new OpenAI({ apiKey });
-      await openai.beta.threads.messages.create(threadId, {
-        role: "user",
-        content: message,
-      });
+      await openai.createMessage(message);
+      const run = await openai.runStatus();
 
-      return true;
+      return (await openai.getMessages({ run_id: run.id }))[0];
     });
 
-    server.get("/api/openai/chat", async (request, reply) => {
-      const apiKey = request.cookies["openai_api_key"];
-      const threadId = request.cookies["openai_thread_id"];
-      if (!apiKey || !threadId) {
-        throw new BadRequestException("apiKey and threadId must be provided");
-      }
-
-      const openai = new OpenAI({ apiKey });
-      const runner = openai.beta.threads.runs.stream(threadId, {
-        assistant_id: "asst_O0mUFjko16upPY9NgbTAic7G",
-      });
+    server.get("/api/openai/chat/stream", async (request, reply) => {
+      const runner = openai.getRunner();
 
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -161,6 +90,10 @@ export async function createApiServer(options: {
 
       reply.raw.write("event: end\n");
       reply.raw.write("data: Stream end\n\n");
+    });
+
+    server.post("/api/openai/clearThread", async () => {
+      return openai.clearThread();
     });
   }
 
