@@ -29,6 +29,9 @@ export type SonamuConfig = {
     prefix: string;
   };
 };
+export type SonamuSecrets = {
+  [key: string]: string;
+};
 type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<Context, "headers" | "reply">,
@@ -117,6 +120,14 @@ class SonamuClass {
     return this._config;
   }
 
+  private _secrets: SonamuSecrets | null = null;
+  set secrets(secrets: SonamuSecrets) {
+    this._secrets = secrets;
+  }
+  get secrets(): SonamuSecrets | null {
+    return this._secrets;
+  }
+
   async init(
     doSilent: boolean = false,
     enableSync: boolean = true,
@@ -129,12 +140,18 @@ class SonamuClass {
 
     this.apiRootPath = apiRootPath ?? (await findApiRootPath());
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
+    const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     if (fs.existsSync(configPath) === false) {
       throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
     }
     this.config = JSON.parse(
       fs.readFileSync(configPath).toString()
     ) as SonamuConfig;
+    if (fs.existsSync(secretsPath)) {
+      this.secrets = JSON.parse(
+        fs.readFileSync(secretsPath).toString()
+      ) as SonamuSecrets;
+    }
 
     // DB 로드
     this.dbConfig = await DB.readKnexfile();
