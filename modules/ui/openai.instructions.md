@@ -1,6 +1,7 @@
 # Sonamu Entity JSON Template and Rules
 
 ## Basic Template
+
 ```json
 {
   "id": "EntityName",
@@ -22,30 +23,33 @@
 ## Property Types and Their Attributes
 
 1. **Integer**
+
    ```json
    {
      "name": "integer_prop",
      "type": "integer",
      "desc": "Example Integer Property",
-     "unsigned": true,
-     "nullable": true,
-     "dbDefault": 0
+     "unsigned": true, // Optional
+     "nullable": true, // Optional
+     "dbDefault": 0 // Optional
    }
    ```
 
 2. **Big Integer**
+
    ```json
    {
      "name": "big_integer_prop",
      "type": "bigInteger",
      "desc": "Example Big Integer Property",
-     "unsigned": true,
-     "nullable": true,
-     "dbDefault": 0
+     "unsigned": true, // Optional
+     "nullable": true, // Optional
+     "dbDefault": 0 // Optional
    }
    ```
 
 3. **Float**
+
    ```json
    {
      "name": "float_prop",
@@ -53,12 +57,13 @@
      "desc": "Example Float Property",
      "precision": 8,
      "scale": 2,
-     "nullable": true,
-     "dbDefault": 0.0
+     "nullable": true, // Optional
+     "dbDefault": 0.0 // Optional
    }
    ```
 
 4. **Decimal**
+
    ```json
    {
      "name": "decimal_prop",
@@ -66,12 +71,13 @@
      "desc": "Example Decimal Property",
      "precision": 8,
      "scale": 2,
-     "nullable": true,
-     "dbDefault": 0.0
+     "nullable": true, // Optional
+     "dbDefault": 0.0 // Optional
    }
    ```
 
 5. **Double**
+
    ```json
    {
      "name": "double_prop",
@@ -79,94 +85,103 @@
      "desc": "Example Double Property",
      "precision": 8,
      "scale": 2,
-     "unsigned": true,
-     "nullable": true,
-     "dbDefault": 0.0
+     "unsigned": true, // Optional
+     "nullable": true, // Optional
+     "dbDefault": 0.0 // Optional
    }
    ```
 
 6. **String**
+
    ```json
    {
      "name": "string_prop",
      "type": "string",
      "desc": "Example String Property",
      "length": 256,
-     "nullable": true,
-     "dbDefault": "\"default_string\""
+     "nullable": true, // Optional
+     "dbDefault": "\"default_string\"" // Optional
    }
    ```
 
 7. **Boolean**
+
    ```json
    {
      "name": "boolean_prop",
      "type": "boolean",
      "desc": "Example Boolean Property",
-     "nullable": true,
-     "dbDefault": false
+     "nullable": true, // Optional
+     "dbDefault": false // Optional
    }
    ```
 
 8. **Date**
+
    ```json
    {
      "name": "date_prop",
      "type": "date",
      "desc": "Example Date Property",
-     "nullable": true,
-     "dbDefault": "\"1970-01-01\""
+     "nullable": true, // Optional
+     "dbDefault": "\"1970-01-01\"" // Optional
    }
    ```
 
 9. **DateTime**
+
    ```json
    {
      "name": "date_time_prop",
      "type": "dateTime",
      "desc": "Example DateTime Property",
-     "nullable": true,
-     "dbDefault": "\"1970-01-01 00:00:00\""
+     "nullable": true, // Optional
+     "dbDefault": "\"1970-01-01 00:00:00\"" // Optional
    }
    ```
 
 10. **Timestamp**
+
     ```json
     {
       "name": "timestamp_prop",
       "type": "timestamp",
       "desc": "Example Timestamp Property",
-      "dbDefault": "CURRENT_TIMESTAMP",
-      "nullable": true
+      "dbDefault": "CURRENT_TIMESTAMP", // Optional
+      "nullable": true // Optional
     }
     ```
 
 11. **Text**
+
     ```json
     {
       "name": "text_prop",
       "type": "text",
       "textType": "text",
       "desc": "Example Text Property",
-      "nullable": true,
-      "dbDefault": "\"default_text\""
+      "nullable": true, // Optional
+      "dbDefault": "\"default_text\"" // Optional
     }
     ```
+
     Note: `textType` can be "text", "mediumtext", or "longtext"
 
 12. **JSON**
+
     ```json
     {
       "name": "json_prop",
       "type": "json",
       "id": "StringArray",
       "desc": "Example JSON Property",
-      "nullable": true,
-      "dbDefault": "[]"
+      "nullable": true, // Optional
+      "dbDefault": "[]" // Optional
     }
     ```
 
 13. **Enum**
+
     ```json
     {
       "name": "enum_prop",
@@ -174,12 +189,13 @@
       "id": "EntityNameExampleEnum",
       "desc": "Example Enum Property",
       "length": 16,
-      "nullable": true,
-      "dbDefault": "\"default_enum\""
+      "nullable": true, // Optional
+      "dbDefault": "\"default_enum\"" // Optional
     }
     ```
 
 14. **Relation (BelongsToOne)**
+
     ```json
     {
       "name": "relation_belongs_to_one_prop",
@@ -189,11 +205,12 @@
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "desc": "Example BelongsToOne Relation Property",
-      "nullable": true
+      "nullable": true // Optional
     }
     ```
 
 15. **Relation (HasMany)**
+
     ```json
     {
       "name": "relation_has_many_prop",
@@ -202,11 +219,12 @@
       "relationType": "HasMany",
       "joinColumn": "related_entity_id",
       "desc": "Example HasMany Relation Property",
-      "nullable": true
+      "nullable": true // Optional
     }
     ```
 
 16. **Relation (ManyToMany)**
+
     ```json
     {
       "name": "relation_many_to_many_prop",
@@ -217,7 +235,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE",
       "desc": "Example ManyToMany Relation Property",
-      "nullable": true
+      "nullable": true // Optional
     }
     ```
 
@@ -228,53 +246,61 @@
       "type": "relation",
       "with": "RelatedEntity",
       "relationType": "OneToOne",
-      "customJoinClause": "ON example.id = related_entity.example_id",
+      "customJoinClause": "ON example.id = related_entity.example_id", // Optional
       "hasJoinColumn": true,
-      "onUpdate": "CASCADE",
-      "onDelete": "CASCADE",
+      "onUpdate": "CASCADE", // Optional if hasJoinColumn: true
+      "onDelete": "CASCADE", // Optional if hasJoinColumn: true
       "desc": "Example OneToOne Relation Property",
-      "nullable": true
+      "nullable": true // Optional
     }
     ```
 
 ## Additional Rules
 
 ### Entity Rules:
+
 1. All entities must include `EntityNameOrderBy` and `EntityNameSearchField` enums.
 2. Enums used within an entity should be prefixed with the entity name.
 3. If not specified, return `indexes` as an empty array.
 4. If not specified, return `subsets` with only an "A" key containing an empty array.
-5. Use `relation` type for fields that specify relationships with other entities. Name these fields based on the related entity (e.g., "user", "author", "player") rather than using "_id" suffix.
+5. Use `relation` type for fields that specify relationships with other entities. Name these fields based on the related entity (e.g., "user", "author", "player") rather than using "\_id" suffix.
 6. If not specified, include only "id-desc" in `EntityNameOrderBy`.
 7. If not specified, include only "id" in `EntityNameSearchField`.
 
 ### Property Rules:
+
 1. Omit `nullable` if it's false (default value).
 2. Omit `dbDefault` if not needed.
 3. Omit `desc` if it's redundant with the entity name.
 4. Use singular form for string properties and plural form for array properties.
 
 ### JSON Property Rules:
+
 1. Use Core Types (Number, Boolean, StringArray, NumberArray, Unknown) when necessary.
 2. Always include an `id` for JSON properties.
 
 ### Text Property Rules:
+
 1. `textType` must be one of "text", "mediumtext", or "longtext".
 
 ### Relation Property Rules:
+
 1. Use `relation` type for columns used in joins.
 
 ### Subset Rules:
+
 1. For properties of the current entity, use the property's `name`.
 2. For relation properties, use `${entity_id}.${prop_name}`.
 3. List subset items in the same order as they appear in `props`.
 
 ### Index Rules:
+
 1. Declare indexes as `{ type: "unique" | "index", columns: string[] }`.
 
 ## Response Format
 
 When responding to a request:
+
 1. For "Entity Definition" requests:
    - Output the Sonamu entity definition without markdown formatting.
 2. For "Enum Definition" requests:
