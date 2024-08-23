@@ -23,12 +23,12 @@ export function AICreateEnumForm({
   const { response, loading } = useAICreateForm<EnumJson>({
     type: "enum",
   });
-  const [enum2, setEnum2] = useState<EnumJson | null>(null);
+  const [newEnum, setNewEnum] = useState<EnumJson | null>(null);
 
   // useSheetTable
   const { regRow, regCell } = useSheetTable({
     sheets: [
-      ...Object.keys(enum2 ?? {}).map((enumId) => ({
+      ...Object.keys(newEnum ?? {}).map((enumId) => ({
         name: `enumLabels-${enumId}`,
       })),
     ],
@@ -39,13 +39,13 @@ export function AICreateEnumForm({
   });
 
   const writeEnum = () => {
-    if (!enum2) {
+    if (!newEnum) {
       alert("Enum 정보가 누락되었습니다.");
       return;
     }
 
-    Object.keys(enum2).forEach((enumId) => {
-      enumLables[enumId] = enum2[enumId];
+    Object.keys(newEnum).forEach((enumId) => {
+      enumLables[enumId] = newEnum[enumId];
     });
 
     SonamuUIService.modifyEnumLabels(entityId, enumLables)
@@ -57,18 +57,18 @@ export function AICreateEnumForm({
 
   useEffect(() => {
     if (response) {
-      setEnum2(response);
+      setNewEnum(response);
     } else {
-      setEnum2(null);
+      setNewEnum(null);
     }
   }, [response]);
 
   const enumLabelsArray: {
     [enumId: string]: { key: string; label: string }[];
   } = useMemo(() => {
-    if (!enum2) return {};
+    if (!newEnum) return {};
     return Object.fromEntries(
-      Object.entries(enum2).map(([enumId, enumLabels]) => [
+      Object.entries(newEnum).map(([enumId, enumLabels]) => [
         enumId,
         Object.entries(enumLabels as Record<string, string>).map(
           ([key, label]) => ({
@@ -78,14 +78,14 @@ export function AICreateEnumForm({
         ),
       ])
     );
-  }, [enum2]);
+  }, [newEnum]);
 
   return (
     <AICreateForm write={writeEnum}>
       <div className="entities-detail">
-        {enum2 && (
+        {newEnum && (
           <div className="enums-and-subsets">
-            {enum2 && Object.keys(enumLabelsArray).length > 0 && (
+            {newEnum && Object.keys(enumLabelsArray).length > 0 && (
               <div className="enums">
                 <h3>Enums</h3>
                 <div className="enums-list">
