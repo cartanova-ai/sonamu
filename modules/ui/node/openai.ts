@@ -30,11 +30,7 @@ class OpenAIClass {
       throw new Error("sonamu.secrets is not defined");
     }
 
-    if (!this.threadId) {
-      this.threadId = await this.createThread();
-      this.writeThreadId();
-    }
-
+    this.threadId = await this.getValidThreadId();
     this.assistantId = await this.getOrCreateAssistant();
 
     this.isInit = true;
@@ -56,7 +52,7 @@ class OpenAIClass {
   async clearThread() {
     await this.deleteThread();
     this.threadId = await this.createThread();
-    this.writeThreadId();
+    this.writeThreadId(this.threadId);
   }
 
   async getMessage(id: string) {
@@ -101,6 +97,29 @@ class OpenAIClass {
       { assistant_id: this.assistantId },
       { pollIntervalMs: 100 }
     );
+  }
+
+  private async getValidThreadId() {
+    if (!this.threadId) {
+      return this.createAndSaveNewThread();
+    }
+
+    try {
+      await this.openai.beta.threads.retrieve(this.threadId);
+      return this.threadId;
+    } catch (e) {
+      if (e.status === 404) {
+        console.log("Thread not found. Creating a new thread...");
+        return this.createAndSaveNewThread();
+      }
+      throw e;
+    }
+  }
+
+  private async createAndSaveNewThread() {
+    const newThreadId = await this.createThread();
+    this.writeThreadId(newThreadId);
+    return newThreadId;
   }
 
   private async getOrCreateAssistant() {
@@ -150,11 +169,11 @@ class OpenAIClass {
     return assistant.id;
   }
 
-  private writeThreadId() {
+  private writeThreadId(threadId: string) {
     const configPath = path.join(Sonamu.apiRootPath, "sonamu.secrets.json");
     const updatedSecrets = {
       ...Sonamu.secrets,
-      openai_thread_id: this.threadId,
+      openai_thread_id: threadId,
     };
     writeFileSync(configPath, JSON.stringify(updatedSecrets, null, 2));
   }
