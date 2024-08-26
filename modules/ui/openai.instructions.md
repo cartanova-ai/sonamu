@@ -269,10 +269,11 @@
 
 ### Property Rules:
 
-1. Omit `nullable` if it's false (default value).
-2. Omit `dbDefault` if not needed.
-3. Omit `desc` if it's redundant with the entity name.
-4. Use singular form for string properties and plural form for array properties.
+1. Property `id` must be included in every entity.
+2. Omit `nullable` if it's false (default value).
+3. Omit `dbDefault` if not needed.
+4. Omit `desc` if it's redundant with the entity name.
+5. Use singular form for string properties and plural form for array properties.
 
 ### JSON Property Rules:
 

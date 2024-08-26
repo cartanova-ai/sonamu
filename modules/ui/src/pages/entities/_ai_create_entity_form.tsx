@@ -48,7 +48,10 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
       alert("엔티티 정보가 누락되었습니다.");
       return;
     }
-
+    if (!entity.props.find((p) => p.name === "id")) {
+      alert("ID가 누락되었습니다.");
+      return;
+    }
     if (!entity.table) {
       alert("테이블명이 누락되었습니다.");
       return;
