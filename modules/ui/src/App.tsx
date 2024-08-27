@@ -20,10 +20,6 @@ function App() {
       name: "Scaffolding",
       path: "/scaffolding",
     },
-    {
-      name: "Chat",
-      path: "/chat",
-    },
   ];
   const location = useLocation();
 
