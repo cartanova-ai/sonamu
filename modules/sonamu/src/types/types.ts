@@ -719,3 +719,30 @@ export const PathAndCode = z.object({
   code: z.string(),
 });
 export type PathAndCode = z.infer<typeof PathAndCode>;
+
+export type FixtureSearchOptions = {
+  entityId: string;
+  field: string;
+  value: string;
+  searchType: "equals" | "like";
+};
+
+export type FixtureRecord = {
+  fixtureId: string;
+  entityId: string;
+  id: number;
+  columns: {
+    [key: string]: {
+      prop: EntityProp;
+      value: any;
+    };
+  };
+  relatedRecords: string[];
+};
+
+export type FixtureImportResult = {
+  entityId: string;
+  data: {
+    [key: string]: any;
+  };
+};
