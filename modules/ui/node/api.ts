@@ -2,6 +2,7 @@ import fastify from "fastify";
 import _ from "lodash";
 import {
   Sonamu,
+  SonamuDBConfig,
   EntityManager,
   EntityProp,
   EntityIndex,
@@ -14,6 +15,9 @@ import {
   ServiceUnavailableException,
   PathAndCode,
   Entity,
+  FixtureRecord,
+  FixtureManager,
+  FixtureSearchOptions,
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
@@ -754,6 +758,24 @@ export async function createApiServer(options: {
       }
     }
   );
+
+  server.post("/api/fixture", async (request) => {
+    const { db, search } = request.body as {
+      db: keyof SonamuDBConfig;
+      search: FixtureSearchOptions;
+    };
+
+    return FixtureManager.getFixtures(db, search);
+  });
+
+  server.post("/api/fixture/import", async (request) => {
+    const { db, fixtures } = request.body as {
+      db: keyof SonamuDBConfig;
+      fixtures: FixtureRecord[];
+    };
+
+    return FixtureManager.insertFixtures(db, fixtures);
+  });
 
   server.get("/api/all_routes", async () => {
     return {

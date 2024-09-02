@@ -7,6 +7,9 @@ import {
   MigrationStatus,
   PathAndCode,
   Entity,
+  FixtureRecord,
+  FixtureSearchOptions,
+  FixtureImportResult,
 } from "sonamu";
 
 type SWRError = {
@@ -370,6 +373,28 @@ export namespace SonamuUIService {
     return fetch({
       method: "POST",
       url: `/api/openai/clearThread`,
+    });
+  }
+
+  export function getFixtures(
+    db: string,
+    search: FixtureSearchOptions
+  ): Promise<FixtureRecord[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/fixture`,
+      data: { db, search },
+    });
+  }
+
+  export function importFixtures(
+    db: string,
+    fixtures: FixtureRecord[]
+  ): Promise<FixtureImportResult[]> {
+    return fetch({
+      method: "POST",
+      url: `/api/fixture/import`,
+      data: { db, fixtures },
     });
   }
 }

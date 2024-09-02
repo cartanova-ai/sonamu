@@ -8,6 +8,7 @@ import EntitiesShowPage from "./pages/entities/show.tsx";
 import MigrationsIndex from "./pages/migrations/index.tsx";
 import { ScaffoldingIndex } from "./pages/scaffolding/index.tsx";
 import { swrFetcher } from "./services/sonamu.shared.ts";
+import FixtureIndex from "./pages/fixture/index.tsx";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <SWRConfig
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           </Route>
           <Route path="/migrations" element={<MigrationsIndex />} />
           <Route path="/scaffolding" element={<ScaffoldingIndex />} />
+          <Route path="/fixture" element={<FixtureIndex />} />
         </Route>
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>

@@ -16,8 +16,9 @@ class OpenAIClass {
 
   constructor() {
     if (!Sonamu.secrets || !Sonamu.secrets.openai_api_key) {
-      throw new Error("OpenAI API key is not defined in Sonamu.secrets");
+      return;
     }
+
     this.openai = new OpenAI({ apiKey: Sonamu.secrets.openai_api_key });
     this.threadId = Sonamu.secrets.openai_thread_id || "";
     this.assistantId = "";
@@ -25,6 +26,10 @@ class OpenAIClass {
 
   async init() {
     if (this.isInit) return;
+
+    if (!Sonamu.secrets || !Sonamu.secrets.openai_api_key) {
+      throw new Error("OpenAI API key is not defined in Sonamu.secrets");
+    }
 
     if (!Sonamu.secrets) {
       throw new Error("sonamu.secrets is not defined");

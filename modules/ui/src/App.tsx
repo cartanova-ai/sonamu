@@ -20,6 +20,10 @@ function App() {
       name: "Scaffolding",
       path: "/scaffolding",
     },
+    {
+      name: "Fixture",
+      path: "/fixture",
+    },
   ];
   const location = useLocation();
 

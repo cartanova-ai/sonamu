@@ -789,3 +789,43 @@ code {
     }
   }
 }
+
+.fixture-index {
+  .fixture-header {
+    display: flex;
+  }
+
+  .fixture-viewer {
+    display: flex;
+    flex-direction: row;
+
+    .fixture-record-viewer {
+      flex: 1;
+      font-size: 0.85em;
+      overflow-x: auto;
+      display: flex;
+      flex-direction: column;
+
+      .entity-table {
+        display: inline-block;
+        width: fit-content;
+
+        td {
+          max-width: 12em;
+          overflow: auto;
+
+          &::-webkit-scrollbar {
+            display: none;
+          }
+        }
+      }
+    }
+
+    .fixture-code-viewer {
+      flex: 1;
+      font-size: 0.85em;
+      overflow-x: auto;
+      margin-top: 0;
+    }
+  }
+}
