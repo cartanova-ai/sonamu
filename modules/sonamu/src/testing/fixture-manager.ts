@@ -17,6 +17,7 @@ import {
 import { Entity } from "../entity/entity";
 import inflection from "inflection";
 import { SonamuDBConfig } from "../database/db";
+import { readFileSync, writeFileSync } from "fs";
 
 export class FixtureManagerClass {
   private _tdb: Knex | null = null;
@@ -284,12 +285,16 @@ export class FixtureManagerClass {
     const { entityId, field, value, searchType } = searchOptions;
 
     const entity = EntityManager.get(entityId);
+    const column =
+      entity.props.find((prop) => prop.name === field)?.type === "relation"
+        ? `${field}_id`
+        : field;
 
     let query = db(entity.table);
     if (searchType === "equals") {
-      query = query.where(field, value);
+      query = query.where(column, value);
     } else if (searchType === "like") {
-      query = query.where(field, "like", `%${value}%`);
+      query = query.where(column, "like", `%${value}%`);
     }
 
     const rows = await query;
@@ -736,6 +741,27 @@ export class FixtureManagerClass {
           );
         }
       }
+    }
+  }
+
+  async addFixtureLoader(code: string) {
+    const path = Sonamu.apiRootPath + "/src/testing/fixture.ts";
+    let content = readFileSync(path).toString();
+
+    const fixtureLoaderStart = content.indexOf("const fixtureLoader = {");
+    const fixtureLoaderEnd = content.indexOf("};", fixtureLoaderStart);
+
+    if (fixtureLoaderStart !== -1 && fixtureLoaderEnd !== -1) {
+      const newContent =
+        content.slice(0, fixtureLoaderEnd) +
+        "  " +
+        code +
+        "\n" +
+        content.slice(fixtureLoaderEnd);
+
+      writeFileSync(path, newContent);
+    } else {
+      throw new Error("Failed to find fixtureLoader in fixture.ts");
     }
   }
 }
