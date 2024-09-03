@@ -3,7 +3,12 @@ import { FixtureRecord } from "sonamu";
 
 type FixtureResultProps = {
   fixtureRecords: FixtureRecord[];
-  onRelationToggle: (entityId: string, id: number, isChecked: boolean) => void;
+  onRelationToggle: (
+    parentFixtureId: string,
+    entityId: string,
+    id: number,
+    isChecked: boolean
+  ) => void;
   selectedIds: Set<string>;
 };
 
@@ -59,6 +64,7 @@ export default function FixtureRecordViewer({
                                   checked={selectedIds.has(`${prop.with}#${v}`)}
                                   onChange={(_, data) => {
                                     onRelationToggle(
+                                      record.fixtureId,
                                       prop.with,
                                       v,
                                       data.checked as boolean

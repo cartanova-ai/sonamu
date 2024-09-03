@@ -793,6 +793,11 @@ code {
 .fixture-index {
   .fixture-header {
     display: flex;
+    flex-direction: column;
+
+    & > * {
+      display: flex;
+    }
   }
 
   .fixture-viewer {
