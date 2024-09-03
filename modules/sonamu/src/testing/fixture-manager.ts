@@ -300,7 +300,19 @@ export class FixtureManagerClass {
     const visitedEntities = new Set<string>();
     const records: FixtureRecord[] = [];
     for (const row of rows) {
+      const initialRecordsLength = records.length;
       await this.createFixtureRecord(entity, row, visitedEntities, records);
+      const currentFixtureRecord = records.find(
+        (r) => r.fixtureId === `${entityId}#${row.id}`
+      );
+
+      if (currentFixtureRecord) {
+        // 현재 fixture로부터 생성된 relatedRecords 설정
+        currentFixtureRecord.relatedRecords = records
+          .filter((r) => r.fixtureId !== currentFixtureRecord.fixtureId)
+          .slice(initialRecordsLength)
+          .map((r) => r.fixtureId);
+      }
     }
 
     return records;
