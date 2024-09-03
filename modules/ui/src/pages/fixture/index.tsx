@@ -200,11 +200,22 @@ export default function FixtureIndex() {
                 placeholder="Columns"
                 search
                 selection
-                options={entity.props.map((prop) => ({
-                  key: prop.name,
-                  value: prop.name,
-                  text: prop.name,
-                }))}
+                options={entity.props
+                  .filter((p) => {
+                    if (p.type === "virtual") return false;
+                    if (p.type === "relation") {
+                      if (p.relationType === "BelongsToOne") return true;
+                      if (p.relationType === "OneToOne" && p.hasJoinColumn)
+                        return true;
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((prop) => ({
+                    key: prop.name,
+                    value: prop.name,
+                    text: prop.name,
+                  }))}
                 {...register("field")}
               />
               <Input placeholder="Search" {...register("value")} />
