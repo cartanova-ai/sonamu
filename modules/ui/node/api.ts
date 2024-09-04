@@ -18,10 +18,12 @@ import {
   FixtureRecord,
   FixtureManager,
   FixtureSearchOptions,
+  BaseModel,
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import { openai } from "./openai";
+import knex from "knex";
 
 export async function createApiServer(options: {
   listen: {
@@ -760,12 +762,13 @@ export async function createApiServer(options: {
   );
 
   server.post("/api/fixture", async (request) => {
-    const { db, search } = request.body as {
-      db: keyof SonamuDBConfig;
+    const { sourceDB, targetDB, search } = request.body as {
+      sourceDB: keyof SonamuDBConfig;
+      targetDB: keyof SonamuDBConfig;
       search: FixtureSearchOptions;
     };
 
-    return FixtureManager.getFixtures(db, search);
+    return FixtureManager.getFixtures(sourceDB, targetDB, search);
   });
 
   server.post("/api/fixture/import", async (request) => {
@@ -775,6 +778,38 @@ export async function createApiServer(options: {
     };
 
     return FixtureManager.insertFixtures(db, fixtures);
+  });
+
+  server.post("/api/fixture/addFixtureLoader", async (request) => {
+    const { code } = request.body as { code: string };
+
+    return FixtureManager.addFixtureLoader(code);
+  });
+
+  server.get("/api/entity/findById", async (request) => {
+    const { db, entityId, id, subset } = request.query as {
+      db: keyof SonamuDBConfig;
+      entityId: string;
+      id: string;
+      subset: string;
+    };
+
+    const entity = EntityManager.get(entityId);
+    const {
+      rows: [row],
+    } = await BaseModel.runSubsetQuery({
+      subset,
+      params: { id: Number(id), page: 1, num: 1 },
+      subsetQuery: entity.getSubsetQuery(subset),
+      build: ({ qb }) => {
+        qb.where(`${entity.table}.id`, id);
+        return qb;
+      },
+      baseTable: entity.table,
+      db: knex(Sonamu.dbConfig[db]),
+    });
+
+    return row;
   });
 
   server.get("/api/all_routes", async () => {

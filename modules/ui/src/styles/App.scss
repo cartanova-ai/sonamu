@@ -801,8 +801,7 @@ code {
   }
 
   .fixture-viewer {
-    display: flex;
-    flex-direction: row;
+    width: 100%;
 
     .fixture-record-viewer {
       flex: 1;
@@ -822,15 +821,57 @@ code {
           &::-webkit-scrollbar {
             display: none;
           }
+
+          div {
+            display: flex;
+            gap: 0.2em;
+          }
         }
       }
     }
 
     .fixture-code-viewer {
       flex: 1;
-      font-size: 0.85em;
       overflow-x: auto;
       margin-top: 0;
+
+      .fixture-code {
+        .header {
+          display: flex;
+          align-items: baseline;
+          gap: 0.5em;
+        }
+
+        .description {
+          width: 100%;
+          display: flex;
+
+          & > * {
+            flex: 1;
+            margin: 1em;
+          }
+
+          .code {
+            position: relative;
+
+            .code-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              font-size: 0.9em;
+
+              button {
+                margin: 0;
+                padding: 0.6em;
+              }
+            }
+
+            code {
+              margin: 0;
+            }
+          }
+        }
+      }
     }
   }
 }

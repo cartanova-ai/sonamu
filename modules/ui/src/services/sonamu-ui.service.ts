@@ -377,13 +377,14 @@ export namespace SonamuUIService {
   }
 
   export function getFixtures(
-    db: string,
+    sourceDB: string,
+    targetDB: string,
     search: FixtureSearchOptions
   ): Promise<FixtureRecord[]> {
     return fetch({
       method: "POST",
       url: `/api/fixture`,
-      data: { db, search },
+      data: { sourceDB, targetDB, search },
     });
   }
 
@@ -395,6 +396,19 @@ export namespace SonamuUIService {
       method: "POST",
       url: `/api/fixture/import`,
       data: { db, fixtures },
+    });
+  }
+
+  export function getEntityById(
+    db: string,
+    entityId: string,
+    id: string,
+    subset: string
+  ): Promise<ExtendedEntity> {
+    return fetch({
+      method: "GET",
+      url: `/api/entity/findById`,
+      params: { db, entityId, id, subset },
     });
   }
 }

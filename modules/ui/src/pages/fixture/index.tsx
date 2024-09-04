@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Dropdown, Input, Segment } from "semantic-ui-react";
+import { Button, Dropdown, Input, Segment, Tab } from "semantic-ui-react";
 import {
   ExtendedEntity,
   SonamuUIService,
@@ -25,11 +25,14 @@ export default function FixtureIndex() {
     error: entitiesError,
     isLoading: entitiesLoading,
   } = SonamuUIService.useEntities();
-  const [selectedDB, setSelectedDB] = useState("development_master");
-  const [importDB, setImportDB] = useState("fixture_remote");
+  const [sourceDB, setSourceDB] = useState("development_master");
+  const [targetDB, setTargetDB] = useState("fixture_remote");
+
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
   const [importResults, setImportResults] = useState<FixtureImportResult[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [activeTab, setActiveTab] = useState(0);
 
   const { form, register } = useTypeForm(
     z.object({
@@ -44,10 +47,15 @@ export default function FixtureIndex() {
   const [entity, setEntity] = useState<ExtendedEntity | null>(null);
 
   const search = () => {
+    if (!form.entityId || !form.field || !form.value) return;
+
+    setActiveTab(0);
+    setFixtureRecords([]);
+    setImportResults([]);
     setSelectedIds(new Set());
-    SonamuUIService.getFixtures(selectedDB, form)
+
+    SonamuUIService.getFixtures(sourceDB, targetDB, form)
       .then((res) => {
-        setImportResults([]);
         setFixtureRecords(res);
         setSelectedIds(new Set(res.map((r) => r.fixtureId)));
       })
@@ -55,7 +63,10 @@ export default function FixtureIndex() {
   };
 
   const importFixture = () => {
-    SonamuUIService.importFixtures(importDB, fixtureRecords)
+    if (fixtureRecords.length === 0) return;
+    setActiveTab(1);
+
+    SonamuUIService.importFixtures(targetDB, fixtureRecords)
       .then((results) => {
         setImportResults(results);
       })
@@ -71,7 +82,7 @@ export default function FixtureIndex() {
     const fixtureId = `${entityId}#${id}`;
 
     if (isChecked) {
-      SonamuUIService.getFixtures(selectedDB, {
+      SonamuUIService.getFixtures(sourceDB, targetDB, {
         entityId,
         field: "id",
         value: String(id),
@@ -166,20 +177,51 @@ export default function FixtureIndex() {
     }
   }, [form.entityId, entitiesData]);
 
+  const panes = [
+    {
+      menuItem: "Fixture Record Viewer",
+      render: () => (
+        <Tab.Pane>
+          <FixtureRecordViewer
+            fixtureRecords={fixtureRecords}
+            onRelationToggle={fetchRelatedRecord}
+            selectedIds={selectedIds}
+            setFixtureRecords={setFixtureRecords}
+          />
+        </Tab.Pane>
+      ),
+    },
+    {
+      menuItem: "Fixture Code Viewer",
+      render: () => (
+        <Tab.Pane>
+          {entitiesData?.entities && importResults.length > 0 && (
+            <FixtureCodeViewer
+              entities={entitiesData.entities}
+              fixtureResults={importResults}
+              targetDB={targetDB}
+            />
+          )}
+        </Tab.Pane>
+      ),
+    },
+  ];
+
   return (
     <div className="fixture-index">
       <Segment className="fixture-header">
         <div className="search-section">
           <Dropdown
-            placeholder="Select DB"
+            placeholder="Select DB to search"
+            header="Search source DB"
             selection
             options={DB_NAMES.map((db) => ({
               key: db,
               value: db,
               text: db.replace("_master", ""),
             }))}
-            value={selectedDB}
-            onChange={(_, { value }) => setSelectedDB(value as string)}
+            value={sourceDB}
+            onChange={(_, { value }) => setSourceDB(value as string)}
           />
           <Dropdown
             placeholder="Entities"
@@ -239,37 +281,38 @@ export default function FixtureIndex() {
           />
         </div>
 
-        {fixtureRecords.length > 0 && (
-          <div className="import-section">
-            <Dropdown
-              placeholder="Select DB to import"
-              selection
-              options={DB_NAMES.map((db) => ({
-                key: db,
-                value: db,
-                text: db,
-              }))}
-              value={importDB}
-              onChange={(_, { value }) => setImportDB(value as string)}
-            />
-            <Button onClick={importFixture} primary content="Import Fixture" />
-          </div>
-        )}
+        <div className="import-section">
+          <Dropdown
+            placeholder="Select DB to import"
+            header="Import target DB"
+            selection
+            options={DB_NAMES.map((db) => ({
+              key: db,
+              value: db,
+              text: db,
+            }))}
+            value={targetDB}
+            onChange={(_, { value }) => setTargetDB(value as string)}
+          />
+          <Button
+            onClick={importFixture}
+            primary
+            content="Import Fixture"
+            disabled={fixtureRecords.length === 0}
+          />
+        </div>
       </Segment>
 
       <div className="fixture-viewer">
-        <FixtureRecordViewer
-          fixtureRecords={fixtureRecords}
-          onRelationToggle={fetchRelatedRecord}
-          selectedIds={selectedIds}
+        <Tab
+          panes={panes}
+          activeIndex={activeTab}
+          onTabChange={(_, { activeIndex }) => {
+            if (typeof activeIndex === "number") {
+              setActiveTab(activeIndex);
+            }
+          }}
         />
-
-        {entitiesData?.entities && importResults.length > 0 && (
-          <FixtureCodeViewer
-            entities={entitiesData.entities}
-            fixtureResults={importResults}
-          />
-        )}
       </div>
     </div>
   );
