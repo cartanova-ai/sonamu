@@ -738,6 +738,8 @@ export type FixtureRecord = {
     };
   };
   relatedRecords: string[];
+  target?: FixtureRecord;
+  override?: boolean;
 };
 
 export type FixtureImportResult = {

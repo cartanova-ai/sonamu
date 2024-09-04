@@ -278,10 +278,12 @@ export class FixtureManagerClass {
   }
 
   async getFixtures(
-    dbName: keyof SonamuDBConfig,
+    sourceDBName: keyof SonamuDBConfig,
+    targetDBName: keyof SonamuDBConfig,
     searchOptions: FixtureSearchOptions
   ) {
-    const db = knex(Sonamu.dbConfig[dbName]);
+    const sourceDB = knex(Sonamu.dbConfig[sourceDBName]);
+    const targetDB = knex(Sonamu.dbConfig[targetDBName]);
     const { entityId, field, value, searchType } = searchOptions;
 
     const entity = EntityManager.get(entityId);
@@ -290,7 +292,7 @@ export class FixtureManagerClass {
         ? `${field}_id`
         : field;
 
-    let query = db(entity.table);
+    let query = sourceDB(entity.table);
     if (searchType === "equals") {
       query = query.where(column, value);
     } else if (searchType === "like") {
@@ -320,6 +322,23 @@ export class FixtureManagerClass {
       }
     }
 
+    for await (const record of records) {
+      const entity = EntityManager.get(record.entityId);
+      const rows: FixtureRecord[] = [];
+      const row = await targetDB(entity.table).where("id", record.id).first();
+      if (row) {
+        await this.createFixtureRecord(
+          entity,
+          row,
+          new Set(),
+          rows,
+          true,
+          targetDB
+        );
+        record.target = rows[0];
+      }
+    }
+
     return records;
   }
 
@@ -327,7 +346,9 @@ export class FixtureManagerClass {
     entity: Entity,
     row: any,
     visitedEntities: Set<string>,
-    records: FixtureRecord[]
+    records: FixtureRecord[],
+    singleRecord = false,
+    _db?: Knex
   ) {
     const fixtureId = `${entity.id}#${row.id}`;
     if (visitedEntities.has(fixtureId)) {
@@ -354,21 +375,20 @@ export class FixtureManagerClass {
       };
 
       if (isRelationProp(prop)) {
+        const db = _db ?? BaseModel.getDB("w");
         if (prop.relationType === "ManyToMany") {
-          const wdb = BaseModel.getDB("w");
           const relatedEntity = EntityManager.get(prop.with);
           const throughTable = prop.joinTable;
           const fromColumn = `${inflection.singularize(entity.table)}_id`;
           const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const relatedIds = await wdb(throughTable)
+          const relatedIds = await db(throughTable)
             .where(fromColumn, row.id)
             .pluck(toColumn);
           record.columns[prop.name].value = relatedIds;
         } else if (prop.relationType === "HasMany") {
           const relatedEntity = EntityManager.get(prop.with);
-          const wdb = BaseModel.getDB("w");
-          const relatedIds = await wdb(relatedEntity.table)
+          const relatedIds = await db(relatedEntity.table)
             .where(prop.joinColumn, row.id)
             .pluck("id");
           record.columns[prop.name].value = relatedIds;
@@ -378,8 +398,7 @@ export class FixtureManagerClass {
             (p) => p.type === "relation" && p.with === entity.id
           );
           if (relatedProp) {
-            const wdb = BaseModel.getDB("w");
-            const relatedRow = await wdb(relatedEntity.table)
+            const relatedRow = await db(relatedEntity.table)
               .where("id", row[`${relatedProp.name}_id`])
               .first();
             record.columns[prop.name].value = relatedRow?.id;
@@ -387,9 +406,9 @@ export class FixtureManagerClass {
         } else {
           const relatedId = row[`${prop.name}_id`];
           record.columns[prop.name].value = relatedId;
-          if (relatedId) {
+          if (!singleRecord && relatedId) {
             const relatedEntity = EntityManager.get(prop.with);
-            const relatedRow = await BaseModel.getDB("w")(relatedEntity.table)
+            const relatedRow = await db(relatedEntity.table)
               .where("id", relatedId)
               .first();
             if (relatedRow) {
@@ -397,7 +416,9 @@ export class FixtureManagerClass {
                 relatedEntity,
                 relatedRow,
                 visitedEntities,
-                records
+                records,
+                singleRecord,
+                _db
               );
             }
           }
@@ -414,36 +435,26 @@ export class FixtureManagerClass {
   ) {
     this.buildDependencyGraph(fixtures);
     const insertionOrder = this.getInsertionOrder();
-    const idMap = new Map<string, number>();
     const db = knex(Sonamu.dbConfig[dbName]);
 
-    const insertResult: { entityId: string; id: number }[] = [];
-
     await db.transaction(async (trx) => {
-      // 1. 각 fixture를 insert하고, idMap에 fixtureId -> id 매핑 저장
+      await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+
       for (const fixtureId of insertionOrder) {
         const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        const result = await this.insertFixture(trx, fixture, idMap);
-        idMap.set(fixtureId, result.id);
-        insertResult.push(result);
+        await this.insertFixture(trx, fixture);
       }
 
-      // 2. 각 fixture의 relation을 업데이트
       for (const fixtureId of insertionOrder) {
         const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        await this.updateRelations(trx, fixture, idMap);
+        await this.handleManyToManyRelations(trx, fixture, fixtures);
       }
-
-      // 3. ManyToMany 관계 처리
-      for (const fixtureId of insertionOrder) {
-        const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        await this.handleManyToManyRelations(trx, fixture, idMap);
-      }
+      await trx.raw(`SET FOREIGN_KEY_CHECKS = 1`);
     });
 
     const records: FixtureImportResult[] = [];
 
-    for await (const r of insertResult) {
+    for await (const r of fixtures) {
       const entity = EntityManager.get(r.entityId);
       const record = await db(entity.table).where("id", r.id).first();
       records.push({
@@ -506,13 +517,10 @@ export class FixtureManagerClass {
     return order;
   }
 
-  private prepareInsertData(
-    fixture: FixtureRecord,
-    idMap: Map<string, number>
-  ) {
+  private prepareInsertData(fixture: FixtureRecord) {
     const insertData: any = {};
     for (const [propName, column] of Object.entries(fixture.columns)) {
-      if (column.prop.name === "id" || column.prop.type === "virtual") {
+      if (column.prop.type === "virtual") {
         continue;
       }
 
@@ -524,14 +532,10 @@ export class FixtureManagerClass {
           insertData[propName] = column.value;
         }
       } else if (
-        (isBelongsToOneRelationProp(prop) ||
-          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) &&
-        !prop.nullable
+        isBelongsToOneRelationProp(prop) ||
+        (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
       ) {
-        // non-nullable BelongsToOne 또는 OneToOne 관계 처리
-        const relatedFixtureId = `${prop.with}#${column.value}`;
-        insertData[`${propName}_id`] =
-          idMap.get(relatedFixtureId) ?? column.value;
+        insertData[`${propName}_id`] = column.value;
       }
     }
     return insertData;
@@ -583,161 +587,67 @@ export class FixtureManagerClass {
     }
   }
 
-  private async insertFixture(
-    db: Knex,
-    fixture: FixtureRecord,
-    idMap: Map<string, number>
-  ) {
-    const insertData = this.prepareInsertData(fixture, idMap);
+  private async insertFixture(db: Knex, fixture: FixtureRecord) {
+    const insertData = this.prepareInsertData(fixture);
     const entity = EntityManager.get(fixture.entityId);
 
     try {
-      const [newId] = await db(entity.table).insert(insertData);
+      const found = await db(entity.table).where("id", fixture.id).first();
+      if (found && !fixture.override) {
+        return {
+          entityId: fixture.entityId,
+          id: found.id,
+        };
+      }
+
+      const q = db.insert(insertData).into(entity.table);
+      await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
       return {
         entityId: fixture.entityId,
-        id: newId,
+        id: fixture.id,
       };
     } catch (err) {
-      if (this.isDuplicateEntryError(err)) {
-        console.warn(
-          `Duplicate entry for ${fixture.fixtureId}, attempting to find existing ID`
-        );
-        const existingId = await this.findExistingIdByUniqueKeys(
-          db,
-          entity,
-          insertData
-        );
-        if (existingId) {
-          console.log(
-            `Found existing ID for ${fixture.fixtureId}: ${existingId}`
-          );
-          return {
-            entityId: fixture.entityId,
-            id: existingId,
-          };
-        } else {
-          console.warn(
-            `Could not find existing ID for ${fixture.fixtureId}, using original ID`
-          );
-          return {
-            entityId: fixture.entityId,
-            id: fixture.id,
-          };
-        }
-      } else {
-        throw err;
-      }
+      console.log(err);
+      throw err;
     }
-  }
-
-  private isDuplicateEntryError(error: unknown): error is { code: string } {
-    return (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code: unknown }).code === "ER_DUP_ENTRY"
-    );
-  }
-
-  private async findExistingIdByUniqueKeys(
-    db: Knex,
-    entity: Entity,
-    insertData: Record<string, any>
-  ) {
-    const uniqueIndexes = entity.indexes.filter(
-      (index) => index.type === "unique"
-    );
-    for (const index of uniqueIndexes) {
-      const queryConditions: Record<string, any> = {};
-      for (const column of index.columns) {
-        if (column in insertData) {
-          queryConditions[column] = insertData[column];
-        }
-      }
-      if (Object.keys(queryConditions).length > 0) {
-        const result = await db(entity.table).where(queryConditions).first();
-        if (result) {
-          return result.id;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  private async updateRelations(
-    db: Knex,
-    fixture: FixtureRecord,
-    idMap: Map<string, number>
-  ) {
-    const updates = this.prepareRelatedUpdates(fixture, idMap);
-    const entity = EntityManager.get(fixture.entityId);
-    if (Object.keys(updates).length > 0) {
-      await db(entity.table)
-        .where("id", idMap.get(fixture.fixtureId))
-        .update(updates);
-    }
-  }
-
-  private prepareRelatedUpdates(
-    fixture: FixtureRecord,
-    idMap: Map<string, number>
-  ) {
-    const updates: any = {};
-    for (const [propName, column] of Object.entries(fixture.columns)) {
-      const prop = column.prop as EntityProp;
-      if (
-        isRelationProp(prop) &&
-        (isBelongsToOneRelationProp(prop) ||
-          (isOneToOneRelationProp(prop) && prop.hasJoinColumn))
-      ) {
-        const relatedFixtureId = `${prop.with}#${column.value}`;
-        const realId = idMap.get(relatedFixtureId);
-        if (realId) {
-          updates[`${propName}_id`] = realId;
-        } else if (prop.nullable) {
-          updates[`${propName}_id`] = null;
-        }
-      }
-    }
-    return updates;
   }
 
   private async handleManyToManyRelations(
     db: Knex,
     fixture: FixtureRecord,
-    idMap: Map<string, number>
+    fixtures: FixtureRecord[]
   ) {
     for (const [, column] of Object.entries(fixture.columns)) {
       const prop = column.prop as EntityProp;
       if (isRelationProp(prop) && prop.relationType === "ManyToMany") {
         const joinTable = (prop as ManyToManyRelationProp).joinTable;
         const relatedIds = column.value as number[];
-        const currentFixtureId = idMap.get(fixture.fixtureId);
 
-        if (currentFixtureId) {
-          for (const relatedId of relatedIds) {
-            const relatedFixtureId = `${prop.with}#${relatedId}`;
-            const realRelatedId = idMap.get(relatedFixtureId);
-
-            if (realRelatedId) {
-              const newIds = await db(joinTable).insert({
-                [`${inflection.singularize(fixture.entityId)}_id`]:
-                  currentFixtureId,
-                [`${inflection.singularize(prop.with)}_id`]: realRelatedId,
-              });
-              console.log(
-                `Inserted into ${joinTable}: ${currentFixtureId} - ${realRelatedId} IDs: ${newIds}`
-              );
-            } else {
-              console.warn(
-                `Could not find real ID for fixture ${relatedFixtureId}`
-              );
-            }
+        for (const relatedId of relatedIds) {
+          if (
+            !fixtures.find((f) => f.fixtureId === `${prop.with}#${relatedId}`)
+          ) {
+            continue;
           }
-        } else {
-          console.warn(
-            `Could not find real ID for fixture ${fixture.fixtureId}`
+
+          const [found] = await db(joinTable)
+            .where({
+              [`${inflection.singularize(fixture.entityId)}_id`]: fixture.id,
+              [`${inflection.singularize(prop.with)}_id`]: relatedId,
+            })
+            .limit(1);
+          if (found) {
+            continue;
+          }
+
+          const newIds = await db(joinTable).insert({
+            [`${inflection.singularize(fixture.entityId)}_id`]: fixture.id,
+            [`${inflection.singularize(prop.with)}_id`]: relatedId,
+          });
+          console.log(
+            chalk.green(
+              `Inserted into ${joinTable}: ${fixture.entityId}(${fixture.id}) - ${prop.with}(${relatedId}) ID: ${newIds}`
+            )
           );
         }
       }
