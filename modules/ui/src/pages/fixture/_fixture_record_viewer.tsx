@@ -1,5 +1,5 @@
 import { SetStateAction } from "react";
-import { Checkbox, Icon, Table } from "semantic-ui-react";
+import { Checkbox, Icon, Popup, Table } from "semantic-ui-react";
 import { FixtureRecord } from "sonamu";
 
 type FixtureResultProps = {
@@ -37,7 +37,12 @@ export default function FixtureRecordViewer({
   return (
     <div className="fixture-record-viewer">
       {groupedRecords.map(([, records]) => (
-        <Table celled structured className="entity-table">
+        <Table
+          celled
+          structured
+          className="entity-table"
+          key={records[0].entityId}
+        >
           <Table.Header>
             <Table.Row>
               <Table.HeaderCell
@@ -63,22 +68,37 @@ export default function FixtureRecordViewer({
                   <Table.Cell collapsing rowSpan={record.target ? 2 : 1}>
                     {record.id}
                     {record.target && (
-                      <Icon
-                        name="check"
-                        color={record.override ? "green" : "grey"}
-                        style={{ marginLeft: "10px", cursor: "pointer" }}
-                        onClick={() => {
-                          setFixtureRecords((prev) =>
-                            prev.map((r) =>
-                              r.id === record.id
-                                ? { ...r, override: !r.override }
-                                : r
-                            )
-                          );
-                        }}
+                      <Popup
+                        content="Override"
+                        position="top center"
+                        trigger={
+                          <div
+                            style={{
+                              cursor: "pointer",
+                              padding: "1em",
+                              paddingRight: "0",
+                              display: "inline",
+                            }}
+                            onClick={() => {
+                              setFixtureRecords((prev) =>
+                                prev.map((r) =>
+                                  r.id === record.id
+                                    ? { ...r, override: !r.override }
+                                    : r
+                                )
+                              );
+                            }}
+                          >
+                            <Icon
+                              name="check"
+                              color={record.override ? "green" : "grey"}
+                            />
+                          </div>
+                        }
                       />
                     )}
                   </Table.Cell>
+
                   <Table.Cell collapsing>source</Table.Cell>
                   {refineColumns(record.columns).map(
                     ([key, { prop, value }]) => (
@@ -113,6 +133,7 @@ export default function FixtureRecordViewer({
                     )
                   )}
                 </Table.Row>
+
                 {record.target && (
                   <Table.Row key={record.target.id} warning>
                     <Table.Cell collapsing>target</Table.Cell>

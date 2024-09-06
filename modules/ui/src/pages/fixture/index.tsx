@@ -44,7 +44,7 @@ export default function FixtureIndex() {
     { entityId: "", field: "id", value: "", searchType: "equals" }
   );
 
-  const [entity, setEntity] = useState<ExtendedEntity | null>(null);
+  const [searchEntity, setSearchEntity] = useState<ExtendedEntity | null>(null);
 
   const search = () => {
     if (!form.entityId || !form.field || !form.value) return;
@@ -93,7 +93,7 @@ export default function FixtureIndex() {
             (r) => r.fixtureId === parentFixtureId
           );
           if (parent) {
-            parent.relatedRecords.push(fixtureId);
+            parent.fetchedRecords.push(fixtureId);
           }
 
           const newRecords = res.filter(
@@ -102,7 +102,11 @@ export default function FixtureIndex() {
           setFixtureRecords((prevRecords) =>
             Array.from([...prevRecords, ...newRecords])
           );
-          setSelectedIds((prev) => new Set(prev).add(fixtureId));
+          setSelectedIds((prev) => {
+            const newSet = new Set(prev);
+            newRecords.forEach((r) => newSet.add(r.fixtureId));
+            return newSet;
+          });
         })
         .catch(defaultCatch);
     } else {
@@ -111,50 +115,47 @@ export default function FixtureIndex() {
       );
       if (!parent) return;
 
-      parent.relatedRecords = parent.relatedRecords.filter(
+      parent.fetchedRecords = parent.fetchedRecords.filter(
         (r) => r !== fixtureId
       );
 
-      const getRelatedRecords = (fixtureId: string, arr: Set<string>) => {
-        const record = fixtureRecords.find((r) => r.fixtureId === fixtureId);
-        if (record) {
-          if (arr.has(fixtureId)) return;
-          arr.add(fixtureId);
+      const toDelete = new Set<string>([fixtureId]);
+      const record = fixtureRecords.find((r) => r.fixtureId === fixtureId);
 
-          record.relatedRecords.forEach((relatedId) => {
-            if (!arr.has(relatedId)) {
-              arr.add(relatedId);
-              getRelatedRecords(relatedId, arr);
-            }
-          });
-        }
-      };
+      if (record?.fetchedRecords.length) {
+        // 해당 레코드를 불러올 때 포함된 레코드 중에서 다른 레코드에도 필요한 레코드는 삭제하지 않음
+        const toProtect = new Set<string>([parentFixtureId]);
 
-      const toProtect = new Set<string>();
-      getRelatedRecords(parent.fixtureId, toProtect);
-
-      const toDelete = new Set<string>();
-      const visited = new Set<string>();
-
-      const collectDeletableRecords = (fixtureId: string) => {
-        if (visited.has(fixtureId)) return;
-        visited.add(fixtureId);
-
-        const record = fixtureRecords.find((r) => r.fixtureId === fixtureId);
-        if (record) {
-          if (!toProtect.has(fixtureId)) {
-            toDelete.add(fixtureId);
+        fixtureRecords.forEach((r) => {
+          if (r.fixtureId !== fixtureId) {
+            r.fetchedRecords.forEach((relatedFixtureId) =>
+              toProtect.add(relatedFixtureId)
+            );
           }
+        });
 
-          record.relatedRecords.forEach((relatedFixtureId) => {
-            if (!toProtect.has(relatedFixtureId)) {
-              collectDeletableRecords(relatedFixtureId);
+        record?.fetchedRecords.forEach((relatedFixtureId) => {
+          if (!toProtect.has(relatedFixtureId)) {
+            toDelete.add(relatedFixtureId);
+          }
+        });
+      } else {
+        // 해당 레코드를 불러올 때 포함된 레코드가 없다면(즉, 다른 레코드를 불러올 때 포함된 레코드인 경우)
+        // 해당 레코드를 필요로 하는 다른 레코드 확인하여 삭제
+        const visited = new Set<string>();
+        const collectDeletableRecords = (fixtureId: string) => {
+          if (visited.has(fixtureId)) return;
+          visited.add(fixtureId);
+
+          fixtureRecords.forEach((r) => {
+            if (r.belongsRecords.includes(fixtureId)) {
+              collectDeletableRecords(r.fixtureId);
             }
           });
-        }
-      };
+        };
 
-      collectDeletableRecords(fixtureId);
+        collectDeletableRecords(fixtureId);
+      }
 
       setSelectedIds((prev) => {
         const newSet = new Set(prev);
@@ -172,7 +173,7 @@ export default function FixtureIndex() {
     if (form.entityId && entitiesData?.entities) {
       const e = entitiesData.entities.find((e) => e.id === form.entityId);
       if (e) {
-        setEntity(e);
+        setSearchEntity(e);
       }
     }
   }, [form.entityId, entitiesData]);
@@ -236,13 +237,13 @@ export default function FixtureIndex() {
             }
             {...register("entityId")}
           />
-          {entity && (
+          {searchEntity && (
             <div className="search-field">
               <Dropdown
                 placeholder="Columns"
                 search
                 selection
-                options={entity.props
+                options={searchEntity.props
                   .filter((p) => {
                     if (p.type === "virtual") return false;
                     if (p.type === "relation") {

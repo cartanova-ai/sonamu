@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Dropdown, Segment } from "semantic-ui-react";
+import { Button, Checkbox, Dropdown, Segment } from "semantic-ui-react";
 import { FixtureImportResult } from "sonamu";
 import inflection from "inflection";
 import Markdown from "react-markdown";
@@ -11,72 +11,78 @@ import {
 } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
 
-const CodeBlock = ({
-  code,
-  language,
-  filename,
-  theme,
-}: {
-  code: string;
-  language: string;
-  filename?: string;
-  theme?: keyof typeof markdownTheme;
-}) => {
-  return (
-    <Markdown
-      children={`\`\`\`${language} ${
-        filename ? `title="${filename}"` : ""
-      }\n${code}\n\`\`\``}
-      components={{
-        code({ children, className, node, ref, ...rest }) {
-          return (
-            <div className="code">
-              <div className="code-header">
-                <span>{filename}</span>
-                <Button
-                  icon="clipboard outline"
-                  onClick={(e) => {
-                    navigator.clipboard.writeText(String(children));
-                    // 하위 i태그를 찾아서 className 변경
-                    const target = e.currentTarget.querySelector("i");
-                    if (target) {
-                      target.className = "check circle outline icon";
-                      setTimeout(() => {
-                        target.className = "clipboard outline icon";
-                      }, 1000);
-                    }
-                  }}
-                />
-              </div>
-              <SyntaxHighlighter
-                {...rest}
-                children={String(children).replace(/\n$/, "")}
-                language={language}
-                style={markdownTheme[theme ?? "oneDark"]}
-              />
-            </div>
-          );
-        },
-      }}
-    />
-  );
+type ThemeKey = keyof typeof markdownTheme;
+
+type FixtureCodeViewerProps = {
+  fixtureResults: FixtureImportResult[];
+  entities: ExtendedEntity[];
+  targetDB: string;
 };
+export default function FixtureCodeViewer({
+  fixtureResults,
+  entities,
+  targetDB,
+}: FixtureCodeViewerProps) {
+  const [theme, setTheme] = useState(
+    (localStorage.getItem("markdown-theme") as ThemeKey) ?? "oneDark"
+  );
+
+  const getThemeOptions = () =>
+    Object.keys(markdownTheme).map((key) => ({
+      key,
+      value: key,
+      text: key,
+    }));
+
+  const setMarkdownTheme = (value: ThemeKey) => {
+    setTheme(value);
+    localStorage.setItem("markdown-theme", value);
+  };
+
+  return (
+    <Segment className="fixture-code-viewer">
+      <Dropdown
+        placeholder="Theme"
+        selection
+        options={getThemeOptions()}
+        onChange={(_, { value }) => setMarkdownTheme(value as ThemeKey)}
+        value={theme}
+        className="theme-dropdown"
+      />
+
+      {fixtureResults.map((result) => {
+        const entity = entities.find((e) => e.id === result.entityId);
+        if (!entity) return null;
+
+        return (
+          <FixtureCode
+            fixture={result}
+            entity={entity}
+            targetDB={targetDB}
+            theme={theme}
+          />
+        );
+      })}
+    </Segment>
+  );
+}
 
 const FixtureCode = ({
   fixture,
   entity,
   targetDB,
+  theme,
 }: {
   fixture: FixtureImportResult;
   entity: ExtendedEntity;
   targetDB: string;
+  theme?: ThemeKey;
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
   const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
   const [codes, setCodes] = useState<
     Map<string, { fixture: string; test: string }>
   >(new Map());
-  const [theme, setTheme] = useState<keyof typeof markdownTheme>("oneDark");
 
   const getFixtureLoaderCode = (
     entityId: string,
@@ -173,20 +179,7 @@ const FixtureCode = ({
             text: key,
           }))}
           onChange={(_, { value }) => setSelectedSubset(value as string)}
-          value={selectedSubset ?? ""}
-        />
-        <Dropdown
-          placeholder="Theme"
-          selection
-          options={Object.keys(markdownTheme).map((key) => ({
-            key,
-            value: key,
-            text: key,
-          }))}
-          onChange={(_, { value }) =>
-            setTheme(value as keyof typeof markdownTheme)
-          }
-          value={selectedSubset ?? ""}
+          value={selectedSubset}
         />
       </div>
 
@@ -196,47 +189,173 @@ const FixtureCode = ({
           language="json"
           theme={theme}
         />
-        {selectedSubset && (
-          <div>
-            <CodeBlock
-              code={codes.get(selectedSubset)?.fixture ?? ""}
-              language="javascript"
-              theme={theme}
-              filename="fixture.ts"
-            />
-            <CodeBlock
-              code={codes.get(selectedSubset)?.test ?? ""}
-              language="javascript"
-              theme={theme}
-              filename="fixture.test.ts"
-            />
-          </div>
-        )}
+        <div style={{ margin: 0 }}>
+          {codes.get(selectedSubset) && (
+            <>
+              <CodeBlock
+                code={codes.get(selectedSubset)?.fixture ?? ""}
+                language="javascript"
+                theme={theme}
+                filename="fixture.ts"
+              />
+              <CodeBlock
+                code={codes.get(selectedSubset)?.test ?? ""}
+                language="javascript"
+                theme={theme}
+                filename="fixture.test.ts"
+                lineSelection={true}
+              />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-type FixtureCodeViewerProps = {
-  fixtureResults: FixtureImportResult[];
-  entities: ExtendedEntity[];
-  targetDB: string;
-};
-export default function FixtureCodeViewer({
-  fixtureResults,
-  entities,
-  targetDB,
-}: FixtureCodeViewerProps) {
-  return (
-    <Segment className="fixture-code-viewer">
-      {fixtureResults.map((result) => {
-        const entity = entities.find((e) => e.id === result.entityId);
-        if (!entity) return null;
+const CodeBlock = ({
+  code,
+  language,
+  filename,
+  theme,
+  lineSelection,
+}: {
+  code: string;
+  language: string;
+  filename?: string;
+  theme?: ThemeKey;
+  lineSelection?: boolean;
+}) => {
+  const [selectedLines, setSelectedLines] = useState<boolean[]>([]);
+  const [hoveredLine, setHoveredLine] = useState<number | null>(null);
 
-        return (
-          <FixtureCode fixture={result} entity={entity} targetDB={targetDB} />
-        );
-      })}
-    </Segment>
+  const handleLineToggle = (index: number) => {
+    setSelectedLines((prev) => {
+      const newLines = [...prev];
+      newLines[index] = !newLines[index];
+      return newLines;
+    });
+  };
+
+  const handleCopy = (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    code: string
+  ) => {
+    const lines = String(code).split("\n");
+    const textToCopy = lineSelection
+      ? lines.filter((_, index) => selectedLines[index]).join("\n")
+      : String(code);
+    navigator.clipboard.writeText(textToCopy);
+    const target = e.currentTarget.querySelector("i");
+    if (target) {
+      target.className = "check circle outline icon";
+      setTimeout(() => {
+        target.className = "clipboard outline icon";
+      }, 1000);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedLines(new Array(code.split("\n").length).fill(false));
+  }, [code]);
+
+  return (
+    <Markdown
+      children={`\`\`\`${language} ${
+        filename ? `title="${filename}"` : ""
+      }\n${code}\n\`\`\``}
+      components={{
+        code({ children, className, node, ref, ...rest }) {
+          return (
+            <div className="code">
+              <div className="code-header">
+                <span>{filename}</span>
+                <div>
+                  {lineSelection && (
+                    <Checkbox
+                      label="전체 선택"
+                      checked={selectedLines.every((line) => line)}
+                      onChange={() => {
+                        const allSelected = selectedLines.every((line) => line);
+                        setSelectedLines(selectedLines.map(() => !allSelected));
+                      }}
+                    />
+                  )}
+                  <Button
+                    icon="clipboard outline"
+                    onClick={(e) => handleCopy(e, String(children))}
+                  />
+                </div>
+              </div>
+
+              <SyntaxHighlighter
+                {...rest}
+                children={String(children).trimEnd()}
+                language={language}
+                style={markdownTheme[theme ?? "oneDark"]}
+                renderer={({ rows, stylesheet }) => (
+                  <>
+                    {rows.map((row, i) => (
+                      <div
+                        key={i}
+                        className={`code-line ${
+                          hoveredLine === i ? "hovered" : ""
+                        }`}
+                      >
+                        {lineSelection && (
+                          <Checkbox
+                            checked={selectedLines[i] ?? false}
+                            onChange={() => handleLineToggle(i)}
+                            onMouseEnter={() => setHoveredLine(i)}
+                            onMouseLeave={() => setHoveredLine(null)}
+                          />
+                        )}
+                        <span>
+                          {row.children?.map((child: any, j: number) => {
+                            if (child.type === "element") {
+                              return (
+                                <span
+                                  key={j}
+                                  className={child.properties.className.join(
+                                    " "
+                                  )}
+                                  style={{
+                                    ...child.properties.className.reduce(
+                                      (acc: any, className: string) => {
+                                        if (stylesheet[className]) {
+                                          return {
+                                            ...acc,
+                                            ...stylesheet[className],
+                                          };
+                                        }
+                                        return acc;
+                                      },
+                                      {}
+                                    ),
+                                    fontWeight:
+                                      hoveredLine === i ? "bold" : "normal",
+                                  }}
+                                >
+                                  {child.children.map(
+                                    (grandChild: any, k: number) => (
+                                      <span key={k}>{grandChild.value}</span>
+                                    )
+                                  )}
+                                </span>
+                              );
+                            }
+                            return <span key={j}>{child.value}</span>;
+                          })}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              />
+            </div>
+          );
+        },
+      }}
+    />
   );
-}
+};
