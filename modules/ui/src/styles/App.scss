@@ -806,13 +806,14 @@ code {
     .fixture-record-viewer {
       flex: 1;
       font-size: 0.85em;
-      overflow-x: auto;
       display: flex;
       flex-direction: column;
 
       .entity-table {
         display: inline-block;
         width: fit-content;
+        overflow-x: auto;
+        width: 100%;
 
         td {
           max-width: 12em;
@@ -870,6 +871,11 @@ code {
             button {
               margin: 0;
               padding: 0.6em;
+            }
+
+            div {
+              display: flex;
+              align-items: center;
             }
           }
 
