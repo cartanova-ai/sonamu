@@ -737,8 +737,9 @@ export type FixtureRecord = {
       value: any;
     };
   };
-  relatedRecords: string[];
-  target?: FixtureRecord;
+  fetchedRecords: string[];
+  belongsRecords: string[]; //
+  target?: FixtureRecord; // Import 대상 DB 레코드
   override?: boolean;
 };
 

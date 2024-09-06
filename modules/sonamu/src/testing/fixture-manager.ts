@@ -11,8 +11,11 @@ import {
   FixtureSearchOptions,
   ManyToManyRelationProp,
   isBelongsToOneRelationProp,
+  isHasManyRelationProp,
+  isManyToManyRelationProp,
   isOneToOneRelationProp,
   isRelationProp,
+  isVirtualProp,
 } from "../types/types";
 import { Entity } from "../entity/entity";
 import inflection from "inflection";
@@ -314,8 +317,8 @@ export class FixtureManagerClass {
       );
 
       if (currentFixtureRecord) {
-        // 현재 fixture로부터 생성된 relatedRecords 설정
-        currentFixtureRecord.relatedRecords = records
+        // 현재 fixture로부터 생성된 fetchedRecords 설정
+        currentFixtureRecord.fetchedRecords = records
           .filter((r) => r.fixtureId !== currentFixtureRecord.fixtureId)
           .slice(initialRecordsLength)
           .map((r) => r.fixtureId);
@@ -361,11 +364,12 @@ export class FixtureManagerClass {
       entityId: entity.id,
       id: row.id,
       columns: {},
-      relatedRecords: [],
+      fetchedRecords: [],
+      belongsRecords: [],
     };
 
     for (const prop of entity.props) {
-      if (prop.type === "virtual") {
+      if (isVirtualProp(prop)) {
         continue;
       }
 
@@ -374,53 +378,54 @@ export class FixtureManagerClass {
         value: row[prop.name],
       };
 
-      if (isRelationProp(prop)) {
-        const db = _db ?? BaseModel.getDB("w");
-        if (prop.relationType === "ManyToMany") {
-          const relatedEntity = EntityManager.get(prop.with);
-          const throughTable = prop.joinTable;
-          const fromColumn = `${inflection.singularize(entity.table)}_id`;
-          const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
+      const db = _db ?? BaseModel.getDB("w");
+      if (isManyToManyRelationProp(prop)) {
+        const relatedEntity = EntityManager.get(prop.with);
+        const throughTable = prop.joinTable;
+        const fromColumn = `${inflection.singularize(entity.table)}_id`;
+        const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const relatedIds = await db(throughTable)
-            .where(fromColumn, row.id)
-            .pluck(toColumn);
-          record.columns[prop.name].value = relatedIds;
-        } else if (prop.relationType === "HasMany") {
+        const relatedIds = await db(throughTable)
+          .where(fromColumn, row.id)
+          .pluck(toColumn);
+        record.columns[prop.name].value = relatedIds;
+      } else if (isHasManyRelationProp(prop)) {
+        const relatedEntity = EntityManager.get(prop.with);
+        const relatedIds = await db(relatedEntity.table)
+          .where(prop.joinColumn, row.id)
+          .pluck("id");
+        record.columns[prop.name].value = relatedIds;
+      } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
+        const relatedEntity = EntityManager.get(prop.with);
+        const relatedProp = relatedEntity.props.find(
+          (p) => p.type === "relation" && p.with === entity.id
+        );
+        if (relatedProp) {
+          const relatedRow = await db(relatedEntity.table)
+            .where("id", row[`${relatedProp.name}_id`])
+            .first();
+          record.columns[prop.name].value = relatedRow?.id;
+        }
+      } else if (isRelationProp(prop)) {
+        const relatedId = row[`${prop.name}_id`];
+        record.columns[prop.name].value = relatedId;
+        if (relatedId) {
+          record.belongsRecords.push(`${prop.with}#${relatedId}`);
+        }
+        if (!singleRecord && relatedId) {
           const relatedEntity = EntityManager.get(prop.with);
-          const relatedIds = await db(relatedEntity.table)
-            .where(prop.joinColumn, row.id)
-            .pluck("id");
-          record.columns[prop.name].value = relatedIds;
-        } else if (prop.relationType === "OneToOne" && !prop.hasJoinColumn) {
-          const relatedEntity = EntityManager.get(prop.with);
-          const relatedProp = relatedEntity.props.find(
-            (p) => p.type === "relation" && p.with === entity.id
-          );
-          if (relatedProp) {
-            const relatedRow = await db(relatedEntity.table)
-              .where("id", row[`${relatedProp.name}_id`])
-              .first();
-            record.columns[prop.name].value = relatedRow?.id;
-          }
-        } else {
-          const relatedId = row[`${prop.name}_id`];
-          record.columns[prop.name].value = relatedId;
-          if (!singleRecord && relatedId) {
-            const relatedEntity = EntityManager.get(prop.with);
-            const relatedRow = await db(relatedEntity.table)
-              .where("id", relatedId)
-              .first();
-            if (relatedRow) {
-              await this.createFixtureRecord(
-                relatedEntity,
-                relatedRow,
-                visitedEntities,
-                records,
-                singleRecord,
-                _db
-              );
-            }
+          const relatedRow = await db(relatedEntity.table)
+            .where("id", relatedId)
+            .first();
+          if (relatedRow) {
+            await this.createFixtureRecord(
+              relatedEntity,
+              relatedRow,
+              visitedEntities,
+              records,
+              singleRecord,
+              _db
+            );
           }
         }
       }
@@ -490,7 +495,8 @@ export class FixtureManagerClass {
         const relationProp = entity.props.find(
           (prop) =>
             isRelationProp(prop) &&
-            isBelongsToOneRelationProp(prop) &&
+            (isBelongsToOneRelationProp(prop) ||
+              (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) &&
             prop.with === depNode.entityId
         );
         if (relationProp && !relationProp.nullable) {
@@ -520,7 +526,7 @@ export class FixtureManagerClass {
   private prepareInsertData(fixture: FixtureRecord) {
     const insertData: any = {};
     for (const [propName, column] of Object.entries(fixture.columns)) {
-      if (column.prop.type === "virtual") {
+      if (isVirtualProp(column.prop)) {
         continue;
       }
 
@@ -562,14 +568,14 @@ export class FixtureManagerClass {
 
         if (isRelationProp(prop)) {
           if (
-            prop.relationType === "BelongsToOne" ||
-            (prop.relationType === "OneToOne" && prop.hasJoinColumn)
+            isBelongsToOneRelationProp(prop) ||
+            (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
           ) {
             const relatedFixtureId = `${prop.with}#${column.value}`;
             if (this.dependencyGraph.has(relatedFixtureId)) {
               node.dependencies.add(relatedFixtureId);
             }
-          } else if (prop.relationType === "ManyToMany") {
+          } else if (isManyToManyRelationProp(prop)) {
             // ManyToMany 관계의 경우 양방향 의존성 추가
             const relatedIds = column.value as number[];
             for (const relatedId of relatedIds) {
@@ -619,7 +625,7 @@ export class FixtureManagerClass {
   ) {
     for (const [, column] of Object.entries(fixture.columns)) {
       const prop = column.prop as EntityProp;
-      if (isRelationProp(prop) && prop.relationType === "ManyToMany") {
+      if (isManyToManyRelationProp(prop)) {
         const joinTable = (prop as ManyToManyRelationProp).joinTable;
         const relatedIds = column.value as number[];
 
