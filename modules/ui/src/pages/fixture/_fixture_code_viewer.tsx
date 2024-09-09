@@ -273,7 +273,11 @@ const CodeBlock = ({
                 <div>
                   {lineSelection && (
                     <Checkbox
-                      label="전체 선택"
+                      label={
+                        selectedLines.every((line) => line)
+                          ? "전체 해제"
+                          : "전체 선택"
+                      }
                       checked={selectedLines.every((line) => line)}
                       onChange={() => {
                         const allSelected = selectedLines.every((line) => line);
