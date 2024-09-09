@@ -402,7 +402,7 @@ export class FixtureManagerClass {
         );
         if (relatedProp) {
           const relatedRow = await db(relatedEntity.table)
-            .where("id", row[`${relatedProp.name}_id`])
+            .where("id", row.id)
             .first();
           record.columns[prop.name].value = relatedRow?.id;
         }
