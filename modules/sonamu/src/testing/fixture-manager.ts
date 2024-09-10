@@ -636,10 +636,18 @@ export class FixtureManagerClass {
             continue;
           }
 
+          const entity = EntityManager.get(fixture.entityId);
+          const relatedEntity = EntityManager.get(prop.with);
+          if (!entity || !relatedEntity) {
+            throw new Error(
+              `Entity not found: ${fixture.entityId}, ${prop.with}`
+            );
+          }
+
           const [found] = await db(joinTable)
             .where({
-              [`${inflection.singularize(fixture.entityId)}_id`]: fixture.id,
-              [`${inflection.singularize(prop.with)}_id`]: relatedId,
+              [`${inflection.singularize(entity.table)}_id`]: fixture.id,
+              [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
             })
             .limit(1);
           if (found) {
@@ -647,12 +655,12 @@ export class FixtureManagerClass {
           }
 
           const newIds = await db(joinTable).insert({
-            [`${inflection.singularize(fixture.entityId)}_id`]: fixture.id,
-            [`${inflection.singularize(prop.with)}_id`]: relatedId,
+            [`${inflection.singularize(entity.table)}_id`]: fixture.id,
+            [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
           });
           console.log(
             chalk.green(
-              `Inserted into ${joinTable}: ${fixture.entityId}(${fixture.id}) - ${prop.with}(${relatedId}) ID: ${newIds}`
+              `Inserted into ${joinTable}: ${entity.table}(${fixture.id}) - ${relatedEntity.table}(${relatedId}) ID: ${newIds}`
             )
           );
         }
