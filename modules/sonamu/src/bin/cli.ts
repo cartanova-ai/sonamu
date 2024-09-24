@@ -166,8 +166,12 @@ async function fixture_init() {
   console.log("DUMP...");
   const dumpFilename = `/tmp/sonamu-fixture-init-${Date.now()}.sql`;
   const srcConn = srcConfig.connection as Knex.ConnectionConfig;
+  const migrationsDump = `/tmp/sonamu-fixture-init-migrations-${Date.now()}.sql`;
   execSync(
     `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
+  );
+  execSync(
+    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
   );
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
@@ -200,21 +204,7 @@ async function fixture_init() {
     execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
     execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
     execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
-
-    // 3. knex migration 정보 복사
-    await Promise.all(
-      ["knex_migrations", "knex_migrations_lock"].map(async (tableName) => {
-        const [table] = await db.raw(
-          `SHOW TABLES FROM \`${srcConn.database}\` LIKE '${tableName}'`
-        );
-        if (table?.length) {
-          await db.raw(
-            `INSERT INTO \`${conn.database}\`.${tableName}
-          SELECT * FROM \`${srcConn.database}\`.${tableName}`
-          );
-        }
-      })
-    );
+    execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
 
     await db.destroy();
   }
