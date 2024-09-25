@@ -447,7 +447,27 @@ export class FixtureManagerClass {
 
       for (const fixtureId of insertionOrder) {
         const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        await this.insertFixture(trx, fixture);
+        const result = await this.insertFixture(trx, fixture);
+        if (result.id !== fixture.id) {
+          // ID가 변경된 경우, 다른 fixture에서 참조하는 경우가 찾아서 수정
+          console.log(
+            chalk.yellow(
+              `Unique constraint violation: ${fixture.entityId}#${fixture.id} -> ${fixture.entityId}#${result.id}`
+            )
+          );
+          fixtures.forEach((f) => {
+            Object.values(f.columns).forEach((column) => {
+              if (
+                column.prop.type === "relation" &&
+                column.prop.with === result.entityId &&
+                column.value === fixture.id
+              ) {
+                column.value = result.id;
+              }
+            });
+          });
+          fixture.id = result.id;
+        }
       }
 
       for (const fixtureId of insertionOrder) {
@@ -599,6 +619,27 @@ export class FixtureManagerClass {
 
     try {
       const found = await db(entity.table).where("id", fixture.id).first();
+
+      // 유니크 제약이 있는 경우, 해당 컬럼 조합으로 검색하여 이미 존재하는 레코드인지 확인
+      const uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
+      if (uniqueIndexes.length > 0) {
+        let uniqueQuery = db(entity.table);
+        for (const index of uniqueIndexes) {
+          uniqueQuery = uniqueQuery.where((qb) => {
+            for (const column of index.columns) {
+              qb.andWhere(column, insertData[column]);
+            }
+          });
+        }
+        const [uniqueFound] = await uniqueQuery;
+        if (uniqueFound) {
+          return {
+            entityId: fixture.entityId,
+            id: uniqueFound.id,
+          };
+        }
+      }
+
       if (found && !fixture.override) {
         return {
           entityId: fixture.entityId,
