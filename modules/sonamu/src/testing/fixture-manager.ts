@@ -158,6 +158,10 @@ export class FixtureManagerClass {
             await transaction(tableName).truncate();
 
             const rows = await frdb(tableName);
+            if (rows.length === 0) {
+              return;
+            }
+
             console.log(chalk.blue(tableName), rows.length);
             await transaction
               .insert(
