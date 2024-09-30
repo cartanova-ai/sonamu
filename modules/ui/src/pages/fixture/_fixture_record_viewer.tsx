@@ -64,9 +64,15 @@ export default function FixtureRecordViewer({
           <Table.Body>
             {records.map((record) => (
               <>
-                <Table.Row key={record.id}>
-                  <Table.Cell collapsing rowSpan={record.target ? 2 : 1}>
-                    {record.id}
+                <Table.Row
+                  key={record.id}
+                  className={record.unique ? "unique-violated" : ""}
+                >
+                  <Table.Cell
+                    collapsing
+                    rowSpan={record.target || record.unique ? 2 : 1}
+                  >
+                    {record.id} {record.unique && `(${record.unique.id})`}
                     {record.target && (
                       <Popup
                         content="Override"
@@ -96,6 +102,26 @@ export default function FixtureRecordViewer({
                           </div>
                         }
                       />
+                    )}
+                    {record.unique && (
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <Popup
+                          content="Unique Violated"
+                          position="top center"
+                          trigger={
+                            <div
+                              style={{
+                                cursor: "pointer",
+                                padding: "1em",
+                                paddingRight: "0",
+                                display: "inline",
+                              }}
+                            >
+                              <Icon name="question circle outline" />
+                            </div>
+                          }
+                        />
+                      </span>
                     )}
                   </Table.Cell>
 
@@ -138,6 +164,19 @@ export default function FixtureRecordViewer({
                   <Table.Row key={record.target.id} warning>
                     <Table.Cell collapsing>target</Table.Cell>
                     {refineColumns(record.target.columns).map(
+                      ([key, { value }]) => (
+                        <Table.Cell key={key} collapsing>
+                          {JSON.stringify(value)}
+                        </Table.Cell>
+                      )
+                    )}
+                  </Table.Row>
+                )}
+
+                {record.unique && (
+                  <Table.Row key={record.id + "unique"}>
+                    <Table.Cell collapsing>target</Table.Cell>
+                    {refineColumns(record.unique.columns).map(
                       ([key, { value }]) => (
                         <Table.Cell key={key} collapsing>
                           {JSON.stringify(value)}
