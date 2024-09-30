@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import knex, { Knex } from "knex";
-import _ from "lodash";
+import _, { uniqBy } from "lodash";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import { EntityManager } from "../entity/entity-manager";
@@ -311,58 +311,72 @@ export class FixtureManagerClass {
       throw new Error("No records found");
     }
 
-    const visitedEntities = new Set<string>();
-    const records: FixtureRecord[] = [];
+    const fixtures: FixtureRecord[] = [];
     for (const row of rows) {
-      const initialRecordsLength = records.length;
-      await this.createFixtureRecord(entity, row, visitedEntities, records);
-      const currentFixtureRecord = records.find(
+      const initialRecordsLength = fixtures.length;
+      const newRecords = await this.createFixtureRecord(entity, row);
+      fixtures.push(...newRecords);
+      const currentFixtureRecord = fixtures.find(
         (r) => r.fixtureId === `${entityId}#${row.id}`
       );
 
       if (currentFixtureRecord) {
         // 현재 fixture로부터 생성된 fetchedRecords 설정
-        currentFixtureRecord.fetchedRecords = records
+        currentFixtureRecord.fetchedRecords = fixtures
           .filter((r) => r.fixtureId !== currentFixtureRecord.fixtureId)
           .slice(initialRecordsLength)
           .map((r) => r.fixtureId);
       }
     }
 
-    for await (const record of records) {
-      const entity = EntityManager.get(record.entityId);
-      const rows: FixtureRecord[] = [];
-      const row = await targetDB(entity.table).where("id", record.id).first();
+    for await (const fixture of fixtures) {
+      const entity = EntityManager.get(fixture.entityId);
+
+      // targetDB에 해당 레코드가 존재하는지 확인
+      const row = await targetDB(entity.table).where("id", fixture.id).first();
       if (row) {
-        await this.createFixtureRecord(
-          entity,
-          row,
-          new Set(),
-          rows,
-          true,
-          targetDB
-        );
-        record.target = rows[0];
+        const [record] = await this.createFixtureRecord(entity, row, {
+          singleRecord: true,
+          _db: targetDB,
+        });
+        fixture.target = record;
+        continue;
+      }
+
+      // targetDB에 해당 레코드가 존재하지 않는 경우, unique 제약을 위반하는지 확인
+      const uniqueRow = await this.checkUniqueViolation(
+        targetDB,
+        entity,
+        fixture
+      );
+      if (uniqueRow) {
+        const [record] = await this.createFixtureRecord(entity, uniqueRow, {
+          singleRecord: true,
+          _db: targetDB,
+        });
+        fixture.unique = record;
       }
     }
 
-    return records;
+    return fixtures;
   }
 
   async createFixtureRecord(
     entity: Entity,
     row: any,
-    visitedEntities: Set<string>,
-    records: FixtureRecord[],
-    singleRecord = false,
-    _db?: Knex
-  ) {
+    options?: {
+      singleRecord?: boolean;
+      _db?: Knex;
+    },
+    visitedEntities = new Set<string>()
+  ): Promise<FixtureRecord[]> {
     const fixtureId = `${entity.id}#${row.id}`;
     if (visitedEntities.has(fixtureId)) {
-      return;
+      return [];
     }
     visitedEntities.add(fixtureId);
 
+    const records: FixtureRecord[] = [];
     const record: FixtureRecord = {
       fixtureId,
       entityId: entity.id,
@@ -382,7 +396,7 @@ export class FixtureManagerClass {
         value: row[prop.name],
       };
 
-      const db = _db ?? BaseModel.getDB("w");
+      const db = options?._db ?? BaseModel.getDB("w");
       if (isManyToManyRelationProp(prop)) {
         const relatedEntity = EntityManager.get(prop.with);
         const throughTable = prop.joinTable;
@@ -416,32 +430,34 @@ export class FixtureManagerClass {
         if (relatedId) {
           record.belongsRecords.push(`${prop.with}#${relatedId}`);
         }
-        if (!singleRecord && relatedId) {
+        if (!options?.singleRecord && relatedId) {
           const relatedEntity = EntityManager.get(prop.with);
           const relatedRow = await db(relatedEntity.table)
             .where("id", relatedId)
             .first();
           if (relatedRow) {
-            await this.createFixtureRecord(
+            const newRecords = await this.createFixtureRecord(
               relatedEntity,
               relatedRow,
-              visitedEntities,
-              records,
-              singleRecord,
-              _db
+              options,
+              visitedEntities
             );
+            records.push(...newRecords);
           }
         }
       }
     }
 
     records.push(record);
+    return records;
   }
 
   async insertFixtures(
     dbName: keyof SonamuDBConfig,
-    fixtures: FixtureRecord[]
+    _fixtures: FixtureRecord[]
   ) {
+    const fixtures = uniqBy(_fixtures, (f) => f.fixtureId);
+
     this.buildDependencyGraph(fixtures);
     const insertionOrder = this.getInsertionOrder();
     const db = knex(Sonamu.dbConfig[dbName]);
@@ -492,7 +508,7 @@ export class FixtureManagerClass {
       });
     }
 
-    return records;
+    return uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
   private getInsertionOrder() {
@@ -622,28 +638,15 @@ export class FixtureManagerClass {
     const entity = EntityManager.get(fixture.entityId);
 
     try {
-      const found = await db(entity.table).where("id", fixture.id).first();
-
-      // 유니크 제약이 있는 경우, 해당 컬럼 조합으로 검색하여 이미 존재하는 레코드인지 확인
-      const uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
-      if (uniqueIndexes.length > 0) {
-        let uniqueQuery = db(entity.table);
-        for (const index of uniqueIndexes) {
-          uniqueQuery = uniqueQuery.where((qb) => {
-            for (const column of index.columns) {
-              qb.andWhere(column, insertData[column]);
-            }
-          });
-        }
-        const [uniqueFound] = await uniqueQuery;
-        if (uniqueFound) {
-          return {
-            entityId: fixture.entityId,
-            id: uniqueFound.id,
-          };
-        }
+      const uniqueFound = await this.checkUniqueViolation(db, entity, fixture);
+      if (uniqueFound) {
+        return {
+          entityId: fixture.entityId,
+          id: uniqueFound.id,
+        };
       }
 
+      const found = await db(entity.table).where("id", fixture.id).first();
       if (found && !fixture.override) {
         return {
           entityId: fixture.entityId,
@@ -732,6 +735,44 @@ export class FixtureManagerClass {
     } else {
       throw new Error("Failed to find fixtureLoader in fixture.ts");
     }
+  }
+
+  // 해당 픽스쳐의 값으로 유니크 제약에 위배되는 레코드가 있는지 확인
+  private async checkUniqueViolation(
+    db: Knex,
+    entity: Entity,
+    fixture: FixtureRecord
+  ) {
+    const uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
+    if (uniqueIndexes.length === 0) {
+      return null;
+    }
+
+    let uniqueQuery = db(entity.table);
+    for (const index of uniqueIndexes) {
+      // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
+      if (
+        index.columns.some(
+          (column) => fixture.columns[column.split("_id")[0]].value === null
+        )
+      ) {
+        continue;
+      }
+
+      uniqueQuery = uniqueQuery.orWhere((qb) => {
+        for (const column of index.columns) {
+          const field = column.split("_id")[0];
+
+          if (Array.isArray(fixture.columns[field].value)) {
+            qb.whereIn(column, fixture.columns[field].value);
+          } else {
+            qb.andWhere(column, fixture.columns[field].value);
+          }
+        }
+      });
+    }
+    const [uniqueFound] = await uniqueQuery;
+    return uniqueFound;
   }
 }
 export const FixtureManager = new FixtureManagerClass();

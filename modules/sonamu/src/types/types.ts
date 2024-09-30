@@ -738,8 +738,9 @@ export type FixtureRecord = {
     };
   };
   fetchedRecords: string[];
-  belongsRecords: string[]; //
-  target?: FixtureRecord; // Import 대상 DB 레코드
+  belongsRecords: string[];
+  target?: FixtureRecord; // Import 대상 DB 레코드(id가 같은)
+  unique?: FixtureRecord; // Import 대상 DB 레코드(unique key가 같은)
   override?: boolean;
 };
 
