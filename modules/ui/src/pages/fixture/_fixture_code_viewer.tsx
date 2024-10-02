@@ -49,18 +49,24 @@ export default function FixtureCodeViewer({
         value={theme}
         className="theme-dropdown"
       />
-
-      {fixtureResults.map((result) => {
-        const entity = entities.find((e) => e.id === result.entityId);
-        if (!entity) return null;
-
+      {entities.map((entity) => {
+        const results = fixtureResults.filter(
+          (result) => result.entityId === entity.id
+        );
+        if (results.length === 0) return null;
         return (
-          <FixtureCode
-            fixture={result}
-            entity={entity}
-            targetDB={targetDB}
-            theme={theme}
-          />
+          <div key={entity.id} className="fixture-code">
+            <h3 style={{ margin: "1em" }}>Entity: {entity.id}</h3>
+            {results.map((result) => (
+              <FixtureCode
+                key={result.data.id}
+                fixture={result}
+                entity={entity}
+                targetDB={targetDB}
+                theme={theme}
+              />
+            ))}
+          </div>
         );
       })}
     </Segment>
@@ -169,7 +175,6 @@ const FixtureCode = ({
       className="fixture-code"
     >
       <div className="header">
-        <h3>{fixture.entityId}</h3>
         <Dropdown
           placeholder="Subset"
           selection
