@@ -624,19 +624,12 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     if (!entity) {
       return;
     }
-    const newEnumLabelsArray = Object.fromEntries(
-      Object.entries(enumLabelsArray).map(([enumId, enumLabels]) => [
-        enumId === oldEnumId ? newEnumId : enumId,
-        enumLabels,
-      ])
-    );
 
-    SonamuUIService.modifyEnumLabels(
-      entity.id,
-      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
-    )
-      .then(({ updated }) => {
-        entity.enumLabels = updated;
+    SonamuUIService.modifyEnumId(entity.id, {
+      before: oldEnumId,
+      after: newEnumId,
+    })
+      .then(() => {
         mutate();
       })
       .catch(defaultCatch);
@@ -650,18 +643,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       return;
     }
 
-    const newEnumLabelsArray = Object.fromEntries(
-      Object.entries(enumLabelsArray).filter(
-        ([_enumId, _enumLabels]) => _enumId !== enumId
-      )
-    );
-
-    SonamuUIService.modifyEnumLabels(
-      entity.id,
-      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
-    )
-      .then(({ updated }) => {
-        entity.enumLabels = updated;
+    SonamuUIService.deleteEnumId({ entityId: entity.id, enumId })
+      .then(() => {
         mutate();
       })
       .catch(defaultCatch);
@@ -676,15 +659,8 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       return;
     }
 
-    const newEnumLabelsArray = Object.fromEntries(
-      Object.entries(enumLabelsArray).concat([[newEnumId, []]])
-    );
-    SonamuUIService.modifyEnumLabels(
-      entity.id,
-      enumLabelsArrayToEnumLabels(newEnumLabelsArray)
-    )
-      .then(({ updated }) => {
-        entity.enumLabels = updated;
+    SonamuUIService.createEnumId({ entityId: entity.id, newEnumId })
+      .then(() => {
         mutate();
       })
       .catch(defaultCatch);

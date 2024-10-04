@@ -547,6 +547,64 @@ export async function createApiServer(options: {
     return 1;
   });
 
+  server.post<{
+    Body: {
+      entityId: string;
+      enumId: {
+        before: string;
+        after: string;
+      };
+    };
+  }>("/api/entity/modifyEnumId", async (request) => {
+    const { entityId, enumId } = request.body;
+    const entityIds = EntityManager.getAllIds();
+    const isExists = entityIds.some((entityId) => {
+      const entity = EntityManager.get(entityId);
+      return Object.keys(entity.enumLabels).includes(enumId.after);
+    });
+    if (isExists) {
+      throw new Error(`이미 존재하는 EnumId입니다: ${enumId.after}`);
+    }
+
+    const entity = EntityManager.get(entityId);
+    entity.enumLabels[enumId.after] = entity.enumLabels[enumId.before];
+    delete entity.enumLabels[enumId.before];
+
+    await entity.save();
+
+    for (const entityId of entityIds) {
+      const entity = EntityManager.get(entityId);
+      for (const prop of entity.props) {
+        if (prop.type === "enum" && prop.id === enumId.before) {
+          prop.id = enumId.after;
+        }
+      }
+      await entity.save();
+    }
+  });
+
+  server.post<{
+    Body: {
+      entityId: string;
+      enumId: string;
+    };
+  }>("/api/entity/deleteEnumId", async (request) => {
+    const { entityId, enumId } = request.body;
+
+    const entityIds = EntityManager.getAllIds();
+    const isReferenced = entityIds
+      .map((entityId) => EntityManager.get(entityId).props)
+      .flat()
+      .some((prop) => prop.type === "enum" && prop.id === enumId);
+    if (isReferenced) {
+      throw new Error(`${enumId}를 참조하는 프로퍼티가 존재합니다.`);
+    }
+
+    const entity = EntityManager.get(entityId);
+    delete entity.enumLabels[enumId];
+    await entity.save();
+  });
+
   server.get<{
     Querystring: {
       entityId: string;

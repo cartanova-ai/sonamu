@@ -217,6 +217,31 @@ export namespace SonamuUIService {
     });
   }
 
+  export function modifyEnumId(
+    entityId: string,
+    enumId: { before: string; after: string }
+  ): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/modifyEnumId`,
+      data: {
+        entityId,
+        enumId,
+      },
+    });
+  }
+
+  export function deleteEnumId(params: {
+    entityId: string;
+    enumId: string;
+  }): Promise<void> {
+    return fetch({
+      method: "POST",
+      url: `/api/entity/deleteEnumId`,
+      data: params,
+    });
+  }
+
   export function getTableColumns(
     entityId: string
   ): Promise<{ columns: string[] }> {
