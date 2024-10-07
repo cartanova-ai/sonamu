@@ -262,6 +262,8 @@ export class UpsertBuilder {
 
     // 자기 참조가 있는 경우 재귀적으로 upsert
     if (selfRefRows.length > 0) {
+      // 처리된 데이터를 제외하고 다시 upsert
+      table.rows = selfRefRows;
       const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
       allIds.push(...selfRefIds);
     }
