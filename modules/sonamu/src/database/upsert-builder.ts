@@ -144,17 +144,26 @@ export class UpsertBuilder {
     };
   }
 
-  async upsert(wdb: Knex, tableName: string): Promise<number[]> {
-    return this.upsertOrInsert(wdb, tableName, "upsert");
+  async upsert(
+    wdb: Knex,
+    tableName: string,
+    chunkSize?: number
+  ): Promise<number[]> {
+    return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
   }
-  async insertOnly(wdb: Knex, tableName: string): Promise<number[]> {
-    return this.upsertOrInsert(wdb, tableName, "insert");
+  async insertOnly(
+    wdb: Knex,
+    tableName: string,
+    chunkSize?: number
+  ): Promise<number[]> {
+    return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
   }
 
   async upsertOrInsert(
     wdb: Knex,
     tableName: string,
-    mode: "upsert" | "insert"
+    mode: "upsert" | "insert",
+    chunkSize?: number
   ): Promise<number[]> {
     if (this.hasTable(tableName) === false) {
       return [];
@@ -177,22 +186,6 @@ export class UpsertBuilder {
       throw new Error(`${tableName} 해결되지 않은 참조가 있습니다.`);
     }
 
-    // 내부 참조 있는 경우 필터하여 분리
-    const groups = _.groupBy(table.rows, (row) =>
-      Object.entries(row).some(([, value]) => isRefField(value))
-        ? "selfRef"
-        : "normal"
-    );
-    const targetRows = groups.normal;
-
-    // Insert On Duplicate Update
-    const q = wdb.insert(targetRows).into(tableName);
-    if (mode === "insert") {
-      await q;
-    } else if (mode === "upsert") {
-      await q.onDuplicateUpdate.apply(q, Object.keys(targetRows[0]));
-    }
-
     // 전체 테이블 순회하여 현재 테이블 참조하는 모든 테이블 추출
     const { references, refTables } = Array.from(this.tables).reduce(
       (r, [, table]) => {
@@ -211,19 +204,39 @@ export class UpsertBuilder {
         refTables: [] as TableData[],
       }
     );
-
     const extractFields = _.uniq(references).map(
       (reference) => reference.split(".")[1]
     );
 
-    // UUID 기준으로 id 추출
-    const uuids = table.rows.map((row) => row.uuid);
-    const upsertedRows = await wdb(tableName)
-      .select(_.uniq(["uuid", "id", ...extractFields]))
-      .whereIn("uuid", uuids);
-    const uuidMap = new Map<string, any>(
-      upsertedRows.map((row: any) => [row.uuid, row])
+    // 내부 참조 있는 경우 필터하여 분리
+    const groups = _.groupBy(table.rows, (row) =>
+      Object.entries(row).some(([, value]) => isRefField(value))
+        ? "selfRef"
+        : "normal"
     );
+    const normalRows = groups.normal ?? [];
+    const selfRefRows = groups.selfRef ?? [];
+
+    const chunks = chunkSize ? _.chunk(normalRows, chunkSize) : [normalRows];
+    const uuidMap = new Map<string, any>();
+
+    for (const chunk of chunks) {
+      const q = wdb.insert(chunk).into(tableName);
+      if (mode === "insert") {
+        await q;
+      } else if (mode === "upsert") {
+        await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
+      }
+
+      // upsert된 row들을 다시 조회하여 uuidMap에 저장
+      const uuids = chunk.map((row) => row.uuid);
+      const upsertedRows = await wdb(tableName)
+        .select(_.uniq(["uuid", "id", ...extractFields]))
+        .whereIn("uuid", uuids);
+      upsertedRows.forEach((row: any) => {
+        uuidMap.set(row.uuid, row);
+      });
+    }
 
     // 해당 테이블 참조를 실제 밸류로 변경
     refTables.map((table) => {
@@ -245,14 +258,15 @@ export class UpsertBuilder {
       });
     });
 
-    const ids = Array.from(uuidMap.values()).map((val) => val.id);
+    const allIds = Object.entries(uuidMap).map(([, val]) => val.id);
 
-    if (groups.selfRef) {
-      const selfRefIds = await this.upsert(wdb, tableName);
-      return [...ids, ...selfRefIds];
+    // 자기 참조가 있는 경우 재귀적으로 upsert
+    if (selfRefRows.length > 0) {
+      const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
+      allIds.push(...selfRefIds);
     }
 
-    return ids;
+    return allIds;
   }
 
   async updateBatch(
