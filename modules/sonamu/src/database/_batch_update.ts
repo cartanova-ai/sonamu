@@ -13,7 +13,7 @@ export type RowWithId<Id extends string> = {
  * Batch update rows in a table. Technically its a patch since it only updates the specified columns. Any omitted columns will not be affected
  * @param knex
  * @param tableName
- * @param id
+ * @param ids
  * @param rows
  * @param chunkSize
  * @param trx
@@ -21,7 +21,7 @@ export type RowWithId<Id extends string> = {
 export async function batchUpdate<Id extends string>(
   knex: Knex,
   tableName: string,
-  id: Id,
+  ids: Id[],
   rows: RowWithId<Id>[],
   chunkSize = 50,
   trx: Knex.Transaction | null = null
@@ -35,7 +35,7 @@ export async function batchUpdate<Id extends string>(
     chunk: RowWithId<Id>[],
     transaction: Knex.Transaction
   ) => {
-    const sql = generateBatchUpdateSQL(knex, tableName, chunk, id);
+    const sql = generateBatchUpdateSQL(knex, tableName, chunk, ids);
     return knex.raw(sql).transacting(transaction);
   };
 
@@ -73,20 +73,30 @@ function generateBatchUpdateSQL<Id extends string>(
   knex: Knex,
   tableName: string,
   data: Record<string, any>[],
-  identifier: Id
+  identifiers: Id[]
 ) {
   const keySet = generateKeySetFromData(data);
   const bindings = [];
 
+  const invalidIdentifiers = identifiers.filter((id) => !keySet.has(id));
+  if (invalidIdentifiers.length > 0) {
+    throw new Error(
+      `Invalid identifiers: ${invalidIdentifiers.join(", ")}. Identifiers must exist in the data`
+    );
+  }
+
   const cases = [];
   for (const key of keySet) {
-    if (key === identifier) continue;
+    if (identifiers.includes(key as Id)) continue;
 
     const rows = [];
     for (const row of data) {
       if (Object.hasOwnProperty.call(row, key)) {
-        rows.push(`WHEN \`${identifier}\` = ? THEN ?`);
-        bindings.push(row[identifier], row[key]);
+        const whereClause = identifiers
+          .map((id) => `\`${id}\` = ?`)
+          .join(" AND ");
+        rows.push(`WHEN (${whereClause}) THEN ?`);
+        bindings.push(...identifiers.map((i) => row[i]), row[key]);
       }
     }
 
@@ -94,13 +104,18 @@ function generateBatchUpdateSQL<Id extends string>(
     cases.push(`\`${key}\` = CASE ${whenThen} ELSE \`${key}\` END`);
   }
 
-  const whereInIds = data.map((row) => row[identifier]);
-  const whereInPlaceholders = whereInIds.map(() => "?").join(", ");
-  const sql = knex.raw(
-    `UPDATE \`${tableName}\` SET ${cases.join(
-      ", "
-    )} WHERE ${identifier} IN (${whereInPlaceholders})`,
-    [...bindings, ...whereInIds]
+  const whereInClauses = identifiers
+    .map((col) => `${col} IN (${data.map(() => "?").join(", ")})`)
+    .join(" AND ");
+
+  const whereInBindings = identifiers.flatMap((col) =>
+    data.map((row) => row[col])
   );
-  return sql.toString();
+
+  const sql = knex.raw(
+    `UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`,
+    [...bindings, ...whereInBindings]
+  );
+
+  return sql.toQuery();
 }

@@ -260,7 +260,7 @@ export class UpsertBuilder {
     tableName: string,
     options?: {
       chunkSize?: number;
-      where?: string;
+      where?: string | string[];
     }
   ): Promise<void> {
     options = _.defaults(options, {
@@ -276,16 +276,14 @@ export class UpsertBuilder {
       return;
     }
 
+    const whereColumns = Array.isArray(options.where)
+      ? options.where
+      : [options.where ?? "id"];
     const rows = table.rows.map((_row) => {
       const { uuid, ...row } = _row;
       return row as RowWithId<string>;
     });
-    await batchUpdate(
-      wdb,
-      tableName,
-      options.where ?? "id",
-      rows,
-      options.chunkSize
-    );
+
+    await batchUpdate(wdb, tableName, whereColumns, rows, options.chunkSize);
   }
 }
