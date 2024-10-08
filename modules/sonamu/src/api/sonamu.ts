@@ -185,10 +185,11 @@ class SonamuClass {
 
   async withFastify(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
-    config: SonamuFastifyConfig
+    config: SonamuFastifyConfig,
+    options?: { enableSync?: boolean; doSilent?: boolean }
   ) {
     if (this.isInitialized === false) {
-      await this.init();
+      await this.init(options?.doSilent, options?.enableSync);
     }
 
     // 전체 라우팅 리스트
