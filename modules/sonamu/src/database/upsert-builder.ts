@@ -258,7 +258,7 @@ export class UpsertBuilder {
       });
     });
 
-    const allIds = Object.entries(uuidMap).map(([, val]) => val.id);
+    const allIds = Array.from(uuidMap.values()).map((row) => row.id);
 
     // 자기 참조가 있는 경우 재귀적으로 upsert
     if (selfRefRows.length > 0) {
