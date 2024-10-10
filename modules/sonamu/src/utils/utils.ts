@@ -17,19 +17,21 @@ export async function importMultiple(
   filePaths: string[],
   doRefresh: boolean = false
 ): Promise<{ filePath: string; imported: any }[]> {
-  return Promise.all(
-    filePaths.map(async (filePath) => {
-      const importPath = "./" + path.relative(__dirname, filePath);
-      if (doRefresh) {
-        delete require.cache[require.resolve(importPath)];
-      }
-      const imported = await import(importPath);
-      return {
-        filePath,
-        imported,
-      };
-    })
-  );
+  const results: { filePath: string; imported: any }[] = [];
+
+  for (const filePath of filePaths) {
+    const importPath = "./" + path.relative(__dirname, filePath);
+    if (doRefresh) {
+      delete require.cache[require.resolve(importPath)];
+    }
+    const imported = await import(importPath);
+    results.push({
+      filePath,
+      imported,
+    });
+  }
+
+  return results;
 }
 export async function findAppRootPath() {
   const apiRootPath = await findApiRootPath();
