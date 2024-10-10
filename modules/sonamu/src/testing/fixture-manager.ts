@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import knex, { Knex } from "knex";
-import _, { uniqBy } from "lodash";
+import _ from "lodash";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import { EntityManager } from "../entity/entity-manager";
@@ -456,7 +456,7 @@ export class FixtureManagerClass {
     dbName: keyof SonamuDBConfig,
     _fixtures: FixtureRecord[]
   ) {
-    const fixtures = uniqBy(_fixtures, (f) => f.fixtureId);
+    const fixtures = _.uniqBy(_fixtures, (f) => f.fixtureId);
 
     this.buildDependencyGraph(fixtures);
     const insertionOrder = this.getInsertionOrder();
@@ -508,7 +508,7 @@ export class FixtureManagerClass {
       });
     }
 
-    return uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
+    return _.uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
   private getInsertionOrder() {
