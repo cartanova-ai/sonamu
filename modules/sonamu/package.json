@@ -8,6 +8,13 @@
     "orm"
   ],
   "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
     "dev": "yarn tsc -w -p ./tsconfig.json",
     "build": "tsup --config ./tsup.config.js"
@@ -22,7 +29,7 @@
     "type": "git",
     "url": "https://github.com/ping-alive/sonamu.git"
   },
-  "bin": "./dist/bin/cli.js",
+  "bin": "./dist/bin/cli-wrapper.mjs",
   "dependencies": {
     "chalk": "^4.1.2",
     "dotenv": "^16.0.2",
