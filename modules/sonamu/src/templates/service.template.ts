@@ -30,6 +30,11 @@ export class Template__service extends Template {
     // 서비스 TypeSource
     const { lines, importKeys } = this.getTypeSource(apis);
 
+    // AxiosProgressEvent 있는지 확인
+    const hasAxiosProgressEvent = apis.find((api) =>
+      (api.options.clients ?? []).includes("axios-multipart")
+    );
+
     return {
       ...this.getTargetAndPath(names),
       body: lines.join("\n"),
@@ -41,6 +46,9 @@ export class Template__service extends Template {
         `import qs from "qs";`,
         `import useSWR, { SWRResponse } from "swr";`,
         `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher } from '../sonamu.shared';`,
+        ...(hasAxiosProgressEvent
+          ? [`import { AxiosProgressEvent } from 'axios';`]
+          : []),
       ],
     };
   }
@@ -210,7 +218,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
 export async function ${api.methodName}${typeParamsDef}(
   ${paramsDef}${paramsDefComma}
   file: File,
-  onUploadProgress?: (pe:ProgressEvent) => void
+  onUploadProgress?: (pe:AxiosProgressEvent) => void
   ): Promise<${returnTypeDef}> {
     const formData = new FormData();
     ${formDataDef}
