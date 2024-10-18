@@ -25,7 +25,9 @@ class DBClass {
     );
     try {
       const knexfileModule = await import(dbConfigPath);
-      return knexfileModule.default as SonamuDBConfig;
+      return (knexfileModule.default?.default ??
+        knexfileModule.default ??
+        knexfileModule) as SonamuDBConfig;
     } catch {}
 
     throw new ServiceUnavailableException(
