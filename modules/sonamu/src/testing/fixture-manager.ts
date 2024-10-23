@@ -21,6 +21,7 @@ import { Entity } from "../entity/entity";
 import inflection from "inflection";
 import { SonamuDBConfig } from "../database/db";
 import { readFileSync, writeFileSync } from "fs";
+import { RelationGraph } from "./_relation-graph";
 
 export class FixtureManagerClass {
   private _tdb: Knex | null = null;
@@ -45,14 +46,7 @@ export class FixtureManagerClass {
     return this._fdb;
   }
 
-  private dependencyGraph: Map<
-    string,
-    {
-      fixtureId: string;
-      entityId: string;
-      dependencies: Set<string>;
-    }
-  > = new Map();
+  private relationGraph = new RelationGraph();
 
   init() {
     if (this._tdb !== null) {
@@ -458,8 +452,8 @@ export class FixtureManagerClass {
   ) {
     const fixtures = _.uniqBy(_fixtures, (f) => f.fixtureId);
 
-    this.buildDependencyGraph(fixtures);
-    const insertionOrder = this.getInsertionOrder();
+    this.relationGraph.buildGraph(fixtures);
+    const insertionOrder = this.relationGraph.getInsertionOrder();
     const db = knex(Sonamu.dbConfig[dbName]);
 
     await db.transaction(async (trx) => {
@@ -511,58 +505,6 @@ export class FixtureManagerClass {
     return _.uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
-  private getInsertionOrder() {
-    const visited = new Set<string>();
-    const order: string[] = [];
-    const tempVisited = new Set<string>();
-
-    const visit = (fixtureId: string) => {
-      if (visited.has(fixtureId)) return;
-      if (tempVisited.has(fixtureId)) {
-        console.warn(`Circular dependency detected involving: ${fixtureId}`);
-        return;
-      }
-
-      tempVisited.add(fixtureId);
-
-      const node = this.dependencyGraph.get(fixtureId)!;
-      const entity = EntityManager.get(node.entityId);
-
-      for (const depId of node.dependencies) {
-        const depNode = this.dependencyGraph.get(depId)!;
-
-        // BelongsToOne 관계이면서 nullable이 아닌 경우 먼저 방문
-        const relationProp = entity.props.find(
-          (prop) =>
-            isRelationProp(prop) &&
-            (isBelongsToOneRelationProp(prop) ||
-              (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) &&
-            prop.with === depNode.entityId
-        );
-        if (relationProp && !relationProp.nullable) {
-          visit(depId);
-        }
-      }
-
-      tempVisited.delete(fixtureId);
-      visited.add(fixtureId);
-      order.push(fixtureId);
-    };
-
-    for (const fixtureId of this.dependencyGraph.keys()) {
-      visit(fixtureId);
-    }
-
-    // circular dependency로 인해 방문되지 않은 fixtureId 추가
-    for (const fixtureId of this.dependencyGraph.keys()) {
-      if (!visited.has(fixtureId)) {
-        order.push(fixtureId);
-      }
-    }
-
-    return order;
-  }
-
   private prepareInsertData(fixture: FixtureRecord) {
     const insertData: any = {};
     for (const [propName, column] of Object.entries(fixture.columns)) {
@@ -585,52 +527,6 @@ export class FixtureManagerClass {
       }
     }
     return insertData;
-  }
-
-  private buildDependencyGraph(fixtures: FixtureRecord[]) {
-    this.dependencyGraph.clear();
-
-    // 1. 노드 추가
-    for (const fixture of fixtures) {
-      this.dependencyGraph.set(fixture.fixtureId, {
-        fixtureId: fixture.fixtureId,
-        entityId: fixture.entityId,
-        dependencies: new Set(),
-      });
-    }
-
-    // 2. 의존성 추가
-    for (const fixture of fixtures) {
-      const node = this.dependencyGraph.get(fixture.fixtureId)!;
-
-      for (const [, column] of Object.entries(fixture.columns)) {
-        const prop = column.prop as EntityProp;
-
-        if (isRelationProp(prop)) {
-          if (
-            isBelongsToOneRelationProp(prop) ||
-            (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-          ) {
-            const relatedFixtureId = `${prop.with}#${column.value}`;
-            if (this.dependencyGraph.has(relatedFixtureId)) {
-              node.dependencies.add(relatedFixtureId);
-            }
-          } else if (isManyToManyRelationProp(prop)) {
-            // ManyToMany 관계의 경우 양방향 의존성 추가
-            const relatedIds = column.value as number[];
-            for (const relatedId of relatedIds) {
-              const relatedFixtureId = `${prop.with}#${relatedId}`;
-              if (this.dependencyGraph.has(relatedFixtureId)) {
-                node.dependencies.add(relatedFixtureId);
-                this.dependencyGraph
-                  .get(relatedFixtureId)!
-                  .dependencies.add(fixture.fixtureId);
-              }
-            }
-          }
-        }
-      }
-    }
   }
 
   private async insertFixture(db: Knex, fixture: FixtureRecord) {

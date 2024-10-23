@@ -750,3 +750,9 @@ export type FixtureImportResult = {
     [key: string]: any;
   };
 };
+
+export type RelationNode = {
+  fixtureId: string;
+  entityId: string;
+  related: Set<string>;
+};
