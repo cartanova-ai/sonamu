@@ -326,7 +326,7 @@ export class FixtureManagerClass {
     for await (const fixture of fixtures) {
       const entity = EntityManager.get(fixture.entityId);
 
-      // targetDB에 해당 레코드가 존재하는지 확인
+      // ID를 이용하여 targetDB에 레코드가 존재하는지 확인
       const row = await targetDB(entity.table).where("id", fixture.id).first();
       if (row) {
         const [record] = await this.createFixtureRecord(entity, row, {
@@ -337,7 +337,7 @@ export class FixtureManagerClass {
         continue;
       }
 
-      // targetDB에 해당 레코드가 존재하지 않는 경우, unique 제약을 위반하는지 확인
+      // ID를 이용하여 targetDB에서 조회되지 않는 경우, unique 제약을 위반하는지 확인
       const uniqueRow = await this.checkUniqueViolation(
         targetDB,
         entity,
@@ -639,7 +639,12 @@ export class FixtureManagerClass {
     entity: Entity,
     fixture: FixtureRecord
   ) {
-    const uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
+    const _uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
+
+    // ManyToMany 관계 테이블의 유니크 제약은 제외
+    const uniqueIndexes = _uniqueIndexes.filter((index) =>
+      index.columns.every((column) => !column.startsWith(`${entity.table}__`))
+    );
     if (uniqueIndexes.length === 0) {
       return null;
     }
@@ -647,11 +652,11 @@ export class FixtureManagerClass {
     let uniqueQuery = db(entity.table);
     for (const index of uniqueIndexes) {
       // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
-      if (
-        index.columns.some(
-          (column) => fixture.columns[column.split("_id")[0]].value === null
-        )
-      ) {
+      const containsNull = index.columns.some((column) => {
+        const field = column.split("_id")[0];
+        return fixture.columns[field].value === null;
+      });
+      if (containsNull) {
         continue;
       }
 
