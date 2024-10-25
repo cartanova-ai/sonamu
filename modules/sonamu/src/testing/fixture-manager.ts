@@ -361,88 +361,88 @@ export class FixtureManagerClass {
     options?: {
       singleRecord?: boolean;
       _db?: Knex;
-    },
-    visitedEntities = new Set<string>()
-  ): Promise<FixtureRecord[]> {
-    const fixtureId = `${entity.id}#${row.id}`;
-    if (visitedEntities.has(fixtureId)) {
-      return [];
     }
-    visitedEntities.add(fixtureId);
-
+  ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
-    const record: FixtureRecord = {
-      fixtureId,
-      entityId: entity.id,
-      id: row.id,
-      columns: {},
-      fetchedRecords: [],
-      belongsRecords: [],
-    };
+    const visitedEntities = new Set<string>();
 
-    for (const prop of entity.props) {
-      if (isVirtualProp(prop)) {
-        continue;
+    const create = async (entity: Entity, row: any) => {
+      const fixtureId = `${entity.id}#${row.id}`;
+      if (visitedEntities.has(fixtureId)) {
+        return;
       }
+      visitedEntities.add(fixtureId);
 
-      record.columns[prop.name] = {
-        prop: prop,
-        value: row[prop.name],
+      const record: FixtureRecord = {
+        fixtureId,
+        entityId: entity.id,
+        id: row.id,
+        columns: {},
+        fetchedRecords: [],
+        belongsRecords: [],
       };
 
-      const db = options?._db ?? BaseModel.getDB("w");
-      if (isManyToManyRelationProp(prop)) {
-        const relatedEntity = EntityManager.get(prop.with);
-        const throughTable = prop.joinTable;
-        const fromColumn = `${inflection.singularize(entity.table)}_id`;
-        const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
+      for (const prop of entity.props) {
+        if (isVirtualProp(prop)) {
+          continue;
+        }
 
-        const relatedIds = await db(throughTable)
-          .where(fromColumn, row.id)
-          .pluck(toColumn);
-        record.columns[prop.name].value = relatedIds;
-      } else if (isHasManyRelationProp(prop)) {
-        const relatedEntity = EntityManager.get(prop.with);
-        const relatedIds = await db(relatedEntity.table)
-          .where(prop.joinColumn, row.id)
-          .pluck("id");
-        record.columns[prop.name].value = relatedIds;
-      } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
-        const relatedEntity = EntityManager.get(prop.with);
-        const relatedProp = relatedEntity.props.find(
-          (p) => p.type === "relation" && p.with === entity.id
-        );
-        if (relatedProp) {
-          const relatedRow = await db(relatedEntity.table)
-            .where("id", row.id)
-            .first();
-          record.columns[prop.name].value = relatedRow?.id;
-        }
-      } else if (isRelationProp(prop)) {
-        const relatedId = row[`${prop.name}_id`];
-        record.columns[prop.name].value = relatedId;
-        if (relatedId) {
-          record.belongsRecords.push(`${prop.with}#${relatedId}`);
-        }
-        if (!options?.singleRecord && relatedId) {
+        record.columns[prop.name] = {
+          prop: prop,
+          value: row[prop.name],
+        };
+
+        const db = options?._db ?? BaseModel.getDB("w");
+        if (isManyToManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
-          const relatedRow = await db(relatedEntity.table)
-            .where("id", relatedId)
-            .first();
-          if (relatedRow) {
-            const newRecords = await this.createFixtureRecord(
-              relatedEntity,
-              relatedRow,
-              options,
-              visitedEntities
-            );
-            records.push(...newRecords);
+          const throughTable = prop.joinTable;
+          const fromColumn = `${inflection.singularize(entity.table)}_id`;
+          const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
+
+          const relatedIds = await db(throughTable)
+            .where(fromColumn, row.id)
+            .pluck(toColumn);
+          record.columns[prop.name].value = relatedIds;
+        } else if (isHasManyRelationProp(prop)) {
+          const relatedEntity = EntityManager.get(prop.with);
+          const relatedIds = await db(relatedEntity.table)
+            .where(prop.joinColumn, row.id)
+            .pluck("id");
+          record.columns[prop.name].value = relatedIds;
+        } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
+          const relatedEntity = EntityManager.get(prop.with);
+          const relatedProp = relatedEntity.props.find(
+            (p) => isRelationProp(p) && p.with === entity.id
+          );
+          if (relatedProp) {
+            const relatedRow = await db(relatedEntity.table)
+              .where("id", row.id)
+              .first();
+            record.columns[prop.name].value = relatedRow?.id;
+          }
+        } else if (isRelationProp(prop)) {
+          const relatedId = row[`${prop.name}_id`];
+          record.columns[prop.name].value = relatedId;
+          if (relatedId) {
+            record.belongsRecords.push(`${prop.with}#${relatedId}`);
+          }
+          if (!options?.singleRecord && relatedId) {
+            const relatedEntity = EntityManager.get(prop.with);
+            const relatedRow = await db(relatedEntity.table)
+              .where("id", relatedId)
+              .first();
+            if (relatedRow) {
+              await create(relatedEntity, relatedRow);
+            }
           }
         }
       }
-    }
 
-    records.push(record);
+      records.push(record);
+    };
+
+    await create(entity, row);
+
     return records;
   }
 
