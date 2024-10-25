@@ -1,8 +1,29 @@
 export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
 import path from "path";
+import _ from "lodash";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+
+type MySQLConfig = Omit<Knex.Config, "connection"> & {
+  connection?: Knex.MySql2ConnectionConfig;
+};
+
+export type SonamuDBBaseConfig = {
+  // 기본 데이터베이스 이름
+  database: string;
+
+  // 모든 환경에 적용될 기본 Knex 옵션
+  defaultOptions?: MySQLConfig;
+
+  // 환경별 설정
+  environments?: {
+    development?: MySQLConfig;
+    development_slave?: MySQLConfig;
+    production?: MySQLConfig;
+    production_slave?: MySQLConfig;
+  };
+};
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
@@ -25,9 +46,11 @@ class DBClass {
     );
     try {
       const knexfileModule = await import(dbConfigPath);
-      return (knexfileModule.default?.default ??
+      const config =
+        knexfileModule.default?.default ??
         knexfileModule.default ??
-        knexfileModule) as SonamuDBConfig;
+        knexfileModule;
+      return this.generateDBConfig(config);
     } catch {}
 
     throw new ServiceUnavailableException(
@@ -79,6 +102,76 @@ class DBClass {
       await this.rdb.destroy();
       this.rdb = undefined;
     }
+  }
+
+  private generateDBConfig(config: SonamuDBBaseConfig): SonamuDBConfig {
+    const defaultKnexConfig: Partial<MySQLConfig> = _.merge(
+      {
+        client: "mysql2",
+        pool: {
+          min: 1,
+          max: 5,
+        },
+        migrations: {
+          extension: "js",
+          directory: "./dist/migrations",
+        },
+        connection: {
+          database: config.database,
+        },
+      },
+      config.defaultOptions
+    );
+
+    // 로컬 환경 설정
+    const test: MySQLConfig = _.merge({}, defaultKnexConfig, {
+      connection: {
+        database: `${config.database}_test`,
+      },
+    });
+
+    const fixture_local = _.merge({}, defaultKnexConfig, {
+      connection: {
+        database: `${config.database}_fixture_local`,
+      },
+    });
+
+    // 개발 환경 설정
+    const devMasterOptions = config.environments?.development;
+    const devSlaveOptions = config.environments?.development_slave;
+    const development_master = _.merge({}, defaultKnexConfig, devMasterOptions);
+    const development_slave = _.merge(
+      {},
+      defaultKnexConfig,
+      devMasterOptions,
+      devSlaveOptions
+    );
+    const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
+      connection: {
+        database: `${config.database}_fixture_remote`,
+      },
+    });
+
+    // 프로덕션 환경 설정
+    const prodMasterOptions = config.environments?.production ?? {};
+    const prodSlaveOptions = config.environments?.production_slave ?? {};
+    const production_master = _.merge({}, defaultKnexConfig, prodMasterOptions);
+    const production_slave = _.merge(
+      {},
+      defaultKnexConfig,
+      prodMasterOptions,
+      prodSlaveOptions
+    );
+
+    return {
+      test,
+      fixture_local,
+      fixture_remote,
+      development_master,
+      development_slave,
+      production_master,
+      production_slave,
+    };
   }
 }
 export const DB = new DBClass();
