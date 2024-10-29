@@ -174,6 +174,25 @@ export function getZodTypeFromApiParamType(
             t: string;
             types: ApiParamType[];
           };
+          // nullable 유니온
+          if (
+            unionType.types.length === 2 &&
+            unionType.types.some((type) => type === "null")
+          ) {
+            if (unionType.types[0] === "null") {
+              return getZodTypeFromApiParamType(
+                unionType.types[1],
+                references
+              ).nullable();
+            } else {
+              return getZodTypeFromApiParamType(
+                unionType.types[0],
+                references
+              ).nullable();
+            }
+          }
+
+          // 일반 유니온
           return z.union(
             unionType.types.map((type) =>
               getZodTypeFromApiParamType(type, references)
