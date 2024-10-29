@@ -17,6 +17,7 @@ import path from "path";
 import fs from "fs-extra";
 import { ApiDecoratorOptions } from "./decorators";
 import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
+import { humanizeZodError } from "../utils/zod-error";
 
 export type SonamuConfig = {
   api: {
@@ -237,11 +238,10 @@ class SonamuClass {
             reqBody = fastifyCaster(ReqType).parse(request[which] ?? {});
           } catch (e) {
             if (e instanceof ZodError) {
-              // TODO: BadRequest 에러 핸들링 (ZodError issues를 humanize하여 출력하는 로직 필요)
-              throw new BadRequestException(
-                `${(e as ZodError).issues[0].message}`,
-                e.errors
-              );
+              const messages = humanizeZodError(e)
+                .map((issue) => issue.message)
+                .join(" ");
+              throw new BadRequestException(messages);
             } else {
               throw e;
             }
