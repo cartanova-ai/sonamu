@@ -1,21 +1,19 @@
 ---
 title: API 등록
-description: A guide in my new Starlight docs site.
+description: API를 등록하고 호출하는 방법에 대해 설명합니다.
 ---
 
-이전에 작성한 유저 엔티티와 스캐폴딩한 모델 코드를 기반으로 회원가입 API를 작성해보겠습니다.
+이전에 생성한 유저 엔티티와 모델 코드를 기반으로 회원가입 API를 작성해보겠습니다.
 
 ## 회원가입 API
 
-아이디, 비밀번호, 이름, 나이를 입력받아 회원가입을 처리하는 API를 작성합니다.
+아이디, 비밀번호, 이름, 나이를 입력받아 회원가입을 처리하는 API를 작성합니다. 회원가입 API는 `POST` 메서드로 작성하며, 회원가입에 필요한 파라미터를 `UserJoinParams` 타입으로 정의합니다.
 
 ### 타입 작성
 
-먼저 회원가입에 필요한 zod 객체와 타입을 작성합니다.
-Sonamu는 메서드의 파라미터에 기재된 zod 객체를 사용하여 API 요청의 유효성을 검사하기 때문에, 타입은 zod 객체를 사용하여 작성합니다.
-`UserBaseSchema`는 `ZodObject` 객체로, Sonamu가 자동으로 생성한 유저 엔티티의 스키마입니다.
-해당 객체를 이용하여 기본적인 회원가입 파라미터를 정의해보겠습니다.
-타입 파일(`.types.ts`)에 아래와 같이 작성합니다.
+먼저 회원가입에 필요한 zod 객체와 타입을 작성합니다. Sonamu는 메서드의 파라미터에 기재된 zod 객체를 사용하여 API 요청의 유효성을 검사하기 때문에, 타입은 zod 객체를 사용하여 작성합니다.
+
+`UserBaseSchema`는 `ZodObject` 객체로, Sonamu가 자동으로 생성한 유저 엔티티의 zod 객체입니다. 해당 객체를 이용하여 기본적인 회원가입 파라미터를 정의해보겠습니다. `user.types.ts` 파일에 아래와 같은 코드를 추가합니다.
 
 ```typescript
 // user.types.ts
@@ -30,10 +28,10 @@ export type UserJoinParams = z.infer<typeof UserJoinParams>;
 ```
 
 :::note
-타입 파일은 Sonamu의 동작에 의해 프론트엔드 디렉터리(정확히는 `sonamu.config.json`의 `sync.targets`)에 복사되기 때문에, 동일한 타입을 프론트엔드에서도 바로 사용할 수 있습니다.
+타입 파일은 Sonamu의 동작에 의해 프론트엔드 디렉터리(정확히는 `sonamu.config.json`의 `sync.targets`)에 복사되기 때문에, 동일한 타입을 프론트엔드에서 바로 사용할 수 있습니다.
 :::
 
-위 코드를 추가하여 파일을 저장하면, 어플리케이션 서버 터미널에서 다음과 같은 로그가 출력됩니다.
+위 코드를 추가하여 파일을 저장하면, 어플리케이션 서버 터미널에서 다음과 같은 로그가 출력됩니다. 타입 파일의 변경으로 인해 `sonamu.generated.ts`와 `sonamu.generated.sso.ts` 파일이 생성되고, 프론트엔드 디렉터리에 타입 파일이 복사되었습니다.
 
 ```shell
 Changed Files:  [ '/src/application/user/user.types.ts' ]
@@ -47,7 +45,7 @@ COPIED  web/src/services/sonamu.generated.ts
 
 ### 메서드 작성
 
-이제 회원가입 API를 작성해봅시다. `user.model.ts` 파일을 열고, 아래와 같이 메서드를 작성하고, `@api` 데코레이터를 추가합니다. 아이디 중복 확인, 비밀번호 암호화 등의 로직은 생략하고, 간단하게 회원가입만 처리하도록 작성합니다.
+이제 회원가입 API를 작성해봅시다. `user.model.ts` 파일을 열고, `join` 메서드를 작성하고, `@api` 데코레이터를 추가합니다. 아이디 중복 확인, 비밀번호 암호화 등의 로직은 생략하고, 간단하게 회원가입만 처리하도록 작성합니다. 저장 로직은 `save` 메서드를 이용하여 처리합니다.
 
 ```typescript
 // user.model.ts
@@ -77,7 +75,7 @@ GENERATED  web/src/services/user/user.service.ts
 GENERATED  api/src/application/sonamu.generated.http
 ```
 
-위 로그는 프론트엔드에 API를 호출하는 서비스 코드와 백엔드에 API를 호출할 수 있는 HTTP 파일이 생성되었음을 의미합니다. 각 파일에 추가된 코드는 다음과 같습니다.
+위 로그는 프론트엔드에 API를 호출하는 서비스 코드와 백엔드에 API를 호출할 수 있는 HTTP 템플릿이 추가되었음을 의미합니다. 각 파일에 추가된 코드는 다음과 같습니다.
 
 ```typescript
 // user.service.ts
@@ -123,12 +121,27 @@ Content-Type: application/json
     "login_id": "test",
     "password": "test",
     "name": "가나다",
-    "age": 10
+    "age": 30
   }
 }
 ```
 
-`Send Request` 버튼을 클릭하면 회원가입 API가 호출되고, 생성된 회원의 아이디가 반환됩니다
+`Send Request` 버튼을 클릭하면 회원가입 API가 호출되고, 생성된 회원의 아이디가 반환됩니다.
+
+아래는 `curl` 명령어를 이용하여 API를 호출하는 방법입니다.
+
+```shell
+curl -X POST 'http://localhost:19000/api/user/join' \
+-H 'Content-Type: application/json' \
+-d '{
+  "params": {
+    "login_id": "test",
+    "password": "test",
+    "name": "가나다",
+    "age": 30
+  }
+}'
+```
 
 <br/>
 
@@ -136,23 +149,39 @@ Content-Type: application/json
 
 ## 회원 조회 API
 
-회원가입 API를 작성했으면, 이제 회원 조회 API를 작성해보겠습니다. 회원 조회 API는 아이디를 입력받아 해당 아이디의 회원 정보(아이디, 이름, 나이)를 조회하는 API입니다.
+위에서 가입한 유저를 조회하기 위해 회원 조회 API를 작성해보겠습니다. 회원 조회 API는 아이디를 입력받아 해당 아이디의 회원 정보(아이디, 이름, 나이)를 조회하는 API입니다.
 
 ### `UserListParams` 타입 추가
 
-`UserListParams` 타입은 `UserBaseListParams`를 확장하며, 유저 모델의 `findMany`에서 서브셋 쿼리를 실행할 때 사용합니다.
+Sonamu의 리스트 조회 API는 `ListParams` 타입을 이용하여 조회 조건을 설정합니다. `ListParams` 타입은 `UserBaseListParams`를 확장합니다. `UserBaseListParams`는 아래와 같은 기본 필드를 포함합니다.
+
+- `num`: 페이지당 조회 개수
+- `page`: 조회할 페이지
+- `search`: 검색 필드
+- `keyword`: 검색 키워드
+- `orderBy`: 정렬 순서
+  - 해당 엔티티의 `OrderBy` 열거형을 사용하여 정렬 순서를 설정합니다.
+  - `field-direction` 형태로 기재하여 사용합니다.
+- `queryMode`: 조회 모드
+  - `list` 혹은 `count`로 설정하여 조회 결과를 `rows`만 반환하거나, `total`만 반환할 수 있습니다.
+  - 지정하지 않으면 `rows`와 `total`을 모두 반환합니다.
+- `id`: 조회할 아이디
+  - `id`를 이용하여 조회할 경우, `queryMode`가 설정되지 않았다면 `list` 모드로 설정됩니다.
+  - 배열로 입력받을 수 있습니다.
+
+이제 로그인 아이디로 회원을 조회하기 위해 `UserListParams` 타입을 추가합니다. 기본적으로 `user.types.ts` 파일에 `UserListParams` 타입을 직접 수정하여 사용하지만, 엔티티에 정의된 필드를 이용하는 경우 필터 설정을 이용할 수 있습니다.
 
 #### 필터 설정
 
-회원 조회 API는 스캐폴딩 과정에서 생성된 `UserListParams`와 `findMany`를 사용하여 작성합니다. 엔티티의 필드를 조회 조건으로 사용하는 경우, 해당 필드의 `To Filter`를 체크하여 `UserBaseListParams`에 `login_id`를 추가할 수 있습니다.
+엔티티에 정의된 필드를 조회 조건으로 사용하는 경우, 해당 필드의 `To Filter`를 체크하여 `UserBaseListParams`에 필드를 추가할 수 있습니다.
 
 ![Filter LoginId](./image/api/filter-login_id.png)
 
-배열로 입력받거나, 엔티티에 정의된 필드 외의 값을 이용하려면 `UserListParams`에 직접 필드를 추가하여 사용할 수 있습니다.
+해당 필드를 배열로 입력받거나, 엔티티에 정의된 필드 외의 값을 이용하려면 `UserListParams`에 직접 필드를 추가하여 사용할 수 있습니다.
 
 #### 직접 타입 작성
 
-엔티티 필드 외에 추가적인 값을 조회 조건으로 사용하려면, 타입 파일에 직접 필드를 추가하여 사용할 수 있습니다. 먼저, 타입 파일의 `UserListParams`에 `login_id` 필드를 추가합니다.
+엔티티 필드 외에 추가적인 값을 조회 조건으로 사용하려면, 타입 파일에 직접 필드를 추가하여 사용할 수 있습니다. 타입 파일의 `UserListParams`에 `login_id` 필드를 추가합니다.
 
 ```typescript
 // user.types.ts
@@ -171,7 +200,8 @@ export type UserListParams = z.infer<typeof UserListParams>;
 
 ### 메서드 작성
 
-`ListParams` 설정이 완료되면, 추가된 필드를 이용한 조회 로직을 `findMany` 메서드에 추가해야 합니다. `user.model.ts` 파일을 열고, 아래와 같이 `findMany` 메서드를 수정합니다.
+회원 조회 API는 스캐폴딩 과정에서 생성된 `UserListParams`와 `findMany`를 사용하여 작성합니다.
+`ListParams` 설정이 완료되면, 추가된 필드를 이용한 조회 로직을 `findMany` 메서드에 직접 추가해야 합니다. `user.model.ts` 파일을 열고, 아래와 같이 `findMany` 메서드를 수정합니다.
 
 ```typescript
 // user.model.ts
@@ -242,9 +272,17 @@ async findMany<T extends UserSubsetKey>(
 }
 ```
 
-`runSubsetQuery`는 `subset`과 `params`를 이용하여 데이터베이스 조회 쿼리를 작성하고, 조회 결과를 반환합니다.
+`runSubsetQuery`는 `subset`과 `params`를 이용하여 데이터베이스 조회 쿼리를 작성하고, 조회 결과를 반환합니다. `build` 함수는 `qb` 객체를 사용하여 실제 데이터베이스 조회에 이용되는 쿼리를 작성하는 함수입니다. `login_id` 필드를 추가하여, `login_id`로 회원을 조회할 수 있도록 합니다. 자세한 내용은 [모델 - runSubsetQuery](/reference/model#runsubsetquery)를 참고하세요.
 
-`build` 함수는 `qb` 객체를 사용하여 실제 데이터베이스 조회에 이용되는 쿼리를 작성하는 함수입니다. `login_id` 필드를 추가하여, `login_id`로 회원을 조회할 수 있도록 합니다. 자세한 내용은 [모델 - runSubsetQuery](/reference/model#runsubsetquery)를 참고하세요.
+변경 내용을 저장하면 어플리케이션 서버 터미널에서 다음과 같은 로그가 출력됩니다.
+
+```shell
+Changed Files:  [ '/dist/application/user/user.model.js' ]
+// 액션: 서비스 생성
+GENERATED  web/src/services/user/user.service.ts
+// 액션: HTTP파일 생성
+GENERATED  api/src/application/sonamu.generated.http
+```
 
 ### API 호출
 
@@ -255,11 +293,11 @@ async findMany<T extends UserSubsetKey>(
 
 GET {{baseUrl}}/api/user/findMany
 	?subset=A
-	&params[login_id]=LOGIN_ID
+	&params[login_id]=test
 Content-Type: application/json
 ```
 
-`Send Request` 버튼을 클릭하면 회원 조회 API가 호출되고, 해당 회원의 정보가 반환됩니다.
+`Send Request` 버튼을 클릭하면 회원 조회 API가 호출되고, 조회된 회원의 정보가 반환됩니다.
 
 ```http
 {
@@ -275,12 +313,34 @@ Content-Type: application/json
 
 Sonamu는 findMany 메서드를 호출할 때, 기본적으로 `rows`와 `total` 필드를 반환합니다. `rows`는 조회된 데이터의 배열이며, `total`은 조회된 데이터의 총 개수입니다. `rows`만 반환하고 싶다면, `findMany` 메서드의 두 번째 인자로 `{ queryMode: "list" }`를 추가하면 됩니다.
 
-위 응답에서 서브셋A에 정의된 필드가 반환되는 것을 확인할 수 있습니다. 서브셋은 Sonamu UI의 `Entities` 화면에서 우측 하단에 있는 `Subsets` 테이블에서 설정할 수 있습니다. 서브셋과 관련된 내용은 [서브셋](/guide/subset)을 참고하세요.
+### 서브셋 설정
+
+위 응답에서 서브셋A에 정의된 필드가 반환되는 것을 확인할 수 있습니다. 서브셋은 Sonamu UI의 `Entities` 화면에서 우측 하단에 있는 `Subsets` 테이블에서 설정할 수 있습니다. 서브셋의 사용법에 대한 자세한 내용은 [가이드 - 서브셋](/guide/subset)을 참고하세요.
 
 ![User Subset](./image/api/user-subset.png)
 
-이처럼 Sonamu는 **`@api`** 데코레이터를 통한 API 등록을 지원하며, API를 호출하는 **프론트엔드 코드**와 API를 테스트하는 **HTTP 파일**을 자동으로 생성합니다.
+아이디, 이름, 나이 필드를 포함하는 서브셋P를 추가하고, 아래 템플릿으로 API를 호출해봅시다.
 
-:::note
-SubsetQuery에 대한 설명은 [모델 - runSubsetQuery](/reference/model#runsubsetquery)에서, `@api` 데코레이터에 대한 설명은 [API 데코레이터](/reference/api-decorator)에서 확인할 수 있습니다.
-:::
+```http
+// sonamu.generated.http
+
+GET {{baseUrl}}/api/user/findMany
+	?subset=P
+	&params[login_id]=test
+Content-Type: application/json
+```
+
+`Send Request` 버튼을 클릭하면 서브셋P에 정의된 필드만 반환되는 것을 확인할 수 있습니다.
+
+```http
+{
+  "rows": [
+    {
+      "login_id": "test",
+      "name": "가나다",
+      "age": 30
+    }
+  ],
+  "total": 1
+}
+```

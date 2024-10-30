@@ -22,11 +22,10 @@ export default defineConfig({
           label: "Tutorial",
           items: [
             { label: "시작하기", link: "/tutorial" },
-            { label: "서버 설정", link: "/tutorial/config" },
             { label: "엔티티 및 마이그레이션 관리", link: "/tutorial/entity" },
             { label: "스캐폴딩", link: "/tutorial/scaffolding" },
             { label: "API 등록", link: "/tutorial/api" },
-            { label: "모델", link: "/tutorial/model" },
+            { label: "관계 설정", link: "/tutorial/relation" },
             { label: "프론트엔드", link: "/tutorial/front-end" },
           ],
         },
