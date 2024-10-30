@@ -112,6 +112,20 @@ export class Template__generated_http extends Template {
       return zodType._def.items.map((item: any) =>
         this.zodTypeToReqDefault(item, name)
       );
+    } else if (zodType instanceof z.ZodDate) {
+      return "2000-01-01";
+    } else if (zodType instanceof z.ZodLiteral) {
+      return zodType.value;
+    } else if (zodType instanceof z.ZodEffects) {
+      return this.zodTypeToReqDefault(zodType._def.schema, name);
+    } else if (zodType instanceof z.ZodRecord || zodType instanceof z.ZodMap) {
+      const key = this.zodTypeToReqDefault(zodType._def.keyType, name) as any;
+      const value = this.zodTypeToReqDefault(zodType._def.valueType, name);
+      return { [key]: value };
+    } else if (zodType instanceof z.ZodSet) {
+      return [this.zodTypeToReqDefault(zodType._def.valueType, name)];
+    } else if (zodType instanceof z.ZodIntersection) {
+      return this.zodTypeToReqDefault(zodType._def.right, name);
     } else {
       // console.log(zodType);
       return `unknown-${zodType._type}`;
