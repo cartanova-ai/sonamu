@@ -71,6 +71,12 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
   } else if (zodType instanceof z.ZodNullable) {
     // nullable
     return caster(zodType._def.innerType, raw);
+  } else if (
+    zodType instanceof z.ZodDate &&
+    new Date(raw).toString() !== "Invalid Date"
+  ) {
+    // date
+    return new Date(raw);
   } else {
     // 나머지는 처리 안함
     return raw;
