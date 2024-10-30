@@ -170,9 +170,16 @@ async function fixture_init() {
   execSync(
     `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
   );
-  execSync(
-    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
+  const _db = knex(srcConfig);
+  const [[migrations]] = await _db.raw(
+    "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
+    [srcConn.database]
   );
+  if (migrations.count > 0) {
+    execSync(
+      `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
+    );
+  }
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
   for await (const { label, config, toSkip } of targets) {
@@ -204,7 +211,9 @@ async function fixture_init() {
     execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
     execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
     execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
-    execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
+    if (fs.existsSync(migrationsDump)) {
+      execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
+    }
 
     await db.destroy();
   }
