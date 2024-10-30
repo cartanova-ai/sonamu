@@ -661,12 +661,23 @@ export class Syncer {
       console.debug({ name, type, paramDec });
     }
 
-    return {
+    const result: ApiParam = {
       name: name.escapedText ? name.escapedText.toString() : `nonameAt${index}`,
       type,
       optional: paramDec.optional === true,
       defaultDef: paramDec?.defaultDef,
     };
+
+    // 구조분해할당의 경우 타입이름 사용
+    if (
+      ts.isObjectBindingPattern(name) &&
+      ts.isTypeReferenceNode(paramDec.type) &&
+      ts.isIdentifier(paramDec.type.typeName)
+    ) {
+      result.name = inflection.camelize(paramDec.type.typeName.text, true);
+    }
+
+    return result;
   };
 
   printNode(
