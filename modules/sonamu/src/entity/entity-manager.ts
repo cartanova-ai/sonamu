@@ -44,7 +44,7 @@ class EntityManagerClass {
       glob.glob(path.resolve(pathPattern!), (_err, files) => {
         Promise.all(
           files.map(async (file) => {
-            this.register(JSON.parse(fs.readFileSync(file).toString()));
+            await this.register(JSON.parse(fs.readFileSync(file).toString()));
           })
         ).then(() => {
           resolve("ok");
@@ -63,18 +63,22 @@ class EntityManagerClass {
 
     const sonamuPath = path.join(
       Sonamu.apiRootPath,
-      "dist/application/sonamu.generated.js"
+      `dist/application/sonamu.generated.js?t=${Date.now()}`
     );
-    if (require.cache[sonamuPath]) {
+    // CJS
+    if (require?.cache && require.cache[sonamuPath]) {
       delete require.cache[sonamuPath];
     }
 
-    return this.autoload(doSilent);
+    return await this.autoload(doSilent);
   }
 
-  register(json: EntityJson): void {
+  async register(json: EntityJson): Promise<void> {
     const entity = new Entity(json);
+    await entity.registerModulePaths();
+    entity.registerTableSpecs();
     this.entities.set(json.id, entity);
+    // console.debug(chalk.cyan(`register :: ${entity.id}`));
   }
 
   get(entityId: string): Entity {

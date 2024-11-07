@@ -133,9 +133,6 @@ export class Entity {
       fs: inflection.dasherize(inflection.underscore(id)).toLowerCase(),
       module: id,
     };
-
-    this.registerModulePaths();
-    this.registerTableSpecs();
   }
 
   /*
@@ -544,7 +541,7 @@ export class Entity {
       .filter(nonNullable);
   }
 
-  registerModulePaths() {
+  async registerModulePaths() {
     const basePath = `${this.names.parentFs}`;
 
     // base-scheme
@@ -579,15 +576,14 @@ export class Entity {
 
     if (fs.existsSync(typesFileDistPath)) {
       const importPath = path.relative(__dirname, typesFileDistPath);
-      import(importPath).then((t) => {
-        this.types = Object.keys(t).reduce((result, key) => {
-          EntityManager.setModulePath(key, typesModulePath);
-          return {
-            ...result,
-            [key]: t[key],
-          };
-        }, {});
-      });
+      const t = await import(importPath);
+      this.types = Object.keys(t).reduce((result, key) => {
+        EntityManager.setModulePath(key, typesModulePath);
+        return {
+          ...result,
+          [key]: t[key],
+        };
+      }, {});
     }
   }
 

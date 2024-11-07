@@ -397,7 +397,7 @@ export class Syncer {
     await fs.writeJSON(this.checksumsPath, checksums, {
       spaces: 2,
     });
-    console.debug("checksum saved", this.checksumsPath);
+    console.log("checksum saved", this.checksumsPath);
   }
 
   async getChecksumOfFile(filePath: string): Promise<string> {
@@ -658,7 +658,7 @@ export class Syncer {
     const type = this.resolveTypeNode(paramDec.type);
 
     if (name === undefined) {
-      console.log({ name, type, paramDec });
+      console.debug({ name, type, paramDec });
     }
 
     return {
@@ -1023,32 +1023,38 @@ export class Syncer {
       (name) => name !== names.constant
     );
 
-    return keys.reduce((result, key) => {
-      const tpl = this.getTemplate(key);
-      if (key.startsWith("view_enums")) {
-        enumsKeys.map((componentId) => {
-          const { target, path: p } = tpl.getTargetAndPath(names, componentId);
-          result[`${key}__${componentId}`] = fs.existsSync(
-            path.join(Sonamu.appRootPath, target, p)
-          );
-        });
+    return keys.reduce(
+      (result, key) => {
+        const tpl = this.getTemplate(key);
+        if (key.startsWith("view_enums")) {
+          enumsKeys.map((componentId) => {
+            const { target, path: p } = tpl.getTargetAndPath(
+              names,
+              componentId
+            );
+            result[`${key}__${componentId}`] = fs.existsSync(
+              path.join(Sonamu.appRootPath, target, p)
+            );
+          });
+          return result;
+        }
+
+        const { target, path: p } = tpl.getTargetAndPath(names);
+        const { targets } = Sonamu.config.sync;
+        if (target.includes(":target")) {
+          targets.map((t) => {
+            result[`${key}__${t}`] = fs.existsSync(
+              path.join(Sonamu.appRootPath, target.replace(":target", t), p)
+            );
+          });
+        } else {
+          result[key] = fs.existsSync(path.join(Sonamu.appRootPath, target, p));
+        }
+
         return result;
-      }
-
-      const { target, path: p } = tpl.getTargetAndPath(names);
-      const { targets } = Sonamu.config.sync;
-      if (target.includes(":target")) {
-        targets.map((t) => {
-          result[`${key}__${t}`] = fs.existsSync(
-            path.join(Sonamu.appRootPath, target.replace(":target", t), p)
-          );
-        });
-      } else {
-        result[key] = fs.existsSync(path.join(Sonamu.appRootPath, target, p));
-      }
-
-      return result;
-    }, {} as Record<`${TemplateKey}${string}`, boolean>);
+      },
+      {} as Record<`${TemplateKey}${string}`, boolean>
+    );
   }
 
   async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
@@ -1093,9 +1099,8 @@ export class Syncer {
       const obj = await propNode.children.reduce(
         async (promise, childPropNode) => {
           const result = await promise;
-          result[childPropNode.prop!.name] = await this.propNodeToZodType(
-            childPropNode
-          );
+          result[childPropNode.prop!.name] =
+            await this.propNodeToZodType(childPropNode);
           return result;
         },
         {} as any
