@@ -7,6 +7,7 @@ import { useTypeForm } from "@sonamu-kit/react-sui";
 import { pluralize, underscore } from "inflection";
 import { FormInputWithSuggestion } from "../../components/FormInputWithSuggestion";
 import { camelize } from "inflection";
+import { EntityIdSelect } from "../../components/EntityIdSelect";
 
 type EntityCreateFormProps = {};
 export function EntityCreateForm({}: EntityCreateFormProps) {
@@ -60,7 +61,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                 </Form.Field>
                 <Form.Field>
                   <label>ParentID</label>
-                  <Form.Input {...register("parentId")} />
+                  <EntityIdSelect {...register("parentId")} search clearable />
                 </Form.Field>
               </Form.Group>
               <Form.Group widths="equal">
