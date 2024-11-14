@@ -1351,15 +1351,17 @@ export class Syncer {
     // reload entities
     await EntityManager.reload();
 
-    // generate schemas
-    await this.actionGenerateSchemas();
-
-    // generate types
-    if (form.parentId === undefined) {
-      await this.generateTemplate("init_types", {
-        entityId: form.entityId,
-      });
-    }
+    // generate schemas, types
+    await Promise.all([
+      this.actionGenerateSchemas(),
+      ...(form.entityId === undefined
+        ? [
+            this.generateTemplate("init_types", {
+              entityId: form.entityId,
+            }),
+          ]
+        : []),
+    ]);
   }
 
   async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
