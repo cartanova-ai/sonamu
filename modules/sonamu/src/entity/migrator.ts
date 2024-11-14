@@ -1091,7 +1091,8 @@ export class Migrator {
         const onDelete =
           (onClause ?? "")
             .replace(onUpdateFull ?? "", "")
-            .match(/ON DELETE ([A-Z ]+) /)?.[1] ?? "NO ACTION";
+            .match(/ON DELETE ([A-Z ]+)/)?.[1]
+            ?.trim() ?? "NO ACTION";
 
         return {
           keyName,
