@@ -1,6 +1,7 @@
 import path from "path";
 import glob from "glob";
 import fs from "fs-extra";
+import _ from "lodash";
 
 export function globAsync(pathPattern: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -34,11 +35,11 @@ export async function importMultiple(
   return results;
 }
 export async function findAppRootPath() {
-  const apiRootPath = await findApiRootPath();
+  const apiRootPath = findApiRootPath();
   return apiRootPath.split(path.sep).slice(0, -1).join(path.sep);
 }
 
-export async function findApiRootPath() {
+export function findApiRootPath() {
   const basePath = require.main?.path ?? __dirname;
   let dir = path.dirname(basePath);
   if (dir.includes("/.yarn/")) {
@@ -55,4 +56,82 @@ export async function findApiRootPath() {
 
 export function nonNullable<T>(value: T): value is NonNullable<T> {
   return value !== null && value !== undefined;
+}
+
+export function hydrate<T>(rows: T[]): T[] {
+  return rows.map((row: any) => {
+    // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
+    const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
+    const groups = _.groupBy(nestedKeys, (key) => key.split("__")[0]);
+    const nullKeys = Object.keys(groups).filter(
+      (key) =>
+        groups[key].length > 1 &&
+        groups[key].every((field) => row[field] === null)
+    );
+
+    const hydrated = Object.keys(row).reduce((r, field) => {
+      if (!field.includes("__")) {
+        if (Array.isArray(row[field]) && _.isObject(row[field][0])) {
+          r[field] = hydrate(row[field]);
+          return r;
+        } else {
+          r[field] = row[field];
+          return r;
+        }
+      }
+
+      const parts = field.split("__");
+      const objPath =
+        parts[0] +
+        parts
+          .slice(1)
+          .map((part) => `[${part}]`)
+          .join("");
+      _.set(
+        r,
+        objPath,
+        row[field] && Array.isArray(row[field]) && _.isObject(row[field][0])
+          ? hydrate(row[field])
+          : row[field]
+      );
+
+      return r;
+    }, {} as any);
+    nullKeys.map((nullKey) => (hydrated[nullKey] = null));
+
+    return hydrated;
+  });
+}
+
+export function mixinInstance(
+  class1: any,
+  target: any,
+  options?: {
+    excludeMethods?: string[];
+    state?: Record<string, any>;
+  }
+): void {
+  // 클래스의 프로퍼티를 복사
+  Object.defineProperties(target, options?.state ?? {});
+
+  // 클래스의 프로토타입을 순회하며 메서드를 복사
+  Object.getOwnPropertyNames(class1.prototype).forEach((name) => {
+    if ((options?.excludeMethods ?? []).includes(name)) return;
+
+    const descriptor = Object.getOwnPropertyDescriptor(class1.prototype, name);
+    if (!descriptor) return;
+
+    // getter/setter가 있는 경우 그대로 복사
+    if (descriptor.get || descriptor.set) {
+      console.debug("Copying getter/setter:", name);
+      Object.defineProperty(target, name, descriptor);
+      return;
+    }
+
+    // 일반 메서드인 경우 바인딩하여 복사
+    if (typeof descriptor.value === "function") {
+      console.debug("Copying method:", name);
+      (target as any)[name] = descriptor.value.bind(target);
+    }
+  });
 }

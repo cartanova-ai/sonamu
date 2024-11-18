@@ -2,6 +2,8 @@ import chalk from "chalk";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { IncomingMessage, Server, ServerResponse } from "http";
 import { ZodError } from "zod";
+import path from "path";
+import fs from "fs-extra";
 import { getZodObjectFromApi } from "./code-converters";
 import { Context } from "./context";
 import { BadRequestException } from "../exceptions/so-exceptions";
@@ -10,14 +12,11 @@ import { fastifyCaster } from "./caster";
 import { ApiParam, ApiParamType } from "../types/types";
 import { Syncer } from "../syncer/syncer";
 import { isLocal, isTest } from "../utils/controller";
-import { DB, SonamuDBConfig } from "../database/db";
-import { BaseModel } from "../database/base-model";
 import { findApiRootPath } from "../utils/utils";
-import path from "path";
-import fs from "fs-extra";
 import { ApiDecoratorOptions } from "./decorators";
-import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
 import { humanizeZodError } from "../utils/zod-error";
+import { SonamuDBConfig } from "../database/types";
+import { DB } from "../database/db";
 
 export type SonamuConfig = {
   api: {
@@ -92,7 +91,7 @@ class SonamuClass {
   set dbConfig(dbConfig: SonamuDBConfig) {
     this._dbConfig = dbConfig;
   }
-  get dbConfig(): SonamuDBConfig {
+  get dbConfig() {
     if (this._dbConfig === null) {
       throw new Error("Sonamu has not been initialized");
     }
@@ -155,9 +154,11 @@ class SonamuClass {
     }
 
     // DB 로드
-    this.dbConfig = await DB.readKnexfile();
+    const baseConfig = DB.getBaseConfig(this.apiRootPath);
+    DB.init(baseConfig as any);
+    this.dbConfig = DB.fullConfig;
     !doSilent && console.log(chalk.green("DB Config Loaded!"));
-    attachOnDuplicateUpdate();
+    // attachOnDuplicateUpdate();
 
     // Entity 로드
     await EntityManager.autoload(doSilent);
@@ -301,7 +302,7 @@ class SonamuClass {
   }
 
   async destroy(): Promise<void> {
-    await BaseModel.destroy();
+    await DB.destroy();
   }
 }
 export const Sonamu = new SonamuClass();

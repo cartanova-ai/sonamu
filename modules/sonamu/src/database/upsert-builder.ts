@@ -1,9 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
 import _ from "lodash";
 import { Knex } from "knex";
+import { Kysely } from "kysely";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";
 import { RowWithId, batchUpdate } from "./_batch_update";
+import { Database, DatabaseInstance, DatabaseType, TableName } from "./types";
+import { DB } from "./db";
 
 type TableData = {
   references: Set<string>;
@@ -25,7 +28,7 @@ export function isRefField(field: any): field is UBRef {
   );
 }
 
-export class UpsertBuilder {
+export class UpsertBuilder<D extends DatabaseType> {
   tables: Map<string, TableData>;
   constructor() {
     this.tables = new Map();
@@ -58,7 +61,7 @@ export class UpsertBuilder {
   }
 
   register<T extends string>(
-    tableName: string,
+    tableName: TableName<D>,
     row: {
       [key in T]?:
         | UBRef
@@ -145,23 +148,23 @@ export class UpsertBuilder {
   }
 
   async upsert(
-    wdb: Knex,
-    tableName: string,
+    wdb: DatabaseInstance<D>,
+    tableName: TableName<D>,
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
   }
   async insertOnly(
-    wdb: Knex,
-    tableName: string,
+    wdb: DatabaseInstance<D>,
+    tableName: TableName<D>,
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
   }
 
   async upsertOrInsert(
-    wdb: Knex,
-    tableName: string,
+    _wdb: DatabaseInstance<D>,
+    tableName: TableName<D>,
     mode: "upsert" | "insert",
     chunkSize?: number
   ): Promise<number[]> {
@@ -185,6 +188,8 @@ export class UpsertBuilder {
     ) {
       throw new Error(`${tableName} 해결되지 않은 참조가 있습니다.`);
     }
+
+    const wdb = DB.toClient(_wdb);
 
     // 전체 테이블 순회하여 현재 테이블 참조하는 모든 테이블 추출
     const { references, refTables } = Array.from(this.tables).reduce(
@@ -221,18 +226,20 @@ export class UpsertBuilder {
     const uuidMap = new Map<string, any>();
 
     for (const chunk of chunks) {
-      const q = wdb.insert(chunk).into(tableName);
       if (mode === "insert") {
-        await q;
+        await wdb.insert(tableName, chunk);
       } else if (mode === "upsert") {
-        await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
+        await wdb.upsert(tableName, chunk);
+        // await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
       }
 
       // upsert된 row들을 다시 조회하여 uuidMap에 저장
       const uuids = chunk.map((row) => row.uuid);
-      const upsertedRows = await wdb(tableName)
+      const upsertedRows = await wdb
+        .from(tableName)
         .select(_.uniq(["uuid", "id", ...extractFields]))
-        .whereIn("uuid", uuids);
+        .where(["uuid", "in", uuids])
+        .execute();
       upsertedRows.forEach((row: any) => {
         uuidMap.set(row.uuid, row);
       });
@@ -264,7 +271,7 @@ export class UpsertBuilder {
     if (selfRefRows.length > 0) {
       // 처리된 데이터를 제외하고 다시 upsert
       table.rows = selfRefRows;
-      const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
+      const selfRefIds = await this.upsert(_wdb, tableName, chunkSize);
       allIds.push(...selfRefIds);
     }
 
@@ -272,8 +279,8 @@ export class UpsertBuilder {
   }
 
   async updateBatch(
-    wdb: Knex,
-    tableName: string,
+    wdb: Knex | Kysely<Database>,
+    tableName: TableName<D>,
     options?: {
       chunkSize?: number;
       where?: string | string[];
@@ -300,6 +307,12 @@ export class UpsertBuilder {
       return row as RowWithId<string>;
     });
 
-    await batchUpdate(wdb, tableName, whereColumns, rows, options.chunkSize);
+    await batchUpdate(
+      DB.toClient(wdb),
+      tableName,
+      whereColumns,
+      rows,
+      options.chunkSize
+    );
   }
 }

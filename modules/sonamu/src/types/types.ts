@@ -1,4 +1,3 @@
-import { Knex } from "knex";
 import { z } from "zod";
 
 /* 
@@ -327,6 +326,40 @@ export function isCustomJoinClause(p: any): p is { custom: string } {
 }
 
 /* 서브셋 */
+// type SubsetLoader = {
+//   as: string;
+//   table: string;
+//   manyJoin: {
+//     fromTable: string;
+//     fromCol: string;
+//     idField: string;
+//     toTable: string;
+//     toCol: string;
+//     through?: {
+//       table: string;
+//       fromCol: string;
+//       toCol: string;
+//     };
+//   };
+//   oneJoins: ({
+//     as: string;
+//     join: "inner" | "outer";
+//     table: string;
+//   } & JoinClause)[];
+//   select: (string | Knex.Raw)[];
+//   loaders?: SubsetLoader[];
+// };
+// export type SubsetQuery = {
+//   select: (string | Knex.Raw)[];
+//   virtual: string[];
+//   joins: ({
+//     as: string;
+//     join: "inner" | "outer";
+//     table: string;
+//   } & JoinClause)[];
+//   loaders: SubsetLoader[];
+// };
+
 type SubsetLoader = {
   as: string;
   table: string;
@@ -347,11 +380,12 @@ type SubsetLoader = {
     join: "inner" | "outer";
     table: string;
   } & JoinClause)[];
-  select: (string | Knex.Raw)[];
+  select: string[];
   loaders?: SubsetLoader[];
 };
+
 export type SubsetQuery = {
-  select: (string | Knex.Raw)[];
+  select: string[];
   virtual: string[];
   joins: ({
     as: string;

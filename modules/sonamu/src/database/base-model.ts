@@ -1,198 +1,37 @@
+// base-model.ts
 import { DateTime } from "luxon";
-import { Knex } from "knex";
 import _ from "lodash";
-import { DBPreset, DB } from "./db";
-import { isCustomJoinClause, SubsetQuery } from "../types/types";
-import { BaseListParams } from "../utils/model";
-import inflection from "inflection";
-import chalk from "chalk";
-import { UpsertBuilder } from "./upsert-builder";
 import SqlParser from "node-sql-parser";
+import chalk from "chalk";
+import inflection from "inflection";
+import { BaseListParams } from "../utils/model";
+import {
+  ClientType,
+  DBPreset,
+  DatabaseInstance,
+  DatabaseType,
+  QueryBuilder,
+  TableName,
+} from "./types";
+import { SubsetQuery } from "../types/types";
 import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
+import { DB } from "./db";
 
-export class BaseModelClass {
+export abstract class BaseModelClassAbstract<
+  D extends DatabaseType,
+  DI extends DatabaseInstance<D>,
+  CT extends ClientType<D>,
+  QB extends QueryBuilder<D>,
+> {
   public modelName: string = "Unknown";
+  protected _wdb: CT | null = null;
+  protected _rdb: CT | null = null;
 
-  /* DB 인스턴스 get, destroy */
-  getDB(which: DBPreset): Knex {
-    return DB.getDB(which);
-  }
-  async destroy() {
-    return DB.destroy();
-  }
+  protected abstract applyJoins(qb: CT, joins: SubsetQuery["joins"]): CT;
+  protected abstract executeCountQuery(qb: QB): Promise<number>;
 
-  myNow(timestamp?: number): string {
-    const dt: DateTime =
-      timestamp === undefined
-        ? DateTime.local()
-        : DateTime.fromSeconds(timestamp);
-    return dt.toFormat("yyyy-MM-dd HH:mm:ss");
-  }
-
-  async getInsertedIds(
-    wdb: Knex,
-    rows: any[],
-    tableName: string,
-    unqKeyFields: string[],
-    chunkSize: number = 500
-  ) {
-    if (!wdb) {
-      wdb = this.getDB("w");
-    }
-
-    let unqKeys: string[];
-    let whereInField: any, selectField: string;
-    if (unqKeyFields.length > 1) {
-      whereInField = wdb.raw(`CONCAT_WS('_', '${unqKeyFields.join(",")}')`);
-      selectField = `${whereInField} as tmpUid`;
-      unqKeys = rows.map((row) =>
-        unqKeyFields.map((field) => row[field]).join("_")
-      );
-    } else {
-      whereInField = unqKeyFields[0];
-      selectField = unqKeyFields[0];
-      unqKeys = rows.map((row) => row[unqKeyFields[0]]);
-    }
-    const chunks = _.chunk(unqKeys, chunkSize);
-
-    let resultIds: number[] = [];
-    for (let chunk of chunks) {
-      const dbRows = await wdb(tableName)
-        .select("id", wdb.raw(selectField))
-        .whereIn(whereInField, chunk);
-      resultIds = resultIds.concat(
-        dbRows.map((dbRow: any) => parseInt(dbRow.id))
-      );
-    }
-
-    return resultIds;
-  }
-
-  async useLoaders(db: Knex, rows: any[], loaders: SubsetQuery["loaders"]) {
-    if (loaders.length === 0) {
-      return rows;
-    }
-
-    for (let loader of loaders) {
-      let subQ: any;
-      let subRows: any[];
-      let toCol: string;
-
-      const fromIds = rows.map((row) => row[loader.manyJoin.idField]);
-
-      if (loader.manyJoin.through === undefined) {
-        // HasMany
-        const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
-        subQ = db(loader.manyJoin.toTable)
-          .whereIn(idColumn, fromIds)
-          .select([...loader.select, idColumn]);
-
-        // HasMany에서 OneJoin이 있는 경우
-        loader.oneJoins.map((join) => {
-          if (join.join == "inner") {
-            subQ.innerJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
-          } else if (join.join == "outer") {
-            subQ.leftOuterJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
-          }
-        });
-        toCol = loader.manyJoin.toCol;
-      } else {
-        // ManyToMany
-        const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
-        subQ = db(loader.manyJoin.through.table)
-          .join(
-            loader.manyJoin.toTable,
-            `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
-            `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
-          )
-          .whereIn(idColumn, fromIds)
-          .select(_.uniq([...loader.select, idColumn]));
-
-        // ManyToMany에서 OneJoin이 있는 경우
-        loader.oneJoins.map((join) => {
-          if (join.join == "inner") {
-            subQ.innerJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
-          } else if (join.join == "outer") {
-            subQ.leftOuterJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
-          }
-        });
-        toCol = loader.manyJoin.through.fromCol;
-      }
-      subRows = await subQ;
-
-      if (loader.loaders) {
-        // 추가 -Many 케이스가 있는 경우 recursion 처리
-        subRows = await this.useLoaders(db, subRows, loader.loaders);
-      }
-
-      // 불러온 row들을 참조ID 기준으로 분류 배치
-      const subRowGroups = _.groupBy(subRows, toCol);
-      rows = rows.map((row) => {
-        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map(
-          (r) => _.omit(r, toCol)
-        );
-        return row;
-      });
-    }
-    return rows;
-  }
-
-  hydrate<T>(rows: T[]): T[] {
-    return rows.map((row: any) => {
-      // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
-      const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-      const groups = _.groupBy(nestedKeys, (key) => key.split("__")[0]);
-      const nullKeys = Object.keys(groups).filter(
-        (key) =>
-          groups[key].length > 1 &&
-          groups[key].every((field) => row[field] === null)
-      );
-
-      const hydrated = Object.keys(row).reduce((r, field) => {
-        if (!field.includes("__")) {
-          if (Array.isArray(row[field]) && _.isObject(row[field][0])) {
-            r[field] = this.hydrate(row[field]);
-            return r;
-          } else {
-            r[field] = row[field];
-            return r;
-          }
-        }
-
-        const parts = field.split("__");
-        const objPath =
-          parts[0] +
-          parts
-            .slice(1)
-            .map((part) => `[${part}]`)
-            .join("");
-        _.set(
-          r,
-          objPath,
-          row[field] && Array.isArray(row[field]) && _.isObject(row[field][0])
-            ? this.hydrate(row[field])
-            : row[field]
-        );
-
-        return r;
-      }, {} as any);
-      nullKeys.map((nullKey) => (hydrated[nullKey] = null));
-
-      return hydrated;
-    });
-  }
+  abstract getDB(which: DBPreset): DI;
+  abstract destroy(): Promise<void>;
 
   async runSubsetQuery<T extends BaseListParams, U extends string>({
     params,
@@ -208,161 +47,352 @@ export class BaseModelClass {
     params: T;
     subsetQuery: SubsetQuery;
     build: (buildParams: {
-      qb: Knex.QueryBuilder;
-      db: Knex;
-      select: (string | Knex.Raw)[];
+      qb: QB;
+      db: DI;
+      select: SubsetQuery["select"];
       joins: SubsetQuery["joins"];
       virtual: string[];
-    }) => Knex.QueryBuilder;
-    baseTable?: string;
+    }) => QB;
+    baseTable?: TableName<D>;
     debug?: boolean | "list" | "count";
-    db?: Knex;
+    db?: DI;
     optimizeCountQuery?: boolean;
   }): Promise<{
     rows: any[];
-    total?: number | undefined;
+    total?: number;
     subsetQuery: SubsetQuery;
-    qb: Knex.QueryBuilder;
+    qb: QB;
   }> {
-    const db = _db ?? this.getDB(subset.startsWith("A") ? "w" : "r");
+    const db = _db ?? (DB.getDB(subset.startsWith("A") ? "w" : "r") as DI);
+    const dbClient = DB.toClient(db as any) as CT;
     baseTable =
-      baseTable ?? inflection.pluralize(inflection.underscore(this.modelName));
+      baseTable ??
+      (inflection.pluralize(
+        inflection.underscore(this.modelName)
+      ) as TableName<D>);
     const queryMode =
       params.queryMode ?? (params.id !== undefined ? "list" : "both");
 
     const { select, virtual, joins, loaders } = subsetQuery;
-    const qb = build({
-      qb: db.from(baseTable),
+    const _qb = build({
+      qb: dbClient.from(baseTable).qb as QB,
       db,
       select,
       joins,
       virtual,
     });
+    dbClient.qb = _qb;
+    const qb = dbClient;
 
-    const applyJoinClause = (
-      qb: Knex.QueryBuilder,
-      joins: SubsetQuery["joins"]
-    ) => {
-      joins.map((join) => {
-        if (join.join == "inner") {
-          qb.innerJoin(
-            `${join.table} as ${join.as}`,
-            this.getJoinClause(db, join)
-          );
-        } else if (join.join == "outer") {
-          qb.leftOuterJoin(
-            `${join.table} as ${join.as}`,
-            this.getJoinClause(db, join)
-          );
-        }
-      });
-    };
-
-    // countQuery
+    // Count query
     const total = await (async () => {
-      if (queryMode === "list") {
-        return undefined;
-      }
+      if (queryMode === "list") return undefined;
 
-      const clonedQb = qb.clone().clear("order").clear("offset").clear("limit");
+      // const clonedQb = this.clearQueryParts(qb, ["order", "offset", "limit"]);
+      const clonedQb = qb
+        .clone()
+        .clearQueryParts(["order", "offset", "limit"])
+        .clearSelect()
+        .select(`${baseTable}.id`);
       const parser = new SqlParser.Parser();
 
-      // optmizeCountQuery가 true인 경우 다른 clause에 영향을 주지 않는 모든 join을 제외함
       if (optimizeCountQuery) {
-        const parsedQuery = parser.astify(clonedQb.toQuery());
+        const parsedQuery = parser.astify(clonedQb.sql);
         const tables = getTableNamesFromWhere(parsedQuery);
-        // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
         const needToJoin = _.uniq(
           tables.flatMap((table) =>
             table.split("__").map((t) => inflection.pluralize(t))
           )
         );
-        applyJoinClause(
-          clonedQb,
+
+        // for (const join of joins.filter((j) => needToJoin.includes(j.table))) {
+        //   if (isCustomJoinClause(join)) {
+        //     if (clonedQb instanceof KyselyClient) {
+        //       throw new Error("Custom join clause is not supported in Kysely");
+        //     }
+        //     if (join.join === "inner") {
+        //       clonedQb.qb.innerJoin(
+        //         `${join.table} as ${join.as}`,
+        //         join.custom as any
+        //       );
+        //     } else {
+        //       clonedQb.qb.leftJoin(
+        //         `${join.table} as ${join.as}`,
+        //         join.custom as any
+        //       );
+        //     }
+        //   } else {
+        //     if (join.join === "inner") {
+        //       clonedQb.innerJoin(
+        //         `${join.table} as ${join.as}`,
+        //         join.from,
+        //         join.to
+        //       );
+        //     } else if (join.join === "outer") {
+        //       clonedQb.leftJoin(
+        //         `${join.table} as ${join.as}`,
+        //         join.from,
+        //         join.to
+        //       );
+        //     }
+        //   }
+        // }
+        this.applyJoins(
+          clonedQb as CT,
           joins.filter((j) => needToJoin.includes(j.table))
         );
       } else {
-        applyJoinClause(clonedQb, joins);
+        this.applyJoins(clonedQb as CT, joins);
       }
 
-      const parsedQuery = parser.astify(clonedQb.toQuery());
+      const parsedQuery = parser.astify(clonedQb.sql);
       const q = Array.isArray(parsedQuery) ? parsedQuery[0] : parsedQuery;
+
       if (q.type !== "select") {
         throw new Error("Invalid query");
       }
 
-      const countQuery =
-        q.distinct !== null
-          ? clonedQb
-              .clear("select")
-              .select(
-                db.raw(
-                  `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`
-                )
-              )
-              .first()
-          : clonedQb.clear("select").count("*", { as: "total" }).first();
-      const countRow: { total?: number } = await countQuery;
+      // `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`;
+      const countColumn = `${getTableName(q.columns[0].expr)}.${q.columns[0].expr.column}`;
+      clonedQb.clearSelect().count(countColumn, "total").first();
+      if (q.distinct) {
+        clonedQb.distinct(countColumn);
+      }
 
-      // debug: countQuery
       if (debug === true || debug === "count") {
-        console.debug(
-          "DEBUG: count query",
-          chalk.blue(countQuery.toQuery().toString())
-        );
+        console.debug("DEBUG: count query", chalk.blue(clonedQb.sql));
       }
 
-      return countRow?.total ?? 0;
+      const [{ total }] = await clonedQb.execute();
+      return total;
     })();
 
-    // listQuery
+    // List query
     const rows = await (async () => {
-      if (queryMode === "count") {
-        return [];
-      }
+      if (queryMode === "count") return [];
 
-      // limit, offset
+      let listQb = qb;
       if (params.num !== 0) {
-        qb.limit(params.num!);
-        qb.offset(params.num! * (params.page! - 1));
+        // Apply pagination
+        // Note: Implementation depends on specific driver's QB type
+        listQb = listQb
+          .limit(params.num!)
+          .offset(params.num! * (params.page! - 1)) as any;
       }
 
-      // select, rows
-      const listQuery = qb.clone().select(select);
+      listQb.select(select);
+      listQb = this.applyJoins(listQb, joins);
 
-      // join
-      applyJoinClause(listQuery, joins);
-
-      let rows = await listQuery;
-      // debug: listQuery
       if (debug === true || debug === "list") {
-        console.debug(
-          "DEBUG: list query",
-          chalk.blue(listQuery.toQuery().toString())
-        );
+        console.debug("DEBUG: list query", chalk.blue(listQb.sql));
       }
 
-      rows = await this.useLoaders(db, rows, loaders);
-      rows = this.hydrate(rows);
-      return rows;
+      let rows = await listQb.execute();
+      rows = await this.useLoaders(dbClient, rows, loaders);
+      return this.hydrate(rows);
     })();
 
-    return { rows, total, subsetQuery, qb };
+    return { rows, total, subsetQuery, qb: dbClient.qb as QB };
   }
 
-  getJoinClause(
-    db: Knex<any, unknown>,
-    join: SubsetQuery["joins"][number]
-  ): Knex.Raw<any> {
-    if (!isCustomJoinClause(join)) {
-      return db.raw(`${join.from} = ${join.to}`);
-    } else {
-      return db.raw(join.custom);
+  // async getInsertedIds(
+  //   wdb: CT,
+  //   rows: any[],
+  //   tableName: string,
+  //   unqKeyFields: string[],
+  //   chunkSize: number = 500
+  // ): Promise<number[]> {
+  //   if (!wdb) {
+  //     wdb = this.getCli;
+  //   }
+
+  //   let unqKeys: string[];
+  //   let whereInField: any, selectField: string;
+
+  //   if (unqKeyFields.length > 1) {
+  //     // Handle composite keys
+  //     whereInField = this.rawQuery(
+  //       wdb,
+  //       `CONCAT_WS('_', ${unqKeyFields.join(",")})`
+  //     );
+  //     selectField = `${whereInField} as tmpUid`;
+  //     unqKeys = rows.map((row) =>
+  //       unqKeyFields.map((field) => row[field]).join("_")
+  //     );
+  //   } else {
+  //     whereInField = unqKeyFields[0];
+  //     selectField = unqKeyFields[0];
+  //     unqKeys = rows.map((row) => row[unqKeyFields[0]]);
+  //   }
+
+  //   const chunks = _.chunk(unqKeys, chunkSize);
+  //   let resultIds: number[] = [];
+
+  //   for (let chunk of chunks) {
+  //     const qb = this.createQueryBuilder(wdb, tableName);
+  //     const dbRows = await this.executeQuery(
+  //       this.whereInQuery(
+  //         this.applySelect(qb, ["id", selectField]),
+  //         whereInField,
+  //         chunk
+  //       )
+  //     );
+  //     resultIds = resultIds.concat(dbRows.map((row) => parseInt(row.id)));
+  //   }
+
+  //   return resultIds;
+  // }
+
+  async useLoaders(
+    db: CT,
+    rows: any[],
+    loaders: SubsetQuery["loaders"]
+  ): Promise<any[]> {
+    if (loaders.length === 0) return rows;
+
+    for (const loader of loaders) {
+      const fromIds = rows.map((row) => row[loader.manyJoin.idField]);
+
+      if (!fromIds.length) continue;
+
+      let subRows: any[];
+      let toCol: string;
+
+      if (loader.manyJoin.through === undefined) {
+        // HasMany relationship
+        const { subQ, col } = await this.buildHasManyQuery(db, loader, fromIds);
+        subRows = await subQ.execute();
+        toCol = col;
+      } else {
+        // ManyToMany relationship
+        const { subQ, col } = await this.buildManyToManyQuery(
+          db,
+          loader,
+          fromIds
+        );
+        subRows = await subQ.execute();
+        toCol = col;
+      }
+
+      if (loader.loaders) {
+        // Handle nested loaders recursively
+        subRows = await this.useLoaders(db, subRows, loader.loaders);
+      }
+
+      // Group and assign loaded rows
+      const subRowGroups = _.groupBy(subRows, toCol);
+      rows = rows.map((row) => {
+        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map(
+          (r) => _.omit(r, toCol)
+        );
+        return row;
+      });
     }
+
+    return rows;
   }
 
-  getUpsertBuilder(): UpsertBuilder {
-    return new UpsertBuilder();
+  protected async buildHasManyQuery(
+    db: CT,
+    loader: SubsetQuery["loaders"][number],
+    fromIds: any[]
+  ) {
+    const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
+    let qb = db.from(loader.manyJoin.toTable);
+
+    // qb = this.whereInQuery(qb, idColumn, fromIds);
+    db.where([idColumn, "in", fromIds]).select([...loader.select, idColumn]);
+    qb = this.applyJoins(qb as CT, loader.oneJoins);
+
+    return {
+      subQ: qb,
+      col: loader.manyJoin.toCol,
+    };
+  }
+
+  protected async buildManyToManyQuery(
+    db: CT,
+    loader: SubsetQuery["loaders"][number],
+    fromIds: any[]
+  ) {
+    if (!loader.manyJoin.through)
+      throw new Error("Through table info missing for many-to-many relation");
+
+    const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
+    let qb = db.from(loader.manyJoin.through.table);
+
+    // Join with target table
+    const throughTable = loader.manyJoin.through.table;
+    const targetTable = loader.manyJoin.toTable;
+
+    qb = this.applyJoins(qb as CT, [
+      {
+        join: "inner",
+        table: targetTable,
+        as: targetTable,
+        from: `${throughTable}.${loader.manyJoin.through.toCol}`,
+        to: `${targetTable}.${loader.manyJoin.toCol}`,
+      },
+    ]);
+
+    qb.where([idColumn, "in", fromIds]).select([...loader.select, idColumn]);
+    qb = this.applyJoins(qb as CT, loader.oneJoins);
+
+    return {
+      subQ: qb,
+      col: loader.manyJoin.through.fromCol,
+    };
+  }
+
+  myNow(timestamp?: number): string {
+    const dt: DateTime =
+      timestamp === undefined
+        ? DateTime.local()
+        : DateTime.fromSeconds(timestamp);
+    return dt.toFormat("yyyy-MM-dd HH:mm:ss");
+  }
+
+  hydrate<T>(rows: T[]): T[] {
+    return rows.map((row: any) => {
+      const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
+      const groups = _.groupBy(nestedKeys, (key) => key.split("__")[0]);
+      const nullKeys = Object.keys(groups).filter(
+        (key) =>
+          groups[key].length > 1 &&
+          groups[key].every((field) => row[field] === null)
+      );
+
+      const hydrated = Object.keys(row).reduce((r, field) => {
+        if (!field.includes("__")) {
+          if (Array.isArray(row[field]) && _.isObject(row[field][0])) {
+            r[field] = this.hydrate(row[field]);
+          } else {
+            r[field] = row[field];
+          }
+          return r;
+        }
+
+        const parts = field.split("__");
+        const objPath =
+          parts[0] +
+          parts
+            .slice(1)
+            .map((part) => `[${part}]`)
+            .join("");
+
+        _.set(
+          r,
+          objPath,
+          row[field] && Array.isArray(row[field]) && _.isObject(row[field][0])
+            ? this.hydrate(row[field])
+            : row[field]
+        );
+
+        return r;
+      }, {} as any);
+
+      nullKeys.forEach((nullKey) => (hydrated[nullKey] = null));
+      return hydrated;
+    });
   }
 }
-export const BaseModel = new BaseModelClass();

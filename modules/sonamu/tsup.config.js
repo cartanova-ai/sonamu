@@ -2,7 +2,13 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/bin/cli.ts", "src/bin/cli-wrapper.ts"],
+  entry: [
+    "src/index.ts",
+    "src/bin/cli.ts",
+    "src/bin/cli-wrapper.ts",
+    "src/database/drivers/base-model.knex.ts",
+    "src/database/drivers/base-model.kysely.ts",
+  ],
   dts: true,
   format: ["esm", "cjs"],
   target: "es2020",

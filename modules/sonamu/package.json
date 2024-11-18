@@ -12,7 +12,18 @@
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./kysely": {
+      "import": "./dist/database/drivers/base-model.kysely.mjs",
+      "require": "./dist/database/drivers/base-model.kysely.js",
+      "types": "./dist/database/drivers/base-model.kysely.d.mts"
+    },
+    "./knex": {
+      "import": "./dist/database/drivers/base-model.knex.mjs",
+      "require": "./dist/database/drivers/base-model.knex.js",
+      "types": "./dist/database/drivers/base-model.knex.d.mts"
     }
   },
   "scripts": {
@@ -39,6 +50,7 @@
     "glob": "^8.0.3",
     "inflection": "^1.13.2",
     "knex": "^3.1.0",
+    "kysely": "^0.27.4",
     "lodash": "^4.17.21",
     "luxon": "^3.0.3",
     "mysql2": "^3.6.1",
@@ -68,7 +80,16 @@
   "peerDependencies": {
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
+    "kysely": "^0.27.4",
     "mysql2": "^3.6.1"
+  },
+  "peerDependenciesMeta": {
+    "knex": {
+      "optional": true
+    },
+    "kysely": {
+      "optional": true
+    }
   },
   "packageManager": "yarn@3.6.3"
 }

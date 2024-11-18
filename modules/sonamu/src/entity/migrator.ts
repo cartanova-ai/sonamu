@@ -1,6 +1,4 @@
 import _ from "lodash";
-import knex, { Knex } from "knex";
-import prettier from "prettier";
 import chalk from "chalk";
 import { DateTime } from "luxon";
 import fs from "fs-extra";
@@ -38,6 +36,9 @@ import { EntityManager } from "./entity-manager";
 import { Entity } from "./entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+import { DB } from "../database/db";
+import { KnexClient } from "../database/drivers/knex-client";
+import { KyselyClient } from "../database/drivers/kysely-client";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
@@ -65,33 +66,29 @@ export class Migrator {
   readonly mode: MigratorMode;
 
   targets: {
-    compare?: Knex;
-    pending: Knex;
-    shadow: Knex;
-    apply: Knex[];
+    compare?: KnexClient | KyselyClient;
+    pending: KnexClient | KyselyClient;
+    shadow: KnexClient | KyselyClient;
+    apply: (KnexClient | KyselyClient)[];
   };
 
   constructor(options: MigratorOptions) {
     this.mode = options.mode;
-    const { dbConfig } = Sonamu;
 
     if (this.mode === "dev") {
-      const devDB = knex(dbConfig.development_master);
-      const testDB = knex(dbConfig.test);
-      const fixtureLocalDB = knex(dbConfig.fixture_local);
+      const devDB = DB.getClient("development_master");
+      const testDB = DB.getClient("test");
+      const fixtureLocalDB = DB.getClient("fixture_local");
 
+      const uniqConfigs = DB.getUniqueConfigs([
+        "development_master",
+        "test",
+        "fixture_local",
+        "fixture_remote",
+      ]);
       const applyDBs = [devDB, testDB, fixtureLocalDB];
-      if (
-        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
-          .host !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
-            .host ||
-        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
-          .database !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
-            .database
-      ) {
-        const fixtureRemoteDB = knex(dbConfig.fixture_remote);
+      if (uniqConfigs.length === 4) {
+        const fixtureRemoteDB = DB.getClient("fixture_remote");
         applyDBs.push(fixtureRemoteDB);
       }
 
@@ -102,8 +99,8 @@ export class Migrator {
         apply: applyDBs,
       };
     } else if (this.mode === "deploy") {
-      const productionDB = knex(Sonamu.dbConfig.production_master);
-      const testDB = knex(Sonamu.dbConfig.test);
+      const productionDB = DB.getClient("production_master");
+      const testDB = DB.getClient("test");
 
       this.targets = {
         pending: productionDB,
@@ -203,45 +200,42 @@ export class Migrator {
 
     const statuses = await Promise.all(
       connKeys.map(async (connKey) => {
-        const knexOptions = Sonamu.dbConfig[connKey];
-        const tConn = knex(knexOptions);
+        const tConn = DB.getClient(connKey);
 
         const status = await (async () => {
           try {
-            return await tConn.migrate.status();
+            return await tConn.status();
           } catch (err) {
+            console.debug(err);
             return "error";
           }
         })();
         const pending = await (async () => {
           try {
-            const [, fdList] = await tConn.migrate.list();
-            return fdList.map((fd: { file: string }) =>
-              fd.file.replace(".js", "")
-            );
+            return await tConn.getMigrations();
           } catch (err) {
+            console.debug(err);
             return [];
           }
         })();
         const currentVersion = await (async () => {
-          try {
-            return tConn.migrate.currentVersion();
-          } catch (err) {
-            return "error";
-          }
+          // try {
+          // return tConn.migrate.currentVersion();
+          // } catch (err) {
+          return "error";
+          // }
         })();
 
-        const connection =
-          knexOptions.connection as Knex.MySql2ConnectionConfig;
+        const info = tConn.connectionInfo;
 
         await tConn.destroy();
 
         return {
           name: connKey.replace("_master", ""),
           connKey,
-          connString: `${knexOptions.client}://${connection.user ?? ""}@${
-            connection.host
-          }:${connection.port ?? 3306}/${connection.database}` as ConnString,
+          connString: `mysql2://${info.user ?? ""}@${
+            info.host
+          }:${info.port}/${info.database}` as ConnString,
           currentVersion,
           status,
           pending,
@@ -255,7 +249,7 @@ export class Migrator {
         return [];
       }
 
-      const compareDBconn = knex(Sonamu.dbConfig[status0conn.connKey]);
+      const compareDBconn = DB.getClient(status0conn.connKey);
       const genCodes = await this.compareMigrations(compareDBconn);
 
       await compareDBconn.destroy();
@@ -269,17 +263,17 @@ export class Migrator {
       preparedCodes,
     };
     /*
-      TS/JS 코드 컴파일 상태 확인
-      1. 원본 파일 없는 JS파일이 존재하는 경우: 삭제
-      2. 컴파일 되지 않은 TS파일이 존재하는 경우: throw 쳐서 데브 서버 오픈 요청
-
-      DB 마이그레이션 상태 확인
-      1. 전체 DB설정에 대해서 현재 마이그레이션 상태 확인
-        - connKey: string
-        - status: number
-        - currentVersion: string
-        - list: { file: string; directory: string }[]
-
+    TS/JS 코드 컴파일 상태 확인
+    1. 원본 파일 없는 JS파일이 존재하는 경우: 삭제
+    2. 컴파일 되지 않은 TS파일이 존재하는 경우: throw 쳐서 데브 서버 오픈 요청
+    
+    DB 마이그레이션 상태 확인
+    1. 전체 DB설정에 대해서 현재 마이그레이션 상태 확인
+    - connKey: string
+    - status: number
+    - currentVersion: string
+    - list: { file: string; directory: string }[]
+    
     */
   }
 
@@ -294,34 +288,24 @@ export class Migrator {
     }[]
   > {
     // get uniq knex configs
-    const configs = _.uniqBy(
-      targets
-        .map((target) => ({
-          connKey: target,
-          options: Sonamu.dbConfig[target as keyof typeof Sonamu.dbConfig],
-        }))
-        .filter((c) => c.options !== undefined),
-      ({ options }) =>
-        `${(options.connection as Knex.MySql2ConnectionConfig).host}:${
-          (options.connection as Knex.MySql2ConnectionConfig).port ?? 3306
-        }/${(options.connection as Knex.MySql2ConnectionConfig).database}`
-    );
+    const configs = DB.getUniqueConfigs(targets as any);
 
     // get connections
     const conns = await Promise.all(
       configs.map(async (config) => ({
         connKey: config.connKey,
-        knex: knex(config.options),
+        db: DB.getClient(config.connKey),
       }))
     );
 
     // action
+    // TODO: 마이그레이션 결과 리턴값 정리해야됨(kysely/knex)
     const result = await (async () => {
       switch (action) {
         case "latest":
           return Promise.all(
-            conns.map(async ({ connKey, knex }) => {
-              const [batchNo, applied] = await knex.migrate.latest();
+            conns.map(async ({ connKey, db }) => {
+              const [batchNo, applied] = await db.migrate();
               return {
                 connKey,
                 batchNo,
@@ -331,8 +315,8 @@ export class Migrator {
           );
         case "rollback":
           return Promise.all(
-            conns.map(async ({ connKey, knex }) => {
-              const [batchNo, applied] = await knex.migrate.rollback();
+            conns.map(async ({ connKey, db }) => {
+              const [batchNo, applied] = await db.rollback();
               return {
                 connKey,
                 batchNo,
@@ -345,8 +329,8 @@ export class Migrator {
 
     // destroy
     await Promise.all(
-      conns.map(({ knex }) => {
-        return knex.destroy();
+      conns.map(({ db }) => {
+        return db.destroy();
       })
     );
 
@@ -411,16 +395,10 @@ export class Migrator {
   }
 
   async clearPendingList(): Promise<void> {
-    const [, pendingList] = (await this.targets.pending.migrate.list()) as [
-      unknown,
-      {
-        file: string;
-        directory: string;
-      }[],
-    ];
+    const pendingList = await this.targets.pending.getMigrations();
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
-      return path.join(migrationsDir, df.file).replace(".js", ".ts");
+      return path.join(migrationsDir, `${df}.ts`);
     });
     for (let p of delList) {
       if (fs.existsSync(p)) {
@@ -444,7 +422,7 @@ export class Migrator {
 
   async run(): Promise<void> {
     // pending 마이그레이션 확인
-    const [, pendingList] = await this.targets.pending.migrate.list();
+    const pendingList = await this.targets.pending.getMigrations();
     if (pendingList.length > 0) {
       console.log(
         chalk.red("pending 된 마이그레이션이 존재합니다."),
@@ -467,13 +445,10 @@ export class Migrator {
       console.timeEnd(chalk.blue("Migrator - runShadowTest"));
       await Promise.all(
         this.targets.apply.map(async (applyDb) => {
-          const label = chalk.green(
-            `APPLIED ${
-              applyDb.client.connectionSettings.host
-            } ${applyDb.client.database()}`
-          );
+          const info = applyDb.connectionInfo;
+          const label = chalk.green(`APPLIED ${info.host} ${info.database}`);
           console.time(label);
-          const [,] = await applyDb.migrate.latest();
+          await applyDb.migrate();
           console.timeEnd(label);
         })
       );
@@ -523,8 +498,8 @@ export class Migrator {
     console.time(chalk.red("rollback:"));
     const rollbackAllResult = await Promise.all(
       this.targets.apply.map(async (db) => {
-        await db.migrate.forceFreeMigrationsLock();
-        return db.migrate.rollback(undefined, false);
+        // await db.migrate.forceFreeMigrationsLock();
+        return db.rollback();
       })
     );
     console.dir({ rollbackAllResult }, { depth: null });
@@ -606,8 +581,8 @@ export class Migrator {
     }[]
   > {
     // ShadowDB 생성 후 테스트 진행
-    const tdb = knex(Sonamu.dbConfig.test);
-    const tdbConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
+    const tdb = DB.getClient("test");
+    const tdbConn = tdb.connectionInfo;
     const shadowDatabase = tdbConn.database + "__migration_shadow";
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
@@ -616,7 +591,7 @@ export class Migrator {
       chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`)
     );
     execSync(
-      `mysqldump -h${tdbConn.host} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`
+      `mysqldump -h${tdbConn.host} -P${tdbConn.port} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`
     );
     execSync(
       `sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`
@@ -630,24 +605,13 @@ export class Migrator {
     // ShadowDB 테이블 + 데이터 생성
     console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
     execSync(
-      `mysql -h${tdbConn.host} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
+      `mysql -h${tdbConn.host} -P${tdbConn.port} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
     );
 
-    // tdb 연결 종료
-    await tdb.destroy();
-
     // shadow db 테스트 진행
-    const sdb = knex({
-      ...Sonamu.dbConfig.test,
-      connection: {
-        ...tdbConn,
-        database: shadowDatabase,
-        password: tdbConn.password,
-      },
-    });
-
     try {
-      const [batchNo, applied] = await sdb.migrate.latest();
+      await tdb.raw(`USE \`${shadowDatabase}\`;`);
+      const [batchNo, applied] = await tdb.migrate();
       console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
         batchNo,
         applied,
@@ -655,7 +619,7 @@ export class Migrator {
 
       // 생성한 Shadow DB 삭제
       console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-      await sdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
+      await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
 
       return [
         {
@@ -668,7 +632,7 @@ export class Migrator {
       console.error(e);
       throw new ServiceUnavailableException("Shadow DB 테스트 진행 중 에러");
     } finally {
-      await sdb.destroy();
+      await tdb.destroy();
     }
   }
 
@@ -686,8 +650,8 @@ export class Migrator {
     console.time(chalk.red("rollback-all:"));
     const rollbackAllResult = await Promise.all(
       this.targets.apply.map(async (db) => {
-        await db.migrate.forceFreeMigrationsLock();
-        return db.migrate.rollback(undefined, true);
+        // await db.migrate.forceFreeMigrationsLock();
+        return db.rollbackAll();
       })
     );
     console.log({ rollbackAllResult });
@@ -700,7 +664,9 @@ export class Migrator {
     console.timeEnd(chalk.red("delete migration files"));
   }
 
-  async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
+  async compareMigrations(
+    compareDB: KnexClient | KyselyClient
+  ): Promise<GenMigrationCode[]> {
     // MD 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
@@ -739,12 +705,12 @@ export class Migrator {
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
             return [
-              await this.generateCreateCode_ColumnAndIndexes(
+              await DB.generator.generateCreateCode_ColumnAndIndexes(
                 entitySet.table,
                 entitySet.columns,
                 entitySet.indexes
               ),
-              ...(await this.generateCreateCode_Foreign(
+              ...(await DB.generator.generateCreateCode_Foreign(
                 entitySet.table,
                 entitySet.foreigns
               )),
@@ -812,7 +778,7 @@ export class Migrator {
                   } else {
                     // this.showMigrationSet("MD", entitySet);
                     // this.showMigrationSet("DB", dbSet);
-                    return this.generateAlterCode_ColumnAndIndexes(
+                    return DB.generator.generateAlterCode_ColumnAndIndexes(
                       entitySet.table,
                       entityColumns,
                       entityIndexes,
@@ -842,7 +808,7 @@ export class Migrator {
 
                   if (equal(entityForeigns, dbForeigns) === false) {
                     // console.dir({ entityForeigns, dbForeigns }, { depth: null });
-                    return this.generateAlterCode_Foreigns(
+                    return DB.generator.generateAlterCode_Foreigns(
                       entitySet.table,
                       entityForeigns,
                       dbForeigns
@@ -883,7 +849,7 @@ export class Migrator {
     기존 테이블 정보 읽어서 MigrationSet 형식으로 리턴
   */
   async getMigrationSetFromDB(
-    compareDB: Knex,
+    compareDB: KnexClient | KyselyClient,
     table: string
   ): Promise<MigrationSet | null> {
     let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
@@ -1048,14 +1014,15 @@ export class Migrator {
     기존 테이블 읽어서 cols, indexes 반환
   */
   async readTable(
-    compareDB: Knex,
+    compareDB: KnexClient | KyselyClient,
     tableName: string
   ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
     // 테이블 정보
     try {
-      const [_cols] = (await compareDB.raw(
+      const _cols = await compareDB.raw<DBColumn>(
         `SHOW FIELDS FROM ${tableName}`
-      )) as [DBColumn[]];
+      );
+
       const cols = _cols.map((col) => ({
         ...col,
         // Default 값은 숫자나 MySQL Expression이 아닌 경우 ""로 감싸줌
@@ -1068,8 +1035,12 @@ export class Migrator {
         }),
       }));
 
-      const [indexes] = await compareDB.raw(`SHOW INDEX FROM ${tableName}`);
-      const [[row]] = await compareDB.raw(`SHOW CREATE TABLE ${tableName}`);
+      const indexes = await compareDB.raw<DBIndex>(
+        `SHOW INDEX FROM ${tableName}`
+      );
+      const [row] = await compareDB.raw<{
+        "Create Table": string;
+      }>(`SHOW CREATE TABLE ${tableName}`);
       const ddl = row["Create Table"];
       const matched = ddl.match(/CONSTRAINT .+/g);
       const foreignKeys = (matched ?? []).map((line: string) => {
@@ -1152,6 +1123,7 @@ export class Migrator {
               }
               return {};
             })(),
+            // FIXME: float(N, M) deprecated
             // Decimal, Float 타입의 경우 precision, scale 추가
             ...((isDecimalProp(prop) || isFloatProp(prop)) && {
               precision: prop.precision ?? 8,
@@ -1281,190 +1253,6 @@ export class Migrator {
   }
 
   /*
-  MigrationColumn[] 읽어서 컬럼 정의하는 구문 생성
-*/
-  genColumnDefinitions(columns: MigrationColumn[]): string[] {
-    return columns.map((column) => {
-      const chains: string[] = [];
-      if (column.name === "id") {
-        return `table.increments().primary();`;
-      }
-
-      if (column.type === "float" || column.type === "decimal") {
-        chains.push(
-          `${column.type}('${column.name}', ${column.precision}, ${column.scale})`
-        );
-      } else {
-        // type, length
-        let columnType = column.type;
-        let extraType: string | undefined;
-        if (columnType.includes("text") && columnType !== "text") {
-          extraType = columnType;
-          columnType = "text";
-        }
-        chains.push(
-          `${column.type}('${column.name}'${
-            column.length ? `, ${column.length}` : ""
-          }${extraType ? `, '${extraType}'` : ""})`
-        );
-      }
-      if (column.unsigned) {
-        chains.push("unsigned()");
-      }
-
-      // nullable
-      chains.push(column.nullable ? "nullable()" : "notNullable()");
-
-      // defaultTo
-      if (column.defaultTo !== undefined) {
-        if (
-          typeof column.defaultTo === "string" &&
-          column.defaultTo.startsWith(`"`)
-        ) {
-          chains.push(`defaultTo(${column.defaultTo})`);
-        } else {
-          chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
-        }
-      }
-
-      return `table.${chains.join(".")};`;
-    });
-  }
-
-  /*
-  MigrationIndex[] 읽어서 인덱스/유니크 정의하는 구문 생성
-*/
-  genIndexDefinitions(indexes: MigrationIndex[]): string[] {
-    if (indexes.length === 0) {
-      return [];
-    }
-    const lines = _.uniq(
-      indexes.reduce((r, index) => {
-        r.push(
-          `table.${index.type}([${index.columns
-            .map((col) => `'${col}'`)
-            .join(",")}])`
-        );
-        return r;
-      }, [] as string[])
-    );
-    return lines;
-  }
-
-  /*
-    MigrationForeign[] 읽어서 외부키 constraint 정의하는 구문 생성
-  */
-  genForeignDefinitions(
-    table: string,
-    foreigns: MigrationForeign[]
-  ): { up: string[]; down: string[] } {
-    return foreigns.reduce(
-      (r, foreign) => {
-        const columnsStringQuote = foreign.columns
-          .map((col) => `'${col.replace(`${table}.`, "")}'`)
-          .join(",");
-        r.up.push(
-          `table.foreign('${foreign.columns.join(",")}')
-            .references('${foreign.to}')
-            .onUpdate('${foreign.onUpdate}')
-            .onDelete('${foreign.onDelete}')`
-        );
-        r.down.push(`table.dropForeign([${columnsStringQuote}])`);
-        return r;
-      },
-      {
-        up: [] as string[],
-        down: [] as string[],
-      }
-    );
-  }
-
-  /*
-    테이블 생성하는 케이스 - 컬럼/인덱스 생성
-  */
-  async generateCreateCode_ColumnAndIndexes(
-    table: string,
-    columns: MigrationColumn[],
-    indexes: MigrationIndex[]
-  ): Promise<GenMigrationCode> {
-    // 컬럼, 인덱스 처리
-    const lines: string[] = [
-      'import { Knex } from "knex";',
-      "",
-      "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.createTable("${table}", (table) => {`,
-      "// columns",
-      ...this.genColumnDefinitions(columns),
-      "",
-      "// indexes",
-      ...this.genIndexDefinitions(indexes),
-      "});",
-      "}",
-      "",
-      "export async function down(knex: Knex): Promise<void> {",
-      ` return knex.schema.dropTable("${table}");`,
-      "}",
-    ];
-    return {
-      table,
-      type: "normal",
-      title: `create__${table}`,
-      formatted: await prettier.format(lines.join("\n"), {
-        parser: "typescript",
-      }),
-    };
-  }
-  /*
-  테이블 생성하는 케이스 - FK 생성
-*/
-  async generateCreateCode_Foreign(
-    table: string,
-    foreigns: MigrationForeign[]
-  ): Promise<GenMigrationCode[]> {
-    if (foreigns.length === 0) {
-      return [];
-    }
-
-    const { up, down } = this.genForeignDefinitions(table, foreigns);
-    if (up.length === 0 && down.length === 0) {
-      console.log("fk 가 뭔가 다릅니다");
-      return [];
-    }
-
-    const lines: string[] = [
-      'import { Knex } from "knex";',
-      "",
-      "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      "// create fk",
-      ...up,
-      "});",
-      "}",
-      "",
-      "export async function down(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      "// drop fk",
-      ...down,
-      "});",
-      "}",
-    ];
-
-    const foreignKeysString = foreigns
-      .map((foreign) => foreign.columns.join("_"))
-      .join("_");
-    return [
-      {
-        table,
-        type: "foreign",
-        title: `foreign__${table}__${foreignKeysString}`,
-        formatted: await prettier.format(lines.join("\n"), {
-          parser: "typescript",
-        }),
-      },
-    ];
-  }
-
-  /*
     마이그레이션 컬럼 배열 비교용 코드
   */
   showMigrationSet(which: string, migrationSet: MigrationSet): void {
@@ -1532,390 +1320,6 @@ export class Migrator {
         })
       );
     }
-  }
-
-  async generateAlterCode_ColumnAndIndexes(
-    table: string,
-    entityColumns: MigrationColumn[],
-    entityIndexes: MigrationIndex[],
-    dbColumns: MigrationColumn[],
-    dbIndexes: MigrationIndex[]
-  ): Promise<GenMigrationCode[]> {
-    /*
-      세부 비교 후 다른점 찾아서 코드 생성
-
-      1. 컬럼갯수 다름: MD에 있으나, DB에 없다면 추가
-      2. 컬럼갯수 다름: MD에 없으나, DB에 있다면 삭제
-      3. 그외 컬럼(컬럼 갯수가 동일하거나, 다른 경우 동일한 컬럼끼리) => alter
-      4. 다른거 다 동일하고 index만 변경되는 경우
-
-      ** 컬럼명을 변경하는 경우는 따로 핸들링하지 않음
-      => drop/add 형태의 마이그레이션 코드가 생성되는데, 수동으로 rename 코드로 수정하여 처리
-    */
-
-    // 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
-    const alterColumnsTo = this.getAlterColumnsTo(entityColumns, dbColumns);
-
-    // 추출된 컬럼들을 기준으로 각각 라인 생성
-    const alterColumnLinesTo = this.getAlterColumnLinesTo(
-      alterColumnsTo,
-      entityColumns
-    );
-
-    // 인덱스의 add, drop 여부 확인
-    const alterIndexesTo = this.getAlterIndexesTo(entityIndexes, dbIndexes);
-
-    // 추출된 인덱스들을 기준으로 각각 라인 생성
-    const alterIndexLinesTo = this.getAlterIndexLinesTo(
-      alterIndexesTo,
-      alterColumnsTo
-    );
-
-    const lines: string[] = [
-      'import { Knex } from "knex";',
-      "",
-      "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.up : []),
-      ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.up : []),
-      ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.up : []),
-      ...(alterIndexesTo.add.length > 0 ? alterIndexLinesTo.add.up : []),
-      ...(alterIndexesTo.drop.length > 0 ? alterIndexLinesTo.drop.up : []),
-      "})",
-      "}",
-      "",
-      "export async function down(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.down : []),
-      ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.down : []),
-      ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.down : []),
-      ...(alterIndexLinesTo.add.down.length > 0
-        ? alterIndexLinesTo.add.down
-        : []),
-      ...(alterIndexLinesTo.drop.down.length > 0
-        ? alterIndexLinesTo.drop.down
-        : []),
-      "})",
-      "}",
-    ];
-
-    const formatted = await prettier.format(lines.join("\n"), {
-      parser: "typescript",
-    });
-
-    const title = [
-      "alter",
-      table,
-      ...(["add", "drop", "alter"] as const)
-        .map((action) => {
-          const len = alterColumnsTo[action].length;
-          if (len > 0) {
-            return action + len;
-          }
-          return null;
-        })
-        .filter((part) => part !== null),
-    ].join("_");
-
-    return [
-      {
-        table,
-        title,
-        formatted,
-        type: "normal",
-      },
-    ];
-  }
-
-  getAlterColumnsTo(
-    entityColumns: MigrationColumn[],
-    dbColumns: MigrationColumn[]
-  ) {
-    const columnsTo = {
-      add: [] as MigrationColumn[],
-      drop: [] as MigrationColumn[],
-      alter: [] as MigrationColumn[],
-    };
-
-    // 컬럼명 기준 비교
-    const extraColumns = {
-      db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
-      entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
-    };
-    if (extraColumns.entity.length > 0) {
-      columnsTo.add = columnsTo.add.concat(extraColumns.entity);
-    }
-    if (extraColumns.db.length > 0) {
-      columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
-    }
-
-    // 동일 컬럼명의 세부 필드 비교
-    const sameDbColumns = _.intersectionBy(
-      dbColumns,
-      entityColumns,
-      (col) => col.name
-    );
-    const sameMdColumns = _.intersectionBy(
-      entityColumns,
-      dbColumns,
-      (col) => col.name
-    );
-    columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
-      equal(a, b)
-    );
-
-    return columnsTo;
-  }
-
-  getAlterColumnLinesTo(
-    columnsTo: ReturnType<Migrator["getAlterColumnsTo"]>,
-    entityColumns: MigrationColumn[]
-  ) {
-    let linesTo = {
-      add: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-      drop: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-      alter: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-    };
-
-    linesTo.add = {
-      up: ["// add", ...this.genColumnDefinitions(columnsTo.add)],
-      down: [
-        "// rollback - add",
-        `table.dropColumns(${columnsTo.add
-          .map((col) => `'${col.name}'`)
-          .join(", ")})`,
-      ],
-    };
-    linesTo.drop = {
-      up: [
-        "// drop",
-        `table.dropColumns(${columnsTo.drop
-          .map((col) => `'${col.name}'`)
-          .join(", ")})`,
-      ],
-      down: [
-        "// rollback - drop",
-        ...this.genColumnDefinitions(columnsTo.drop),
-      ],
-    };
-    linesTo.alter = columnsTo.alter.reduce(
-      (r, dbColumn) => {
-        const entityColumn = entityColumns.find(
-          (col) => col.name == dbColumn.name
-        );
-        if (entityColumn === undefined) {
-          return r;
-        }
-
-        // 컬럼 변경사항
-        const columnDiffUp = _.difference(
-          this.genColumnDefinitions([entityColumn]),
-          this.genColumnDefinitions([dbColumn])
-        );
-        const columnDiffDown = _.difference(
-          this.genColumnDefinitions([dbColumn]),
-          this.genColumnDefinitions([entityColumn])
-        );
-        if (columnDiffUp.length > 0) {
-          r.up = [
-            ...r.up,
-            "// alter column",
-            ...columnDiffUp.map((l) => l.replace(";", "") + ".alter();"),
-          ];
-          r.down = [
-            ...r.down,
-            "// rollback - alter column",
-            ...columnDiffDown.map((l) => l.replace(";", "") + ".alter();"),
-          ];
-        }
-
-        return r;
-      },
-      {
-        up: [] as string[],
-        down: [] as string[],
-      }
-    );
-
-    return linesTo;
-  }
-
-  getAlterIndexesTo(
-    entityIndexes: MigrationIndex[],
-    dbIndexes: MigrationIndex[]
-  ) {
-    // 인덱스 비교
-    let indexesTo = {
-      add: [] as MigrationIndex[],
-      drop: [] as MigrationIndex[],
-    };
-    const extraIndexes = {
-      db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//")
-      ),
-      entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//")
-      ),
-    };
-    if (extraIndexes.entity.length > 0) {
-      indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
-    }
-    if (extraIndexes.db.length > 0) {
-      indexesTo.drop = indexesTo.drop.concat(extraIndexes.db);
-    }
-
-    return indexesTo;
-  }
-
-  getAlterIndexLinesTo(
-    indexesTo: ReturnType<Migrator["getAlterIndexesTo"]>,
-    columnsTo: ReturnType<Migrator["getAlterColumnsTo"]>
-  ) {
-    let linesTo = {
-      add: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-      drop: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-    };
-
-    // 인덱스가 추가되는 경우, 컬럼과 같이 추가된 케이스에는 drop에서 제외해야함!
-    linesTo.add = {
-      up: ["// add indexes", ...this.genIndexDefinitions(indexesTo.add)],
-      down: [
-        "// rollback - add indexes",
-        ...indexesTo.add
-          .filter(
-            (index) =>
-              index.columns.every((colName) =>
-                columnsTo.add.map((col) => col.name).includes(colName)
-              ) === false
-          )
-          .map(
-            (index) =>
-              `table.drop${inflection.capitalize(index.type)}([${index.columns
-                .map((columnName) => `'${columnName}'`)
-                .join(",")}])`
-          ),
-      ],
-    };
-    // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
-    linesTo.drop = {
-      up: [
-        ...indexesTo.drop
-          .filter(
-            (index) =>
-              index.columns.every((colName) =>
-                columnsTo.drop.map((col) => col.name).includes(colName)
-              ) === false
-          )
-          .map(
-            (index) =>
-              `table.drop${inflection.capitalize(index.type)}([${index.columns
-                .map((columnName) => `'${columnName}'`)
-                .join(",")}])`
-          ),
-      ],
-      down: [
-        "// rollback - drop indexes",
-        ...this.genIndexDefinitions(indexesTo.drop),
-      ],
-    };
-
-    return linesTo;
-  }
-
-  async generateAlterCode_Foreigns(
-    table: string,
-    entityForeigns: MigrationForeign[],
-    dbForeigns: MigrationForeign[]
-  ): Promise<GenMigrationCode[]> {
-    // console.log({ entityForeigns, dbForeigns });
-
-    const getKey = (mf: MigrationForeign): string => {
-      return [mf.columns.join("-"), mf.to].join("///");
-    };
-    const fkTo = entityForeigns.reduce(
-      (result, entityF) => {
-        const matchingDbF = dbForeigns.find(
-          (dbF) => getKey(entityF) === getKey(dbF)
-        );
-        if (!matchingDbF) {
-          result.add.push(entityF);
-          return result;
-        }
-
-        if (equal(entityF, matchingDbF) === false) {
-          result.alterSrc.push(matchingDbF);
-          result.alterDst.push(entityF);
-          return result;
-        }
-        return result;
-      },
-      {
-        add: [] as MigrationForeign[],
-        alterSrc: [] as MigrationForeign[],
-        alterDst: [] as MigrationForeign[],
-      }
-    );
-
-    const linesTo = {
-      add: this.genForeignDefinitions(table, fkTo.add),
-      alterSrc: this.genForeignDefinitions(table, fkTo.alterSrc),
-      alterDst: this.genForeignDefinitions(table, fkTo.alterDst),
-    };
-
-    const lines: string[] = [
-      'import { Knex } from "knex";',
-      "",
-      "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      ...linesTo.add.up,
-      ...linesTo.alterSrc.down,
-      ...linesTo.alterDst.up,
-      "})",
-      "}",
-      "",
-      "export async function down(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
-      ...linesTo.add.down,
-      ...linesTo.alterDst.down,
-      ...linesTo.alterSrc.up,
-      "})",
-      "}",
-    ];
-
-    const formatted = await prettier.format(lines.join("\n"), {
-      parser: "typescript",
-    });
-
-    const title = [
-      "alter",
-      table,
-      "foreigns",
-      // TODO 바뀌는 부분
-    ].join("_");
-
-    return [
-      {
-        table,
-        title,
-        formatted,
-        type: "normal",
-      },
-    ];
   }
 
   async destroy(): Promise<void> {

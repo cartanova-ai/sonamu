@@ -3,7 +3,8 @@
   https://github.com/knex/knex/issues/5716
 */
 
-import { Knex } from "knex";
+import { ExtendedKnexTrx, KnexClient } from "./drivers/knex-client";
+import { ExtendedKyselyTrx, KyselyClient } from "./drivers/kysely-client";
 
 export type RowWithId<Id extends string> = {
   [key in Id]: any;
@@ -11,7 +12,7 @@ export type RowWithId<Id extends string> = {
 
 /**
  * Batch update rows in a table. Technically its a patch since it only updates the specified columns. Any omitted columns will not be affected
- * @param knex
+ * @param db
  * @param tableName
  * @param ids
  * @param rows
@@ -19,12 +20,12 @@ export type RowWithId<Id extends string> = {
  * @param trx
  */
 export async function batchUpdate<Id extends string>(
-  knex: Knex,
+  db: KnexClient | KyselyClient,
   tableName: string,
   ids: Id[],
   rows: RowWithId<Id>[],
   chunkSize = 50,
-  trx: Knex.Transaction | null = null
+  trx: ExtendedKnexTrx | ExtendedKyselyTrx | null = null
 ) {
   const chunks: RowWithId<Id>[][] = [];
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -33,10 +34,11 @@ export async function batchUpdate<Id extends string>(
 
   const executeUpdate = async (
     chunk: RowWithId<Id>[],
-    transaction: Knex.Transaction
+    transaction: ExtendedKnexTrx | ExtendedKyselyTrx
   ) => {
-    const sql = generateBatchUpdateSQL(knex, tableName, chunk, ids);
-    return knex.raw(sql).transacting(transaction);
+    const sql = generateBatchUpdateSQL(db, tableName, chunk, ids);
+    return transaction.raw(sql);
+    // return db.raw(sql).(transaction);
   };
 
   if (trx) {
@@ -44,7 +46,7 @@ export async function batchUpdate<Id extends string>(
       await executeUpdate(chunk, trx);
     }
   } else {
-    await knex.transaction(async (newTrx) => {
+    await db.trx(async (newTrx) => {
       for (const chunk of chunks) {
         await executeUpdate(chunk, newTrx);
       }
@@ -70,7 +72,7 @@ function generateKeySetFromData(data: Record<string, any>[]) {
 }
 
 function generateBatchUpdateSQL<Id extends string>(
-  knex: Knex,
+  db: KnexClient | KyselyClient,
   tableName: string,
   data: Record<string, any>[],
   identifiers: Id[]
@@ -112,10 +114,10 @@ function generateBatchUpdateSQL<Id extends string>(
     data.map((row) => row[col])
   );
 
-  const sql = knex.raw(
+  const sql = db.createRawQuery(
     `UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`,
     [...bindings, ...whereInBindings]
   );
 
-  return sql.toQuery();
+  return sql;
 }
