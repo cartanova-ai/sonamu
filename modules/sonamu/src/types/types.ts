@@ -718,6 +718,7 @@ export const TemplateOptions = z.object({
     entityId: z.string(),
     enumId: z.string(),
   }),
+  kysely_interface: z.object({}),
 });
 export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
@@ -740,6 +741,7 @@ export const TemplateKey = z.enum([
   "view_enums_select",
   "view_enums_dropdown",
   "view_enums_buttonset",
+  "kysely_interface",
 ]);
 export type TemplateKey = z.infer<typeof TemplateKey>;
 

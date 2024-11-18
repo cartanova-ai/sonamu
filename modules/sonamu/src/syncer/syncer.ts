@@ -75,6 +75,8 @@ import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
 import { execSync } from "child_process";
 import { Template__generated_sso } from "../templates/generated_sso.template";
+import { Template__kysely_interface } from "../templates/kysely_types.template";
+import { DB } from "../database/db";
 
 type FileType = "model" | "types" | "functions" | "generated" | "entity";
 type GlobPattern = {
@@ -192,6 +194,18 @@ export class Syncer {
     if (diffTypes.includes("entity") || diffTypes.includes("types")) {
       console.log("// 액션: 스키마 생성");
       await this.actionGenerateSchemas();
+
+      if (
+        DB.baseConfig?.client === "kysely" &&
+        DB.baseConfig.types?.enabled !== false
+      ) {
+        console.log("// 액션: kysely 인터페이스 생성");
+        await this.generateTemplate(
+          "kysely_interface",
+          {},
+          { overwrite: true }
+        );
+      }
 
       // generated 싱크까지 동시에 처리 후 체크섬 갱신
       diffGroups["generated"] = _.uniq([
@@ -798,6 +812,8 @@ export class Syncer {
       return new Template__view_enums_dropdown();
     } else if (key === "view_enums_buttonset") {
       return new Template__view_enums_buttonset();
+    } else if (key === "kysely_interface") {
+      return new Template__kysely_interface();
     } else {
       throw new BadRequestException(`잘못된 템플릿 키 ${key}`);
     }

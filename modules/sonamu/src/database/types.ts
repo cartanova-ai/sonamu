@@ -87,6 +87,11 @@ export type KyselyBaseConfig = {
   database: string;
   defaultOptions: KyselyConfig;
   environments?: EnvironmentConfigs<KyselyConfig>;
+  types?: {
+    enabled?: boolean; // 인터페이스 자동 생성 활성화 (기본값: true)
+    outDir?: string; // 생성될 파일 경로 (기본값: src/typings)
+    fileName?: string; // 생성될 파일명 (기본값: database.types.ts)
+  };
 };
 
 export type SonamuDBBaseConfig = KnexBaseConfig | KyselyBaseConfig;

@@ -17,6 +17,7 @@ import { KyselyGenerator } from "./drivers/kysely-generator";
 
 export class DBKyselyClass extends DBClass {
   public generator: KyselyGenerator = new KyselyGenerator();
+  public baseConfig?: KyselyBaseConfig;
 
   // public _fullConfig?: SonamuKyselyDBConfig;
   // set fullConfig(config: SonamuKyselyDBConfig) {
@@ -63,11 +64,10 @@ export class DBKyselyClass extends DBClass {
 
   constructor() {
     super();
-    // TODO: replaceInto 찾아보고 적용
-    // attachOnDuplicateUpdate();
   }
 
   init(config: KyselyBaseConfig) {
+    this.baseConfig = config;
     this.fullConfig = this.generateDBConfig(config);
   }
 

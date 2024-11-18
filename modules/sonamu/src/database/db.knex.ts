@@ -13,6 +13,7 @@ import { KnexGenerator } from "./drivers/knex-generator";
 
 export class DBKnexClass extends DBClass {
   public generator: KnexGenerator = new KnexGenerator();
+  public baseConfig?: KnexBaseConfig;
 
   public declare _fullConfig?: SonamuKnexDBConfig;
   set fullConfig(config: SonamuKnexDBConfig) {
@@ -62,6 +63,7 @@ export class DBKnexClass extends DBClass {
   }
 
   init(config: KnexBaseConfig) {
+    this.baseConfig = config;
     this.fullConfig = this.generateDBConfig(config);
   }
 
