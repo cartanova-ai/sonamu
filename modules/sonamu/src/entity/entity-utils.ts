@@ -155,7 +155,7 @@ function dateTime(
   }
   return {
     name,
-    type: "dateTime",
+    type: "datetime",
     ...option,
   };
 }

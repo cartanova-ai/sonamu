@@ -89,7 +89,7 @@ export type DateProp = CommonProp & {
   type: "date";
 };
 export type DateTimeProp = CommonProp & {
-  type: "dateTime";
+  type: "datetime";
 };
 export type TimeProp = CommonProp & {
   type: "time";
@@ -278,7 +278,7 @@ export function isDateProp(p: any): p is DateProp {
   return p?.type === "date";
 }
 export function isDateTimeProp(p: any): p is DateTimeProp {
-  return p?.type === "dateTime";
+  return p?.type === "datetime";
 }
 export function isTimeProp(p: any): p is TimeProp {
   return p?.type === "time";
@@ -428,7 +428,7 @@ export type KnexColumnType =
   | "float"
   | "date"
   | "time"
-  | "dateTime";
+  | "datetime";
 export type MigrationColumn = {
   name: string;
   type: KnexColumnType;

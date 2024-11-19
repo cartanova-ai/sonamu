@@ -60,7 +60,7 @@ export namespace EntityPropZodSchema {
     type: z.literal("date"),
   });
   export const DateTimeProp = CommonProp.extend({
-    type: z.literal("dateTime"),
+    type: z.literal("datetime"),
   });
   export const TimeProp = CommonProp.extend({
     type: z.literal("time"),

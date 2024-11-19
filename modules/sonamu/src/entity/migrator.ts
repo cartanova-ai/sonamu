@@ -975,7 +975,7 @@ export class Migrator {
         };
       case "datetime":
         return {
-          type: "dateTime",
+          type: "datetime",
         };
       case "tinyint":
         return {
