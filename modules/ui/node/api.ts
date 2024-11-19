@@ -18,7 +18,6 @@ import {
   FixtureRecord,
   FixtureManager,
   FixtureSearchOptions,
-  BaseModel,
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
@@ -852,6 +851,7 @@ export async function createApiServer(options: {
       subset: string;
     };
 
+    const { BaseModel } = await import("sonamu/knex");
     const entity = EntityManager.get(entityId);
     const {
       rows: [row],
