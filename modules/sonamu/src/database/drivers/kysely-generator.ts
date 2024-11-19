@@ -8,7 +8,6 @@ import {
   MigrationIndex,
 } from "../../types/types";
 import { CodeGenerator } from "../code-generator";
-import { inspect } from "util";
 import { EntityManager } from "../../entity/entity-manager";
 
 export class KyselyGenerator extends CodeGenerator {
@@ -114,8 +113,6 @@ export class KyselyGenerator extends CodeGenerator {
 
     // 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
     const alterColumnsTo = this.getAlterColumnsTo(entityColumns, dbColumns);
-    console.debug("=== generateAlterCode_ColumnAndIndexes ===");
-    console.debug(inspect(alterColumnsTo, false, null));
 
     // 추출된 컬럼들을 기준으로 각각 라인 생성
     const alterColumnLinesTo = this.getAlterColumnLinesTo(
@@ -216,10 +213,6 @@ export class KyselyGenerator extends CodeGenerator {
     entityForeigns: MigrationForeign[],
     dbForeigns: MigrationForeign[]
   ): Promise<GenMigrationCode[]> {
-    console.debug("=== generateAlterCode_Foreigns ===");
-
-    console.debug(inspect({ entityForeigns, dbForeigns }, false, null, true));
-
     const getKey = (mf: MigrationForeign): string => {
       return [mf.columns.join("-"), mf.to].join("///");
     };
@@ -530,8 +523,6 @@ export const ${entityId}Model = new ${entityId}ModelClass();
     table: string,
     foreigns: MigrationForeign[]
   ): { up: string[]; down: string[] } {
-    console.debug("=== genForeignDefinitions ===");
-    console.debug(inspect(foreigns, false, null));
     return foreigns.reduce(
       (r, foreign) => {
         const [toTable, toColumn] = foreign.to.split(".");

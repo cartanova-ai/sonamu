@@ -19,7 +19,14 @@ import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { SMDManager } from "../smd/smd-manager";
 import { DB } from "../database/db";
-import { SonamuKnexDBConfig, SonamuKyselyDBConfig } from "../database/types";
+import {
+  KnexConfig,
+  KyselyConfig,
+  SonamuKnexDBConfig,
+  SonamuKyselyDBConfig,
+} from "../database/types";
+import { KnexClient } from "../database/drivers/knex-client";
+import { KyselyClient } from "../database/drivers/kysely-client";
 
 let migrator: Migrator;
 
@@ -160,40 +167,52 @@ async function fixture_init() {
   execSync(
     `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
   );
-  // const [[migrations]] = await _db.raw(
-  //   "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
-  //   [srcConn.database]
-  // );
+
+  // 2. 마이그레이션 테이블이 존재하면 덤프
+  const dbClient = DB.baseConfig!.client;
+  const migrationTable = {
+    knex: "knex_migrations",
+    kysely: "kysely_migration",
+  };
   const [migrations] = await _db.raw<{ count: number }>(
-    "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
-    [srcConn.database]
+    "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
+    [srcConn.database, migrationTable[dbClient]]
   );
   if (migrations.count > 0) {
     execSync(
-      `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
+      `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} ${migrationTable[dbClient]} ${migrationTable[dbClient]}_lock > ${migrationsDump}`
     );
   }
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
   for await (const { label, connKey } of targets) {
-    const config = _.cloneDeep(DB.fullConfig[connKey]);
+    const config = DB.connectionInfo[connKey];
+    console.debug({ label, connKey, config });
 
     if (
       label === "(LOCAL) Fixture DB" &&
       targets.find(
         (t) =>
           t.label === "(REMOTE) Fixture DB" &&
-          DB.fullConfig[t.connKey].host === config.host &&
-          DB.fullConfig[t.connKey].database === config.database
+          DB.connectionInfo[t.connKey].host === config.host &&
+          DB.connectionInfo[t.connKey].database === config.database
       )
     ) {
       console.log(chalk.red(`${label}: Skipped!`));
       continue;
     }
 
-    const _databaseName = DB.fullConfig[connKey].database;
-    DB.fullConfig[connKey].database = undefined;
-    const db = DB.getClient(connKey);
+    const db = (() => {
+      if (dbClient === "knex") {
+        const config = _.cloneDeep(DB.fullConfig[connKey]) as KnexConfig;
+        config.connection.database = undefined;
+        return new KnexClient(config);
+      } else {
+        const config = _.cloneDeep(DB.fullConfig[connKey]) as KyselyConfig;
+        config.database = undefined;
+        return new KyselyClient(config);
+      }
+    })();
 
     const [row] = await db.raw(`SHOW DATABASES LIKE "${config.database}"`);
     if (row) {
@@ -214,7 +233,6 @@ async function fixture_init() {
     }
 
     await db.destroy();
-    DB.fullConfig[connKey].database = _databaseName;
   }
 }
 

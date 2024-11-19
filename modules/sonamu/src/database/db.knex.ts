@@ -1,10 +1,5 @@
 import _ from "lodash";
-import {
-  DBPreset,
-  KnexConfig,
-  KnexBaseConfig,
-  SonamuKnexDBConfig,
-} from "./types";
+import { DBPreset, KnexBaseConfig, SonamuKnexDBConfig } from "./types";
 import knex, { Knex } from "knex";
 import { KnexClient } from "./drivers/knex-client";
 import { DBClass } from "./db.abstract";
@@ -57,6 +52,16 @@ export class DBKnexClass extends DBClass {
     return this._fdb;
   }
 
+  get connectionInfo() {
+    return _.mapValues(this.fullConfig, ({ connection }) => ({
+      host: connection.host ?? "localhost",
+      port: connection.port ?? 3306,
+      database: connection.database,
+      user: connection.user,
+      password: connection.password,
+    }));
+  }
+
   constructor() {
     super();
     attachOnDuplicateUpdate();
@@ -73,8 +78,8 @@ export class DBKnexClass extends DBClass {
     }
 
     if (this.fullConfig.test && this.fullConfig.production_master) {
-      const tConn = this.fullConfig.test;
-      const pConn = this.fullConfig.production_master;
+      const tConn = this.connectionInfo.test;
+      const pConn = this.connectionInfo.production_master;
 
       if (
         `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${
@@ -96,20 +101,8 @@ export class DBKnexClass extends DBClass {
     const instanceName = which === "w" ? "wdb" : "rdb";
 
     if (!this[instanceName]) {
-      const _config = this.getCurrentConfig(which) as KnexConfig;
-      const { host, user, password, port, database, ...config } = _config;
-
-      this[instanceName] = knex({
-        ...config,
-        connection: {
-          ...config.connection,
-          host,
-          user,
-          password,
-          port,
-          database,
-        },
-      });
+      const config = this.getCurrentConfig(which);
+      this[instanceName] = knex(config);
     }
 
     return this[instanceName]!;
@@ -146,7 +139,7 @@ export class DBKnexClass extends DBClass {
   }
 
   private generateDBConfig(config: KnexBaseConfig): SonamuKnexDBConfig {
-    const defaultKnexConfig: KnexConfig = _.merge(
+    const defaultKnexConfig = _.merge(
       {
         client: "mysql2",
         pool: {
@@ -157,18 +150,26 @@ export class DBKnexClass extends DBClass {
           extension: "js",
           directory: "./dist/migrations",
         },
-        database: config.database,
+        connection: {
+          host: "localhost",
+          port: 3306,
+          database: config.database,
+        },
       },
       config.defaultOptions
     );
 
     // 로컬 환경 설정
-    const test: KnexConfig = _.merge({}, defaultKnexConfig, {
-      database: `${config.database}_test`,
+    const test = _.merge({}, defaultKnexConfig, {
+      connection: {
+        database: `${config.database}_test`,
+      },
     });
 
     const fixture_local = _.merge({}, defaultKnexConfig, {
-      database: `${config.database}_fixture`,
+      connection: {
+        database: `${config.database}_fixture`,
+      },
     });
 
     // 개발 환경 설정
@@ -182,7 +183,9 @@ export class DBKnexClass extends DBClass {
       devSlaveOptions
     );
     const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
-      database: `${config.database}_fixture`,
+      connection: {
+        database: `${config.database}_fixture`,
+      },
     });
 
     // 프로덕션 환경 설정

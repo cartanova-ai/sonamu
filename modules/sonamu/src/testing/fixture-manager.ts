@@ -61,8 +61,8 @@ export class FixtureManagerClass {
 
       if (fdbChecksum !== tdbChecksum) {
         await DB.tdb.truncate(tableName);
-        const rawQuery = `INSERT INTO ${Sonamu.dbConfig.test.database}.${tableName}
-            SELECT * FROM ${Sonamu.dbConfig.fixture_local.database}.${tableName}`;
+        const rawQuery = `INSERT INTO ${DB.connectionInfo.test.database}.${tableName}
+            SELECT * FROM ${DB.connectionInfo.fixture_local.database}.${tableName}`;
         await DB.tdb.raw(rawQuery);
       }
     }
@@ -165,8 +165,8 @@ export class FixtureManagerClass {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = Sonamu.dbConfig.fixture_remote.database;
-    const realDatabase = Sonamu.dbConfig.production_master.database;
+    const fixtureDatabase = DB.connectionInfo.fixture_remote.database;
+    const realDatabase = DB.connectionInfo.production_master.database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 

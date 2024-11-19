@@ -19,16 +19,16 @@ export class DBKyselyClass extends DBClass {
   public generator: KyselyGenerator = new KyselyGenerator();
   public baseConfig?: KyselyBaseConfig;
 
-  // public _fullConfig?: SonamuKyselyDBConfig;
-  // set fullConfig(config: SonamuKyselyDBConfig) {
-  //   this._fullConfig = config;
-  // }
-  // get fullConfig() {
-  //   if (!this._fullConfig) {
-  //     throw new Error("FixtureManager has not been initialized");
-  //   }
-  //   return this._fullConfig;
-  // }
+  public declare _fullConfig?: SonamuKyselyDBConfig;
+  set fullConfig(config: SonamuKyselyDBConfig) {
+    this._fullConfig = config;
+  }
+  get fullConfig() {
+    if (!this._fullConfig) {
+      throw new Error("FixtureManager has not been initialized");
+    }
+    return this._fullConfig;
+  }
 
   private wdb?: Kysely<Database>;
   get _wdb(): KyselyClient {
@@ -60,6 +60,16 @@ export class DBKyselyClass extends DBClass {
       throw new Error("FixtureManager has not been initialized");
     }
     return this._fdb;
+  }
+
+  get connectionInfo() {
+    return _.mapValues(this.fullConfig, (config) => ({
+      host: config.host ?? "localhost",
+      port: config.port ?? 3306,
+      database: config.database,
+      user: config.user,
+      password: config.password,
+    }));
   }
 
   constructor() {

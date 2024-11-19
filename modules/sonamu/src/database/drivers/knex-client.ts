@@ -51,18 +51,7 @@ export class KnexClient implements DatabaseClient<"knex"> {
   constructor(_config?: KnexConfig, _knex?: Knex) {
     if (_config) {
       this.config = _config;
-      const { host, user, password, port, database, ...config } = _config;
-      this.knex = knex({
-        ...config,
-        connection: {
-          ...config.connection,
-          host,
-          user,
-          password,
-          port,
-          database,
-        },
-      });
+      this.knex = knex(this.config);
     } else if (_knex) {
       this.knex = _knex;
     } else {

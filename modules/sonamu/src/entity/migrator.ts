@@ -194,9 +194,9 @@ export class Migrator {
       );
     }
 
-    const connKeys = Object.keys(Sonamu.dbConfig).filter(
+    const connKeys = Object.keys(DB.fullConfig).filter(
       (key) => key.endsWith("_slave") === false
-    ) as (keyof typeof Sonamu.dbConfig)[];
+    ) as (keyof typeof DB.fullConfig)[];
 
     const statuses = await Promise.all(
       connKeys.map(async (connKey) => {

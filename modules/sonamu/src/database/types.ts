@@ -59,16 +59,12 @@ type EnvironmentConfigs<T> = {
 };
 
 // Knex 설정을 위한 타입
-export type KnexConfig = Omit<Knex.Config, "connection"> & {
-  connection?: Omit<
-    Knex.MySql2ConnectionConfig,
-    "database" | "host" | "user" | "password" | "port"
-  >;
-  database?: Knex.MySql2ConnectionConfig["database"];
-  host: Knex.MySql2ConnectionConfig["host"];
-  user: Knex.MySql2ConnectionConfig["user"];
-  password: Knex.MySql2ConnectionConfig["password"];
-  port?: Knex.MySql2ConnectionConfig["port"];
+export type KnexConfig = Knex.Config & {
+  connection: Knex.MySql2ConnectionConfig & {
+    user: string;
+    password: string;
+    database?: string;
+  };
 };
 export type KnexBaseConfig = {
   client: "knex";
