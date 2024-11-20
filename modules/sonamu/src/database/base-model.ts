@@ -5,32 +5,25 @@ import SqlParser from "node-sql-parser";
 import chalk from "chalk";
 import inflection from "inflection";
 import { BaseListParams } from "../utils/model";
-import {
-  ClientType,
-  DBPreset,
-  DatabaseInstance,
-  DatabaseType,
-  QueryBuilder,
-  TableName,
-} from "./types";
+import { DBPreset, DriverSpec, DatabaseDriver } from "./types";
 import { SubsetQuery } from "../types/types";
 import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
 import { DB } from "./db";
 
-export abstract class BaseModelClassAbstract<
-  D extends DatabaseType,
-  DI extends DatabaseInstance<D>,
-  CT extends ClientType<D>,
-  QB extends QueryBuilder<D>,
-> {
+export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
   public modelName: string = "Unknown";
-  protected _wdb: CT | null = null;
-  protected _rdb: CT | null = null;
+  protected _wdb: DriverSpec[D]["adapter"] | null = null;
+  protected _rdb: DriverSpec[D]["adapter"] | null = null;
 
-  protected abstract applyJoins(qb: CT, joins: SubsetQuery["joins"]): CT;
-  protected abstract executeCountQuery(qb: QB): Promise<number>;
+  protected abstract applyJoins(
+    qb: DriverSpec[D]["adapter"],
+    joins: SubsetQuery["joins"]
+  ): DriverSpec[D]["adapter"];
+  protected abstract executeCountQuery(
+    qb: DriverSpec[D]["queryBuilder"]
+  ): Promise<number>;
 
-  abstract getDB(which: DBPreset): DI;
+  abstract getDB(which: DBPreset): DriverSpec[D]["core"];
   abstract destroy(): Promise<void>;
 
   async runSubsetQuery<T extends BaseListParams, U extends string>({
@@ -47,35 +40,32 @@ export abstract class BaseModelClassAbstract<
     params: T;
     subsetQuery: SubsetQuery;
     build: (buildParams: {
-      qb: QB;
-      db: DI;
+      qb: DriverSpec[D]["queryBuilder"];
+      db: DriverSpec[D]["core"];
       select: SubsetQuery["select"];
       joins: SubsetQuery["joins"];
       virtual: string[];
-    }) => QB;
-    baseTable?: TableName<D>;
+    }) => DriverSpec[D]["queryBuilder"];
+    baseTable?: DriverSpec[D]["table"];
     debug?: boolean | "list" | "count";
-    db?: DI;
+    db?: DriverSpec[D]["core"];
     optimizeCountQuery?: boolean;
   }): Promise<{
     rows: any[];
     total?: number;
     subsetQuery: SubsetQuery;
-    qb: QB;
+    qb: DriverSpec[D]["queryBuilder"];
   }> {
-    const db = _db ?? (DB.getDB(subset.startsWith("A") ? "w" : "r") as DI);
-    const dbClient = DB.toClient(db as any) as CT;
+    const db = _db ?? DB.getDB(subset.startsWith("A") ? "w" : "r");
+    const dbClient = DB.toClient(db);
     baseTable =
-      baseTable ??
-      (inflection.pluralize(
-        inflection.underscore(this.modelName)
-      ) as TableName<D>);
+      baseTable ?? inflection.pluralize(inflection.underscore(this.modelName));
     const queryMode =
       params.queryMode ?? (params.id !== undefined ? "list" : "both");
 
     const { select, virtual, joins, loaders } = subsetQuery;
     const _qb = build({
-      qb: dbClient.from(baseTable).qb as QB,
+      qb: dbClient.from(baseTable).qb,
       db,
       select,
       joins,
@@ -138,11 +128,11 @@ export abstract class BaseModelClassAbstract<
         //   }
         // }
         this.applyJoins(
-          clonedQb as CT,
+          clonedQb,
           joins.filter((j) => needToJoin.includes(j.table))
         );
       } else {
-        this.applyJoins(clonedQb as CT, joins);
+        this.applyJoins(clonedQb, joins);
       }
 
       const parsedQuery = parser.astify(clonedQb.sql);
@@ -177,7 +167,7 @@ export abstract class BaseModelClassAbstract<
         // Note: Implementation depends on specific driver's QB type
         listQb = listQb
           .limit(params.num!)
-          .offset(params.num! * (params.page! - 1)) as any;
+          .offset(params.num! * (params.page! - 1));
       }
 
       listQb.select(select);
@@ -192,7 +182,12 @@ export abstract class BaseModelClassAbstract<
       return this.hydrate(rows);
     })();
 
-    return { rows, total, subsetQuery, qb: dbClient.qb as QB };
+    return {
+      rows,
+      total,
+      subsetQuery,
+      qb: dbClient.qb,
+    };
   }
 
   // async getInsertedIds(
@@ -244,7 +239,7 @@ export abstract class BaseModelClassAbstract<
   // }
 
   async useLoaders(
-    db: CT,
+    db: DriverSpec[D]["adapter"],
     rows: any[],
     loaders: SubsetQuery["loaders"]
   ): Promise<any[]> {
@@ -293,7 +288,7 @@ export abstract class BaseModelClassAbstract<
   }
 
   protected async buildHasManyQuery(
-    db: CT,
+    db: DriverSpec[D]["adapter"],
     loader: SubsetQuery["loaders"][number],
     fromIds: any[]
   ) {
@@ -302,7 +297,7 @@ export abstract class BaseModelClassAbstract<
 
     // qb = this.whereInQuery(qb, idColumn, fromIds);
     db.where([idColumn, "in", fromIds]).select([...loader.select, idColumn]);
-    qb = this.applyJoins(qb as CT, loader.oneJoins);
+    qb = this.applyJoins(qb, loader.oneJoins);
 
     return {
       subQ: qb,
@@ -311,7 +306,7 @@ export abstract class BaseModelClassAbstract<
   }
 
   protected async buildManyToManyQuery(
-    db: CT,
+    db: DriverSpec[D]["adapter"],
     loader: SubsetQuery["loaders"][number],
     fromIds: any[]
   ) {
@@ -325,7 +320,7 @@ export abstract class BaseModelClassAbstract<
     const throughTable = loader.manyJoin.through.table;
     const targetTable = loader.manyJoin.toTable;
 
-    qb = this.applyJoins(qb as CT, [
+    qb = this.applyJoins(qb, [
       {
         join: "inner",
         table: targetTable,
@@ -336,7 +331,7 @@ export abstract class BaseModelClassAbstract<
     ]);
 
     qb.where([idColumn, "in", fromIds]).select([...loader.select, idColumn]);
-    qb = this.applyJoins(qb as CT, loader.oneJoins);
+    qb = this.applyJoins(qb, loader.oneJoins);
 
     return {
       subQ: qb,

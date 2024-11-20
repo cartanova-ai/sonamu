@@ -8,12 +8,7 @@ import { UpsertBuilder } from "../upsert-builder";
 
 type TB = keyof Database;
 
-export class BaseModelClass extends BaseModelClassAbstract<
-  "kysely",
-  Kysely<Database>,
-  KyselyClient,
-  SelectQueryBuilder<Database, TB, any>
-> {
+export class BaseModelClass extends BaseModelClassAbstract<"kysely"> {
   constructor() {
     super();
     this._wdb = DB.getDB("w") as unknown as KyselyClient;

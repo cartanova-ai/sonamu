@@ -3,14 +3,10 @@ import _ from "lodash";
 import { Knex } from "knex";
 import { RawBuilder } from "kysely";
 import { BaseListParams } from "../utils/model";
-import { ClientType, DBPreset, DatabaseType, QueryBuilder } from "./types";
+import { DBPreset, DatabaseDriver, DriverSpec } from "./types";
 import { SubsetQuery } from "../types/types";
 
-export abstract class BaseModelAbstract<
-  D extends DatabaseType,
-  DB extends ClientType<D>,
-  QB extends QueryBuilder<D>,
-> {
+export abstract class BaseModelAbstract<D extends DatabaseDriver> {
   public modelName: string = "Unknown";
 
   abstract runSubsetQuery<T extends BaseListParams, U extends string>(options: {
@@ -19,22 +15,22 @@ export abstract class BaseModelAbstract<
     subset: U;
     subsetQuery: SubsetQuery;
     build: (buildParams: {
-      qb: QB;
-      db: DB;
+      qb: DriverSpec[D]["queryBuilder"];
+      db: DriverSpec[D]["adapter"];
       select: SubsetQuery["select"];
       joins: SubsetQuery["joins"];
       virtual: string[];
     }) => any;
     debug?: boolean | "list" | "count";
-    db?: DB;
+    db?: DriverSpec[D]["adapter"];
     optimizeCountQuery?: boolean;
   }): Promise<{
     rows: any[];
     total?: number;
     subsetQuery: SubsetQuery;
-    qb: QB;
+    qb: DriverSpec[D]["queryBuilder"];
   }>;
-  abstract getDB(which: DBPreset): DB;
+  abstract getDB(which: DBPreset): DriverSpec[D]["adapter"];
   abstract destroy(): Promise<void>;
   // abstract getInsertedIds(
   //   wdb: DB,
@@ -44,12 +40,12 @@ export abstract class BaseModelAbstract<
   //   chunkSize?: number
   // ): Promise<number[]>;
   abstract useLoaders(
-    db: DB,
+    db: DriverSpec[D]["adapter"],
     rows: any[],
     loaders: SubsetQuery["loaders"]
   ): Promise<any[]>;
   abstract getJoinClause(
-    db: DB,
+    db: DriverSpec[D]["adapter"],
     join: SubsetQuery["joins"][number]
   ): string | Knex.Raw<any> | RawBuilder<unknown>;
 

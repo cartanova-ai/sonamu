@@ -5,7 +5,7 @@ import { Kysely } from "kysely";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";
 import { RowWithId, batchUpdate } from "./_batch_update";
-import { Database, DatabaseInstance, DatabaseType, TableName } from "./types";
+import { Database, DatabaseDriver, DriverSpec } from "./types";
 import { DB } from "./db";
 
 type TableData = {
@@ -28,7 +28,7 @@ export function isRefField(field: any): field is UBRef {
   );
 }
 
-export class UpsertBuilder<D extends DatabaseType> {
+export class UpsertBuilder<D extends DatabaseDriver> {
   tables: Map<string, TableData>;
   constructor() {
     this.tables = new Map();
@@ -61,7 +61,7 @@ export class UpsertBuilder<D extends DatabaseType> {
   }
 
   register<T extends string>(
-    tableName: TableName<D>,
+    tableName: DriverSpec[D]["table"],
     row: {
       [key in T]?:
         | UBRef
@@ -148,23 +148,23 @@ export class UpsertBuilder<D extends DatabaseType> {
   }
 
   async upsert(
-    wdb: DatabaseInstance<D>,
-    tableName: TableName<D>,
+    wdb: DriverSpec[D]["core"],
+    tableName: DriverSpec[D]["table"],
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
   }
   async insertOnly(
-    wdb: DatabaseInstance<D>,
-    tableName: TableName<D>,
+    wdb: DriverSpec[D]["core"],
+    tableName: DriverSpec[D]["table"],
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
   }
 
   async upsertOrInsert(
-    _wdb: DatabaseInstance<D>,
-    tableName: TableName<D>,
+    _wdb: DriverSpec[D]["core"],
+    tableName: DriverSpec[D]["table"],
     mode: "upsert" | "insert",
     chunkSize?: number
   ): Promise<number[]> {
@@ -280,10 +280,10 @@ export class UpsertBuilder<D extends DatabaseType> {
 
   async updateBatch(
     wdb: Knex | Kysely<Database>,
-    tableName: TableName<D>,
+    tableName: DriverSpec[D]["table"],
     options?: {
       chunkSize?: number;
-      where?: string | string[];
+      where?: DriverSpec[D]["column"] | DriverSpec[D]["column"][];
     }
   ): Promise<void> {
     options = _.defaults(options, {
@@ -310,7 +310,7 @@ export class UpsertBuilder<D extends DatabaseType> {
     await batchUpdate(
       DB.toClient(wdb),
       tableName,
-      whereColumns,
+      whereColumns as string[],
       rows,
       options.chunkSize
     );

@@ -3,6 +3,7 @@ import {
   FileMigrationProviderProps,
   Kysely,
   MysqlDialectConfig,
+  ReferenceExpression,
   SelectQueryBuilder,
 } from "kysely";
 import { KnexClient } from "./drivers/knex-client";
@@ -10,33 +11,42 @@ import { KyselyClient } from "./drivers/kysely-client";
 import { PoolOptions } from "mysql2";
 
 export type DBPreset = "w" | "r";
-export type DatabaseType = "knex" | "kysely";
-export type DatabaseInstance<T extends DatabaseType> = T extends "knex"
-  ? Knex
-  : Kysely<Database>;
-export type ClientType<T extends DatabaseType> = T extends "knex"
-  ? KnexClient
-  : T extends "kysely"
-    ? KyselyClient
-    : never;
-export type TableName<T extends Database> = T extends "knex"
-  ? string
-  : keyof Database;
 
-export type QueryBuilder<T extends DatabaseType> = T extends "knex"
-  ? Knex.QueryBuilder
-  : SelectQueryBuilder<Database, keyof Database, {}>;
+export type DatabaseDriver = keyof DriverSpec;
+/**
+ * core: 실제 데이터베이스 라이브러리 인스턴스
+ * adapter: Sonamu의 래퍼 클라이언트 구현체
+ * queryBuilder: 쿼리빌더 인스턴스
+ * table/column: 테이블과 컬럼 타입 정보
+ */
+export interface DriverSpec {
+  knex: {
+    core: Knex;
+    adapter: KnexClient;
+    queryBuilder: Knex.QueryBuilder;
+    table: string;
+    column: string;
+  };
+  kysely: {
+    core: Kysely<Database>;
+    adapter: KyselyClient;
+    queryBuilder: SelectQueryBuilder<Database, keyof Database, {}>;
+    table: keyof Database;
+    column: ReferenceExpression<Database, keyof Database>;
+  };
+}
 
 export type WhereClause = [string, string, any];
-export interface DatabaseClient<T extends DatabaseType> {
-  from(table: string): ClientType<T>;
-  innerJoin(table: string, k1: string, k2: string): ClientType<T>;
-  leftJoin(table: string, k1: string, k2: string): ClientType<T>;
-  select(columns: string | string[]): ClientType<T>;
-  where(o: WhereClause): ClientType<T>;
-  orWhere(o: WhereClause | WhereClause[]): ClientType<T>;
+
+export interface DatabaseClient<T extends DatabaseDriver> {
+  from(table: string): DriverSpec[T]["adapter"];
+  innerJoin(table: string, k1: string, k2: string): DriverSpec[T]["adapter"];
+  leftJoin(table: string, k1: string, k2: string): DriverSpec[T]["adapter"];
+  select(columns: string | string[]): DriverSpec[T]["adapter"];
+  where(o: WhereClause): DriverSpec[T]["adapter"];
+  orWhere(o: WhereClause | WhereClause[]): DriverSpec[T]["adapter"];
   insert(table: string, data: Record<string, any>): Promise<void>;
-  first(): ClientType<T>;
+  first(): DriverSpec[T]["adapter"];
   execute(): Promise<any[]>;
 
   raw<R>(query: string, bindings?: any[]): Promise<R[]>;

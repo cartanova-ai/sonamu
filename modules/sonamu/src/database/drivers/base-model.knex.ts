@@ -7,12 +7,7 @@ import { KnexClient } from "./knex-client";
 import { DBPreset } from "../types";
 import { UpsertBuilder } from "../upsert-builder";
 
-export class BaseModelClass extends BaseModelClassAbstract<
-  "knex",
-  Knex,
-  KnexClient,
-  Knex.QueryBuilder
-> {
+export class BaseModelClass extends BaseModelClassAbstract<"knex"> {
   getDB(which: DBPreset): Knex {
     return DB.getDB(which) as Knex;
   }

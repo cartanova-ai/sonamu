@@ -10,8 +10,8 @@ import {
 import {
   Database,
   DatabaseClient,
+  DriverSpec,
   KyselyConfig,
-  QueryBuilder,
   WhereClause,
 } from "../types";
 import _ from "lodash";
@@ -52,8 +52,8 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
     };
   }
 
-  private _qb?: QueryBuilder<"kysely">;
-  set qb(qb: QueryBuilder<"kysely">) {
+  private _qb?: DriverSpec["kysely"]["queryBuilder"];
+  set qb(qb: DriverSpec["kysely"]["queryBuilder"]) {
     this._qb = qb;
   }
   get qb() {
@@ -202,7 +202,6 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
   }
 
   async execute(trx?: ExtendedKyselyTrx): Promise<any[]> {
-    console.debug(this.qb.compile().sql);
     if (trx) {
       const { rows } = await trx.executeQuery(this.qb.compile());
       return rows as any[];
