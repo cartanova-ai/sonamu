@@ -102,34 +102,3 @@ export function hydrate<T>(rows: T[]): T[] {
     return hydrated;
   });
 }
-
-export function mixinInstance(
-  class1: any,
-  target: any,
-  options?: {
-    excludeMethods?: string[];
-    state?: Record<string, any>;
-  }
-): void {
-  // 클래스의 프로퍼티를 복사
-  Object.defineProperties(target, options?.state ?? {});
-
-  // 클래스의 프로토타입을 순회하며 메서드를 복사
-  Object.getOwnPropertyNames(class1.prototype).forEach((name) => {
-    if ((options?.excludeMethods ?? []).includes(name)) return;
-
-    const descriptor = Object.getOwnPropertyDescriptor(class1.prototype, name);
-    if (!descriptor) return;
-
-    // getter/setter가 있는 경우 그대로 복사
-    if (descriptor.get || descriptor.set) {
-      Object.defineProperty(target, name, descriptor);
-      return;
-    }
-
-    // 일반 메서드인 경우 바인딩하여 복사
-    if (typeof descriptor.value === "function") {
-      (target as any)[name] = descriptor.value.bind(target);
-    }
-  });
-}

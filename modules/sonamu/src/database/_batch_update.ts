@@ -3,8 +3,12 @@
   https://github.com/knex/knex/issues/5716
 */
 
-import { ExtendedKnexTrx, KnexClient } from "./drivers/knex/client";
-import { ExtendedKyselyTrx, KyselyClient } from "./drivers/kysely/client";
+import { Knex } from "knex";
+import { DB } from "./db";
+import { KnexClient } from "./drivers/knex/client";
+import { KyselyClient } from "./drivers/kysely/client";
+import { Transaction } from "kysely";
+import { Database } from "./types";
 
 export type RowWithId<Id extends string> = {
   [key in Id]: any;
@@ -25,7 +29,7 @@ export async function batchUpdate<Id extends string>(
   ids: Id[],
   rows: RowWithId<Id>[],
   chunkSize = 50,
-  trx: ExtendedKnexTrx | ExtendedKyselyTrx | null = null
+  trx: Knex.Transaction | Transaction<Database> | null = null
 ) {
   const chunks: RowWithId<Id>[][] = [];
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -34,7 +38,7 @@ export async function batchUpdate<Id extends string>(
 
   const executeUpdate = async (
     chunk: RowWithId<Id>[],
-    transaction: ExtendedKnexTrx | ExtendedKyselyTrx
+    transaction: KyselyClient | KnexClient
   ) => {
     const sql = generateBatchUpdateSQL(db, tableName, chunk, ids);
     return transaction.raw(sql);
@@ -42,7 +46,7 @@ export async function batchUpdate<Id extends string>(
 
   if (trx) {
     for (const chunk of chunks) {
-      await executeUpdate(chunk, trx);
+      await executeUpdate(chunk, DB.toClient(trx));
     }
   } else {
     await db.trx(async (newTrx) => {

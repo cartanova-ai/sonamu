@@ -3,7 +3,6 @@ import { DatabaseClient, KnexConfig, WhereClause } from "../../types";
 import { asArray } from "../../../utils/model";
 import _ from "lodash";
 import { KnexGenerator } from "./generator";
-import { mixinInstance } from "../../../utils/utils";
 
 // 확장된 Transaction 타입 정의
 export type ExtendedKnexTrx = Knex.Transaction & DatabaseClient<"knex">;
@@ -167,30 +166,10 @@ export class KnexClient implements DatabaseClient<"knex"> {
     await this.knex(table).truncate();
   }
 
-  trx(callback: (trx: ExtendedKnexTrx) => Promise<any>) {
-    return this.knex.transaction((trx) => {
-      const extendedTrx = trx as ExtendedKnexTrx;
-
-      mixinInstance(KnexClient, extendedTrx, {
-        excludeMethods: ["trx"],
-        state: {
-          _qb: {
-            value: this._qb,
-            writable: true,
-          },
-          _config: {
-            value: this._config,
-            writable: true,
-          },
-          knex: {
-            value: trx,
-            writable: false,
-          },
-        },
-      });
-
-      return callback(extendedTrx);
-    });
+  trx(callback: (trx: KnexClient) => Promise<any>) {
+    return this.knex.transaction((trx) =>
+      callback(new KnexClient(undefined, trx))
+    );
   }
 
   destroy() {

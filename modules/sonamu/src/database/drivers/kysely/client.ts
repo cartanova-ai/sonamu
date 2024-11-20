@@ -17,10 +17,8 @@ import {
 import _ from "lodash";
 import { asArray } from "../../../utils/model";
 import { createPool } from "mysql2";
-import { mixinInstance } from "../../../utils/utils";
 
-type NonNever<T> = T extends never ? T : T;
-type TB = NonNever<keyof Database>;
+type TB = keyof Database;
 type TE = TB & string;
 
 // 확장된 Transaction 타입 정의
@@ -238,31 +236,10 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
     await sql`truncate table ${sql.table(table)}`.execute(this.kysely);
   }
 
-  trx<T>(callback: (trx: ExtendedKyselyTrx) => Promise<T>) {
-    return this.kysely.transaction().execute(async (trx) => {
-      // 트랜잭션 객체를 확장
-      const extendedTrx = trx as ExtendedKyselyTrx;
-
-      mixinInstance(KyselyClient, extendedTrx, {
-        excludeMethods: ["trx"],
-        state: {
-          _qb: {
-            value: this._qb,
-            writable: true,
-          },
-          _config: {
-            value: this._config,
-            writable: true,
-          },
-          kysely: {
-            value: trx,
-            writable: false,
-          },
-        },
-      });
-
-      return callback(extendedTrx);
-    });
+  trx<T>(callback: (trx: KyselyClient) => Promise<T>) {
+    return this.kysely
+      .transaction()
+      .execute(async (trx) => callback(new KyselyClient(undefined, trx)));
   }
 
   destroy() {
