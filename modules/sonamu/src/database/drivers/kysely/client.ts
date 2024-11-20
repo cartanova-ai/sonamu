@@ -72,7 +72,8 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
   }
 
   get sql() {
-    return this.qb.compile().sql;
+    const bindings = this.qb.compile().parameters.map((p) => JSON.stringify(p));
+    return this.qb.compile().sql.replace(/\?/g, () => bindings.shift()!);
   }
 
   constructor(config?: KyselyConfig, kysely?: Kysely<Database>) {
