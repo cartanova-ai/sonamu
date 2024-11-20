@@ -7,6 +7,7 @@ import { KyselyClient } from "./client";
 import { UpsertBuilder } from "../../upsert-builder";
 import { UndirectedOrderByExpression } from "kysely/dist/cjs/parser/order-by-parser";
 import { EntityManager } from "../../../entity/entity-manager";
+import inflection from "inflection";
 
 type TB = keyof Database;
 
@@ -68,7 +69,7 @@ export class BaseModelClass extends BaseModelClassAbstract<"kysely"> {
     // FIXME: 조인 2개 이상일 때 처리
     const [table, column] = _column.includes(".")
       ? _column.split(".")
-      : [this.modelName, _column];
+      : [inflection.tableize(this.modelName), _column];
 
     if (order !== "asc" && order !== "desc") {
       throw new Error("parseOrderBy: Invalid order");
@@ -77,7 +78,7 @@ export class BaseModelClass extends BaseModelClassAbstract<"kysely"> {
       throw new Error("parseOrderBy: Invalid column");
     }
 
-    const entity = EntityManager.get(table);
+    const entity = EntityManager.get(inflection.classify(table));
     if (!entity.props.find((p) => p.name === column)) {
       throw new Error("parseOrderBy: 현재 엔티티에 존재하지 않는 컬럼입니다: ");
     }
