@@ -193,8 +193,6 @@ export class KnexGenerator extends CodeGenerator {
     entityForeigns: MigrationForeign[],
     dbForeigns: MigrationForeign[]
   ): Promise<GenMigrationCode[]> {
-    // console.log({ entityForeigns, dbForeigns });
-
     const getKey = (mf: MigrationForeign): string => {
       return [mf.columns.join("-"), mf.to].join("///");
     };
@@ -435,7 +433,6 @@ export const ${entityId}Model = new ${entityId}ModelClass();
           `${column.type}('${column.name}', ${column.precision}, ${column.scale})`
         );
       } else {
-        // type, length
         let columnType = column.type;
         let extraType: string | undefined;
         if (columnType.includes("text") && columnType !== "text") {
@@ -452,10 +449,8 @@ export const ${entityId}Model = new ${entityId}ModelClass();
         chains.push("unsigned()");
       }
 
-      // nullable
       chains.push(column.nullable ? "nullable()" : "notNullable()");
 
-      // defaultTo
       if (column.defaultTo !== undefined) {
         if (
           typeof column.defaultTo === "string" &&

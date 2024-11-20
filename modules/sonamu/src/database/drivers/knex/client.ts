@@ -237,18 +237,4 @@ export class KnexClient implements DatabaseClient<"knex"> {
   async rollbackAll() {
     return this.knex.migrate.rollback(undefined, true);
   }
-
-  // async getConnectionInfo(): Promise<{
-  //   host: string;
-  //   port: number;
-  //   database: string;
-  //   user: string;
-  // }> {
-  //   return {
-  //     host: this.knex.client.config.connection.host ?? "localhost",
-  //     port: this.knex.client.config.connection.port ?? 3306,
-  //     database: this.knex.client.config.connection.database,
-  //     user: this.knex.client.config.connection.user,
-  //   };
-  // }
 }

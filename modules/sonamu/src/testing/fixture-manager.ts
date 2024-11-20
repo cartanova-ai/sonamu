@@ -347,9 +347,6 @@ export class FixtureManagerClass {
           );
           const relatedIds = _relatedIds.map((r) => parseInt(r.id));
 
-          // db(throughTable)
-          // .where(fromColumn, row.id)
-          // .pluck(toColumn);
           record.columns[prop.name].value = relatedIds;
         } else if (isHasManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
@@ -659,30 +656,6 @@ export class FixtureManagerClass {
 
     const [uniqueFound] = await uniqueQuery.execute();
     return uniqueFound;
-
-    // for (const index of uniqueIndexes) {
-    //   // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
-    //   const containsNull = index.columns.some((column) => {
-    //     const field = column.split("_id")[0];
-    //     return fixture.columns[field].value === null;
-    //   });
-    //   if (containsNull) {
-    //     continue;
-    //   }
-
-    //   uniqueQuery = uniqueQuery.orWhere((qb) => {
-    //     for (const column of index.columns) {
-    //       const field = column.split("_id")[0];
-
-    //       if (Array.isArray(fixture.columns[field].value)) {
-    //         qb.whereIn(column, fixture.columns[field].value);
-    //       } else {
-    //         qb.andWhere(column, fixture.columns[field].value);
-    //       }
-    //     }
-    //   });
-    // }
-    // const [uniqueFound] = await uniqueQuery;
   }
 }
 export const FixtureManager = new FixtureManagerClass();

@@ -123,14 +123,12 @@ export function mixinInstance(
 
     // getter/setter가 있는 경우 그대로 복사
     if (descriptor.get || descriptor.set) {
-      console.debug("Copying getter/setter:", name);
       Object.defineProperty(target, name, descriptor);
       return;
     }
 
     // 일반 메서드인 경우 바인딩하여 복사
     if (typeof descriptor.value === "function") {
-      console.debug("Copying method:", name);
       (target as any)[name] = descriptor.value.bind(target);
     }
   });

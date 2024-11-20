@@ -206,7 +206,7 @@ export class Migrator {
           try {
             return await tConn.status();
           } catch (err) {
-            console.debug(err);
+            console.error(err);
             return "error";
           }
         })();
@@ -214,7 +214,7 @@ export class Migrator {
           try {
             return await tConn.getMigrations();
           } catch (err) {
-            console.debug(err);
+            console.error(err);
             return [];
           }
         })();

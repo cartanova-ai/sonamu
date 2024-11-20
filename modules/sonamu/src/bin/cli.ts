@@ -187,7 +187,6 @@ async function fixture_init() {
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
   for await (const { label, connKey } of targets) {
     const config = DB.connectionInfo[connKey];
-    console.debug({ label, connKey, config });
 
     if (
       label === "(LOCAL) Fixture DB" &&

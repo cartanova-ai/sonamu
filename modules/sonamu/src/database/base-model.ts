@@ -74,11 +74,9 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
     dbClient.qb = _qb;
     const qb = dbClient;
 
-    // Count query
     const total = await (async () => {
       if (queryMode === "list") return undefined;
 
-      // const clonedQb = this.clearQueryParts(qb, ["order", "offset", "limit"]);
       const clonedQb = qb
         .clone()
         .clearQueryParts(["order", "offset", "limit"])
@@ -95,38 +93,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
           )
         );
 
-        // for (const join of joins.filter((j) => needToJoin.includes(j.table))) {
-        //   if (isCustomJoinClause(join)) {
-        //     if (clonedQb instanceof KyselyClient) {
-        //       throw new Error("Custom join clause is not supported in Kysely");
-        //     }
-        //     if (join.join === "inner") {
-        //       clonedQb.qb.innerJoin(
-        //         `${join.table} as ${join.as}`,
-        //         join.custom as any
-        //       );
-        //     } else {
-        //       clonedQb.qb.leftJoin(
-        //         `${join.table} as ${join.as}`,
-        //         join.custom as any
-        //       );
-        //     }
-        //   } else {
-        //     if (join.join === "inner") {
-        //       clonedQb.innerJoin(
-        //         `${join.table} as ${join.as}`,
-        //         join.from,
-        //         join.to
-        //       );
-        //     } else if (join.join === "outer") {
-        //       clonedQb.leftJoin(
-        //         `${join.table} as ${join.as}`,
-        //         join.from,
-        //         join.to
-        //       );
-        //     }
-        //   }
-        // }
         this.applyJoins(
           clonedQb,
           joins.filter((j) => needToJoin.includes(j.table))
@@ -142,7 +108,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
         throw new Error("Invalid query");
       }
 
-      // `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`;
       const countColumn = `${getTableName(q.columns[0].expr)}.${q.columns[0].expr.column}`;
       clonedQb.clearSelect().count(countColumn, "total").first();
       if (q.distinct) {
@@ -157,14 +122,11 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
       return total;
     })();
 
-    // List query
     const rows = await (async () => {
       if (queryMode === "count") return [];
 
       let listQb = qb;
       if (params.num !== 0) {
-        // Apply pagination
-        // Note: Implementation depends on specific driver's QB type
         listQb = listQb
           .limit(params.num!)
           .offset(params.num! * (params.page! - 1));
@@ -190,54 +152,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
     };
   }
 
-  // async getInsertedIds(
-  //   wdb: CT,
-  //   rows: any[],
-  //   tableName: string,
-  //   unqKeyFields: string[],
-  //   chunkSize: number = 500
-  // ): Promise<number[]> {
-  //   if (!wdb) {
-  //     wdb = this.getCli;
-  //   }
-
-  //   let unqKeys: string[];
-  //   let whereInField: any, selectField: string;
-
-  //   if (unqKeyFields.length > 1) {
-  //     // Handle composite keys
-  //     whereInField = this.rawQuery(
-  //       wdb,
-  //       `CONCAT_WS('_', ${unqKeyFields.join(",")})`
-  //     );
-  //     selectField = `${whereInField} as tmpUid`;
-  //     unqKeys = rows.map((row) =>
-  //       unqKeyFields.map((field) => row[field]).join("_")
-  //     );
-  //   } else {
-  //     whereInField = unqKeyFields[0];
-  //     selectField = unqKeyFields[0];
-  //     unqKeys = rows.map((row) => row[unqKeyFields[0]]);
-  //   }
-
-  //   const chunks = _.chunk(unqKeys, chunkSize);
-  //   let resultIds: number[] = [];
-
-  //   for (let chunk of chunks) {
-  //     const qb = this.createQueryBuilder(wdb, tableName);
-  //     const dbRows = await this.executeQuery(
-  //       this.whereInQuery(
-  //         this.applySelect(qb, ["id", selectField]),
-  //         whereInField,
-  //         chunk
-  //       )
-  //     );
-  //     resultIds = resultIds.concat(dbRows.map((row) => parseInt(row.id)));
-  //   }
-
-  //   return resultIds;
-  // }
-
   async useLoaders(
     db: DriverSpec[D]["adapter"],
     rows: any[],
@@ -254,12 +168,12 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
       let toCol: string;
 
       if (loader.manyJoin.through === undefined) {
-        // HasMany relationship
+        // HasMany
         const { subQ, col } = await this.buildHasManyQuery(db, loader, fromIds);
         subRows = await subQ.execute();
         toCol = col;
       } else {
-        // ManyToMany relationship
+        // ManyToMany
         const { subQ, col } = await this.buildManyToManyQuery(
           db,
           loader,
@@ -270,7 +184,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
       }
 
       if (loader.loaders) {
-        // Handle nested loaders recursively
         subRows = await this.useLoaders(db, subRows, loader.loaders);
       }
 
@@ -295,7 +208,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
     const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
     let qb = db.from(loader.manyJoin.toTable);
 
-    // qb = this.whereInQuery(qb, idColumn, fromIds);
     db.where([idColumn, "in", fromIds]).select([...loader.select, idColumn]);
     qb = this.applyJoins(qb, loader.oneJoins);
 
@@ -316,7 +228,6 @@ export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
     const idColumn = `${loader.manyJoin.through.table}.${loader.manyJoin.through.fromCol}`;
     let qb = db.from(loader.manyJoin.through.table);
 
-    // Join with target table
     const throughTable = loader.manyJoin.through.table;
     const targetTable = loader.manyJoin.toTable;
 

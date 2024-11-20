@@ -17,7 +17,6 @@ import {
 import _ from "lodash";
 import { asArray } from "../../../utils/model";
 import { createPool } from "mysql2";
-import { inspect } from "util";
 import { mixinInstance } from "../../../utils/utils";
 
 type NonNever<T> = T extends never ? T : T;
@@ -308,18 +307,15 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
   async migrate() {
     const { results, error } = await this.migrator.migrateToLatest();
     if (error) {
-      console.debug("Migrate error:", inspect(error, false, null, true));
       throw error;
     }
 
-    console.debug("Migrate results:", inspect(results, false, null, true));
     return [0, results?.map((r) => r.migrationName)];
   }
 
   async rollback() {
     const { results, error } = await this.migrator.migrateDown();
     if (error) {
-      console.debug("Migrate error:", inspect(error, false, null, true));
       throw error;
     }
 
@@ -339,24 +335,6 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
         console.log("RollbackAll completed");
         break;
       }
-
-      console.debug("Rollback results:", results[0].migrationName);
     }
   }
-
-  // async getConnectionInfo(): Promise<{
-  //   host: string;
-  //   port: number;
-  //   database: string;
-  //   user: string;
-  // }> {
-  //   const {
-  //     rows: [info],
-  //   }: { rows: any[] } = await sql`
-  //     SELECT host, port, db as database, user
-  //     FROM information_schema.PROCESSLIST
-  //     WHERE ID = CONNECTION_ID();
-  //   `.execute(this.kysely);
-  //   return info;
-  // }
 }

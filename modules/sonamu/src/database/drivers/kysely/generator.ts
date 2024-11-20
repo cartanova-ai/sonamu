@@ -453,7 +453,6 @@ export const ${entityId}Model = new ${entityId}ModelClass();
       } else if (column.type.includes("text")) {
         str = `.addColumn("${column.name}", sql\`${column.type.toUpperCase()}\``;
       } else {
-        // type, length
         let columnType: string = column.type;
         // FIXME: add double
         if (columnType === "float") {
@@ -469,12 +468,10 @@ export const ${entityId}Model = new ${entityId}ModelClass();
         chains.push("unsigned()");
       }
 
-      // nullable
       if (!column.nullable) {
         chains.push("notNull()");
       }
 
-      // defaultTo
       if (column.defaultTo !== undefined) {
         if (
           typeof column.defaultTo === "string" &&

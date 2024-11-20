@@ -20,10 +20,6 @@ export class BaseModelClass extends BaseModelClassAbstract<"knex"> {
     return new UpsertBuilder<"knex">();
   }
 
-  protected createQueryBuilder(db: Knex, baseTable: string): Knex.QueryBuilder {
-    return db.from(baseTable);
-  }
-
   protected applyJoins(
     clonedQb: KnexClient,
     joins: SubsetQuery["joins"]

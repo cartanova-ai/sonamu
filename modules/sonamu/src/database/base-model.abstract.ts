@@ -32,13 +32,6 @@ export abstract class BaseModelAbstract<D extends DatabaseDriver> {
   }>;
   abstract getDB(which: DBPreset): DriverSpec[D]["adapter"];
   abstract destroy(): Promise<void>;
-  // abstract getInsertedIds(
-  //   wdb: DB,
-  //   rows: any[],
-  //   tableName: string,
-  //   unqKeyFields: string[],
-  //   chunkSize?: number
-  // ): Promise<number[]>;
   abstract useLoaders(
     db: DriverSpec[D]["adapter"],
     rows: any[],
