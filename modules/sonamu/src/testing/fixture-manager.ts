@@ -21,8 +21,8 @@ import { readFileSync, writeFileSync } from "fs";
 import { RelationGraph } from "./_relation-graph";
 import { SonamuDBConfig, WhereClause } from "../database/types";
 import { DB } from "../database/db";
-import { KyselyClient } from "../database/drivers/kysely-client";
-import { KnexClient } from "../database/drivers/knex-client";
+import { KyselyClient } from "../database/drivers/kysely/client";
+import { KnexClient } from "../database/drivers/knex/client";
 
 export class FixtureManagerClass {
   private relationGraph = new RelationGraph();

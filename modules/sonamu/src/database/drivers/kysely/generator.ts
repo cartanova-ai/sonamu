@@ -6,9 +6,9 @@ import {
   MigrationColumn,
   MigrationForeign,
   MigrationIndex,
-} from "../../types/types";
-import { CodeGenerator } from "../code-generator";
-import { EntityManager } from "../../entity/entity-manager";
+} from "../../../types/types";
+import { CodeGenerator } from "../../code-generator";
+import { EntityManager } from "../../../entity/entity-manager";
 
 export class KyselyGenerator extends CodeGenerator {
   async generateCreateCode_ColumnAndIndexes(
@@ -383,8 +383,10 @@ class ${entityId}ModelClass extends BaseModelClass {
         // orderBy
         if (params.orderBy) {
           // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb = qb.orderBy("${entity.table}." + orderByField, orderByDirec as any);
+          const [orderByField, orderByDirec] = this.parseOrderBy(
+            params.orderBy
+          );
+          qb = qb.orderBy(orderByField, orderByDirec);
         }
 
         return qb;

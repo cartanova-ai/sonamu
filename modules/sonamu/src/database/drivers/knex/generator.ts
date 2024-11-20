@@ -7,9 +7,9 @@ import {
   MigrationColumn,
   MigrationForeign,
   MigrationIndex,
-} from "../../types/types";
-import { CodeGenerator } from "../code-generator";
-import { EntityManager } from "../../entity/entity-manager";
+} from "../../../types/types";
+import { CodeGenerator } from "../../code-generator";
+import { EntityManager } from "../../../entity/entity-manager";
 
 export class KnexGenerator extends CodeGenerator {
   async generateCreateCode_ColumnAndIndexes(

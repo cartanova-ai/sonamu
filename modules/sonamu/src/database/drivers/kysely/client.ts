@@ -13,12 +13,12 @@ import {
   DriverSpec,
   KyselyConfig,
   WhereClause,
-} from "../types";
+} from "../../types";
 import _ from "lodash";
-import { asArray } from "../../utils/model";
+import { asArray } from "../../../utils/model";
 import { createPool } from "mysql2";
 import { inspect } from "util";
-import { mixinInstance } from "../../utils/utils";
+import { mixinInstance } from "../../../utils/utils";
 
 type NonNever<T> = T extends never ? T : T;
 type TB = NonNever<keyof Database>;

@@ -6,8 +6,8 @@ import {
   ReferenceExpression,
   SelectQueryBuilder,
 } from "kysely";
-import { KnexClient } from "./drivers/knex-client";
-import { KyselyClient } from "./drivers/kysely-client";
+import { KnexClient } from "./drivers/knex/client";
+import { KyselyClient } from "./drivers/kysely/client";
 import { PoolOptions } from "mysql2";
 
 export type DBPreset = "w" | "r";

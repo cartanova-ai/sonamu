@@ -25,8 +25,8 @@ import {
   SonamuKnexDBConfig,
   SonamuKyselyDBConfig,
 } from "../database/types";
-import { KnexClient } from "../database/drivers/knex-client";
-import { KyselyClient } from "../database/drivers/kysely-client";
+import { KnexClient } from "../database/drivers/knex/client";
+import { KyselyClient } from "../database/drivers/kysely/client";
 
 let migrator: Migrator;
 

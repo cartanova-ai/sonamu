@@ -1,8 +1,8 @@
-import { SonamuDBBaseConfig } from "./types";
-import { DBKnexClass } from "./db.knex";
 import path from "path";
-import { DBKyselyClass } from "./db.kysely";
 import { findApiRootPath } from "../utils/utils";
+import { DBKnexClass } from "./drivers/knex/db";
+import { DBKyselyClass } from "./drivers/kysely/db";
+import { SonamuDBBaseConfig } from "./types";
 
 export const DB = (() => {
   const dbConfigPath: string = path.join(

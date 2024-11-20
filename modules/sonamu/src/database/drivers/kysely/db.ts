@@ -8,12 +8,12 @@ import {
   KyselyBaseConfig,
   KyselyConfig,
   SonamuKyselyDBConfig,
-} from "./types";
+} from "../../types";
 import { FileMigrationProviderProps, Kysely, MysqlDialect, sql } from "kysely";
-import { KyselyClient } from "./drivers/kysely-client";
-import { DBClass } from "./db.abstract";
-import { Sonamu } from "../api";
-import { KyselyGenerator } from "./drivers/kysely-generator";
+import { KyselyClient } from "./client";
+import { DBClass } from "../../db.abstract";
+import { Sonamu } from "../../../api";
+import { KyselyGenerator } from "./generator";
 
 export class DBKyselyClass extends DBClass {
   public generator: KyselyGenerator = new KyselyGenerator();

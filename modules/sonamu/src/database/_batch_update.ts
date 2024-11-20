@@ -3,8 +3,8 @@
   https://github.com/knex/knex/issues/5716
 */
 
-import { ExtendedKnexTrx, KnexClient } from "./drivers/knex-client";
-import { ExtendedKyselyTrx, KyselyClient } from "./drivers/kysely-client";
+import { ExtendedKnexTrx, KnexClient } from "./drivers/knex/client";
+import { ExtendedKyselyTrx, KyselyClient } from "./drivers/kysely/client";
 
 export type RowWithId<Id extends string> = {
   [key in Id]: any;
@@ -38,7 +38,6 @@ export async function batchUpdate<Id extends string>(
   ) => {
     const sql = generateBatchUpdateSQL(db, tableName, chunk, ids);
     return transaction.raw(sql);
-    // return db.raw(sql).(transaction);
   };
 
   if (trx) {

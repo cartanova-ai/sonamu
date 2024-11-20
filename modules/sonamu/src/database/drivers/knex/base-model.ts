@@ -1,11 +1,11 @@
 // base-model.knex.ts
 import { Knex } from "knex";
-import { SubsetQuery, isCustomJoinClause } from "../../types/types";
-import { BaseModelClassAbstract } from "../base-model";
-import { DB } from "../db";
-import { KnexClient } from "./knex-client";
-import { DBPreset } from "../types";
-import { UpsertBuilder } from "../upsert-builder";
+import { SubsetQuery, isCustomJoinClause } from "../../../types/types";
+import { BaseModelClassAbstract } from "../../base-model";
+import { DB } from "../../db";
+import { KnexClient } from "./client";
+import { DBPreset } from "../../types";
+import { UpsertBuilder } from "../../upsert-builder";
 
 export class BaseModelClass extends BaseModelClassAbstract<"knex"> {
   getDB(which: DBPreset): Knex {

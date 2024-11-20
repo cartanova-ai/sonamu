@@ -1,10 +1,10 @@
 import _ from "lodash";
-import { DBPreset, KnexBaseConfig, SonamuKnexDBConfig } from "./types";
+import { DBPreset, KnexBaseConfig, SonamuKnexDBConfig } from "../../types";
 import knex, { Knex } from "knex";
-import { KnexClient } from "./drivers/knex-client";
-import { DBClass } from "./db.abstract";
-import { attachOnDuplicateUpdate } from "./knex-plugins/knex-on-duplicate-update";
-import { KnexGenerator } from "./drivers/knex-generator";
+import { KnexClient } from "./client";
+import { DBClass } from "../../db.abstract";
+import { attachOnDuplicateUpdate } from "./plugins/knex-on-duplicate-update";
+import { KnexGenerator } from "./generator";
 
 export class DBKnexClass extends DBClass {
   public generator: KnexGenerator = new KnexGenerator();

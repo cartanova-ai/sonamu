@@ -16,14 +16,14 @@
       "types": "./dist/index.d.ts"
     },
     "./kysely": {
-      "import": "./dist/database/drivers/base-model.kysely.mjs",
-      "require": "./dist/database/drivers/base-model.kysely.js",
-      "types": "./dist/database/drivers/base-model.kysely.d.mts"
+      "import": "./dist/database/drivers/kysely/base-model.mjs",
+      "require": "./dist/database/drivers/kysely/base-model.js",
+      "types": "./dist/database/drivers/kysely/base-model.d.mts"
     },
     "./knex": {
-      "import": "./dist/database/drivers/base-model.knex.mjs",
-      "require": "./dist/database/drivers/base-model.knex.js",
-      "types": "./dist/database/drivers/base-model.knex.d.mts"
+      "import": "./dist/database/drivers/knex/base-model.mjs",
+      "require": "./dist/database/drivers/knex/base-model.js",
+      "types": "./dist/database/drivers/knex/base-model.d.mts"
     }
   },
   "scripts": {

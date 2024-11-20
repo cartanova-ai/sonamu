@@ -1,15 +1,17 @@
 import { Knex } from "knex";
 import { Kysely } from "kysely";
+import path from "path";
+import { KnexClient } from "./drivers/knex/client";
+import { KyselyClient } from "./drivers/kysely/client";
 import {
+  SonamuDBConfig,
   DBPreset,
   Database,
-  KnexConfig,
   SonamuDBBaseConfig,
-  SonamuDBConfig,
+  KnexConfig,
 } from "./types";
-import { KyselyClient } from "./drivers/kysely-client";
-import { KnexClient } from "./drivers/knex-client";
-import path from "path";
+
+// db.ts에 포함시킬 경우 순환참조 발생
 
 export abstract class DBClass {
   public _fullConfig?: SonamuDBConfig;

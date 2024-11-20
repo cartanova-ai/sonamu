@@ -37,8 +37,8 @@ import { Entity } from "./entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { DB } from "../database/db";
-import { KnexClient } from "../database/drivers/knex-client";
-import { KyselyClient } from "../database/drivers/kysely-client";
+import { KnexClient } from "../database/drivers/knex/client";
+import { KyselyClient } from "../database/drivers/kysely/client";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {

@@ -1,9 +1,9 @@
 import knex, { Knex } from "knex";
-import { DatabaseClient, KnexConfig, WhereClause } from "../types";
-import { asArray } from "../../utils/model";
+import { DatabaseClient, KnexConfig, WhereClause } from "../../types";
+import { asArray } from "../../../utils/model";
 import _ from "lodash";
-import { KnexGenerator } from "./knex-generator";
-import { mixinInstance } from "../../utils/utils";
+import { KnexGenerator } from "./generator";
+import { mixinInstance } from "../../../utils/utils";
 
 // 확장된 Transaction 타입 정의
 export type ExtendedKnexTrx = Knex.Transaction & DatabaseClient<"knex">;
