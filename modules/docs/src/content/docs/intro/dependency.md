@@ -9,11 +9,15 @@ description: A guide in my new Starlight docs site.
 
   - 18버전 이상의 Node.js가 설치되어 있어야 합니다.
 
-- yarn
+- yarn berry
 
-  - yarn이 global 설치되어 있어야 합니다.
+  - yarn을 설치합니다.
     ```shell
     npm i -g yarn
+    ```
+  - yarn berry로 설정합니다.
+    ```shell
+    yarn set version berry
     ```
 
 - Docker Desktop
@@ -32,10 +36,9 @@ description: A guide in my new Starlight docs site.
   - Sonamu는 Fastify를 통해 웹서버를 서빙하며, 따라서 웹서버와 관련된 모든 추가 기능(e.g formbody, logging, static, cors, session, cookie, passport, file upload 등)은 Fastify Ecosystem 을 통해 구현 가능합니다.
   - 참고: [Fastify Plugins](https://fastify.dev/docs/latest/Reference/Plugins)
 
-- [knex.js](https://knexjs.org/) + [mysql2](https://www.npmjs.com/package/mysql2)
+- [mysql2](https://www.npmjs.com/package/mysql2) + [Knex.js](https://knexjs.org/) or [Kysely](https://kysely.dev/)
 
-  - Knex.js는 Node.js에서 가장 널리 사용되는 쿼리 빌더 라이브러리입니다.
-  - Sonamu는 쿼리빌드, 마이그레이션 실행 등 DB와 직접적으로 통신하는 모든 작업에 Knex.js를 사용합니다.
+  - Sonamu는 쿼리빌드, 마이그레이션 실행 등 DB와 직접적으로 통신하는 모든 작업에 Knex.js 혹은 Kysely를 사용합니다.
   - RDB는 MySQL에 최적화되어 있으며, 추후 PostgreSQL, SQLite를 서포트할 계획이 있습니다.
 
 - [Zod](https://zod.dev/)
@@ -54,7 +57,7 @@ description: A guide in my new Starlight docs site.
 
 ## 문서 구조
 
-- `explanation`
+- `introduction`
   - Sonamu에 대해 설명하는 문서
 - `tutorial`
   - Sonamu를 기반으로 간단한 프로젝트를 만드는 튜토리얼입니다.

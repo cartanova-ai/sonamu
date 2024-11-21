@@ -33,10 +33,11 @@ root
 │   │   ├── index.ts
 │   │   ├── application
 │   │   │   └── <Model>
-│   │   │   ├── <Model>.entity.json
-│   │   │   ├── <Model>.model.ts
-│   │   │   └── <Model>.types.ts
+│   │   │       ├── <Model>.entity.json
+│   │   │       ├── <Model>.model.ts
+│   │   │       └── <Model>.types.ts
 │   │   ├── configs
+│   │   │   └── db.ts
 │   │   ├── migrations
 │   │   └── testing
 │   └── yarn.lock
@@ -69,8 +70,6 @@ root
     "rootDir": "./src",
     // 컴파일된 결과물이 생성될 디렉터리 - 소나무의 코드 생성 기능을 위해 필요
     "outDir": "./dist",
-    // CommonJS/ES Modules 간 상호 운용성을 위해 필요
-    "esModuleInterop": true,
     // 데코레이터 문법 지원을 위해 필요 (소나무 API 정의에 사용)
     "experimentalDecorators": true,
     // 데코레이터 메타데이터 생성 지원을 위해 필요
@@ -109,15 +108,20 @@ root
 
 Sonamu는 `configs/db.ts` 파일을 통해 데이터베이스 설정을 관리합니다. 이 파일은 `SonamuDBBaseConfig` 타입을 정의하고, `defaultOptions`와 `environments`를 통해 데이터베이스 설정을 관리합니다.
 
+`knex`와 `kysely` 중 선택하여 사용할 수 있으며, `defaultOptions`에 각 라이브러리의 설정을 정의할 수 있습니다.
+
+#### Knex 설정 예시
+
 ```typescript db.ts
 import { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {
+  client: "knex",
   database: "my_database",
   defaultOptions: {
     connection: {
       host: "localhost",
-      user: "root",
+      user: "user",
       password: "password",
     },
   },
@@ -126,7 +130,7 @@ const baseconfig: SonamuDBBaseConfig = {
 export default baseconfig;
 ```
 
-위 코드는 `SonamuDBBaseConfig`를 정의하고 `defaultOptions`에 기본 연결 정보를 설정한 예시입니다. `defaultOptions`는 `Knex`의 `knex.Config`전와 동일한 구조로, 모든 데이터베이스 연결에 적용됩니다.
+위 코드는 `SonamuDBBaseConfig`를 정의하고 `defaultOptions`에 기본 연결 정보를 설정한 예시입니다. `defaultOptions`는 `Knex`의 `knex.Config`와 동일한 구조로, 모든 데이터베이스 연결에 적용됩니다.
 
 `SonamuDBBaseConfig`는 아래와 같은 주요 설정들을 포함할 수 있습니다.
 
@@ -156,6 +160,7 @@ type SonamuDBBaseConfig = {
     };
     debug?: boolean; // SQL 디버그 모드
   };
+};
 ```
 
 `environments`에서 환경별 설정을 오버라이드할 수 있습니다. `environments`는 `defaultOptions`와 동일한 구조로, 해당 환경에만 적용될 설정을 정의합니다. 각 환경의 읽기 전용 데이터베이스는 기본적으로 해당 환경의 설정을 사용하며, 필요한 경우 별도로 설정할 수 있습니다.
@@ -202,11 +207,74 @@ const baseconfig: SonamuDBBaseConfig = {
 export default baseconfig;
 ```
 
-Sonamu는 위 설정을 기반으로 아래 데이터베이스들에 대한 연결을 설정합니다.
+#### Kysely 설정 예시
 
-- 기본 설정 이용: `<database>_test`, `<database>_fixture_local`
-- 개발환경 설정 이용: `<database>_development`, `<database>_development_slave`, `<database>_fixture_remote`
-- 운영환경 설정 이용: `<database>_production`, `<database>_production_slave`
+```ts db.ts
+import { SonamuDBBaseConfig } from "sonamu";
+
+const baseconfig: SonamuDBBaseConfig = {
+  client: "kysely",
+  database: "my_database",
+  defaultOptions: {
+    host: "localhost",
+    user: "user",
+    password: "password",
+  },
+};
+```
+
+클라이언트를 `Kysely`로 설정할 경우, `defaultOptions`는 `Kysely`의 `PoolOptions`와 동일한 구조로, 모든 데이터베이스 연결에 적용됩니다. 추가적으로 `migration` 설정을 통해 마이그레이션 디렉토리를 설정할 수 있습니다.
+
+`SonamuDBBaseConfig`는 아래와 같은 주요 설정들을 포함할 수 있습니다.
+
+```ts
+type SonamuDBBaseConfig = {
+  database: string; // 기본 데이터베이스 이름
+  defaultOptions: {
+    host?: string; // 호스트
+    port?: number; // 포트
+    user?: string; // 사용자
+    password?: string; // 비밀번호
+    database?: string; // 데이터베이스 이름
+    timezone?: string; // 타임존
+    charset?: string; // 문자셋
+    dateStrings?: boolean; // 날짜를 문자열로 반환
+    ssl?: boolean | object; // SSL 설정
+    pool?: {
+      min?: number; // 최소 커넥션 수(기본값: 1)
+      max?: number; // 최대 커넥션 수(기본값: 5)
+      idleTimeoutMillis?: number; // 유휴 타임아웃
+      acquireTimeoutMillis?: number; // 획득 타임아웃
+    };
+    migration?: {
+      directory?: string; // 마이그레이션 디렉토리(기본값: "./dist/migrations")
+      extension?: string; // 파일 확장자(기본값: "js")
+    };
+    debug?: boolean; // SQL 디버그 모드
+  };
+  environments: {
+    development: {};
+    development_slave: {};
+    production: {};
+    production_slave: {};
+  };
+  types?: {
+    enabled?: boolean; // 인터페이스 자동 생성 활성화 (기본값: true)
+    outDir?: string; // 생성될 파일 경로 (기본값: src/typings)
+    fileName?: string; // 생성될 파일명 (기본값: database.types.ts)
+  };
+};
+```
+
+`types` 설정을 통해 인터페이스 자동 생성을 활성화할 수 있습니다. 인터페이스 자동 생성을 비활성화할 경우, Sonamu의 `DatabaseExtend` 인터페이스를 확장하는 코드를 직접 작성해야 합니다.
+
+```ts
+import { KyselyDatabase } from "[DB 인터페이스 경로]";
+
+declare module "sonamu" {
+  export interface DatabaseExtend extends KyselyDatabase {}
+}
+```
 
 ### Fixture 및 Test 데이터베이스 구성
 
@@ -229,6 +297,12 @@ Sonamu는 테스트와 개발을 위해 다음과 같은 데이터베이스 구�
    - 실제 테스트가 실행되는 데이터베이스
    - 테스트 실행 시마다 Fixture Local DB의 데이터로 초기화됨
    - 예: 프로덕션 DB가 `my_db`인 경우 `my_db_test`로 생성
+
+Sonamu는 `SonamuDBBaseConfig` 설정을 기반으로 아래 데이터베이스들에 대한 연결을 설정합니다.
+
+- 기본 설정 이용: `<database>_test`, `<database>_fixture_local`
+- 개발환경 설정 이용: `<database>_development`, `<database>_development_slave`, `<database>_fixture_remote`
+- 운영환경 설정 이용: `<database>_production`, `<database>_production_slave`
 
 데이터베이스 초기 설정을 위해 다음 명령어를 실행하세요.
 

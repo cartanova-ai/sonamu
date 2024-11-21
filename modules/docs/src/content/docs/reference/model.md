@@ -5,6 +5,8 @@ tableOfContents:
   maxHeadingLevel: 4
 ---
 
+- [] modelName 설명 추가
+
 Sonamu의 모델은 MVC 패턴의 M(Model)과 C(Controller)를 담당하고, **엔티티와 관련된 모든 로직**을 처리합니다. [`@api`](/reference/api-decorator) 데코레이터가 지정된 모델 메소드는 API로 노출됩니다.
 
 > 컨벤션 파일 경로: `/api/src/application/${entityId}/${entityId}.model.ts`

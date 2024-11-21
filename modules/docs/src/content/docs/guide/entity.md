@@ -25,7 +25,8 @@ Sonamu UI에 접속하여 엔티티를 생성하거나 수정할 수 있습니�
 - Table: `posts`
 - Title: `게시글`
 
-이렇게 입력하고 `Create` 버튼을 클릭하면 기본 필드로 `id`와 `create_at`을 가지고, `id`를 이용한 정렬과 검색을 위한 열거형 필드를 가지는 엔티티가 생성됩니다. 백엔드 디렉터리의 `src/application` 폴더에 `post` 폴더가 생성되며, 해당 폴더에 `post.entity.json`, `post.types.ts` 파일이 생성됩니다.
+이렇게 입력하고 `Create` 버튼을 클릭하면 기본 필드로 `id`와 `create_at`을 가지고, `id`를 이용한 정렬과 검색을 위한 `PostOrderBy`, `PostSearchField`
+열거형을 가진 엔티티가 생성됩니다. 백엔드 디렉터리의 `src/application` 폴더에 `post` 폴더가 생성되며, 해당 폴더에 `post.entity.json`, `post.types.ts` 파일이 생성됩니다.
 
 ### 하위 엔티티 생성
 
@@ -38,7 +39,39 @@ Sonamu UI에 접속하여 엔티티를 생성하거나 수정할 수 있습니�
 - Title: `게시글 이미지`
 - ParentID: `Post`
 
-이렇게 입력하고 `Create` 버튼을 클릭하면 `Post` 엔티티에 속하는 `PostImage` 엔티티가 생성됩니다. 하위 엔티티는 새로운 폴더를 생성하지 않고, 상위 엔티티 폴더 내에 엔티티 정의 파일(`post-image.entity.json`)만 생성됩니다.
+이렇게 입력하고 `Create` 버튼을 클릭하면 `Post` 엔티티에 속하는 `PostImage` 엔티티가 생성됩니다. 하위 엔티티는 타입 파일과 폴더를 생성하지 않고, 상위 엔티티 폴더 내에 엔티티 정의 파일(`post-image.entity.json`)만 생성됩니다.
+
+```shell
+Changed Files:  [
+  '/src/application/post/post-image.entity.json',
+  '/src/application/sonamu.generated.ts'
+]
+// 액션: 스키마 생성
+GENERATED  api/src/application/sonamu.generated.sso.ts
+GENERATED  api/src/application/sonamu.generated.ts
+// 액션: 파일 싱크 types / functions / generated
+COPIED  web/src/services/sonamu.generated.ts
+```
+
+그리고 엔티티 정의를 보면, `ParentId`에 기재했던 `Post` 엔티티가 `BelongsToOne`으로 연결되어 있는 것을 확인할 수 있습니다.
+
+```json
+{
+  ...
+  "props": {
+    ...,
+    {
+      "type": "relation",
+      "name": "post",
+      "relationType": "BelongsToOne",
+      "with": "Post",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE",
+      "desc": "게시글"
+    },
+  }
+}
+```
 
 ## 필드 정의
 
@@ -230,3 +263,7 @@ async findMany<T extends PostSubsetKey>(
 Sonamu UI에서 인덱스를 추가할 엔티티의 상세 페이지로 이동합니다. `Indexes` 탭에서 `Add a Index` 버튼을 클릭하여 인덱스를 추가할 수 있습니다.
 
 ![Create Index](./image/entity/create-index.png)
+
+```
+
+```

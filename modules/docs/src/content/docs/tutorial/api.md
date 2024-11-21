@@ -284,6 +284,50 @@ GENERATED  web/src/services/user/user.service.ts
 GENERATED  api/src/application/sonamu.generated.http
 ```
 
+#### Kysely 예시
+
+`Kysely`를 사용하는 경우 쿼리빌더를 이용하는 부분이 달라집니다. `build` 함수를 아래와 같이 수정합니다.
+
+```typescript
+build: ({ qb }) => {
+  // id
+  if (params.id) {
+    qb = qb.where("users.id", "in", asArray(params.id));
+  }
+
+  // login_id <- 이 부분을 추가합니다.
+  if (params.login_id) {
+    qb = qb.where("users.login_id", "in", asArray(params.login_id));
+  }
+
+  // search-keyword
+  if (params.search && params.keyword && params.keyword.length > 0) {
+    if (params.search === "id") {
+      qb = qb.where("users.id", "=", Number(params.keyword));
+      // } else if (params.search === "field") {
+      //   qb = qb.where("users.field", "like", `%${params.keyword}%`);
+    } else {
+      throw new BadRequestException(
+        `구현되지 않은 검색 필드 ${params.search}`
+      );
+    }
+  }
+
+  // orderBy
+  if (params.orderBy) {
+    // default orderBy
+    const [orderByField, orderByDirec] = this.parseOrderBy(params.orderBy); // 타입 추론을 위한 메서드 이용
+    qb = qb.orderBy(orderByField, orderByDirec);
+  }
+
+  return qb;
+},
+```
+
+:::note
+이후 예시들은 `Knex`를 사용하는 경우를 기준으로 작성되었습니다. `OrderBy`를 파싱하는 부분 외에는 각 설정에 따른 쿼리빌더의 사용법에 따라 수정이 필요할 수 있습니다.
+:::
+
 ### API 호출
 
 회원 조회 API를 호출하기 위해 `sonamu.generated.http` 파일을 열고, `/api/user/findMany` API를 호출하는 코드를 찾아서 파라미터를 수정합니다. 위에서 가입한 회원의 아이디를 입력하여 회원 조회 API를 호출해보겠습니다.

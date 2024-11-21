@@ -27,9 +27,8 @@ yarn add @fastify/passport @fastify/secure-session
 
 ![Subset SS](./image/auth/user-subset-ss.png)
 
-:::caution
-서브셋 `SS`는 비밀번호를 포함하고 있으므로 보안에 주의해야 합니다.
-`UserModel`의 `findMany`를 직접적으로 조작할 수 있는 api에 대해 접근 제한을 설정해야 합니다.
+:::danger
+서브셋 `SS`는 비밀번호를 포함하고 있으므로 보안에 주의해야 합니다. `UserModel`을 해당 서브셋으로 조회하는 API에 대한 접근 제한을 반드시 설정해야 합니다. [SubsetSS 접근 제한](#subsetss-접근-제한)을 참고하세요.
 :::
 
 <br/>
@@ -76,7 +75,7 @@ fastifyPassport.registerUserDeserializer<UserSubsetSS, UserSubsetSS>(
 
 ## Context 확장
 
-이제 API 핸들러 내에서 Sonamu의 `Context`를 이용하여 사용자 정보와 Passport의 인증 메서드를 사용할 수 있도록 `Context`를 확장합니다.
+이제 API 핸들러 내에서 Sonamu의 `Context`를 이용하여 사용자 정보와 Passport의 인증 메서드를 사용할 수 있도록 `Context`를 확장합니다. `Sonamu.withFastify`의 `contextProvider`를 이용하여 Fastify의 요청 객체에서 사용자 정보와 Passport의 인증 메서드를 추출하여 `Context`에 저장합니다.
 
 ```typescript
 // index.ts
@@ -100,11 +99,11 @@ await Sonamu.withFastify(server, {
 });
 ```
 
-이렇게 작성하면 `as Context["passport"]` 부분에서 `Property 'passport' does not exist on type 'Context'`에러가 발생합니다. 이는 타입스크립트가 `Context`에 `passport`프로퍼티가 없다고 판단하기 때문입니다. 이를 해결하기 위해`Context`타입에`passport` 프로퍼티를 추가합니다.
+이렇게 작성하면 `as Context["passport"]` 부분에서 `Property 'passport' does not exist on type 'Context'`에러가 발생합니다. 이는 타입스크립트가 `Context`에 `passport` 프로퍼티가 없다고 판단하기 때문입니다. 이를 해결하기 위해 `Context`타입에`passport` 프로퍼티를 추가합니다.
 
 ### 타입 확장
 
-`src/typings/sonamu.d.ts` 파일을 생성하고 다음과 같이 `Context` 타입을 확장합니다. `user`의 타입은 `UserSubsetSS`로, `passport`의 타입은 `login`과 `logout` 메서드를 가지는 객체로 정의합니다.
+`src/typings/sonamu.d.ts` 파일을 생성하고 `ContextExtend`를 이용하여 `Context` 타입을 확장합니다. `user`의 타입은 `UserSubsetSS`로, `passport`의 타입은 `login`과 `logout` 메서드를 가지는 객체로 정의합니다.
 
 ```typescript
 // sonamu.d.ts
@@ -122,7 +121,7 @@ declare module "sonamu" {
 }
 ```
 
-Sonamu의 Context에서만 `user` 타입을 변경하면 `contextProvider`에서 타입 에러가 발생합니다. 이를 해결하기 위해 `src/typings/fastify.d.ts` 파일을 생성하고 다음과 같이 `PassportUser` 타입을 확장합니다.
+Sonamu의 Context에서만 `user` 타입을 변경하면 `contextProvider`에서 다른 타입 에러가 발생합니다. passport의 `PassportUser` 객체와 `ContextExtend`에 정의한 `user`의 타입이 불일치하기 때문입니다. 이를 해결하기 위해 `src/typings/fastify.d.ts` 파일을 생성하고 다음과 같이 `PassportUser` 타입을 확장합니다.
 
 ```typescript
 // fastify.d.ts
@@ -205,7 +204,7 @@ logout(context: Context): void {
 
 ## 인가
 
-Sonamu에서는 요청 정보(FastifyRequest), API 정보, `@api` 데코레이터에 명시한 `guard`를 이용하여 인가를 처리할 수 있습니다. 간단하게 요청의 유저가 `@api` 데코레이터에 명시한 `guard`를 만족하는지 확인하는 예제를 살펴보겠습니다.
+Sonamu에서는 요청 정보(FastifyRequest), API 정보, `@api` 데코레이터에 명시한 `guard`를 이용하여 인가를 처리할 수 있습니다. 간단하게 요청의 유저가 `@api` 데코레이터에 명시한 `guard`를 만족하는지 확인하는 예제를 살펴보겠습니다. 이번 예제에서는 `UserRole`이라는 열거형을 가지는 유저 엔티티를 사용합니다.
 
 ### 유저 엔티티
 
@@ -251,4 +250,59 @@ await Sonamu.withFastify(server, {
 async save(spa: UserSaveParams[]): Promise<number[]> {
   ...
 }
+```
+
+### SubsetSS 접근 제한
+
+`UserModel`을 `SS` 서브셋으로 조회하는 API에 대한 접근 제한을 설정합니다. 요청에 `subset` 필드가 있고, `SS` 서브셋으로 요청이 들어온 경우 접근을 제한합니다. `guardHandler`가 실행되려면 `@api` 데코레이터에 `guards`가 명시되어 있어야 하므로, 서브셋으로 조회가 가능한 `findById`와 `findMany` 메서드에 `guards`를 명시합니다.
+
+```typescript
+// user.model.ts
+
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "swr"],
+  resourceName: "Users",
+  guards: ["query"],
+})
+async findById<T extends UserSubsetKey>(
+  subset: T,
+  id: number
+): Promise<UserSubsetMapping[T]> {
+  ...
+}
+
+@api({
+  httpMethod: "GET",
+  clients: ["axios", "swr"],
+  resourceName: "Users",
+  guards: ["query"],
+})
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams = {}
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  ...
+}
+```
+
+그리고 `index.ts`에서 `guardHandler`를 설정합니다. `guard`가 `query`인 경우, 요청의 `query` 필드에 `subset`이 `SS`인 경우 접근을 제한합니다.
+
+```typescript
+// index.ts
+
+await Sonamu.withFastify(server, {
+  contextProvider: (defaultContext, request) => {
+    ...
+  },
+  guardHandler: (guard, request, _api) => {
+    ...
+    if (guard === "query") {
+      const query = request.query as { subset?: string };
+      if (query?.subset === "SS") {
+        throw new UnauthorizedException("접근 권한이 없습니다.");
+      }
+    }
+  },
+});
 ```

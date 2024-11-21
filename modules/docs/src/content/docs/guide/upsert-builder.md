@@ -10,7 +10,8 @@ description: UpsertBuilder의 사용법을 설명합니다.
 `register` 메서드와 `upsert` 메서드를 통해 데이터를 생성하거나 수정합니다. `register` 메서드는 실제 데이터베이스 쿼리를 실행하는 것이 아니라, 업데이트할 데이터를 받아서 UpsertBuilder 내부에 저장합니다. `upsert` 메서드를 호출하면, `register` 메서드로 저장된 데이터를 실제 데이터베이스에 저장합니다.
 
 ```typescript
-import { BaseModelClass, api } from "sonamu";
+import { api } from "sonamu";
+import { BaseModelClass } from "sonamu/knex";
 import { UserSaveParams } from "./user.types";
 
 class UserModelClass extends BaseModelClass {
