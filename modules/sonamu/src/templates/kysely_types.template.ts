@@ -136,6 +136,10 @@ export class Template__kysely_interface extends Template {
           ${entities.map((entity) => `${entity.table}: ${entity.id}Table`).join(",\n")}
           ${manyToManyTables.map(({ table, interfaceName }) => `${table}: ${interfaceName}`).join(",\n")}
         }`,
+        "",
+        `declare module "sonamu" {
+          export interface DatabaseExtend extends KyselyDatabase {}
+        }`,
       ],
     };
   }
