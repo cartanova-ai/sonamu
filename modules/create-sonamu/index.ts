@@ -21,6 +21,16 @@ async function init() {
           message: "Project name:",
           initial: defaultProjectName,
         },
+        {
+          type: "select",
+          name: "dbClient",
+          message: "Select a database client:",
+          choices: [
+            { title: "Kysely", value: "kysely" },
+            { title: "Knex", value: "knex" },
+          ],
+          initial: 0,
+        },
       ],
       {
         onCancel: () => {
@@ -33,10 +43,10 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir } = result;
+  let { targetDir, dbClient } = result;
 
   const targetRoot = path.join(process.cwd(), targetDir);
-  const templateRoot = new URL("./template", import.meta.url).pathname;
+  const templateRoot = new URL("./template/src", import.meta.url).pathname;
 
   const copy = (src: string, dest: string) => {
     const stat = fs.statSync(src);
@@ -51,6 +61,13 @@ async function init() {
       // .gitkeep 제외, 디렉토리 생성 로그 출력
       if (path.basename(src) === ".gitkeep") {
         console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
+        return;
+      }
+      // DB Client에 따라 db.ts 생성
+      if (path.basename(src) === "db.ts") {
+        src = new URL(`./template/configs/db.${dbClient}.ts`, import.meta.url)
+          .pathname;
+        fs.copyFileSync(src, dest);
         return;
       }
       fs.copyFileSync(src, dest);
