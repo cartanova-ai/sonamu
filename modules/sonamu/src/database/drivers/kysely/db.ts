@@ -166,6 +166,9 @@ export class DBKyselyClass extends DBClass {
           path,
           migrationFolder: path.join(Sonamu.apiRootPath, "/dist/migrations"),
         } as FileMigrationProviderProps,
+        port: 3306,
+        host: "localhost",
+        database: config.database,
       },
       config.defaultOptions
     );
