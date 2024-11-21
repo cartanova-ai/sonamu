@@ -16,6 +16,7 @@ import { Sonamu } from "../../../api";
 import { KyselyGenerator } from "./generator";
 
 export class DBKyselyClass extends DBClass {
+  public migrationTable = "kysely_migration";
   public generator: KyselyGenerator = new KyselyGenerator();
   public baseConfig?: KyselyBaseConfig;
 

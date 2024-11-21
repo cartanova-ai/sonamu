@@ -170,17 +170,14 @@ async function fixture_init() {
 
   // 2. 마이그레이션 테이블이 존재하면 덤프
   const dbClient = DB.baseConfig!.client;
-  const migrationTable = {
-    knex: "knex_migrations",
-    kysely: "kysely_migration",
-  };
+  const migrationTable = DB.migrationTable;
   const [migrations] = await _db.raw<{ count: number }>(
     "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
-    [srcConn.database, migrationTable[dbClient]]
+    [srcConn.database, migrationTable]
   );
   if (migrations.count > 0) {
     execSync(
-      `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} ${migrationTable[dbClient]} ${migrationTable[dbClient]}_lock > ${migrationsDump}`
+      `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} ${migrationTable} ${migrationTable}_lock > ${migrationsDump}`
     );
   }
 

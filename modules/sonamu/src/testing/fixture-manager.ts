@@ -91,7 +91,7 @@ export class FixtureManagerClass {
     console.log(chalk.magenta("SYNC..."));
     await Promise.all(
       tableNames.map(async (tableName) => {
-        if (["knex_migrations", "kysely_migration"].includes(tableName)) {
+        if (tableName.startsWith(DB.migrationTable)) {
           return;
         }
 

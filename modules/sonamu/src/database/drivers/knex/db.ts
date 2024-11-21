@@ -7,6 +7,7 @@ import { attachOnDuplicateUpdate } from "./plugins/knex-on-duplicate-update";
 import { KnexGenerator } from "./generator";
 
 export class DBKnexClass extends DBClass {
+  public migrationTable = "knex_migrations";
   public generator: KnexGenerator = new KnexGenerator();
   public baseConfig?: KnexBaseConfig;
 
