@@ -22,7 +22,6 @@ import {
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import { openai } from "./openai";
-import knex from "knex";
 
 export async function createApiServer(options: {
   listen: {
@@ -864,7 +863,6 @@ export async function createApiServer(options: {
         return qb;
       },
       baseTable: entity.table,
-      db: knex(Sonamu.dbConfig[db]),
     });
 
     return row;
