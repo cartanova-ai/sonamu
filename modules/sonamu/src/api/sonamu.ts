@@ -15,7 +15,7 @@ import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
 import { ApiDecoratorOptions } from "./decorators";
 import { humanizeZodError } from "../utils/zod-error";
-import { SonamuDBConfig } from "../database/types";
+import { DatabaseDriver, SonamuDBConfig } from "../database/types";
 import { DB } from "../database/db";
 
 export type SonamuConfig = {
@@ -98,6 +98,17 @@ class SonamuClass {
     return this._dbConfig!;
   }
 
+  private _dbClient: DatabaseDriver | null = null;
+  set dbClient(_dbClient: DatabaseDriver) {
+    this._dbClient = _dbClient;
+  }
+  get dbClient() {
+    if (this._dbClient === null) {
+      throw new Error("Sonamu has not been initialized");
+    }
+    return this._dbClient!;
+  }
+
   private _syncer: Syncer | null = null;
   set syncer(syncer: Syncer) {
     this._syncer = syncer;
@@ -155,6 +166,7 @@ class SonamuClass {
 
     // DB 로드
     const baseConfig = DB.getBaseConfig(this.apiRootPath);
+    this.dbClient = baseConfig.client;
     DB.init(baseConfig as any);
     this.dbConfig = DB.fullConfig;
     !doSilent && console.log(chalk.green("DB Config Loaded!"));

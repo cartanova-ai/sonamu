@@ -850,7 +850,8 @@ export async function createApiServer(options: {
       subset: string;
     };
 
-    const { BaseModel } = await import("sonamu/knex");
+    const { BaseModelClass } = await import(`sonamu/${Sonamu.dbClient}`);
+    const BaseModel = new BaseModelClass();
     const entity = EntityManager.get(entityId);
     const {
       rows: [row],
@@ -859,7 +860,11 @@ export async function createApiServer(options: {
       params: { id: Number(id), page: 1, num: 1 },
       subsetQuery: entity.getSubsetQuery(subset),
       build: ({ qb }) => {
-        qb.where(`${entity.table}.id`, id);
+        if (Sonamu.dbClient === "knex") {
+          qb.where(`${entity.table}.id`, id);
+        } else {
+          qb = qb.where(`${entity.table}.id`, "=", id);
+        }
         return qb;
       },
       baseTable: entity.table,
