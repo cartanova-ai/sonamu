@@ -23,13 +23,7 @@ export class DBKnexClass extends DBClass {
   }
 
   private wdb?: Knex;
-  get _wdb(): KnexClient {
-    return new KnexClient(undefined, this.getDB("w"));
-  }
   private rdb?: Knex;
-  get _rdb(): KnexClient {
-    return new KnexClient(undefined, this.getDB("r"));
-  }
 
   private _tdb: KnexClient | null = null;
   set tdb(tdb: KnexClient) {

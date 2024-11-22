@@ -11,17 +11,6 @@ export class KnexClient implements DatabaseClient<"knex"> {
   private knex: Knex;
   generator: KnexGenerator = new KnexGenerator();
 
-  private _config?: KnexConfig;
-  set config(config: KnexConfig) {
-    this._config = config;
-  }
-  get config() {
-    if (!this._config) {
-      throw new Error("SonamuDBConfig is not initialized");
-    }
-    return this._config;
-  }
-
   get connectionInfo() {
     return {
       host: this.knex.client.config.connection?.host ?? "localhost",
@@ -47,15 +36,11 @@ export class KnexClient implements DatabaseClient<"knex"> {
     return this.qb.toQuery();
   }
 
-  constructor(_config?: KnexConfig, _knex?: Knex) {
-    if (_config) {
-      this.config = _config;
-      this.knex = knex(this.config);
-    } else if (_knex) {
-      this.knex = _knex;
-    } else {
-      throw new Error("Either config or knex instance must be provided");
-    }
+  constructor(
+    private config: KnexConfig,
+    _knex?: Knex
+  ) {
+    this.knex = _knex ?? knex(this.config);
   }
 
   from(table: string): KnexClient {
@@ -168,7 +153,7 @@ export class KnexClient implements DatabaseClient<"knex"> {
 
   trx(callback: (trx: KnexClient) => Promise<any>) {
     return this.knex.transaction((trx) =>
-      callback(new KnexClient(undefined, trx))
+      callback(new KnexClient(this.config, trx))
     );
   }
 
@@ -182,7 +167,7 @@ export class KnexClient implements DatabaseClient<"knex"> {
   }
 
   clone() {
-    const client = new KnexClient(undefined, this.knex);
+    const client = new KnexClient(this.config);
     client.qb = this.qb.clone();
     return client;
   }

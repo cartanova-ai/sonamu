@@ -28,17 +28,6 @@ export type ExtendedKyselyTrx = Transaction<Database> &
 export class KyselyClient implements DatabaseClient<"kysely"> {
   private kysely: Kysely<Database>;
 
-  private _config?: KyselyConfig;
-  set config(config: KyselyConfig) {
-    this._config = config;
-  }
-  get config() {
-    if (!this._config) {
-      throw new Error("SonamuDBConfig is not initialized");
-    }
-    return this._config;
-  }
-
   get connectionInfo() {
     return {
       host: this.config.host,
@@ -76,11 +65,10 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
     return this.qb.compile().sql.replace(/\?/g, () => bindings.shift()!);
   }
 
-  constructor(config?: KyselyConfig, kysely?: Kysely<Database>) {
-    if (config) {
-      this.config = config;
-    }
-
+  constructor(
+    private config: KyselyConfig,
+    kysely?: Kysely<Database>
+  ) {
     const { onCreateConnection, migration, ...rest } = this.config;
 
     this.kysely =
@@ -240,7 +228,7 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
   trx<T>(callback: (trx: KyselyClient) => Promise<T>) {
     return this.kysely
       .transaction()
-      .execute(async (trx) => callback(new KyselyClient(undefined, trx)));
+      .execute(async (trx) => callback(new KyselyClient(this.config, trx)));
   }
 
   destroy() {

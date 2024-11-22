@@ -137,7 +137,7 @@ export class FixtureManagerClass {
       ).flat()
     );
 
-    const wdb = DB._wdb;
+    const wdb = DB.toClient(DB.getDB("w"));
     for (let query of queries) {
       const [rsh] = await wdb.raw<{ info: any }>(query);
       console.log({
@@ -154,7 +154,7 @@ export class FixtureManagerClass {
   ): Promise<string[]> {
     console.log({ entityId, field, id });
     const entity = EntityManager.get(entityId);
-    const wdb = DB._wdb;
+    const wdb = DB.toClient(DB.getDB("w"));
 
     // 여기서 실DB의 row 가져옴
     const [row] = await wdb.raw<any>(
@@ -335,7 +335,7 @@ export class FixtureManagerClass {
           value: row[prop.name],
         };
 
-        const db = options?._db ?? DB._wdb;
+        const db = options?._db ?? DB.toClient(DB.getDB("w"));
         if (isManyToManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
           const throughTable = prop.joinTable;

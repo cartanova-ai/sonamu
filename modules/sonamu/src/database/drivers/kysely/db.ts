@@ -32,14 +32,7 @@ export class DBKyselyClass extends DBClass {
   }
 
   private wdb?: Kysely<Database>;
-  get _wdb(): KyselyClient {
-    return new KyselyClient(undefined, this.getDB("w"));
-  }
-
   private rdb?: Kysely<Database>;
-  get _rdb(): KyselyClient {
-    return new KyselyClient(undefined, this.getDB("r"));
-  }
 
   private _tdb: KyselyClient | null = null;
   set tdb(tdb: KyselyClient) {
