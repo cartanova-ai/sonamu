@@ -68,6 +68,11 @@ export class KnexClient implements DatabaseClient<"knex"> {
     return this;
   }
 
+  selectAll() {
+    this.qb = this.qb.select("*");
+    return this;
+  }
+
   where(ops: WhereClause | WhereClause[]) {
     if (typeof ops[0] === "string") {
       ops = [ops as WhereClause];

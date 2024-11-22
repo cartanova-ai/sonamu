@@ -111,6 +111,11 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
     return this;
   }
 
+  selectAll() {
+    this.qb = this.qb.selectAll();
+    return this;
+  }
+
   where(ops: WhereClause | WhereClause[]) {
     if (typeof ops[0] === "string") {
       ops = [ops as WhereClause];
@@ -150,11 +155,9 @@ export class KyselyClient implements DatabaseClient<"kysely"> {
       .onDuplicateKeyUpdate(() => {
         const updates: Record<string, any> = {};
         // 첫 번째 레코드의 키들을 기준으로 업데이트 설정
-        if (data[0]) {
-          Object.keys(data[0]).forEach((key) => {
-            updates[key] = sql`VALUES(${sql.raw(key)})`; // VALUES 구문 사용
-          });
-        }
+        Object.keys(data[0]).forEach((key) => {
+          updates[key] = sql`VALUES(${sql.raw(key)})`; // VALUES 구문 사용
+        });
         return updates;
       });
     await q.execute();

@@ -232,7 +232,7 @@ export class FixtureManagerClass {
         ? `${field}_id`
         : field;
 
-    let query = sourceDB.from(entity.table);
+    let query = sourceDB.from(entity.table).selectAll();
     if (searchType === "equals") {
       query = query.where([column, "=", value]);
     } else if (searchType === "like") {
@@ -268,6 +268,7 @@ export class FixtureManagerClass {
       // ID를 이용하여 targetDB에 레코드가 존재하는지 확인
       const [row] = await targetDB
         .from(entity.table)
+        .selectAll()
         .where(["id", "=", fixture.id])
         .first()
         .execute();
@@ -295,7 +296,7 @@ export class FixtureManagerClass {
       }
     }
 
-    return fixtures;
+    return _.uniqBy(fixtures, (f) => f.fixtureId);
   }
 
   async createFixtureRecord(
@@ -342,10 +343,12 @@ export class FixtureManagerClass {
           const fromColumn = `${inflection.singularize(entity.table)}_id`;
           const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const _relatedIds = await db.raw<{ id: string }>(
-            `SELECT ${toColumn} FROM ${throughTable} WHERE ${fromColumn} = ${row.id}`
-          );
-          const relatedIds = _relatedIds.map((r) => parseInt(r.id));
+          const _relatedIds = await db
+            .from(throughTable)
+            .select(toColumn)
+            .where([fromColumn, "=", row.id])
+            .execute();
+          const relatedIds = _relatedIds.map((r) => parseInt(r[toColumn]));
 
           record.columns[prop.name].value = relatedIds;
         } else if (isHasManyRelationProp(prop)) {
@@ -364,6 +367,7 @@ export class FixtureManagerClass {
           if (relatedProp) {
             const [relatedRow] = await db
               .from(relatedEntity.table)
+              .select("id")
               .where([relatedProp.name, "=", row.id])
               .first()
               .execute();
@@ -378,8 +382,9 @@ export class FixtureManagerClass {
           }
           if (!options?.singleRecord && relatedId) {
             const relatedEntity = EntityManager.get(prop.with);
-            const relatedRow = await db
+            const [relatedRow] = await db
               .from(relatedEntity.table)
+              .selectAll()
               .where(["id", "=", relatedId])
               .first()
               .execute();
@@ -447,8 +452,9 @@ export class FixtureManagerClass {
 
     for await (const r of fixtures) {
       const entity = EntityManager.get(r.entityId);
-      const record = await db
+      const [record] = await db
         .from(entity.table)
+        .selectAll()
         .where(["id", "=", r.id])
         .first()
         .execute();
@@ -503,7 +509,8 @@ export class FixtureManagerClass {
 
       const [found] = await db
         .from(entity.table)
-        .where(["id", "", fixture.id])
+        .select("id")
+        .where(["id", "=", fixture.id])
         .first()
         .execute();
       if (found && !fixture.override) {
@@ -513,15 +520,8 @@ export class FixtureManagerClass {
         };
       }
 
-      await db.raw(
-        `INSERT INTO ${entity.table} SET ${insertData} ON DUPLICATE KEY UPDATE ${Object.keys(
-          insertData
-        )
-          .map((key) => `${key}=VALUES(${key})`)
-          .join(", ")}`
-      );
-      // const q = db.insert(insertData).into(entity.table);
-      // await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
+      await db.upsert(entity.table, [insertData]);
+
       return {
         entityId: fixture.entityId,
         id: fixture.id,
@@ -560,6 +560,7 @@ export class FixtureManagerClass {
 
           const [found] = await db
             .from(joinTable)
+            .select("id")
             .where([
               [`${inflection.singularize(entity.table)}_id`, "=", fixture.id],
               [
@@ -627,7 +628,7 @@ export class FixtureManagerClass {
       return null;
     }
 
-    let uniqueQuery = db.from(entity.table);
+    let uniqueQuery = db.from(entity.table).selectAll();
     const whereClauses = uniqueIndexes
       .map((index) => {
         // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
