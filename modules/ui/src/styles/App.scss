@@ -37,6 +37,10 @@ $gnb-height: 50px;
       font-weight: bold;
       width: $sidemenu-width;
     }
+    .project-name {
+      font-weight: normal;
+      color: darkgrey;
+    }
     .menus {
       display: flex;
       gap: 0.3em;

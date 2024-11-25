@@ -23,6 +23,12 @@ export type ExtendedEntity = Entity & {
 };
 
 export namespace SonamuUIService {
+  export function getSonamuConfig(): Promise<{ projectName?: string }> {
+    return fetch({
+      method: "GET",
+      url: `/api/sonamu/config`,
+    });
+  }
   export function useEntities(): SWRResponse<
     { entities: ExtendedEntity[] },
     SWRError

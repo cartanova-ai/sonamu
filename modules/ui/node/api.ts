@@ -105,6 +105,10 @@ export async function createApiServer(options: {
     return { hello: "world", now: new Date() };
   });
 
+  server.get("/api/sonamu/config", async () => {
+    return Sonamu.config;
+  });
+
   server.get("/api/t1", async () => {
     const entityIds = EntityManager.getAllIds();
     const { apiRootPath, isInitialized } = Sonamu;
