@@ -19,6 +19,7 @@ import { DatabaseDriver, SonamuDBConfig } from "../database/types";
 import { DB } from "../database/db";
 
 export type SonamuConfig = {
+  projectName?: string;
   api: {
     dir: string;
   };
@@ -165,7 +166,7 @@ class SonamuClass {
     }
 
     // DB 로드
-    const baseConfig = DB.getBaseConfig(this.apiRootPath);
+    const baseConfig = await DB.getBaseConfig(this.apiRootPath);
     this.dbClient = baseConfig.client;
     DB.init(baseConfig as any);
     this.dbConfig = DB.fullConfig;
