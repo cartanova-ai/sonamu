@@ -33,7 +33,6 @@ export default defineConfig({
           label: "Guide",
           items: [
             { label: "인증 및 인가", link: "/guide/auth" },
-            { label: "데이터베이스 설정", link: "/guide/db" },
             { label: "엔티티", link: "/guide/entity" },
             { label: "UpsertBuilder", link: "/guide/upsert-builder" },
             { label: "서브셋", link: "/guide/subset" },
