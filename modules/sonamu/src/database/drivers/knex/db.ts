@@ -17,7 +17,7 @@ export class DBKnexClass extends DBClass {
   }
   get fullConfig() {
     if (!this._fullConfig) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("DB Config has not been initialized");
     }
     return this._fullConfig;
   }
@@ -31,7 +31,7 @@ export class DBKnexClass extends DBClass {
   }
   get tdb(): KnexClient {
     if (this._tdb === null) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("tdb has not been initialized");
     }
     return this._tdb;
   }
@@ -42,7 +42,7 @@ export class DBKnexClass extends DBClass {
   }
   get fdb(): KnexClient {
     if (this._fdb === null) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("fdb has not been initialized");
     }
     return this._fdb;
   }

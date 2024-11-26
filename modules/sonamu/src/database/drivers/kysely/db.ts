@@ -26,7 +26,7 @@ export class DBKyselyClass extends DBClass {
   }
   get fullConfig() {
     if (!this._fullConfig) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("DB Config has not been initialized");
     }
     return this._fullConfig;
   }
@@ -40,7 +40,7 @@ export class DBKyselyClass extends DBClass {
   }
   get tdb(): KyselyClient {
     if (this._tdb === null) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("tdb has not been initialized");
     }
     return this._tdb;
   }
@@ -51,7 +51,7 @@ export class DBKyselyClass extends DBClass {
   }
   get fdb(): KyselyClient {
     if (this._fdb === null) {
-      throw new Error("FixtureManager has not been initialized");
+      throw new Error("fdb has not been initialized");
     }
     return this._fdb;
   }

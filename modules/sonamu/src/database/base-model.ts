@@ -12,8 +12,6 @@ import { DB } from "./db";
 
 export abstract class BaseModelClassAbstract<D extends DatabaseDriver> {
   public modelName: string = "Unknown";
-  protected _wdb: DriverSpec[D]["adapter"] | null = null;
-  protected _rdb: DriverSpec[D]["adapter"] | null = null;
 
   protected abstract applyJoins(
     qb: DriverSpec[D]["adapter"],

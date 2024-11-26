@@ -12,12 +12,6 @@ import inflection from "inflection";
 type TB = keyof Database;
 
 export class BaseModelClass extends BaseModelClassAbstract<"kysely"> {
-  constructor() {
-    super();
-    this._wdb = DB.getDB("w") as unknown as KyselyClient;
-    this._rdb = DB.getDB("r") as unknown as KyselyClient;
-  }
-
   getDB(which: DBPreset): Kysely<Database> {
     return DB.getDB(which) as Kysely<Database>;
   }
