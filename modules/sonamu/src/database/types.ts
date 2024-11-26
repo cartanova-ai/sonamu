@@ -70,17 +70,13 @@ type EnvironmentConfigs<T> = {
 
 // Knex 설정을 위한 타입
 export type KnexConfig = Knex.Config & {
-  connection: Knex.MySql2ConnectionConfig & {
-    user: string;
-    password: string;
-    database?: string;
-  };
+  connection: Knex.MySql2ConnectionConfig;
 };
 export type KnexBaseConfig = {
   client: "knex";
   database: string;
-  defaultOptions?: KnexConfig;
-  environments?: EnvironmentConfigs<KnexConfig>;
+  defaultOptions?: Partial<KnexConfig>;
+  environments?: EnvironmentConfigs<Partial<KnexConfig>>;
 };
 
 // Kysely 설정을 위한 타입
