@@ -4,12 +4,13 @@ import { DBKnexClass } from "./drivers/knex/db";
 import { DBKyselyClass } from "./drivers/kysely/db";
 import { SonamuDBBaseConfig } from "./types";
 
+const dbConfigPath: string = path.join(
+  findApiRootPath(),
+  "/dist/configs/db.js"
+);
+const knexfileModule = await import(dbConfigPath);
+
 export const DB = (() => {
-  const dbConfigPath: string = path.join(
-    findApiRootPath(),
-    "/dist/configs/db.js"
-  );
-  const knexfileModule = require(dbConfigPath);
   const config = (knexfileModule.default?.default ??
     knexfileModule.default ??
     knexfileModule) as SonamuDBBaseConfig;

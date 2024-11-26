@@ -21,10 +21,16 @@ export async function importMultiple(
   const results: { filePath: string; imported: any }[] = [];
 
   for (const filePath of filePaths) {
-    const importPath = "./" + path.relative(__dirname, filePath);
+    let importPath = "./" + path.relative(__dirname, filePath);
+
     if (doRefresh) {
-      delete require.cache[require.resolve(importPath)];
+      if (require.resolve) {
+        delete require.cache[require.resolve(importPath)];
+      } else {
+        importPath += `?t=${Date.now()}`;
+      }
     }
+
     const imported = await import(importPath);
     results.push({
       filePath,

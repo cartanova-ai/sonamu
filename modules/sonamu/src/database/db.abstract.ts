@@ -33,9 +33,9 @@ export abstract class DBClass {
   abstract destroy(): Promise<void>;
   abstract raw(db: Knex | Kysely<Database>, query: string): any;
 
-  getBaseConfig(rootPath: string): SonamuDBBaseConfig {
+  async getBaseConfig(rootPath: string): Promise<SonamuDBBaseConfig> {
     const baseConfigPath = path.join(rootPath, "/dist/configs/db.js");
-    const module = require(baseConfigPath);
+    const module = await import(baseConfigPath);
     const config = module.default?.default ?? module.default ?? module;
     return config;
   }

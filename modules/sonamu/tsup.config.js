@@ -1,5 +1,6 @@
 // tsup.config.js
 import { defineConfig } from "tsup";
+import { ImportToRequirePlugin } from "./import-to-require";
 
 export default defineConfig({
   entry: [
@@ -10,20 +11,14 @@ export default defineConfig({
     "src/database/drivers/kysely/base-model.ts",
   ],
   dts: true,
-  format: ["esm", "cjs"],
-  target: "es2020",
+  format: ["cjs", "esm"],
+  target: "esnext",
   clean: true,
   sourcemap: true,
   shims: true,
   platform: "node",
   splitting: true,
-  // banner(ctx) {
-  //   if (ctx.format === "esm") {
-  //     return {
-  //       js: `const require = (await import('module')).createRequire(import.meta.url);`,
-  //     };
-  //   }
-  // },
+  esbuildPlugins: [ImportToRequirePlugin],
   external: [
     "chalk",
     "dotenv",
