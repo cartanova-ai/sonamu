@@ -76,7 +76,7 @@ export type KnexBaseConfig = {
   client: "knex";
   database: string;
   defaultOptions?: Partial<KnexConfig>;
-  environments?: EnvironmentConfigs<Partial<KnexConfig>>;
+  environments?: EnvironmentConfigs<KnexConfig>;
 };
 
 // Kysely 설정을 위한 타입
@@ -95,8 +95,13 @@ export type KyselyBaseConfig = {
     fileName?: string; // 생성될 파일명 (기본값: database.types.ts)
   };
 };
+// export type SonamuDBBaseConfig = KnexBaseConfig | KyselyBaseConfig;
+export type SonamuDBBaseConfig = {
+  [K in "knex" | "kysely"]: K extends "knex"
+    ? KnexBaseConfig
+    : KyselyBaseConfig;
+}[KnexBaseConfig["client"]];
 
-export type SonamuDBBaseConfig = KnexBaseConfig | KyselyBaseConfig;
 export type SonamuDBFullConfig<T extends KnexConfig | KyselyConfig> = {
   development_master: T;
   development_slave: T;
