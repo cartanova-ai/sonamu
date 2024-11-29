@@ -96,11 +96,9 @@ export type KyselyBaseConfig = {
   };
 };
 // export type SonamuDBBaseConfig = KnexBaseConfig | KyselyBaseConfig;
-export type SonamuDBBaseConfig = {
-  [K in "knex" | "kysely"]: K extends "knex"
-    ? KnexBaseConfig
-    : KyselyBaseConfig;
-}[KnexBaseConfig["client"]];
+export type SonamuDBBaseConfig<
+  T extends "knex" | "kysely" = "knex" | "kysely",
+> = T extends "knex" ? KnexBaseConfig : KyselyBaseConfig;
 
 export type SonamuDBFullConfig<T extends KnexConfig | KyselyConfig> = {
   development_master: T;
