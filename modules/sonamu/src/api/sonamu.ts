@@ -267,15 +267,20 @@ class SonamuClass {
           // 캐시
           const { cacheKey, cacheTtl, cachedData } = await (async () => {
             if (config.cache) {
-              const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
-              if (cacheKeyRes.cache === false) {
-                return { cacheKey: null, cachedData: null };
-              }
+              try {
+                const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
+                if (cacheKeyRes.cache === false) {
+                  return { cacheKey: null, cachedData: null };
+                }
 
-              const cacheKey = cacheKeyRes.key;
-              const cacheTtl = cacheKeyRes.ttl;
-              const cachedData = await config.cache.get(cacheKey);
-              return { cacheKey, cacheTtl, cachedData };
+                const cacheKey = cacheKeyRes.key;
+                const cacheTtl = cacheKeyRes.ttl;
+                const cachedData = await config.cache.get(cacheKey);
+                return { cacheKey, cacheTtl, cachedData };
+              } catch (e) {
+                console.error(e);
+              }
+              return { cacheKey: null, cachedData: null };
             }
             return { cacheKey: null, cachedData: null };
           })();
