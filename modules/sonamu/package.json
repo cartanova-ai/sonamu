@@ -27,7 +27,7 @@
     }
   },
   "scripts": {
-    "dev": "yarn tsc -w -p ./tsconfig.json",
+    "dev": "tsup --config ./tsup.config.js --watch",
     "build": "tsup --config ./tsup.config.js"
   },
   "license": "MIT",
