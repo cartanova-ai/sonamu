@@ -178,7 +178,7 @@ export class Migrator {
     if (onlyTs.length > 0) {
       console.debug({ onlyTs });
       throw new ServiceUnavailableException(
-        `There is an un-compiled TS migration files.\nPlease compile them first.\n\n${onlyTs
+        `There are un-compiled TS migration files.\nPlease compile them first.\n\n${onlyTs
           .map((f) => f.name)
           .join("\n")}`
       );
