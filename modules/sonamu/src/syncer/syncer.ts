@@ -77,6 +77,7 @@ import { execSync } from "child_process";
 import { Template__generated_sso } from "../templates/generated_sso.template";
 import { Template__kysely_interface } from "../templates/kysely_types.template";
 import { DB } from "../database/db";
+import { setTimeout as setTimeoutPromises } from "timers/promises";
 
 type FileType = "model" | "types" | "functions" | "generated" | "entity";
 type GlobPattern = {
@@ -113,6 +114,7 @@ export class Syncer {
   }[] = [];
   types: { [typeName: string]: z.ZodObject<any> } = {};
   models: { [modelName: string]: unknown } = {};
+  isSyncing: boolean = false;
 
   get checksumsPath(): string {
     return path.join(Sonamu.apiRootPath, "/.so-checksum");
@@ -168,6 +170,23 @@ export class Syncer {
       );
       return;
     }
+
+    const abc = new AbortController();
+    this.isSyncing = true;
+    const onSIGUSR2 = async () => {
+      if (this.isSyncing === false) {
+        process.exit(0);
+      }
+      console.log(chalk.magentaBright(`wait for syncing done....`));
+
+      // 싱크 완료 대기
+      try {
+        await setTimeoutPromises(20000, "waiting-sync", { signal: abc.signal });
+      } catch {}
+      console.log(chalk.magentaBright(`Syncing DONE!`));
+      process.exit(0);
+    };
+    process.on("SIGUSR2", onSIGUSR2);
 
     // 변경된 파일 찾기
     const diff = _.differenceWith(
@@ -246,6 +265,11 @@ export class Syncer {
 
     // 저장
     await this.saveChecksums(currentChecksums);
+
+    // 싱크 종료
+    this.isSyncing = false;
+    abc.abort();
+    process.off("SIGUSR2", onSIGUSR2);
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
@@ -289,23 +313,12 @@ export class Syncer {
   }
 
   async actionGenerateHttps(entityIds: string[]): Promise<string[]> {
-    return (
-      await Promise.all(
-        entityIds.map(async (entityId) =>
-          this.generateTemplate(
-            "generated_http",
-            {
-              entityId,
-            },
-            {
-              overwrite: true,
-            }
-          )
-        )
-      )
-    )
-      .flat()
-      .flat();
+    const [res] = await this.generateTemplate(
+      "generated_http",
+      { entityId: entityIds[0] },
+      { overwrite: true }
+    );
+    return res;
   }
 
   async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
