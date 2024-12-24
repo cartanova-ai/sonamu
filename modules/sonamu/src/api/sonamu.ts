@@ -140,16 +140,25 @@ class SonamuClass {
     return this._secrets;
   }
 
+  async initForTesting() {
+    await this.init(true, false, undefined, true);
+  }
+
   async init(
     doSilent: boolean = false,
     enableSync: boolean = true,
-    apiRootPath?: string
+    apiRootPath?: string,
+    forTesting: boolean = false
   ) {
     if (this.isInitialized) {
       return;
     }
-    !doSilent && console.time(chalk.cyan("Sonamu.init"));
+    !doSilent &&
+      console.time(
+        chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
+      );
 
+    // API 루트 패스
     this.apiRootPath = apiRootPath ?? (await findApiRootPath());
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
@@ -170,8 +179,12 @@ class SonamuClass {
     this.dbClient = baseConfig.client;
     DB.init(baseConfig as any);
     this.dbConfig = DB.fullConfig;
-    !doSilent && console.log(chalk.green("DB Config Loaded!"));
-    // attachOnDuplicateUpdate();
+
+    // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
+    if (forTesting) {
+      this.isInitialized = true;
+      return;
+    }
 
     // Entity 로드
     await EntityManager.autoload(doSilent);
