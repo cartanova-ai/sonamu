@@ -126,6 +126,7 @@ async function migrate_status() {
   await setupMigrator();
 
   const status = await migrator.getStatus();
+  // status;
   console.log(status);
 }
 

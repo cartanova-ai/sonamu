@@ -454,7 +454,7 @@ export class Migrator {
       );
     }
 
-    // MD-DB간 비교하여 코드 생성 리턴
+    // Entity-DB간 비교하여 코드 생성 리턴
     const codes = await this.compareMigrations(this.targets.compare!);
     if (codes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
@@ -667,10 +667,10 @@ export class Migrator {
   async compareMigrations(
     compareDB: KnexClient | KyselyClient
   ): Promise<GenMigrationCode[]> {
-    // MD 순회하여 싱크
+    // Entity 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
-    // 조인테이블 포함하여 MD에서 MigrationSet 추출
+    // 조인테이블 포함하여 Entity에서 MigrationSet 추출
     const entitySetsWithJoinTable = entityIds
       .filter((entityId) => {
         const entity = EntityManager.get(entityId);
@@ -678,16 +678,28 @@ export class Migrator {
       })
       .map((entityId) => {
         const entity = EntityManager.get(entityId);
-        return this.getMigrationSetFromMD(entity);
+        return this.getMigrationSetFromEntity(entity);
       });
 
     // 조인테이블만 추출
-    const joinTables = _.uniqBy(
-      entitySetsWithJoinTable.map((entitySet) => entitySet.joinTables).flat(),
-      (joinTable) => {
-        return joinTable.table;
+    const joinTablesWithDup = entitySetsWithJoinTable
+      .map((entitySet) => entitySet.joinTables)
+      .flat();
+    // 중복 제거 (중복인 경우 indexes를 병합)
+    const joinTables = Object.values(
+      _.groupBy(joinTablesWithDup, (jt) => jt.table)
+    ).map((tables) => {
+      if (tables.length === 1) {
+        return tables[0];
       }
-    );
+      return {
+        ...tables[0],
+        indexes: _.uniqBy(
+          tables.flatMap((t) => t.indexes),
+          (index) => [index.type, ...index.columns.sort()].join("-")
+        ),
+      };
+    });
 
     // 조인테이블 포함하여 MigrationSet 배열
     const entitySets: MigrationSet[] = [
@@ -695,7 +707,7 @@ export class Migrator {
       ...joinTables,
     ];
 
-    let codes: GenMigrationCode[] = (
+    const codes: GenMigrationCode[] = (
       await Promise.all(
         entitySets.map(async (entitySet) => {
           const dbSet = await this.getMigrationSetFromDB(
@@ -776,7 +788,7 @@ export class Migrator {
                   if (isEqualColumns && isEqualIndexes) {
                     return null;
                   } else {
-                    // this.showMigrationSet("MD", entitySet);
+                    // this.showMigrationSet("Entity", entitySet);
                     // this.showMigrationSet("DB", dbSet);
                     return DB.generator.generateAlterCode_ColumnAndIndexes(
                       entitySet.table,
@@ -807,7 +819,15 @@ export class Migrator {
                   ).map((f) => replaceNoActionOnMySQL(f));
 
                   if (equal(entityForeigns, dbForeigns) === false) {
-                    // console.dir({ entityForeigns, dbForeigns }, { depth: null });
+                    // console.dir(
+                    //   {
+                    //     debugOn: "foreign",
+                    //     table: entitySet.table,
+                    //     entityForeigns,
+                    //     dbForeigns,
+                    //   },
+                    //   { depth: null }
+                    // );
                     return DB.generator.generateAlterCode_Foreigns(
                       entitySet.table,
                       entityForeigns,
@@ -1081,9 +1101,9 @@ export class Migrator {
   }
 
   /*
-    MD 내용 읽어서 MigrationSetAndJoinTable 추출
+    Entity 내용 읽어서 MigrationSetAndJoinTable 추출
   */
-  getMigrationSetFromMD(entity: Entity): MigrationSetAndJoinTable {
+  getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTable {
     const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
       (r, prop) => {
         // virtual 필드 제외
@@ -1193,9 +1213,21 @@ export class Migrator {
               },
             ],
             foreigns: fields.map((field) => {
+              // 현재 필드가 어떤 테이블에 속하는지 판단
+              const col = field.split(".")[1];
+              const to = (() => {
+                if (
+                  inflection.singularize(join.to.split(".")[0]) + "_id" ===
+                  col
+                ) {
+                  return join.to;
+                } else {
+                  return join.from;
+                }
+              })();
               return {
-                columns: [field.split(".")[1]],
-                to: through.to.includes(field) ? join.to : join.from,
+                columns: [col],
+                to,
                 onUpdate: through.onUpdate,
                 onDelete: through.onDelete,
               };
@@ -1255,10 +1287,10 @@ export class Migrator {
   /*
     마이그레이션 컬럼 배열 비교용 코드
   */
-  showMigrationSet(which: string, migrationSet: MigrationSet): void {
+  showMigrationSet(which: "Entity" | "DB", migrationSet: MigrationSet): void {
     const { columns, indexes, foreigns } = migrationSet;
     const styledChalk =
-      which === "MD" ? chalk.bgGreen.black : chalk.bgBlue.black;
+      which === "Entity" ? chalk.bgGreen.black : chalk.bgBlue.black;
     console.log(
       styledChalk(
         `${which} ${migrationSet.table} Columns\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t`
