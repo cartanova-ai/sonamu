@@ -56,6 +56,7 @@ async function bootstrap() {
       ["migrate", "rollback"],
       ["migrate", "reset"],
       ["migrate", "clear"],
+      ["migrate", "status"],
       ["stub", "practice", "#name"],
       ["stub", "entity", "#name"],
       ["scaffold", "model", "#entityId"],
@@ -71,6 +72,7 @@ async function bootstrap() {
       migrate_rollback,
       migrate_clear,
       migrate_reset,
+      migrate_status,
       fixture_init,
       fixture_import,
       fixture_sync,
@@ -118,6 +120,13 @@ async function migrate_check() {
 
   await migrator.cleanUpDist();
   await migrator.check();
+}
+
+async function migrate_status() {
+  await setupMigrator();
+
+  const status = await migrator.getStatus();
+  console.log(status);
 }
 
 async function migrate_rollback() {

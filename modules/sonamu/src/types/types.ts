@@ -410,6 +410,9 @@ export type KnexError = {
 export function isKnexError(e: any): e is KnexError {
   return e.code && e.sqlMessage && e.sqlState;
 }
+export function isKyselyError(e: any): e is KnexError {
+  return e.code && e.sqlMessage && e.sqlState;
+}
 
 export type KnexColumnType =
   | "string"
@@ -587,6 +590,11 @@ export namespace ApiParamType {
   }
   export function isRefKnex(v: any): v is ApiParamType.Ref {
     return v?.t === "ref" && v.id === "Knex";
+  }
+  export function isRefKysely(v: any): v is ApiParamType.Ref {
+    return (
+      v?.t === "ref" && (v.id === "Kysely" || v.id.startsWith("Transaction"))
+    );
   }
   export function isTypeParam(v: any): v is ApiParamType.TypeParam {
     return v?.t === "type-param";

@@ -49,11 +49,7 @@ export class Template__kysely_interface extends Template {
 
   render() {
     const entityIds = EntityManager.getAllIds();
-    const entities = entityIds
-      .map((id) => EntityManager.get(id))
-      .filter(
-        (e) => e.parentId === undefined || Object.keys(e.subsets).length > 0
-      );
+    const entities = entityIds.map((id) => EntityManager.get(id));
     const enums = _.merge({}, ...entities.map((e) => e.enums));
 
     const manyToManyTables = _.uniq(
@@ -130,7 +126,7 @@ export class Template__kysely_interface extends Template {
       body: sourceCode.lines.join("\n"),
       importKeys: sourceCode.importKeys,
       customHeaders: [
-        `import { Generated } from "kysely";`,
+        `import { Generated, ColumnType } from "kysely";`,
         "",
         `export interface KyselyDatabase {
           ${entities.map((entity) => `${entity.table}: ${entity.id}Table`).join(",\n")}
@@ -187,7 +183,7 @@ export class Template__kysely_interface extends Template {
       isTimeProp(prop) ||
       isTimestampProp(prop)
     ) {
-      type = "Date";
+      type = "string";
     } else if (isJsonProp(prop)) {
       type = "string";
     } else if (isUuidProp(prop)) {
@@ -199,6 +195,9 @@ export class Template__kysely_interface extends Template {
 
     if (prop.nullable) {
       type = `${type} | null`;
+    }
+    if (prop.dbDefault) {
+      type = `ColumnType<${type}, ${type} | undefined, ${type}>`;
     }
 
     return `${prop.name}: ${type};`;

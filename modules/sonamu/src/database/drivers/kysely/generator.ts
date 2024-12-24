@@ -477,10 +477,13 @@ export const ${entityId}Model = new ${entityId}ModelClass();
           typeof column.defaultTo === "string" &&
           column.defaultTo.startsWith(`"`)
         ) {
-          chains.push(`defaultTo("${column.defaultTo}")`);
+          chains.push(`defaultTo(${column.defaultTo})`);
         } else {
           chains.push(`defaultTo(sql\`${column.defaultTo}\`)`);
         }
+      }
+      if (column.type === "uuid") {
+        chains.push("defaultTo(sql`UUID()`)");
       }
 
       return (
