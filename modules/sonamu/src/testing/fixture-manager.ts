@@ -110,10 +110,24 @@ export class FixtureManagerClass {
 
             console.log(chalk.blue(tableName), rows.length);
             await transaction.raw(
-              `INSERT INTO ${tableName} (${Object.keys(rows[0] as any).join(
-                ","
-              )}) VALUES ?`,
-              [rows.map((row: any) => Object.values(row))]
+              `INSERT INTO ${tableName} (${Object.keys(rows[0] as any)
+                .map((k) => `\`${k}\``)
+                .join(",")}) VALUES ?`,
+              [
+                rows.map((row: any) =>
+                  Object.values(row).map((v) => {
+                    if (v === null) {
+                      return null;
+                    } else if (typeof v === "boolean") {
+                      return v ? 1 : 0;
+                    } else if (typeof v === "object") {
+                      return JSON.stringify(v);
+                    } else {
+                      return v;
+                    }
+                  })
+                ),
+              ]
             );
             console.log("OK");
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 1`);
