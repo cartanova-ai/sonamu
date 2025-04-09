@@ -63,7 +63,8 @@ export type Environment =
   | "development"
   | "development_slave"
   | "production"
-  | "production_slave";
+  | "production_slave"
+  | "test";
 type EnvironmentConfigs<T> = {
   [K in Environment]?: Partial<T>;
 };

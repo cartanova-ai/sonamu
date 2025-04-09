@@ -133,7 +133,7 @@ export class DBKnexClass extends DBClass {
     return db.raw(query);
   }
 
-  private generateDBConfig(config: KnexBaseConfig): SonamuKnexDBConfig {
+  public generateDBConfig(config: KnexBaseConfig): SonamuKnexDBConfig {
     const defaultKnexConfig = _.merge(
       {
         client: "mysql2",
@@ -155,11 +155,16 @@ export class DBKnexClass extends DBClass {
     );
 
     // 로컬 환경 설정
-    const test = _.merge({}, defaultKnexConfig, {
-      connection: {
-        database: `${config.database}_test`,
+    const test = _.merge(
+      {},
+      defaultKnexConfig,
+      {
+        connection: {
+          database: `${config.database}_test`,
+        },
       },
-    });
+      config.environments?.test
+    );
 
     const fixture_local = _.merge({}, defaultKnexConfig, {
       connection: {

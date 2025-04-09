@@ -17,3 +17,5 @@ export * from "./types/types";
 export * from "./utils/controller";
 export * from "./utils/model";
 export * from "./utils/utils";
+export { DBKnexClass } from "./database/drivers/knex/db";
+export { DBKyselyClass } from "./database/drivers/kysely/db";

@@ -152,7 +152,7 @@ export class DBKyselyClass extends DBClass {
     return sql`${query}`.execute(db);
   }
 
-  private generateDBConfig(config: KyselyBaseConfig): SonamuKyselyDBConfig {
+  public generateDBConfig(config: KyselyBaseConfig): SonamuKyselyDBConfig {
     const defaultKyselyConfig = _.merge(
       {
         migration: {
