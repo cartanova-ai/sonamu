@@ -17,6 +17,7 @@ import { ApiDecoratorOptions } from "./decorators";
 import { humanizeZodError } from "../utils/zod-error";
 import { DatabaseDriver, SonamuDBConfig } from "../database/types";
 import { DB } from "../database/db";
+import { AsyncLocalStorage } from "async_hooks";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -73,6 +74,17 @@ type SonamuFastifyConfig = {
 };
 class SonamuClass {
   public isInitialized: boolean = false;
+  public asyncLocalStorage: AsyncLocalStorage<{
+    context: Context;
+  }> = new AsyncLocalStorage();
+
+  public getContext(): Context {
+    const store = this.asyncLocalStorage.getStore();
+    if (store?.context) {
+      return store.context;
+    }
+    throw new Error("Sonamu cannot find context");
+  }
 
   private _apiRootPath: string | null = null;
   set apiRootPath(apiRootPath: string) {
@@ -214,7 +226,10 @@ class SonamuClass {
   async withFastify(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     config: SonamuFastifyConfig,
-    options?: { enableSync?: boolean; doSilent?: boolean }
+    options?: {
+      enableSync?: boolean;
+      doSilent?: boolean;
+    }
   ) {
     if (this.isInitialized === false) {
       await this.init(options?.doSilent, options?.enableSync);
@@ -301,32 +316,35 @@ class SonamuClass {
             return cachedData;
           }
 
-          // 결과
-          const result = await (model as any)[api.methodName].apply(
-            model,
-            api.parameters.map((param) => {
-              // Context 인젝션
-              if (ApiParamType.isContext(param.type)) {
-                return config.contextProvider(
-                  {
-                    headers: request.headers,
-                    reply,
-                  },
-                  request,
-                  reply
-                );
-              } else {
-                return reqBody[param.name];
-              }
-            })
+          // 결과 (AsyncLocalStorage 적용)
+          const context = config.contextProvider(
+            {
+              headers: request.headers,
+              reply,
+            },
+            request,
+            reply
           );
-          reply.type(api.options.contentType ?? "application/json");
+          return this.asyncLocalStorage.run({ context }, async () => {
+            const result = await (model as any)[api.methodName].apply(
+              model,
+              api.parameters.map((param) => {
+                // Context 인젝션
+                if (ApiParamType.isContext(param.type)) {
+                  return context;
+                } else {
+                  return reqBody[param.name];
+                }
+              })
+            );
+            reply.type(api.options.contentType ?? "application/json");
 
-          // 캐시 키 있는 경우 갱신 후 저장
-          if (config.cache && cacheKey) {
-            await config.cache.put(cacheKey, result, cacheTtl);
-          }
-          return result;
+            // 캐시 키 있는 경우 갱신 후 저장
+            if (config.cache && cacheKey) {
+              await config.cache.put(cacheKey, result, cacheTtl);
+            }
+            return result;
+          });
         },
       }); // END server.route
     });
