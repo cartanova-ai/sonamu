@@ -72,7 +72,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys]),
+          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys].sort()),
         };
       },
       {

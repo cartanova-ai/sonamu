@@ -96,7 +96,7 @@ class EntityManagerClass {
   }
 
   getAllIds(): string[] {
-    return Array.from(EntityManager.entities.keys());
+    return Array.from(EntityManager.entities.keys()).sort();
   }
 
   getAllParentIds(): string[] {
