@@ -1246,12 +1246,14 @@ export class Migrator {
             unsigned: true,
             nullable: prop.nullable ?? false,
           });
-          r.foreigns.push({
-            columns: [idColumnName],
-            to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
-            onUpdate: prop.onUpdate,
-            onDelete: prop.onDelete,
-          });
+          if ((prop.useConstraint ?? true) === true) {
+            r.foreigns.push({
+              columns: [idColumnName],
+              to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
+              onUpdate: prop.onUpdate ?? "RESTRICT",
+              onDelete: prop.onDelete ?? "RESTRICT",
+            });
+          }
         }
 
         return r;

@@ -124,8 +124,8 @@ type _RelationProp = {
   type: "relation";
   name: string;
   with: string;
-  nullable?: boolean;
-  toFilter?: true;
+  nullable?: boolean; // DEFAULT: false
+  toFilter?: true; // DEFAULT: false
   desc?: string;
 };
 export type OneToOneRelationProp = _RelationProp & {
@@ -134,8 +134,9 @@ export type OneToOneRelationProp = _RelationProp & {
 } & (
     | {
         hasJoinColumn: true;
-        onUpdate: RelationOn;
-        onDelete: RelationOn;
+        useConstraint?: boolean; // DEFAULT: true
+        onUpdate?: RelationOn; // DEFAULT: RESTRICT
+        onDelete?: RelationOn; // DEFAULT: RESTRICT
       }
     | {
         hasJoinColumn: false;
@@ -144,8 +145,9 @@ export type OneToOneRelationProp = _RelationProp & {
 export type BelongsToOneRelationProp = _RelationProp & {
   relationType: "BelongsToOne";
   customJoinClause?: string;
-  onUpdate: RelationOn;
-  onDelete: RelationOn;
+  useConstraint?: boolean; // DEFAULT: true
+  onUpdate?: RelationOn; // DEFAULT: RESTRICT
+  onDelete?: RelationOn; // DEFAULT: RESTRICT
 };
 export type HasManyRelationProp = _RelationProp & {
   relationType: "HasMany";

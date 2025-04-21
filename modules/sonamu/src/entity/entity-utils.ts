@@ -240,6 +240,7 @@ function relationBelongsToOne(
   name: string,
   option: Omit<BelongsToOneRelationProp, "name" | "type" | "relationType">
 ): BelongsToOneRelationProp {
+  option.useConstraint = (option.useConstraint ?? true) as false;
   return {
     name,
     type: "relation",
