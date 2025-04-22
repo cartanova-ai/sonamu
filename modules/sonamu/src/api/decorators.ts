@@ -49,8 +49,9 @@ export function api(options: ApiDecoratorOptions = {}) {
   return function (target: Object, propertyKey: string) {
     const modelName = target.constructor.name.match(/(.+)Class$/)![1];
     const methodName = propertyKey;
+
     const defaultPath = `/${inflection.camelize(
-      modelName.replace(/Model$/, ""),
+      modelName.replace(/Model$/, "").replace(/Frame$/, ""),
       true
     )}/${inflection.camelize(propertyKey, true)}`;
 

@@ -1,7 +1,7 @@
 import inflection from "inflection";
 import _ from "lodash";
 import { TemplateOptions } from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
+import { EntityNamesRecord } from "../entity/entity-manager";
 import { ApiParamType, ApiParam } from "../types/types";
 import {
   apiParamTypeToTsType,
@@ -24,9 +24,7 @@ export class Template__service extends Template {
     };
   }
 
-  render({ entityId }: TemplateOptions["service"], apis: ExtendedApi[]) {
-    const names = EntityManager.getNamesFromId(entityId);
-
+  render({ namesRecord }: TemplateOptions["service"], apis: ExtendedApi[]) {
     // 서비스 TypeSource
     const { lines, importKeys } = this.getTypeSource(apis);
 
@@ -36,7 +34,7 @@ export class Template__service extends Template {
     );
 
     return {
-      ...this.getTargetAndPath(names),
+      ...this.getTargetAndPath(namesRecord),
       body: lines.join("\n"),
       importKeys: importKeys.filter(
         (key) => ["ListResult"].includes(key) === false
@@ -154,7 +152,7 @@ export class Template__service extends Template {
           })
           .join("\n\n");
 
-        return `export namespace ${modelName.replace(/Model$/, "Service")} {
+        return `export namespace ${modelName.replace(/Model$/, "Service").replace(/Frame$/, "Service")} {
 ${methodCodes}
 }`;
       })

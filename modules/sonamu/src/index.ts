@@ -2,6 +2,7 @@ export * from "./api/code-converters";
 export * from "./api/context";
 export * from "./api/decorators";
 export * from "./api/sonamu";
+export * from "./api/base-frame";
 export * from "./database/db";
 export * from "./database/upsert-builder";
 export * from "./database/types";

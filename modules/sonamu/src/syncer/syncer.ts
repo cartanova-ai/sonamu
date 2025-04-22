@@ -5,7 +5,7 @@ import crypto from "crypto";
 import equal from "fast-deep-equal";
 import _ from "lodash";
 import inflection from "inflection";
-import { EntityManager } from "../entity/entity-manager";
+import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import ts from "typescript";
 import {
   ApiParam,
@@ -79,7 +79,13 @@ import { Template__kysely_interface } from "../templates/kysely_types.template";
 import { DB } from "../database/db";
 import { setTimeout as setTimeoutPromises } from "timers/promises";
 
-type FileType = "model" | "types" | "functions" | "generated" | "entity";
+type FileType =
+  | "model"
+  | "types"
+  | "functions"
+  | "generated"
+  | "entity"
+  | "frame";
 type GlobPattern = {
   [key in FileType]: string;
 };
@@ -200,7 +206,7 @@ export class Syncer {
     // 다른 부분 찾아 액션
     const diffGroups = _.groupBy(diffFiles, (r) => {
       const matched = r.match(
-        /\.(model|types|functions|entity|generated)\.[tj]s/
+        /\.(model|types|functions|entity|generated|frame)\.[tj]s/
       );
       return matched![1];
     }) as unknown as DiffGroups;
@@ -255,12 +261,44 @@ export class Syncer {
     }
 
     // 트리거: model
-    if (diffTypes.includes("model")) {
-      const entityIds = this.getEntityIdFromPath(diffGroups["model"]);
+    if (diffTypes.includes("model") || diffTypes.includes("frame")) {
       console.log("// 액션: 서비스 생성");
-      await this.actionGenerateServices(entityIds);
+      const mergedGroup = [
+        ...(diffGroups["model"] ?? []),
+        ...(diffGroups["frame"] ?? []),
+      ];
+      const params: { namesRecord: EntityNamesRecord; modelTsPath: string }[] =
+        mergedGroup.map((modelPath) => {
+          if (modelPath.endsWith(".model.js")) {
+            const entityId = this.getEntityIdFromPath([modelPath])[0];
+            return {
+              namesRecord: EntityManager.getNamesFromId(entityId),
+              modelTsPath: path.join(
+                Sonamu.apiRootPath,
+                modelPath
+                  .replace("/dist/", "/src/")
+                  .replace(".model.js", ".model.ts")
+              ),
+            };
+          }
+          if (modelPath.endsWith("frame.js")) {
+            const [, frameName] = modelPath.match(/.+\/(.+)\.frame.js$/) ?? [];
+            return {
+              namesRecord: EntityManager.getNamesFromId(frameName),
+              modelTsPath: path.join(
+                Sonamu.apiRootPath,
+                modelPath
+                  .replace("/dist/", "/src/")
+                  .replace(".frame.js", ".frame.ts")
+              ),
+            };
+          }
+          throw new Error("not reachable");
+        });
+      await this.actionGenerateServices(params);
+
       console.log("// 액션: HTTP파일 생성");
-      await this.actionGenerateHttps(entityIds);
+      await this.actionGenerateHttps();
     }
 
     // 저장
@@ -292,19 +330,18 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateServices(entityIds: string[]): Promise<string[]> {
+  async actionGenerateServices(
+    paramsArray: {
+      namesRecord: EntityNamesRecord;
+      modelTsPath: string;
+    }[]
+  ): Promise<string[]> {
     return (
       await Promise.all(
-        entityIds.map(async (entityId) =>
-          this.generateTemplate(
-            "service",
-            {
-              entityId,
-            },
-            {
-              overwrite: true,
-            }
-          )
+        paramsArray.map(async (params) =>
+          this.generateTemplate("service", params, {
+            overwrite: true,
+          })
         )
       )
     )
@@ -312,10 +349,10 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateHttps(entityIds: string[]): Promise<string[]> {
+  async actionGenerateHttps(): Promise<string[]> {
     const [res] = await this.generateTemplate(
       "generated_http",
-      { entityId: entityIds[0] },
+      {},
       { overwrite: true }
     );
     return res;
@@ -383,6 +420,7 @@ export class Syncer {
       functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
       /* compiled-JS 체크 */
       model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
+      frame: Sonamu.apiRootPath + "/dist/application/**/*.frame.js",
     };
 
     const filePaths = (
@@ -525,6 +563,12 @@ export class Syncer {
           method.methodName === api.methodName
       );
     });
+    if (currentModelApis.length === 0) {
+      // const p = path.join(tmpdir(), "sonamu-syncer-error.json");
+      // writeFileSync(p, JSON.stringify(registeredApis, null, 2));
+      // execSync(`open ${p}`);
+      throw new Error(`현재 파일에 사전 등록된 API가 없습니다. ${filePath}`);
+    }
 
     // 등록된 API에 현재 메소드 타입 정보 확장
     const extendedApis = currentModelApis.map((api) => {
@@ -722,7 +766,7 @@ export class Syncer {
   async autoloadApis() {
     const pathPattern = path.join(
       Sonamu.apiRootPath,
-      "/src/application/**/*.model.ts"
+      "/src/application/**/*.{model,frame}.ts"
     );
     // console.debug(chalk.yellow(`autoload:APIs @ ${pathPattern}`));
 
@@ -737,7 +781,7 @@ export class Syncer {
   async autoloadModels(): Promise<{ [modelName: string]: unknown }> {
     const pathPattern = path.join(
       Sonamu.apiRootPath,
-      "dist/application/**/*.model.js"
+      "dist/application/**/*.{model,frame}.js"
     );
     // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
 
@@ -752,7 +796,9 @@ export class Syncer {
       .map(({ imported }) => Object.entries(imported))
       .flat();
     this.models = Object.fromEntries(
-      functions.filter(([name]) => name.endsWith("Model"))
+      functions.filter(
+        ([name]) => name.endsWith("Model") || name.endsWith("Frame")
+      )
     );
     return this.models;
   }
@@ -839,22 +885,13 @@ export class Syncer {
     const template: Template = this.getTemplate(key);
 
     let extra: unknown[] = [];
-    if (
-      ["service", "generated_http", "model", "view_list", "view_form"].includes(
-        key
-      )
-    ) {
-      const entityId = (options as TemplateOptions["service"]).entityId;
-
-      if (key === "service" || key === "generated_http") {
-        // service 필요 정보 (API 리스트)
-        const entity = EntityManager.get(entityId!);
-        const modelTsPath = `${path.join(
-          Sonamu.apiRootPath,
-          "/src/application"
-        )}/${entity.names.fs}/${entity.names.fs}.model.ts`;
-        extra = [await this.readApisFromFile(modelTsPath)];
-      } else if (key === "view_list" || key === "model") {
+    if (key === "service") {
+      // service 필요 정보 (API 리스트)
+      const { modelTsPath } = options as TemplateOptions["service"];
+      extra = [await this.readApisFromFile(modelTsPath)];
+    } else if (["model", "view_list", "view_form"].includes(key)) {
+      const entityId = (options as TemplateOptions["model"]).entityId;
+      if (key === "view_list" || key === "model") {
         // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
         const columnsNode = await this.getColumnsNode(entityId, "A");
         const listParamsZodType = await this.getZodTypeById(

@@ -686,7 +686,17 @@ export const TemplateOptions = z.object({
     entityId: z.string(),
   }),
   service: z.object({
-    entityId: z.string(),
+    namesRecord: z.object({
+      fs: z.string(),
+      fsPlural: z.string(),
+      camel: z.string(),
+      camelPlural: z.string(),
+      capital: z.string(),
+      capitalPlural: z.string(),
+      upper: z.string(),
+      constant: z.string(),
+    }),
+    modelTsPath: z.string(),
   }),
   view_list: z.object({
     entityId: z.string(),
