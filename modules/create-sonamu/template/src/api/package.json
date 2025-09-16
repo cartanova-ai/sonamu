@@ -11,27 +11,27 @@
     "sonamu": "sonamu"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "fastify": "^4.26.2",
-    "fastify-qs": "^4.0.2",
+    "dotenv": "^17.2.2",
+    "fastify": "^5.6.0",
+    "fastify-qs": "^5.0.0",
     "knex": "^3.1.0",
     "lodash": "^4.17.21",
-    "luxon": "^3.4.4",
-    "mysql2": "^3.10.1",
-    "sonamu": "^0.2.35",
-    "zod": "^3.22.4"
+    "luxon": "^3.7.2",
+    "mysql2": "^3.14.5",
+    "sonamu": "^0.4.11",
+    "zod": "^4.1.8"
   },
   "devDependencies": {
     "@sonamu-kit/react-sui": "^0.1.14",
-    "@sonamu-kit/ui": "^0.2.6",
+    "@sonamu-kit/ui": "^0.4.1",
     "@types/lodash": "^4",
     "@types/luxon": "^3",
-    "@types/node": "^20.11.30",
-    "prettier": "^2.7.1",
-    "tsc-watch": "^6.0.4",
-    "typescript": "^5.4.3",
-    "vite": "^5.2.2",
-    "vitest": "^1.4.0"
+    "@types/node": "^24.5.0",
+    "prettier": "^3.6.2",
+    "tsc-watch": "^7.1.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5",
+    "vitest": "^3.2.4"
   },
   "packageManager": "yarn@4.3.0"
 }

@@ -9,9 +9,8 @@ import chalk from "chalk";
 import ora from "ora";
 
 async function init() {
-  const defaultProjectName = "pp1";
-
   let result: prompts.Answers<"targetDir">;
+
   try {
     result = await prompts(
       [
@@ -19,17 +18,7 @@ async function init() {
           type: "text",
           name: "targetDir",
           message: "Project name:",
-          initial: defaultProjectName,
-        },
-        {
-          type: "select",
-          name: "dbClient",
-          message: "Select a database client:",
-          choices: [
-            { title: "Kysely", value: "kysely" },
-            { title: "Knex", value: "knex" },
-          ],
-          initial: 0,
+          initial: "my-sonamu-app",
         },
       ],
       {
@@ -43,7 +32,7 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir, dbClient } = result;
+  let { targetDir } = result;
 
   const targetRoot = path.join(process.cwd(), targetDir);
   const templateRoot = new URL("./template/src", import.meta.url).pathname;
@@ -61,13 +50,6 @@ async function init() {
       // .gitkeep 제외, 디렉토리 생성 로그 출력
       if (path.basename(src) === ".gitkeep") {
         console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
-        return;
-      }
-      // DB Client에 따라 db.ts 생성
-      if (path.basename(src) === "db.ts") {
-        src = new URL(`./template/configs/db.${dbClient}.ts`, import.meta.url)
-          .pathname;
-        fs.copyFileSync(src, dest);
         return;
       }
       fs.copyFileSync(src, dest);
@@ -92,7 +74,8 @@ async function init() {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
     );
-    pkg.name = targetDir === "." ? path.basename(path.resolve()) : targetDir;
+    pkg.name = `${targetDir}-${dir}`;
+
     fs.writeFileSync(
       path.join(targetRoot, dir, "package.json"),
       JSON.stringify(pkg, null, 2) + "\n",
@@ -126,7 +109,7 @@ async function init() {
     type: "confirm",
     name: "isDatabase",
     message: "Would you like to set up a database using Docker?",
-    initial: false,
+    initial: true,
   });
 
   if (isDatabase) {
@@ -138,7 +121,7 @@ async function init() {
 DB_HOST=0.0.0.0
 DB_USER=root
 DB_PASSWORD=${answers.DB_PASSWORD}
-DOCKER_PROJECT_NAME=${answers.DOCKER_PROJECT_NAME}
+COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
 MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
 MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 `;
@@ -175,11 +158,62 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
   }
 }
 
-async function executeCommand(command: string, args: string[], cwd: string) {
-  const child = spawn(command, args, { cwd });
-  const spinner = ora(`Running ${command} ${args.join(" ")}\n`);
+async function getCommandOutput(
+  command: string,
+  args: string[],
+  cwd: string,
+): Promise<string> {
+  const child = spawn(command, args, {
+    cwd,
+    stdio: ["inherit", "pipe", "pipe"],
+    env: { ...process.env },
+  });
+
+  let output = "";
+  let errorOutput = "";
+
+  return new Promise((resolve, reject) => {
+    child.stdout?.on("data", (data) => {
+      output += data.toString();
+    });
+
+    child.stderr?.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(`Command failed with exit code ${code}: ${errorOutput}`),
+        );
+      } else {
+        resolve(output);
+      }
+    });
+  });
+}
+
+async function executeCommand(
+  command: string,
+  args: string[],
+  cwd: string,
+  options: { showOutput?: boolean } = {},
+) {
+  const { showOutput = false } = options;
+  const child = spawn(command, args, {
+    cwd,
+    stdio: ["inherit", "pipe", "pipe"], // stdin은 상속, stdout/stderr는 pipe로 처리
+    env: { ...process.env }, // 환경변수 상속
+  });
+  const spinner = ora(`Running ${command} ${args.join(" ")}`);
   let startTime: number;
   let success = true;
+  let output = "";
+  let errorOutput = "";
 
   return new Promise((resolve, reject) => {
     child.on("spawn", () => {
@@ -187,50 +221,90 @@ async function executeCommand(command: string, args: string[], cwd: string) {
       startTime = Date.now();
     });
 
+    // stdout 데이터 수집
+    child.stdout?.on("data", (data) => {
+      output += data.toString();
+    });
+
+    // stderr 데이터 수집
+    child.stderr?.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
     child.on("error", (error) => {
       success = false;
-      spinner.fail();
+      spinner.fail(`${command} ${args.join(" ")}`);
       console.error(chalk.red(`🚨 Error: ${command}`));
       console.error(error);
       reject(error);
     });
 
-    child.stderr.on("data", (data) => {
-      if (data.toString().includes("Error response from daemon")) {
-        success = false;
-        spinner.fail();
-        console.error(chalk.yellow(data.toString()));
-        reject(data.toString());
-      }
-    });
-
-    child.on("close", () => {
-      if (!success) {
+    child.on("close", (code) => {
+      if (!success || code !== 0) {
+        if (code !== 0) {
+          spinner.fail(`${command} ${args.join(" ")}`);
+          console.error(
+            chalk.red(
+              `Command failed with exit code ${code}: ${command} ${args.join(" ")}`,
+            ),
+          );
+          // 에러가 있으면 stderr 출력
+          if (errorOutput) {
+            console.error(errorOutput);
+          }
+          reject(new Error(`Command failed with exit code ${code}`));
+        }
         return;
       }
       const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
-      spinner.succeed(
-        `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
-      );
+
+      // 출력 표시 옵션이 활성화된 경우 결과 출력
+      if (showOutput && output.trim()) {
+        spinner.succeed(
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+        );
+        console.log(chalk.cyan(output.trim()));
+      } else {
+        spinner.succeed(
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+        );
+      }
+
       resolve("");
     });
   });
 }
 
 async function setupYarnBerry(projectName: string, dir: string) {
-  const cwd = path.join(projectName, dir);
-  const commands = [
-    "yarn set version berry",
-    "yarn install",
-    "yarn dlx @yarnpkg/sdks vscode",
-  ];
+  const cwd = path.resolve(projectName, dir);
 
-  for await (const c of commands) {
-    const [command, ...args] = c.split(" ");
-    await executeCommand(command, args, cwd);
+  try {
+    console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
+
+    // 1. Corepack 활성화
+    await executeCommand("npm", ["install", "-g", "corepack"], cwd);
+    await executeCommand("corepack", ["enable"], cwd);
+    await executeCommand(
+      "corepack",
+      ["prepare", "yarn@stable", "--activate"],
+      cwd,
+    );
+
+    // 2. Yarn 버전 설정
+    await executeCommand("yarn", ["set", "version", "stable"], cwd);
+
+    // 3. 의존성 설치
+    await executeCommand("yarn", ["install"], cwd);
+
+    // 4. VSCode SDK 설치
+    await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
+
+    console.log(chalk.green(`✅ Yarn Berry has been set up in ${cwd}\n`));
+  } catch (error) {
+    console.error(chalk.red(`❌ Failed to set up Yarn Berry in ${cwd}`));
+    console.error(error);
+    throw error;
   }
-
-  console.log(chalk.green(`\nYarn Berry has been set up in ${cwd}\n`));
 }
 
 // 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수
@@ -238,7 +312,7 @@ async function promptDatabase(projectName: string) {
   const answers = await prompts([
     {
       type: "text",
-      name: "DOCKER_PROJECT_NAME",
+      name: "COMPOSE_PROJECT_NAME",
       message: "Enter the Docker project name:",
       initial: `${projectName}`,
     },
