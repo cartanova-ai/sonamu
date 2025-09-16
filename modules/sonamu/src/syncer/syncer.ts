@@ -1420,7 +1420,7 @@ export class Syncer {
     // generate schemas, types
     await Promise.all([
       this.actionGenerateSchemas(),
-      ...(form.entityId === undefined
+      ...(form.parentId === undefined
         ? [
             this.generateTemplate("init_types", {
               entityId: form.entityId,
