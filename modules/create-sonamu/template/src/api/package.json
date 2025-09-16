@@ -19,7 +19,7 @@
     "luxon": "^3.7.2",
     "mysql2": "^3.14.5",
     "sonamu": "^0.4.11",
-    "zod": "^4.1.8"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@sonamu-kit/react-sui": "^0.1.14",
