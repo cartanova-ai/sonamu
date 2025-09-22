@@ -1,12 +1,12 @@
 import { HTTPMethods } from "fastify";
 import inflection from "inflection";
 import { ApiParam, ApiParamType } from "../types/types";
+import { z } from "zod";
 
 export type ServiceClient =
   | "axios"
   | "axios-multipart"
   | "swr"
-  | "socketio"
   | "window-fetch";
 export type ApiDecoratorOptions = {
   httpMethod?: HTTPMethods;
@@ -22,17 +22,27 @@ export type ApiDecoratorOptions = {
   guards?: string[];
   description?: string;
 };
+export type StreamDecoratorOptions = {
+  type: "sse"; // | 'ws
+  events: z.ZodObject<any>;
+  path?: string;
+  resourceName?: string;
+  guards?: string[];
+  description?: string;
+};
 export const registeredApis: {
   modelName: string;
   methodName: string;
   path: string;
   options: ApiDecoratorOptions;
+  streamOptions?: StreamDecoratorOptions;
 }[] = [];
 export type ExtendedApi = {
   modelName: string;
   methodName: string;
   path: string;
   options: ApiDecoratorOptions;
+  streamOptions?: StreamDecoratorOptions;
   typeParameters: ApiParamType.TypeParam[];
   parameters: ApiParam[];
   returnType: ApiParamType;
@@ -55,12 +65,34 @@ export function api(options: ApiDecoratorOptions = {}) {
       true
     )}/${inflection.camelize(propertyKey, true)}`;
 
-    const api = {
+    registeredApis.push({
       modelName,
       methodName,
       path: options.path ?? defaultPath,
       options,
-    };
-    registeredApis.push(api);
+    });
+  };
+}
+
+export function stream(options: StreamDecoratorOptions) {
+  return function (target: Object, propertyKey: string) {
+    const modelName = target.constructor.name.match(/(.+)Class$/)![1];
+    const methodName = propertyKey;
+
+    const defaultPath = `/${inflection.camelize(
+      modelName.replace(/Model$/, "").replace(/Frame$/, ""),
+      true
+    )}/${inflection.camelize(propertyKey, true)}`;
+
+    registeredApis.push({
+      modelName,
+      methodName,
+      path: options.path ?? defaultPath,
+      options: {
+        ...options,
+        httpMethod: "GET",
+      },
+      streamOptions: options,
+    });
   };
 }

@@ -415,6 +415,13 @@ export function apiParamToTsCode(
     .join(", ");
 }
 
+export function apiParamToTsCodeAsObject(
+  params: ApiParam[],
+  injectImportKeys: string[]
+): string {
+  return `{ ${params.map((param) => `${param.name}${param.optional ? "?" : ""}: ${apiParamTypeToTsType(param.type, injectImportKeys)}${param.defaultDef ? `= ${param.defaultDef}` : ""}`).join(", ")} }`;
+}
+
 export function apiParamTypeToTsType(
   paramType: ApiParamType,
   injectImportKeys: string[]

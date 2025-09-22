@@ -7,6 +7,8 @@ import {
   apiParamTypeToTsType,
   apiParamToTsCode,
   unwrapPromiseOnce,
+  zodTypeToTsTypeDef,
+  apiParamToTsCodeAsObject,
 } from "../api/code-converters";
 import { ExtendedApi } from "../api/decorators";
 import { Template } from "./base-template";
@@ -43,7 +45,7 @@ export class Template__service extends Template {
         `import { z } from 'zod';`,
         `import qs from "qs";`,
         `import useSWR, { SWRResponse } from "swr";`,
-        `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher } from '../sonamu.shared';`,
+        `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher, EventHandlers, SSEStreamOptions, useSSEStream } from '../sonamu.shared';`,
         ...(hasAxiosProgressEvent
           ? [`import { AxiosProgressEvent } from 'axios';`]
           : []),
@@ -91,6 +93,12 @@ export class Template__service extends Template {
               importKeys
             );
 
+            // 파라미터 정의 (객체 형태)
+            const paramsDefAsObject = apiParamToTsCodeAsObject(
+              paramsWithoutContext,
+              importKeys
+            );
+
             // 리턴 타입 정의
             const returnTypeDef = apiParamTypeToTsType(
               unwrapPromiseOnce(api.returnType),
@@ -102,11 +110,14 @@ export class Template__service extends Template {
               .map((param) => param.name)
               .join(", ")} }`;
 
-            return _.sortBy(api.options.clients, (client) =>
-              client === "swr" ? 0 : 1
-            )
-              .map((client) => {
-                const apiBaseUrl = `${Sonamu.config.route.prefix}${api.path}`;
+            // 기본 URL
+            const apiBaseUrl = `${Sonamu.config.route.prefix}${api.path}`;
+
+            return [
+              // 클라이언트별로 생성
+              ..._.sortBy(api.options.clients, (client) =>
+                client === "swr" ? 0 : 1
+              ).map((client) => {
                 switch (client) {
                   case "axios":
                     return this.renderAxios(
@@ -143,12 +154,15 @@ export class Template__service extends Template {
                       paramsDef,
                       payloadDef
                     );
-                  case "socketio":
                   default:
                     return `// Not supported ${inflection.camelize(client, true)} yet.`;
                 }
-              })
-              .join("\n");
+              }),
+              // 스트리밍인 경우
+              ...(api.streamOptions
+                ? [this.renderStream(api, apiBaseUrl, paramsDefAsObject)]
+                : []),
+            ].join("\n");
           })
           .join("\n\n");
 
@@ -273,5 +287,32 @@ export async function ${api.methodName}${typeParamsDef}(${paramsDef}): Promise<R
     return window.fetch(\`${apiBaseUrl}?\${qs.stringify(${payloadDef})}\`);
 }
     `.trim();
+  }
+
+  renderStream(
+    api: ExtendedApi,
+    apiBaseUrl: string,
+    paramsDefAsObject: string
+  ) {
+    if (!api.streamOptions) {
+      return "// streamOptions not found";
+    }
+
+    const methodNameStream = api.options.resourceName
+      ? "use" + inflection.camelize(api.options.resourceName)
+      : "use" + inflection.camelize(api.methodName);
+    const methodNameStreamCamelized = inflection.camelize(
+      methodNameStream,
+      true
+    );
+
+    const eventsTypeDef = zodTypeToTsTypeDef(api.streamOptions.events);
+
+    return `  export function ${methodNameStreamCamelized}(
+  params: ${paramsDefAsObject},
+  handlers: EventHandlers<${eventsTypeDef} & { end?: () => void }>,
+  options: SSEStreamOptions) {
+    return useSSEStream<${eventsTypeDef}>(\`${apiBaseUrl}\`, params, handlers, options);
+  }`;
   }
 }
