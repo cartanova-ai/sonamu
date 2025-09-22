@@ -130,11 +130,16 @@ export class Syncer {
   async sync(): Promise<void> {
     const { targets } = Sonamu.config.sync;
 
+    // 번들러 여부에 따라 현재 디렉토리가 바뀌므로
+    const currentDirname = __dirname.endsWith("/syncer")
+      ? __dirname
+      : path.join(__dirname, "./syncer");
+
     // 트리거와 무관하게 shared 분배
     await Promise.all(
       targets.map(async (target) => {
         const srcCodePath = path
-          .join(__dirname, `../shared/${target}.shared.ts.txt`)
+          .join(currentDirname, `../shared/${target}.shared.ts.txt`)
           .replace("/dist/", "/src/");
         if (!fs.existsSync(srcCodePath)) {
           return;
@@ -158,6 +163,7 @@ export class Syncer {
           return;
         }
         fs.writeFileSync(dstCodePath, fs.readFileSync(srcCodePath));
+        console.log(chalk.blue("shared.ts is synced"));
       })
     );
 
