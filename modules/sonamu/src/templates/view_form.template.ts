@@ -270,8 +270,8 @@ import { DateTime } from "luxon";
 
 import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack } from "@sonamu-kit/react-sui";
 import { defaultCatch } from 'src/services/sonamu.shared';
-import { ImageUploader } from 'src/admin-common/ImageUploader';
-import { useCommonModal } from "src/admin-common/CommonModal";
+// import { ImageUploader } from 'src/admin-common/ImageUploader';
+// import { useCommonModal } from "src/admin-common/CommonModal";
 
 import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
         names.fs
@@ -343,14 +343,14 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
   }, [id]);
 
   // CommonModal
-  const { doneModal, closeModal } = useCommonModal();
+  // const { doneModal, closeModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     ${names.capital}Service.save([form]).then(([id]) => {
       if( mode === 'modal' ) {
-        doneModal();
+        // doneModal();
       } else {
         goBack('/admin/${names.fsPlural}');
       }
