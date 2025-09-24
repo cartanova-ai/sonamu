@@ -4,8 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   api,
+  BaseModelClass,
 } from "sonamu";
-import { BaseModelClass } from "sonamu/knex";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
 import { UserListParams, UserSaveParams } from "./user.types";

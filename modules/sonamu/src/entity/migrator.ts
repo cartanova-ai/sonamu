@@ -38,7 +38,6 @@ import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { DB } from "../database/db";
 import { KnexClient } from "../database/drivers/knex/client";
-import { KyselyClient } from "../database/drivers/kysely/client";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
@@ -66,10 +65,10 @@ export class Migrator {
   readonly mode: MigratorMode;
 
   targets: {
-    compare?: KnexClient | KyselyClient;
-    pending: KnexClient | KyselyClient;
-    shadow: KnexClient | KyselyClient;
-    apply: (KnexClient | KyselyClient)[];
+    compare?: KnexClient;
+    pending: KnexClient;
+    shadow: KnexClient;
+    apply: KnexClient[];
   };
 
   constructor(options: MigratorOptions) {
@@ -299,7 +298,7 @@ export class Migrator {
     );
 
     // action
-    // TODO: 마이그레이션 결과 리턴값 정리해야됨(kysely/knex)
+    // TODO: 마이그레이션 결과 리턴값 정리해야됨
     const result = await (async () => {
       switch (action) {
         case "latest":
@@ -664,9 +663,7 @@ export class Migrator {
     console.timeEnd(chalk.red("delete migration files"));
   }
 
-  async compareMigrations(
-    compareDB: KnexClient | KyselyClient
-  ): Promise<GenMigrationCode[]> {
+  async compareMigrations(compareDB: KnexClient): Promise<GenMigrationCode[]> {
     // Entity 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
@@ -881,7 +878,7 @@ export class Migrator {
     기존 테이블 정보 읽어서 MigrationSet 형식으로 리턴
   */
   async getMigrationSetFromDB(
-    compareDB: KnexClient | KyselyClient,
+    compareDB: KnexClient,
     table: string
   ): Promise<MigrationSet | null> {
     let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
@@ -1046,7 +1043,7 @@ export class Migrator {
     기존 테이블 읽어서 cols, indexes 반환
   */
   async readTable(
-    compareDB: KnexClient | KyselyClient,
+    compareDB: KnexClient,
     tableName: string
   ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
     // 테이블 정보

@@ -1,14 +1,13 @@
 import { Knex } from "knex";
-import { DB } from "../database/db";
-import { DBPreset } from "../database/types";
+import { DB, DBPreset } from "../database/db";
 import { UpsertBuilder } from "../database/upsert-builder";
 
 export abstract class BaseFrameClass {
   getDB(which: DBPreset): Knex {
-    return DB.getDB(which) as Knex;
+    return DB.getDB(which);
   }
 
   getUpsertBuilder() {
-    return new UpsertBuilder<"knex">();
+    return new UpsertBuilder();
   }
 }

@@ -4,8 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   api,
+  BaseModelClass,
 } from "sonamu";
-import { BaseModelClass } from "sonamu/knex";
 import { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeSubsetQueries } from "../sonamu.generated.sso";
 import { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
@@ -23,7 +23,7 @@ class EmployeeModelClass extends BaseModelClass {
   })
   async findById<T extends EmployeeSubsetKey>(
     subset: T,
-    id: number,
+    id: number
   ): Promise<EmployeeSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -39,7 +39,7 @@ class EmployeeModelClass extends BaseModelClass {
 
   async findOne<T extends EmployeeSubsetKey>(
     subset: T,
-    listParams: EmployeeListParams,
+    listParams: EmployeeListParams
   ): Promise<EmployeeSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -57,7 +57,7 @@ class EmployeeModelClass extends BaseModelClass {
   })
   async findMany<T extends EmployeeSubsetKey>(
     subset: T,
-    params: EmployeeListParams = {},
+    params: EmployeeListParams = {}
   ): Promise<ListResult<EmployeeSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -89,7 +89,7 @@ class EmployeeModelClass extends BaseModelClass {
           // }
           else {
             throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`,
+              `구현되지 않은 검색 필드 ${params.search}`
             );
           }
         }

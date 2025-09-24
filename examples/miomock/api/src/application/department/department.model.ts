@@ -4,8 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   api,
+  BaseModelClass,
 } from "sonamu";
-import { BaseModelClass } from "sonamu/knex";
 import {
   DepartmentSubsetKey,
   DepartmentSubsetMapping,

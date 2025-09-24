@@ -6,9 +6,6 @@
 import { Knex } from "knex";
 import { DB } from "./db";
 import { KnexClient } from "./drivers/knex/client";
-import { KyselyClient } from "./drivers/kysely/client";
-import { Transaction } from "kysely";
-import { Database } from "./types";
 
 export type RowWithId<Id extends string> = {
   [key in Id]: any;
@@ -24,12 +21,12 @@ export type RowWithId<Id extends string> = {
  * @param trx
  */
 export async function batchUpdate<Id extends string>(
-  db: KnexClient | KyselyClient,
+  db: KnexClient,
   tableName: string,
   ids: Id[],
   rows: RowWithId<Id>[],
   chunkSize = 50,
-  trx: Knex.Transaction | Transaction<Database> | null = null
+  trx: Knex.Transaction | null = null
 ) {
   const chunks: RowWithId<Id>[][] = [];
   for (let i = 0; i < rows.length; i += chunkSize) {
@@ -38,7 +35,7 @@ export async function batchUpdate<Id extends string>(
 
   const executeUpdate = async (
     chunk: RowWithId<Id>[],
-    transaction: KyselyClient | KnexClient
+    transaction: KnexClient
   ) => {
     const sql = generateBatchUpdateSQL(db, tableName, chunk, ids);
     return transaction.raw(sql);
@@ -75,7 +72,7 @@ function generateKeySetFromData(data: Record<string, any>[]) {
 }
 
 function generateBatchUpdateSQL<Id extends string>(
-  db: KnexClient | KyselyClient,
+  db: KnexClient,
   tableName: string,
   data: Record<string, any>[],
   identifiers: Id[]

@@ -21,7 +21,6 @@ import { readFileSync, writeFileSync } from "fs";
 import { RelationGraph } from "./_relation-graph";
 import { SonamuDBConfig, WhereClause } from "../database/types";
 import { DB } from "../database/db";
-import { KyselyClient } from "../database/drivers/kysely/client";
 import { KnexClient } from "../database/drivers/knex/client";
 
 export class FixtureManagerClass {
@@ -71,7 +70,7 @@ export class FixtureManagerClass {
     // console.timeEnd("FIXTURE-CleanAndSeed");
   }
 
-  async getChecksum(db: KnexClient | KyselyClient, tableName: string) {
+  async getChecksum(db: KnexClient, tableName: string) {
     const [checksumRow] = await db.raw<{ Checksum: string }>(
       `CHECKSUM TABLE ${tableName}`
     );
@@ -318,7 +317,7 @@ export class FixtureManagerClass {
     row: any,
     options?: {
       singleRecord?: boolean;
-      _db?: KnexClient | KyselyClient;
+      _db?: KnexClient;
     }
   ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
@@ -505,10 +504,7 @@ export class FixtureManagerClass {
     return insertData;
   }
 
-  private async insertFixture(
-    db: KnexClient | KyselyClient,
-    fixture: FixtureRecord
-  ) {
+  private async insertFixture(db: KnexClient, fixture: FixtureRecord) {
     const insertData = this.prepareInsertData(fixture);
     const entity = EntityManager.get(fixture.entityId);
 
@@ -547,7 +543,7 @@ export class FixtureManagerClass {
   }
 
   private async handleManyToManyRelations(
-    db: KnexClient | KyselyClient,
+    db: KnexClient,
     fixture: FixtureRecord,
     fixtures: FixtureRecord[]
   ) {
@@ -628,7 +624,7 @@ export class FixtureManagerClass {
 
   // 해당 픽스쳐의 값으로 유니크 제약에 위배되는 레코드가 있는지 확인
   private async checkUniqueViolation(
-    db: KnexClient | KyselyClient,
+    db: KnexClient,
     entity: Entity,
     fixture: FixtureRecord
   ) {

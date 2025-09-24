@@ -25,7 +25,7 @@ async function init() {
         onCancel: () => {
           throw new Error("Operation cancelled.");
         },
-      },
+      }
     );
   } catch (e) {
     console.error(e);
@@ -72,13 +72,13 @@ async function init() {
   // 2. Copy package.json and modify name
   ["api", "web"].forEach((dir) => {
     const pkg = JSON.parse(
-      fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
+      fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8")
     );
     pkg.name = `${targetDir}-${dir}`;
 
     fs.writeFileSync(
       path.join(targetRoot, dir, "package.json"),
-      JSON.stringify(pkg, null, 2) + "\n",
+      JSON.stringify(pkg, null, 2) + "\n"
     );
   });
 
@@ -137,12 +137,12 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     try {
       await executeCommand(c, args, databaseRoot);
       console.log(
-        chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
+        chalk.green(`\nA database has been set up in ${databaseRoot}\n`)
       );
     } catch (e) {
       console.log(`\n❌ Failed to set up a database in ${databaseRoot}`);
       console.log(
-        `To set up a database using Docker, run the following commands:\n`,
+        `To set up a database using Docker, run the following commands:\n`
       );
       console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
       console.log(chalk.gray(`  $ docker compose --env-file ${envFile} up -d`));
@@ -150,7 +150,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     }
   } else {
     console.log(
-      `\nTo set up a database using Docker, run the following commands:\n`,
+      `\nTo set up a database using Docker, run the following commands:\n`
     );
     console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
     console.log(chalk.gray(`  $ docker compose -p ${targetDir} up -d`));
@@ -161,7 +161,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 async function getCommandOutput(
   command: string,
   args: string[],
-  cwd: string,
+  cwd: string
 ): Promise<string> {
   const child = spawn(command, args, {
     cwd,
@@ -188,7 +188,7 @@ async function getCommandOutput(
     child.on("close", (code) => {
       if (code !== 0) {
         reject(
-          new Error(`Command failed with exit code ${code}: ${errorOutput}`),
+          new Error(`Command failed with exit code ${code}: ${errorOutput}`)
         );
       } else {
         resolve(output);
@@ -201,7 +201,7 @@ async function executeCommand(
   command: string,
   args: string[],
   cwd: string,
-  options: { showOutput?: boolean } = {},
+  options: { showOutput?: boolean } = {}
 ) {
   const { showOutput = false } = options;
   const child = spawn(command, args, {
@@ -245,8 +245,10 @@ async function executeCommand(
           spinner.fail(`${command} ${args.join(" ")}`);
           console.error(
             chalk.red(
-              `Command failed with exit code ${code}: ${command} ${args.join(" ")}`,
-            ),
+              `Command failed with exit code ${code}: ${command} ${args.join(
+                " "
+              )}`
+            )
           );
           // 에러가 있으면 stderr 출력
           if (errorOutput) {
@@ -261,12 +263,12 @@ async function executeCommand(
       // 출력 표시 옵션이 활성화된 경우 결과 출력
       if (showOutput && output.trim()) {
         spinner.succeed(
-          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`
         );
         console.log(chalk.cyan(output.trim()));
       } else {
         spinner.succeed(
-          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`
         );
       }
 
@@ -287,7 +289,7 @@ async function setupYarnBerry(projectName: string, dir: string) {
     await executeCommand(
       "corepack",
       ["prepare", "yarn@stable", "--activate"],
-      cwd,
+      cwd
     );
 
     // 2. Yarn 버전 설정

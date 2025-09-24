@@ -1,7 +1,6 @@
 import { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {
-  client: "knex",
   database: "miomock",
   defaultOptions: {
     connection: {

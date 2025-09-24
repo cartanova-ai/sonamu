@@ -412,9 +412,6 @@ export type KnexError = {
 export function isKnexError(e: any): e is KnexError {
   return e.code && e.sqlMessage && e.sqlState;
 }
-export function isKyselyError(e: any): e is KnexError {
-  return e.code && e.sqlMessage && e.sqlState;
-}
 
 export type KnexColumnType =
   | "string"
@@ -593,11 +590,6 @@ export namespace ApiParamType {
   export function isRefKnex(v: any): v is ApiParamType.Ref {
     return v?.t === "ref" && v.id === "Knex";
   }
-  export function isRefKysely(v: any): v is ApiParamType.Ref {
-    return (
-      v?.t === "ref" && (v.id === "Kysely" || v.id.startsWith("Transaction"))
-    );
-  }
   export function isTypeParam(v: any): v is ApiParamType.TypeParam {
     return v?.t === "type-param";
   }
@@ -738,7 +730,6 @@ export const TemplateOptions = z.object({
     entityId: z.string(),
     enumId: z.string(),
   }),
-  kysely_interface: z.object({}),
 });
 export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
@@ -761,7 +752,6 @@ export const TemplateKey = z.enum([
   "view_enums_select",
   "view_enums_dropdown",
   "view_enums_buttonset",
-  "kysely_interface",
 ]);
 export type TemplateKey = z.infer<typeof TemplateKey>;
 

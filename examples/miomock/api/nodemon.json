@@ -1,6 +1,6 @@
 {
   "watch": ["src"],
   "ext": "ts,json",
-  "exec": "yarn build:all && tsc-alias && node -r source-map-support/register -r dotenv/config dist/index.js",
+  "exec": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc-alias && node -r source-map-support/register -r dotenv/config dist/index.js",
   "signal": "SIGUSR2"
 }

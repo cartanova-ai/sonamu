@@ -1,12 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import _ from "lodash";
 import { Knex } from "knex";
-import { Kysely } from "kysely";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";
 import { RowWithId, batchUpdate } from "./_batch_update";
-import { Database, DatabaseDriver, DriverSpec } from "./types";
-import { DB } from "./db";
 
 type TableData = {
   references: Set<string>;
@@ -28,7 +25,7 @@ export function isRefField(field: any): field is UBRef {
   );
 }
 
-export class UpsertBuilder<D extends DatabaseDriver> {
+export class UpsertBuilder {
   tables: Map<string, TableData>;
   constructor() {
     this.tables = new Map();
@@ -61,7 +58,7 @@ export class UpsertBuilder<D extends DatabaseDriver> {
   }
 
   register<T extends string>(
-    tableName: DriverSpec[D]["table"],
+    tableName: string,
     row: {
       [key in T]?:
         | UBRef
@@ -148,23 +145,23 @@ export class UpsertBuilder<D extends DatabaseDriver> {
   }
 
   async upsert(
-    wdb: DriverSpec[D]["core"],
-    tableName: DriverSpec[D]["table"],
+    wdb: Knex,
+    tableName: string,
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
   }
   async insertOnly(
-    wdb: DriverSpec[D]["core"],
-    tableName: DriverSpec[D]["table"],
+    wdb: Knex,
+    tableName: string,
     chunkSize?: number
   ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
   }
 
   async upsertOrInsert(
-    _wdb: DriverSpec[D]["core"],
-    tableName: DriverSpec[D]["table"],
+    wdb: Knex,
+    tableName: string,
     mode: "upsert" | "insert",
     chunkSize?: number
   ): Promise<number[]> {
@@ -188,8 +185,6 @@ export class UpsertBuilder<D extends DatabaseDriver> {
     ) {
       throw new Error(`${tableName} 해결되지 않은 참조가 있습니다.`);
     }
-
-    const wdb = DB.toClient(_wdb);
 
     // 전체 테이블 순회하여 현재 테이블 참조하는 모든 테이블 추출
     const { references, refTables } = Array.from(this.tables).reduce(
@@ -226,20 +221,18 @@ export class UpsertBuilder<D extends DatabaseDriver> {
     const uuidMap = new Map<string, any>();
 
     for (const chunk of chunks) {
+      const q = wdb.insert(chunk).into(tableName);
       if (mode === "insert") {
-        await wdb.insert(tableName, chunk);
+        await q;
       } else if (mode === "upsert") {
-        await wdb.upsert(tableName, chunk);
-        // await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
+        await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
       }
 
       // upsert된 row들을 다시 조회하여 uuidMap에 저장
       const uuids = chunk.map((row) => row.uuid);
-      const upsertedRows = await wdb
-        .from(tableName)
+      const upsertedRows = await wdb(tableName)
         .select(_.uniq(["uuid", "id", ...extractFields]))
-        .where(["uuid", "in", uuids])
-        .execute();
+        .whereIn("uuid", uuids);
       upsertedRows.forEach((row: any) => {
         uuidMap.set(row.uuid, row);
       });
@@ -271,7 +264,7 @@ export class UpsertBuilder<D extends DatabaseDriver> {
     if (selfRefRows.length > 0) {
       // 처리된 데이터를 제외하고 다시 upsert
       table.rows = selfRefRows;
-      const selfRefIds = await this.upsert(_wdb, tableName, chunkSize);
+      const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
       allIds.push(...selfRefIds);
     }
 
@@ -279,11 +272,11 @@ export class UpsertBuilder<D extends DatabaseDriver> {
   }
 
   async updateBatch(
-    wdb: Knex | Kysely<Database>,
-    tableName: DriverSpec[D]["table"],
+    wdb: Knex,
+    tableName: string,
     options?: {
       chunkSize?: number;
-      where?: DriverSpec[D]["column"] | DriverSpec[D]["column"][];
+      where?: string | string[];
     }
   ): Promise<void> {
     options = _.defaults(options, {
@@ -307,12 +300,6 @@ export class UpsertBuilder<D extends DatabaseDriver> {
       return row as RowWithId<string>;
     });
 
-    await batchUpdate(
-      DB.toClient(wdb),
-      tableName,
-      whereColumns as string[],
-      rows,
-      options.chunkSize
-    );
+    await batchUpdate(wdb, tableName, whereColumns, rows, options.chunkSize);
   }
 }

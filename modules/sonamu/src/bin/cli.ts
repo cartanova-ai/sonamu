@@ -19,14 +19,8 @@ import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { SMDManager } from "../smd/smd-manager";
 import { DB } from "../database/db";
-import {
-  KnexConfig,
-  KyselyConfig,
-  SonamuKnexDBConfig,
-  SonamuKyselyDBConfig,
-} from "../database/types";
+import { KnexConfig, SonamuKnexDBConfig } from "../database/types";
 import { KnexClient } from "../database/drivers/knex/client";
-import { KyselyClient } from "../database/drivers/kysely/client";
 
 let migrator: Migrator;
 
@@ -167,7 +161,7 @@ async function fixture_init() {
     },
   ] as {
     label: string;
-    connKey: keyof SonamuKnexDBConfig | keyof SonamuKyselyDBConfig;
+    connKey: keyof SonamuKnexDBConfig;
   }[];
 
   // 1. 기준DB 스키마를 덤프
@@ -209,15 +203,9 @@ async function fixture_init() {
     }
 
     const db = (() => {
-      if (dbClient === "knex") {
-        const config = _.cloneDeep(DB.fullConfig[connKey]) as KnexConfig;
-        config.connection.database = undefined;
-        return new KnexClient(config);
-      } else {
-        const config = _.cloneDeep(DB.fullConfig[connKey]) as KyselyConfig;
-        config.database = undefined;
-        return new KyselyClient(config);
-      }
+      const config = _.cloneDeep(DB.fullConfig[connKey]) as KnexConfig;
+      config.connection.database = undefined;
+      return new KnexClient(config);
     })();
 
     const [row] = await db.raw(`SHOW DATABASES LIKE "${config.database}"`);

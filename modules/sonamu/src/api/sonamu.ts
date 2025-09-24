@@ -15,8 +15,6 @@ import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
 import { ApiDecoratorOptions } from "./decorators";
 import { humanizeZodError } from "../utils/zod-error";
-import { DatabaseDriver, SonamuDBConfig } from "../database/types";
-import { DB } from "../database/db";
 import { AsyncLocalStorage } from "async_hooks";
 
 export type SonamuConfig = {
@@ -104,22 +102,11 @@ class SonamuClass {
   set dbConfig(dbConfig: SonamuDBConfig) {
     this._dbConfig = dbConfig;
   }
-  get dbConfig() {
+  get dbConfig(): SonamuDBConfig {
     if (this._dbConfig === null) {
       throw new Error("Sonamu has not been initialized");
     }
     return this._dbConfig!;
-  }
-
-  private _dbClient: DatabaseDriver | null = null;
-  set dbClient(_dbClient: DatabaseDriver) {
-    this._dbClient = _dbClient;
-  }
-  get dbClient() {
-    if (this._dbClient === null) {
-      throw new Error("Sonamu has not been initialized");
-    }
-    return this._dbClient!;
   }
 
   private _syncer: Syncer | null = null;
@@ -191,6 +178,12 @@ class SonamuClass {
     this.dbClient = baseConfig.client;
     DB.init(baseConfig as any);
     this.dbConfig = DB.fullConfig;
+
+    // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
+    if (forTesting) {
+      this.isInitialized = true;
+      return;
+    }
 
     // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
     if (forTesting) {

@@ -73,7 +73,6 @@ export class Template__service extends Template {
               (param) =>
                 !ApiParamType.isContext(param.type) &&
                 !ApiParamType.isRefKnex(param.type) &&
-                !ApiParamType.isRefKysely(param.type) &&
                 !(param.optional === true && param.name.startsWith("_")) // _로 시작하는 파라미터는 제외
             );
 

@@ -8,6 +8,9 @@ import {
   SwrOptions,
   handleConditional,
   swrPostFetcher,
+  EventHandlers,
+  SSEStreamOptions,
+  useSSEStream,
 } from "../sonamu.shared";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { UserListParams, UserSaveParams } from "./user.types";
@@ -16,18 +19,18 @@ export namespace UserService {
   export function useUser<T extends UserSubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions,
+    swrOptions?: SwrOptions
   ): SWRResponse<UserSubsetMapping[T], SWRError> {
     return useSWR(
       handleConditional(
         [`/api/user/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+        swrOptions?.conditional
+      )
     );
   }
   export async function getUser<T extends UserSubsetKey>(
     subset: T,
-    id: number,
+    id: number
   ): Promise<UserSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -38,18 +41,18 @@ export namespace UserService {
   export function useUsers<T extends UserSubsetKey>(
     subset: T,
     params: UserListParams = {},
-    swrOptions?: SwrOptions,
+    swrOptions?: SwrOptions
   ): SWRResponse<ListResult<UserSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
         [`/api/user/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+        swrOptions?.conditional
+      )
     );
   }
   export async function getUsers<T extends UserSubsetKey>(
     subset: T,
-    params: UserListParams = {},
+    params: UserListParams = {}
   ): Promise<ListResult<UserSubsetMapping[T]>> {
     return fetch({
       method: "GET",
