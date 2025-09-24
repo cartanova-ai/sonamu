@@ -1,0 +1,6 @@
+// .swcrc.schemas (스키마 전용)
+{
+  "extends": "./.swcrc",
+  "include": ["src/sonamu.generated.ts"],
+  "exclude": []
+}

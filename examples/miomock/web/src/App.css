@@ -1,0 +1,135 @@
+/* App Layout */
+.app {
+  min-height: 100vh;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar Styles */
+.app-sidebar {
+  width: 250px;
+  min-width: 250px;
+  background: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.sidebar {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid #e9ecef;
+  background: #fff;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  color: #495057;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.sidebar-menu {
+  border: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.sidebar-menu-item {
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 1rem 1.5rem !important;
+  border-bottom: 1px solid #e9ecef !important;
+  color: #495057 !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-menu-item:hover {
+  background: #e9ecef !important;
+  color: #212529 !important;
+}
+
+.sidebar-menu-item.active {
+  background: #007bff !important;
+  color: white !important;
+  border-color: #007bff !important;
+}
+
+.sidebar-menu-item.active:hover {
+  background: #0056b3 !important;
+}
+
+.sidebar-menu-item i.icon {
+  margin-right: 0.5rem !important;
+}
+
+/* Content Area */
+.app-content {
+  flex: 1;
+  padding: 2rem;
+  background: #fff;
+  overflow-x: auto;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .app-sidebar {
+    width: 100%;
+    min-width: unset;
+    height: auto;
+  }
+
+  .sidebar {
+    height: auto;
+  }
+
+  .app-content {
+    padding: 1rem;
+  }
+}
+
+/* Legacy styles for compatibility */
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}

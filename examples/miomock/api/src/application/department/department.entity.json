@@ -1,0 +1,65 @@
+{
+  "id": "Department",
+  "table": "departments",
+  "title": "부서",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "name", "desc": "부서명", "type": "string", "length": 128 },
+    {
+      "type": "relation",
+      "name": "company",
+      "with": "Company",
+      "desc": "회사",
+      "relationType": "BelongsToOne",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    {
+      "type": "relation",
+      "name": "parent",
+      "with": "Department",
+      "nullable": true,
+      "desc": "상위부서",
+      "relationType": "BelongsToOne",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    {
+      "type": "relation",
+      "name": "employees",
+      "with": "Employee",
+      "desc": "직원리스트",
+      "relationType": "HasMany",
+      "joinColumn": "id"
+    },
+    {
+      "name": "employee_count",
+      "desc": "직원수",
+      "type": "virtual",
+      "id": "Number"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "name",
+      "company.id",
+      "company.name",
+      "parent.id",
+      "parent.name",
+      "employee_count"
+    ]
+  },
+  "enums": {
+    "DepartmentOrderBy": { "id-desc": "ID최신순" },
+    "DepartmentSearchField": { "id": "ID" }
+  }
+}

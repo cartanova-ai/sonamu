@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.types.ts"],
+  "references": [{ "path": "./tsconfig.schemas.json" }]
+}

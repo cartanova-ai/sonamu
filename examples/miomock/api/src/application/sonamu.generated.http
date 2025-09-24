@@ -1,0 +1,225 @@
+
+
+GET {{baseUrl}}/api/company/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/company/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/company/save
+Content-Type: application/json
+
+{ "spa": [{ "id": 0, "created_at": "2000-01-01", "name": "NAME" }] }
+
+
+###
+
+POST {{baseUrl}}/api/company/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/department/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/department/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/department/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "name": "NAME",
+      "company_id": 0,
+      "parent_id": null,
+      "employee_count": 0
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/department/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/employee/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/employee/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/employee/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "user_id": 0,
+      "department_id": null,
+      "employee_number": "EMPLOYEE_NUMBER"
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/employee/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/project/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/project/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/project/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "name": "NAME",
+      "status": "planning",
+      "description": null,
+      "employee_ids": [0]
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/project/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/user/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "email": "EMAIL",
+      "username": "USERNAME",
+      "birth_date": null,
+      "role": "normal",
+      "last_login_at": null,
+      "salary": null,
+      "bio": null,
+      "is_verified": false
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/user/del
+Content-Type: application/json
+
+{ "ids": [0] }

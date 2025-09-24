@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/sonamu.generated.ts"],
+  "exclude": ["src/**/*.types.ts"]
+}

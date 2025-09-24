@@ -1,0 +1,7 @@
+
+// .swcrc.main (메인 소스 전용)
+{
+  "extends": "./.swcrc", 
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/sonamu.generated.ts", "src/**/*.types.ts"]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "module": {
+    "type": "nodenext"
+  },
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true
+    },
+    "target": "es5"
+  },
+  "minify": true,
+  "sourceMaps": true
+}

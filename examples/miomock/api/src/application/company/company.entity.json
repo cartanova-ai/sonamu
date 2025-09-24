@@ -1,0 +1,21 @@
+{
+  "id": "Company",
+  "table": "companies",
+  "title": "COMPANY",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "name", "desc": "회사명", "type": "string", "length": 255 }
+  ],
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at", "name"] },
+  "enums": {
+    "CompanyOrderBy": { "id-desc": "ID최신순" },
+    "CompanySearchField": { "id": "ID" }
+  }
+}

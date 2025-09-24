@@ -1,0 +1,70 @@
+{
+  "id": "User",
+  "table": "users",
+  "title": "USER",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "email", "desc": "이메일", "type": "string", "length": 255 },
+    { "name": "username", "desc": "이름", "type": "string", "length": 255 },
+    { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
+    {
+      "name": "role",
+      "desc": "ROLE",
+      "type": "enum",
+      "length": 30,
+      "id": "UserRole"
+    },
+    {
+      "name": "last_login_at",
+      "nullable": true,
+      "desc": "LASTLOGIN일시",
+      "type": "datetime"
+    },
+    {
+      "name": "bio",
+      "nullable": true,
+      "desc": "BIO",
+      "type": "text",
+      "textType": "text"
+    },
+    {
+      "name": "is_verified",
+      "type": "boolean",
+      "desc": "ISVERIFIED",
+      "dbDefault": "false"
+    },
+    {
+      "type": "relation",
+      "name": "employee",
+      "with": "Employee",
+      "nullable": true,
+      "desc": "직원",
+      "relationType": "OneToOne"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "email",
+      "username",
+      "birth_date",
+      "role",
+      "last_login_at",
+      "bio",
+      "is_verified"
+    ]
+  },
+  "enums": {
+    "UserOrderBy": { "id-desc": "ID최신순" },
+    "UserSearchField": { "id": "ID" },
+    "UserRole": { "normal": "노멀" }
+  }
+}

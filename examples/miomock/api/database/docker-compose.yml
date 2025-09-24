@@ -1,0 +1,17 @@
+version: "3.8"
+name: miomock
+services:
+  mysql80:
+    platform: linux/arm64
+    image: mysql:8.0
+    container_name: miomock-mysql
+    volumes:
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      MYSQL_DATABASE: miomock
+      MYSQL_ROOT_PASSWORD: miomock123
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_HOST: "%"
+      TZ: Asia/Seoul
+    ports:
+      - "33061:3306"

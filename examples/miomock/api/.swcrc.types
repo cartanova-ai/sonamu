@@ -1,0 +1,7 @@
+
+// .swcrc.types (타입 파일 전용) 
+{
+  "extends": "./.swcrc",
+  "include": ["src/**/*.types.ts"],
+  "exclude": []
+}

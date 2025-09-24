@@ -1,0 +1,63 @@
+{
+  "id": "Project",
+  "table": "projects",
+  "title": "PROJECT",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    {
+      "type": "relation",
+      "name": "employee",
+      "with": "Employee",
+      "desc": "직원",
+      "relationType": "ManyToMany",
+      "joinTable": "projects__employees",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
+    },
+    { "name": "name", "desc": "PROJECT명", "type": "string", "length": 255 },
+    {
+      "name": "status",
+      "desc": "상태",
+      "type": "enum",
+      "length": 32,
+      "id": "ProjectStatus"
+    },
+    {
+      "name": "description",
+      "nullable": true,
+      "desc": "설명",
+      "type": "text",
+      "textType": "longtext"
+    }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "employee.id",
+      "employee.user.email",
+      "employee.user.username",
+      "employee.department.name",
+      "name",
+      "status",
+      "description"
+    ]
+  },
+  "enums": {
+    "ProjectOrderBy": { "id-desc": "ID최신순" },
+    "ProjectSearchField": { "id": "ID" },
+    "ProjectStatus": {
+      "planning": "계획",
+      "in_progress": "진행중",
+      "completed": "완료",
+      "cancelled": "취소"
+    }
+  }
+}
