@@ -241,7 +241,7 @@ export class Syncer {
     diffFiles: string[],
     currentChecksums?: PathAndChecksum[]
   ): Promise<{
-    generatedFilePaths: string[];
+    diffTypes: string[];
     changedChecksums?: PathAndChecksum[];
   }> {
     // 다른 부분 찾아 액션
@@ -332,12 +332,16 @@ export class Syncer {
     }
 
     return {
-      generatedFilePaths: [],
+      diffTypes,
       changedChecksums: currentChecksums,
     };
   }
 
+  syncFromWatcherStartTime: number = 0;
   async syncFromWatcher(diffFiles: string[]): Promise<void> {
+    // 시작 시간
+    this.syncFromWatcherStartTime = Date.now();
+
     const tsFiles = diffFiles.filter((file) => file.endsWith(".ts"));
     const jsonFiles = diffFiles.filter((file) => file.endsWith(".json"));
 
@@ -382,7 +386,7 @@ export class Syncer {
       })
       .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
     // console.log("Target Files: ", targetFilePaths);
-    await this.doSyncActions(targetFilePaths);
+    const { diffTypes } = await this.doSyncActions(targetFilePaths);
 
     // module reload
     function clearModuleAndDependents(filePath: string) {
@@ -399,10 +403,10 @@ export class Syncer {
 
       toDelete.forEach((key) => {
         delete require.cache[key];
-        console.log(
-          chalk.bold("ModuleCleared: ") +
-            chalk.blue(`${key.replace(Sonamu.apiRootPath, "api")}`)
-        );
+        // console.debug(
+        //   chalk.bold("ModuleCleared: ") +
+        //     chalk.blue(`${key.replace(Sonamu.apiRootPath, "api")}`)
+        // );
       });
     }
     transpiledFilePaths.map((filePath) => {
@@ -415,11 +419,17 @@ export class Syncer {
     await this.autoloadModels();
     await this.autoloadApis();
 
-    const msg = "HMR Done!";
-    const margin = (process.stdout.columns - msg.length) / 2;
-    console.log(
-      chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
-    );
+    const endTime = Date.now();
+    if (diffTypes.includes("generated") === false) {
+      const msg =
+        "HMR Done! " +
+        chalk.bold.white(`${endTime - this.syncFromWatcherStartTime}ms`);
+      const margin = (process.stdout.columns - msg.length) / 2;
+      console.log(
+        chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
+      );
+      this.syncFromWatcherStartTime = 0;
+    }
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
