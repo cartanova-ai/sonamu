@@ -134,13 +134,6 @@ class UserModelClass extends BaseModelClass {
 
     return ids.length;
   }
-
-  @api({ httpMethod: "GET" })
-  async t1(): Promise<{ result: string }> {
-    return {
-      result: abc,
-    };
-  }
 }
 
 export const UserModel = new UserModelClass();

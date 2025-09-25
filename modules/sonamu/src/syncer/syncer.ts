@@ -410,8 +410,10 @@ export class Syncer {
     }
     transpiledFilePaths.map((filePath) => {
       clearModuleAndDependents(filePath);
-      require(filePath);
     });
+    await this.autoloadTypes();
+    await this.autoloadModels();
+    await this.autoloadApis();
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {

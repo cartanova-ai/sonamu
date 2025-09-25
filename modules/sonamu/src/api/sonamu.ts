@@ -13,7 +13,7 @@ import { ApiParam, ApiParamType } from "../types/types";
 import { Syncer } from "../syncer/syncer";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
-import { ApiDecoratorOptions } from "./decorators";
+import { ApiDecoratorOptions, ExtendedApi } from "./decorators";
 import { humanizeZodError } from "../utils/zod-error";
 import { AsyncLocalStorage } from "async_hooks";
 import { BaseModel } from "../database/base-model";
@@ -245,103 +245,124 @@ class SonamuClass {
       }
     );
 
-    // API 라우팅 등록
-    this.syncer.apis.map((api) => {
-      // model
-      if (this.syncer.models[api.modelName] === undefined) {
-        throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
-      }
-      const model = this.syncer.models[api.modelName];
+    // API 라우팅 (로컬HMR 상태와 구분)
+    if (isLocal()) {
+      server.all("*", (request, reply) => {
+        const found = this.syncer.apis.find(
+          (api) =>
+            this.config.route.prefix + api.path === request.url.split("?")[0] &&
+            (api.options.httpMethod ?? "GET") === request.method.toUpperCase()
+        );
+        if (found) {
+          return this.getApiHandler(found, config)(request, reply);
+        }
+        return reply.status(404).send("Not Found");
+      });
+    } else {
+      this.syncer.apis.map((api) => {
+        // model
+        if (this.syncer.models[api.modelName] === undefined) {
+          throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
+        }
+
+        // route
+        server.route({
+          method: api.options.httpMethod!,
+          url: this.config.route.prefix + api.path,
+          handler: this.getApiHandler(api, config),
+        }); // END server.route
+      });
+    }
+  }
+
+  getApiHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
+    return async (
+      request: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<unknown> => {
+      (api.options.guards ?? []).every((guard) =>
+        config.guardHandler(guard, request, api)
+      );
 
       // 파라미터 정보로 zod 스키마 빌드
       const ReqType = getZodObjectFromApi(api, this.syncer.types);
 
-      // route
-      server.route({
-        method: api.options.httpMethod!,
-        url: this.config.route.prefix + api.path,
-        handler: async (request, reply): Promise<unknown> => {
-          (api.options.guards ?? []).every((guard) =>
-            config.guardHandler(guard, request, api)
-          );
+      // request 파싱
+      const which = api.options.httpMethod === "GET" ? "query" : "body";
+      let reqBody: {
+        [key: string]: unknown;
+      };
+      try {
+        reqBody = fastifyCaster(ReqType).parse(request[which] ?? {});
+      } catch (e) {
+        if (e instanceof ZodError) {
+          const messages = humanizeZodError(e)
+            .map((issue) => issue.message)
+            .join(" ");
+          throw new BadRequestException(messages);
+        } else {
+          throw e;
+        }
+      }
 
-          // request 파싱
-          const which = api.options.httpMethod === "GET" ? "query" : "body";
-          let reqBody: {
-            [key: string]: unknown;
-          };
+      // Content-Type
+      reply.type(api.options.contentType ?? "application/json");
+
+      // 캐시
+      const { cacheKey, cacheTtl, cachedData } = await (async () => {
+        if (config.cache) {
           try {
-            reqBody = fastifyCaster(ReqType).parse(request[which] ?? {});
-          } catch (e) {
-            if (e instanceof ZodError) {
-              const messages = humanizeZodError(e)
-                .map((issue) => issue.message)
-                .join(" ");
-              throw new BadRequestException(messages);
-            } else {
-              throw e;
-            }
-          }
-
-          // Content-Type
-          reply.type(api.options.contentType ?? "application/json");
-
-          // 캐시
-          const { cacheKey, cacheTtl, cachedData } = await (async () => {
-            if (config.cache) {
-              try {
-                const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
-                if (cacheKeyRes.cache === false) {
-                  return { cacheKey: null, cachedData: null };
-                }
-
-                const cacheKey = cacheKeyRes.key;
-                const cacheTtl = cacheKeyRes.ttl;
-                const cachedData = await config.cache.get(cacheKey);
-                return { cacheKey, cacheTtl, cachedData };
-              } catch (e) {
-                console.error(e);
-              }
+            const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
+            if (cacheKeyRes.cache === false) {
               return { cacheKey: null, cachedData: null };
             }
-            return { cacheKey: null, cachedData: null };
-          })();
-          if (cachedData !== null) {
-            return cachedData;
+
+            const cacheKey = cacheKeyRes.key;
+            const cacheTtl = cacheKeyRes.ttl;
+            const cachedData = await config.cache.get(cacheKey);
+            return { cacheKey, cacheTtl, cachedData };
+          } catch (e) {
+            console.error(e);
           }
+          return { cacheKey: null, cachedData: null };
+        }
+        return { cacheKey: null, cachedData: null };
+      })();
+      if (cachedData !== null) {
+        return cachedData;
+      }
 
-          // 결과 (AsyncLocalStorage 적용)
-          const context = config.contextProvider(
-            {
-              headers: request.headers,
-              reply,
-            },
-            request,
-            reply
-          );
-          return this.asyncLocalStorage.run({ context }, async () => {
-            const result = await (model as any)[api.methodName].apply(
-              model,
-              api.parameters.map((param) => {
-                // Context 인젝션
-                if (ApiParamType.isContext(param.type)) {
-                  return context;
-                } else {
-                  return reqBody[param.name];
-                }
-              })
-            );
-            reply.type(api.options.contentType ?? "application/json");
-
-            // 캐시 키 있는 경우 갱신 후 저장
-            if (config.cache && cacheKey) {
-              await config.cache.put(cacheKey, result, cacheTtl);
-            }
-            return result;
-          });
+      // 결과 (AsyncLocalStorage 적용)
+      const context = config.contextProvider(
+        {
+          headers: request.headers,
+          reply,
         },
-      }); // END server.route
-    });
+        request,
+        reply
+      );
+      const model = this.syncer.models[api.modelName];
+      return this.asyncLocalStorage.run({ context }, async () => {
+        const result = await (model as any)[api.methodName].apply(
+          model,
+          api.parameters.map((param) => {
+            // Context 인젝션
+            if (ApiParamType.isContext(param.type)) {
+              return context;
+            } else {
+              return reqBody[param.name];
+            }
+          })
+        );
+        reply.type(api.options.contentType ?? "application/json");
+
+        // 캐시 키 있는 경우 갱신 후 저장
+        if (config.cache && cacheKey) {
+          await config.cache.put(cacheKey, result, cacheTtl);
+        }
+        return result;
+      });
+    };
   }
 
   startWatcher(): void {

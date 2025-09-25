@@ -227,5 +227,117 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/user/t1
-	?
+	?str=STR
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "email": "EMAIL",
+      "username": "USERNAME",
+      "birth_date": null,
+      "role": "normal",
+      "last_login_at": null,
+      "bio": null,
+      "is_verified": false
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/user/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/user/t1
+	?str=STR
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "email": "EMAIL",
+      "username": "USERNAME",
+      "birth_date": null,
+      "role": "normal",
+      "last_login_at": null,
+      "bio": null,
+      "is_verified": false
+    }
+  ]
+}
+
+
+###
+
+POST {{baseUrl}}/api/user/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/user/t1
+	?str=STR
 Content-Type: application/json
