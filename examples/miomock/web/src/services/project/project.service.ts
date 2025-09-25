@@ -19,18 +19,18 @@ export namespace ProjectService {
   export function useProject<T extends ProjectSubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ProjectSubsetMapping[T], SWRError> {
     return useSWR(
       handleConditional(
         [`/api/project/findById`, { subset, id }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getProject<T extends ProjectSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<ProjectSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -41,18 +41,18 @@ export namespace ProjectService {
   export function useProjects<T extends ProjectSubsetKey>(
     subset: T,
     params: ProjectListParams = {},
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<ProjectSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
         [`/api/project/findMany`, { subset, params }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getProjects<T extends ProjectSubsetKey>(
     subset: T,
-    params: ProjectListParams = {}
+    params: ProjectListParams = {},
   ): Promise<ListResult<ProjectSubsetMapping[T]>> {
     return fetch({
       method: "GET",

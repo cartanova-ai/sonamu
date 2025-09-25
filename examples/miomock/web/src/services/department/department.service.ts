@@ -22,18 +22,18 @@ export namespace DepartmentService {
   export function useDepartment<T extends DepartmentSubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<DepartmentSubsetMapping[T], SWRError> {
     return useSWR(
       handleConditional(
         [`/api/department/findById`, { subset, id }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getDepartment<T extends DepartmentSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<DepartmentSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -44,18 +44,18 @@ export namespace DepartmentService {
   export function useDepartments<T extends DepartmentSubsetKey>(
     subset: T,
     params: DepartmentListParams = {},
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<DepartmentSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
         [`/api/department/findMany`, { subset, params }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getDepartments<T extends DepartmentSubsetKey>(
     subset: T,
-    params: DepartmentListParams = {}
+    params: DepartmentListParams = {},
   ): Promise<ListResult<DepartmentSubsetMapping[T]>> {
     return fetch({
       method: "GET",

@@ -19,18 +19,18 @@ export namespace CompanyService {
   export function useCompany<T extends CompanySubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<CompanySubsetMapping[T], SWRError> {
     return useSWR(
       handleConditional(
         [`/api/company/findById`, { subset, id }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getCompany<T extends CompanySubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<CompanySubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -41,18 +41,18 @@ export namespace CompanyService {
   export function useCompanies<T extends CompanySubsetKey>(
     subset: T,
     params: CompanyListParams = {},
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<CompanySubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
         [`/api/company/findMany`, { subset, params }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getCompanies<T extends CompanySubsetKey>(
     subset: T,
-    params: CompanyListParams = {}
+    params: CompanyListParams = {},
   ): Promise<ListResult<CompanySubsetMapping[T]>> {
     return fetch({
       method: "GET",

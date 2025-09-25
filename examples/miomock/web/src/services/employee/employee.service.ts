@@ -19,18 +19,18 @@ export namespace EmployeeService {
   export function useEmployee<T extends EmployeeSubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<EmployeeSubsetMapping[T], SWRError> {
     return useSWR(
       handleConditional(
         [`/api/employee/findById`, { subset, id }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getEmployee<T extends EmployeeSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<EmployeeSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -41,18 +41,18 @@ export namespace EmployeeService {
   export function useEmployees<T extends EmployeeSubsetKey>(
     subset: T,
     params: EmployeeListParams = {},
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<EmployeeSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
         [`/api/employee/findMany`, { subset, params }],
-        swrOptions?.conditional
-      )
+        swrOptions?.conditional,
+      ),
     );
   }
   export async function getEmployees<T extends EmployeeSubsetKey>(
     subset: T,
-    params: EmployeeListParams = {}
+    params: EmployeeListParams = {},
   ): Promise<ListResult<EmployeeSubsetMapping[T]>> {
     return fetch({
       method: "GET",

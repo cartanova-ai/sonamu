@@ -1,4 +1,3 @@
-console.time("total");
 import fastify from "fastify";
 import { Sonamu } from "sonamu";
 import path from "path";
@@ -29,7 +28,6 @@ async function bootstrap() {
     .listen({ port, host })
     .then(() => {
       console.log(`🌲 Server listening on http://${host}:${port}`);
-      console.timeEnd("total");
     })
     .catch((err) => {
       console.error(err);
