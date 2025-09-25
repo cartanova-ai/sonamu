@@ -65,12 +65,20 @@ export function api(options: ApiDecoratorOptions = {}) {
       true
     )}/${inflection.camelize(propertyKey, true)}`;
 
-    registeredApis.push({
-      modelName,
-      methodName,
-      path: options.path ?? defaultPath,
-      options,
-    });
+    // 기존 동일한 메서드가 있는지 확인 후 있는 경우 override
+    const existingApi = registeredApis.find(
+      (api) => api.modelName === modelName && api.methodName === methodName
+    );
+    if (existingApi) {
+      existingApi.options = options;
+    } else {
+      registeredApis.push({
+        modelName,
+        methodName,
+        path: options.path ?? defaultPath,
+        options,
+      });
+    }
   };
 }
 
@@ -84,15 +92,22 @@ export function stream(options: StreamDecoratorOptions) {
       true
     )}/${inflection.camelize(propertyKey, true)}`;
 
-    registeredApis.push({
-      modelName,
-      methodName,
-      path: options.path ?? defaultPath,
-      options: {
-        ...options,
-        httpMethod: "GET",
-      },
-      streamOptions: options,
-    });
+    const existingApi = registeredApis.find(
+      (api) => api.modelName === modelName && api.methodName === methodName
+    );
+    if (existingApi) {
+      existingApi.options = options;
+    } else {
+      registeredApis.push({
+        modelName,
+        methodName,
+        path: options.path ?? defaultPath,
+        options: {
+          ...options,
+          httpMethod: "GET",
+        },
+        streamOptions: options,
+      });
+    }
   };
 }

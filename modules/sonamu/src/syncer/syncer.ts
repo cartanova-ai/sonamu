@@ -411,6 +411,9 @@ export class Syncer {
     transpiledFilePaths.map((filePath) => {
       clearModuleAndDependents(filePath);
     });
+    this.apis = [];
+    this.types = {};
+    this.models = {};
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
