@@ -258,7 +258,6 @@ export class Syncer {
     // 트리거: entity, types
     // 액션: 스키마 생성
     if (diffTypes.includes("entity") || diffTypes.includes("types")) {
-      console.log("// 액션: 스키마 생성");
       await this.actionGenerateSchemas();
 
       // generated 싱크까지 동시에 처리 후 체크섬 갱신
@@ -281,8 +280,6 @@ export class Syncer {
       diffTypes.includes("functions") ||
       diffTypes.includes("generated")
     ) {
-      console.log("// 액션: 파일 싱크 types / functions / generated");
-
       const tsPaths = _.uniq(
         [
           ...(diffGroups["types"] ?? []),
@@ -295,7 +292,6 @@ export class Syncer {
 
     // 트리거: model
     if (diffTypes.includes("model") || diffTypes.includes("frame")) {
-      console.log("// 액션: 서비스 생성");
       const mergedGroup = [
         ...(diffGroups["model"] ?? []),
         ...(diffGroups["frame"] ?? []),
@@ -332,13 +328,12 @@ export class Syncer {
         });
       await this.actionGenerateServices(params);
 
-      console.log("// 액션: HTTP파일 생성");
       await this.actionGenerateHttps();
     }
 
     return {
       generatedFilePaths: [],
-      changedChecksums: [],
+      changedChecksums: currentChecksums,
     };
   }
 
@@ -368,9 +363,8 @@ export class Syncer {
             .replace(".ts", ".js");
           writeFileSync(jsPath, code);
           console.log(
-            chalk.blue(
-              `Transpiled: ${jsPath.replace(Sonamu.apiRootPath, "api")}`
-            )
+            chalk.bold("Transpiled: ") +
+              chalk.blue(`${jsPath.replace(Sonamu.apiRootPath, "api")}`)
           );
           return jsPath;
         })
@@ -405,7 +399,10 @@ export class Syncer {
 
       toDelete.forEach((key) => {
         delete require.cache[key];
-        console.log(chalk.blue(`ModuleCleared: ${key}`));
+        console.log(
+          chalk.bold("ModuleCleared: ") +
+            chalk.blue(`${key.replace(Sonamu.apiRootPath, "api")}`)
+        );
       });
     }
     transpiledFilePaths.map((filePath) => {
@@ -417,6 +414,12 @@ export class Syncer {
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
+
+    const msg = "HMR Done!";
+    const margin = (process.stdout.columns - msg.length) / 2;
+    console.log(
+      chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
+    );
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
@@ -509,8 +512,10 @@ export class Syncer {
                 fs.mkdirSync(dir, { recursive: true });
               }
               console.log(
-                "COPIED ",
-                chalk.blue(dst.replace(Sonamu.appRootPath + "/", ""))
+                chalk.bold("Copied: ") +
+                  chalk.blue(
+                    `Copied: ${dst.replace(Sonamu.appRootPath + "/", "")}`
+                  )
               );
               await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
@@ -1111,8 +1116,8 @@ export class Syncer {
         }
         fs.writeFileSync(dstFilePath, pathAndCode.code);
         console.log(
-          "GENERATED ",
-          chalk.blue(dstFilePath.replace(appRootPath + "/", ""))
+          chalk.bold("Generated: ") +
+            chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`)
         );
         return dstFilePath;
       })

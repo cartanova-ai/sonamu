@@ -6,7 +6,10 @@ import path from "path";
 import fs from "fs-extra";
 import { getZodObjectFromApi } from "./code-converters";
 import { Context } from "./context";
-import { BadRequestException } from "../exceptions/so-exceptions";
+import {
+  BadRequestException,
+  NotFoundException,
+} from "../exceptions/so-exceptions";
 import { EntityManager } from "../entity/entity-manager";
 import { fastifyCaster } from "./caster";
 import { ApiParam, ApiParamType } from "../types/types";
@@ -202,7 +205,7 @@ class SonamuClass {
     await this.syncer.autoloadApis();
 
     if (isLocal() && !isTest() && enableSync) {
-      // await this.syncer.sync();
+      await this.syncer.sync();
 
       this.startWatcher();
 
@@ -256,7 +259,7 @@ class SonamuClass {
         if (found) {
           return this.getApiHandler(found, config)(request, reply);
         }
-        return reply.status(404).send("Not Found");
+        throw new NotFoundException("존재하지 않는 API 접근입니다.");
       });
     } else {
       this.syncer.apis.map((api) => {
@@ -366,9 +369,7 @@ class SonamuClass {
   }
 
   startWatcher(): void {
-    // 1. 기본 watcher 생성
     const watchPath = path.join(this.apiRootPath, "src");
-    console.log(chalk.green(`Watching ${watchPath}`));
     this.watcher = chokidar.watch(watchPath, {
       awaitWriteFinish: {
         stabilityThreshold: 500,
@@ -378,9 +379,11 @@ class SonamuClass {
         !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
     });
-    // 2. 이벤트 리스닝
     this.watcher.on("change", (filePath: string) => {
-      console.log(`Detected: ${filePath.replace(this.apiRootPath, "api")}`);
+      console.log(
+        chalk.bold("Detected: ") +
+          chalk.blue(`${filePath.replace(this.apiRootPath, "api")}`)
+      );
       this.syncer.syncFromWatcher([filePath]);
     });
   }
