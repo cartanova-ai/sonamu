@@ -19,6 +19,7 @@ import { AsyncLocalStorage } from "async_hooks";
 import { BaseModel } from "../database/base-model";
 import { DB, SonamuDBConfig } from "../database/db";
 import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
+import chokidar, { FSWatcher } from "chokidar";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -142,6 +143,8 @@ class SonamuClass {
     return this._secrets;
   }
 
+  public watcher: FSWatcher | null = null;
+
   async initForTesting() {
     await this.init(true, false, undefined, true);
   }
@@ -187,12 +190,6 @@ class SonamuClass {
       return;
     }
 
-    // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
-    if (forTesting) {
-      this.isInitialized = true;
-      return;
-    }
-
     // Entity 로드
     await EntityManager.autoload(doSilent);
 
@@ -205,7 +202,9 @@ class SonamuClass {
     await this.syncer.autoloadApis();
 
     if (isLocal() && !isTest() && enableSync) {
-      await this.syncer.sync();
+      // await this.syncer.sync();
+
+      this.startWatcher();
 
       fetch("http://127.0.0.1:57001/api/reload", {
         method: "GET",
@@ -342,6 +341,26 @@ class SonamuClass {
           });
         },
       }); // END server.route
+    });
+  }
+
+  startWatcher(): void {
+    // 1. 기본 watcher 생성
+    const watchPath = path.join(this.apiRootPath, "src");
+    console.log(chalk.green(`Watching ${watchPath}`));
+    this.watcher = chokidar.watch(watchPath, {
+      awaitWriteFinish: {
+        stabilityThreshold: 500,
+        pollInterval: 100,
+      },
+      ignored: (path, stats) =>
+        !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
+      persistent: true,
+    });
+    // 2. 이벤트 리스닝
+    this.watcher.on("change", (filePath: string) => {
+      console.log(`Detected: ${filePath.replace(this.apiRootPath, "api")}`);
+      this.syncer.syncFromWatcher([filePath]);
     });
   }
 

@@ -4,7 +4,6 @@ import {
   DepartmentSubsetKey,
   EmployeeSubsetKey,
   ProjectSubsetKey,
-  TestSubsetKey,
   UserSubsetKey,
 } from "./sonamu.generated";
 
@@ -154,16 +153,6 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
       ],
     },
   };
-
-// SubsetQuery: Test
-export const testSubsetQueries: { [key in TestSubsetKey]: SubsetQuery } = {
-  A: {
-    select: ["tests.id", "tests.created_at"],
-    virtual: [],
-    joins: [],
-    loaders: [],
-  },
-};
 
 // SubsetQuery: User
 export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {

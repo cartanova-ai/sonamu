@@ -11,7 +11,10 @@ export default defineConfig({
     "src/database/drivers/kysely/base-model.ts",
   ],
   dts: true,
-  format: ["cjs", "esm"],
+  format: [
+    "cjs",
+    // "esm"
+  ],
   target: "esnext",
   clean: true,
   sourcemap: true,

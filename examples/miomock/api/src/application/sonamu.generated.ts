@@ -53,14 +53,6 @@ export const ProjectStatusLabel = {
   cancelled: "취소",
 };
 
-// Enums: Test
-export const TestOrderBy = z.enum(["id-desc"]).describe("TestOrderBy");
-export type TestOrderBy = z.infer<typeof TestOrderBy>;
-export const TestOrderByLabel = { "id-desc": "ID최신순" };
-export const TestSearchField = z.enum(["id"]).describe("TestSearchField");
-export type TestSearchField = z.infer<typeof TestSearchField>;
-export const TestSearchFieldLabel = { id: "ID" };
-
 // Enums: User
 export const UserOrderBy = z.enum(["id-desc"]).describe("UserOrderBy");
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
@@ -113,13 +105,6 @@ export const ProjectBaseSchema = z.object({
   description: z.string().max(4294967295).nullable(),
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema>;
-
-// BaseSchema: Test
-export const TestBaseSchema = z.object({
-  id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
-});
-export type TestBaseSchema = z.infer<typeof TestBaseSchema>;
 
 // BaseSchema: User
 export const UserBaseSchema = z.object({
@@ -191,20 +176,6 @@ export const ProjectBaseListParams = z
   })
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
-
-// BaseListParams: Test
-export const TestBaseListParams = z
-  .object({
-    num: z.number().int().nonnegative(),
-    page: z.number().int().min(1),
-    search: TestSearchField,
-    keyword: z.string(),
-    orderBy: TestOrderBy,
-    queryMode: SonamuQueryMode,
-    id: zArrayable(z.number().int().positive()),
-  })
-  .partial();
-export type TestBaseListParams = z.infer<typeof TestBaseListParams>;
 
 // BaseListParams: User
 export const UserBaseListParams = z
@@ -312,18 +283,6 @@ export type ProjectSubsetMapping = {
 };
 export const ProjectSubsetKey = z.enum(["A"]);
 export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
-
-// Subsets: Test
-export const TestSubsetA = z.object({
-  id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
-});
-export type TestSubsetA = z.infer<typeof TestSubsetA>;
-export type TestSubsetMapping = {
-  A: TestSubsetA;
-};
-export const TestSubsetKey = z.enum(["A"]);
-export type TestSubsetKey = z.infer<typeof TestSubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({

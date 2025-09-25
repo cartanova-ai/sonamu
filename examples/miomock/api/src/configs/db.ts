@@ -5,7 +5,7 @@ const baseconfig: SonamuDBBaseConfig = {
   defaultOptions: {
     connection: {
       host: "127.0.0.1",
-      port: 33061,
+      port: 3306,
       user: "root",
       password: "miomock123",
       typeCast: function (field: any, next: any) {

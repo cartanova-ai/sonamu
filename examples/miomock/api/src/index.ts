@@ -1,6 +1,7 @@
 console.time("total");
 import fastify from "fastify";
 import { Sonamu } from "sonamu";
+import path from "path";
 
 const host = "localhost";
 const port = 19000;
@@ -9,6 +10,9 @@ const server = fastify();
 server.register(import("fastify-qs"));
 
 async function bootstrap() {
+  const current = "../../../";
+  console.log(path.resolve(current));
+
   await Sonamu.withFastify(server, {
     contextProvider: (defaultContext, _request) => {
       return {

@@ -24,6 +24,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    // "noUncheckedIndexedAccess": true, // FIXME
 
     /* Module Resolution Options */
     "moduleResolution": "node",

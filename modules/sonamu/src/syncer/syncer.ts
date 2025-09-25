@@ -1,9 +1,9 @@
 import path, { dirname } from "path";
 import { globAsync, importMultiple } from "../utils/utils";
-import fs from "fs-extra";
+import fs, { writeFileSync } from "fs-extra";
 import crypto from "crypto";
 import equal from "fast-deep-equal";
-import _ from "lodash";
+import _, { chunk } from "lodash";
 import inflection from "inflection";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import ts from "typescript";
@@ -76,6 +76,9 @@ import { Sonamu } from "../api/sonamu";
 import { execSync } from "child_process";
 import { Template__generated_sso } from "../templates/generated_sso.template";
 import { setTimeout as setTimeoutPromises } from "timers/promises";
+import assert from "assert";
+import * as swc from "@swc/core";
+import { minimatch } from "minimatch";
 
 type FileType =
   | "model"
@@ -119,6 +122,17 @@ export class Syncer {
   types: { [typeName: string]: z.ZodObject<any> } = {};
   models: { [modelName: string]: unknown } = {};
   isSyncing: boolean = false;
+
+  public checksumPatternGroup: GlobPattern = {
+    /* 원본 체크 */
+    entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
+    types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
+    generated: Sonamu.apiRootPath + "/src/application/sonamu.generated.ts",
+    functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
+    /* compiled-JS 체크 */
+    model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
+    frame: Sonamu.apiRootPath + "/dist/application/**/*.frame.js",
+  };
 
   get checksumsPath(): string {
     return path.join(Sonamu.apiRootPath, "/.so-checksum");
@@ -207,12 +221,35 @@ export class Syncer {
     const diffFiles = diff.map((r) => r.path);
     console.log("Changed Files: ", diffFiles);
 
+    const { changedChecksums } = await this.doSyncActions(
+      diffFiles,
+      currentChecksums
+    );
+    // checksum 오버라이드 (액션 실행 과정 중간에 체크섬이 바뀐 경우)
+    currentChecksums = changedChecksums ?? currentChecksums;
+
+    // 저장
+    await this.saveChecksums(currentChecksums);
+
+    // 싱크 종료
+    this.isSyncing = false;
+    abc.abort();
+    process.off("SIGUSR2", onSIGUSR2);
+  }
+
+  async doSyncActions(
+    diffFiles: string[],
+    currentChecksums?: PathAndChecksum[]
+  ): Promise<{
+    generatedFilePaths: string[];
+    changedChecksums?: PathAndChecksum[];
+  }> {
     // 다른 부분 찾아 액션
     const diffGroups = _.groupBy(diffFiles, (r) => {
       const matched = r.match(
         /\.(model|types|functions|entity|generated|frame)\.[tj]s/
       );
-      return matched![1];
+      return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
 
     // 변경된 파일들을 타입별로 분리하여 각 타입별 액션 처리
@@ -230,7 +267,11 @@ export class Syncer {
         "/src/application/sonamu.generated.ts",
       ]);
       diffTypes.push("generated");
-      currentChecksums = await this.getCurrentChecksums();
+
+      // fullSync인 경우만 실행
+      if (currentChecksums) {
+        currentChecksums = await this.getCurrentChecksums();
+      }
     }
 
     // 트리거: types, enums, generated 변경시
@@ -263,6 +304,7 @@ export class Syncer {
         mergedGroup.map((modelPath) => {
           if (modelPath.endsWith(".model.js")) {
             const entityId = this.getEntityIdFromPath([modelPath])[0];
+            assert(entityId);
             return {
               namesRecord: EntityManager.getNamesFromId(entityId),
               modelTsPath: path.join(
@@ -275,6 +317,7 @@ export class Syncer {
           }
           if (modelPath.endsWith("frame.js")) {
             const [, frameName] = modelPath.match(/.+\/(.+)\.frame.js$/) ?? [];
+            assert(frameName);
             return {
               namesRecord: EntityManager.getNamesFromId(frameName),
               modelTsPath: path.join(
@@ -293,20 +336,90 @@ export class Syncer {
       await this.actionGenerateHttps();
     }
 
-    // 저장
-    await this.saveChecksums(currentChecksums);
+    return {
+      generatedFilePaths: [],
+      changedChecksums: [],
+    };
+  }
 
-    // 싱크 종료
-    this.isSyncing = false;
-    abc.abort();
-    process.off("SIGUSR2", onSIGUSR2);
+  async syncFromWatcher(diffFiles: string[]): Promise<void> {
+    const tsFiles = diffFiles.filter((file) => file.endsWith(".ts"));
+    const jsonFiles = diffFiles.filter((file) => file.endsWith(".json"));
+
+    // transpile (성능 이슈를 고려하여 5개 동시 실행)
+    const chunks = chunk(tsFiles, 5);
+    let transpiledFilePaths: string[] = [];
+    for (const chunk of chunks) {
+      const _transpiledFilePaths = await Promise.all(
+        chunk.map(async (diffFile) => {
+          const { code } = await swc.transformFile(diffFile, {
+            jsc: {
+              parser: {
+                syntax: "typescript",
+                decorators: true,
+              },
+              target: "es5",
+            },
+            minify: true,
+            sourceMaps: true,
+          });
+          const jsPath = diffFile
+            .replace("/src/", "/dist/")
+            .replace(".ts", ".js");
+          writeFileSync(jsPath, code);
+          console.log(
+            chalk.blue(
+              `Transpiled: ${jsPath.replace(Sonamu.apiRootPath, "api")}`
+            )
+          );
+          return jsPath;
+        })
+      );
+      transpiledFilePaths.push(..._transpiledFilePaths);
+    }
+
+    // doSyncActions
+    const allFilePaths = [...tsFiles, ...transpiledFilePaths, ...jsonFiles];
+    const targetFilePaths = allFilePaths
+      .filter((filePath) => {
+        return Object.values(this.checksumPatternGroup).some((pattern) =>
+          minimatch(filePath, pattern)
+        );
+      })
+      .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
+    // console.log("Target Files: ", targetFilePaths);
+    await this.doSyncActions(targetFilePaths);
+
+    // module reload
+    function clearModuleAndDependents(filePath: string) {
+      const resolved = require.resolve(filePath);
+      const toDelete = new Set([resolved]);
+
+      // 이 파일을 children으로 가진 모듈 찾기
+      Object.keys(require.cache).forEach((key) => {
+        const mod = require.cache[key];
+        if (mod?.children?.some((child) => child.id === resolved)) {
+          toDelete.add(key);
+        }
+      });
+
+      toDelete.forEach((key) => {
+        delete require.cache[key];
+        console.log(chalk.blue(`ModuleCleared: ${key}`));
+      });
+    }
+    transpiledFilePaths.map((filePath) => {
+      clearModuleAndDependents(filePath);
+      require(filePath);
+    });
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
     return _.uniq(
       filePaths.map((p) => {
         const matched = p.match(/application\/(.+)\//);
-        return inflection.camelize(matched![1].replace(/\-/g, "_"));
+        assert(matched && matched[1]);
+        return inflection.camelize(matched[1].replace(/\-/g, "_"));
       })
     );
   }
@@ -347,6 +460,7 @@ export class Syncer {
       {},
       { overwrite: true }
     );
+    assert(res);
     return res;
   }
 
@@ -375,7 +489,6 @@ export class Syncer {
   async actionSyncFilesToTargets(tsPaths: string[]): Promise<string[]> {
     const { targets } = Sonamu.config.sync;
     const { dir: apiDir } = Sonamu.config.api;
-    const { appRootPath } = Sonamu;
 
     return (
       await Promise.all(
@@ -392,7 +505,7 @@ export class Syncer {
               }
               console.log(
                 "COPIED ",
-                chalk.blue(dst.replace(appRootPath + "/", ""))
+                chalk.blue(dst.replace(Sonamu.appRootPath + "/", ""))
               );
               await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
@@ -404,22 +517,13 @@ export class Syncer {
   }
 
   async getCurrentChecksums(): Promise<PathAndChecksum[]> {
-    const PatternGroup: GlobPattern = {
-      /* 원본 체크 */
-      entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
-      types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
-      generated: Sonamu.apiRootPath + "/src/application/sonamu.generated.ts",
-      functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
-      /* compiled-JS 체크 */
-      model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
-      frame: Sonamu.apiRootPath + "/dist/application/**/*.frame.js",
-    };
-
     const filePaths = (
       await Promise.all(
-        Object.entries(PatternGroup).map(async ([_fileType, pattern]) => {
-          return globAsync(pattern);
-        })
+        Object.entries(this.checksumPatternGroup).map(
+          async ([_fileType, pattern]) => {
+            return globAsync(pattern);
+          }
+        )
       )
     )
       .flat()
@@ -633,6 +737,7 @@ export class Syncer {
           t: "object",
           props: literalNode.members.map((member) => {
             if (ts.isIndexSignatureDeclaration(member)) {
+              assert(member.parameters[0]);
               const res = this.resolveParamDec({
                 name: member.parameters[0].name as ts.Identifier,
                 type: member.parameters[0].type as ts.TypeNode,

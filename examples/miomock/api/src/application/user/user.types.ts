@@ -11,3 +11,5 @@ export const UserSaveParams = UserBaseSchema.partial({
   created_at: true,
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
+
+export const abc: string = "newnew on user.types.ts";

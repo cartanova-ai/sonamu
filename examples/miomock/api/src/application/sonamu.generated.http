@@ -222,3 +222,10 @@ POST {{baseUrl}}/api/user/del
 Content-Type: application/json
 
 { "ids": [0] }
+
+
+###
+
+GET {{baseUrl}}/api/user/t1
+	?
+Content-Type: application/json

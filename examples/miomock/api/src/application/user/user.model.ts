@@ -8,7 +8,7 @@ import {
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
-import { UserListParams, UserSaveParams } from "./user.types";
+import { abc, UserListParams, UserSaveParams } from "./user.types";
 
 /*
   User Model
@@ -26,10 +26,9 @@ class UserModelClass extends BaseModelClass {
       num: 1,
       page: 1,
     });
-    if (rows.length == 0) {
+    if (!rows[0]) {
       throw new NotFoundException(`존재하지 않는 User ID ${id}`);
     }
-
     return rows[0];
   }
 
@@ -134,6 +133,13 @@ class UserModelClass extends BaseModelClass {
     });
 
     return ids.length;
+  }
+
+  @api({ httpMethod: "GET" })
+  async t1(): Promise<{ result: string }> {
+    return {
+      result: abc,
+    };
   }
 }
 

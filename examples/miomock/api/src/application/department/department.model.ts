@@ -33,7 +33,7 @@ class DepartmentModelClass extends BaseModelClass {
       num: 1,
       page: 1,
     });
-    if (rows.length == 0) {
+    if (!rows[0]) {
       throw new NotFoundException(`존재하지 않는 Department ID ${id}`);
     }
 

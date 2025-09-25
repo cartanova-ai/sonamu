@@ -5,14 +5,6 @@ import { zArrayable, SQLDateTimeString, SonamuQueryMode } from "src/services/son
 const Number = z.number();
 type Number = z.infer<typeof Number>;
 
-// Enums: Asdf
-export const AsdfOrderBy = z.enum(["id-desc"]).describe("AsdfOrderBy");
-export type AsdfOrderBy = z.infer<typeof AsdfOrderBy>;
-export const AsdfOrderByLabel = { "id-desc": "ID최신순" };
-export const AsdfSearchField = z.enum(["id"]).describe("AsdfSearchField");
-export type AsdfSearchField = z.infer<typeof AsdfSearchField>;
-export const AsdfSearchFieldLabel = { id: "ID" };
-
 // Enums: Company
 export const CompanyOrderBy = z.enum(["id-desc"]).describe("CompanyOrderBy");
 export type CompanyOrderBy = z.infer<typeof CompanyOrderBy>;
@@ -72,13 +64,6 @@ export const UserRole = z.enum(["normal"]).describe("UserRole");
 export type UserRole = z.infer<typeof UserRole>;
 export const UserRoleLabel = { normal: "노멀" };
 
-// BaseSchema: Asdf
-export const AsdfBaseSchema = z.object({
-  id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
-});
-export type AsdfBaseSchema = z.infer<typeof AsdfBaseSchema>;
-
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
   id: z.number().int().nonnegative(),
@@ -135,20 +120,6 @@ export const UserBaseSchema = z.object({
   // employee: OneToOne Employee
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema>;
-
-// BaseListParams: Asdf
-export const AsdfBaseListParams = z
-  .object({
-    num: z.number().int().nonnegative(),
-    page: z.number().int().min(1),
-    search: AsdfSearchField,
-    keyword: z.string(),
-    orderBy: AsdfOrderBy,
-    queryMode: SonamuQueryMode,
-    id: zArrayable(z.number().int().positive()),
-  })
-  .partial();
-export type AsdfBaseListParams = z.infer<typeof AsdfBaseListParams>;
 
 // BaseListParams: Company
 export const CompanyBaseListParams = z
@@ -219,18 +190,6 @@ export const UserBaseListParams = z
   })
   .partial();
 export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
-
-// Subsets: Asdf
-export const AsdfSubsetA = z.object({
-  id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
-});
-export type AsdfSubsetA = z.infer<typeof AsdfSubsetA>;
-export type AsdfSubsetMapping = {
-  A: AsdfSubsetA;
-};
-export const AsdfSubsetKey = z.enum(["A"]);
-export type AsdfSubsetKey = z.infer<typeof AsdfSubsetKey>;
 
 // Subsets: Company
 export const CompanySubsetA = z.object({
