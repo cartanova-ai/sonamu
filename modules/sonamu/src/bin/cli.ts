@@ -14,13 +14,11 @@ import prettier from "prettier";
 import process from "process";
 import _ from "lodash";
 import { Sonamu } from "../api";
+import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { SMDManager } from "../smd/smd-manager";
-import { DB } from "../database/db";
-import { KnexConfig, SonamuKnexDBConfig } from "../database/types";
-import { KnexClient } from "../database/drivers/knex/client";
 
 let migrator: Migrator;
 
@@ -143,87 +141,87 @@ async function migrate_reset() {
 }
 
 async function fixture_init() {
-  const _db = DB.getClient("development_master");
-  const srcConn = _db.connectionInfo;
-
+  const srcConfig = Sonamu.dbConfig.development_master;
   const targets = [
     {
       label: "(REMOTE) Fixture DB",
-      connKey: "fixture_remote",
+      config: Sonamu.dbConfig.fixture_remote,
     },
     {
       label: "(LOCAL) Fixture DB",
-      connKey: "fixture_local",
+      config: Sonamu.dbConfig.fixture_local,
+      toSkip: (() => {
+        const remoteConn = Sonamu.dbConfig.fixture_remote
+          .connection as Knex.ConnectionConfig;
+        const localConn = Sonamu.dbConfig.fixture_local
+          .connection as Knex.ConnectionConfig;
+        return (
+          remoteConn.host === localConn.host &&
+          remoteConn.database === localConn.database
+        );
+      })(),
     },
     {
       label: "(LOCAL) Testing DB",
-      connKey: "test",
+      config: Sonamu.dbConfig.test,
     },
   ] as {
     label: string;
-    connKey: keyof SonamuKnexDBConfig;
+    config: Knex.Config;
+    toSkip?: boolean;
   }[];
 
   // 1. 기준DB 스키마를 덤프
   console.log("DUMP...");
   const dumpFilename = `/tmp/sonamu-fixture-init-${Date.now()}.sql`;
+  const srcConn = srcConfig.connection as Knex.ConnectionConfig;
   const migrationsDump = `/tmp/sonamu-fixture-init-migrations-${Date.now()}.sql`;
   execSync(
-    `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
+    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
   );
-
-  // 2. 마이그레이션 테이블이 존재하면 덤프
-  const dbClient = DB.baseConfig!.client;
-  const migrationTable = DB.migrationTable;
-  const [migrations] = await _db.raw<{ count: number }>(
-    "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?",
-    [srcConn.database, migrationTable]
+  const _db = knex(srcConfig);
+  const [[migrations]] = await _db.raw(
+    "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
+    [srcConn.database]
   );
   if (migrations.count > 0) {
     execSync(
-      `mysqldump -h${srcConn.host} -P${srcConn.port} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} ${migrationTable} ${migrationTable}_lock > ${migrationsDump}`
+      `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
     );
   }
 
   // 2. 대상DB 각각에 대하여 존재여부 확인 후 붓기
-  for await (const { label, connKey } of targets) {
-    const config = DB.connectionInfo[connKey];
+  for await (const { label, config, toSkip } of targets) {
+    const conn = config.connection as Knex.ConnectionConfig;
 
-    if (
-      label === "(LOCAL) Fixture DB" &&
-      targets.find(
-        (t) =>
-          t.label === "(REMOTE) Fixture DB" &&
-          DB.connectionInfo[t.connKey].host === config.host &&
-          DB.connectionInfo[t.connKey].database === config.database
-      )
-    ) {
+    if (toSkip === true) {
       console.log(chalk.red(`${label}: Skipped!`));
       continue;
     }
 
-    const db = (() => {
-      const config = _.cloneDeep(DB.fullConfig[connKey]) as KnexConfig;
-      config.connection.database = undefined;
-      return new KnexClient(config);
-    })();
-
-    const [row] = await db.raw(`SHOW DATABASES LIKE "${config.database}"`);
+    const db = knex({
+      ...config,
+      connection: {
+        ...((config.connection ?? {}) as Knex.ConnectionConfig),
+        database: undefined,
+      },
+    });
+    const [[row]] = await db.raw(`SHOW DATABASES LIKE "${conn.database}"`);
     if (row) {
       console.log(
-        chalk.yellow(`${label}: Database "${config.database}" Already exists`)
+        chalk.yellow(`${label}: Database "${conn.database}" Already exists`)
       );
       await db.destroy();
       continue;
     }
 
     console.log(`SYNC to ${label}...`);
-    const mysqlCmd = `mysql -h${config.host} -P${srcConn.port} -u${config.user} -p${config.password}`;
-    execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${config.database}\`'`);
-    execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${config.database}\`'`);
-    execSync(`${mysqlCmd} ${config.database} < ${dumpFilename}`);
+    const mysqlCmd = `mysql -h${conn.host} -u${conn.user} -p${conn.password}`;
+    execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
+    execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
+    execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
     if (fs.existsSync(migrationsDump)) {
-      execSync(`${mysqlCmd} ${config.database} < ${migrationsDump}`);
+      execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
     }
 
     await db.destroy();

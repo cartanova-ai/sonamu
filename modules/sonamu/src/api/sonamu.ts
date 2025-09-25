@@ -16,6 +16,9 @@ import { findApiRootPath } from "../utils/utils";
 import { ApiDecoratorOptions } from "./decorators";
 import { humanizeZodError } from "../utils/zod-error";
 import { AsyncLocalStorage } from "async_hooks";
+import { BaseModel } from "../database/base-model";
+import { DB, SonamuDBConfig } from "../database/db";
+import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -174,10 +177,9 @@ class SonamuClass {
     }
 
     // DB 로드
-    const baseConfig = await DB.getBaseConfig(this.apiRootPath);
-    this.dbClient = baseConfig.client;
-    DB.init(baseConfig as any);
-    this.dbConfig = DB.fullConfig;
+    this.dbConfig = await DB.readKnexfile();
+    !doSilent && console.log(chalk.green("DB Config Loaded!"));
+    attachOnDuplicateUpdate();
 
     // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
     if (forTesting) {
@@ -344,7 +346,7 @@ class SonamuClass {
   }
 
   async destroy(): Promise<void> {
-    await DB.destroy();
+    await BaseModel.destroy();
   }
 }
 export const Sonamu = new SonamuClass();

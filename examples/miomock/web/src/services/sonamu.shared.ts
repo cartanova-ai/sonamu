@@ -4,7 +4,7 @@
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { z, ZodIssue } from "zod";
-import qs from "qs";
+import qs from 'qs';
 
 export async function fetch(options: AxiosRequestConfig) {
   try {

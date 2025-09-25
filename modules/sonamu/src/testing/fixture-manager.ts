@@ -19,15 +19,59 @@ import { Entity } from "../entity/entity";
 import inflection from "inflection";
 import { readFileSync, writeFileSync } from "fs";
 import { RelationGraph } from "./_relation-graph";
-import { SonamuDBConfig, WhereClause } from "../database/types";
-import { DB } from "../database/db";
-import { KnexClient } from "../database/drivers/knex/client";
+import { SonamuDBConfig } from "../database/types";
+import knex, { Knex } from "knex";
+import { BaseModel } from "../database/base-model";
 
 export class FixtureManagerClass {
+  private _tdb: Knex | null = null;
+  set tdb(tdb: Knex) {
+    this._tdb = tdb;
+  }
+  get tdb(): Knex {
+    if (this._tdb === null) {
+      throw new Error("FixtureManager has not been initialized");
+    }
+    return this._tdb;
+  }
+
+  private _fdb: Knex | null = null;
+  set fdb(fdb: Knex) {
+    this._fdb = fdb;
+  }
+  get fdb(): Knex {
+    if (this._fdb === null) {
+      throw new Error("FixtureManager has not been initialized");
+    }
+    return this._fdb;
+  }
+
   private relationGraph = new RelationGraph();
 
   init() {
-    DB.testInit();
+    if (this._tdb !== null) {
+      return;
+    }
+    if (Sonamu.dbConfig.test && Sonamu.dbConfig.production_master) {
+      const tConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig & {
+        port?: number;
+      };
+      const pConn = Sonamu.dbConfig.production_master
+        .connection as Knex.ConnectionConfig & { port?: number };
+      if (
+        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${
+          tConn.database
+        }` ===
+        `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}/${pConn.database}`
+      ) {
+        throw new Error(
+          `테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.`
+        );
+      }
+    }
+
+    this.tdb = knex(Sonamu.dbConfig.test);
+    this.fdb = knex(Sonamu.dbConfig.fixture_local);
   }
 
   async cleanAndSeed(usingTables?: string[]) {
@@ -36,51 +80,56 @@ export class FixtureManagerClass {
         return usingTables;
       }
 
-      const tables = await DB.tdb.raw<{ Name: string }>(
+      const [tables] = await this.tdb.raw(
         `SHOW TABLE STATUS WHERE Engine IS NOT NULL`
       );
       return tables.map((tableInfo: any) => tableInfo["Name"] as string);
     })();
 
-    await DB.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
     for await (let tableName of tableNames) {
       if (tableName == "migrations") {
         continue;
       }
 
-      const [fdbChecksumRow] = await DB.fdb.raw<{ Checksum: string }>(
+      const [[fdbChecksumRow]] = await this.fdb.raw(
         `CHECKSUM TABLE ${tableName}`
       );
       const fdbChecksum = fdbChecksumRow["Checksum"];
 
-      const [tdbChecksumRow] = await DB.tdb.raw<{ Checksum: string }>(
+      const [[tdbChecksumRow]] = await this.tdb.raw(
         `CHECKSUM TABLE ${tableName}`
       );
       const tdbChecksum = tdbChecksumRow["Checksum"];
 
       if (fdbChecksum !== tdbChecksum) {
-        await DB.tdb.truncate(tableName);
-        const rawQuery = `INSERT INTO ${DB.connectionInfo.test.database}.${tableName}
-            SELECT * FROM ${DB.connectionInfo.fixture_local.database}.${tableName}`;
-        await DB.tdb.raw(rawQuery);
+        await this.tdb(tableName).truncate();
+        const rawQuery = `INSERT INTO ${
+          (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
+        }.${tableName}
+            SELECT * FROM ${
+              (
+                Sonamu.dbConfig.fixture_local
+                  .connection as Knex.ConnectionConfig
+              ).database
+            }.${tableName}`;
+        await this.tdb.raw(rawQuery);
       }
     }
-    await DB.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
+    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
 
     // console.timeEnd("FIXTURE-CleanAndSeed");
   }
 
-  async getChecksum(db: KnexClient, tableName: string) {
-    const [checksumRow] = await db.raw<{ Checksum: string }>(
-      `CHECKSUM TABLE ${tableName}`
-    );
+  async getChecksum(db: Knex, tableName: string) {
+    const [checksumRow] = await db.raw(`CHECKSUM TABLE ${tableName}`);
     return checksumRow.Checksum;
   }
 
   async sync() {
-    const frdb = DB.getClient("fixture_remote");
+    const frdb = knex(Sonamu.dbConfig.fixture_remote);
 
-    const tables = await DB.fdb.raw<{ Name: string }>(
+    const [tables] = await this.fdb.raw(
       "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
     );
     const tableNames: string[] = tables.map(
@@ -90,29 +139,26 @@ export class FixtureManagerClass {
     console.log(chalk.magenta("SYNC..."));
     await Promise.all(
       tableNames.map(async (tableName) => {
-        if (tableName.startsWith(DB.migrationTable)) {
+        if (tableName.startsWith("knex_migrations")) {
           return;
         }
 
         const remoteChecksum = await this.getChecksum(frdb, tableName);
-        const localChecksum = await this.getChecksum(DB.fdb, tableName);
+        const localChecksum = await this.getChecksum(this.fdb, tableName);
 
         if (remoteChecksum !== localChecksum) {
-          await DB.fdb.trx(async (transaction) => {
+          await this.fdb.transaction(async (transaction) => {
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 0`);
-            await transaction.truncate(tableName);
+            await transaction(tableName).truncate();
 
-            const rows = await frdb.raw(`SELECT * FROM ${tableName}`);
+            const rows = await frdb(tableName);
             if (rows.length === 0) {
               return;
             }
 
             console.log(chalk.blue(tableName), rows.length);
-            await transaction.raw(
-              `INSERT INTO ${tableName} (${Object.keys(rows[0] as any)
-                .map((k) => `\`${k}\``)
-                .join(",")}) VALUES ?`,
-              [
+            await transaction
+              .insert(
                 rows.map((row: any) =>
                   Object.values(row).map((v) => {
                     if (v === null) {
@@ -125,9 +171,9 @@ export class FixtureManagerClass {
                       return v;
                     }
                   })
-                ),
-              ]
-            );
+                )
+              )
+              .into(tableName);
             console.log("OK");
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 1`);
           });
@@ -150,9 +196,9 @@ export class FixtureManagerClass {
       ).flat()
     );
 
-    const wdb = DB.toClient(DB.getDB("w"));
+    const wdb = BaseModel.getDB("w");
     for (let query of queries) {
-      const [rsh] = await wdb.raw<{ info: any }>(query);
+      const [rsh] = await wdb.raw(query);
       console.log({
         query,
         info: rsh.info,
@@ -167,19 +213,19 @@ export class FixtureManagerClass {
   ): Promise<string[]> {
     console.log({ entityId, field, id });
     const entity = EntityManager.get(entityId);
-    const wdb = DB.toClient(DB.getDB("w"));
+    const wdb = BaseModel.getDB("w");
 
     // 여기서 실DB의 row 가져옴
-    const [row] = await wdb.raw<any>(
-      `SELECT * FROM ${entity.table} WHERE ${field} = ${id} LIMIT 1`
-    );
+    const [row] = await wdb(entity.table).where(field, id).limit(1);
     if (row === undefined) {
       throw new Error(`${entityId}#${id} row를 찾을 수 없습니다.`);
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = DB.connectionInfo.fixture_remote.database;
-    const realDatabase = DB.connectionInfo.production_master.database;
+    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as any)
+      .database;
+    const realDatabase = (Sonamu.dbConfig.production_master.connection as any)
+      .database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 
@@ -226,8 +272,15 @@ export class FixtureManagerClass {
   }
 
   async destory() {
-    await DB.testDestroy();
-    await DB.destroy();
+    if (this._tdb) {
+      await this._tdb.destroy();
+      this._tdb = null;
+    }
+    if (this._fdb) {
+      await this._fdb.destroy();
+      this._fdb = null;
+    }
+    await BaseModel.destroy();
   }
 
   async getFixtures(
@@ -235,8 +288,8 @@ export class FixtureManagerClass {
     targetDBName: keyof SonamuDBConfig,
     searchOptions: FixtureSearchOptions
   ) {
-    const sourceDB = DB.getClient(sourceDBName);
-    const targetDB = DB.getClient(targetDBName);
+    const sourceDB = knex(Sonamu.dbConfig[sourceDBName]);
+    const targetDB = knex(Sonamu.dbConfig[targetDBName]);
     const { entityId, field, value, searchType } = searchOptions;
 
     const entity = EntityManager.get(entityId);
@@ -245,14 +298,14 @@ export class FixtureManagerClass {
         ? `${field}_id`
         : field;
 
-    let query = sourceDB.from(entity.table).selectAll();
+    let query = sourceDB(entity.table);
     if (searchType === "equals") {
-      query = query.where([column, "=", value]);
+      query = query.where(column, value);
     } else if (searchType === "like") {
-      query = query.where([column, "like", `%${value}%`]);
+      query = query.where(column, "like", `%${value}%`);
     }
 
-    const rows = await query.execute();
+    const rows = await query;
     if (rows.length === 0) {
       throw new Error("No records found");
     }
@@ -279,12 +332,7 @@ export class FixtureManagerClass {
       const entity = EntityManager.get(fixture.entityId);
 
       // ID를 이용하여 targetDB에 레코드가 존재하는지 확인
-      const [row] = await targetDB
-        .from(entity.table)
-        .selectAll()
-        .where(["id", "=", fixture.id])
-        .first()
-        .execute();
+      const row = await targetDB(entity.table).where("id", fixture.id).first();
       if (row) {
         const [record] = await this.createFixtureRecord(entity, row, {
           singleRecord: true,
@@ -317,7 +365,7 @@ export class FixtureManagerClass {
     row: any,
     options?: {
       singleRecord?: boolean;
-      _db?: KnexClient;
+      _db?: Knex;
     }
   ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
@@ -349,27 +397,21 @@ export class FixtureManagerClass {
           value: row[prop.name],
         };
 
-        const db = options?._db ?? DB.toClient(DB.getDB("w"));
+        const db = options?._db ?? BaseModel.getDB("w");
         if (isManyToManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
           const throughTable = prop.joinTable;
           const fromColumn = `${inflection.singularize(entity.table)}_id`;
           const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const _relatedIds = await db
-            .from(throughTable)
-            .select(toColumn)
-            .where([fromColumn, "=", row.id])
-            .execute();
-          const relatedIds = _relatedIds.map((r) => parseInt(r[toColumn]));
-
+          const relatedIds = await db(throughTable)
+            .where(fromColumn, row.id)
+            .pluck(toColumn);
           record.columns[prop.name].value = relatedIds;
         } else if (isHasManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
-          const relatedIds = await db
-            .from(relatedEntity.table)
-            .select("id")
-            .where([prop.joinColumn, "=", row.id])
+          const relatedIds = await db(relatedEntity.table)
+            .where(prop.joinColumn, row.id)
             .pluck("id");
           record.columns[prop.name].value = relatedIds;
         } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
@@ -378,13 +420,9 @@ export class FixtureManagerClass {
             (p) => isRelationProp(p) && p.with === entity.id
           );
           if (relatedProp) {
-            const [relatedRow] = await db
-              .from(relatedEntity.table)
-              .select("id")
-              .where([relatedProp.name, "=", row.id])
-              .first()
-              .execute();
-
+            const relatedRow = await db(relatedEntity.table)
+              .where("id", row.id)
+              .first();
             record.columns[prop.name].value = relatedRow?.id;
           }
         } else if (isRelationProp(prop)) {
@@ -395,12 +433,9 @@ export class FixtureManagerClass {
           }
           if (!options?.singleRecord && relatedId) {
             const relatedEntity = EntityManager.get(prop.with);
-            const [relatedRow] = await db
-              .from(relatedEntity.table)
-              .selectAll()
-              .where(["id", "=", relatedId])
-              .first()
-              .execute();
+            const relatedRow = await db(relatedEntity.table)
+              .where("id", relatedId)
+              .first();
             if (relatedRow) {
               await create(relatedEntity, relatedRow);
             }
@@ -424,9 +459,9 @@ export class FixtureManagerClass {
 
     this.relationGraph.buildGraph(fixtures);
     const insertionOrder = this.relationGraph.getInsertionOrder();
-    const db = DB.getClient(dbName);
+    const db = knex(Sonamu.dbConfig[dbName]);
 
-    await db.trx(async (trx) => {
+    await db.transaction(async (trx) => {
       await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
 
       for (const fixtureId of insertionOrder) {
@@ -465,12 +500,7 @@ export class FixtureManagerClass {
 
     for await (const r of fixtures) {
       const entity = EntityManager.get(r.entityId);
-      const [record] = await db
-        .from(entity.table)
-        .selectAll()
-        .where(["id", "=", r.id])
-        .first()
-        .execute();
+      const record = await db(entity.table).where("id", r.id).first();
       records.push({
         entityId: r.entityId,
         data: record,
@@ -504,7 +534,7 @@ export class FixtureManagerClass {
     return insertData;
   }
 
-  private async insertFixture(db: KnexClient, fixture: FixtureRecord) {
+  private async insertFixture(db: Knex, fixture: FixtureRecord) {
     const insertData = this.prepareInsertData(fixture);
     const entity = EntityManager.get(fixture.entityId);
 
@@ -517,12 +547,7 @@ export class FixtureManagerClass {
         };
       }
 
-      const [found] = await db
-        .from(entity.table)
-        .select("id")
-        .where(["id", "=", fixture.id])
-        .first()
-        .execute();
+      const found = await db(entity.table).where("id", fixture.id).first();
       if (found && !fixture.override) {
         return {
           entityId: fixture.entityId,
@@ -530,8 +555,8 @@ export class FixtureManagerClass {
         };
       }
 
-      await db.upsert(entity.table, [insertData]);
-
+      const q = db.insert(insertData).into(entity.table);
+      await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
       return {
         entityId: fixture.entityId,
         id: fixture.id,
@@ -543,7 +568,7 @@ export class FixtureManagerClass {
   }
 
   private async handleManyToManyRelations(
-    db: KnexClient,
+    db: Knex,
     fixture: FixtureRecord,
     fixtures: FixtureRecord[]
   ) {
@@ -568,29 +593,20 @@ export class FixtureManagerClass {
             );
           }
 
-          const [found] = await db
-            .from(joinTable)
-            .select("id")
-            .where([
-              [`${inflection.singularize(entity.table)}_id`, "=", fixture.id],
-              [
-                `${inflection.singularize(relatedEntity.table)}_id`,
-                "=",
-                relatedId,
-              ],
-            ])
-            .first()
-            .execute();
+          const [found] = await db(joinTable)
+            .where({
+              [`${inflection.singularize(entity.table)}_id`]: fixture.id,
+              [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
+            })
+            .limit(1);
           if (found) {
             continue;
           }
 
-          const newIds = await db.insert(joinTable, [
-            {
-              [`${inflection.singularize(entity.table)}_id`]: fixture.id,
-              [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
-            },
-          ]);
+          const newIds = await db(joinTable).insert({
+            [`${inflection.singularize(entity.table)}_id`]: fixture.id,
+            [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
+          });
           console.log(
             chalk.green(
               `Inserted into ${joinTable}: ${entity.table}(${fixture.id}) - ${relatedEntity.table}(${relatedId}) ID: ${newIds}`
@@ -624,7 +640,7 @@ export class FixtureManagerClass {
 
   // 해당 픽스쳐의 값으로 유니크 제약에 위배되는 레코드가 있는지 확인
   private async checkUniqueViolation(
-    db: KnexClient,
+    db: Knex,
     entity: Entity,
     fixture: FixtureRecord
   ) {
@@ -638,34 +654,30 @@ export class FixtureManagerClass {
       return null;
     }
 
-    let uniqueQuery = db.from(entity.table).selectAll();
-    const whereClauses = uniqueIndexes
-      .map((index) => {
-        // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
-        const containsNull = index.columns.some((column) => {
+    let uniqueQuery = db(entity.table);
+    for (const index of uniqueIndexes) {
+      // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
+      const containsNull = index.columns.some((column) => {
+        const field = column.split("_id")[0];
+        return fixture.columns[field].value === null;
+      });
+      if (containsNull) {
+        continue;
+      }
+
+      uniqueQuery = uniqueQuery.orWhere((qb) => {
+        for (const column of index.columns) {
           const field = column.split("_id")[0];
-          return fixture.columns[field].value === null;
-        });
-        if (containsNull) {
-          return;
-        }
 
-        return index.columns.map((c) => {
-          const field = c.split("_id")[0];
           if (Array.isArray(fixture.columns[field].value)) {
-            return [c, "in", fixture.columns[field].value];
+            qb.whereIn(column, fixture.columns[field].value);
           } else {
-            return [c, "=", fixture.columns[field].value];
+            qb.andWhere(column, fixture.columns[field].value);
           }
-        });
-      })
-      .filter(Boolean) as WhereClause[];
-
-    for (const clauses of whereClauses) {
-      uniqueQuery = uniqueQuery.orWhere(clauses);
+        }
+      });
     }
-
-    const [uniqueFound] = await uniqueQuery.execute();
+    const [uniqueFound] = await uniqueQuery;
     return uniqueFound;
   }
 }

@@ -4,8 +4,6 @@
 */
 
 import { Knex } from "knex";
-import { DB } from "./db";
-import { KnexClient } from "./drivers/knex/client";
 
 export type RowWithId<Id extends string> = {
   [key in Id]: any;
@@ -21,7 +19,7 @@ export type RowWithId<Id extends string> = {
  * @param trx
  */
 export async function batchUpdate<Id extends string>(
-  db: KnexClient,
+  knex: Knex,
   tableName: string,
   ids: Id[],
   rows: RowWithId<Id>[],
@@ -35,18 +33,18 @@ export async function batchUpdate<Id extends string>(
 
   const executeUpdate = async (
     chunk: RowWithId<Id>[],
-    transaction: KnexClient
+    transaction: Knex.Transaction
   ) => {
-    const sql = generateBatchUpdateSQL(db, tableName, chunk, ids);
-    return transaction.raw(sql);
+    const sql = generateBatchUpdateSQL(knex, tableName, chunk, ids);
+    return knex.raw(sql).transacting(transaction);
   };
 
   if (trx) {
     for (const chunk of chunks) {
-      await executeUpdate(chunk, DB.toClient(trx));
+      await executeUpdate(chunk, trx);
     }
   } else {
-    await db.trx(async (newTrx) => {
+    await knex.transaction(async (newTrx) => {
       for (const chunk of chunks) {
         await executeUpdate(chunk, newTrx);
       }
@@ -72,7 +70,7 @@ function generateKeySetFromData(data: Record<string, any>[]) {
 }
 
 function generateBatchUpdateSQL<Id extends string>(
-  db: KnexClient,
+  db: Knex,
   tableName: string,
   data: Record<string, any>[],
   identifiers: Id[]
@@ -114,10 +112,10 @@ function generateBatchUpdateSQL<Id extends string>(
     data.map((row) => row[col])
   );
 
-  const sql = db.createRawQuery(
+  const sql = db.raw(
     `UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`,
     [...bindings, ...whereInBindings]
   );
 
-  return sql;
+  return sql.toQuery();
 }

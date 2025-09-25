@@ -63,7 +63,7 @@ class EntityManagerClass {
 
     const sonamuPath = path.join(
       Sonamu.apiRootPath,
-      `dist/application/sonamu.generated.js?t=${Date.now()}`
+      `dist/application/sonamu.generated.js`
     );
     // CJS
     if (require?.cache && require.cache[sonamuPath]) {
