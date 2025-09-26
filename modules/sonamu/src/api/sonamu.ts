@@ -378,11 +378,16 @@ class SonamuClass {
       ignored: (path, stats) =>
         !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
+      ignoreInitial: true,
     });
-    this.watcher.on("change", (filePath: string) => {
+    this.watcher.on("all", (event: string, filePath: string) => {
+      if (event !== "change" && event !== "add") {
+        return;
+      }
+
+      const relativePath = filePath.replace(this.apiRootPath, "api");
       console.log(
-        chalk.bold("Detected: ") +
-          chalk.blue(`${filePath.replace(this.apiRootPath, "api")}`)
+        chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`)
       );
       this.syncer.syncFromWatcher([filePath]);
     });

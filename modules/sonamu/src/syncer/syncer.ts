@@ -79,6 +79,7 @@ import { setTimeout as setTimeoutPromises } from "timers/promises";
 import assert from "assert";
 import * as swc from "@swc/core";
 import { minimatch } from "minimatch";
+import { mkdirSync } from "fs";
 
 type FileType =
   | "model"
@@ -258,7 +259,28 @@ export class Syncer {
     // 트리거: entity, types
     // 액션: 스키마 생성
     if (diffTypes.includes("entity") || diffTypes.includes("types")) {
+      await EntityManager.reload();
+
       await this.actionGenerateSchemas();
+
+      // types 생성(entity 새로 추가된 경우)
+      // parentId가 없고, types가 없는 경우에만 생성
+      const entityId = this.getEntityIdFromPath([
+        ...(diffGroups["entity"] ?? []),
+      ])[0];
+      if (entityId) {
+        const entity = EntityManager.get(entityId);
+        const typeFilePath = path.join(
+          Sonamu.apiRootPath,
+          `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`
+        );
+        if (
+          entity.parentId === undefined &&
+          fs.existsSync(typeFilePath) === false
+        ) {
+          await this.generateTemplate("init_types", { entityId });
+        }
+      }
 
       // generated 싱크까지 동시에 처리 후 체크섬 갱신
       diffGroups["generated"] = _.uniq([
@@ -337,10 +359,9 @@ export class Syncer {
     };
   }
 
-  syncFromWatcherStartTime: number = 0;
   async syncFromWatcher(diffFiles: string[]): Promise<void> {
     // 시작 시간
-    this.syncFromWatcherStartTime = Date.now();
+    const syncFromWatcherStartTime = Date.now();
 
     const tsFiles = diffFiles.filter((file) => file.endsWith(".ts"));
     const jsonFiles = diffFiles.filter((file) => file.endsWith(".json"));
@@ -365,6 +386,7 @@ export class Syncer {
           const jsPath = diffFile
             .replace("/src/", "/dist/")
             .replace(".ts", ".js");
+          mkdirSync(path.dirname(jsPath), { recursive: true }); // 파일 새로 추가된 경우 디렉토리 생성
           writeFileSync(jsPath, code);
           console.log(
             chalk.bold("Transpiled: ") +
@@ -423,12 +445,11 @@ export class Syncer {
     if (diffTypes.includes("generated") === false) {
       const msg =
         "HMR Done! " +
-        chalk.bold.white(`${endTime - this.syncFromWatcherStartTime}ms`);
+        chalk.bold.white(`${endTime - syncFromWatcherStartTime}ms`);
       const margin = (process.stdout.columns - msg.length) / 2;
       console.log(
         chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
       );
-      this.syncFromWatcherStartTime = 0;
     }
   }
 
@@ -1532,17 +1553,19 @@ export class Syncer {
     // reload entities
     await EntityManager.reload();
 
-    // generate schemas, types
-    await Promise.all([
-      this.actionGenerateSchemas(),
-      ...(form.parentId === undefined
-        ? [
-            this.generateTemplate("init_types", {
-              entityId: form.entityId,
-            }),
-          ]
-        : []),
-    ]);
+    // syncFromWatcher에서 처리하므로 주석처리
+    // this.actionGenerateSchemas();
+
+    // // generate schemas, types
+    // await Promise.all([
+    //   ...(form.parentId === undefined
+    //     ? [
+    //         this.generateTemplate("init_types", {
+    //           entityId: form.entityId,
+    //         }),
+    //       ]
+    //     : []),
+    // ]);
   }
 
   async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
