@@ -4,7 +4,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: ["node/index.ts"],
   dts: true,
-  format: ["esm", "cjs"],
+  format: ["cjs"],
   target: "es2020",
   clean: true,
   sourcemap: true,
