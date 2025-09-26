@@ -89,5 +89,5 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
-# API 서버 실행 (nodemon 사용)
-yarn nodemon
+# API 서버 실행
+yarn dev:start
