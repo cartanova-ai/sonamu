@@ -23,7 +23,7 @@
     "type": "git",
     "url": "https://github.com/ping-alive/sonamu.git"
   },
-  "bin": "./dist/bin/cli-wrapper.mjs",
+  "bin": "./dist/bin/cli-wrapper.js",
   "dependencies": {
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
