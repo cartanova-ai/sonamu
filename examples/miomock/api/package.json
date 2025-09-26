@@ -5,13 +5,12 @@
   "license": "MIT",
   "scripts": {
     "dev:serve": "nodemon exec",
+    "serve": "node dist/index.js",
     "build": "tsc",
     "build:schemas": "swc 'src/sonamu.generated.ts' --config-file .swcrc -d dist --strip-leading-paths",
     "build:types": "swc 'src/**/*.types.ts' --config-file .swcrc -d dist --strip-leading-paths",
     "build:main": "swc src --config-file .swcrc -d dist --strip-leading-paths --ignore 'src/sonamu.generated.ts' --ignore 'src/**/*.types.ts'",
     "build:all": "yarn build:schemas && yarn build:types && yarn build:main && yarn build:aliases",
-    "dev:start": "swc src --config-file .swcrc -d dist --strip-leading-paths && node -r source-map-support/register -r dotenv/config dist/index.js",
-    "start": "node dist/index.js",
     "start:all": "./start.sh",
     "test": "yarn vitest run",
     "sonamu": "sonamu"

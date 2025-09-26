@@ -8,7 +8,7 @@ import {
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
-import { abc, UserListParams, UserSaveParams } from "./user.types";
+import { UserListParams, UserSaveParams } from "./user.types";
 
 /*
   User Model
