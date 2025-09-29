@@ -146,7 +146,10 @@ class SonamuClass {
     return this._secrets;
   }
 
+  // HMR 처리
   public watcher: FSWatcher | null = null;
+  private pendingFiles: string[] = [];
+  private hmrStartTime: number = 0;
 
   async initForTesting() {
     await this.init(true, false, undefined, true);
@@ -371,26 +374,54 @@ class SonamuClass {
   startWatcher(): void {
     const watchPath = path.join(this.apiRootPath, "src");
     this.watcher = chokidar.watch(watchPath, {
-      awaitWriteFinish: {
-        stabilityThreshold: 500,
-        pollInterval: 100,
-      },
       ignored: (path, stats) =>
         !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
       ignoreInitial: true,
     });
-    this.watcher.on("all", (event: string, filePath: string) => {
+    this.watcher.on("all", async (event: string, filePath: string) => {
       if (event !== "change" && event !== "add") {
         return;
       }
 
-      const relativePath = filePath.replace(this.apiRootPath, "api");
-      console.log(
-        chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`)
-      );
-      this.syncer.syncFromWatcher([filePath]);
+      await this.handleFileChange(event, filePath);
     });
+  }
+
+  private async handleFileChange(
+    event: string,
+    filePath: string
+  ): Promise<void> {
+    // 첫 번째 파일이면 HMR 시작 시간 기록
+    if (this.pendingFiles.length === 0) {
+      this.hmrStartTime = Date.now();
+    }
+
+    this.pendingFiles.push(filePath);
+
+    const relativePath = filePath.replace(this.apiRootPath, "api");
+    console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
+
+    await this.syncer.syncFromWatcher([filePath]);
+
+    // 처리 완료된 파일을 대기 목록에서 제거
+    this.pendingFiles = this.pendingFiles.slice(1);
+
+    // 모든 파일 처리가 완료되면 최종 메시지 출력
+    if (this.pendingFiles.length === 0) {
+      await this.finishHMR();
+    }
+  }
+
+  private async finishHMR(): Promise<void> {
+    const endTime = Date.now();
+    const totalTime = endTime - this.hmrStartTime;
+    const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
+    const margin = Math.max(0, (process.stdout.columns - msg.length) / 2);
+
+    console.log(
+      chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
+    );
   }
 
   async destroy(): Promise<void> {

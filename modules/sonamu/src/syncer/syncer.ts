@@ -360,9 +360,6 @@ export class Syncer {
   }
 
   async syncFromWatcher(diffFiles: string[]): Promise<void> {
-    // 시작 시간
-    const syncFromWatcherStartTime = Date.now();
-
     const tsFiles = diffFiles.filter((file) => file.endsWith(".ts"));
     const jsonFiles = diffFiles.filter((file) => file.endsWith(".json"));
 
@@ -407,8 +404,7 @@ export class Syncer {
         );
       })
       .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
-    // console.log("Target Files: ", targetFilePaths);
-    const { diffTypes } = await this.doSyncActions(targetFilePaths);
+    await this.doSyncActions(targetFilePaths);
 
     // module reload
     function clearModuleAndDependents(filePath: string) {
@@ -440,17 +436,6 @@ export class Syncer {
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
-
-    const endTime = Date.now();
-    if (diffTypes.includes("generated") === false) {
-      const msg =
-        "HMR Done! " +
-        chalk.bold.white(`${endTime - syncFromWatcherStartTime}ms`);
-      const margin = (process.stdout.columns - msg.length) / 2;
-      console.log(
-        chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
-      );
-    }
   }
 
   getEntityIdFromPath(filePaths: string[]): string[] {
