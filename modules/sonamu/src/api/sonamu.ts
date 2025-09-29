@@ -414,6 +414,8 @@ class SonamuClass {
   }
 
   private async finishHMR(): Promise<void> {
+    await this.syncer.saveChecksums(await this.syncer.getCurrentChecksums());
+
     const endTime = Date.now();
     const totalTime = endTime - this.hmrStartTime;
     const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
