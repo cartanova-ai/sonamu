@@ -378,7 +378,6 @@ export class Syncer {
               target: "es5",
             },
             minify: true,
-            sourceMaps: true,
           });
           const jsPath = diffFile
             .replace("/src/", "/dist/")

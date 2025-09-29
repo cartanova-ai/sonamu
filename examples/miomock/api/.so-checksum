@@ -1,23 +1,23 @@
 [
   {
     "path": "/dist/application/company/company.model.js",
-    "checksum": "323d8e09439fad60dd9665d2539d1968def37c84"
+    "checksum": "735751e6211a54fa465d649909894b170f616a67"
   },
   {
     "path": "/dist/application/department/department.model.js",
-    "checksum": "2f2bb5dd4a67ab0cc9c7b4f3b37a5bf10220768e"
+    "checksum": "196ab48135d68718ec58a268577a4425d595252a"
   },
   {
     "path": "/dist/application/employee/employee.model.js",
-    "checksum": "df16cbff7ddb5712ca99afd7a5e27222ff52c714"
+    "checksum": "c819afce34771282cb8f4d1636395ef812bcad85"
   },
   {
     "path": "/dist/application/project/project.model.js",
-    "checksum": "a6cb20794e9335ea436a2bcd289d6dd23d2ae72b"
+    "checksum": "4f18998084ddd62c6a71fa481615cc41f94c9faf"
   },
   {
     "path": "/dist/application/user/user.model.js",
-    "checksum": "81edfa9a9cb971b3423bdcdf40fbfe0b86bdb78a"
+    "checksum": "70cbdf608b9742370458be6204f3e221e3483a3f"
   },
   {
     "path": "/src/application/company/company.entity.json",

@@ -10,6 +10,5 @@
     },
     "target": "es5"
   },
-  "minify": true,
-  "sourceMaps": true
+  "minify": true
 }
