@@ -12,9 +12,9 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 16001,
+    port: 10281,
     proxy: {
-      "/api": "http://0.0.0.0:19000",
+      "/api": "http://0.0.0.0:10280",
     },
   },
 });

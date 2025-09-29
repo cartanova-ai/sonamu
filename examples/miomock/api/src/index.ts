@@ -3,7 +3,7 @@ import { Sonamu } from "sonamu";
 import path from "path";
 
 const host = "localhost";
-const port = 19000;
+const port = 10280;
 
 const server = fastify();
 server.register(import("fastify-qs"));
