@@ -11,7 +11,7 @@
   "exports": "./dist/index.js",
   "scripts": {
     "dev": "nodemon exec",
-    "build": "tsc --noEmit && swc src --config-file .swcrc -d dist --strip-leading-paths"
+    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly"
   },
   "license": "MIT",
   "author": {
