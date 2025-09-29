@@ -419,6 +419,9 @@ export class Syncer {
       });
 
       toDelete.forEach((key) => {
+        if (key.includes("dist/index.js")) {
+          process.kill(process.pid, "SIGUSR2");
+        }
         delete require.cache[key];
         // console.debug(
         //   chalk.bold("ModuleCleared: ") +

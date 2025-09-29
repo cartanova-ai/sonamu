@@ -1,5 +1,9 @@
 {
   "watch": ["src/index.ts"],
-  "exec": "swc src --config-file .swcrc -d dist --strip-leading-paths && node -r source-map-support/register -r dotenv/config dist/index.js",
-  "signal": "SIGUSR2"
+  "exec": "node -r source-map-support/register -r dotenv/config dist/index.js",
+  "events": {
+    "restart": "swc src --config-file .swcrc -d dist --strip-leading-paths"
+  },
+  "signal": "SIGUSR2",
+  "restartable": "rs"
 }
