@@ -117,12 +117,17 @@ async function dev_serve() {
     };
   })();
 
-  const instance = nodemon.default(nodemonConfig);
+  nodemon.default(nodemonConfig);
 
-  process.on("SIGINT", () => instance.emit("quit"));
-  process.on("SIGUSR2", async () => {
+  // 프로세스 종료 처리
+  const cleanup = async () => {
     await Sonamu.server?.close();
-  });
+    process.exit(0);
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+  process.on("SIGUSR2", cleanup);
 }
 
 async function serve() {
