@@ -75,4 +75,11 @@ export namespace UserService {
       data: { ids },
     });
   }
+
+  export async function getMyIP(): Promise<{ ip: string }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getMyIP?${qs.stringify({})}`,
+    });
+  }
 }

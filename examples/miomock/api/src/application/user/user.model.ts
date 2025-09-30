@@ -5,6 +5,7 @@ import {
   BadRequestException,
   api,
   BaseModelClass,
+  Sonamu,
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
@@ -133,6 +134,14 @@ class UserModelClass extends BaseModelClass {
     });
 
     return ids.length;
+  }
+
+  @api({ httpMethod: "GET" })
+  async getMyIP(): Promise<{ ip: string }> {
+    const context = Sonamu.getContext();
+    return {
+      ip: context.ip,
+    };
   }
 }
 

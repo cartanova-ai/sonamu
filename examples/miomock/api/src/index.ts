@@ -13,10 +13,10 @@ async function bootstrap() {
   console.log(path.resolve(current));
 
   await Sonamu.withFastify(server, {
-    contextProvider: (defaultContext, _request) => {
+    contextProvider: (defaultContext, request) => {
       return {
         ...defaultContext,
-        //
+        ip: request.ip,
       };
     },
     guardHandler: (_guard, _request, _api) => {
