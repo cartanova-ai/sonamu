@@ -4,8 +4,9 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "serve": "node dist/index.js",
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths",
+    "serve": "sonamu serve",
+    "build": "sonamu build",
+    "dev:serve": "sonamu dev:serve",
     "start:all": "./start.sh",
     "test": "yarn vitest run",
     "sonamu": "sonamu"

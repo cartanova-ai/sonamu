@@ -3,7 +3,7 @@ import { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("projects", (table) => {
     // add
-    table.longtext("description", "longtext").nullable();
+    table.text("description", "longtext").nullable();
   });
 }
 
