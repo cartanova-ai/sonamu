@@ -90,4 +90,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # API 서버 실행
-yarn dev:start
+yarn sonamu dev:serve

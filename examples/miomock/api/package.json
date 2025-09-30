@@ -4,13 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev:serve": "nodemon exec",
     "serve": "node dist/index.js",
-    "build": "tsc",
-    "build:schemas": "swc 'src/sonamu.generated.ts' --config-file .swcrc -d dist --strip-leading-paths",
-    "build:types": "swc 'src/**/*.types.ts' --config-file .swcrc -d dist --strip-leading-paths",
-    "build:main": "swc src --config-file .swcrc -d dist --strip-leading-paths --ignore 'src/sonamu.generated.ts' --ignore 'src/**/*.types.ts'",
-    "build:all": "yarn build:schemas && yarn build:types && yarn build:main && yarn build:aliases",
+    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths",
     "start:all": "./start.sh",
     "test": "yarn vitest run",
     "sonamu": "sonamu"
@@ -37,7 +32,6 @@
     "@types/node": "^24.5.0",
     "@types/source-map-support": "^0",
     "@typescript/native-preview": "^7.0.0-dev.20250923.1",
-    "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
     "source-map-support": "^0.5.21",
     "tsc-watch": "^7.1.1",
