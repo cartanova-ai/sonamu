@@ -106,20 +106,23 @@ async function dev_serve() {
 
     return {
       watch: ["src/index.ts"],
+      ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
       exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
       events: {
-        start:
-          "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5 && tsc --emitDeclarationOnly",
+        start: [
+          "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5",
+          "tsc --emitDeclarationOnly",
+        ].join(" && "),
       },
     };
   })();
 
-  nodemon.default(nodemonConfig);
+  const instance = nodemon.default(nodemonConfig);
 
-  process.on("SIGINT", () => nodemon.default.emit("quit"));
-  process.on("SIGUSR2", () =>
-    Sonamu.server?.close().then(() => nodemon.default.emit("restart"))
-  );
+  process.on("SIGINT", () => instance.emit("quit"));
+  process.on("SIGUSR2", async () => {
+    await Sonamu.server?.close();
+  });
 }
 
 async function serve() {

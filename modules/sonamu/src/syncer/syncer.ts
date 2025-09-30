@@ -370,6 +370,9 @@ export class Syncer {
       const _transpiledFilePaths = await Promise.all(
         chunk.map(async (diffFile) => {
           const { code, map } = await swc.transformFile(diffFile, {
+            module: {
+              type: "commonjs",
+            },
             jsc: {
               parser: {
                 syntax: "typescript",
@@ -377,7 +380,6 @@ export class Syncer {
               },
               target: "es5",
             },
-            minify: true,
             sourceMaps: true,
           });
 
