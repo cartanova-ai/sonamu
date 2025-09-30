@@ -318,6 +318,9 @@ export class Syncer {
         ...(diffGroups["model"] ?? []),
         ...(diffGroups["frame"] ?? []),
       ];
+
+      await this.autoloadApis();
+
       const params: { namesRecord: EntityNamesRecord; modelTsPath: string }[] =
         mergedGroup.map((modelPath) => {
           if (modelPath.endsWith(".model.js")) {
