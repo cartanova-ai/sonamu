@@ -57,6 +57,8 @@ async function bootstrap() {
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
       ["smd_migration"],
+      ["dev:serve"],
+      ["serve"],
     ],
     runners: {
       migrate_run,
@@ -76,6 +78,8 @@ async function bootstrap() {
       // scaffold_view_list,
       // scaffold_view_form,
       smd_migration,
+      "dev:serve": dev_serve,
+      serve,
     },
   });
 }
@@ -88,6 +92,62 @@ bootstrap().finally(async () => {
   /* Global End */
   console.log(chalk.bgBlue(`END ${new Date()}\n`));
 });
+
+async function dev_serve() {
+  const nodemon = await import("nodemon");
+
+  const nodemonConfig = (() => {
+    const projectNodemonPath = path.join(Sonamu.apiRootPath, "nodemon.json");
+    const hasProjectNodemon = fs.existsSync(projectNodemonPath);
+
+    if (hasProjectNodemon) {
+      return JSON.parse(fs.readFileSync(projectNodemonPath, "utf8"));
+    }
+
+    return {
+      watch: ["src/index.ts"],
+      exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
+      events: {
+        start:
+          "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5 && tsc --emitDeclarationOnly",
+      },
+    };
+  })();
+
+  nodemon.default(nodemonConfig);
+
+  process.on("SIGINT", () => nodemon.default.emit("quit"));
+  process.on("SIGUSR2", () =>
+    Sonamu.server?.close().then(() => nodemon.default.emit("restart"))
+  );
+}
+
+async function serve() {
+  const distIndexPath = path.join(Sonamu.apiRootPath, "dist", "index.js");
+
+  if (!fs.existsSync(distIndexPath)) {
+    console.log(
+      chalk.red("dist/index.js not found. Please build your project first.")
+    );
+    console.log(chalk.blue("Run: yarn sonamu build"));
+    return;
+  }
+
+  const { spawn } = await import("child_process");
+  const serverProcess = spawn(
+    "node",
+    ["-r", "source-map-support/register", "-r", "dotenv/config", distIndexPath],
+    {
+      cwd: Sonamu.apiRootPath,
+      stdio: "inherit",
+    }
+  );
+
+  process.on("SIGINT", () => {
+    serverProcess.kill("SIGTERM");
+    process.exit(0);
+  });
+}
 
 async function setupMigrator() {
   // migrator

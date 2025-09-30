@@ -40,8 +40,10 @@
     "minimatch": "^10.0.3",
     "mysql2": "^3.6.1",
     "node-sql-parser": "^5.2.0",
+    "nodemon": "^3.1.10",
     "prompts": "^2.4.2",
     "qs": "^6.11.0",
+    "source-map-support": "^0.5.21",
     "tsicli": "^1.0.5",
     "uuid": "^8.3.2",
     "zod": "3.25.76"
@@ -58,16 +60,16 @@
     "@types/prompts": "^2.0.14",
     "@types/qs": "^6.9.7",
     "@types/uuid": "^8.3.4",
-    "nodemon": "^3.1.10",
     "prettier": "^3.2.5",
-    "source-map-support": "^0.5.21",
     "tsup": "^8.1.0",
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
-    "mysql2": "^3.6.1"
+    "mysql2": "^3.6.1",
+    "nodemon": "3.1.10",
+    "source-map-support": "^0.5.21"
   },
   "packageManager": "yarn@3.6.3"
 }

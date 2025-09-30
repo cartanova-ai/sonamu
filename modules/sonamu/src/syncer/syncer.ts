@@ -369,7 +369,7 @@ export class Syncer {
     for (const chunk of chunks) {
       const _transpiledFilePaths = await Promise.all(
         chunk.map(async (diffFile) => {
-          const { code } = await swc.transformFile(diffFile, {
+          const { code, map } = await swc.transformFile(diffFile, {
             jsc: {
               parser: {
                 syntax: "typescript",
@@ -378,12 +378,25 @@ export class Syncer {
               target: "es5",
             },
             minify: true,
+            sourceMaps: true,
           });
+
           const jsPath = diffFile
             .replace("/src/", "/dist/")
             .replace(".ts", ".js");
           mkdirSync(path.dirname(jsPath), { recursive: true }); // 파일 새로 추가된 경우 디렉토리 생성
           writeFileSync(jsPath, code);
+
+          if (map) {
+            const mapPath = jsPath + ".map";
+            mkdirSync(path.dirname(mapPath), { recursive: true });
+            writeFileSync(mapPath, map);
+
+            const codeWithSourceMap =
+              code + "\n//# sourceMappingURL=" + path.basename(mapPath);
+            writeFileSync(jsPath, codeWithSourceMap);
+          }
+
           console.log(
             chalk.bold("Transpiled: ") +
               chalk.blue(`${jsPath.replace(Sonamu.apiRootPath, "api")}`)

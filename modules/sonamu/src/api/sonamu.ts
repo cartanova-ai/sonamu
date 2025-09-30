@@ -151,6 +151,8 @@ class SonamuClass {
   private pendingFiles: string[] = [];
   private hmrStartTime: number = 0;
 
+  public server: FastifyInstance | null = null;
+
   async initForTesting() {
     await this.init(true, false, undefined, true);
   }
@@ -210,6 +212,7 @@ class SonamuClass {
     if (isLocal() && !isTest() && enableSync) {
       await this.syncer.sync();
 
+      // FIXME: hmr 설정된 경우만 워처 시작
       this.startWatcher();
 
       fetch("http://127.0.0.1:57001/api/reload", {
@@ -234,6 +237,8 @@ class SonamuClass {
     if (this.isInitialized === false) {
       await this.init(options?.doSilent, options?.enableSync);
     }
+
+    this.server = server;
 
     // 전체 라우팅 리스트
     server.get(
@@ -375,7 +380,10 @@ class SonamuClass {
     const watchPath = path.join(this.apiRootPath, "src");
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
-        !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
+        (!!stats?.isFile() &&
+          !path.endsWith(".ts") &&
+          !path.endsWith(".json")) ||
+        path.endsWith("src/index.ts"),
       persistent: true,
       ignoreInitial: true,
     });
