@@ -633,9 +633,6 @@ export class Migrator {
       `mysql -h${tdbConn.host} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
     );
 
-    // tdb 연결 종료
-    await tdb.destroy();
-
     // shadow db 테스트 진행
     const sdb = knex({
       ...Sonamu.dbConfig.test,
