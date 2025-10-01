@@ -109,10 +109,8 @@ async function dev_serve() {
       ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
       exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
       events: {
-        start: [
+        start:
           "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5",
-          "tsc --emitDeclarationOnly",
-        ].join(" && "),
       },
     };
   })();

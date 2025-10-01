@@ -14,7 +14,7 @@ if (args[0] === "build") {
 
   try {
     execSync(
-      `swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5 && tsc --emitDeclarationOnly`,
+      `swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5`,
       {
         cwd: process.cwd(),
         stdio: "inherit",
