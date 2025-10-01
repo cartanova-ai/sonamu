@@ -839,7 +839,8 @@ export class Migrator {
                       entityColumns,
                       entityIndexes,
                       dbColumns,
-                      dbIndexes
+                      dbIndexes,
+                      dbSet.foreigns
                     );
                   }
                 } else {
@@ -1578,7 +1579,8 @@ export class Migrator {
     entityColumns: MigrationColumn[],
     entityIndexes: MigrationIndex[],
     dbColumns: MigrationColumn[],
-    dbIndexes: MigrationIndex[]
+    dbIndexes: MigrationIndex[],
+    dbForeigns: MigrationForeign[]
   ): Promise<GenMigrationCode[]> {
     /*
       세부 비교 후 다른점 찾아서 코드 생성
@@ -1598,7 +1600,9 @@ export class Migrator {
     // 추출된 컬럼들을 기준으로 각각 라인 생성
     const alterColumnLinesTo = this.getAlterColumnLinesTo(
       alterColumnsTo,
-      entityColumns
+      entityColumns,
+      table,
+      dbForeigns
     );
 
     // 인덱스의 add, drop 여부 확인
@@ -1708,7 +1712,9 @@ export class Migrator {
 
   getAlterColumnLinesTo(
     columnsTo: ReturnType<Migrator["getAlterColumnsTo"]>,
-    entityColumns: MigrationColumn[]
+    entityColumns: MigrationColumn[],
+    table: string,
+    dbForeigns: MigrationForeign[]
   ) {
     let linesTo = {
       add: {
@@ -1734,16 +1740,39 @@ export class Migrator {
           .join(", ")})`,
       ],
     };
+
+    // drop할 컬럼에 걸린 FK 찾기
+    const dropColumnNames = columnsTo.drop.map((col) => col.name);
+    const fkToDropBeforeColumn = dbForeigns.filter((fk) =>
+      fk.columns.some((col) => dropColumnNames.includes(col))
+    );
+
+    const dropFkLines = fkToDropBeforeColumn.map((fk) => {
+      const columnsStringQuote = fk.columns.map((col) => `'${col}'`).join(",");
+      return `table.dropForeign([${columnsStringQuote}])`;
+    });
+
+    const restoreFkLines = this.genForeignDefinitions(
+      table,
+      fkToDropBeforeColumn
+    ).up;
+
     linesTo.drop = {
       up: [
-        "// drop",
+        ...(dropFkLines.length > 0
+          ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
+          : []),
+        "// drop columns",
         `table.dropColumns(${columnsTo.drop
           .map((col) => `'${col.name}'`)
           .join(", ")})`,
       ],
       down: [
-        "// rollback - drop",
+        "// rollback - drop columns",
         ...this.genColumnDefinitions(columnsTo.drop),
+        ...(restoreFkLines.length > 0
+          ? ["// restore foreign keys", ...restoreFkLines]
+          : []),
       ],
     };
     linesTo.alter = columnsTo.alter.reduce(
