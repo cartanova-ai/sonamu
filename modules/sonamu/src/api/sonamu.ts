@@ -215,11 +215,7 @@ class SonamuClass {
       // FIXME: hmr 설정된 경우만 워처 시작
       this.startWatcher();
 
-      fetch("http://127.0.0.1:57001/api/reload", {
-        method: "GET",
-      }).catch((e) =>
-        console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`))
-      );
+      this.syncer.syncUI();
     }
 
     this.isInitialized = true;
