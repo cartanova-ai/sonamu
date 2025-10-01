@@ -21,6 +21,7 @@ import {
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
+import path from "path";
 import { openai } from "./openai";
 
 export async function createApiServer(options: {
@@ -42,6 +43,14 @@ export async function createApiServer(options: {
 
   if (watch) {
     server.get("/api/reload", async () => {
+      // Sonamu.apiRootPath 내의 모든 require.cache 삭제
+      const apiRootPath = path.resolve(Sonamu.apiRootPath);
+      Object.keys(require.cache).forEach((key) => {
+        if (key.startsWith(apiRootPath)) {
+          delete require.cache[key];
+        }
+      });
+
       await EntityManager.reload();
       return true;
     });
