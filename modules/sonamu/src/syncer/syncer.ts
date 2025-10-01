@@ -319,6 +319,10 @@ export class Syncer {
         ...(diffGroups["frame"] ?? []),
       ];
 
+      // registeredApis 초기화
+      await this.autoloadModels();
+
+      // Syncer.apis 초기화
       await this.autoloadApis();
 
       const params: { namesRecord: EntityNamesRecord; modelTsPath: string }[] =
