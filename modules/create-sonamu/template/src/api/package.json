@@ -4,13 +4,14 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "serve": "sonamu serve",
+    "build": "sonamu build",
+    "dev:serve": "sonamu dev:serve",
     "test": "yarn vitest run",
     "sonamu": "sonamu"
   },
   "dependencies": {
+    "@swc/core": "^1.13.5",
     "dotenv": "^17.2.2",
     "fastify": "^5.6.0",
     "fastify-qs": "^5.0.0",
@@ -24,11 +25,12 @@
   "devDependencies": {
     "@sonamu-kit/react-sui": "^0.1.14",
     "@sonamu-kit/ui": "^0.4.1",
+    "@swc/cli": "^0.7.8",
     "@types/lodash": "^4",
     "@types/luxon": "^3",
     "@types/node": "^24.5.0",
+    "source-map-support": "^0.5.21",
     "prettier": "^3.6.2",
-    "tsc-watch": "^7.1.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vitest": "^3.2.4"
