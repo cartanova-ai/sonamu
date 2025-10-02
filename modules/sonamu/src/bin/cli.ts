@@ -102,11 +102,10 @@ async function dev_serve() {
     return {
       watch: ["src/index.ts"],
       ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
-      exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
-      events: {
-        start:
-          "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5",
-      },
+      exec: [
+        "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5",
+        "node -r source-map-support/register -r dotenv/config dist/index.js",
+      ].join(" && "),
     };
   })();
 
