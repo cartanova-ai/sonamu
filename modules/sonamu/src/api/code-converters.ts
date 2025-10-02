@@ -123,6 +123,11 @@ export function getZodTypeFromApiParamType(
             args?: ApiParamType[];
           };
 
+          // Date 타입 처리
+          if (refType.id === "Date") {
+            return z.date();
+          }
+
           // 객체 키 관리 유틸리티
           if (["Pick", "Omit"].includes(refType.id)) {
             if (refType.args?.length !== 2) {
@@ -297,9 +302,9 @@ export function propToZodTypeDef(
   } else if (isTimeProp(prop)) {
     stmt = `${prop.name}: z.string().length(8)`;
   } else if (isDateTimeProp(prop)) {
-    stmt = `${prop.name}: SQLDateTimeString`;
+    stmt = `${prop.name}: z.date()`;
   } else if (isTimestampProp(prop)) {
-    stmt = `${prop.name}: SQLDateTimeString`;
+    stmt = `${prop.name}: z.date()`;
   } else if (isJsonProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
@@ -460,7 +465,8 @@ export function apiParamTypeToTsType(
     );
   } else if (ApiParamType.isRef(paramType)) {
     if (
-      ["Pick", "Omit", "Promise", "Partial"].includes(paramType.id) === false
+      ["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) ===
+      false
     ) {
       // importKeys 인젝션
       injectImportKeys.push(paramType.id);

@@ -32,7 +32,6 @@ import {
   isVirtualProp,
   EntityProp,
   EntityPropNode,
-  SQLDateTimeString,
 } from "../types/types";
 import {
   ApiDecoratorOptions,
@@ -1363,9 +1362,9 @@ export class Syncer {
     } else if (isTimeProp(prop)) {
       zodType = z.string().length(8);
     } else if (isDateTimeProp(prop)) {
-      zodType = SQLDateTimeString;
+      zodType = z.date();
     } else if (isTimestampProp(prop)) {
-      zodType = SQLDateTimeString;
+      zodType = z.date();
     } else if (isJsonProp(prop)) {
       zodType = await this.getZodTypeById(prop.id);
     } else if (isUuidProp(prop)) {
@@ -1397,7 +1396,9 @@ export class Syncer {
     key: string,
     zodType: z.ZodTypeAny
   ): RenderingNode["renderType"] {
-    if (zodType instanceof z.ZodString) {
+    if (zodType instanceof z.ZodDate) {
+      return "string-datetime";
+    } else if (zodType instanceof z.ZodString) {
       if (key.includes("img") || key.includes("image")) {
         return "string-image";
       } else if (zodType.description === "SQLDateTimeString") {
