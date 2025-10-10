@@ -15,8 +15,8 @@ function isZodNumberAnyway(zodType: z.ZodType<any>) {
   ) {
   } else if (
     zodType instanceof z.ZodOptional &&
-    zodType._def.innerType instanceof z.ZodOptional &&
-    zodType._type.def.innerType instanceof z.ZodNumber
+    zodType._def?.innerType instanceof z.ZodOptional &&
+    zodType._type?.def?.innerType instanceof z.ZodNumber
   ) {
     return true;
   }
