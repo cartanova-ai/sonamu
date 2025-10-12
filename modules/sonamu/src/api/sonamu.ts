@@ -198,11 +198,11 @@ class SonamuClass {
     }
 
     // Entity 로드
-    const EntityManager = require("../entity/entity-manager");
+    const { EntityManager } = await import("../entity/entity-manager");
     await EntityManager.autoload(doSilent);
 
     // Syncer
-    const Syncer = require("../syncer/syncer");
+    const { Syncer } = await import("../syncer/syncer");
     this.syncer = new Syncer();
 
     // Autoload: Models / Types / APIs

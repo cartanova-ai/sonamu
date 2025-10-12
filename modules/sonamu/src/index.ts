@@ -7,7 +7,7 @@ export * from "./database/db";
 export * from "./database/upsert-builder";
 export * from "./exceptions/error-handler";
 export * from "./exceptions/so-exceptions";
-export type * from "./types/types";
+export * from "./types/types";
 export * from "./utils/controller";
 export * from "./utils/model";
 export * from "./utils/utils";
