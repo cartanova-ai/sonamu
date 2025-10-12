@@ -5,9 +5,12 @@ export default defineConfig({
   test: {
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
+    pool: "forks",
     poolOptions: {
-      threads: {
-        singleThread: true,
+      forks: {
+        minForks: 1,
+        maxForks: 1,
+        isolate: false,
       },
     },
     environment: "node",

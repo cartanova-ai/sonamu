@@ -9,6 +9,7 @@
     "dev:serve": "sonamu dev:serve",
     "start:all": "./start.sh",
     "test": "yarn vitest run",
+    "test:watch": "yarn vitest watch --standalone",
     "sonamu": "sonamu"
   },
   "dependencies": {
