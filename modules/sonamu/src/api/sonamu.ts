@@ -1,28 +1,28 @@
-import chalk from "chalk";
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { IncomingMessage, Server, ServerResponse } from "http";
-import { ZodError } from "zod";
 import path from "path";
 import fs from "fs-extra";
+import { AsyncLocalStorage } from "async_hooks";
+
+import chalk from "chalk";
+import chokidar, { FSWatcher } from "chokidar";
+
+import { ZodError } from "zod";
 import { getZodObjectFromApi } from "./code-converters";
-import { Context } from "./context";
 import {
   BadRequestException,
   NotFoundException,
 } from "../exceptions/so-exceptions";
-import { EntityManager } from "../entity/entity-manager";
+import { humanizeZodError } from "../utils/zod-error";
 import { fastifyCaster } from "./caster";
 import { ApiParam, ApiParamType } from "../types/types";
-import { Syncer } from "../syncer/syncer";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
-import { ApiDecoratorOptions, ExtendedApi } from "./decorators";
-import { humanizeZodError } from "../utils/zod-error";
-import { AsyncLocalStorage } from "async_hooks";
-import { BaseModel } from "../database/base-model";
 import { DB, SonamuDBConfig } from "../database/db";
 import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
-import chokidar, { FSWatcher } from "chokidar";
+import type { ApiDecoratorOptions, ExtendedApi } from "./decorators";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { IncomingMessage, Server, ServerResponse } from "http";
+import type { Context } from "./context";
+import type { Syncer } from "../syncer/syncer";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -199,9 +199,11 @@ class SonamuClass {
     }
 
     // Entity 로드
+    const EntityManager = require("../entity/entity-manager");
     await EntityManager.autoload(doSilent);
 
     // Syncer
+    const Syncer = require("../syncer/syncer");
     this.syncer = new Syncer();
 
     // Autoload: Models / Types / APIs
@@ -431,6 +433,7 @@ class SonamuClass {
   }
 
   async destroy(): Promise<void> {
+    const BaseModel = require("../database/base-model");
     await BaseModel.destroy();
   }
 }
