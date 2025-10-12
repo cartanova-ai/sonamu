@@ -1,9 +1,7 @@
 import path from "path";
-import fs from "fs-extra";
+import fs from "fs";
 import { AsyncLocalStorage } from "async_hooks";
-
 import chalk from "chalk";
-import chokidar, { FSWatcher } from "chokidar";
 
 import { ZodError } from "zod";
 import { getZodObjectFromApi } from "./code-converters";
@@ -23,6 +21,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import type { Context } from "./context";
 import type { Syncer } from "../syncer/syncer";
+import type { FSWatcher } from "chokidar";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -376,6 +375,7 @@ class SonamuClass {
 
   startWatcher(): void {
     const watchPath = path.join(this.apiRootPath, "src");
+    const chokidar = require("chokidar") as typeof import("chokidar");
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
         (!!stats?.isFile() &&

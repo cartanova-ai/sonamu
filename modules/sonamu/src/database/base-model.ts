@@ -1,9 +1,9 @@
 import { DateTime } from "luxon";
 import { Knex } from "knex";
-import _ from "lodash";
+import { chunk, groupBy, isObject, omit, set, uniq } from "lodash";
 import { DBPreset, DB } from "./db";
-import { isCustomJoinClause, SubsetQuery } from "../types/types";
-import { BaseListParams } from "../utils/model";
+import { isCustomJoinClause, type SubsetQuery } from "../types/types";
+import type { BaseListParams } from "../utils/model";
 import inflection from "inflection";
 import chalk from "chalk";
 import { UpsertBuilder } from "./upsert-builder";
@@ -53,7 +53,7 @@ export class BaseModelClass {
       selectField = unqKeyFields[0];
       unqKeys = rows.map((row) => row[unqKeyFields[0]]);
     }
-    const chunks = _.chunk(unqKeys, chunkSize);
+    const chunks = chunk(unqKeys, chunkSize);
 
     let resultIds: number[] = [];
     for (let chunk of chunks) {
@@ -112,7 +112,7 @@ export class BaseModelClass {
             `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
           )
           .whereIn(idColumn, fromIds)
-          .select(_.uniq([...loader.select, idColumn]));
+          .select(uniq([...loader.select, idColumn]));
 
         // ManyToMany에서 OneJoin이 있는 경우
         loader.oneJoins.map((join) => {
@@ -138,10 +138,10 @@ export class BaseModelClass {
       }
 
       // 불러온 row들을 참조ID 기준으로 분류 배치
-      const subRowGroups = _.groupBy(subRows, toCol);
+      const subRowGroups = groupBy(subRows, toCol);
       rows = rows.map((row) => {
         row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map(
-          (r) => _.omit(r, toCol)
+          (r) => omit(r, toCol)
         );
         return row;
       });
@@ -153,7 +153,7 @@ export class BaseModelClass {
     return rows.map((row: any) => {
       // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-      const groups = _.groupBy(nestedKeys, (key) => key.split("__")[0]);
+      const groups = groupBy(nestedKeys, (key) => key.split("__")[0]);
       const nullKeys = Object.keys(groups).filter(
         (key) =>
           groups[key].length > 1 &&
@@ -162,7 +162,7 @@ export class BaseModelClass {
 
       const hydrated = Object.keys(row).reduce((r, field) => {
         if (!field.includes("__")) {
-          if (Array.isArray(row[field]) && _.isObject(row[field][0])) {
+          if (Array.isArray(row[field]) && isObject(row[field][0])) {
             r[field] = this.hydrate(row[field]);
             return r;
           } else {
@@ -178,10 +178,10 @@ export class BaseModelClass {
             .slice(1)
             .map((part) => `[${part}]`)
             .join("");
-        _.set(
+        set(
           r,
           objPath,
-          row[field] && Array.isArray(row[field]) && _.isObject(row[field][0])
+          row[field] && Array.isArray(row[field]) && isObject(row[field][0])
             ? this.hydrate(row[field])
             : row[field]
         );
@@ -272,7 +272,7 @@ export class BaseModelClass {
         const parsedQuery = parser.astify(clonedQb.toQuery());
         const tables = getTableNamesFromWhere(parsedQuery);
         // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
-        const needToJoin = _.uniq(
+        const needToJoin = uniq(
           tables.flatMap((table) =>
             table.split("__").map((t) => inflection.pluralize(t))
           )

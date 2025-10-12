@@ -1,5 +1,3 @@
-import _ from "lodash";
-
 export type ListResult<T> = {
   rows: T[];
   total?: number;

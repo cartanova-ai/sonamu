@@ -8,9 +8,7 @@ dotenv.config();
 import path from "path";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
-import fs from "fs-extra";
-import inflection from "inflection";
-import prettier from "prettier";
+import fs from "fs";
 import process from "process";
 import _ from "lodash";
 import { Sonamu } from "../api";
@@ -18,7 +16,6 @@ import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
-import { SMDManager } from "../smd/smd-manager";
 
 let migrator: Migrator;
 
@@ -56,7 +53,6 @@ async function bootstrap() {
       ["scaffold", "view_list", "#entityId"],
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
-      ["smd_migration"],
       ["dev:serve"],
       ["serve"],
     ],
@@ -77,7 +73,6 @@ async function bootstrap() {
       ui,
       // scaffold_view_list,
       // scaffold_view_form,
-      smd_migration,
       "dev:serve": dev_serve,
       serve,
     },
@@ -391,122 +386,5 @@ async function ui() {
       return;
     }
     throw e;
-  }
-}
-
-async function smd_migration() {
-  await SMDManager.autoload();
-  const smdIds = SMDManager.getAllIds();
-
-  function enumLabelsToEntityEnums(
-    entityId: string,
-    enumLabels: {
-      [enumName: string]: { [name: string]: { ko: string } };
-    }
-  ): { [enumName: string]: { [name: string]: string } } {
-    return Object.fromEntries(
-      Object.entries(enumLabels).map(([enumLabelName, enumLabel]) => {
-        const enumName =
-          entityId + inflection.camelize(enumLabelName.toLowerCase(), false);
-        return [
-          enumName,
-          Object.fromEntries(
-            Object.entries(enumLabel).map(([name, { ko }]) => [name, ko])
-          ),
-        ];
-      })
-    );
-  }
-  for await (const smdId of smdIds) {
-    const smd = SMDManager.get(smdId);
-    const entityJson = {
-      id: smd.id,
-      ...(smd.parentId && { parentId: smd.parentId }),
-      title: smd.title,
-      props: smd.props,
-      indexes: smd.indexes,
-      subsets: smd.subsets,
-      enums: enumLabelsToEntityEnums(smd.id, smd.enumLabels),
-    };
-
-    const parentNames = SMDManager.getNamesFromId(smd.parentId ?? smd.id);
-    const names = SMDManager.getNamesFromId(smd.id);
-    const dstPath = path.join(
-      Sonamu.apiRootPath,
-      "src",
-      "application",
-      parentNames.fs,
-      `${names.fs}.entity.json`
-    );
-
-    const formatted = await prettier.format(JSON.stringify(entityJson), {
-      parser: "json",
-    });
-    fs.writeFileSync(dstPath, formatted);
-    console.log(chalk.blue(`CREATED: ${dstPath}`));
-
-    // smd.ts, enums.ts, genereated.ts 삭제 (트랜스파일 된 js파일도 삭제)
-    const srcSmdPath = path.join(
-      Sonamu.apiRootPath,
-      "src",
-      "application",
-      parentNames.fs,
-      `${names.fs}.smd.ts`
-    );
-    const dstSmdPath = srcSmdPath
-      .replace("/src/", "/dist/")
-      .replace(/\.ts$/, ".js");
-    const srcEnumsPath = path.join(
-      Sonamu.apiRootPath,
-      "src",
-      "application",
-      parentNames.fs,
-      `${names.fs}.enums.ts`
-    );
-    const dstEnumsPath = srcEnumsPath
-      .replace("/src/", "/dist/")
-      .replace(/\.ts$/, ".js");
-    const srcGeneratedPath = path.join(
-      Sonamu.apiRootPath,
-      "src",
-      "application",
-      parentNames.fs,
-      `${names.fs}.generated.ts`
-    );
-    const dstGeneratedPath = srcGeneratedPath
-      .replace("/src/", "/dist/")
-      .replace(/\.ts$/, ".js");
-
-    [
-      srcSmdPath,
-      dstSmdPath,
-      srcEnumsPath,
-      dstEnumsPath,
-      ...Sonamu.config.sync.targets.map((target) =>
-        srcEnumsPath
-          .replace(Sonamu.apiRootPath, path.join(Sonamu.appRootPath, target))
-          .replace("/src/application/", "/src/services/")
-      ),
-      srcGeneratedPath,
-      dstGeneratedPath,
-    ].map((p) => {
-      if (fs.existsSync(p) === false) {
-        console.log(chalk.yellow(`NOT FOUND: ${p}`));
-        return;
-      }
-      fs.unlinkSync(p);
-      console.log(chalk.red(`DELETED: ${p}`));
-    });
-  }
-
-  // Entity로 reload
-  console.log("Entity로 다시 로드합니다.");
-  EntityManager.isAutoloaded = false;
-  await EntityManager.autoload();
-
-  // Entity를 통해 generated.ts 재생성
-  const entityIds = EntityManager.getAllParentIds();
-  for await (const entityId of entityIds) {
-    await Sonamu.syncer.generateTemplate("generated", { entityId });
   }
 }

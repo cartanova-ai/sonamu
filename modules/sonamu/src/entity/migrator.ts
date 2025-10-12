@@ -3,7 +3,7 @@ import knex, { Knex } from "knex";
 import prettier from "prettier";
 import chalk from "chalk";
 import { DateTime } from "luxon";
-import fs from "fs-extra";
+import fs from "fs";
 import equal from "fast-deep-equal";
 import inflection from "inflection";
 import prompts from "prompts";

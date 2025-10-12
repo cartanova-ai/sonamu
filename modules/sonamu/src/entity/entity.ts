@@ -19,7 +19,7 @@ import {
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
-import fs from "fs-extra";
+import fs from "fs";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import prettier from "prettier";

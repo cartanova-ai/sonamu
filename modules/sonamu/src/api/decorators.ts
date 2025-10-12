@@ -1,6 +1,6 @@
-import { HTTPMethods } from "fastify";
+import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
-import { ApiParam, ApiParamType } from "../types/types";
+import type { ApiParam, ApiParamType } from "../types/types";
 import { z } from "zod";
 
 export type ServiceClient =

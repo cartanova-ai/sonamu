@@ -1,10 +1,10 @@
-import { FastifyReply } from "fastify";
-import { RouteGenericInterface } from "fastify/types/route";
+import type { FastifyReply } from "fastify";
+import type { RouteGenericInterface } from "fastify/types/route";
 import {
-  Server,
-  IncomingMessage,
-  ServerResponse,
-  IncomingHttpHeaders,
+  type Server,
+  type IncomingMessage,
+  type ServerResponse,
+  type IncomingHttpHeaders,
 } from "http";
 
 export interface ContextExtend {}

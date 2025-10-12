@@ -1,7 +1,7 @@
 import path from "path";
 import glob from "glob";
-import fs from "fs-extra";
-import _ from "lodash";
+import fs from "fs";
+import { groupBy, isObject, set } from "lodash";
 
 export function globAsync(pathPattern: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -68,7 +68,7 @@ export function hydrate<T>(rows: T[]): T[] {
   return rows.map((row: any) => {
     // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
     const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-    const groups = _.groupBy(nestedKeys, (key) => key.split("__")[0]);
+    const groups = groupBy(nestedKeys, (key) => key.split("__")[0]);
     const nullKeys = Object.keys(groups).filter(
       (key) =>
         groups[key].length > 1 &&
@@ -77,7 +77,7 @@ export function hydrate<T>(rows: T[]): T[] {
 
     const hydrated = Object.keys(row).reduce((r, field) => {
       if (!field.includes("__")) {
-        if (Array.isArray(row[field]) && _.isObject(row[field][0])) {
+        if (Array.isArray(row[field]) && isObject(row[field][0])) {
           r[field] = hydrate(row[field]);
           return r;
         } else {
@@ -93,10 +93,10 @@ export function hydrate<T>(rows: T[]): T[] {
           .slice(1)
           .map((part) => `[${part}]`)
           .join("");
-      _.set(
+      set(
         r,
         objPath,
-        row[field] && Array.isArray(row[field]) && _.isObject(row[field][0])
+        row[field] && Array.isArray(row[field]) && isObject(row[field][0])
           ? hydrate(row[field])
           : row[field]
       );

@@ -27,7 +27,6 @@ export default defineConfig({
     "dotenv",
     "fast-deep-equal",
     "fastify",
-    "fs-extra",
     "glob",
     "inflection",
     "knex",

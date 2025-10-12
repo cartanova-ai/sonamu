@@ -6,7 +6,7 @@ import path from "path";
 import { Entity } from "./entity";
 import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
-import fs from "fs-extra";
+import fs from "fs";
 
 export type EntityNamesRecord = Record<
   | "fs"
