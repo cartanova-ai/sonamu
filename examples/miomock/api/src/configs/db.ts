@@ -4,9 +4,9 @@ const baseconfig: SonamuDBBaseConfig = {
   database: "miomock",
   defaultOptions: {
     connection: {
-      host: "127.0.0.1",
+      host: "0.0.0.0",
       port: 3306,
-      user: "root",
+      user: "miomock",
       password: "miomock123",
       typeCast: function (field: any, next: any) {
         if (field.type == "TINY" && field.length == 1) {
