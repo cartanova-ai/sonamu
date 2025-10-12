@@ -45,6 +45,7 @@ export class FixtureManagerClass {
     }
     return this._fdb;
   }
+  cachedTableNames: string[] | null = null;
 
   private relationGraph = new RelationGraph();
 
@@ -75,47 +76,65 @@ export class FixtureManagerClass {
   }
 
   async cleanAndSeed(usingTables?: string[]) {
-    const tableNames = await (async () => {
+    const tableNames: string[] = await (async () => {
       if (usingTables) {
         return usingTables;
       }
+      if (this.cachedTableNames) {
+        return this.cachedTableNames;
+      }
 
       const [tables] = await this.tdb.raw(
-        `SHOW TABLE STATUS WHERE Engine IS NOT NULL`
+        `SHOW TABLE STATUS WHERE Engine IS NOT NULL AND Name != 'migrations'`
       );
-      return tables.map((tableInfo: any) => tableInfo["Name"] as string);
+      const tableNames = tables.map(
+        (tableInfo: { Name: string }) => tableInfo["Name"]
+      );
+      this.cachedTableNames = tableNames;
+      return tableNames;
     })();
 
     await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
-    for await (let tableName of tableNames) {
-      if (tableName == "migrations") {
-        continue;
-      }
 
-      const [[fdbChecksumRow]] = await this.fdb.raw(
-        `CHECKSUM TABLE ${tableName}`
-      );
-      const fdbChecksum = fdbChecksumRow["Checksum"];
+    // migrations 제외한 테이블 목록
+    const tableListStr = tableNames.join(", ");
 
-      const [[tdbChecksumRow]] = await this.tdb.raw(
-        `CHECKSUM TABLE ${tableName}`
-      );
-      const tdbChecksum = tdbChecksumRow["Checksum"];
+    // 한 번에 모든 테이블 체크섬 확인
+    const [fdbChecksumRows] = await this.fdb.raw<
+      [{ Table: string; Checksum: number }[]]
+    >(`CHECKSUM TABLE ${tableListStr}`);
+    const [tdbChecksumRows] = await this.tdb.raw<
+      [{ Table: string; Checksum: number }[]]
+    >(`CHECKSUM TABLE ${tableListStr}`);
 
-      if (fdbChecksum !== tdbChecksum) {
+    // 체크섬 맵 생성
+    const fdbChecksums = new Map(
+      fdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum])
+    );
+    const tdbChecksums = new Map(
+      tdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum])
+    );
+
+    // 변경된 테이블들만 처리
+    const changedTables = tableNames.filter(
+      (tableName) => fdbChecksums.get(tableName) !== tdbChecksums.get(tableName)
+    );
+
+    // 병렬로 truncate + insert 실행
+    await Promise.all(
+      changedTables.map(async (tableName) => {
         await this.tdb(tableName).truncate();
         const rawQuery = `INSERT INTO ${
           (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
         }.${tableName}
-            SELECT * FROM ${
-              (
-                Sonamu.dbConfig.fixture_local
-                  .connection as Knex.ConnectionConfig
-              ).database
-            }.${tableName}`;
+      SELECT * FROM ${
+        (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig)
+          .database
+      }.${tableName}`;
         await this.tdb.raw(rawQuery);
-      }
-    }
+      })
+    );
+
     await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
 
     // console.timeEnd("FIXTURE-CleanAndSeed");
