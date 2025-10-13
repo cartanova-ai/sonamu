@@ -13,7 +13,12 @@ import {
   useSSEStream,
 } from "../sonamu.shared";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import { UserListParams, UserSaveParams } from "./user.types";
+import {
+  UserListParams,
+  UserSaveParams,
+  UserLoginParams,
+  UserRegisterParams,
+} from "./user.types";
 
 export namespace UserService {
   export function useUser<T extends UserSubsetKey>(
@@ -80,6 +85,47 @@ export namespace UserService {
     return fetch({
       method: "GET",
       url: `/api/user/getMyIP?${qs.stringify({})}`,
+    });
+  }
+
+  export function useMe(
+    swrOptions?: SwrOptions,
+  ): SWRResponse<UserSubsetMapping["A"] | null, SWRError> {
+    return useSWR(
+      handleConditional([`/api/user/me`, {}], swrOptions?.conditional),
+    );
+  }
+  export async function me(): Promise<UserSubsetMapping["A"] | null> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/me?${qs.stringify({})}`,
+    });
+  }
+
+  export async function login(
+    params: UserLoginParams,
+  ): Promise<{ user: UserSubsetMapping["SS"] }> {
+    return fetch({
+      method: "POST",
+      url: `/api/user/login`,
+      data: { params },
+    });
+  }
+
+  export async function logout(): Promise<{ message: string }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/logout?${qs.stringify({})}`,
+    });
+  }
+
+  export async function register(
+    params: UserRegisterParams,
+  ): Promise<{ user: UserSubsetMapping["A"] }> {
+    return fetch({
+      method: "POST",
+      url: `/api/user/register`,
+      data: { params },
     });
   }
 }

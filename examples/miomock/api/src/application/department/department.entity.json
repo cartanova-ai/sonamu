@@ -59,7 +59,10 @@
     ]
   },
   "enums": {
-    "DepartmentOrderBy": { "id-desc": "ID최신순" },
+    "DepartmentOrderBy": {
+      "id-desc": "ID최신순",
+      "name-asc": "부서명오름차순"
+    },
     "DepartmentSearchField": { "id": "ID" }
   }
 }

@@ -1,7 +1,8 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, Icon } from "semantic-ui-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, Icon, Button } from "semantic-ui-react";
 import classNames from "classnames";
+import { useAuth } from "src/admin-common/auth";
 
 interface SidebarProps {
   className?: string;
@@ -16,7 +17,7 @@ interface MenuItemProps {
 const menuItems: MenuItemProps[] = [
   {
     title: "홈",
-    path: "/",
+    path: "/admin",
     icon: "home",
   },
   {
@@ -48,18 +49,30 @@ const menuItems: MenuItemProps[] = [
 
 export default function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
+    if (path === "/admin") {
+      return location.pathname === "/admin" || location.pathname === "/admin/";
     }
     return location.pathname.startsWith(path);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/admin/login");
   };
 
   return (
     <div className={classNames("sidebar", className)}>
       <div className="sidebar-header">
         <h3>Sonamu Admin</h3>
+        {user && (
+          <div style={{ fontSize: "0.9em", marginTop: "0.5em", color: "#666" }}>
+            {user.username} ({user.role})
+          </div>
+        )}
       </div>
       <Menu vertical fluid className="sidebar-menu">
         {menuItems.map((item) => (
@@ -75,6 +88,14 @@ export default function Sidebar({ className }: SidebarProps) {
           </Menu.Item>
         ))}
       </Menu>
+      {user && (
+        <div style={{ padding: "1em" }}>
+          <Button fluid color="red" onClick={handleLogout}>
+            <Icon name="sign out" />
+            로그아웃
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

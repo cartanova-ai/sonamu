@@ -17,7 +17,7 @@
   },
   {
     "path": "/dist/application/user/user.model.js",
-    "checksum": "cd5fee069f87c88bb8c6196466ea9e12a4f4bf39"
+    "checksum": "34d243650f658f5ba8096d92e9802ca6ff3bc5af"
   },
   {
     "path": "/src/application/company/company.entity.json",
@@ -29,7 +29,7 @@
   },
   {
     "path": "/src/application/department/department.entity.json",
-    "checksum": "cd6d06a2dc1b199d67aeddca11b5c1f26d7ff1b9"
+    "checksum": "89317b8c466fdd8b7743e7b9ab0e5cc512ef493c"
   },
   {
     "path": "/src/application/department/department.types.ts",
@@ -53,14 +53,14 @@
   },
   {
     "path": "/src/application/sonamu.generated.ts",
-    "checksum": "699e8cae69c0240263fd206c23da737afd56448e"
+    "checksum": "a801e11d6c6ee66f0c4c6655af849c84458ecb7a"
   },
   {
     "path": "/src/application/user/user.entity.json",
-    "checksum": "2f301fc77b5bb1a2257d7f190c5fa28038eafb00"
+    "checksum": "ab563f517aaf41d0599b1e2c7cb8e5e1a0fd7525"
   },
   {
     "path": "/src/application/user/user.types.ts",
-    "checksum": "d860467474bdf8caf557039ecf835831a8ed73bb"
+    "checksum": "512c833dd933b2714e00ec3a441e0557833fe0e7"
   }
 ]

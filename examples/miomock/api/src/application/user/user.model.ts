@@ -3,13 +3,20 @@ import {
   asArray,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
   api,
   BaseModelClass,
   Sonamu,
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
-import { UserListParams, UserSaveParams } from "./user.types";
+import {
+  UserListParams,
+  UserSaveParams,
+  UserLoginParams,
+  UserRegisterParams,
+} from "./user.types";
+import bcrypt from "bcrypt";
 
 /*
   User Model
@@ -142,6 +149,103 @@ class UserModelClass extends BaseModelClass {
     return {
       ip: context.ip,
     };
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
+  async me(): Promise<UserSubsetMapping["A"] | null> {
+    const context = Sonamu.getContext();
+
+    if (!context.user) {
+      return null;
+    }
+
+    const user = await this.findById("SS", context.user.id);
+
+    return user;
+  }
+
+  @api({ httpMethod: "POST" })
+  async login(
+    params: UserLoginParams
+  ): Promise<{ user: UserSubsetMapping["SS"] }> {
+    const rdb = this.getDB("r");
+    const context = Sonamu.getContext();
+
+    // 이메일로 사용자 조회
+    const user = await rdb("users")
+      .select("*")
+      .where("email", params.email)
+      .first();
+
+    if (!user) {
+      throw new UnauthorizedException(
+        "이메일 또는 비밀번호가 일치하지 않습니다"
+      );
+    }
+
+    // 비밀번호 확인
+    const isPasswordValid = await bcrypt.compare(
+      params.password,
+      user.password
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException(
+        "이메일 또는 비밀번호가 일치하지 않습니다"
+      );
+    }
+
+    // 세션에 사용자 ID 저장
+    await context.passport.login(user);
+
+    // 마지막 로그인 시간 업데이트
+    const wdb = this.getDB("w");
+    await wdb("users")
+      .where("id", user.id)
+      .update({ last_login_at: new Date() });
+
+    return { user: await this.findById("SS", user.id) };
+  }
+
+  @api({ httpMethod: "GET" })
+  async logout(): Promise<{ message: string }> {
+    const context = Sonamu.getContext();
+    await context.passport.logout();
+    return { message: "로그아웃 되었습니다" };
+  }
+
+  @api({ httpMethod: "POST" })
+  async register(
+    params: UserRegisterParams
+  ): Promise<{ user: UserSubsetMapping["A"] }> {
+    const rdb = this.getDB("r");
+    const wdb = this.getDB("w");
+
+    // 이메일 중복 확인
+    const existingUser = await rdb("users")
+      .where("email", params.email)
+      .first();
+
+    if (existingUser) {
+      throw new BadRequestException("이미 사용중인 이메일입니다");
+    }
+
+    // 비밀번호 해싱
+    const hashedPassword = await bcrypt.hash(params.password, 10);
+
+    // 사용자 생성
+    const [userId] = await wdb("users").insert({
+      email: params.email,
+      username: params.username,
+      password: hashedPassword,
+      role: params.role || "normal",
+      is_verified: false,
+    });
+
+    if (!userId) {
+      throw new Error("사용자 생성에 실패했습니다");
+    }
+
+    return { user: await this.findById("SS", userId) };
   }
 }
 

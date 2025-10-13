@@ -12,6 +12,7 @@
     },
     { "name": "email", "desc": "이메일", "type": "string", "length": 255 },
     { "name": "username", "desc": "이름", "type": "string", "length": 255 },
+    { "name": "password", "desc": "비밀번호", "type": "string", "length": 255 },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
     {
       "name": "role",
@@ -60,11 +61,21 @@
       "last_login_at",
       "bio",
       "is_verified"
-    ]
+    ],
+    "P": [
+      "id",
+      "username",
+      "role",
+      "bio",
+      "is_verified",
+      "employee.department.name",
+      "employee.salary"
+    ],
+    "SS": ["id", "email", "password", "role"]
   },
   "enums": {
     "UserOrderBy": { "id-desc": "ID최신순" },
     "UserSearchField": { "id": "ID" },
-    "UserRole": { "normal": "노멀" }
+    "UserRole": { "normal": "노멀", "admin": "관리자" }
   }
 }

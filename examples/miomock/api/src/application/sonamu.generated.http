@@ -206,6 +206,7 @@ Content-Type: application/json
       "created_at": "2000-01-01",
       "email": "EMAIL",
       "username": "USERNAME",
+      "password": "PASSWORD",
       "birth_date": null,
       "role": "normal",
       "last_login_at": null,
@@ -229,3 +230,37 @@ Content-Type: application/json
 GET {{baseUrl}}/api/user/getMyIP
 	?
 Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/me
+	?
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/login
+Content-Type: application/json
+
+{ "params": { "email": "EMAIL", "password": "PASSWORD" } }
+
+
+###
+
+GET {{baseUrl}}/api/user/logout
+	?
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/register
+Content-Type: application/json
+
+{
+  "params": {
+    "email": "EMAIL",
+    "username": "USERNAME",
+    "password": "PASSWORD",
+    "role": "unknown-undefined"
+  }
+}

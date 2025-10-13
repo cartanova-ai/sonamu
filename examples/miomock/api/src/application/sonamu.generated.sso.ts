@@ -172,4 +172,39 @@ export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
     joins: [],
     loaders: [],
   },
+  P: {
+    select: [
+      "users.id",
+      "users.username",
+      "users.role",
+      "users.bio",
+      "users.is_verified",
+      "employee__department.name as employee__department__name",
+      "employee.salary as employee__salary",
+    ],
+    virtual: [],
+    joins: [
+      {
+        as: "employee",
+        join: "outer",
+        table: "employees",
+        from: "users.id",
+        to: "employee.user_id",
+      },
+      {
+        as: "employee__department",
+        join: "outer",
+        table: "departments",
+        from: "employee.department_id",
+        to: "employee__department.id",
+      },
+    ],
+    loaders: [],
+  },
+  SS: {
+    select: ["users.id", "users.email", "users.password", "users.role"],
+    virtual: [],
+    joins: [],
+    loaders: [],
+  },
 };

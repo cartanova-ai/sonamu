@@ -11,3 +11,28 @@ export const UserSaveParams = UserBaseSchema.partial({
   created_at: true,
 });
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
+
+// User - LoginParams
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+
+// User - RegisterParams
+export const UserRegisterParams = z.object({
+  email: z.string().email(),
+  username: z.string(),
+  password: z.string().min(6),
+  role: z.enum(["normal", "admin"]).default("normal"),
+});
+export type UserRegisterParams = z.infer<typeof UserRegisterParams>;
+
+// User - RegisterParams
+export const UserRegisterParams = z.object({
+  email: z.string().email(),
+  username: z.string(),
+  password: z.string().min(6),
+  role: z.enum(["normal", "admin"]).default("normal"),
+});
+export type UserRegisterParams = z.infer<typeof UserRegisterParams>;

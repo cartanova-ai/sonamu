@@ -15,10 +15,13 @@ export const CompanySearchFieldLabel = { id: "ID" };
 
 // Enums: Department
 export const DepartmentOrderBy = z
-  .enum(["id-desc"])
+  .enum(["id-desc", "name-asc"])
   .describe("DepartmentOrderBy");
 export type DepartmentOrderBy = z.infer<typeof DepartmentOrderBy>;
-export const DepartmentOrderByLabel = { "id-desc": "ID최신순" };
+export const DepartmentOrderByLabel = {
+  "id-desc": "ID최신순",
+  "name-asc": "부서명오름차순",
+};
 export const DepartmentSearchField = z
   .enum(["id"])
   .describe("DepartmentSearchField");
@@ -60,9 +63,9 @@ export const UserOrderByLabel = { "id-desc": "ID최신순" };
 export const UserSearchField = z.enum(["id"]).describe("UserSearchField");
 export type UserSearchField = z.infer<typeof UserSearchField>;
 export const UserSearchFieldLabel = { id: "ID" };
-export const UserRole = z.enum(["normal"]).describe("UserRole");
+export const UserRole = z.enum(["normal", "admin"]).describe("UserRole");
 export type UserRole = z.infer<typeof UserRole>;
-export const UserRoleLabel = { normal: "노멀" };
+export const UserRoleLabel = { normal: "노멀", admin: "관리자" };
 
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
@@ -112,6 +115,7 @@ export const UserBaseSchema = z.object({
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
+  password: z.string().max(255),
   birth_date: z.string().length(10).nullable(),
   role: UserRole,
   last_login_at: z.date().nullable(),
@@ -297,8 +301,35 @@ export const UserSubsetA = z.object({
   is_verified: z.boolean(),
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
+export const UserSubsetP = z.object({
+  id: z.number().int().nonnegative(),
+  username: z.string().max(255),
+  role: UserRole,
+  bio: z.string().max(65535).nullable(),
+  is_verified: z.boolean(),
+  employee: z
+    .object({
+      department: z
+        .object({
+          name: z.string().max(128),
+        })
+        .nullable(),
+      salary: z.string().nullable(),
+    })
+    .nullable(),
+});
+export type UserSubsetP = z.infer<typeof UserSubsetP>;
+export const UserSubsetSS = z.object({
+  id: z.number().int().nonnegative(),
+  email: z.string().max(255),
+  password: z.string().max(255),
+  role: UserRole,
+});
+export type UserSubsetSS = z.infer<typeof UserSubsetSS>;
 export type UserSubsetMapping = {
   A: UserSubsetA;
+  P: UserSubsetP;
+  SS: UserSubsetSS;
 };
-export const UserSubsetKey = z.enum(["A"]);
+export const UserSubsetKey = z.enum(["A", "P", "SS"]);
 export type UserSubsetKey = z.infer<typeof UserSubsetKey>;
