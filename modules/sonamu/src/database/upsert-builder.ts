@@ -124,7 +124,7 @@ export class UpsertBuilder {
         rowValue.use ??= "id";
         table.references.add(rowValue.of + "." + rowValue.use);
         r[rowKey] = rowValue;
-      } else if (typeof rowValue === "object") {
+      } else if (typeof rowValue === "object" && !(rowValue instanceof Date)) {
         // object인 경우 JSON으로 변환
         r[rowKey] = rowValue === null ? null : JSON.stringify(rowValue);
       } else {

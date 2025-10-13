@@ -13,9 +13,12 @@ const baseconfig: SonamuDBBaseConfig = {
           const value = field.string();
           return value ? value == "1" : null;
         }
+        // DATE 타입은 문자열로 유지 (YYYY-MM-dd 형태)
+        if (field.type == "DATE") {
+          return field.string();
+        }
         return next();
       },
-      dateStrings: true,
     },
   },
 };

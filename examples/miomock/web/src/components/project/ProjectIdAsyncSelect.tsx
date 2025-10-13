@@ -6,13 +6,13 @@ import {
   Dropdown,
 } from "semantic-ui-react";
 import {
-  EmployeeSubsetKey,
-  EmployeeSubsetMapping,
+  ProjectSubsetKey,
+  ProjectSubsetMapping,
 } from "src/services/sonamu.generated";
-import { EmployeeService } from "src/services/employee/employee.service";
-import { EmployeeListParams } from "src/services/employee/employee.types";
+import { ProjectService } from "src/services/project/project.service";
+import { ProjectListParams } from "src/services/project/project.types";
 
-export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
+export function ProjectIdAsyncSelect<T extends ProjectSubsetKey>({
   subset,
   baseListParams,
   textField,
@@ -20,29 +20,29 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
   ...props
 }: DropdownProps & {
   subset: T;
-  baseListParams?: EmployeeListParams;
-  textField?: keyof EmployeeSubsetMapping[T];
-  valueField?: keyof EmployeeSubsetMapping[T];
+  baseListParams?: ProjectListParams;
+  textField?: keyof ProjectSubsetMapping[T];
+  valueField?: keyof ProjectSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<EmployeeListParams>(
+  const [listParams, setListParams] = useState<ProjectListParams>(
     baseListParams ?? {},
   );
 
-  const { data, error } = EmployeeService.useEmployees(subset, listParams);
-  const { rows: employees, total } = data ?? {};
+  const { data, error } = ProjectService.useProjects(subset, listParams);
+  const { rows: projects, total } = data ?? {};
 
   useEffect(() => {
     setOptions(
-      (employees ?? []).map((employee) => {
+      (projects ?? []).map((project) => {
         return {
-          key: employee.id,
-          value: employee[valueField ?? "id"] as string | number,
-          text: String(employee[textField ?? "employee_number"]),
+          key: project.id,
+          value: project[valueField ?? "id"] as string | number,
+          text: String(project[textField ?? "name"]),
         };
       }),
     );
-  }, [employees]);
+  }, [projects]);
 
   useEffect(() => {
     setListParams({
@@ -63,12 +63,12 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
 
   return (
     <Dropdown
-      placeholder="직원"
+      placeholder="PROJECT"
       selection
       options={options}
       onSearchChange={handleSearchChange}
-      disabled={!employees}
-      loading={!employees}
+      disabled={!projects}
+      loading={!projects}
       selectOnBlur={false}
       {...props}
     />

@@ -59,6 +59,12 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
     }, {} as any);
   } else if (zodType instanceof z.ZodOptional) {
     return caster(zodType._def.innerType, raw);
+  } else if (
+    zodType instanceof z.ZodDate &&
+    typeof raw === "string" &&
+    new Date(raw).toString() !== "Invalid Date"
+  ) {
+    return new Date(raw);
   } else {
     // 나머지는 처리 안함
     return raw;

@@ -23,8 +23,8 @@ import {
   useListParams,
   SonamuCol,
   numF,
-  dateF,
-  datetimeF,
+  formatDate,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 
 import { DepartmentSubsetA } from "src/services/sonamu.generated";
@@ -96,7 +96,9 @@ export default function DepartmentList({}: DepartmentListProps) {
   const columns: SonamuCol<DepartmentSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => <span className="text-tiny">{dateF(row.created_at)}</span>,
+      tc: (row) => (
+        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
+      ),
       collapsing: true,
     },
     { label: "부서명", tc: (row) => <>{row.name}</>, collapsing: true },

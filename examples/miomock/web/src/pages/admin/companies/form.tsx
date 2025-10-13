@@ -30,9 +30,11 @@ import {
   SQLDateInput,
   useTypeForm,
   useGoBack,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
-import { useCommonModal } from "src/admin-common/CommonModal";
+// import { ImageUploader } from 'src/admin-common/ImageUploader';
+// import { useCommonModal } from "src/admin-common/CommonModal";
 
 import { CompanySaveParams } from "src/services/company/company.types";
 import { CompanyService } from "src/services/company/company.service";
@@ -66,7 +68,6 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
       CompanyService.getCompany("A", id).then((row) => {
         setRow(row);
         setForm({
-          ...form,
           ...row,
         });
       });
@@ -74,7 +75,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   }, [id]);
 
   // CommonModal
-  const { doneModal, closeModal } = useCommonModal();
+  // const { doneModal, closeModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -82,7 +83,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
     CompanyService.save([form])
       .then(([id]) => {
         if (mode === "modal") {
-          doneModal();
+          // doneModal();
         } else {
           goBack("/admin/companies");
         }
@@ -118,7 +119,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
               <Form.Group widths="equal">
                 <Form.Field>
                   <label>등록일시</label>
-                  <div className="p-8px">{form.created_at}</div>
+                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
                 </Form.Field>
               </Form.Group>
             )}

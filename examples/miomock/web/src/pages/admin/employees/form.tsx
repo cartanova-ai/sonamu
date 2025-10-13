@@ -30,6 +30,7 @@ import {
   SQLDateInput,
   useTypeForm,
   useGoBack,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
@@ -39,7 +40,7 @@ import { EmployeeSaveParams } from "src/services/employee/employee.types";
 import { EmployeeService } from "src/services/employee/employee.service";
 import { EmployeeSubsetA } from "src/services/sonamu.generated";
 import { UserIdAsyncSelect } from "src/components/user/UserIdAsyncSelect";
-import { DepartmentIdAsyncSelect } from "../../../components/department/DepartmentIdAsyncSelect";
+import { DepartmentIdAsyncSelect } from "src/components/department/DepartmentIdAsyncSelect";
 
 export default function EmployeesFormPage() {
   // 라우팅 searchParams
@@ -73,7 +74,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
         setRow(row);
         setForm({
           ...row,
-          user_id: row.user?.id ?? null,
+          user_id: row.user.id,
           department_id: row.department?.id ?? null,
         });
       });
@@ -125,22 +126,13 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
               <Form.Group widths="equal">
                 <Form.Field>
                   <label>등록일시</label>
-                  <div className="p-8px">{form.created_at}</div>
+                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
                 </Form.Field>
               </Form.Group>
             )}
             <Form.Group widths="equal">
               <Form.Field>
-                <label>직원번호</label>
-                <Input
-                  placeholder="직원번호"
-                  {...register(`employee_number`)}
-                />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>사용자</label>
+                <label>USER</label>
                 <UserIdAsyncSelect {...register("user_id")} subset="A" />
               </Form.Field>
             </Form.Group>
@@ -149,14 +141,21 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 <label>부서</label>
                 <DepartmentIdAsyncSelect
                   {...register("department_id")}
+                  clearable
                   subset="A"
                 />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
-                <label>급여</label>
-                <Input placeholder="급여" {...register(`salary`)} />
+                <label>사번</label>
+                <Input placeholder="사번" {...register(`employee_number`)} />
+              </Form.Field>
+            </Form.Group>
+            <Form.Group widths="equal">
+              <Form.Field>
+                <label>SALARY</label>
+                <Input placeholder="SALARY" {...register(`salary`)} />
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">

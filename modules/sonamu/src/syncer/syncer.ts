@@ -1397,7 +1397,7 @@ export class Syncer {
     zodType: z.ZodTypeAny
   ): RenderingNode["renderType"] {
     if (zodType instanceof z.ZodDate) {
-      return "string-datetime";
+      return "datetime";
     } else if (zodType instanceof z.ZodString) {
       if (key.includes("img") || key.includes("image")) {
         return "string-image";

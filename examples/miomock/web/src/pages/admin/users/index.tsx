@@ -23,8 +23,8 @@ import {
   useListParams,
   SonamuCol,
   numF,
-  dateF,
-  datetimeF,
+  formatDate,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 
 import { UserSubsetA } from "src/services/sonamu.generated";
@@ -96,7 +96,9 @@ export default function UserList({}: UserListProps) {
   const columns: SonamuCol<UserSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => <span className="text-tiny">{dateF(row.created_at)}</span>,
+      tc: (row) => (
+        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
+      ),
       collapsing: true,
     },
     { label: "이메일", tc: (row) => <>{row.email}</>, collapsing: true },
@@ -111,7 +113,7 @@ export default function UserList({}: UserListProps) {
       label: "LASTLOGIN일시",
       tc: (row) => (
         <span className="text-tiny">
-          {row.last_login_at === null ? "-" : dateF(row.last_login_at)}
+          {row.last_login_at === null ? "-" : formatDateTime(row.last_login_at)}
         </span>
       ),
       collapsing: true,

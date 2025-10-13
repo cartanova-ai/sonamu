@@ -23,8 +23,8 @@ import {
   useListParams,
   SonamuCol,
   numF,
-  dateF,
-  datetimeF,
+  formatDate,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 
 import { EmployeeSubsetA } from "src/services/sonamu.generated";
@@ -47,7 +47,7 @@ export default function EmployeeList({}: EmployeeListProps) {
   // 리스트 쿼리
   const { data, mutate, error, isLoading } = EmployeeService.useEmployees(
     "A",
-    listParams
+    listParams,
   );
   const { rows, total } = data ?? {};
 
@@ -96,7 +96,9 @@ export default function EmployeeList({}: EmployeeListProps) {
   const columns: SonamuCol<EmployeeSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => <span className="text-tiny">{dateF(row.created_at)}</span>,
+      tc: (row) => (
+        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
+      ),
       collapsing: true,
     },
     {
@@ -104,19 +106,15 @@ export default function EmployeeList({}: EmployeeListProps) {
       tc: (row) => <>{row.employee_number}</>,
       collapsing: true,
     },
+    { label: "SALARY", tc: (row) => <>{row.salary}</>, collapsing: true },
     {
       label: "USER",
-      tc: (row) => <>{row.user?.username}</>,
+      tc: (row) => <>{/* object row.user */}</>,
       collapsing: true,
     },
     {
       label: "부서",
       tc: (row) => <>{row.department?.name}</>,
-      collapsing: true,
-    },
-    {
-      label: "급여",
-      tc: (row) => <>{row.salary}</>,
       collapsing: true,
     },
   ];
@@ -173,7 +171,7 @@ export default function EmployeeList({}: EmployeeListProps) {
                       <Table.HeaderCell key={index} collapsing={col.collapsing}>
                         {col.label}
                       </Table.HeaderCell>
-                    )
+                    ),
                 )
               }
               <Table.HeaderCell>관리</Table.HeaderCell>

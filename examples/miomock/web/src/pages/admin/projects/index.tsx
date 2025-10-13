@@ -23,8 +23,8 @@ import {
   useListParams,
   SonamuCol,
   numF,
-  dateF,
-  datetimeF,
+  formatDate,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 
 import { ProjectSubsetA } from "src/services/sonamu.generated";
@@ -47,7 +47,7 @@ export default function ProjectList({}: ProjectListProps) {
   // 리스트 쿼리
   const { data, mutate, error, isLoading } = ProjectService.useProjects(
     "A",
-    listParams
+    listParams,
   );
   const { rows, total } = data ?? {};
 
@@ -96,7 +96,9 @@ export default function ProjectList({}: ProjectListProps) {
   const columns: SonamuCol<ProjectSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => <span className="text-tiny">{dateF(row.created_at)}</span>,
+      tc: (row) => (
+        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
+      ),
       collapsing: true,
     },
     { label: "PROJECT명", tc: (row) => <>{row.name}</>, collapsing: true },
@@ -105,38 +107,11 @@ export default function ProjectList({}: ProjectListProps) {
       tc: (row) => <>{ProjectStatusLabel[row.status]}</>,
       collapsing: true,
     },
-    {
-      label: "DESCRIPTION",
-      tc: (row) => <>{row.description}</>,
-      collapsing: true,
-    },
+    { label: "설명", tc: (row) => <>{row.description}</>, collapsing: true },
     {
       label: "직원",
-      tc: (row) => (
-        <div>
-          {row.employee && row.employee.length > 0 ? (
-            <>
-              <div>
-                <strong>{row.employee.length}명</strong>
-              </div>
-              <div className="text-tiny">
-                {row.employee.slice(0, 2).map((emp, index) => (
-                  <div key={emp.id}>
-                    {emp.user?.username}
-                    {emp.department?.name && ` (${emp.department.name})`}
-                  </div>
-                ))}
-                {row.employee.length > 2 && (
-                  <div>외 {row.employee.length - 2}명</div>
-                )}
-              </div>
-            </>
-          ) : (
-            <span className="text-muted">배정된 인원 없음</span>
-          )}
-        </div>
-      ),
-      collapsing: false,
+      tc: (row) => <>{/* array row.employee */}</>,
+      collapsing: true,
     },
   ];
 
@@ -192,7 +167,7 @@ export default function ProjectList({}: ProjectListProps) {
                       <Table.HeaderCell key={index} collapsing={col.collapsing}>
                         {col.label}
                       </Table.HeaderCell>
-                    )
+                    ),
                 )
               }
               <Table.HeaderCell>관리</Table.HeaderCell>
@@ -222,7 +197,6 @@ export default function ProjectList({}: ProjectListProps) {
                       </Table.Cell>
                     ))
                   }
-                  {/* 관리 */}
                   <Table.Cell collapsing>
                     <EditButton
                       as={Link}

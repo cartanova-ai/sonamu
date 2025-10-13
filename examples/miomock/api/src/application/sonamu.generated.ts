@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SQLDateTimeString, SonamuQueryMode } from "sonamu";
+import { zArrayable, SonamuQueryMode } from "sonamu";
 
 // CustomScalar: Number
 const Number = z.number();
@@ -67,7 +67,7 @@ export const UserRoleLabel = { normal: "노멀" };
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   name: z.string().max(255),
 });
 export type CompanyBaseSchema = z.infer<typeof CompanyBaseSchema>;
@@ -75,7 +75,7 @@ export type CompanyBaseSchema = z.infer<typeof CompanyBaseSchema>;
 // BaseSchema: Department
 export const DepartmentBaseSchema = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   name: z.string().max(128),
   company_id: z.number().int(),
   parent_id: z.number().int().nullable(),
@@ -87,7 +87,7 @@ export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema>;
 // BaseSchema: Employee
 export const EmployeeBaseSchema = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   user_id: z.number().int(),
   department_id: z.number().int().nullable(),
   employee_number: z.string().max(32),
@@ -98,7 +98,7 @@ export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
 // BaseSchema: Project
 export const ProjectBaseSchema = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   // employee: ManyToMany Employee
   name: z.string().max(255),
   status: ProjectStatus,
@@ -109,12 +109,12 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema>;
 // BaseSchema: User
 export const UserBaseSchema = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
   birth_date: z.string().length(10).nullable(),
   role: UserRole,
-  last_login_at: SQLDateTimeString.nullable(),
+  last_login_at: z.date().nullable(),
   bio: z.string().max(65535).nullable(),
   is_verified: z.boolean(),
   // employee: OneToOne Employee
@@ -194,7 +194,7 @@ export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
 // Subsets: Company
 export const CompanySubsetA = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   name: z.string().max(255),
 });
 export type CompanySubsetA = z.infer<typeof CompanySubsetA>;
@@ -207,7 +207,7 @@ export type CompanySubsetKey = z.infer<typeof CompanySubsetKey>;
 // Subsets: Department
 export const DepartmentSubsetA = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   name: z.string().max(128),
   employee_count: Number,
   company: z.object({
@@ -231,7 +231,7 @@ export type DepartmentSubsetKey = z.infer<typeof DepartmentSubsetKey>;
 // Subsets: Employee
 export const EmployeeSubsetA = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
   user: z.object({
@@ -258,7 +258,7 @@ export type EmployeeSubsetKey = z.infer<typeof EmployeeSubsetKey>;
 // Subsets: Project
 export const ProjectSubsetA = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
@@ -287,12 +287,12 @@ export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
 // Subsets: User
 export const UserSubsetA = z.object({
   id: z.number().int().nonnegative(),
-  created_at: SQLDateTimeString,
+  created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
   birth_date: z.string().length(10).nullable(),
   role: UserRole,
-  last_login_at: SQLDateTimeString.nullable(),
+  last_login_at: z.date().nullable(),
   bio: z.string().max(65535).nullable(),
   is_verified: z.boolean(),
 });

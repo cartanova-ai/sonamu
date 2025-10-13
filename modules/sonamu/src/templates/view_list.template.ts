@@ -54,6 +54,12 @@ export class Template__view_list extends Template {
         return `<>{${
           col.nullable ? `${colName} && ` : ""
         }<img src={${colName}} />}</>`;
+      case "datetime":
+        if (col.nullable) {
+          return `<span className="text-tiny">{${colName} === null ? '-' : formatDateTime(${colName})}</span>`;
+        } else {
+          return `<span className="text-tiny">{formatDateTime(${colName})}</span>`;
+        }
       case "string-datetime":
         if (col.nullable) {
           return `<span className="text-tiny">{${colName} === null ? '-' : dateF(${colName})}</span>`;
@@ -133,7 +139,9 @@ export class Template__view_list extends Template {
       return `import { ${names.capital}SearchInput } from "src/components/${names.fs}/${names.capital}SearchInput";`;
     } else if (col.renderType === "enums") {
       if (col.name === "orderBy") {
-        const componentId = `${names.capital}${inflection.camelize(col.name)}Select`;
+        const componentId = `${names.capital}${inflection.camelize(
+          col.name
+        )}Select`;
         return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
       } else {
         try {
@@ -347,7 +355,7 @@ import {
 } from 'semantic-ui-react';
 import classNames from 'classnames';
 import { DateTime } from "luxon";
-import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, dateF, datetimeF } from '@sonamu-kit/react-sui';
+import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, formatDate, formatDateTime } from '@sonamu-kit/react-sui';
 
 import { ${names.capital}SubsetA } from "src/services/sonamu.generated";
 import { ${names.capital}Service } from 'src/services/${names.fs}/${

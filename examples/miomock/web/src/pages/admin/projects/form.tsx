@@ -30,6 +30,7 @@ import {
   SQLDateInput,
   useTypeForm,
   useGoBack,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
@@ -39,7 +40,6 @@ import { ProjectSaveParams } from "src/services/project/project.types";
 import { ProjectService } from "src/services/project/project.service";
 import { ProjectSubsetA } from "src/services/sonamu.generated";
 import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
-import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams
@@ -62,7 +62,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
     name: "",
     status: "planning",
-    description: "",
+    description: null,
     employee_ids: [],
   });
 
@@ -73,7 +73,6 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         setRow(row);
         setForm({
           ...row,
-          employee_ids: row.employee.map((employee) => employee.id),
         });
       });
     }
@@ -124,7 +123,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
               <Form.Group widths="equal">
                 <Form.Field>
                   <label>등록일시</label>
-                  <div className="p-8px">{form.created_at}</div>
+                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
                 </Form.Field>
               </Form.Group>
             )}
@@ -142,23 +141,18 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
-                <label>DESCRIPTION</label>
+                <label>설명</label>
                 <TextArea
                   rows={8}
-                  placeholder="DESCRIPTION"
+                  placeholder="설명"
                   {...register(`description`)}
                 />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
-                <label>직원</label>
-                <EmployeeIdAsyncSelect
-                  {...register(`employee_ids`)}
-                  subset="A"
-                  clearable
-                  multiple
-                />
+                <label>EmployeeIds</label>
+                <>employee_ids array</>
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">

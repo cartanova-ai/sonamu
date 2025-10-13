@@ -81,6 +81,8 @@ export class Template__view_form extends Template {
         } else {
           return `<TextArea rows={8} placeholder="${col.label}" ${regExpr} />`;
         }
+      case "datetime":
+        return `<Input type="datetime-local" ${regExpr} />`;
       case "string-datetime":
         return `<SQLDateTimeInput ${regExpr} />`;
       case "string-date":
@@ -150,6 +152,8 @@ export class Template__view_form extends Template {
           value = Object.keys(col.zodType.Enum)[0];
         } else if (col.zodType instanceof z.ZodBoolean) {
           value = false;
+        } else if (col.zodType instanceof z.ZodDate) {
+          value = new Date();
         } else if (col.zodType instanceof z.ZodString) {
           if (col.renderType === "string-datetime") {
             value = "now()";
@@ -268,7 +272,7 @@ import {
 } from 'semantic-ui-react';
 import { DateTime } from "luxon";
 
-import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack } from "@sonamu-kit/react-sui";
+import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack, formatDateTime } from "@sonamu-kit/react-sui";
 import { defaultCatch } from 'src/services/sonamu.shared';
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
@@ -383,7 +387,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
               .map((col) => {
                 if (col.name === "created_at") {
                   return `{form.id && (${this.wrapFG(
-                    `<div className="p-8px">{form.${col.name}}</div>`,
+                    `<div className="p-8px">{formatDateTime(form.${col.name})}</div>`,
                     "등록일시"
                   )})}`;
                 } else {

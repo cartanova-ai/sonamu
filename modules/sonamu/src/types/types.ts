@@ -627,6 +627,7 @@ export type RenderingNode = {
     | "string-image"
     | "string-datetime"
     | "string-date"
+    | "datetime"
     | "number-plain"
     | "number-id"
     | "number-fk_id"

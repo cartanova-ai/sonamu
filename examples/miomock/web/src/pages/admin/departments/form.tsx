@@ -30,6 +30,7 @@ import {
   SQLDateInput,
   useTypeForm,
   useGoBack,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
@@ -72,8 +73,8 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
         setRow(row);
         setForm({
           ...row,
+          company_id: row.company.id,
           parent_id: row.parent?.id ?? null,
-          company_id: row.company?.id ?? 0,
         });
       });
     }
@@ -124,7 +125,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
               <Form.Group widths="equal">
                 <Form.Field>
                   <label>등록일시</label>
-                  <div className="p-8px">{form.created_at}</div>
+                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
                 </Form.Field>
               </Form.Group>
             )}

@@ -7,6 +7,7 @@ import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
 import equal from "fast-deep-equal";
 import qs from "qs";
 import _ from "lodash-es";
+import { format } from "date-fns";
 import { caster } from "./caster";
 
 export function hidden(condition: boolean | undefined): string {
@@ -94,9 +95,19 @@ export function useTypeForm<
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = _.get(form, objPath) as unknown;
 
+      const formatValue = (value: unknown): string => {
+        if (value === undefined || value === null) {
+          return "";
+        }
+        if (value instanceof Date && !isNaN(value.getTime())) {
+          return format(value, "yyyy-MM-dd'T'HH:mm");
+        }
+        return value as string;
+      };
+
       const error = errorObjs.get(objPath);
       return {
-        value: srcValue === undefined || srcValue === null ? "" : srcValue,
+        value: formatValue(srcValue),
         onChange: (_e: any, prop: any) => {
           if (error !== undefined) {
             setErrorObjs((p) => {
@@ -336,6 +347,20 @@ export function datetimeF(
   } else {
     return sqlDateString.slice(0, 19);
   }
+}
+
+export function formatDate(date: Date | null | undefined): string | null {
+  if (date === null || date === undefined) {
+    return null;
+  }
+  return format(date, "yyyy-MM-dd");
+}
+
+export function formatDateTime(date: Date | null | undefined): string | null {
+  if (date === null || date === undefined) {
+    return null;
+  }
+  return format(date, "yyyy-MM-dd HH:mm:ss");
 }
 
 export function arrayableToArray<T extends number | string | boolean>(

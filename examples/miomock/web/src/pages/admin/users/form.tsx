@@ -30,6 +30,7 @@ import {
   SQLDateInput,
   useTypeForm,
   useGoBack,
+  formatDateTime,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
@@ -74,7 +75,6 @@ export function UsersForm({ id, mode }: UsersFormProps) {
       UserService.getUser("A", id).then((row) => {
         setRow(row);
         setForm({
-          ...form,
           ...row,
         });
       });
@@ -126,7 +126,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
               <Form.Group widths="equal">
                 <Form.Field>
                   <label>등록일시</label>
-                  <div className="p-8px">{form.created_at}</div>
+                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
                 </Form.Field>
               </Form.Group>
             )}
@@ -157,7 +157,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
             <Form.Group widths="equal">
               <Form.Field>
                 <label>LASTLOGIN일시</label>
-                <SQLDateTimeInput {...register(`last_login_at`)} />
+                <Input type="datetime-local" {...register(`last_login_at`)} />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">

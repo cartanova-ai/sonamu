@@ -4,7 +4,33 @@
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import { z, ZodIssue } from "zod";
-import qs from 'qs';
+import qs from "qs";
+
+// ISO 8601 형식의 날짜 문자열을 Date 객체로 변환하는 reviver
+function dateReviver(key: string, value: any): any {
+  if (typeof value === "string") {
+    const isoRegex =
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/;
+
+    if (isoRegex.test(value) && new Date(value).toString() !== "Invalid Date") {
+      return new Date(value);
+    }
+  }
+  return value;
+}
+
+axios.defaults.transformResponse = [
+  (data) => {
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data, dateReviver);
+      } catch (e) {
+        return data;
+      }
+    }
+    return data;
+  },
+];
 
 export async function fetch(options: AxiosRequestConfig) {
   try {
