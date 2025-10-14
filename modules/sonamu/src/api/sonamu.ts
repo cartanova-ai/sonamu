@@ -22,6 +22,7 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import type { Context } from "./context";
 import type { Syncer } from "../syncer/syncer";
 import type { FSWatcher } from "chokidar";
+import { formatInTimeZone } from "date-fns-tz";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -34,6 +35,7 @@ export type SonamuConfig = {
   route: {
     prefix: string;
   };
+  timezone?: string;
 };
 export type SonamuSecrets = {
   [key: string]: string;
@@ -236,6 +238,25 @@ class SonamuClass {
     }
 
     this.server = server;
+
+    // timezone 설정
+    const timezone = this.config.timezone;
+    if (timezone) {
+      const DATE_FORMAT = "yyyy-MM-dd HH:mm:ssXXX";
+      // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
+      const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+
+      server.setReplySerializer((payload) => {
+        return JSON.stringify(payload, (_key, value) => {
+          if (typeof value === "string" && ISO_DATE_REGEX.test(value)) {
+            return formatInTimeZone(new Date(value), timezone, DATE_FORMAT);
+          }
+          return value;
+        });
+      });
+      !options?.doSilent &&
+        console.log(chalk.green(`Timezone set to ${timezone}`));
+    }
 
     // 전체 라우팅 리스트
     server.get(

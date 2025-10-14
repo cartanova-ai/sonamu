@@ -7,5 +7,6 @@
   },
   "route": {
     "prefix": "/api"
-  }
+  },
+  "timezone": "Asia/Seoul"
 }
