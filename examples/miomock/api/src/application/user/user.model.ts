@@ -152,7 +152,7 @@ class UserModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"] })
-  async me(): Promise<UserSubsetMapping["A"] | null> {
+  async me(): Promise<UserSubsetMapping["SS"] | null> {
     const context = Sonamu.getContext();
 
     if (!context.user) {
@@ -216,7 +216,7 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async register(
     params: UserRegisterParams
-  ): Promise<{ user: UserSubsetMapping["A"] }> {
+  ): Promise<{ user: UserSubsetMapping["SS"] }> {
     const rdb = this.getDB("r");
     const wdb = this.getDB("w");
 

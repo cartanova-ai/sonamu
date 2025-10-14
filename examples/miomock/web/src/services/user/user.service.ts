@@ -90,12 +90,12 @@ export namespace UserService {
 
   export function useMe(
     swrOptions?: SwrOptions,
-  ): SWRResponse<UserSubsetMapping["A"] | null, SWRError> {
+  ): SWRResponse<UserSubsetMapping["SS"] | null, SWRError> {
     return useSWR(
       handleConditional([`/api/user/me`, {}], swrOptions?.conditional),
     );
   }
-  export async function me(): Promise<UserSubsetMapping["A"] | null> {
+  export async function me(): Promise<UserSubsetMapping["SS"] | null> {
     return fetch({
       method: "GET",
       url: `/api/user/me?${qs.stringify({})}`,
@@ -121,7 +121,7 @@ export namespace UserService {
 
   export async function register(
     params: UserRegisterParams,
-  ): Promise<{ user: UserSubsetMapping["A"] }> {
+  ): Promise<{ user: UserSubsetMapping["SS"] }> {
     return fetch({
       method: "POST",
       url: `/api/user/register`,

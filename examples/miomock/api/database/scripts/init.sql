@@ -1,3 +1,15 @@
+-- 0. 기존 데이터 삭제 (외래키 순서 고려)
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE projects__employees;
+TRUNCATE TABLE projects;
+TRUNCATE TABLE employees;
+TRUNCATE TABLE users;
+TRUNCATE TABLE departments;
+TRUNCATE TABLE companies;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
 -- 1. 회사 데이터
 INSERT INTO companies (id, name) VALUES
 (1, '테크놀로지 주식회사'),
@@ -21,15 +33,16 @@ INSERT INTO departments (id, name, company_id, parent_id) VALUES
 (11, '인프라팀', 5, NULL);
 
 -- 3. 사용자 데이터
-INSERT INTO users (id, email, username, birth_date, role, last_login_at, bio, is_verified) VALUES
-(1, 'kim@tech.com', '김철수', '1990-03-15', 'normal', '2024-01-15 09:30:00', '백엔드 개발을 담당하고 있습니다.', true),
-(2, 'lee@global.com', '이영희', '1988-07-22', 'normal', '2024-01-14 14:20:00', 'UI/UX 디자인 전문가입니다.', true),
-(3, 'park@innovation.com', '박민수', '1992-11-09', 'normal', '2025-10-09 01:03:00', '프론트엔드 개발자로 일하고 있습니다.', false),
-(4, 'choi@digital.com', '최지훈', '1985-05-30', 'normal', '2024-01-12 16:15:00', '데이터 분석 및 마케팅 업무를 담당합니다.', true),
-(5, 'jung@software.com', '정수연', '1993-09-14', 'normal', '2024-01-11 10:00:00', '소프트웨어 아키텍트입니다.', true),
-(6, 'yoon@tech.com', '윤대성', '1987-12-03', 'normal', '2024-01-10 13:25:00', '데브옵스 엔지니어로 근무하고 있습니다.', false),
-(7, 'han@global.com', '한미경', '1991-04-18', 'normal', '2024-01-09 15:40:00', '프로젝트 매니저 역할을 하고 있습니다.', true),
-(8, 'kang@innovation.com', '강태우', '1989-08-25', 'normal', '2024-01-08 08:50:00', '풀스택 개발자입니다.', true);
+INSERT INTO users (id, email, username, password, birth_date, role, last_login_at, bio, is_verified) VALUES
+(1, 'kim@tech.com', '김철수', 'password123', '1990-03-15', 'normal', '2024-01-15 09:30:00', '백엔드 개발을 담당하고 있습니다.', true),
+(2, 'lee@global.com', '이영희', 'password123', '1988-07-22', 'normal', '2024-01-14 14:20:00', 'UI/UX 디자인 전문가입니다.', true),
+(3, 'park@innovation.com', '박민수', 'password123', '1992-11-09', 'normal', '2025-10-09 01:03:00', '프론트엔드 개발자로 일하고 있습니다.', false),
+(4, 'choi@digital.com', '최지훈', 'password123', '1985-05-30', 'normal', '2024-01-12 16:15:00', '데이터 분석 및 마케팅 업무를 담당합니다.', true),
+(5, 'jung@software.com', '정수연', 'password123', '1993-09-14', 'normal', '2024-01-11 10:00:00', '소프트웨어 아키텍트입니다.', true),
+(6, 'yoon@tech.com', '윤대성', 'password123', '1987-12-03', 'normal', '2024-01-10 13:25:00', '데브옵스 엔지니어로 근무하고 있습니다.', false),
+(7, 'han@global.com', '한미경', 'password123', '1991-04-18', 'normal', '2024-01-09 15:40:00', '프로젝트 매니저 역할을 하고 있습니다.', true),
+(8, 'kang@innovation.com', '강태우', 'password123', '1989-08-25', 'normal', '2024-01-08 08:50:00', '풀스택 개발자입니다.', true),
+(9, 'admin@test.com', '관리자', '$2b$10$ZwmVndKfTm121TrW6dZQA..eW9xv.NCwEa3fEn/xqWG948O2ADKL2', '1980-01-01', 'admin', '2024-01-07 07:00:00', '시스템 관리자입니다.', true);
 
 -- 4. 직원 데이터
 INSERT INTO employees (id, user_id, department_id, employee_number, salary) VALUES
