@@ -13,9 +13,11 @@ const baseconfig: SonamuDBBaseConfig = {
           const value = field.string();
           return value ? value == "1" : null;
         }
+        if (field.type == "DATE") {
+          return field.string();
+        }
         return next();
       },
-      dateStrings: true,
     },
   },
 };
