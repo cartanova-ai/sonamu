@@ -262,25 +262,39 @@ export class Puri<
     TResult,
     TJoined & Record<TJoinTable, TSchema[TJoinTable]>
   >;
+  join<TSubResult, TAlias extends string>(
+    subquery: Puri<TSchema, any, TSubResult, any>,
+    alias: TAlias,
+    left: string,
+    right: string
+  ): Puri<TSchema, TTable, TResult, TJoined & Record<TAlias, TSubResult>>;
   join(
     table: string,
     left: string,
     right: string
   ): Puri<TSchema, TTable, TResult, TJoined>;
   join(
-    table: string | keyof TSchema,
+    tableOrSubquery: string | keyof TSchema | Puri<TSchema, any, any, any>,
     ...args: any[]
   ): Puri<TSchema, TTable, TResult, any> {
-    if (
+    if (tableOrSubquery instanceof Puri) {
+      // 서브쿼리 조인: join(subquery, alias, left, right)
+      const [alias, left, right] = args;
+      this.knexQuery.join(
+        tableOrSubquery.raw().as(alias),
+        left,
+        right
+      );
+    } else if (
       args.length === 2 &&
       typeof args[0] === "string" &&
       typeof args[1] === "string"
     ) {
       const [left, right] = args;
-      this.knexQuery.join(table as string, left, right);
+      this.knexQuery.join(tableOrSubquery as string, left, right);
     } else if (args.length === 1 && typeof args[0] === "function") {
       const joinCallback = args[0];
-      this.knexQuery.join(table as string, (joinClause) => {
+      this.knexQuery.join(tableOrSubquery as string, (joinClause) => {
         joinCallback(new JoinClauseGroup(joinClause));
       });
     } else {
@@ -299,17 +313,33 @@ export class Puri<
     TResult,
     TJoined & Record<TJoinTable, Partial<TSchema[TJoinTable]>>
   >;
+  leftJoin<TSubResult, TAlias extends string>(
+    subquery: Puri<TSchema, any, TSubResult, any>,
+    alias: TAlias,
+    left: string,
+    right: string
+  ): Puri<TSchema, TTable, TResult, TJoined & Record<TAlias, Partial<TSubResult>>>;
   leftJoin(
     table: string,
     left: string,
     right: string
   ): Puri<TSchema, TTable, TResult, TJoined>;
   leftJoin(
-    table: string | keyof TSchema,
-    left: string,
-    right: string
+    tableOrSubquery: string | keyof TSchema | Puri<TSchema, any, any, any>,
+    ...args: any[]
   ): Puri<TSchema, TTable, TResult, any> {
-    this.knexQuery.leftJoin(table as string, left, right);
+    if (tableOrSubquery instanceof Puri) {
+      // 서브쿼리 조인: leftJoin(subquery, alias, left, right)
+      const [alias, left, right] = args;
+      this.knexQuery.leftJoin(
+        tableOrSubquery.raw().as(alias),
+        left,
+        right
+      );
+    } else {
+      const [left, right] = args;
+      this.knexQuery.leftJoin(tableOrSubquery as string, left, right);
+    }
     return this as any;
   }
 

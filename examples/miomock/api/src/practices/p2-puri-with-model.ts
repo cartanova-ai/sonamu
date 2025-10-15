@@ -114,12 +114,7 @@ async function examples() {
   const departmentStats = await puri
     .fromSubquery(employeeCountSubquery, "emp_cnt")
     .join("departments", "emp_cnt.dept_id", "departments.id")
-    .raw()
-    .join(
-      maxSalarySubquery.raw().as("max_sal"),
-      "emp_cnt.dept_id",
-      "max_sal.dept_id"
-    )
+    .join(maxSalarySubquery, "max_sal", "emp_cnt.dept_id", "max_sal.dept_id")
     .select({
       department_id: "departments.id",
       department_name: "departments.name",
@@ -127,13 +122,12 @@ async function examples() {
       max_salary: "max_sal.max_salary",
     })
     .orderBy("emp_cnt.emp_count", "desc")
-    .limit(10);
+    .limit(10)
+    .debug();
 
-  console.log("SQL:", departmentStats.toQuery());
-  const statsResults = await departmentStats;
-  console.log(`Found ${statsResults.length} departments with full stats`);
-  if (statsResults[0]) {
-    console.log("First department stats:", statsResults[0]);
+  console.log(`Found ${departmentStats.length} departments with full stats`);
+  if (departmentStats[0]) {
+    console.log("First department stats:", departmentStats[0]);
   }
 
   // Transaction 예제
