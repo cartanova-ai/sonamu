@@ -116,7 +116,7 @@ export class Puri<
   ): Puri<
     TSchema,
     TTable,
-    ParseSelectObject<TSchema, TTable, TSelect, TResult, TJoined>,
+    TResult & ParseSelectObject<TSchema, TTable, TSelect, TResult, TJoined>,
     TJoined
   > {
     const selectClauses: (string | Knex.Raw)[] = [];
@@ -208,9 +208,9 @@ export class Puri<
   }
 
   // WhereIn (조인된 테이블 컬럼도 지원)
-  whereIn<TColumn extends AvailableColumns<TSchema, TTable, TJoined>>(
+  whereIn<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    values: ExtractColumnType<TSchema, TTable, TColumn & string, TJoined>[]
+    values: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>[]
   ): Puri<TSchema, TTable, TResult, TJoined>;
   whereIn(column: string, values: any[]): Puri<TSchema, TTable, TResult, TJoined> {
     this.knexQuery.whereIn(column, values);
