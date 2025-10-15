@@ -1,13 +1,12 @@
 import { Puri, Sonamu } from "sonamu";
 import { UserModel } from "../application/user/user.model";
-import { DatabaseSchema } from "../application/sonamu.generated";
 
 // BaseModel.getPuri() 사용 예제
 async function examples() {
   await Sonamu.init(true, false);
 
   // getPuri를 사용하여 PuriWrapper 인스턴스 가져오기
-  const puri = UserModel.getPuri<DatabaseSchema>("r");
+  const puri = UserModel.getPuri("r");
 
   console.log("\n=== Example: Using getPuri() from BaseModel ===");
 
@@ -132,7 +131,7 @@ async function examples() {
 
   // Transaction 예제
   console.log("\n=== Example: Transaction with getPuri() ===");
-  const wPuri = UserModel.getPuri<DatabaseSchema>("w");
+  const wPuri = UserModel.getPuri("w");
 
   await wPuri.transaction(async (trx) => {
     const userCount = await trx

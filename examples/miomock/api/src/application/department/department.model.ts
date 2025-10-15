@@ -1,14 +1,15 @@
 import {
+  BaseModelClass,
   ListResult,
   asArray,
   NotFoundException,
   BadRequestException,
   api,
-  BaseModelClass,
 } from "sonamu";
 import {
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
+  DatabaseSchema,
 } from "../sonamu.generated";
 import { departmentSubsetQueries } from "../sonamu.generated.sso";
 import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
@@ -16,7 +17,7 @@ import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 /*
   Department Model
 */
-class DepartmentModelClass extends BaseModelClass {
+class DepartmentModelClass extends BaseModelClass<DatabaseSchema> {
   modelName = "Department";
 
   @api({
@@ -86,11 +87,9 @@ class DepartmentModelClass extends BaseModelClass {
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
             qb.where("departments.id", params.keyword);
-          }
-          // } else if (params.search === "field") {
-          //   qb.where("departments.field", "like", `%${params.keyword}%`);
-          // }
-          else {
+            // } else if (params.search === "field") {
+            //   qb.where("departments.field", "like", `%${params.keyword}%`);
+          } else {
             throw new BadRequestException(
               `구현되지 않은 검색 필드 ${params.search}`
             );

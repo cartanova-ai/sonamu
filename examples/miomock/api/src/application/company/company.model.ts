@@ -1,19 +1,23 @@
 import {
+  BaseModelClass,
   ListResult,
   asArray,
   NotFoundException,
   BadRequestException,
   api,
-  BaseModelClass,
 } from "sonamu";
-import { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
+import {
+  CompanySubsetKey,
+  CompanySubsetMapping,
+  DatabaseSchema,
+} from "../sonamu.generated";
 import { companySubsetQueries } from "../sonamu.generated.sso";
 import { CompanyListParams, CompanySaveParams } from "./company.types";
 
 /*
   Company Model
 */
-class CompanyModelClass extends BaseModelClass {
+class CompanyModelClass extends BaseModelClass<DatabaseSchema> {
   modelName = "Company";
 
   @api({
@@ -83,11 +87,9 @@ class CompanyModelClass extends BaseModelClass {
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
             qb.where("companies.id", params.keyword);
-          }
-          // } else if (params.search === "field") {
-          //   qb.where("companies.field", "like", `%${params.keyword}%`);
-          // }
-          else {
+            // } else if (params.search === "field") {
+            //   qb.where("companies.field", "like", `%${params.keyword}%`);
+          } else {
             throw new BadRequestException(
               `구현되지 않은 검색 필드 ${params.search}`
             );

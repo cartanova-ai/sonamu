@@ -39,6 +39,7 @@ import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestExcep
 import {
   ${entityId}SubsetKey,
   ${entityId}SubsetMapping,
+  DatabaseSchema,
 } from "../sonamu.generated";
 import {
   ${names.camel}SubsetQueries,
@@ -48,7 +49,7 @@ import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.type
 /*
   ${entityId} Model
 */
-class ${entityId}ModelClass extends BaseModelClass {
+class ${entityId}ModelClass extends BaseModelClass<DatabaseSchema> {
   modelName = "${entityId}";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${entityId}" })
@@ -61,7 +62,7 @@ class ${entityId}ModelClass extends BaseModelClass {
       num: 1,
       page: 1,
     });
-    if (rows.length == 0) {
+    if (!rows[0]) {
       throw new NotFoundException(\`존재하지 않는 ${names.capital} ID \${id}\`);
     }
 

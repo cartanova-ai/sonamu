@@ -8,7 +8,11 @@ import {
   BaseModelClass,
   Sonamu,
 } from "sonamu";
-import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import {
+  DatabaseSchema,
+  UserSubsetKey,
+  UserSubsetMapping,
+} from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
 import {
   UserListParams,
@@ -21,7 +25,7 @@ import bcrypt from "bcrypt";
 /*
   User Model
 */
-class UserModelClass extends BaseModelClass {
+class UserModelClass extends BaseModelClass<DatabaseSchema> {
   modelName = "User";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "User" })

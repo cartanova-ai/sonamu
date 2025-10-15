@@ -1,19 +1,23 @@
 import {
+  BaseModelClass,
   ListResult,
   asArray,
   NotFoundException,
   BadRequestException,
   api,
-  BaseModelClass,
 } from "sonamu";
-import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import {
+  ProjectSubsetKey,
+  ProjectSubsetMapping,
+  DatabaseSchema,
+} from "../sonamu.generated";
 import { projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 /*
   Project Model
 */
-class ProjectModelClass extends BaseModelClass {
+class ProjectModelClass extends BaseModelClass<DatabaseSchema> {
   modelName = "Project";
 
   @api({
@@ -83,11 +87,9 @@ class ProjectModelClass extends BaseModelClass {
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
             qb.where("projects.id", params.keyword);
-          }
-          // } else if (params.search === "field") {
-          //   qb.where("projects.field", "like", `%${params.keyword}%`);
-          // }
-          else {
+            // } else if (params.search === "field") {
+            //   qb.where("projects.field", "like", `%${params.keyword}%`);
+          } else {
             throw new BadRequestException(
               `구현되지 않은 검색 필드 ${params.search}`
             );
