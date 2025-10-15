@@ -9,6 +9,7 @@ import chalk from "chalk";
 import { UpsertBuilder } from "./upsert-builder";
 import SqlParser from "node-sql-parser";
 import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
+import { PuriWrapper } from "./puri-wrapper";
 
 export class BaseModelClass {
   public modelName: string = "Unknown";
@@ -17,6 +18,12 @@ export class BaseModelClass {
   getDB(which: DBPreset): Knex {
     return DB.getDB(which);
   }
+
+  getPuri<TSchema = any>(which: DBPreset): PuriWrapper<TSchema> {
+    const db = this.getDB(which);
+    return new PuriWrapper<TSchema>(db);
+  }
+
   async destroy() {
     return DB.destroy();
   }
