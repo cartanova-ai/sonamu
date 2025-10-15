@@ -40,6 +40,7 @@ import { ProjectSaveParams } from "src/services/project/project.types";
 import { ProjectService } from "src/services/project/project.service";
 import { ProjectSubsetA } from "src/services/sonamu.generated";
 import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
+import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams
@@ -73,6 +74,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         setRow(row);
         setForm({
           ...row,
+          employee_ids: row.employee ? row.employee.map((e) => e.id) : [],
         });
       });
     }
@@ -152,7 +154,11 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             <Form.Group widths="equal">
               <Form.Field>
                 <label>EmployeeIds</label>
-                <>employee_ids array</>
+                <EmployeeIdAsyncSelect
+                  {...register("employee_ids")}
+                  multiple
+                  subset="A"
+                />
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">

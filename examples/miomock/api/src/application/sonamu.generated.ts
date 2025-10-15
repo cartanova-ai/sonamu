@@ -269,6 +269,7 @@ export const ProjectSubsetA = z.object({
   employee: z.array(
     z.object({
       id: z.number().int().nonnegative(),
+      employee_number: z.string().max(32),
       user: z.object({
         email: z.string().max(255),
         username: z.string().max(255),

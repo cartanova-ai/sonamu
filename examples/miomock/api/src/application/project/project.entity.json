@@ -45,6 +45,7 @@
       "employee.user.email",
       "employee.user.username",
       "employee.department.name",
+      "employee.employee_number",
       "name",
       "status",
       "description"

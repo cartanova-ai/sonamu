@@ -144,6 +144,7 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
           ],
           select: [
             "employees.id",
+            "employees.employee_number",
             "user.email as user__email",
             "user.username as user__username",
             "department.name as department__name",

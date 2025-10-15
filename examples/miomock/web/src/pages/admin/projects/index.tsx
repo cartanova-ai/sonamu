@@ -47,7 +47,7 @@ export default function ProjectList({}: ProjectListProps) {
   // 리스트 쿼리
   const { data, mutate, error, isLoading } = ProjectService.useProjects(
     "A",
-    listParams,
+    listParams
   );
   const { rows, total } = data ?? {};
 
@@ -110,7 +110,15 @@ export default function ProjectList({}: ProjectListProps) {
     { label: "설명", tc: (row) => <>{row.description}</>, collapsing: true },
     {
       label: "직원",
-      tc: (row) => <>{/* array row.employee */}</>,
+      tc: (row) => (
+        <>
+          {row.employee?.map((emp) => (
+            <Label key={emp.id} className="mb-2 mr-2">
+              {emp.user ? emp.user.username : "직원없음"}-{emp.employee_number}
+            </Label>
+          )) ?? "직원없음"}
+        </>
+      ),
       collapsing: true,
     },
   ];
@@ -167,7 +175,7 @@ export default function ProjectList({}: ProjectListProps) {
                       <Table.HeaderCell key={index} collapsing={col.collapsing}>
                         {col.label}
                       </Table.HeaderCell>
-                    ),
+                    )
                 )
               }
               <Table.HeaderCell>관리</Table.HeaderCell>

@@ -45,7 +45,7 @@
   },
   {
     "path": "/src/application/project/project.entity.json",
-    "checksum": "a68fcc4d6857da1cfceaaca1292f576570b97fb9"
+    "checksum": "633cb9de65102aab15737569251610665bf5ab93"
   },
   {
     "path": "/src/application/project/project.types.ts",
@@ -53,7 +53,7 @@
   },
   {
     "path": "/src/application/sonamu.generated.ts",
-    "checksum": "a801e11d6c6ee66f0c4c6655af849c84458ecb7a"
+    "checksum": "282beb744af85b4536728131e35de9832b3548ca"
   },
   {
     "path": "/src/application/user/user.entity.json",
