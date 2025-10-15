@@ -401,9 +401,8 @@ export class Syncer {
             mkdirSync(path.dirname(mapPath), { recursive: true });
             writeFileSync(mapPath, map);
 
-            const codeWithSourceMap =
-              code + "\n//# sourceMappingURL=" + path.basename(mapPath);
-            writeFileSync(jsPath, codeWithSourceMap);
+            const sourceMapComment = "\n//# sourceMappingURL=" + path.basename(mapPath);
+            writeFileSync(jsPath, sourceMapComment, { flag: "a"/*파일 끝에 붙이기만 해요*/ });
           }
 
           console.log(
