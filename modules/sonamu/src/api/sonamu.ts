@@ -454,7 +454,7 @@ class SonamuClass {
   }
 
   async destroy(): Promise<void> {
-    const BaseModel = require("../database/base-model");
+    const { BaseModel } = require("../database/base-model");
     await BaseModel.destroy();
   }
 }
