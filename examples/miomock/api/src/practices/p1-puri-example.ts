@@ -1,22 +1,7 @@
 import { Sonamu, PuriWrapper, Puri } from "sonamu";
 import { UserModel } from "../application/user/user.model";
-import {
-  CompanyBaseSchema,
-  DepartmentBaseSchema,
-  EmployeeBaseSchema,
-  ProjectBaseSchema,
-  UserBaseSchema,
-} from "../application/sonamu.generated";
 import assert from "assert";
-
-// 테이블 스키마 정의 (실제 DB 스키마 - Sonamu 엔티티 기반)
-export interface DatabaseSchema {
-  users: UserBaseSchema;
-  companies: CompanyBaseSchema;
-  departments: DepartmentBaseSchema;
-  employees: EmployeeBaseSchema;
-  projects: ProjectBaseSchema;
-}
+import { DatabaseSchema } from "../application/sonamu.generated";
 
 // 사용 예제
 async function examples() {

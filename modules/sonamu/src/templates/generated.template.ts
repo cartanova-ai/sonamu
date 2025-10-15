@@ -43,6 +43,12 @@ export class Template__generated extends Template {
       })
       .flat();
 
+    // DatabaseSchema 생성
+    const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
+    if (dbSchemaSourceCode) {
+      sourceCodes.push(dbSchemaSourceCode);
+    }
+
     // Sort
     const LABEL_KEY_ORDER = [
       "Enums",
@@ -50,6 +56,7 @@ export class Template__generated extends Template {
       "BaseListParams",
       "Subsets",
       "SubsetQueries",
+      "DatabaseSchema",
     ];
     sourceCodes.sort((a, b) => {
       const [aKey] = a.label.split(":");
@@ -281,6 +288,27 @@ z.object({
       label: `Subsets: ${entity.id}`,
       lines,
       importKeys: _.uniq(importKeys),
+    };
+  }
+
+  getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
+    if (entities.length === 0) {
+      return null;
+    }
+
+    const lines = entities.map(
+      (entity) => `${entity.table}: ${entity.id}BaseSchema;`
+    );
+
+    return {
+      label: `DatabaseSchema`,
+      lines: [
+        //
+        `export type DatabaseSchema = {`,
+        ...lines,
+        `};`,
+      ],
+      importKeys: [],
     };
   }
 }
