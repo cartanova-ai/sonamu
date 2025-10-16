@@ -164,18 +164,26 @@ export class Puri<
   where(
     conditions: WhereCondition<TSchema, TTable, TResult, TJoined>
   ): Puri<TSchema, TTable, TResult, TJoined>;
-  where<
-    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
-  >(
+  where<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): Puri<TSchema, TTable, TResult, TJoined>;
-  where<
-    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
-  >(
+  where<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
     operator: ComparisonOperator | "like",
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): Puri<TSchema, TTable, TResult, TJoined>;
   where(
     columnOrConditions: any,
@@ -210,9 +218,18 @@ export class Puri<
   // WhereIn (조인된 테이블 컬럼도 지원)
   whereIn<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    values: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>[]
+    values: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >[]
   ): Puri<TSchema, TTable, TResult, TJoined>;
-  whereIn(column: string, values: any[]): Puri<TSchema, TTable, TResult, TJoined> {
+  whereIn(
+    column: string,
+    values: any[]
+  ): Puri<TSchema, TTable, TResult, TJoined> {
     this.knexQuery.whereIn(column, values);
     return this;
   }
@@ -255,7 +272,9 @@ export class Puri<
   >;
   join<TJoinTable extends keyof TSchema>(
     table: TJoinTable,
-    joinCallback: (joinClause: JoinClauseGroup<TSchema, TTable, TJoined>) => void
+    joinCallback: (
+      joinClause: JoinClauseGroup<TSchema, TTable, TJoined>
+    ) => void
   ): Puri<
     TSchema,
     TTable,
@@ -280,11 +299,7 @@ export class Puri<
     if (tableOrSubquery instanceof Puri) {
       // 서브쿼리 조인: join(subquery, alias, left, right)
       const [alias, left, right] = args;
-      this.knexQuery.join(
-        tableOrSubquery.raw().as(alias),
-        left,
-        right
-      );
+      this.knexQuery.join(tableOrSubquery.raw().as(alias), left, right);
     } else if (
       args.length === 2 &&
       typeof args[0] === "string" &&
@@ -318,7 +333,12 @@ export class Puri<
     alias: TAlias,
     left: string,
     right: string
-  ): Puri<TSchema, TTable, TResult, TJoined & Record<TAlias, Partial<TSubResult>>>;
+  ): Puri<
+    TSchema,
+    TTable,
+    TResult,
+    TJoined & Record<TAlias, Partial<TSubResult>>
+  >;
   leftJoin(
     table: string,
     left: string,
@@ -331,11 +351,7 @@ export class Puri<
     if (tableOrSubquery instanceof Puri) {
       // 서브쿼리 조인: leftJoin(subquery, alias, left, right)
       const [alias, left, right] = args;
-      this.knexQuery.leftJoin(
-        tableOrSubquery.raw().as(alias),
-        left,
-        right
-      );
+      this.knexQuery.leftJoin(tableOrSubquery.raw().as(alias), left, right);
     } else {
       const [left, right] = args;
       this.knexQuery.leftJoin(tableOrSubquery as string, left, right);
@@ -593,12 +609,24 @@ class WhereGroup<
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   where<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   where<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
     operator: ComparisonOperator | "like",
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   where(raw: string): WhereGroup<TSchema, TTable, TResult, TJoined>;
   where(...args: any[]): WhereGroup<TSchema, TTable, TResult, TJoined> {
@@ -611,12 +639,24 @@ class WhereGroup<
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   orWhere<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   orWhere<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
     operator: ComparisonOperator | "like",
-    value: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   orWhere(raw: string): WhereGroup<TSchema, TTable, TResult, TJoined>;
   orWhere(...args: any[]): WhereGroup<TSchema, TTable, TResult, TJoined> {
@@ -626,16 +666,33 @@ class WhereGroup<
 
   whereIn<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
-    values: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>[]
+    values: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >[]
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
-  whereIn(column: string, values: any[]): WhereGroup<TSchema, TTable, TResult, TJoined> {
+  whereIn(
+    column: string,
+    values: any[]
+  ): WhereGroup<TSchema, TTable, TResult, TJoined> {
     this.builder.whereIn(column, values);
     return this;
   }
 
-  orWhereIn<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
+  orWhereIn<
+    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
+  >(
     column: TColumn,
-    values: ExtractColumnType<TSchema, TTable, TColumn & string, TResult, TJoined>[]
+    values: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >[]
   ): WhereGroup<TSchema, TTable, TResult, TJoined>;
   orWhereIn(
     column: string,
@@ -652,7 +709,9 @@ class WhereGroup<
     ) => WhereGroup<TSchema, TTable, TResult, TJoined>
   ): WhereGroup<TSchema, TTable, TResult, TJoined> {
     this.builder.where((subBuilder) => {
-      const subGroup = new WhereGroup<TSchema, TTable, TResult, TJoined>(subBuilder);
+      const subGroup = new WhereGroup<TSchema, TTable, TResult, TJoined>(
+        subBuilder
+      );
       callback(subGroup);
     });
     return this;
@@ -664,14 +723,20 @@ class WhereGroup<
     ) => WhereGroup<TSchema, TTable, TResult, TJoined>
   ): WhereGroup<TSchema, TTable, TResult, TJoined> {
     this.builder.orWhere((subBuilder) => {
-      const subGroup = new WhereGroup<TSchema, TTable, TResult, TJoined>(subBuilder);
+      const subGroup = new WhereGroup<TSchema, TTable, TResult, TJoined>(
+        subBuilder
+      );
       callback(subGroup);
     });
     return this;
   }
 }
 
-export class JoinClauseGroup<TSchema, TTable extends keyof TSchema | string, TJoined = {}> {
+export class JoinClauseGroup<
+  TSchema,
+  TTable extends keyof TSchema | string,
+  TJoined = {},
+> {
   constructor(private callback: Knex.JoinClause) {}
 
   on(
