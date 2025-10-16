@@ -14,7 +14,7 @@ export type ServiceClient =
   | "axios-multipart"
   | "swr"
   | "window-fetch";
-export interface ApiDecoratorOptions {
+export type ApiDecoratorOptions = {
   httpMethod?: HTTPMethods;
   contentType?:
     | "text/plain"
@@ -27,15 +27,15 @@ export interface ApiDecoratorOptions {
   resourceName?: string;
   guards?: GuardKey[];
   description?: string;
-}
-export interface StreamDecoratorOptions {
+};
+export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
   events: z.ZodObject<any>;
   path?: string;
   resourceName?: string;
   guards?: GuardKey[];
   description?: string;
-}
+};
 export const registeredApis: {
   modelName: string;
   methodName: string;
