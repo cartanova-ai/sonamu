@@ -234,6 +234,26 @@ export class Puri<
     return this;
   }
 
+  whereNotIn<
+    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
+  >(
+    column: TColumn,
+    values: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >[]
+  ): Puri<TSchema, TTable, TResult, TJoined>;
+  whereNotIn(
+    column: string,
+    values: any[]
+  ): Puri<TSchema, TTable, TResult, TJoined> {
+    this.knexQuery.whereNotIn(column, values);
+    return this;
+  }
+
   // WhereGroup (괄호 그룹핑 지원)
   whereGroup(
     callback: (
