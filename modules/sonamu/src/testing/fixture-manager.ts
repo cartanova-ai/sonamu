@@ -19,9 +19,9 @@ import { Entity } from "../entity/entity";
 import inflection from "inflection";
 import { readFileSync, writeFileSync } from "fs";
 import { RelationGraph } from "./_relation-graph";
-import { SonamuDBConfig } from "../database/types";
 import knex, { Knex } from "knex";
 import { BaseModel } from "../database/base-model";
+import { SonamuDBConfig } from "../database/db";
 
 export class FixtureManagerClass {
   private _tdb: Knex | null = null;
