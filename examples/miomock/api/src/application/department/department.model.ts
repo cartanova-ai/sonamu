@@ -121,17 +121,16 @@ class DepartmentModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(spa: DepartmentSaveParams[]): Promise<number[]> {
-    const wdb = this.getDB("w");
-    const ub = this.getUpsertBuilder();
+    const wdb = this.getPuri("w");
 
     // register
     spa.map((sp) => {
-      ub.register("departments", sp);
+      wdb.ubRegister("departments", sp);
     });
 
     // transaction
     return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "departments");
+      const ids = await trx.ubUpsert("departments");
 
       return ids;
     });
@@ -139,11 +138,11 @@ class DepartmentModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST", guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("departments").whereIn("departments.id", ids).delete();
+      return trx.table("departments").whereIn("departments.id", ids).delete();
     });
 
     return ids.length;

@@ -112,17 +112,16 @@ class EmployeeModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(spa: EmployeeSaveParams[]): Promise<number[]> {
-    const wdb = this.getDB("w");
-    const ub = this.getUpsertBuilder();
+    const wdb = this.getPuri("w");
 
     // register
     spa.map((sp) => {
-      ub.register("employees", sp);
+      wdb.ubRegister("employees", sp);
     });
 
     // transaction
     return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "employees");
+      const ids = await trx.ubUpsert("employees");
 
       return ids;
     });
@@ -130,11 +129,11 @@ class EmployeeModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST", guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("employees").whereIn("employees.id", ids).delete();
+      return trx.table("employees").whereIn("employees.id", ids).delete();
     });
 
     return ids.length;

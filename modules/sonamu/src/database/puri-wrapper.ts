@@ -1,10 +1,13 @@
 import { Knex } from "knex";
 import { Puri } from "./puri";
-
-export interface DatabaseSchemaExtend {}
+import { UBRef, UpsertBuilder } from "./upsert-builder";
+import { DatabaseSchemaExtend } from "../types/types";
 
 export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
-  constructor(private knex: Knex) {}
+  constructor(
+    public knex: Knex,
+    public upsertBuilder: UpsertBuilder
+  ) {}
 
   raw(sql: string): Knex.Raw {
     return this.knex.raw(sql);
@@ -24,7 +27,52 @@ export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
 
   async transaction<T>(callback: (trx: PuriWrapper) => Promise<T>): Promise<T> {
     return this.knex.transaction(async (trx) => {
-      return callback(new PuriWrapper(trx));
+      return callback(new PuriWrapper(trx, this.upsertBuilder));
     });
+  }
+
+  ubRegister<T extends string>(
+    tableName: string,
+    row: {
+      [key in T]?:
+        | UBRef
+        | string
+        | number
+        | boolean
+        | bigint
+        | null
+        | object
+        | unknown;
+    }
+  ): UBRef {
+    return this.upsertBuilder.register(tableName as string, row);
+  }
+
+  ubUpsert(tableName: string, chunkSize?: number): Promise<number[]> {
+    return this.upsertBuilder.upsert(this.knex, tableName as string, chunkSize);
+  }
+
+  ubInsertOnly(tableName: string, chunkSize?: number): Promise<number[]> {
+    return this.upsertBuilder.insertOnly(this.knex, tableName, chunkSize);
+  }
+
+  ubUpsertOrInsert(
+    tableName: string,
+    mode: "upsert" | "insert",
+    chunkSize?: number
+  ): Promise<number[]> {
+    return this.upsertBuilder.upsertOrInsert(
+      this.knex,
+      tableName,
+      mode,
+      chunkSize
+    );
+  }
+
+  ubUpdateBatch(
+    tableName: string,
+    options?: { chunkSize?: number; where?: string | string[] }
+  ): Promise<void> {
+    return this.upsertBuilder.updateBatch(this.knex, tableName, options);
   }
 }

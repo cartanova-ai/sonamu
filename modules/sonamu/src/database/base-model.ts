@@ -21,7 +21,7 @@ export class BaseModelClass {
 
   getPuri(which: DBPreset): PuriWrapper {
     const db = this.getDB(which);
-    return new PuriWrapper(db);
+    return new PuriWrapper(db, this.getUpsertBuilder());
   }
 
   async destroy() {

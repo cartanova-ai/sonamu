@@ -113,19 +113,18 @@ class UserModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(spa: UserSaveParams[]): Promise<number[]> {
-    const wdb = this.getDB("w");
-    const ub = this.getUpsertBuilder();
+    const wdb = this.getPuri("w");
 
     console.log(spa);
 
     // register
     spa.map((sp) => {
-      ub.register("users", sp);
+      wdb.ubRegister("users", sp);
     });
 
     // transaction
     return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "users");
+      const ids = await trx.ubUpsert("users");
 
       return ids;
     });
@@ -133,11 +132,11 @@ class UserModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST", guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("users").whereIn("users.id", ids).delete();
+      return trx.table("users").whereIn("users.id", ids).delete();
     });
 
     return ids.length;

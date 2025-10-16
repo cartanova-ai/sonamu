@@ -141,17 +141,16 @@ class ${entityId}ModelClass extends BaseModelClass {
   async save(
     spa: ${entityId}SaveParams[]
   ): Promise<number[]> {
-    const wdb = this.getDB("w");
-    const ub = this.getUpsertBuilder();
+    const wdb = this.getPuri("w");
 
     // register
     spa.map((sp) => {
-      ub.register("${entity.table}", sp);
+      wdb.ubRegister("${entity.table}", sp);
     });
 
     // transaction
     return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "${entity.table}");
+      const ids = await trx.ubUpsert("${entity.table}");
 
       return ids;
     });
@@ -159,11 +158,11 @@ class ${entityId}ModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST", guards: [ "admin" ] })
   async del(ids: number[]): Promise<number> {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("${entity.table}").whereIn("${entity.table}.id", ids).delete();
+      return trx.table("${entity.table}").whereIn("${entity.table}.id", ids).delete();
     });
 
     return ids.length;

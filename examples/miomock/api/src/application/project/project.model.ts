@@ -112,14 +112,13 @@ class ProjectModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST" })
   async save(spa: ProjectSaveParams[]): Promise<number[]> {
-    const wdb = this.getDB("w");
-    const ub = this.getUpsertBuilder();
+    const puri = this.getPuri("w");
 
     // register
     spa.map(({ employee_ids, ...sp }) => {
-      const project_id = ub.register("projects", sp);
+      const project_id = puri.ubRegister("projects", sp);
       employee_ids.map((employee_id) => {
-        ub.register("projects__employees", {
+        puri.ubRegister("projects__employees", {
           project_id,
           employee_id,
         });
@@ -127,12 +126,13 @@ class ProjectModelClass extends BaseModelClass {
     });
 
     // transaction
-    return wdb.transaction(async (trx) => {
-      const ids = await ub.upsert(trx, "projects");
-      const peIds = await ub.upsert(trx, "projects__employees");
+    return puri.transaction(async (trx) => {
+      const ids = await trx.ubUpsert("projects");
+      const peIds = await trx.ubUpsert("projects__employees");
 
       // 기존에 포함되었으나, 현재는 포함되지 않는 경우
-      await trx("projects__employees")
+      await trx
+        .table("projects__employees")
         .whereIn("project_id", ids)
         .whereNotIn("id", peIds)
         .delete();
@@ -143,11 +143,11 @@ class ProjectModelClass extends BaseModelClass {
 
   @api({ httpMethod: "POST", guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
-    const wdb = this.getDB("w");
+    const wdb = this.getPuri("w");
 
     // transaction
     await wdb.transaction(async (trx) => {
-      return trx("projects").whereIn("projects.id", ids).delete();
+      return trx.table("projects").whereIn("projects.id", ids).delete();
     });
 
     return ids.length;
