@@ -3,12 +3,18 @@ import inflection from "inflection";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { z } from "zod";
 
+export interface GuardKeys {
+  query: true;
+  admin: true;
+  user: true;
+}
+export type GuardKey = keyof GuardKeys;
 export type ServiceClient =
   | "axios"
   | "axios-multipart"
   | "swr"
   | "window-fetch";
-export type ApiDecoratorOptions = {
+export interface ApiDecoratorOptions {
   httpMethod?: HTTPMethods;
   contentType?:
     | "text/plain"
@@ -19,17 +25,17 @@ export type ApiDecoratorOptions = {
   clients?: ServiceClient[];
   path?: string;
   resourceName?: string;
-  guards?: string[];
+  guards?: GuardKey[];
   description?: string;
-};
-export type StreamDecoratorOptions = {
+}
+export interface StreamDecoratorOptions {
   type: "sse"; // | 'ws
   events: z.ZodObject<any>;
   path?: string;
   resourceName?: string;
-  guards?: string[];
+  guards?: GuardKey[];
   description?: string;
-};
+}
 export const registeredApis: {
   modelName: string;
   methodName: string;
