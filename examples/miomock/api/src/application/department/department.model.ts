@@ -9,7 +9,6 @@ import {
 import {
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
-  DatabaseSchema,
 } from "../sonamu.generated";
 import { departmentSubsetQueries } from "../sonamu.generated.sso";
 import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
@@ -17,7 +16,7 @@ import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 /*
   Department Model
 */
-class DepartmentModelClass extends BaseModelClass<DatabaseSchema> {
+class DepartmentModelClass extends BaseModelClass {
   modelName = "Department";
 
   @api({

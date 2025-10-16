@@ -6,18 +6,14 @@ import {
   BadRequestException,
   api,
 } from "sonamu";
-import {
-  ProjectSubsetKey,
-  ProjectSubsetMapping,
-  DatabaseSchema,
-} from "../sonamu.generated";
+import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 /*
   Project Model
 */
-class ProjectModelClass extends BaseModelClass<DatabaseSchema> {
+class ProjectModelClass extends BaseModelClass {
   modelName = "Project";
 
   @api({

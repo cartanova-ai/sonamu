@@ -39,7 +39,6 @@ import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestExcep
 import {
   ${entityId}SubsetKey,
   ${entityId}SubsetMapping,
-  DatabaseSchema,
 } from "../sonamu.generated";
 import {
   ${names.camel}SubsetQueries,
@@ -49,7 +48,7 @@ import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.type
 /*
   ${entityId} Model
 */
-class ${entityId}ModelClass extends BaseModelClass<DatabaseSchema> {
+class ${entityId}ModelClass extends BaseModelClass {
   modelName = "${entityId}";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${entityId}" })

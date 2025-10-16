@@ -336,10 +336,12 @@ export const UserSubsetKey = z.enum(["A", "P", "SS"]);
 export type UserSubsetKey = z.infer<typeof UserSubsetKey>;
 
 // DatabaseSchema
-export type DatabaseSchema = {
-  companies: CompanyBaseSchema;
-  departments: DepartmentBaseSchema;
-  employees: EmployeeBaseSchema;
-  projects: ProjectBaseSchema;
-  users: UserBaseSchema;
-};
+declare module "sonamu" {
+  export interface DatabaseSchemaExtend {
+    companies: CompanyBaseSchema;
+    departments: DepartmentBaseSchema;
+    employees: EmployeeBaseSchema;
+    projects: ProjectBaseSchema;
+    users: UserBaseSchema;
+  }
+}

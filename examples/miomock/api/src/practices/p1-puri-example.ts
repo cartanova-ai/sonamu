@@ -1,13 +1,11 @@
-import { Sonamu, PuriWrapper, Puri } from "sonamu";
+import { Sonamu, Puri } from "sonamu";
 import { UserModel } from "../application/user/user.model";
 import assert from "assert";
-import { DatabaseSchema } from "../application/sonamu.generated";
 
 // 사용 예제
 async function examples() {
   await Sonamu.init(true, false);
-  const wdb = UserModel.getDB("r");
-  const db = new PuriWrapper<DatabaseSchema>(wdb);
+  const db = UserModel.getPuri("r");
 
   console.log("\n=== Example 1: Basic Select with Alias ===");
   const users = await db

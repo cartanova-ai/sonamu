@@ -304,9 +304,11 @@ z.object({
       label: `DatabaseSchema`,
       lines: [
         //
-        `export type DatabaseSchema = {`,
+        `declare module "sonamu" {`,
+        `  export interface DatabaseSchemaExtend {`,
         ...lines,
-        `};`,
+        `  }`,
+        `}`,
       ],
       importKeys: [],
     };

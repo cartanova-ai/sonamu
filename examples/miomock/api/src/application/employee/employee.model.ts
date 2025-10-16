@@ -6,18 +6,14 @@ import {
   BadRequestException,
   api,
 } from "sonamu";
-import {
-  EmployeeSubsetKey,
-  EmployeeSubsetMapping,
-  DatabaseSchema,
-} from "../sonamu.generated";
+import { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeSubsetQueries } from "../sonamu.generated.sso";
 import { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 /*
   Employee Model
 */
-class EmployeeModelClass extends BaseModelClass<DatabaseSchema> {
+class EmployeeModelClass extends BaseModelClass {
   modelName = "Employee";
 
   @api({

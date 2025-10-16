@@ -6,18 +6,14 @@ import {
   BadRequestException,
   api,
 } from "sonamu";
-import {
-  CompanySubsetKey,
-  CompanySubsetMapping,
-  DatabaseSchema,
-} from "../sonamu.generated";
+import { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
 import { companySubsetQueries } from "../sonamu.generated.sso";
 import { CompanyListParams, CompanySaveParams } from "./company.types";
 
 /*
   Company Model
 */
-class CompanyModelClass extends BaseModelClass<DatabaseSchema> {
+class CompanyModelClass extends BaseModelClass {
   modelName = "Company";
 
   @api({

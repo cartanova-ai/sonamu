@@ -11,7 +11,7 @@ import SqlParser from "node-sql-parser";
 import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
 import { PuriWrapper } from "./puri-wrapper";
 
-export class BaseModelClass<DBSchema = any> {
+export class BaseModelClass {
   public modelName: string = "Unknown";
 
   /* DB 인스턴스 get, destroy */
@@ -19,9 +19,9 @@ export class BaseModelClass<DBSchema = any> {
     return DB.getDB(which);
   }
 
-  getPuri(which: DBPreset): PuriWrapper<DBSchema> {
+  getPuri(which: DBPreset): PuriWrapper {
     const db = this.getDB(which);
-    return new PuriWrapper<DBSchema>(db);
+    return new PuriWrapper(db);
   }
 
   async destroy() {
