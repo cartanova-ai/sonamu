@@ -803,3 +803,15 @@ export type RelationNode = {
   entityId: string;
   related: Set<string>;
 };
+
+export interface DatabaseSchemaExtend {}
+export type ManyToManyBaseSchema<
+  FromIdKey extends string,
+  ToIdKey extends string,
+> = {
+  id: number;
+} & {
+  [K in `${FromIdKey}_id`]: number;
+} & {
+  [K in `${ToIdKey}_id`]: number;
+};

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode } from "sonamu";
+import { zArrayable, SonamuQueryMode, ManyToManyBaseSchema } from "sonamu";
 
 // CustomScalar: Number
 const Number = z.number();
@@ -343,5 +343,6 @@ declare module "sonamu" {
     employees: EmployeeBaseSchema;
     projects: ProjectBaseSchema;
     users: UserBaseSchema;
+    projects__employees: ManyToManyBaseSchema<"project", "employee">;
   }
 }

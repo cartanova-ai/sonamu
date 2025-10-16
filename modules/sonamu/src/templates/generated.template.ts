@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { TemplateOptions } from "../types/types";
+import { TemplateOptions, isManyToManyRelationProp } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
 import { EntityPropNode } from "../types/types";
@@ -7,6 +7,7 @@ import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
 import { Template } from "./base-template";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
+import inflection from "inflection";
 
 export type SourceCode = {
   label: string;
@@ -126,6 +127,7 @@ export class Template__generated extends Template {
       "SQLDateTimeString",
       "SubsetQuery",
       "SonamuQueryMode",
+      "ManyToManyBaseSchema",
     ].filter((mod) => body.includes(mod));
 
     return {
@@ -296,17 +298,28 @@ z.object({
       return null;
     }
 
-    const lines = entities.map(
+    const entitySchemaLines = entities.map(
       (entity) => `${entity.table}: ${entity.id}BaseSchema;`
+    );
+
+    const joinTableSchemaLines = _.uniq(
+      entities.flatMap((entity) =>
+        entity.props.filter(isManyToManyRelationProp).map((prop) => {
+          const [table1, table2] = prop.joinTable.split("__");
+          const singular1 = inflection.singularize(table1);
+          const singular2 = inflection.singularize(table2);
+          return `${prop.joinTable}: ManyToManyBaseSchema<"${singular1}", "${singular2}">;`;
+        })
+      )
     );
 
     return {
       label: `DatabaseSchema`,
       lines: [
-        //
         `declare module "sonamu" {`,
         `  export interface DatabaseSchemaExtend {`,
-        ...lines,
+        ...entitySchemaLines,
+        ...joinTableSchemaLines,
         `  }`,
         `}`,
       ],
