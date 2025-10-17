@@ -204,7 +204,11 @@ export class FixtureManagerClass {
     await frdb.destroy();
   }
 
+  private visitedRecords = new Set<string>();
   async importFixture(entityId: string, ids: number[]) {
+    // 방문 기록 초기화 (새로운 import 작업 시작)
+    this.visitedRecords.clear();
+
     const queries = _.uniq(
       (
         await Promise.all(
@@ -230,6 +234,14 @@ export class FixtureManagerClass {
     field: string,
     id: number
   ): Promise<string[]> {
+    const recordKey = `${entityId}#${field}#${id}`;
+
+    // 순환 참조 방지: 이미 방문한 레코드는 스킵
+    if (this.visitedRecords.has(recordKey)) {
+      return [];
+    }
+    this.visitedRecords.add(recordKey);
+
     console.log({ entityId, field, id });
     const entity = EntityManager.get(entityId);
     const wdb = BaseModel.getDB("w");
