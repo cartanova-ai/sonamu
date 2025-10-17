@@ -267,7 +267,16 @@ export class FixtureManagerClass {
         let field: string;
         let id: number;
         if (isOneToOneRelationProp(relation) && !relation.hasJoinColumn) {
-          field = `${relation.name}_id`;
+          const relatedEntity = EntityManager.get(relation.with);
+          const relatedIdColumnName = relatedEntity.props.find(
+            (p) => isRelationProp(p) && p.with === entity.id
+          )?.name;
+          if (!relatedIdColumnName) {
+            throw new Error(
+              `${relatedEntity.id}의 ${entity.id} 관계 프롭을 찾을 수 없습니다.`
+            );
+          }
+          field = `${relatedIdColumnName}_id`;
           id = row["id"];
         } else {
           field = "id";
