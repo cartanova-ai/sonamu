@@ -3,7 +3,14 @@ import { Puri } from "./puri";
 import { UBRef, UpsertBuilder } from "./upsert-builder";
 import { DatabaseSchemaExtend } from "../types/types";
 
-export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
+type TableName<DBSchema extends DatabaseSchemaExtend> = Extract<
+  keyof DBSchema,
+  string
+>;
+
+export class PuriWrapper<
+  DBSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend,
+> {
   constructor(
     public knex: Knex,
     public upsertBuilder: UpsertBuilder
@@ -13,7 +20,9 @@ export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
     return this.knex.raw(sql);
   }
   // 기존: 테이블로 시작
-  table<T extends keyof DBSchema>(tableName: T): Puri<DBSchema, T> {
+  table<TTable extends TableName<DBSchema>>(
+    tableName: TTable
+  ): Puri<DBSchema, TTable> {
     return new Puri(this.knex, tableName as any);
   }
 
@@ -31,33 +40,31 @@ export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
     });
   }
 
-  ubRegister<T extends string>(
-    tableName: string,
-    row: {
-      [key in T]?:
-        | UBRef
-        | string
-        | number
-        | boolean
-        | bigint
-        | null
-        | object
-        | unknown;
-    }
+  ubRegister<TTable extends TableName<DBSchema>>(
+    tableName: TTable,
+    row: Partial<{
+      [K in keyof DBSchema[TTable]]: DBSchema[TTable][K] | UBRef;
+    }>
   ): UBRef {
-    return this.upsertBuilder.register(tableName as string, row);
+    return this.upsertBuilder.register(tableName, row);
   }
 
-  ubUpsert(tableName: string, chunkSize?: number): Promise<number[]> {
-    return this.upsertBuilder.upsert(this.knex, tableName as string, chunkSize);
+  ubUpsert(
+    tableName: TableName<DBSchema>,
+    chunkSize?: number
+  ): Promise<number[]> {
+    return this.upsertBuilder.upsert(this.knex, tableName, chunkSize);
   }
 
-  ubInsertOnly(tableName: string, chunkSize?: number): Promise<number[]> {
+  ubInsertOnly(
+    tableName: TableName<DBSchema>,
+    chunkSize?: number
+  ): Promise<number[]> {
     return this.upsertBuilder.insertOnly(this.knex, tableName, chunkSize);
   }
 
   ubUpsertOrInsert(
-    tableName: string,
+    tableName: TableName<DBSchema>,
     mode: "upsert" | "insert",
     chunkSize?: number
   ): Promise<number[]> {
@@ -70,7 +77,7 @@ export class PuriWrapper<DBSchema = DatabaseSchemaExtend> {
   }
 
   ubUpdateBatch(
-    tableName: string,
+    tableName: TableName<DBSchema>,
     options?: { chunkSize?: number; where?: string | string[] }
   ): Promise<void> {
     return this.upsertBuilder.updateBatch(this.knex, tableName, options);
