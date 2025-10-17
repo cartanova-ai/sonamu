@@ -266,6 +266,11 @@ export class UpsertBuilder {
       table.rows = selfRefRows;
       const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
       allIds.push(...selfRefIds);
+    } else {
+      // 자기 참조가 없으면 해당 테이블의 데이터 초기화
+      table.rows = [];
+      table.references.clear();
+      table.uniquesMap.clear();
     }
 
     return allIds;
@@ -301,5 +306,10 @@ export class UpsertBuilder {
     });
 
     await batchUpdate(wdb, tableName, whereColumns, rows, options.chunkSize);
+
+    // updateBatch 완료 후 처리된 데이터 제거
+    table.rows = [];
+    table.references.clear();
+    table.uniquesMap.clear();
   }
 }
