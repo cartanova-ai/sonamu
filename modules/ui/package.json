@@ -7,9 +7,9 @@
     "build:client": "vite build",
     "build:node": "tsup --config ./tsup.config.js",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
-    "dev:client": "vite",
+    "dev:client": "DEBUG_UI=true vite",
     "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node -r source-map-support/register dist/index.js run\"",
-    "dev": "run-p dev:node dev:client"
+    "dev": "DEBUG_UI=true run-p dev:node dev:client"
   },
   "exports": {
     ".": {
@@ -91,5 +91,8 @@
   "peerDependencies": {
     "sonamu": "^0.2.4"
   },
-  "packageManager": "yarn@3.6.3"
+  "packageManager": "yarn@3.6.3",
+  "resolutions": {
+    "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
+  }
 }

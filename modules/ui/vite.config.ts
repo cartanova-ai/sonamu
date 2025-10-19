@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    port: 57000,
-    proxy: {
-      "/api": "http://0.0.0.0:57001",
+    port: 65000,
+    proxy: process.env.DEBUG_UI === "true" && {
+      "/api": "http://0.0.0.0:60000",
     },
   },
   build: {

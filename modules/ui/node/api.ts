@@ -1,5 +1,5 @@
 import fastify from "fastify";
-import _ from "lodash";
+import fs from "fs";
 import {
   Sonamu,
   SonamuDBConfig,
@@ -18,13 +18,16 @@ import {
   FixtureRecord,
   FixtureManager,
   FixtureSearchOptions,
+  BaseModelClass,
 } from "sonamu";
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import path from "path";
 import { openai } from "./openai";
+import { range } from "lodash";
 
-export async function createApiServer(options: {
+export async function createServer(options: {
+  projectName: string;
   listen: {
     host: string;
     port: number;
@@ -32,9 +35,17 @@ export async function createApiServer(options: {
   apiRootPath: string;
   watch?: boolean;
 }) {
-  const { listen, apiRootPath, watch } = options;
+  const { listen, apiRootPath, watch, projectName } = options;
 
   const server = fastify();
+
+  // 웹 빌드 데이터로 정적 데이터 서빙
+  server.register(import("@fastify/static"), {
+    root: path.join(__dirname, "../build/assets"),
+    prefix: "/assets",
+  });
+
+  // 여기부터 API서버
   server.register(import("fastify-qs"));
   server.register(import("@fastify/cors"), {
     origin: true,
@@ -83,7 +94,7 @@ export async function createApiServer(options: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "http://localhost:57000",
+        "Access-Control-Allow-Origin": `http://localhost:${listen.port}`,
         "Access-Control-Allow-Credentials": "true",
       });
 
@@ -246,9 +257,9 @@ export async function createApiServer(options: {
     const suggested = (() => {
       // 단어 분리, 가능한 조합 생성
       const words = origin.split("_");
-      const combinations = _.range(words.length, 0, -1)
+      const combinations = range(words.length, 0, -1)
         .map((len) => {
-          return _.range(0, words.length - len + 1).map((start) => {
+          return range(0, words.length - len + 1).map((start) => {
             return {
               len,
               w: words.slice(start, start + len).join("_"),
@@ -863,7 +874,6 @@ export async function createApiServer(options: {
       subset: string;
     };
 
-    const { BaseModelClass } = await import(`sonamu/${Sonamu.dbClient}`);
     const BaseModel = new BaseModelClass();
     const entity = EntityManager.get(entityId);
     const {
@@ -873,11 +883,7 @@ export async function createApiServer(options: {
       params: { id: Number(id), page: 1, num: 1 },
       subsetQuery: entity.getSubsetQuery(subset),
       build: ({ qb }) => {
-        if (Sonamu.dbClient === "knex") {
-          qb.where(`${entity.table}.id`, id);
-        } else {
-          qb = qb.where(`${entity.table}.id`, "=", id);
-        }
+        qb.where(`${entity.table}.id`, id);
         return qb;
       },
       baseTable: entity.table,
@@ -893,11 +899,22 @@ export async function createApiServer(options: {
     };
   });
 
+  server.get("*", async (_request, reply) => {
+    reply
+      .headers({ "Content-type": "text/html" })
+      .send(
+        fs
+          .readFileSync(path.resolve(__dirname, "../build/index.html"))
+          .toString()
+          .replace("{{projectName}}", projectName)
+      );
+  });
+
   server
     .listen(listen)
     .then(() => {
       console.log(
-        `sonamu-ui API Server is listening on ${listen.host}:${listen.port}`
+        `${projectName}: Sonamu UI API Server is listening on http://${listen.host}:${listen.port}`
       );
     })
     .catch((err) => {

@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import qs from "qs";
 import { ZodIssue } from "zod";
 
-const baseURL = "http://localhost:57001";
+const baseURL = "";
 
 export async function fetch(options: AxiosRequestConfig) {
   try {
