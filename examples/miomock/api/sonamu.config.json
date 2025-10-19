@@ -1,4 +1,5 @@
 {
+  "projectName": "Miomock",
   "api": {
     "dir": "api"
   },
@@ -8,5 +9,11 @@
   "route": {
     "prefix": "/api"
   },
-  "timezone": "Asia/Seoul"
+  "timezone": "Asia/Seoul",
+  "ui": {
+    "port": {
+      "api": 60000,
+      "web": 60001
+    }
+  }
 }
