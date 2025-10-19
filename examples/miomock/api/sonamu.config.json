@@ -11,9 +11,6 @@
   },
   "timezone": "Asia/Seoul",
   "ui": {
-    "port": {
-      "api": 60000,
-      "web": 60001
-    }
+    "port": 60000
   }
 }
