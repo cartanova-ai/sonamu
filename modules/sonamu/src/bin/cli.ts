@@ -375,10 +375,20 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
+    type StartServersOptions = {
+      projectName: string;
+      apiRootPath: string;
+      port: number;
+    };
     const sonamuUI: {
-      startServers: (appRootPath: string) => void;
+      startServers: (options: StartServersOptions) => void;
     } = await import("@sonamu-kit/ui" as string);
-    sonamuUI.startServers(Sonamu.apiRootPath);
+    sonamuUI.startServers({
+      projectName:
+        Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
+      apiRootPath: Sonamu.apiRootPath,
+      port: Sonamu.config.ui?.port ?? 57000,
+    });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {
       console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);

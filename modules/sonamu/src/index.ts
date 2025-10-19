@@ -17,8 +17,8 @@ export * from "./utils/utils";
 export * from "./testing/fixture-manager";
 export * from "./entity/migrator";
 export * from "./entity/entity-manager";
+export * from "./entity/entity";
 
 // export * from "./api/code-converters";
-// export * from "./entity/entity";
 // export * from "./entity/entity-utils";
 // export * from "./syncer/syncer";

@@ -36,6 +36,9 @@ export type SonamuConfig = {
     prefix: string;
   };
   timezone?: string;
+  ui?: {
+    port: number;
+  };
 };
 export type SonamuSecrets = {
   [key: string]: string;
@@ -173,7 +176,7 @@ class SonamuClass {
       );
 
     // API 루트 패스
-    this.apiRootPath = apiRootPath ?? (await findApiRootPath());
+    this.apiRootPath = apiRootPath ?? findApiRootPath();
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     if (fs.existsSync(configPath) === false) {
