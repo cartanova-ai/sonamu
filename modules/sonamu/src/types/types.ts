@@ -186,7 +186,7 @@ export type EntityProp =
   | RelationProp;
 
 export type EntityIndex = {
-  type: "index" | "unique";
+  type: "index" | "unique" | "fulltext";
   columns: string[];
   name?: string;
 };
@@ -443,7 +443,7 @@ export type MigrationColumn = {
 };
 export type MigrationIndex = {
   columns: string[];
-  type: "unique" | "index";
+  type: "unique" | "index" | "fulltext";
 };
 export type MigrationForeign = {
   columns: string[];

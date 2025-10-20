@@ -523,7 +523,7 @@ export class Entity {
       .filter((f) => f !== null) as string[];
   }
 
-  getTableColumns(): string[] {
+  getTableColumns(): { name: string; type: string }[] {
     return this.props
       .map((prop) => {
         if (prop.type === "relation") {
@@ -531,12 +531,12 @@ export class Entity {
             prop.relationType === "BelongsToOne" ||
             (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
           ) {
-            return `${prop.name}_id`;
+            return { name: `${prop.name}_id`, type: "int_unsigned" };
           } else {
             return null;
           }
         }
-        return prop.name;
+        return { name: prop.name, type: prop.type };
       })
       .filter(nonNullable);
   }

@@ -239,9 +239,9 @@ export class Migrator {
         return {
           name: connKey.replace("_master", ""),
           connKey,
-          connString: `mysql2://${connection.user ?? ""}@${
-            connection.host
-          }:${connection.port}/${connection.database}` as ConnString,
+          connString: `mysql2://${connection.user ?? ""}@${connection.host}:${
+            connection.port
+          }/${connection.database}` as ConnString,
           currentVersion,
           status,
           pending,
@@ -416,7 +416,7 @@ export class Migrator {
       {
         file: string;
         directory: string;
-      }[],
+      }[]
     ];
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
@@ -947,12 +947,19 @@ export class Migrator {
       (dbIndex) => dbIndex.Key_name
     );
 
+    const parseIndexType = (index: DBIndex) => {
+      if (index.Index_type === "FULLTEXT") {
+        return "fulltext";
+      }
+      return index.Non_unique === 1 ? "index" : "unique";
+    };
+
     // indexes 처리
     const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map(
       (keyName) => {
         const currentIndexes = dbIndexesGroup[keyName];
         return {
-          type: currentIndexes[0].Non_unique === 1 ? "index" : "unique",
+          type: parseIndexType(currentIndexes[0]),
           columns: currentIndexes.map(
             (currentIndex) => currentIndex.Column_name
           ),
@@ -1277,7 +1284,9 @@ export class Migrator {
           if ((prop.useConstraint ?? true) === true) {
             r.foreigns.push({
               columns: [idColumnName],
-              to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
+              to: `${inflection
+                .underscore(inflection.pluralize(prop.with))
+                .toLowerCase()}.id`,
               onUpdate: prop.onUpdate ?? "RESTRICT",
               onDelete: prop.onDelete ?? "RESTRICT",
             });
@@ -1373,12 +1382,23 @@ export class Migrator {
     if (indexes.length === 0) {
       return [];
     }
+
+    const methodMap = {
+      index: "index",
+      fulltext: "index",
+      unique: "unique",
+    };
+
     const lines = _.uniq(
       indexes.reduce((r, index) => {
         r.push(
-          `table.${index.type}([${index.columns
+          `table.${methodMap[index.type]}([${index.columns
             .map((col) => `'${col}'`)
-            .join(",")}])`
+            .join(",")}], ${
+            index.type === "fulltext"
+              ? "undefined, { indexType: 'FULLTEXT' }"
+              : ""
+          })`
         );
         return r;
       }, [] as string[])
@@ -1855,6 +1875,12 @@ export class Migrator {
       },
     };
 
+    const methodMap = {
+      index: "index",
+      fulltext: "index",
+      unique: "unique",
+    };
+
     // 인덱스가 추가되는 경우, 컬럼과 같이 추가된 케이스에는 drop에서 제외해야함!
     linesTo.add = {
       up: ["// add indexes", ...this.genIndexDefinitions(indexesTo.add)],
@@ -1869,7 +1895,9 @@ export class Migrator {
           )
           .map(
             (index) =>
-              `table.drop${inflection.capitalize(index.type)}([${index.columns
+              `table.drop${inflection.capitalize(
+                methodMap[index.type]
+              )}([${index.columns
                 .map((columnName) => `'${columnName}'`)
                 .join(",")}])`
           ),
@@ -1887,7 +1915,9 @@ export class Migrator {
           )
           .map(
             (index) =>
-              `table.drop${inflection.capitalize(index.type)}([${index.columns
+              `table.drop${inflection.capitalize(
+                methodMap[index.type]
+              )}([${index.columns
                 .map((columnName) => `'${columnName}'`)
                 .join(",")}])`
           ),

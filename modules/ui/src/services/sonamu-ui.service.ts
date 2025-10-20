@@ -250,7 +250,7 @@ export namespace SonamuUIService {
 
   export function getTableColumns(
     entityId: string
-  ): Promise<{ columns: string[] }> {
+  ): Promise<{ columns: { name: string; type: string }[] }> {
     return fetch({
       method: "GET",
       url: `/api/entity/getTableColumns`,

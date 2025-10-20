@@ -3,7 +3,7 @@ import { Button, Dropdown, Form, Header, Segment } from "semantic-ui-react";
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { z } from "zod";
 import { EntityIndex } from "sonamu";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
 type EntityIndexFormProps = { entityId: string; oldOne?: EntityIndex };
@@ -12,9 +12,9 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
   const { doneModal } = useCommonModal();
 
   // TypeForm
-  const { form, register } = useTypeForm(
+  const { form, setForm, register } = useTypeForm(
     z.object({
-      type: z.enum(["index", "unique"]),
+      type: z.enum(["index", "unique", "fulltext"]),
       columns: z.string().array(),
     }),
     {
@@ -23,6 +23,18 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
       ...oldOne,
     }
   );
+
+  // 초기 마운트 체크
+  const isInitialMount = useRef(true);
+
+  // form.type이 변경되면 columns 초기화 (초기 진입 시 제외)
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    setForm({ ...form, columns: [] });
+  }, [form.type]);
 
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
@@ -44,7 +56,7 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
     doneModal(form);
   };
 
-  const typeOptions = ["index", "unique"].map((k) => ({
+  const typeOptions = ["index", "unique", "fulltext"].map((k) => ({
     key: k,
     value: k,
     text: k.toUpperCase(),
@@ -77,7 +89,10 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
                   <TableColumnAsyncSelect
                     {...register("columns")}
                     entityId={entityId}
-                    className="focus-1"
+                    allowedTypes={
+                      form.type === "fulltext" ? ["string", "text"] : undefined
+                    }
+                    className="focus-2"
                   />
                 </Form.Field>
               </Form.Group>
