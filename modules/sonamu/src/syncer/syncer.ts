@@ -401,8 +401,11 @@ export class Syncer {
             mkdirSync(path.dirname(mapPath), { recursive: true });
             writeFileSync(mapPath, map);
 
-            const sourceMapComment = "\n//# sourceMappingURL=" + path.basename(mapPath);
-            writeFileSync(jsPath, sourceMapComment, { flag: "a"/*파일 끝에 붙이기만 해요*/ });
+            const sourceMapComment =
+              "\n//# sourceMappingURL=" + path.basename(mapPath);
+            writeFileSync(jsPath, sourceMapComment, {
+              flag: "a" /*파일 끝에 붙이기만 해요*/,
+            });
           }
 
           console.log(
@@ -415,18 +418,7 @@ export class Syncer {
       transpiledFilePaths.push(..._transpiledFilePaths);
     }
 
-    // doSyncActions
-    const allFilePaths = [...tsFiles, ...transpiledFilePaths, ...jsonFiles];
-    const targetFilePaths = allFilePaths
-      .filter((filePath) => {
-        return Object.values(this.checksumPatternGroup).some((pattern) =>
-          minimatch(filePath, pattern)
-        );
-      })
-      .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
-    await this.doSyncActions(targetFilePaths);
-
-    // module reload
+    // module reload - doSyncActions 전에 캐시 삭제
     function clearModuleAndDependents(filePath: string) {
       const resolved = require.resolve(filePath);
       const toDelete = new Set([resolved]);
@@ -453,6 +445,18 @@ export class Syncer {
     transpiledFilePaths.map((filePath) => {
       clearModuleAndDependents(filePath);
     });
+
+    // doSyncActions
+    const allFilePaths = [...tsFiles, ...transpiledFilePaths, ...jsonFiles];
+    const targetFilePaths = allFilePaths
+      .filter((filePath) => {
+        return Object.values(this.checksumPatternGroup).some((pattern) =>
+          minimatch(filePath, pattern)
+        );
+      })
+      .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
+    await this.doSyncActions(targetFilePaths);
+
     this.apis = [];
     this.types = {};
     this.models = {};
