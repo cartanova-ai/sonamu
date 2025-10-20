@@ -254,6 +254,22 @@ export class Puri<
     return this;
   }
 
+  whereMatch<
+    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
+  >(
+    column: TColumn,
+    value: ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TResult,
+      TJoined
+    >
+  ): Puri<TSchema, TTable, TResult, TJoined> {
+    this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
+    return this;
+  }
+
   // WhereGroup (괄호 그룹핑 지원)
   whereGroup(
     callback: (
