@@ -17,7 +17,7 @@
   },
   {
     "path": "/dist/application/user/user.model.js",
-    "checksum": "c9aa5ff433f795dd2f120e977e13ad44bf7495c5"
+    "checksum": "80e78175f9cc8f45ef4ef2b9718191169be43be4"
   },
   {
     "path": "/src/application/company/company.entity.json",
@@ -57,10 +57,10 @@
   },
   {
     "path": "/src/application/user/user.entity.json",
-    "checksum": "ab563f517aaf41d0599b1e2c7cb8e5e1a0fd7525"
+    "checksum": "5d33b3a981f34f0afec0174c711a19014ae3152a"
   },
   {
     "path": "/src/application/user/user.types.ts",
-    "checksum": "87e997841e288b67e55a74ed56f64321d2686e15"
+    "checksum": "2dba137f55f88c85e64db65e4f52ee97f0f7fe8f"
   }
 ]

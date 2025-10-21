@@ -27,3 +27,9 @@ export const UserRegisterParams = z.object({
   role: z.enum(["normal", "admin"]).default("normal"),
 });
 export type UserRegisterParams = z.infer<typeof UserRegisterParams>;
+
+// User - SearchParams
+export const UserSearchParams = z.object({
+  keyword: z.string(),
+});
+export type UserSearchParams = z.infer<typeof UserSearchParams>;

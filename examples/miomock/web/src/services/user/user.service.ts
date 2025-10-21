@@ -18,6 +18,7 @@ import {
   UserSaveParams,
   UserLoginParams,
   UserRegisterParams,
+  UserSearchParams,
 } from "./user.types";
 
 export namespace UserService {
@@ -126,6 +127,15 @@ export namespace UserService {
       method: "POST",
       url: `/api/user/register`,
       data: { params },
+    });
+  }
+
+  export async function search(
+    params: UserSearchParams,
+  ): Promise<UserSubsetMapping["A"][]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/search?${qs.stringify({ params })}`,
     });
   }
 }

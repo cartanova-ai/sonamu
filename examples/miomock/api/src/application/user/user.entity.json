@@ -49,7 +49,7 @@
       "relationType": "OneToOne"
     }
   ],
-  "indexes": [],
+  "indexes": [{ "type": "fulltext", "columns": ["bio"], "parser": "ngram" }],
   "subsets": {
     "A": [
       "id",

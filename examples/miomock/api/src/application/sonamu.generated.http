@@ -264,3 +264,10 @@ Content-Type: application/json
     "role": "unknown-undefined"
   }
 }
+
+
+###
+
+GET {{baseUrl}}/api/user/search
+	?params[keyword]=KEYWORD
+Content-Type: application/json
