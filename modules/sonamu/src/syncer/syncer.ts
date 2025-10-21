@@ -136,7 +136,7 @@ export class Syncer {
   };
 
   get checksumsPath(): string {
-    return path.join(Sonamu.apiRootPath, "/.so-checksum");
+    return path.join(Sonamu.apiRootPath, "/sonamu.lock");
   }
   public constructor() {}
 
