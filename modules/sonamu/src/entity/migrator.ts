@@ -416,7 +416,7 @@ export class Migrator {
       {
         file: string;
         directory: string;
-      }[]
+      }[],
     ];
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
@@ -845,7 +845,10 @@ export class Migrator {
 
           // 1. columnsAndIndexes 처리
           const isEqualColumns = equal(entityColumns, dbColumns);
-          const isEqualIndexes = equal(entityIndexes, dbIndexes);
+          const isEqualIndexes = equal(
+            entityIndexes.map((index) => _.omit(index, ["parser"])),
+            dbIndexes
+          );
           if (!isEqualColumns || !isEqualIndexes) {
             alterCodes.push(
               await this.generateAlterCode_ColumnAndIndexes(
@@ -1442,18 +1445,26 @@ export class Migrator {
     columns: MigrationColumn[],
     indexes: MigrationIndex[]
   ): Promise<GenMigrationCode> {
+    // fulltext index 분리
+    const [ngramIndexes, standardIndexes] = _.partition(
+      indexes,
+      (i) => i.type === "fulltext" && i.parser === "ngram"
+    );
+
     // 컬럼, 인덱스 처리
     const lines: string[] = [
       'import { Knex } from "knex";',
       "",
       "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.createTable("${table}", (table) => {`,
+      `await knex.schema.createTable("${table}", (table) => {`,
       "// columns",
       ...this.genColumnDefinitions(columns),
       "",
       "// indexes",
-      ...this.genIndexDefinitions(indexes),
+      ...standardIndexes.map((index) => this.genIndexDefinition(index, table)),
       "});",
+      // ngram은 knex.raw로 처리하므로 createTable 밖에서 실행
+      ...ngramIndexes.map((index) => this.genIndexDefinition(index, table)),
       "}",
       "",
       "export async function down(knex: Knex): Promise<void> {",
@@ -1624,23 +1635,38 @@ export class Migrator {
     // 인덱스의 add, drop 여부 확인
     const alterIndexesTo = this.getAlterIndexesTo(entityIndexes, dbIndexes);
 
-    // 추출된 인덱스들을 기준으로 각각 라인 생성
-    const alterIndexLinesTo = this.getAlterIndexLinesTo(
-      alterIndexesTo,
-      alterColumnsTo
+    // fulltext index 분리
+    const [ngramIndexes, standardIndexes] = _.partition(
+      alterIndexesTo.add,
+      (i) => i.type === "fulltext" && i.parser === "ngram"
+    );
+
+    // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
+    const indexNeedsToDrop = alterIndexesTo.drop.filter(
+      (index) =>
+        index.columns.every((colName) =>
+          alterColumnsTo.drop.map((col) => col.name).includes(colName)
+        ) === false
     );
 
     const lines: string[] = [
       'import { Knex } from "knex";',
       "",
       "export async function up(knex: Knex): Promise<void> {",
-      `return knex.schema.alterTable("${table}", (table) => {`,
+      `await knex.schema.alterTable("${table}", (table) => {`,
+      // 1. add column
       ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.up : []),
+      // 2. drop column
       ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.up : []),
+      // 3. alter column
       ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.up : []),
-      ...(alterIndexesTo.add.length > 0 ? alterIndexLinesTo.add.up : []),
-      ...(alterIndexesTo.drop.length > 0 ? alterIndexLinesTo.drop.up : []),
-      "})",
+      // 4. add index
+      ...standardIndexes.map((index) => this.genIndexDefinition(index, table)),
+      // 5. drop index
+      ...indexNeedsToDrop.map(this.genIndexDropDefinition),
+      "});",
+      // ngram은 knex.raw로 처리하므로 alterTable 밖에서 실행
+      ...ngramIndexes.map((index) => this.genIndexDefinition(index, table)),
       "}",
       "",
       "export async function down(knex: Knex): Promise<void> {",
@@ -1648,13 +1674,16 @@ export class Migrator {
       ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.down : []),
       ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.down : []),
       ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.down : []),
-      ...(alterIndexLinesTo.add.down.length > 0
-        ? alterIndexLinesTo.add.down
-        : []),
-      ...(alterIndexLinesTo.drop.down.length > 0
-        ? alterIndexLinesTo.drop.down
-        : []),
-      "})",
+      ...alterIndexesTo.add
+        .filter(
+          (index) =>
+            index.columns.every((colName) =>
+              alterColumnsTo.add.map((col) => col.name).includes(colName)
+            ) === false
+        )
+        .map(this.genIndexDropDefinition),
+      ...indexNeedsToDrop.map((index) => this.genIndexDefinition(index, table)),
+      "});",
       "}",
     ];
 
@@ -1860,75 +1889,37 @@ export class Migrator {
     return indexesTo;
   }
 
-  getAlterIndexLinesTo(
-    indexesTo: ReturnType<Migrator["getAlterIndexesTo"]>,
-    columnsTo: ReturnType<Migrator["getAlterColumnsTo"]>
-  ) {
-    let linesTo = {
-      add: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-      drop: {
-        up: [] as string[],
-        down: [] as string[],
-      },
-    };
-
+  genIndexDefinition(index: MigrationIndex, table: string) {
     const methodMap = {
       index: "index",
       fulltext: "index",
       unique: "unique",
     };
 
-    // 인덱스가 추가되는 경우, 컬럼과 같이 추가된 케이스에는 drop에서 제외해야함!
-    linesTo.add = {
-      up: ["// add indexes", ...this.genIndexDefinitions(indexesTo.add)],
-      down: [
-        "// rollback - add indexes",
-        ...indexesTo.add
-          .filter(
-            (index) =>
-              index.columns.every((colName) =>
-                columnsTo.add.map((col) => col.name).includes(colName)
-              ) === false
-          )
-          .map(
-            (index) =>
-              `table.drop${inflection.capitalize(
-                methodMap[index.type]
-              )}([${index.columns
-                .map((columnName) => `'${columnName}'`)
-                .join(",")}])`
-          ),
-      ],
-    };
-    // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
-    linesTo.drop = {
-      up: [
-        ...indexesTo.drop
-          .filter(
-            (index) =>
-              index.columns.every((colName) =>
-                columnsTo.drop.map((col) => col.name).includes(colName)
-              ) === false
-          )
-          .map(
-            (index) =>
-              `table.drop${inflection.capitalize(
-                methodMap[index.type]
-              )}([${index.columns
-                .map((columnName) => `'${columnName}'`)
-                .join(",")}])`
-          ),
-      ],
-      down: [
-        "// rollback - drop indexes",
-        ...this.genIndexDefinitions(indexesTo.drop),
-      ],
+    if (index.type === "fulltext" && index.parser === "ngram") {
+      const indexName = `${table}_${index.columns.join("_")}_index`;
+      return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${indexName} (${index.columns.join(
+        ", "
+      )}) WITH PARSER ngram\`);`;
+    }
+
+    return `table.${methodMap[index.type]}([${index.columns
+      .map((col) => `'${col}'`)
+      .join(",")}]${
+      index.type === "fulltext" ? ", undefined, 'FULLTEXT'" : ""
+    })`;
+  }
+
+  genIndexDropDefinition(index: MigrationIndex) {
+    const methodMap = {
+      index: "Index",
+      fulltext: "Index",
+      unique: "Unique",
     };
 
-    return linesTo;
+    return `table.drop${methodMap[index.type]}([${index.columns
+      .map((columnName) => `'${columnName}'`)
+      .join(",")}])`;
   }
 
   async generateAlterCode_Foreigns(

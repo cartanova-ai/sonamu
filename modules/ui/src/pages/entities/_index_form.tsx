@@ -16,6 +16,7 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
     z.object({
       type: z.enum(["index", "unique", "fulltext"]),
       columns: z.string().array(),
+      parser: z.enum(["built-in", "ngram"]).optional(),
     }),
     {
       type: "index",
@@ -33,7 +34,7 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
       isInitialMount.current = false;
       return;
     }
-    setForm({ ...form, columns: [] });
+    setForm({ ...form, columns: [], parser: undefined });
   }, [form.type]);
 
   useEffect(() => {
@@ -62,6 +63,12 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
     text: k.toUpperCase(),
   }));
 
+  const parserOptions = ["built-in", "ngram"].map((k) => ({
+    key: k,
+    value: k,
+    text: k.toUpperCase(),
+  }));
+
   return (
     <div className="form entity-index-form">
       <Segment padded basic>
@@ -84,6 +91,18 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
                     className="focus-0"
                   />
                 </Form.Field>
+                {form.type === "fulltext" && (
+                  <Form.Field>
+                    <label>Parser</label>
+                    <Dropdown
+                      {...register("parser")}
+                      search
+                      selection
+                      options={parserOptions}
+                      className="focus-2"
+                    />
+                  </Form.Field>
+                )}
                 <Form.Field>
                   <label>Columns</label>
                   <TableColumnAsyncSelect

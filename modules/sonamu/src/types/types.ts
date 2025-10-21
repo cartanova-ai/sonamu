@@ -189,6 +189,7 @@ export type EntityIndex = {
   type: "index" | "unique" | "fulltext";
   columns: string[];
   name?: string;
+  parser?: "built-in" | "ngram";
 };
 export type EntityJson = {
   id: string;
@@ -444,6 +445,7 @@ export type MigrationColumn = {
 export type MigrationIndex = {
   columns: string[];
   type: "unique" | "index" | "fulltext";
+  parser?: "built-in" | "ngram";
 };
 export type MigrationForeign = {
   columns: string[];
