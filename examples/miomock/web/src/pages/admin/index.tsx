@@ -9,7 +9,6 @@ export default function AdminIndexPage() {
 
   const handleLogout = () => {
     logout();
-    navigate("/admin/login");
   };
 
   return (
@@ -18,25 +17,36 @@ export default function AdminIndexPage() {
 
       <Segment>
         <Header as="h3">환영합니다!</Header>
-        <p>
-          <strong>이름:</strong> {user?.username}
-        </p>
-        <p>
-          <strong>이메일:</strong> {user?.email}
-        </p>
-        <p>
-          <strong>역할:</strong> {user?.role}
-        </p>
-        <p>
-          <strong>가입일:</strong>{" "}
-          {user?.created_at
-            ? new Date(user.created_at).toLocaleDateString("ko-KR")
-            : "-"}
-        </p>
+        {user ? (
+          <>
+            <p>
+              <strong>이름:</strong> {user.username}
+            </p>
+            <p>
+              <strong>이메일:</strong> {user.email}
+            </p>
+            <p>
+              <strong>역할:</strong> {user.role}
+            </p>
+            <p>
+              <strong>가입일:</strong>{" "}
+              {user.created_at
+                ? new Date(user.created_at).toLocaleDateString("ko-KR")
+                : "-"}
+            </p>
 
-        <Button color="red" onClick={handleLogout}>
-          로그아웃
-        </Button>
+            <Button color="red" onClick={handleLogout}>
+              로그아웃
+            </Button>
+          </>
+        ) : (
+          <>
+            <p>로그인이 필요합니다.</p>
+            <Button color="teal" onClick={() => navigate("/admin/login-test")}>
+              로그인
+            </Button>
+          </>
+        )}
       </Segment>
 
       <Segment>

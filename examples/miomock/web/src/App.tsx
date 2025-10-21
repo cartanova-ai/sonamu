@@ -6,33 +6,9 @@ import { useAuth } from "./admin-common/auth";
 
 function App() {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
-  const isLoginPage = location.pathname === "/admin/login";
-
-  if (loading) {
-    return (
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 100 }}>
-          로그인을 확인중입니다...
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLoginPage && user?.role !== "admin") {
-    return (
-      <Navigate to="/admin/login" state={{ from: location }} replace />
-    );
-  }
+  const isLoginPage = location.pathname === "/admin/login" || location.pathname === "/admin/login-test";
 
   return (
     <div className="app">

@@ -61,7 +61,6 @@ export default function Sidebar({ className }: SidebarProps) {
 
   const handleLogout = () => {
     logout();
-    navigate("/admin/login");
   };
 
   return (
