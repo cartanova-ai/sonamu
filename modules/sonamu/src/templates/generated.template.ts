@@ -180,9 +180,19 @@ export class Template__generated extends Template {
 
     const schemaBody = propNodeToZodTypeDef(propNode, importKeys);
 
+    // fulltext index에 포함된 컬럼들 추출
+    const fulltextColumns = _.uniq(
+      entity.indexes
+        .filter((index) => index.type === "fulltext")
+        .flatMap((index) => index.columns)
+    );
+
     const lines = [
       `export const ${schemaName} = ${schemaBody}`,
-      `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
+      `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
+        (fulltextColumns.length > 0
+          ? ` & { readonly __fulltext__: readonly [${fulltextColumns.map((col) => `"${col}"`).join(", ")}] }`
+          : ""),
     ];
 
     return {

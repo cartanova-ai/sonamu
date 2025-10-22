@@ -8,6 +8,7 @@ import {
   AvailableColumns,
   ExtractColumnType,
   Expand,
+  FulltextColumns,
 } from "./puri.types";
 import chalk from "chalk";
 
@@ -255,16 +256,10 @@ export class Puri<
   }
 
   whereMatch<
-    TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>,
+    TColumn extends FulltextColumns<TSchema, TTable, TResult, TJoined>,
   >(
     column: TColumn,
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TResult,
-      TJoined
-    >
+    value: string
   ): Puri<TSchema, TTable, TResult, TJoined> {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
     return this;

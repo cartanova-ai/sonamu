@@ -153,3 +153,47 @@ export type WhereCondition<
             : never;
         }
       : {});
+
+// Fulltext index 컬럼 추출 타입 (메인 테이블 + 조인된 테이블)
+export type FulltextColumns<
+  TSchema,
+  T extends keyof TSchema | string,
+  TResult = any,
+  TJoined = {},
+> = T extends keyof TSchema
+  ? // 기존 테이블 케이스
+    | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
+        ? Col & string
+        : never)
+      | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
+          ? `${T & string}.${Col & string}`
+          : never)
+      | (TJoined extends Record<string, any>
+          ? {
+              [K in keyof TJoined]: TJoined[K] extends {
+                __fulltext__: readonly (infer Col)[];
+              }
+                ?
+                    | (Col & string)
+                    | `${string & K}.${Col & string}`
+                : never;
+            }[keyof TJoined]
+          : never)
+  : // 서브쿼리 케이스 (T는 alias)
+    | (TResult extends { __fulltext__: readonly (infer Col)[] }
+        ? Col & string
+        : never)
+      | (TResult extends { __fulltext__: readonly (infer Col)[] }
+          ? `${T & string}.${Col & string}`
+          : never)
+      | (TJoined extends Record<string, any>
+          ? {
+              [K in keyof TJoined]: TJoined[K] extends {
+                __fulltext__: readonly (infer Col)[];
+              }
+                ?
+                    | (Col & string)
+                    | `${string & K}.${Col & string}`
+                : never;
+            }[keyof TJoined]
+          : never);

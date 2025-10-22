@@ -123,7 +123,9 @@ export const UserBaseSchema = z.object({
   is_verified: z.boolean(),
   // employee: OneToOne Employee
 });
-export type UserBaseSchema = z.infer<typeof UserBaseSchema>;
+export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
+  readonly __fulltext__: readonly ["bio"];
+};
 
 // BaseListParams: Company
 export const CompanyBaseListParams = z
@@ -279,7 +281,7 @@ export const ProjectSubsetA = z.object({
           name: z.string().max(128),
         })
         .nullable(),
-    }),
+    })
   ),
 });
 export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;
