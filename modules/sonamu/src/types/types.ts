@@ -1,4 +1,14 @@
+import { FastifyCorsOptions } from "@fastify/cors";
+import { FastifyFormbodyOptions } from "@fastify/formbody";
+import {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifyServerOptions,
+} from "fastify";
+import { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
+import { Context, ApiDecoratorOptions } from "../api";
 
 /* 
   Enums
@@ -816,4 +826,66 @@ export type ManyToManyBaseSchema<
   [K in `${FromIdKey}_id`]: number;
 } & {
   [K in `${ToIdKey}_id`]: number;
+};
+
+export type SonamuFastifyConfig = {
+  contextProvider: (
+    defaultContext: Pick<Context, "headers" | "reply">,
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) => Context;
+  guardHandler: (
+    guard: string,
+    request: FastifyRequest,
+    api: {
+      typeParameters: ApiParamType.TypeParam[];
+      parameters: ApiParam[];
+      returnType: ApiParamType;
+      modelName: string;
+      methodName: string;
+      path: string;
+      options: ApiDecoratorOptions;
+    }
+  ) => void;
+  cache?: {
+    get: (key: string) => Promise<unknown | null>;
+    put: (key: string, value: unknown, ttl?: number) => Promise<void>;
+    resolveKey: (
+      path: string,
+      reqBody: {
+        [key: string]: unknown;
+      }
+    ) =>
+      | {
+          cache: false;
+        }
+      | {
+          cache: true;
+          key: string;
+          ttl?: number;
+        };
+  };
+};
+
+export type SonamuServerOptions = {
+  fastify?: FastifyServerOptions;
+
+  listen?: {
+    port: number;
+    host?: string;
+  };
+
+  plugins?: {
+    formbody?: boolean | FastifyFormbodyOptions;
+    qs?: boolean | QsPluginOptions;
+    cors?: boolean | FastifyCorsOptions;
+    custom?: (server: FastifyInstance) => void;
+  };
+
+  apiConfig: SonamuFastifyConfig;
+
+  lifecycle?: {
+    onStart?: (server: FastifyInstance) => Promise<void> | void;
+    onShutdown?: (server: FastifyInstance) => Promise<void> | void;
+  };
 };

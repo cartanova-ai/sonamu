@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import { AsyncLocalStorage } from "async_hooks";
 import chalk from "chalk";
+import fastify from "fastify";
 
 import { ZodError } from "zod";
 import { getZodObjectFromApi } from "./code-converters";
@@ -11,12 +12,16 @@ import {
 } from "../exceptions/so-exceptions";
 import { humanizeZodError } from "../utils/zod-error";
 import { fastifyCaster } from "./caster";
-import { ApiParam, ApiParamType } from "../types/types";
+import {
+  ApiParamType,
+  SonamuFastifyConfig,
+  SonamuServerOptions,
+} from "../types/types";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
 import { DB, SonamuDBConfig } from "../database/db";
 import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
-import type { ApiDecoratorOptions, ExtendedApi } from "./decorators";
+import type { ExtendedApi } from "./decorators";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import type { Context } from "./context";
@@ -42,44 +47,6 @@ export type SonamuConfig = {
 };
 export type SonamuSecrets = {
   [key: string]: string;
-};
-type SonamuFastifyConfig = {
-  contextProvider: (
-    defaultContext: Pick<Context, "headers" | "reply">,
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => Context;
-  guardHandler: (
-    guard: string,
-    request: FastifyRequest,
-    api: {
-      typeParameters: ApiParamType.TypeParam[];
-      parameters: ApiParam[];
-      returnType: ApiParamType;
-      modelName: string;
-      methodName: string;
-      path: string;
-      options: ApiDecoratorOptions;
-    }
-  ) => void;
-  cache?: {
-    get: (key: string) => Promise<unknown | null>;
-    put: (key: string, value: unknown, ttl?: number) => Promise<void>;
-    resolveKey: (
-      path: string,
-      reqBody: {
-        [key: string]: unknown;
-      }
-    ) =>
-      | {
-          cache: false;
-        }
-      | {
-          cache: true;
-          key: string;
-          ttl?: number;
-        };
-  };
 };
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -226,6 +193,33 @@ class SonamuClass {
 
     this.isInitialized = true;
     !doSilent && console.timeEnd(chalk.cyan("Sonamu.init"));
+  }
+
+  async createServer(
+    options: SonamuServerOptions,
+    initOptions?: {
+      enableSync?: boolean;
+      doSilent?: boolean;
+    }
+  ) {
+    const server = fastify(options.fastify);
+    this.server = server;
+
+    // 플러그인 등록
+    if (options.plugins) {
+      this.registerPlugins(server, options.plugins);
+    }
+
+    // API 라우팅 설정
+    await this.withFastify(server, options.apiConfig, {
+      enableSync: initOptions?.enableSync,
+      doSilent: initOptions?.doSilent,
+    });
+
+    // 서버 시작
+    await this.boot(server, options);
+
+    return server;
   }
 
   async withFastify(
@@ -418,6 +412,76 @@ class SonamuClass {
     });
   }
 
+  private registerPlugins(
+    server: FastifyInstance,
+    plugins: SonamuServerOptions["plugins"]
+  ) {
+    if (!plugins) {
+      return;
+    }
+
+    const pluginsModules = {
+      formbody: "@fastify/formbody",
+      qs: "fastify-qs",
+      cors: "@fastify/cors",
+    } as const;
+
+    const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(
+      key: K,
+      pluginName: string
+    ) => {
+      const option = plugins[key];
+      if (!option) return;
+
+      if (option === true) {
+        server.register(import(pluginName));
+      } else {
+        server.register(import(pluginName), option);
+      }
+    };
+
+    Object.entries(pluginsModules).forEach(([key, pluginName]) => {
+      registerPlugin(key as keyof typeof plugins, pluginName);
+    });
+
+    if (plugins.custom) {
+      plugins.custom(server);
+    }
+  }
+
+  private async boot(server: FastifyInstance, options: SonamuServerOptions) {
+    const port = options.listen?.port ?? 3000;
+    const host = options.listen?.host ?? "localhost";
+
+    server.addHook("onClose", async () => {
+      await options.lifecycle?.onShutdown?.(server);
+      await this.destroy();
+    });
+
+    const shutdown = async () => {
+      try {
+        await server.close();
+        process.exit(0);
+      } catch (err) {
+        console.error("Error during shutdown:", err);
+        process.exit(1);
+      }
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+
+    server
+      .listen({ port, host })
+      .then(async () => {
+        await options.lifecycle?.onStart?.(server);
+      })
+      .catch(async (err) => {
+        console.error(chalk.red("Failed to start server:", err));
+        await shutdown();
+      });
+  }
+
   private async handleFileChange(
     event: string,
     filePath: string
@@ -459,6 +523,7 @@ class SonamuClass {
   async destroy(): Promise<void> {
     const { BaseModel } = require("../database/base-model");
     await BaseModel.destroy();
+    await this.watcher?.close();
   }
 }
 export const Sonamu = new SonamuClass();
