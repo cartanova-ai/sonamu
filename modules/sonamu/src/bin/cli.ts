@@ -82,7 +82,7 @@ bootstrap().finally(async () => {
   if (migrator) {
     await migrator.destroy();
   }
-  await FixtureManager.destory();
+  await FixtureManager.destroy();
 
   /* Global End */
   console.log(chalk.bgBlue(`END ${new Date()}\n`));
