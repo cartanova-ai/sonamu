@@ -286,6 +286,8 @@ async function fixture_init() {
 
     await db.destroy();
   }
+
+  await _db.destroy();
 }
 
 async function fixture_import(entityId: string, recordIds: number[]) {
