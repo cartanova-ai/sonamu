@@ -93,6 +93,6 @@
   },
   "packageManager": "yarn@3.6.3",
   "resolutions": {
-    "sonamu": "portal:/Users/minsangk/Development/sonamu/modules/sonamu"
+    "sonamu": "portal:../sonamu"
   }
 }
