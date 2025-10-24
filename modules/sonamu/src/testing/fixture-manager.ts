@@ -311,7 +311,7 @@ export class FixtureManagerClass {
     return [..._.uniq(relQueries.reverse().flat()), selfQuery];
   }
 
-  async destory() {
+  async destroy() {
     if (this._tdb) {
       await this._tdb.destroy();
       this._tdb = null;

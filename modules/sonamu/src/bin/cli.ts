@@ -82,7 +82,7 @@ bootstrap().finally(async () => {
   if (migrator) {
     await migrator.destroy();
   }
-  await FixtureManager.destory();
+  await FixtureManager.destroy();
 
   /* Global End */
   console.log(chalk.bgBlue(`END ${new Date()}\n`));
@@ -286,6 +286,8 @@ async function fixture_init() {
 
     await db.destroy();
   }
+
+  await _db.destroy();
 }
 
 async function fixture_import(entityId: string, recordIds: number[]) {
