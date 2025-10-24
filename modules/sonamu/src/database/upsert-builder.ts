@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import _ from "lodash";
 import { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
@@ -81,7 +81,7 @@ export class UpsertBuilder {
           if (isRefField(val)) {
             return val.uuid;
           } else {
-            return row[unqCol as keyof typeof row] ?? uuidv4(); // nullable인 경우 uuid로 랜덤값 삽입
+            return row[unqCol as keyof typeof row] ?? randomUUID(); // nullable인 경우 uuid로 랜덤값 삽입
           }
         });
 
@@ -105,7 +105,7 @@ export class UpsertBuilder {
       }
 
       // 찾을 수 없는 경우 생성
-      return uuidv4();
+      return randomUUID();
     })();
 
     // 모든 유니크키에 대해 유니크맵에 uuid 저장
