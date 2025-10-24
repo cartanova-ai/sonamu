@@ -1,18 +1,14 @@
 import path from "path";
-import glob from "glob";
+import { glob } from "fs/promises";
 import fs from "fs";
 import { groupBy, isObject, set } from "lodash";
 
-export function globAsync(pathPattern: string): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    glob(path.resolve(pathPattern), (err, files) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(files);
-      }
-    });
-  });
+export async function globAsync(pathPattern: string): Promise<string[]> {
+  const files: string[] = [];
+  for await (const file of glob(path.resolve(pathPattern))) {
+    files.push(file);
+  }
+  return files;
 }
 export async function importMultiple(
   filePaths: string[],

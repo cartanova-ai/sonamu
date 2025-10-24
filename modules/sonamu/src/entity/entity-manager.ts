@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import glob from "glob";
+import { glob } from "fs/promises";
 import inflection from "inflection";
 import _ from "lodash";
 import path from "path";
@@ -40,18 +40,10 @@ class EntityManagerClass {
     );
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
-    return new Promise((resolve) => {
-      glob.glob(path.resolve(pathPattern!), (_err, files) => {
-        Promise.all(
-          files.map(async (file) => {
-            await this.register(JSON.parse(fs.readFileSync(file).toString()));
-          })
-        ).then(() => {
-          resolve("ok");
-          this.isAutoloaded = true;
-        });
-      });
-    });
+    for await (const file of glob(path.resolve(pathPattern!))) {
+      await this.register(JSON.parse(fs.readFileSync(file).toString()));
+    }
+    this.isAutoloaded = true;
   }
 
   async reload(doSilent: boolean = false) {
