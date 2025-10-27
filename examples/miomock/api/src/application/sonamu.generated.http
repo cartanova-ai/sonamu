@@ -271,3 +271,9 @@ Content-Type: application/json
 GET {{baseUrl}}/api/user/search
 	?params[keyword]=KEYWORD
 Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/trxTest
+	?
+Content-Type: application/json

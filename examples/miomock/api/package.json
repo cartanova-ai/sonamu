@@ -10,7 +10,8 @@
     "start:all": "./start.sh",
     "test": "yarn vitest run",
     "test:watch": "yarn vitest watch --standalone",
-    "sonamu": "sonamu"
+    "sonamu": "sonamu",
+    "practice": "node dist/practices/$0.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

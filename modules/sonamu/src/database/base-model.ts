@@ -20,6 +20,13 @@ export class BaseModelClass {
   }
 
   getPuri(which: DBPreset): PuriWrapper {
+    // 트랜잭션 컨텍스트에서 트랜잭션 획득
+    const trx = DB.getTransactionContext().getTransaction(which);
+    if (trx) {
+      return trx;
+    }
+
+    // 트랜잭션이 없으면 새로운 PuriWrapper 반환
     const db = this.getDB(which);
     return new PuriWrapper(db, this.getUpsertBuilder());
   }

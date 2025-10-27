@@ -281,7 +281,7 @@ export const ProjectSubsetA = z.object({
           name: z.string().max(128),
         })
         .nullable(),
-    })
+    }),
   ),
 });
 export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;

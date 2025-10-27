@@ -7,6 +7,7 @@ import {
   api,
   BaseModelClass,
   Sonamu,
+  transactional,
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
@@ -257,6 +258,28 @@ class UserModelClass extends BaseModelClass {
       .whereMatch("bio", params.keyword) // ngram index
       .debug();
     return users;
+  }
+
+  @api({ httpMethod: "GET" })
+  @transactional({ isolation: "serializable" })
+  async trxTest(): Promise<void> {
+    const wdb = this.getPuri("w");
+
+    await wdb.debugTransaction();
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const [trxStates] = await wdb.knex.raw(`
+      SELECT *
+      FROM performance_schema.events_transactions_current
+      WHERE THREAD_ID = (
+          SELECT THREAD_ID
+          FROM performance_schema.threads
+          WHERE PROCESSLIST_ID = CONNECTION_ID()
+        )
+    `);
+
+    console.log(trxStates);
   }
 }
 
