@@ -138,4 +138,11 @@ export namespace UserService {
       url: `/api/user/search?${qs.stringify({ params })}`,
     });
   }
+
+  export async function trxTest(): Promise<void> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/trxTest?${qs.stringify({})}`,
+    });
+  }
 }

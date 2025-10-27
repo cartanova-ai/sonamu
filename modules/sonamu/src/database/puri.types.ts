@@ -161,8 +161,8 @@ export type FulltextColumns<
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
     | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
-        ? Col & string
-        : never)
+          ? Col & string
+          : never)
       | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
           ? `${T & string}.${Col & string}`
           : never)
@@ -171,16 +171,14 @@ export type FulltextColumns<
               [K in keyof TJoined]: TJoined[K] extends {
                 __fulltext__: readonly (infer Col)[];
               }
-                ?
-                    | (Col & string)
-                    | `${string & K}.${Col & string}`
+                ? (Col & string) | `${string & K}.${Col & string}`
                 : never;
             }[keyof TJoined]
           : never)
   : // 서브쿼리 케이스 (T는 alias)
     | (TResult extends { __fulltext__: readonly (infer Col)[] }
-        ? Col & string
-        : never)
+          ? Col & string
+          : never)
       | (TResult extends { __fulltext__: readonly (infer Col)[] }
           ? `${T & string}.${Col & string}`
           : never)
@@ -189,9 +187,14 @@ export type FulltextColumns<
               [K in keyof TJoined]: TJoined[K] extends {
                 __fulltext__: readonly (infer Col)[];
               }
-                ?
-                    | (Col & string)
-                    | `${string & K}.${Col & string}`
+                ? (Col & string) | `${string & K}.${Col & string}`
                 : never;
             }[keyof TJoined]
           : never);
+
+// Insert 타입: id, created_at 제외
+export type InsertData<T> = {
+  [K in keyof T as K extends "id" | "created_at" | "__fulltext__"
+    ? never
+    : K]: T[K];
+};

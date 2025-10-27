@@ -17,7 +17,7 @@
   },
   {
     "path": "/dist/application/user/user.model.js",
-    "checksum": "80e78175f9cc8f45ef4ef2b9718191169be43be4"
+    "checksum": "c5b216fd5cb931be8fb54ca2abc6259aa495b62d"
   },
   {
     "path": "/src/application/company/company.entity.json",
@@ -53,7 +53,7 @@
   },
   {
     "path": "/src/application/sonamu.generated.ts",
-    "checksum": "9df1510b97bbb9ccbfc38cee23680260ea83d1e7"
+    "checksum": "441710662610d7e8e6365d897cedc405631e2bbb"
   },
   {
     "path": "/src/application/user/user.entity.json",

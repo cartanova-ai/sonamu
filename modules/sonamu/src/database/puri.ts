@@ -10,6 +10,7 @@ import {
   Expand,
   FulltextColumns,
   FullColumnNames,
+  InsertData,
 } from "./puri.types";
 import chalk from "chalk";
 
@@ -258,10 +259,7 @@ export class Puri<
 
   whereMatch<
     TColumn extends FulltextColumns<TSchema, TTable, TResult, TJoined>,
-  >(
-    column: TColumn,
-    value: string
-  ): Puri<TSchema, TTable, TResult, TJoined> {
+  >(column: TColumn, value: string): Puri<TSchema, TTable, TResult, TJoined> {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
     return this;
   }
@@ -299,7 +297,7 @@ export class Puri<
   >(
     table: TJoinTable,
     left: TLColumn,
-    right: TRColumn,
+    right: TRColumn
   ): Puri<
     TSchema,
     TTable,
@@ -361,7 +359,7 @@ export class Puri<
   >(
     table: TJoinTable,
     left: TLColumn,
-    right: TRColumn,
+    right: TRColumn
   ): Puri<
     TSchema,
     TTable,
@@ -493,7 +491,7 @@ export class Puri<
 
   // Insert/Update/Delete
   async insert(
-    data: TTable extends keyof TSchema ? TSchema[TTable] : unknown
+    data: TTable extends keyof TSchema ? InsertData<TSchema[TTable]> : unknown
   ): Promise<number[]> {
     return this.knexQuery.insert(data);
   }

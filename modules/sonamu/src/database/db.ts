@@ -4,6 +4,8 @@ import path from "path";
 import _ from "lodash";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+import { AsyncLocalStorage } from "async_hooks";
+import { TransactionContext } from "./transaction-context";
 
 type MySQLConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
@@ -38,6 +40,16 @@ export type SonamuDBConfig = {
 class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
+
+  public transactionStorage = new AsyncLocalStorage<TransactionContext>();
+
+  public runWithTransaction<T>(callback: () => Promise<T>): Promise<T> {
+    return this.transactionStorage.run(new TransactionContext(), callback);
+  }
+
+  public getTransactionContext(): TransactionContext {
+    return this.transactionStorage.getStore() ?? new TransactionContext();
+  }
 
   async readKnexfile(): Promise<SonamuDBConfig> {
     const dbConfigPath: string = path.join(
