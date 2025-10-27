@@ -188,7 +188,7 @@ export class Syncer {
     // 비교
     const isSame = equal(currentChecksums, previousChecksums);
     if (isSame) {
-      const msg = "Every files are synced!";
+      const msg = "All files are synced!";
       const margin = (process.stdout.columns - msg.length) / 2;
       console.log(
         chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
