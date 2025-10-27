@@ -66,7 +66,7 @@ class DBClass {
     } catch {}
 
     throw new ServiceUnavailableException(
-      `DB설정 파일을 찾을 수 없습니다. ${dbConfigPath}`
+      `다음 경로에서 DB설정 파일을 찾을 수 없습니다: ${dbConfigPath}. 먼저 빌드(yarn build)를 수행해주세요.`
     );
   }
 
