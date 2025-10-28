@@ -73,7 +73,7 @@ Sonamu는 파일의 변경을 추적하여 동기화 작업을 수행합니다.
 
 > 컨벤션 파일 경로: `/src/services/${entityId}/${entityId}.service.ts`
 
-클라이언트의 종류에 따라 다른 코드가 생성됩니다. 기본적으로 서비스의 메소드명은 API 핸들러 메소드명과 일치하지만, `resourceName`을 따로 기재한 경우에는 클라이언트 종류별로 네이밍이 적용됩니다. 자세한 사항은 [API 데코레이터 - 데코레이터 옵션](/reference/api-decorator/#데코레이터-옵션) 부분을 참고해주세요.
+클라이언트의 종류에 따라 다른 코드가 생성됩니다. 기본적으로 서비스의 메서드명은 API 핸들러 메서드명과 일치하지만, `resourceName`을 따로 기재한 경우에는 클라이언트 종류별로 네이밍이 적용됩니다. 자세한 사항은 [API 데코레이터 - 데코레이터 옵션](/reference/api-decorator/#데코레이터-옵션) 부분을 참고해주세요.
 
 :::note
 백엔드에서 복사된 코드를 프론트엔드에서 사용하기 위해서는 추가적인 함수나 클래스, 타입 등이 필요합니다. 이렇게 프론트엔드에서만 사용하는 코드를 `sonamu.shared.ts`라는 파일에서 관리합니다. 해당 파일은 백엔드 서버가 시작할 때 프론트엔드의 `/src/services` 경로 아래에 복사됩니다.
@@ -85,4 +85,4 @@ Sonamu는 파일의 변경을 추적하여 동기화 작업을 수행합니다.
 
 #### REST Client 파일 생성
 
-Sonamu에 등록된 API 정보를 사용하여 VSCode Extension인 [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) 요청을 생성합니다. Sonamu는 메소드에 명시된 타입을 참고하여 요청에 임시 데이터를 추가합니다. `GET` 요청일 경우 **querystring**을, `POST` 요청일 경우 **body**를 생성합니다.
+Sonamu에 등록된 API 정보를 사용하여 VSCode Extension인 [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) 요청을 생성합니다. Sonamu는 메서드에 명시된 타입을 참고하여 요청에 임시 데이터를 추가합니다. `GET` 요청일 경우 **querystring**을, `POST` 요청일 경우 **body**를 생성합니다.

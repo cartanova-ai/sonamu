@@ -5,11 +5,9 @@ tableOfContents:
   maxHeadingLevel: 4
 ---
 
-- [] modelName 설명 추가
+Sonamu의 모델은 MVC 패턴의 M(Model)과 C(Controller)를 담당하고, **엔티티와 관련된 모든 로직**을 처리합니다. [`@api`](/reference/api-decorator) 데코레이터가 지정된 모델 메서드는 API로 노출됩니다.
 
-Sonamu의 모델은 MVC 패턴의 M(Model)과 C(Controller)를 담당하고, **엔티티와 관련된 모든 로직**을 처리합니다. [`@api`](/reference/api-decorator) 데코레이터가 지정된 모델 메소드는 API로 노출됩니다.
-
-> 컨벤션 파일 경로: `/api/src/application/${entityId}/${entityId}.model.ts`
+> 파일 경로: `/api/src/application/${entityId}/${entityId}.model.ts`
 
 <br/>
 
@@ -17,7 +15,7 @@ Sonamu의 모델은 MVC 패턴의 M(Model)과 C(Controller)를 담당하고, **�
 
 #### 모델 기본 구조
 
-기본 생성된 모델 파일은 CRUD 로직을 갖추고 있으며, 다음과 같은 메소드를 제공합니다.
+기본 생성된 모델 파일은 CRUD 로직을 갖추고 있으며, 다음과 같은 메서드를 제공합니다.
 
 - **`findById`**: ID를 사용하여 데이터를 조회합니다.
 - **`findOne`**: `${entityId}ListParams`를 사용하여 데이터를 하나만 조회합니다.
@@ -73,10 +71,10 @@ export const ${entityId}SaveParams = ${entityId}BaseSchema.partial({
 
 #### runSubsetQuery
 
-해당 메소드는 서브셋을 이용하여 쿼리를 실행합니다. 정의한 서브셋으로 해당 모델의 데이터가 쿼리되는 것을 보증하기 위해, 모든 모델의 Read 메소드는 `runSubsetQuery` 메소드를 통해 쿼리를 호출합니다.
+해당 메서드는 서브셋을 이용하여 쿼리를 실행합니다. 정의한 서브셋으로 해당 모델의 데이터가 쿼리되는 것을 보증하기 위해, 모든 모델의 Read 메서드는 `runSubsetQuery` 메서드를 통해 쿼리를 호출합니다.
 `findById`와 `findOne`은 내부적으로 `findMany`를 호출하며, `findMany`는 `runSubsetQuery`를 통해 쿼리를 호출합니다.
 
-`runSubsetQuery` 메소드는 아래와 같은 형태로 구성됩니다.
+`runSubsetQuery` 메서드는 아래와 같은 형태로 구성됩니다.
 
 ```ts
 type runSubsetQuery<T extends BaseListParams, U extends string> = (params: {
@@ -123,7 +121,100 @@ type build = (buildParams: {
 
 ##### `baseTable`
 
-서브셋 쿼리를 실행할 기본 테이블입니다. 생략할 경우 현재 메소드가 위치한 모델의 테이블을 기본 테이블로 사용합니다. 거의 사용 안함.
+서브셋 쿼리를 실행할 기본 테이블입니다. 생략할 경우 현재 메서드가 위치한 모델의 테이블을 기본 테이블로 사용합니다. 거의 사용 안함.
+
+<br/>
+
+---
+
+#### 데이터베이스 접근 메서드
+
+##### `getDB(preset)`
+
+Knex 인스턴스를 반환합니다.
+
+```typescript
+const wdb = this.getDB("w"); // 쓰기 데이터베이스
+const rdb = this.getDB("r"); // 읽기 데이터베이스
+```
+
+- `"w"`: 쓰기 데이터베이스(master)
+- `"r"`: 읽기 데이터베이스(slave)
+
+##### `getPuri(preset)`
+
+Sonamu의 쿼리 빌더인 `PuriWrapper`를 반환합니다. Puri는 타입 안전한 쿼리 빌더로, 쿼리를 작성할 때 타입 안전성을 보장합니다.
+
+```typescript
+const puri = this.getPuri("w");
+
+const users = await puri
+  .table("users")
+  .where({ status: "active" })
+  .select({ id: true, name: true })
+  .limit(10);
+```
+
+:::tip
+`getPuri`는 `@transactional` 데코레이터와 함께 사용하면 자동으로 트랜잭션 내에서 실행됩니다.
+:::
+
+<br/>
+
+---
+
+#### 트랜잭션 처리
+
+Sonamu는 두 가지 방식으로 트랜잭션을 처리할 수 있습니다.
+
+##### 방법 1: `@transactional` 데코레이터 (권장)
+
+`@transactional` 데코레이터와 Puri를 사용하면 명시적인 트랜잭션 코드 없이 자동으로 트랜잭션이 적용됩니다.
+
+```typescript
+import { api, transactional } from "sonamu";
+
+class PostModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async save(spa: PostSaveParams[]): Promise<number[]> {
+    const wdb = this.getPuri("w"); // PuriWrapper 인스턴스
+
+    spa.map((sp) => {
+      wdb.register("posts", sp);
+    });
+
+    // 트랜잭션 내에서 자동 실행
+    const ids = await wdb.upsert("posts");
+    return ids;
+  }
+}
+```
+
+##### 방법 2: 명시적 트랜잭션
+
+전통적인 방식으로 명시적으로 트랜잭션을 관리할 수도 있습니다.
+
+```typescript
+@api({ httpMethod: "POST" })
+async save(spa: PostSaveParams[]): Promise<number[]> {
+  const wdb = this.getDB("w"); // knex 인스턴스
+  const ub = this.getUpsertBuilder();
+
+  spa.map((sp) => {
+    ub.register("posts", sp);
+  });
+
+  return wdb.transaction(async (trx) => {
+    const ids = await ub.upsert(trx, "posts");
+    return ids;
+  });
+}
+```
+
+:::note
+`@transactional` 데코레이터는 중첩 트랜잭션을 지능적으로 처리하며, AsyncLocalStorage를 통해 트랜잭션 컨텍스트를 자동으로 전파합니다. 자세한 내용은 [API 데코레이터 - @transactional](/reference/api-decorator#transactional-데코레이터) 문서를 참고하세요.
+:::
 
 <br/>
 
@@ -135,9 +226,9 @@ Sonamu는 여러 테이블이 중첩된 데이터를 동시에 등록할 수 있
 
 예를 들어, 게시글-태그 관계에서는 게시글을 등록할 때 태그 ID가 필요하기 때문에 게시글과 태그를 동시에 등록할 수 없습니다. 이때 `UpsertBuilder`를 사용하면 태그를 먼저 등록하고 게시글을 등록해야 하는 문제를 해결할 수 있습니다.
 
-`UpsertBuilder`는 상위 테이블 → 하위 테이블 순서로 `register` 메소드를 호출하고, 마지막에 `register`한 순서대로 `upsert` 메소드를 호출하여 데이터를 등록합니다.
+`UpsertBuilder`는 상위 테이블 → 하위 테이블 순서로 `register` 메서드를 호출하고, 마지막에 `register`한 순서대로 `upsert` 메서드를 호출하여 데이터를 등록합니다.
 
-`register` 메소드는 `UBRef`를 반환하며, 이를 사용하여 상위 테이블의 ID(정확히는 `UBRef.use`)를 하위 테이블에 주입할 수 있습니다.
+`register` 메서드는 `UBRef`를 반환하며, 이를 사용하여 상위 테이블의 ID(정확히는 `UBRef.use`)를 하위 테이블에 주입할 수 있습니다.
 
 ```ts
 type UBRef = {
@@ -150,7 +241,9 @@ type UBRef = {
 };
 ```
 
-`upsert` 메소드는 실제 생성 혹은 갱신된 데이터의 ID를 반환합니다.
+`upsert` 메서드는 실제 생성 혹은 갱신된 데이터의 ID를 반환합니다.
+
+자세한 사용법은 [UpsertBuilder 가이드](/guide/upsert-builder)를 참고하세요.
 
 <br/>
 
@@ -158,6 +251,6 @@ type UBRef = {
 
 #### Context
 
-`@api` 데코레이터가 지정된 모든 모델 메소드는 `Context` 객체를 파라미터로 전달 받을 수 있습니다.
+`@api` 데코레이터가 지정된 모든 모델 메서드는 `Context` 객체를 파라미터로 전달 받을 수 있습니다.
 
 `Context` 파라미터의 위치는 상관없으나, 보통 가장 마지막 매개변수로 사용합니다. `Context` 파라미터는 클라이언트 서비스 코드를 생성할 때, 자동으로 매개변수에서 제외됩니다. 이 안에는 세션/인증 처리를 위한 [`@fastify/secure-session`](https://www.npmjs.com/package/@fastify/secure-session) 객체와 [`fastify-passport`](https://www.npmjs.com/package/fastify-passport) 객체가 바인딩되어 있으므로, 별도의 처리가 필요한 경우 활용할 수 있습니다.

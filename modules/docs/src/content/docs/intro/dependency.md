@@ -36,9 +36,9 @@ description: A guide in my new Starlight docs site.
   - Sonamu는 Fastify를 통해 웹서버를 서빙하며, 따라서 웹서버와 관련된 모든 추가 기능(e.g formbody, logging, static, cors, session, cookie, passport, file upload 등)은 Fastify Ecosystem 을 통해 구현 가능합니다.
   - 참고: [Fastify Plugins](https://fastify.dev/docs/latest/Reference/Plugins)
 
-- [mysql2](https://www.npmjs.com/package/mysql2) + [Knex.js](https://knexjs.org/) or [Kysely](https://kysely.dev/)
+- [mysql2](https://www.npmjs.com/package/mysql2) + [Knex.js](https://knexjs.org/)
 
-  - Sonamu는 쿼리빌드, 마이그레이션 실행 등 DB와 직접적으로 통신하는 모든 작업에 Knex.js 혹은 Kysely를 사용합니다.
+  - Sonamu는 쿼리빌드, 마이그레이션 실행 등 DB와 직접적으로 통신하는 모든 작업에 Knex.js를 사용합니다.
   - RDB는 MySQL에 최적화되어 있으며, 추후 PostgreSQL, SQLite를 서포트할 계획이 있습니다.
 
 - [Zod](https://zod.dev/)
