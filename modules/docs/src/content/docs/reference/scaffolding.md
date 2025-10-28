@@ -28,7 +28,7 @@ Sonamu는 엔티티, Enum 정의를 이용하여 모델, 테스트, 뷰 컴포�
   - 정렬의 기본값은 `${entityId}OrderBy` 스키마의 첫 번째 값을 사용합니다.
 - **`save`**
   - `${entityId}SaveParams`를 사용하여 데이터를 저장합니다.
-  - Create/Update 로직은 Sonamu의 `UpsertBuilder`를 사용하여 해당 메소드로 한 번에 처리합니다.
+  - Create/Update 로직은 Sonamu의 `UpsertBuilder`를 사용하여 해당 메서드로 한 번에 처리합니다.
 - **`del`**
   - 데이터의 ID를 입력받아 삭제를 수행합니다.
 

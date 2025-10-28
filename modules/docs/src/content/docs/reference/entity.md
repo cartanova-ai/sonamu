@@ -134,6 +134,100 @@ select * from `withTable` where `withTable`.`JoinColumn` in (select `JoinColumn`
 
 ---
 
+### indexes
+
+인덱스는 데이터베이스 테이블의 조회 성능을 향상시키기 위해 사용됩니다. Sonamu는 다음과 같은 인덱스 타입을 지원합니다.
+
+#### 인덱스 타입
+
+| 타입        | 설명                                                             |
+| ----------- | ---------------------------------------------------------------- |
+| `index`     | 일반 인덱스 (B-Tree 인덱스)                                      |
+| `unique`    | 유니크 인덱스 (중복 값 허용하지 않음)                            |
+| `fulltext`  | 전문 검색 인덱스 (텍스트 검색을 위한 인덱스, parser 옵션 지원) |
+
+#### 인덱스 정의
+
+인덱스는 엔티티 파일의 `indexes` 필드에 배열로 정의됩니다. 각 인덱스는 다음과 같은 속성을 가집니다:
+
+- **`type`**: 인덱스 타입 (`index`, `unique`, `fulltext`)
+- **`columns`**: 인덱스를 구성하는 컬럼명 배열
+- **`parser`**(optional): fulltext 인덱스의 파서 (`built-in`, `ngram`)
+
+#### 사용 예제
+
+```json
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 255 },
+    { "name": "username", "type": "string", "length": 100 },
+    { "name": "status", "type": "enum", "id": "UserStatus" }
+  ],
+  "indexes": [
+    {
+      "type": "unique",
+      "columns": ["email"]
+    },
+    {
+      "type": "index",
+      "columns": ["username", "status"]
+    }
+  ]
+}
+```
+
+#### Fulltext 인덱스
+
+전문 검색을 위한 fulltext 인덱스는 `parser` 옵션을 지원합니다:
+
+- **`built-in`**: MySQL 기본 파서 (영문 등 공백 기반 토큰화)
+- **`ngram`**: N-gram 파서 (한글 등 CJK 언어 지원)
+
+```json
+{
+  "indexes": [
+    {
+      "type": "fulltext",
+      "columns": ["title", "content"],
+      "parser": "ngram"
+    }
+  ]
+}
+```
+
+#### 조인 테이블의 인덱스
+
+`ManyToMany` 관계에서 생성되는 조인 테이블의 인덱스는 엔티티의 `indexes` 필드에서 조인 테이블명을 접두사로 사용하여 정의할 수 있습니다:
+
+```json
+{
+  "indexes": [
+    {
+      "type": "index",
+      "columns": ["users__tags.user_id"]
+    },
+    {
+      "type": "index",
+      "columns": ["users__tags.tag_id"]
+    }
+  ]
+}
+```
+
+#### 인덱스 자동 생성
+
+다음 인덱스는 자동으로 생성됩니다:
+
+- 모든 엔티티에 `uuid` 컬럼의 유니크 인덱스가 자동 생성됩니다.
+- `ManyToMany` 조인 테이블에도 `uuid` 유니크 인덱스가 자동 생성됩니다.
+
+<br/>
+
+---
+
 ### subsets
 
 서브셋은 특정 모델의 데이터 중 실제로 사용할 필드들의 모음입니다. Sonamu UI를 통해 필요한 필드만 선택하여 서브셋을 구성할 수 있습니다.

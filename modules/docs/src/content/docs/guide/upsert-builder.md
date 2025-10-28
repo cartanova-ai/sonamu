@@ -10,8 +10,7 @@ description: UpsertBuilder의 사용법을 설명합니다.
 `register` 메서드와 `upsert` 메서드를 통해 데이터를 생성하거나 수정합니다. `register` 메서드는 실제 데이터베이스 쿼리를 실행하는 것이 아니라, 업데이트할 데이터를 받아서 UpsertBuilder 내부에 저장합니다. `upsert` 메서드를 호출하면, `register` 메서드로 저장된 데이터를 실제 데이터베이스에 저장합니다.
 
 ```typescript
-import { api } from "sonamu";
-import { BaseModelClass } from "sonamu/knex";
+import { api, BaseModelClass } from "sonamu";
 import { UserSaveParams } from "./user.types";
 
 class UserModelClass extends BaseModelClass {
@@ -205,3 +204,123 @@ await ub.updateBatch(wdb, "posts", {
   where: ["title", "content"],
 });
 ```
+
+<br/>
+
+---
+
+### insertOnly로 Insert 전용 모드 사용하기
+
+`upsert` 대신 `insertOnly` 메서드를 사용하면 UPDATE 없이 INSERT만 수행합니다.
+
+```typescript
+const wdb = this.getDB("w");
+const ub = this.getUpsertBuilder();
+
+// 데이터 등록
+params.map((p) => {
+  ub.register("posts", p);
+});
+
+// INSERT만 수행 (중복 시 무시)
+const ids = await ub.insertOnly(wdb, "posts");
+```
+
+<br/>
+
+---
+
+### 고급 기능
+
+#### UUID 기반 참조 관리
+
+`UpsertBuilder`는 내부적으로 UUID를 생성하여 아직 데이터베이스에 저장되지 않은 레코드 간의 참조를 추적합니다.
+
+```typescript
+const ub = this.getUpsertBuilder();
+
+// userRef는 아직 DB에 저장되지 않은 사용자를 가리킴
+const userRef = ub.register("users", { name: "John" });
+
+// userRef를 사용하여 아직 저장되지 않은 사용자를 참조
+const postRef = ub.register("posts", {
+  author_id: userRef, // UUID가 실제 ID로 치환됨
+  title: "Hello",
+});
+
+// 실제 저장 시 UUID가 실제 ID로 치환
+await ub.upsert(wdb, "users");
+await ub.upsert(wdb, "posts");
+```
+
+#### Self-Reference 지원
+
+테이블이 자기 자신을 참조하는 경우에도 `UpsertBuilder`가 자동으로 처리합니다.
+
+```typescript
+// 카테고리가 부모 카테고리를 참조하는 경우
+const parentRef = ub.register("categories", { name: "전자제품" });
+const childRef = ub.register("categories", {
+  name: "스마트폰",
+  parent_id: parentRef, // 자기 참조
+});
+
+// 재귀적으로 처리됨
+await ub.upsert(wdb, "categories");
+```
+
+#### Unique 인덱스 기반 중복 감지
+
+`UpsertBuilder`는 엔티티 정의의 unique 인덱스를 자동으로 인식하여 중복을 감지합니다:
+
+```typescript
+// Entity에 unique 인덱스가 정의된 경우
+// { type: "unique", columns: ["email"] }
+
+const ub = this.getUpsertBuilder();
+
+// 같은 email을 가진 레코드는 UPDATE됨
+ub.register("users", { email: "test@example.com", name: "John" });
+ub.register("users", { email: "test@example.com", name: "Jane" });
+
+await ub.upsert(wdb, "users");
+// 결과: email이 같으므로 1개의 레코드만 생성되고, name이 "Jane"으로 업데이트됨
+```
+
+:::tip
+`UpsertBuilder`는 EntityManager에서 테이블의 unique 인덱스 정보를 자동으로 가져와 사용합니다. 엔티티 정의에 unique 인덱스를 올바르게 설정하면 중복 처리가 자동으로 이루어집니다.
+:::
+
+<br/>
+
+---
+
+### 성능 최적화
+
+#### Chunk Size 지정
+
+대량의 데이터를 처리할 때는 `chunkSize`를 지정하여 메모리 사용량을 줄이고 성능을 최적화할 수 있습니다.
+
+```typescript
+// 1000개씩 나누어서 처리
+await ub.upsert(wdb, "posts", 1000);
+await ub.updateBatch(wdb, "posts", { chunkSize: 1000 });
+```
+
+#### 배치 처리 전략
+
+```typescript
+// 대량의 데이터 처리 시
+const largeDataset = [...]; // 10,000개의 레코드
+
+largeDataset.forEach((data) => {
+  ub.register("posts", data);
+});
+
+// 1000개씩 나누어서 안전하게 처리
+await ub.upsert(wdb, "posts", 1000);
+```
+
+:::note
+`chunkSize`를 너무 작게 설정하면 쿼리 횟수가 증가하여 성능이 저하될 수 있고, 너무 크게 설정하면 메모리 사용량이 증가할 수 있습니다. 일반적으로 500~2000 사이의 값이 적절합니다.
+:::

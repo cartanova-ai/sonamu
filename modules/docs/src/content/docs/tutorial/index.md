@@ -108,15 +108,10 @@ root
 
 Sonamu는 `configs/db.ts` 파일을 통해 데이터베이스 설정을 관리합니다. 이 파일은 `SonamuDBBaseConfig` 타입을 정의하고, `defaultOptions`와 `environments`를 통해 데이터베이스 설정을 관리합니다.
 
-`knex`와 `kysely` 중 선택하여 사용할 수 있으며, `defaultOptions`에 각 라이브러리의 설정을 정의할 수 있습니다.
-
-#### Knex 설정 예시
-
 ```typescript db.ts
 import { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {
-  client: "knex",
   database: "my_database",
   defaultOptions: {
     connection: {
@@ -205,75 +200,6 @@ const baseconfig: SonamuDBBaseConfig = {
 };
 
 export default baseconfig;
-```
-
-#### Kysely 설정 예시
-
-```ts db.ts
-import { SonamuDBBaseConfig } from "sonamu";
-
-const baseconfig: SonamuDBBaseConfig = {
-  client: "kysely",
-  database: "my_database",
-  defaultOptions: {
-    host: "localhost",
-    user: "user",
-    password: "password",
-  },
-};
-```
-
-클라이언트를 `Kysely`로 설정할 경우, `defaultOptions`는 `Kysely`의 `PoolOptions`와 동일한 구조로, 모든 데이터베이스 연결에 적용됩니다. 추가적으로 `migration` 설정을 통해 마이그레이션 디렉토리를 설정할 수 있습니다.
-
-`SonamuDBBaseConfig`는 아래와 같은 주요 설정들을 포함할 수 있습니다.
-
-```ts
-type SonamuDBBaseConfig = {
-  database: string; // 기본 데이터베이스 이름
-  defaultOptions: {
-    host?: string; // 호스트
-    port?: number; // 포트
-    user?: string; // 사용자
-    password?: string; // 비밀번호
-    database?: string; // 데이터베이스 이름
-    timezone?: string; // 타임존
-    charset?: string; // 문자셋
-    dateStrings?: boolean; // 날짜를 문자열로 반환
-    ssl?: boolean | object; // SSL 설정
-    pool?: {
-      min?: number; // 최소 커넥션 수(기본값: 1)
-      max?: number; // 최대 커넥션 수(기본값: 5)
-      idleTimeoutMillis?: number; // 유휴 타임아웃
-      acquireTimeoutMillis?: number; // 획득 타임아웃
-    };
-    migration?: {
-      directory?: string; // 마이그레이션 디렉토리(기본값: "./dist/migrations")
-      extension?: string; // 파일 확장자(기본값: "js")
-    };
-    debug?: boolean; // SQL 디버그 모드
-  };
-  environments: {
-    development: {};
-    development_slave: {};
-    production: {};
-    production_slave: {};
-  };
-  types?: {
-    enabled?: boolean; // 인터페이스 자동 생성 활성화 (기본값: true)
-    outDir?: string; // 생성될 파일 경로 (기본값: src/typings)
-    fileName?: string; // 생성될 파일명 (기본값: database.types.ts)
-  };
-};
-```
-
-`types` 설정을 통해 인터페이스 자동 생성을 활성화할 수 있습니다. 인터페이스 자동 생성을 비활성화할 경우, Sonamu의 `DatabaseExtend` 인터페이스를 확장하는 코드를 직접 작성해야 합니다.
-
-```ts
-import { KyselyDatabase } from "[DB 인터페이스 경로]";
-
-declare module "sonamu" {
-  export interface DatabaseExtend extends KyselyDatabase {}
-}
 ```
 
 ### Fixture 및 Test 데이터베이스 구성
