@@ -12,6 +12,10 @@
     "checksum": "d12eb6ad80dbe67d25bea9774e22ab21bb6ecc49"
   },
   {
+    "path": "/dist/application/file/file.model.js",
+    "checksum": "32ccc16bb24989be18ee33c789e1eec00eb81d00"
+  },
+  {
     "path": "/dist/application/project/project.model.js",
     "checksum": "767a7b948f2fed0fa9c449c4dc666ba3f754ded4"
   },
@@ -44,6 +48,14 @@
     "checksum": "6a22e7cf98509c61e3e22694a2a1e8470a56123b"
   },
   {
+    "path": "/src/application/file/file.entity.json",
+    "checksum": "aa996fd20ce5cf37ec74ed89bccda78397b0a850"
+  },
+  {
+    "path": "/src/application/file/file.types.ts",
+    "checksum": "e13e134d8440e324f0af24c368e57d9d5c13b0a4"
+  },
+  {
     "path": "/src/application/project/project.entity.json",
     "checksum": "633cb9de65102aab15737569251610665bf5ab93"
   },
@@ -53,11 +65,11 @@
   },
   {
     "path": "/src/application/sonamu.generated.ts",
-    "checksum": "441710662610d7e8e6365d897cedc405631e2bbb"
+    "checksum": "8f8729760d4f98c9cd2300d639f5123c5f43348e"
   },
   {
     "path": "/src/application/user/user.entity.json",
-    "checksum": "5d33b3a981f34f0afec0174c711a19014ae3152a"
+    "checksum": "3fdcf2130973ebf568d7e3f5261c774bef012af4"
   },
   {
     "path": "/src/application/user/user.types.ts",
