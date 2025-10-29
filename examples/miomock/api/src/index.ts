@@ -1,7 +1,6 @@
-import fastifySession from "@fastify/session";
-import fastifyCookie from "@fastify/cookie";
+import fastifySecureSession from "@fastify/secure-session";
 import fastifyPassport from "@fastify/passport";
-import { Context, Sonamu } from "sonamu";
+import { Context, ContextExtend, Sonamu } from "sonamu";
 import path from "path";
 
 const host = "localhost";
@@ -17,12 +16,13 @@ async function bootstrap() {
       formbody: true,
       qs: true,
       custom: (server) => {
-        server.register(fastifyCookie);
-        server.register(fastifySession, {
+        server.register(fastifySecureSession, {
           secret: "miomock-secret-key-change-this-in-production",
+          salt: "mq9hDxBCDbsQDR6N",
           cookie: {
-            secure: false,
-            maxAge: 1000 * 60 * 60 * 24 * 7,
+            domain: "localhost",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 365 * 10,
           },
         });
 
@@ -32,6 +32,22 @@ async function bootstrap() {
         fastifyPassport.registerUserDeserializer(
           async (serialized, _request) => serialized
         );
+
+        server.register(import("@fastify/static"), {
+          root: path.join(__dirname, "/../", "public"),
+          prefix: "/api/public",
+        });
+
+        server.register(import("fastify-file-upload"), {
+          useTempFiles: true,
+          tempFileDir: path.join(
+            __dirname,
+            "/../",
+            "public",
+            "tmp",
+            "upload-temp"
+          ),
+        });
       },
     },
 
@@ -41,11 +57,15 @@ async function bootstrap() {
           ...defaultContext,
           ip: request.ip,
           session: request.session,
+          body: request.body,
           user: request.user ?? null,
           passport: {
             login: request.login.bind(request) as Context["passport"]["login"],
             logout: request.logout.bind(request),
           },
+          uploadedFile: (
+            request.body as { file?: ContextExtend["uploadedFile"] }
+          )?.file,
         };
       },
       guardHandler: (_guard, _request, _api) => {

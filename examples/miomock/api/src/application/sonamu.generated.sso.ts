@@ -3,6 +3,7 @@ import {
   CompanySubsetKey,
   DepartmentSubsetKey,
   EmployeeSubsetKey,
+  FileSubsetKey,
   ProjectSubsetKey,
   UserSubsetKey,
 } from "./sonamu.generated";
@@ -93,6 +94,22 @@ export const employeeSubsetQueries: {
         to: "department__company.id",
       },
     ],
+    loaders: [],
+  },
+};
+
+// SubsetQuery: File
+export const fileSubsetQueries: { [key in FileSubsetKey]: SubsetQuery } = {
+  A: {
+    select: [
+      "files.id",
+      "files.created_at",
+      "files.mime_type",
+      "files.name",
+      "files.url",
+    ],
+    virtual: [],
+    joins: [],
     loaders: [],
   },
 };

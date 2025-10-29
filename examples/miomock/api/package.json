@@ -16,6 +16,7 @@
   "dependencies": {
     "@fastify/passport": "^2.2.0",
     "@fastify/secure-session": "^5.2.0",
+    "@fastify/static": "^7",
     "@swc/core": "^1.13.5",
     "bcrypt": "^6.0.0",
     "chokidar": "^4.0.3",
@@ -26,6 +27,7 @@
     "fastify-qs": "^5.0.0",
     "knex": "^3.1.0",
     "lodash": "^4.17.21",
+    "mime": "^4.1.0",
     "mysql2": "^3.14.5",
     "sonamu": "^0.4.12",
     "zod": "^3.22.4"

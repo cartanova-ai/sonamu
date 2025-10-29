@@ -1,0 +1,28 @@
+{
+  "id": "File",
+  "table": "files",
+  "title": "FILE",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    {
+      "name": "mime_type",
+      "desc": "MIME타입",
+      "type": "string",
+      "length": 128
+    },
+    { "name": "name", "desc": "FILE명", "type": "string", "length": 128 },
+    { "name": "url", "desc": "URL", "type": "string", "length": 255 }
+  ],
+  "indexes": [{ "type": "unique", "columns": ["url"] }],
+  "subsets": { "A": ["id", "created_at", "mime_type", "name", "url"] },
+  "enums": {
+    "FileOrderBy": { "id-desc": "ID최신순" },
+    "FileSearchField": { "id": "ID" }
+  }
+}

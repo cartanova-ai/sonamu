@@ -38,6 +38,14 @@ export const EmployeeSearchField = z
 export type EmployeeSearchField = z.infer<typeof EmployeeSearchField>;
 export const EmployeeSearchFieldLabel = { id: "ID" };
 
+// Enums: File
+export const FileOrderBy = z.enum(["id-desc"]).describe("FileOrderBy");
+export type FileOrderBy = z.infer<typeof FileOrderBy>;
+export const FileOrderByLabel = { "id-desc": "ID최신순" };
+export const FileSearchField = z.enum(["id"]).describe("FileSearchField");
+export type FileSearchField = z.infer<typeof FileSearchField>;
+export const FileSearchFieldLabel = { id: "ID" };
+
 // Enums: Project
 export const ProjectOrderBy = z.enum(["id-desc"]).describe("ProjectOrderBy");
 export type ProjectOrderBy = z.infer<typeof ProjectOrderBy>;
@@ -97,6 +105,16 @@ export const EmployeeBaseSchema = z.object({
   salary: z.string().nullable(),
 });
 export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
+
+// BaseSchema: File
+export const FileBaseSchema = z.object({
+  id: z.number().int().nonnegative(),
+  created_at: z.date(),
+  mime_type: z.string().max(128),
+  name: z.string().max(128),
+  url: z.string().max(255),
+});
+export type FileBaseSchema = z.infer<typeof FileBaseSchema>;
 
 // BaseSchema: Project
 export const ProjectBaseSchema = z.object({
@@ -168,6 +186,20 @@ export const EmployeeBaseListParams = z
   })
   .partial();
 export type EmployeeBaseListParams = z.infer<typeof EmployeeBaseListParams>;
+
+// BaseListParams: File
+export const FileBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: FileSearchField,
+    keyword: z.string(),
+    orderBy: FileOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+  })
+  .partial();
+export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
 
 // BaseListParams: Project
 export const ProjectBaseListParams = z
@@ -261,6 +293,21 @@ export type EmployeeSubsetMapping = {
 export const EmployeeSubsetKey = z.enum(["A"]);
 export type EmployeeSubsetKey = z.infer<typeof EmployeeSubsetKey>;
 
+// Subsets: File
+export const FileSubsetA = z.object({
+  id: z.number().int().nonnegative(),
+  created_at: z.date(),
+  mime_type: z.string().max(128),
+  name: z.string().max(128),
+  url: z.string().max(255),
+});
+export type FileSubsetA = z.infer<typeof FileSubsetA>;
+export type FileSubsetMapping = {
+  A: FileSubsetA;
+};
+export const FileSubsetKey = z.enum(["A"]);
+export type FileSubsetKey = z.infer<typeof FileSubsetKey>;
+
 // Subsets: Project
 export const ProjectSubsetA = z.object({
   id: z.number().int().nonnegative(),
@@ -343,6 +390,7 @@ declare module "sonamu" {
     companies: CompanyBaseSchema;
     departments: DepartmentBaseSchema;
     employees: EmployeeBaseSchema;
+    files: FileBaseSchema;
     projects: ProjectBaseSchema;
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"project", "employee">;
