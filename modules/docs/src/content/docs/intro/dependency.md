@@ -1,66 +1,78 @@
 ---
-title: 들어가기 전에
-description: A guide in my new Starlight docs site.
+title: 시작하기 전에
+description: Sonamu 개발 환경 구성을 위한 사전 준비사항
 ---
+
+Sonamu를 사용하기 위해 필요한 도구들을 안내합니다.
 
 ## 사전 설치
 
-- Node.js
+### Node.js
 
-  - 18버전 이상의 Node.js가 설치되어 있어야 합니다.
+Sonamu는 Node.js 기반 프레임워크로, 서버 실행과 빌드 도구 실행에 필요합니다.
 
-- yarn berry
+- **요구 버전**: 18.x 이상 (LTS 버전 권장)
+- **공식 웹사이트**: [https://nodejs.org](https://nodejs.org)
 
-  - yarn을 설치합니다.
-    ```shell
-    npm i -g yarn
-    ```
-  - yarn berry로 설정합니다.
-    ```shell
-    yarn set version berry
-    ```
+### Yarn
 
-- Docker Desktop
+Sonamu는 패키지 관리자로 Yarn Berry(v3+)를 사용합니다.
 
-  - Docker Desktop이 설치되어 있어야 합니다. [공식 웹사이트](https://www.docker.com/products/docker-desktop/)에서 다운로드 할 수 있습니다.
+- **공식 웹사이트**: [https://yarnpkg.com](https://yarnpkg.com)
 
-- MySQL 클라이언트
-  - MySQL 클라이언트가 설치되어 있어야 합니다. [공식 웹사이트](https://dev.mysql.com/downloads/workbench/)에서 다운로드 할 수 있습니다.
-  - Mac 사용자의 경우 `brew install mysql`로 설치할 수 있습니다.
+:::tip
+`yarn create sonamu@latest`로 프로젝트를 생성하면 Yarn Berry가 자동으로 설정됩니다.
+:::
 
-## 사용하는 패키지
+### MySQL 클라이언트
 
-- [fastify](https://fastify.dev/)
+데이터베이스 마이그레이션 실행과 직접 DB 접근을 위해 MySQL 클라이언트가 필요합니다.
 
-  - Fastify는 Node.js 에서 가장 좋은 평가를 받고 있는 성숙된 경량형 웹서버 프레임워크입니다.
-  - Sonamu는 Fastify를 통해 웹서버를 서빙하며, 따라서 웹서버와 관련된 모든 추가 기능(e.g formbody, logging, static, cors, session, cookie, passport, file upload 등)은 Fastify Ecosystem 을 통해 구현 가능합니다.
-  - 참고: [Fastify Plugins](https://fastify.dev/docs/latest/Reference/Plugins)
+- **MySQL 클라이언트**: [https://dev.mysql.com/downloads/shell](https://dev.mysql.com/downloads/shell)
+- **MySQL Workbench** (GUI): [https://dev.mysql.com/downloads/workbench](https://dev.mysql.com/downloads/workbench)
 
-- [mysql2](https://www.npmjs.com/package/mysql2) + [Knex.js](https://knexjs.org/)
+:::tip
+GUI 도구를 선호한다면 DBeaver, TablePlus, DataGrip 등을 사용할 수 있습니다.
+:::
 
-  - Sonamu는 쿼리빌드, 마이그레이션 실행 등 DB와 직접적으로 통신하는 모든 작업에 Knex.js를 사용합니다.
-  - RDB는 MySQL에 최적화되어 있으며, 추후 PostgreSQL, SQLite를 서포트할 계획이 있습니다.
+## 추가 권장 도구 (선택사항)
 
-- [Zod](https://zod.dev/)
+### Docker Desktop
 
-  - Zod는 TypeScript 타입 스키마 정의 / 동적 밸리데이션 라이브러리입니다.
-  - Sonamu는 모든 타입 정의와 E2E Type-safety 구현 플로우에 Zod를 사용합니다.
-  - SMD 정의시 해당 SMD의 프로퍼티들을 자동으로 BaseSchema Zod 타입으로 생성하여, 이를 확장하는 컨벤션을 사용합니다.
+개발 환경의 MySQL 데이터베이스를 Docker 컨테이너로 실행하기 위해 필요합니다. 로컬 환경을 오염시키지 않고 독립적인 DB 환경을 구성할 수 있습니다.
 
-- [Axios](https://axios-http.com/kr/docs/intro), [SWR](https://swr.vercel.app/ko)
+- **공식 웹사이트**: [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop)
 
-  - Sonamu는 API 데코레이터 정의를 통해 API가 생성되는 경우 함께 HTTP 클라이언트 코드가 자동생성 되는데, 이 때 `httpClients` 옵션에 따라 axios와 swr 각각의 클라이언트를 생성할 수 있습니다.
-    - axios 가 지정된 경우 Axios 기반의 일반 HTTP Fetching 함수가 생성됩니다.
-    - swr 이 지정된 경우 SWR을 기반으로 React Hooks 함수가 생성됩니다.
+:::note
+Docker Desktop 대신 직접 MySQL을 설치하여 사용할 수도 있습니다. 이 경우 `configs/db.ts`에서 연결 정보를 직접 설정하세요.
+:::
 
-- Vite, React, Semantic UI, prettier
+### 코드 에디터
 
-## 문서 구조
+**Visual Studio Code** (권장)
+- TypeScript 지원이 뛰어남
+- 추천 확장 프로그램: REST Client
+  - Sonamu가 생성하는 `.http` 파일을 테스트할 수 있습니다.
+- **공식 웹사이트**: [https://code.visualstudio.com](https://code.visualstudio.com)
 
-- `introduction`
-  - Sonamu에 대해 설명하는 문서
-- `tutorial`
-  - Sonamu를 기반으로 간단한 프로젝트를 만드는 튜토리얼입니다.
-  - Sonamu의 기본적인 사용법..
-- `guide`: Sonamu의 가이드
-- `reference`: Sonamu의 레퍼런스
+## 핵심 의존성
+
+Sonamu가 사용하는 주요 라이브러리들입니다. (프로젝트 생성 시 자동 설치됨)
+
+### 백엔드
+- **[Fastify](https://fastify.dev)**: HTTP 서버 프레임워크
+- **[Knex.js](https://knexjs.org)**: SQL 쿼리 빌더 및 마이그레이션
+- **[MySQL2](https://www.npmjs.com/package/mysql2)**: MySQL 데이터베이스 드라이버
+- **[Zod](https://zod.dev)**: 스키마 검증 및 타입 안전성
+
+### 프론트엔드 (선택적)
+- **[Axios](https://axios-http.com)**: HTTP 클라이언트
+- **[SWR](https://swr.vercel.app)**: React Hooks 데이터 페칭
+
+:::note
+자세한 기술 스택 정보는 [소개 - 기술 스택](/intro#기술-스택) 섹션을 참고하세요.
+:::
+
+## 다음 단계
+
+환경 설정이 완료되었다면, [튜토리얼](/tutorial)을 따라 첫 Sonamu 프로젝트를 만들어보세요.
