@@ -45,6 +45,11 @@ const menuItems: MenuItemProps[] = [
     path: "/admin/projects",
     icon: "folder",
   },
+  {
+    title: "파일 업로드",
+    path: "/admin/files",
+    icon: "upload",
+  },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
