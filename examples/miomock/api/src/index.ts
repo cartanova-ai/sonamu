@@ -38,15 +38,10 @@ async function bootstrap() {
           prefix: "/api/public",
         });
 
-        server.register(import("fastify-file-upload"), {
-          useTempFiles: true,
-          tempFileDir: path.join(
-            __dirname,
-            "/../",
-            "public",
-            "tmp",
-            "upload-temp"
-          ),
+        server.register(import("@fastify/multipart"), {
+          limits: {
+            fileSize: 1024 * 1024 * 30, // 30MB
+          },
         });
       },
     },
@@ -63,9 +58,8 @@ async function bootstrap() {
             login: request.login.bind(request) as Context["passport"]["login"],
             logout: request.logout.bind(request),
           },
-          uploadedFile: (
-            request.body as { file?: ContextExtend["uploadedFile"] }
-          )?.file,
+          file: request.file?.bind(request),
+          files: request.files?.bind(request),
         };
       },
       guardHandler: (_guard, _request, _api) => {
