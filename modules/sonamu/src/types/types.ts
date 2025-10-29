@@ -9,6 +9,7 @@ import {
 import { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
 import { Context, ApiDecoratorOptions } from "../api";
+import { FastifyMultipartOptions } from "@fastify/multipart";
 
 /* 
   Enums
@@ -879,6 +880,7 @@ export type SonamuServerOptions = {
     formbody?: boolean | FastifyFormbodyOptions;
     qs?: boolean | QsPluginOptions;
     cors?: boolean | FastifyCorsOptions;
+    multipart?: boolean | FastifyMultipartOptions;
     custom?: (server: FastifyInstance) => void;
   };
 

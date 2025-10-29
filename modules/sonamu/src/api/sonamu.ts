@@ -424,6 +424,7 @@ class SonamuClass {
       formbody: "@fastify/formbody",
       qs: "fastify-qs",
       cors: "@fastify/cors",
+      multipart: "@fastify/multipart",
     } as const;
 
     const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(

@@ -15,6 +15,7 @@ async function bootstrap() {
     plugins: {
       formbody: true,
       qs: true,
+      multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
       custom: (server) => {
         server.register(fastifySecureSession, {
           secret: "miomock-secret-key-change-this-in-production",
@@ -36,12 +37,6 @@ async function bootstrap() {
         server.register(import("@fastify/static"), {
           root: path.join(__dirname, "/../", "public"),
           prefix: "/api/public",
-        });
-
-        server.register(import("@fastify/multipart"), {
-          limits: {
-            fileSize: 1024 * 1024 * 30, // 30MB
-          },
         });
       },
     },
