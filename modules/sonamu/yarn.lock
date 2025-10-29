@@ -184,13 +184,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/cors@npm:^11.1.0":
-  version: 11.1.0
-  resolution: "@fastify/cors@npm:11.1.0"
+"@fastify/cors@npm:^8.1.0":
+  version: 8.5.0
+  resolution: "@fastify/cors@npm:8.5.0"
   dependencies:
-    fastify-plugin: ^5.0.0
-    toad-cache: ^3.7.0
-  checksum: 50445fab7f1595b41fcca42a4e9ab389de9edb76e6c555f2010d06844d39ba6d9ee909c5ef5a04714c47802f3d277c41bddaf076e87ba7242c976987b18361b1
+    fastify-plugin: ^4.0.0
+    mnemonist: 0.39.6
+  checksum: b8adf78fa0c1f2ecbffe644dfda148f57f7e9c3c815de3eb6fd90ff359486d372f275c696db3c4f6441b0864e7427c1b7d8a307582a31925bddf21087a943c18
   languageName: node
   linkType: hard
 
@@ -217,13 +217,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@fastify/formbody@npm:^8.0.2":
-  version: 8.0.2
-  resolution: "@fastify/formbody@npm:8.0.2"
+"@fastify/formbody@npm:^7.1.0":
+  version: 7.4.0
+  resolution: "@fastify/formbody@npm:7.4.0"
   dependencies:
-    fast-querystring: ^1.1.2
-    fastify-plugin: ^5.0.0
-  checksum: 95a25c826945343b8cd4f8ea3aa218a6b4f6d272bb807b622b1294d9718171df03ca6ffa157d5a891706287a0dbe59cfcebb822fc2986eca322d6378b826d817
+    fast-querystring: ^1.0.0
+    fastify-plugin: ^4.0.0
+  checksum: 5bff8180b71343179e3e5bd8b2f88b17459062cf55035c60fbda8db1e8d9682645b2f47ce8b898190814ae241631fee0345edd4e4f396e34fab6fb7eb681381d
   languageName: node
   linkType: hard
 
@@ -1400,16 +1400,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"call-bind@npm:^1.0.0":
-  version: 1.0.2
-  resolution: "call-bind@npm:1.0.2"
-  dependencies:
-    function-bind: ^1.1.1
-    get-intrinsic: ^1.0.2
-  checksum: f8e31de9d19988a4b80f3e704788c4a2d6b6f3d17cfec4f57dc29ced450c53a49270dc66bf0fbd693329ee948dd33e6c90a329519aef17474a4d961e8d6426b0
-  languageName: node
-  linkType: hard
-
 "call-bound@npm:^1.0.2":
   version: 1.0.4
   resolution: "call-bound@npm:1.0.4"
@@ -1941,7 +1931,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-querystring@npm:^1.0.0, fast-querystring@npm:^1.1.2":
+"fast-querystring@npm:^1.0.0":
   version: 1.1.2
   resolution: "fast-querystring@npm:1.1.2"
   dependencies:
@@ -1964,20 +1954,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fastify-plugin@npm:^5.0.0, fastify-plugin@npm:^5.0.1":
-  version: 5.1.0
-  resolution: "fastify-plugin@npm:5.1.0"
-  checksum: f93735525e1217f8b7ea20823f5f625eff9c1e76cb7e0692cbeb1d9052714e056a6d62757085d48fcdf47342ae21d8f665997736b3c421b2c279150443ac0adf
+"fastify-plugin@npm:^4.0.0, fastify-plugin@npm:^4.5.0":
+  version: 4.5.1
+  resolution: "fastify-plugin@npm:4.5.1"
+  checksum: ddd1b2d470c3acd9397c2617b5842dcf71a6f9a32f05d02be1c12e8d37b8fc03af656900cec38e2afef5e9a3dfe5f994317810f4c5e9960b127b1ca179b56f73
   languageName: node
   linkType: hard
 
-"fastify-qs@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "fastify-qs@npm:5.0.0"
+"fastify-qs@npm:^4.0.0":
+  version: 4.0.2
+  resolution: "fastify-qs@npm:4.0.2"
   dependencies:
-    fastify-plugin: ^5.0.1
-    qs: ^6.13.0
-  checksum: f424094ee27011aa812a0dfedf2378fa93f639f44c7fe8a4bfd141837543b0e9bfe8eb1bf25195d76389b2e1981f4f64e8f8bada2e01a560a29c7f8d39378bc1
+    fastify-plugin: ^4.5.0
+    qs: ^6.11.1
+  checksum: 6b895afb9dd7e9f2ccf4ec02ff253c0639a913683a206fa515e70a36fb566f97ef08f2675d4fffb7a7a96ff2b337de40a23cc65da8c8195690d2d2bda315f741
   languageName: node
   linkType: hard
 
@@ -2190,17 +2180,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-intrinsic@npm:^1.0.2":
-  version: 1.1.2
-  resolution: "get-intrinsic@npm:1.1.2"
-  dependencies:
-    function-bind: ^1.1.1
-    has: ^1.0.3
-    has-symbols: ^1.0.3
-  checksum: 252f45491f2ba88ebf5b38018020c7cc3279de54b1d67ffb70c0cdf1dfa8ab31cd56467b5d117a8b4275b7a4dde91f86766b163a17a850f036528a7b2faafb2b
-  languageName: node
-  linkType: hard
-
 "get-intrinsic@npm:^1.2.5, get-intrinsic@npm:^1.3.0":
   version: 1.3.1
   resolution: "get-intrinsic@npm:1.3.1"
@@ -2336,13 +2315,6 @@ __metadata:
   version: 4.0.0
   resolution: "has-flag@npm:4.0.0"
   checksum: 261a1357037ead75e338156b1f9452c016a37dcd3283a972a30d9e4a87441ba372c8b81f818cd0fbcd9c0354b4ae7e18b9e1afa1971164aef6d18c2b6095a8ad
-  languageName: node
-  linkType: hard
-
-"has-symbols@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "has-symbols@npm:1.0.3"
-  checksum: a054c40c631c0d5741a8285010a0777ea0c068f99ed43e5d6eb12972da223f8af553a455132fdb0801bdcfa0e0f443c0c03a68d8555aa529b3144b446c3f2410
   languageName: node
   linkType: hard
 
@@ -2997,6 +2969,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mnemonist@npm:0.39.6":
+  version: 0.39.6
+  resolution: "mnemonist@npm:0.39.6"
+  dependencies:
+    obliterator: ^2.0.1
+  checksum: 10cb09aa33de92625d5004f541e6aaaab8ae4bb26c6917e8505189f2fc20b122c773a4c11639bb6b5bfdc6000645c2d210ecd47fb203176fe28c338443c466eb
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.1.2":
   version: 2.1.2
   resolution: "ms@npm:2.1.2"
@@ -3152,10 +3133,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"object-inspect@npm:^1.9.0":
-  version: 1.12.2
-  resolution: "object-inspect@npm:1.12.2"
-  checksum: a534fc1b8534284ed71f25ce3a496013b7ea030f3d1b77118f6b7b1713829262be9e6243acbcb3ef8c626e2b64186112cb7f6db74e37b2789b9c789ca23048b2
+"obliterator@npm:^2.0.1":
+  version: 2.0.5
+  resolution: "obliterator@npm:2.0.5"
+  checksum: 49575c428d66941326f265b8962bbce05c2a209c180e6ebf49d07e6d6cf2e6ab3f805289ad58aec49e74825344c97e790e5658b55e226a8cb4f57d866db3adf5
   languageName: node
   linkType: hard
 
@@ -3413,16 +3394,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qs@npm:^6.11.0":
-  version: 6.11.0
-  resolution: "qs@npm:6.11.0"
-  dependencies:
-    side-channel: ^1.0.4
-  checksum: 6e1f29dd5385f7488ec74ac7b6c92f4d09a90408882d0c208414a34dd33badc1a621019d4c799a3df15ab9b1d0292f97c1dd71dc7c045e69f81a8064e5af7297
-  languageName: node
-  linkType: hard
-
-"qs@npm:^6.13.0":
+"qs@npm:^6.11.0, qs@npm:^6.11.1":
   version: 6.14.0
   resolution: "qs@npm:6.14.0"
   dependencies:
@@ -3808,17 +3780,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"side-channel@npm:^1.0.4":
-  version: 1.0.4
-  resolution: "side-channel@npm:1.0.4"
-  dependencies:
-    call-bind: ^1.0.0
-    get-intrinsic: ^1.0.2
-    object-inspect: ^1.9.0
-  checksum: 351e41b947079c10bd0858364f32bb3a7379514c399edb64ab3dce683933483fc63fb5e4efe0a15a2e8a7e3c436b6a91736ddb8d8c6591b0460a24bb4a1ee245
-  languageName: node
-  linkType: hard
-
 "side-channel@npm:^1.1.0":
   version: 1.1.0
   resolution: "side-channel@npm:1.1.0"
@@ -3901,8 +3862,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "sonamu@workspace:."
   dependencies:
-    "@fastify/cors": ^11.1.0
-    "@fastify/formbody": ^8.0.2
+    "@fastify/cors": ^8.1.0
+    "@fastify/formbody": ^7.1.0
     "@swc/cli": ^0.7.8
     "@swc/core": ^1.13.19
     "@types/inflection": ^1.13.0
@@ -3919,7 +3880,7 @@ __metadata:
     dotenv: ^16.0.2
     fast-deep-equal: ^3.1.3
     fastify: ^4.23.2
-    fastify-qs: ^5.0.0
+    fastify-qs: ^4.0.0
     inflection: ^1.13.2
     knex: ^3.1.0
     lodash: ^4.17.21
@@ -4262,13 +4223,6 @@ __metadata:
   version: 3.2.0
   resolution: "toad-cache@npm:3.2.0"
   checksum: 9d64f7760cd8ae6d0684d17e9153a39c088877e4b9f5e648fe11c4f9c82c033d3b606ff0dfe566cd5a0056dee9ebeaf4ab9bee1de1e6597d7cc6745042413b2b
-  languageName: node
-  linkType: hard
-
-"toad-cache@npm:^3.7.0":
-  version: 3.7.0
-  resolution: "toad-cache@npm:3.7.0"
-  checksum: d0f2092ab2c0f3355d3537c41b13888a12996f38080e6c39907e715eb382d997ccf61baab9e8eda3f202b6c07e304728106be3631c9fe3b6c001aaf15b7bdb8f
   languageName: node
   linkType: hard
 
