@@ -10,9 +10,9 @@ import {
 import { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileSubsetQueries } from "../sonamu.generated.sso";
 import { FileListParams, FileSaveParams } from "./file.types";
-import path, { dirname } from "path";
 import mime from "mime";
-import { existsSync, mkdirSync } from "fs";
+import { createHash } from "crypto";
+import { fileDisk } from "../../libs/storage";
 
 /*
   File Model
@@ -139,33 +139,28 @@ class FileModelClass extends BaseModelClass {
   async upload(): Promise<{
     file: { name: string; url: string; mime_type: string };
   }> {
-    const { uploadedFile: uf } = Sonamu.getContext();
+    const { file: fileFn, files: filesFn } = Sonamu.getContext();
 
-    console.log(uf);
+    const file = await fileFn();
+    console.log(file);
 
-    if (uf === undefined) {
+    if (file === undefined) {
       throw new BadRequestException("파일 업로드되지 않음");
     }
-    const ext = mime.getExtension(uf.mimetype);
-    const key = `${uf.md5}.${ext}`;
 
-    const publicPath = path.join(__dirname, `../../../public`);
-    const dstPath = path.join(publicPath, `/uploaded/${key}`);
+    const buffer = await file.toBuffer();
 
-    if (existsSync(dirname(dstPath)) === false) {
-      mkdirSync(dirname(dstPath), {
-        recursive: true,
-      });
-    }
+    const ext = mime.getExtension(file.mimetype);
+    const md5 = createHash("md5").update(buffer).digest("hex");
+    const key = `${md5}.${ext}`;
 
-    await uf.mv(dstPath);
-    console.log(`upload file to ${dstPath}, key: ${key}`);
+    await fileDisk.put(key, buffer);
 
     return {
       file: {
-        name: uf.name,
-        url: `/api/public/uploaded/${key}`,
-        mime_type: uf.mimetype,
+        name: file.filename,
+        url: await fileDisk.getUrl(key),
+        mime_type: file.mimetype,
       },
     };
   }
