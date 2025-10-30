@@ -36,7 +36,7 @@
   "dependencies": {
     "@fastify/cors": "^8.4.0",
     "@fastify/static": "^6.10.2",
-    "@sonamu-kit/react-sui": "^0.1.14",
+    "@sonamu-kit/react-sui": "workspace:^",
     "@vitejs/plugin-react": "^4.0.3",
     "axios": "^1.5.0",
     "classnames": "^2.3.2",
@@ -57,7 +57,7 @@
     "sass": "^1.65.1",
     "semantic-ui-css": "^2.5.0",
     "semantic-ui-react": "^2.1.4",
-    "sonamu": "^0.4.1",
+    "sonamu": "workspace:^",
     "swr": "^2.2.2",
     "vite": "^4.4.5",
     "zod": "^3.22.2"
@@ -88,10 +88,6 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "sonamu": "^0.2.4"
-  },
-  "packageManager": "yarn@3.6.3",
-  "resolutions": {
-    "sonamu": "portal:../sonamu"
+    "sonamu": "workspace:^"
   }
 }

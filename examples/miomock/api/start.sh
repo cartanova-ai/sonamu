@@ -26,12 +26,12 @@ if docker ps --format "table {{.Names}}" | grep -q "miomock-mysql"; then
     echo -e "${GREEN}✅ miomock-mysql 컨테이너가 이미 실행 중입니다.${NC}"
 else
     echo -e "${YELLOW}⚠️  miomock-mysql 컨테이너가 실행되지 않았습니다.${NC}"
-    
+
     # Docker Compose로 데이터베이스 시작
     echo -e "\n${BLUE}🚀 MySQL 데이터베이스 컨테이너 시작 중...${NC}"
     cd "${DATABASE_DIR}"
     docker compose up -d
-    
+
     # 데이터베이스 준비 대기
     echo -e "\n${YELLOW}⏳ 데이터베이스 준비 대기 중... (최대 30초)${NC}"
     for i in {1..30}; do
@@ -42,7 +42,7 @@ else
         echo -e "${YELLOW}   대기 중... (${i}/30)${NC}"
         sleep 1
     done
-    
+
     if [ $i -eq 30 ]; then
         echo -e "${RED}❌ 데이터베이스 연결 시간 초과입니다.${NC}"
         echo -e "${YELLOW}수동으로 확인해주세요: docker logs miomock-mysql${NC}"
@@ -90,4 +90,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # API 서버 실행
-yarn sonamu dev:serve
+yarn workspace miomock-api sonamu dev:serve

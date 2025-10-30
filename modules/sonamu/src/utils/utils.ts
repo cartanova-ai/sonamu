@@ -42,6 +42,12 @@ export async function findAppRootPath() {
 }
 
 export function findApiRootPath() {
+  // NOTE: for support npm / yarn workspaces
+  const workspacePath = process.env["INIT_CWD"]
+  if (workspacePath && workspacePath.length !== 0) {
+    return workspacePath;
+  }
+
   const basePath = require.main?.path ?? __dirname;
   let dir = path.dirname(basePath);
   if (dir.includes("/.yarn/")) {

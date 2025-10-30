@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sonamu-kit/react-sui": "^0.1.14",
+    "@sonamu-kit/react-sui": "workspace:^",
     "axios": "^1.12.2",
     "classnames": "^2.5.1",
     "jotai": "^2.14.0",
@@ -38,9 +38,5 @@
     "sass": "^1.92.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.5"
-  },
-  "packageManager": "yarn@4.10.2",
-  "resolutions": {
-    "@sonamu-kit/react-sui": "portal:../../../modules/react-sui"
   }
 }
