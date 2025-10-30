@@ -3,7 +3,7 @@ import knex, { Knex } from "knex";
 import prettier from "prettier";
 import chalk from "chalk";
 import { DateTime } from "luxon";
-import { mkdir, readdir, readFile, unlink, writeFile } from "fs/promises";
+import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 import equal from "fast-deep-equal";
 import inflection from "inflection";
