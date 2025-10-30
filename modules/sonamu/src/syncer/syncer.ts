@@ -606,7 +606,7 @@ export class Syncer {
     }
 
     const previousChecksums = JSON.parse(
-      (await readFile(this.checksumsPath, "utf-8")).toString()
+      (await readFile(this.checksumsPath, "utf-8"))
     ) as PathAndChecksum[];
     return previousChecksums;
   }
