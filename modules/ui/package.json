@@ -3,7 +3,7 @@
   "version": "0.4.1",
   "description": "SonamuUI — Interactive UI Server Toolkit for Sonamu",
   "scripts": {
-    "build": "rimraf dist && rimraf build && yarn build:client && yarn build:node",
+    "build": "rm -rf dist build && yarn build:client && yarn build:node",
     "build:client": "vite build",
     "build:node": "tsup --config ./tsup.config.js",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
@@ -79,7 +79,6 @@
     "npm-run-all": "^4.1.5",
     "prettier": "2.7.1",
     "prop-types": "^15.8.1",
-    "rimraf": "^5.0.1",
     "rollup": "^3.28.0",
     "rollup-plugin-dts": "^5.3.1",
     "rollup-plugin-esbuild": "^5.0.0",
