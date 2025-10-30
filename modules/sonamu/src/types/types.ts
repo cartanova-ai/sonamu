@@ -1,3 +1,4 @@
+import { GuardKey } from "./../api/decorators";
 import { FastifyCorsOptions } from "@fastify/cors";
 import { FastifyFormbodyOptions } from "@fastify/formbody";
 import {
@@ -836,7 +837,7 @@ export type SonamuFastifyConfig = {
     reply: FastifyReply
   ) => Context;
   guardHandler: (
-    guard: string,
+    guard: GuardKey,
     request: FastifyRequest,
     api: {
       typeParameters: ApiParamType.TypeParam[];
