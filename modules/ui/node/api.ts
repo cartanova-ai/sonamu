@@ -743,8 +743,8 @@ export async function createServer(options: {
       })
       .flat();
 
-    const statuses = combinations.map(([entityId, templateKey, enumId]) => {
-      const { subPath, fullPath, isExists } = Sonamu.syncer.checkExistsGenCode(
+    const statuses = await Promise.all(combinations.map(async ([entityId, templateKey, enumId]) => {
+      const { subPath, fullPath, isExists } = await Sonamu.syncer.checkExistsGenCode(
         entityId,
         templateKey as TemplateKey,
         enumId
@@ -758,7 +758,7 @@ export async function createServer(options: {
         fullPath,
         isExists,
       };
-    });
+    }));
     return { statuses };
   });
 
