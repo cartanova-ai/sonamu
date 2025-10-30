@@ -509,12 +509,14 @@ export class Migrator {
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
 
     for (const [index, code] of codes.entries()) {
-      const dateTag = DateTime.local()
-        .plus({ seconds: index })
-        .toFormat("yyyyMMddHHmmss");
-      const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
-      await writeFile(filePath, code.formatted!);
-      console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
+      if (code.formatted) {
+        const dateTag = DateTime.local()
+          .plus({ seconds: index })
+          .toFormat("yyyyMMddHHmmss");
+        const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
+        await writeFile(filePath, code.formatted!);
+        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
+      }
     }
   }
 
