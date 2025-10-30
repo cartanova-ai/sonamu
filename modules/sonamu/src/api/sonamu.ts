@@ -325,7 +325,9 @@ class SonamuClass {
           const messages = humanizeZodError(e)
             .map((issue) => issue.message)
             .join(" ");
-          throw new BadRequestException(messages);
+          throw new BadRequestException(messages, {
+            zodError: e,
+          });
         } else {
           throw e;
         }
