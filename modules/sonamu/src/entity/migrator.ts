@@ -3,7 +3,8 @@ import knex, { Knex } from "knex";
 import prettier from "prettier";
 import chalk from "chalk";
 import { DateTime } from "luxon";
-import fs from "fs";
+import { mkdir, readdir, readFile, unlink, writeFile } from "fs/promises";
+import { exists } from "../utils/fs-utils";
 import equal from "fast-deep-equal";
 import inflection from "inflection";
 import prompts from "prompts";
@@ -123,22 +124,20 @@ export class Migrator {
     const srcMigrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const distMigrationsDir = `${Sonamu.apiRootPath}/dist/migrations`;
 
-    if (fs.existsSync(srcMigrationsDir) === false) {
-      fs.mkdirSync(srcMigrationsDir, {
+    if (!(await exists(srcMigrationsDir))) {
+      await mkdir(srcMigrationsDir, {
         recursive: true,
       });
     }
-    if (fs.existsSync(distMigrationsDir) === false) {
-      fs.mkdirSync(distMigrationsDir, {
+    if (!(await exists(distMigrationsDir))) {
+      await mkdir(distMigrationsDir, {
         recursive: true,
       });
     }
-    const srcMigrations = fs
-      .readdirSync(srcMigrationsDir)
+    const srcMigrations = (await readdir(srcMigrationsDir))
       .filter((f) => f.endsWith(".ts"))
       .map((f) => f.split(".")[0]);
-    const distMigrations = fs
-      .readdirSync(distMigrationsDir)
+    const distMigrations = (await readdir(distMigrationsDir))
       .filter((f) => f.endsWith(".js"))
       .map((f) => f.split(".")[0]);
 
@@ -375,10 +374,10 @@ export class Migrator {
       .flat();
 
     const res = await Promise.all(
-      delFiles.map((delFile) => {
-        if (fs.existsSync(delFile)) {
+      delFiles.map(async (delFile) => {
+        if (await exists(delFile)) {
           console.log(chalk.red(`DELETE: ${delFile}`));
-          fs.unlinkSync(delFile);
+          await unlink(delFile);
           return delFiles.includes(".ts") ? 1 : 0;
         }
         return 0;
@@ -396,16 +395,17 @@ export class Migrator {
 
     // 실제 코드 생성
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-    preparedCodes
-      .filter((pcode) => pcode.formatted)
-      .map((pcode, index) => {
+
+    for (const [index, pcode] of preparedCodes.entries()) {
+      if (pcode.formatted) {
         const dateTag = DateTime.local()
           .plus({ seconds: index })
           .toFormat("yyyyMMddHHmmss");
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
-        fs.writeFileSync(filePath, pcode.formatted!);
+        await writeFile(filePath, pcode.formatted!);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
-      });
+      }
+    }
 
     return preparedCodes.length;
   }
@@ -423,8 +423,8 @@ export class Migrator {
       return path.join(migrationsDir, df.file).replace(".js", ".ts");
     });
     for (let p of delList) {
-      if (fs.existsSync(p)) {
-        fs.unlinkSync(p);
+      if (await exists(p)) {
+        await unlink(p);
       }
     }
     await this.cleanUpDist(true);
@@ -507,16 +507,15 @@ export class Migrator {
 
     // 실제 코드 생성
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-    codes
-      .filter((code) => code.formatted)
-      .map((code, index) => {
-        const dateTag = DateTime.local()
-          .plus({ seconds: index })
-          .toFormat("yyyyMMddHHmmss");
-        const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
-        fs.writeFileSync(filePath, code.formatted!);
-        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
-      });
+
+    for (const [index, code] of codes.entries()) {
+      const dateTag = DateTime.local()
+        .plus({ seconds: index })
+        .toFormat("yyyyMMddHHmmss");
+      const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
+      await writeFile(filePath, code.formatted!);
+      console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
+    }
   }
 
   async rollback() {
@@ -532,29 +531,22 @@ export class Migrator {
   }
 
   async cleanUpDist(force: boolean = false): Promise<void> {
-    const files = (["src", "dist"] as const).reduce(
-      (r, which) => {
-        const migrationPath = path.join(
-          Sonamu.apiRootPath,
-          which,
-          "migrations"
-        );
-        if (fs.existsSync(migrationPath) === false) {
-          fs.mkdirSync(migrationPath, {
-            recursive: true,
-          });
-        }
-        const files = fs
-          .readdirSync(migrationPath)
-          .filter((filename) => filename.startsWith(".") === false);
-        r[which] = files;
-        return r;
-      },
-      {
-        src: [] as string[],
-        dist: [] as string[],
+    async function getFilesUnder(dir: string): Promise<string[]> {
+      const migrationPath = path.join(Sonamu.apiRootPath, dir, "migrations");
+      if (!(await exists(migrationPath))) {
+        await mkdir(migrationPath, {
+          recursive: true,
+        });
       }
-    );
+      return (await readdir(migrationPath)).filter(
+        (filename) => filename.startsWith(".") === false
+      );
+    }
+
+    const files = {
+      src: await getFilesUnder("src"),
+      dist: await getFilesUnder("dist"),
+    };
 
     const diffOnSrc = _.differenceBy(
       files.src,
@@ -591,9 +583,9 @@ export class Migrator {
       const filesToRm = diffOnDist.map((filename) => {
         return path.join(Sonamu.apiRootPath, "dist", "migrations", filename);
       });
-      filesToRm.map((filePath) => {
-        fs.unlinkSync(filePath);
-      });
+      for (const filePath of filesToRm) {
+        await unlink(filePath);
+      }
       console.log(chalk.green(`${filesToRm.length}건 삭제되었습니다!`));
     }
   }
