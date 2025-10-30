@@ -239,7 +239,7 @@ class SonamuClass {
     // timezone 설정
     const timezone = this.config.timezone;
     if (timezone) {
-      const DATE_FORMAT = "yyyy-MM-dd HH:mm:ssXXX";
+      const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
       const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
 
@@ -325,7 +325,9 @@ class SonamuClass {
           const messages = humanizeZodError(e)
             .map((issue) => issue.message)
             .join(" ");
-          throw new BadRequestException(messages);
+          throw new BadRequestException(messages, {
+            zodError: e,
+          });
         } else {
           throw e;
         }
