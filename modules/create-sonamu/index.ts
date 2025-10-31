@@ -33,6 +33,18 @@ async function init() {
           message: "Project name:",
           initial: "my-sonamu-app",
         },
+        {
+          type: "text",
+          name: "targetPath",
+          message: "Project path (absolute or relative):",
+          initial: process.cwd(),
+          validate: (value: string) => {
+            if (!value.trim()) {
+              return "Path cannot be empty";
+            }
+            return true;
+          },
+        },
       ],
       {
         onCancel: createCancelHandler(),
@@ -44,7 +56,43 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir } = result;
+  let { targetDir, targetPath } = result;
+
+  // 경로가 상대 경로인지 절대 경로인지 확인
+  const resolvedPath = path.isAbsolute(targetPath)
+    ? targetPath
+    : path.resolve(process.cwd(), targetPath);
+
+  // 경로가 존재하는지 확인하고, 없으면 생성
+  if (!fs.existsSync(resolvedPath)) {
+    fs.mkdirSync(resolvedPath, { recursive: true });
+  }
+
+  const targetRoot = path.join(resolvedPath, targetDir);
+
+  // 프로젝트 디렉토리가 이미 존재하는지 확인
+  if (fs.existsSync(targetRoot)) {
+    const { overwrite } = await prompts(
+      {
+        type: "confirm",
+        name: "overwrite",
+        message: `Directory ${targetRoot} already exists. Overwrite?`,
+        initial: false,
+      },
+      {
+        onCancel: createCancelHandler(),
+      }
+    );
+
+    if (!overwrite) {
+      console.log(chalk.yellow("Operation cancelled."));
+      process.exit(0);
+    }
+
+    // 기존 디렉토리 삭제
+    console.log(chalk.yellow(`Removing existing directory: ${targetRoot}`));
+    removeDirectory(targetRoot);
+  }
 
   createdTargetRoot = targetRoot; // 생성된 디렉토리 추적 시작
   const templateRoot = new URL("./template/src", import.meta.url).pathname;
@@ -156,7 +204,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
       console.log(
         `To set up a database using Docker, run the following commands:\n`
       );
-      console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
+      console.log(chalk.gray(`  $ cd ${targetRoot}/api/database`));
       console.log(chalk.gray(`  $ docker compose --env-file ${envFile} up -d`));
       console.log(`\nOr use your preferred database management tool.`);
     }
@@ -164,11 +212,10 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     console.log(
       `\nTo set up a database using Docker, run the following commands:\n`
     );
-    console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
+    console.log(chalk.gray(`  $ cd ${targetRoot}/api/database`));
     console.log(chalk.gray(`  $ docker compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
   }
-}
 
   // 성공적으로 완료되면 cleanup 방지
   createdTargetRoot = null;
