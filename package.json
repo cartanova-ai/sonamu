@@ -1,8 +1,12 @@
 {
   "private": true,
   "workspaces": [
-    "examples/**/*",
-    "modules/**/*"
+    "examples/miomock/*",
+    "modules/sonamu",
+    "modules/react-sui",
+    "modules/ui",
+    "modules/docs",
+    "modules/create-sonamu"
   ],
   "packageManager": "yarn@4.10.3",
   "devDependencies": {

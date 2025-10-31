@@ -1,9 +1,0 @@
-{
-  "watch": ["dist", ".env"],
-  "ext": "js,env",
-  "execMap": {
-    "js": "yarn node -r source-map-support/register -r dotenv/config"
-  },
-  "quiet": false,
-  "delay": 50
-}
