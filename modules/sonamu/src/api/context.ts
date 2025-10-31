@@ -6,7 +6,7 @@ import {
   type ServerResponse,
   type IncomingHttpHeaders,
 } from "http";
-import type { FileStorage } from "./file-storage";
+import type { FileStorage } from "../file-storage/file-storage";
 
 export interface ContextExtend {}
 export type Context = {
