@@ -9,7 +9,6 @@ import {
   ExtractColumnType,
   Expand,
   FulltextColumns,
-  FullColumnNames,
   InsertData,
 } from "./puri.types";
 import chalk from "chalk";
@@ -290,14 +289,10 @@ export class Puri<
   }
 
   // Join
-  join<
-    TJoinTable extends keyof TSchema,
-    TLColumn extends FullColumnNames<TSchema, TTable>,
-    TRColumn extends FullColumnNames<TSchema, TJoinTable>,
-  >(
+  join<TJoinTable extends keyof TSchema>(
     table: TJoinTable,
-    left: TLColumn,
-    right: TRColumn
+    left: string,
+    right: string
   ): Puri<
     TSchema,
     TTable,
@@ -352,14 +347,10 @@ export class Puri<
     return this as any;
   }
 
-  leftJoin<
-    TJoinTable extends keyof TSchema,
-    TLColumn extends FullColumnNames<TJoinTable, TSchema[TJoinTable]>,
-    TRColumn extends FullColumnNames<TTable, TResult>,
-  >(
+  leftJoin<TJoinTable extends keyof TSchema>(
     table: TJoinTable,
-    left: TLColumn,
-    right: TRColumn
+    left: string,
+    right: string
   ): Puri<
     TSchema,
     TTable,
