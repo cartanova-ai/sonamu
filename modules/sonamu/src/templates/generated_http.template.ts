@@ -84,7 +84,7 @@ export class Template__generated_http extends Template {
         ])
       );
     } else if (zodType instanceof z.ZodArray) {
-      return [this.zodTypeToReqDefault(zodType.element, name)];
+      return [this.zodTypeToReqDefault((zodType as z.ZodArray<z.ZodType>).element, name)];
     } else if (zodType instanceof z.ZodString) {
       if (name.endsWith("_at") || name.endsWith("_date") || name === "range") {
         return "2000-01-01";
@@ -95,40 +95,43 @@ export class Template__generated_http extends Template {
       if (name === "num") {
         return 24;
       }
-      return zodType.minValue ?? 0;
+
+      const minValue = zodType.minValue ?? 0;
+      return minValue > Number.MIN_SAFE_INTEGER  ? minValue : 0;
     } else if (zodType instanceof z.ZodBoolean) {
       return false;
     } else if (zodType instanceof z.ZodEnum) {
       return zodType.options[0];
     } else if (zodType instanceof z.ZodOptional) {
-      return this.zodTypeToReqDefault(zodType._def.innerType, name);
+      return this.zodTypeToReqDefault((zodType as z.ZodOptional<z.ZodType>).def.innerType, name);
     } else if (zodType instanceof z.ZodNullable) {
       return null;
     } else if (zodType instanceof z.ZodUnion) {
-      return this.zodTypeToReqDefault(zodType._def.options[0], name);
+      return this.zodTypeToReqDefault((zodType as z.ZodUnion<z.ZodType[]>).def.options[0], name);
     } else if (zodType instanceof z.ZodUnknown) {
       return "unknown";
     } else if (zodType instanceof z.ZodTuple) {
-      return zodType._def.items.map((item: any) =>
+      return zodType.def.items.map((item: any) =>
         this.zodTypeToReqDefault(item, name)
       );
     } else if (zodType instanceof z.ZodDate) {
       return "2000-01-01";
     } else if (zodType instanceof z.ZodLiteral) {
       return zodType.value;
-    } else if (zodType instanceof z.ZodEffects) {
-      return this.zodTypeToReqDefault(zodType._def.schema, name);
     } else if (zodType instanceof z.ZodRecord || zodType instanceof z.ZodMap) {
-      const key = this.zodTypeToReqDefault(zodType._def.keyType, name) as any;
-      const value = this.zodTypeToReqDefault(zodType._def.valueType, name);
+      const kvDef = (zodType as z.ZodRecord<any, z.ZodType> | z.ZodMap<z.ZodType, z.ZodType>).def
+      const key = this.zodTypeToReqDefault(kvDef.keyType, name) as any;
+      const value = this.zodTypeToReqDefault(kvDef.valueType, name);
       return { [key]: value };
     } else if (zodType instanceof z.ZodSet) {
-      return [this.zodTypeToReqDefault(zodType._def.valueType, name)];
+      return [this.zodTypeToReqDefault((zodType as z.ZodSet<z.ZodType>).def.valueType, name)];
     } else if (zodType instanceof z.ZodIntersection) {
-      return this.zodTypeToReqDefault(zodType._def.right, name);
+      return this.zodTypeToReqDefault((zodType as z.ZodIntersection<z.ZodType, z.ZodType>).def.right, name);
+    } else if (zodType instanceof z.ZodDefault) {
+      return this.zodTypeToReqDefault((zodType as z.ZodDefault<z.ZodType>).def.innerType, name);
     } else {
       // console.log(zodType);
-      return `unknown-${zodType._type}`;
+      return `unknown-${zodType.type}`;
     }
   }
 
