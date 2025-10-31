@@ -1,19 +1,19 @@
-import { GuardKey } from "./../api/decorators";
-import { FastifyCorsOptions } from "@fastify/cors";
-import { FastifyFormbodyOptions } from "@fastify/formbody";
-import {
+import type { GuardKey } from "./../api/decorators";
+import type { FastifyCorsOptions } from "@fastify/cors";
+import type { FastifyFormbodyOptions } from "@fastify/formbody";
+import type {
   FastifyInstance,
   FastifyReply,
   FastifyRequest,
   FastifyServerOptions,
 } from "fastify";
-import { QsPluginOptions } from "fastify-qs";
+import type { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
-import { Context, ApiDecoratorOptions } from "../api";
-import { FastifyMultipartOptions } from "@fastify/multipart";
+import type { Context, ApiDecoratorOptions } from "../api";
+import type { FastifyMultipartOptions } from "@fastify/multipart";
 import type { Driver } from "../file-storage/driver";
 
-/* 
+/*
   Enums
 */
 export type EnumsLabel<T extends string, L extends "ko" | "en"> = {
@@ -39,7 +39,7 @@ export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
 */
 export function zArrayable<T extends z.ZodTypeAny>(
   shape: T
-): z.ZodUnion<[T, z.ZodArray<T, "many">]> {
+): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
 export type DistributiveOmit<T, K extends keyof any> = T extends any

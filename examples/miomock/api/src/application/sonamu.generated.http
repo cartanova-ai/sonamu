@@ -85,7 +85,7 @@ Content-Type: application/json
     "email": "EMAIL",
     "username": "USERNAME",
     "password": "PASSWORD",
-    "role": "unknown-undefined"
+    "role": "normal"
   }
 }
 

@@ -12,6 +12,8 @@ import ts from "typescript";
 import {
   ApiParam,
   ApiParamType,
+  EntityProp,
+  EntityPropNode,
   isBelongsToOneRelationProp,
   isBigIntegerProp,
   isBooleanProp,
@@ -31,8 +33,6 @@ import {
   isTimestampProp,
   isUuidProp,
   isVirtualProp,
-  EntityProp,
-  EntityPropNode,
 } from "../types/types";
 import {
   ApiDecoratorOptions,
@@ -1379,7 +1379,7 @@ export class Syncer {
     } else if (isJsonProp(prop)) {
       zodType = await this.getZodTypeById(prop.id);
     } else if (isUuidProp(prop)) {
-      zodType = z.string().uuid();
+      zodType = z.uuid();
     } else if (isVirtualProp(prop)) {
       zodType = await this.getZodTypeById(prop.id);
     } else if (isRelationProp(prop)) {
@@ -1440,11 +1440,12 @@ export class Syncer {
     } else if (zodType instanceof z.ZodLiteral) {
       return "string-plain";
     } else {
-      throw new Error(`타입 파싱 불가 ${key} ${zodType._def.typeName}`);
+      throw new Error(`타입 파싱 불가 ${key} ${zodType.def.type}`);
     }
   }
+
   zodTypeToRenderingNode(
-    zodType: z.ZodTypeAny,
+    zodType: z.ZodType<any>,
     baseKey: string = "root"
   ): RenderingNode {
     const def = {
@@ -1464,7 +1465,7 @@ export class Syncer {
         children,
       };
     } else if (zodType instanceof z.ZodArray) {
-      const innerType = zodType._def.type;
+      const innerType = (zodType as z.ZodArray<z.ZodType<any>>).def.element;
       if (innerType instanceof z.ZodString && baseKey.includes("images")) {
         return {
           ...def,
@@ -1477,19 +1478,19 @@ export class Syncer {
         element: this.zodTypeToRenderingNode(innerType, baseKey),
       };
     } else if (zodType instanceof z.ZodUnion) {
-      const optionNodes = zodType._def.options.map((opt: z.ZodTypeAny) =>
+      const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map((opt) =>
         this.zodTypeToRenderingNode(opt, baseKey)
       );
       // TODO: ZodUnion이 들어있는 경우 핸들링
       return optionNodes[0];
     } else if (zodType instanceof z.ZodOptional) {
       return {
-        ...this.zodTypeToRenderingNode(zodType._def.innerType, baseKey),
+        ...this.zodTypeToRenderingNode((zodType as z.ZodOptional<z.ZodType>).def.innerType, baseKey),
         optional: true,
       };
     } else if (zodType instanceof z.ZodNullable) {
       return {
-        ...this.zodTypeToRenderingNode(zodType._def.innerType, baseKey),
+        ...this.zodTypeToRenderingNode((zodType as z.ZodNullable<z.ZodType>).def.innerType, baseKey),
         nullable: true,
       };
     } else {
@@ -1504,7 +1505,7 @@ export class Syncer {
     entityId: string,
     subsetKey: string
   ): Promise<RenderingNode> {
-    const entity = await EntityManager.get(entityId);
+    const entity = EntityManager.get(entityId);
     const subsetA = entity.subsets[subsetKey];
     if (subsetA === undefined) {
       throw new ServiceUnavailableException("SubsetA 가 없습니다.");
