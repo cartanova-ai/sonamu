@@ -13,7 +13,16 @@ type NullableToOptional<T> = {
   [K in keyof T as T[K] extends null | undefined ? never : K]: T[K]
 }>;
 
+// Join 등이 Empty 상태일 떄 {}가 아니라 EmptyRecord를 써서
 export type EmptyRecord = Record<string, never>;
+
+// Group By, Order By, Having 등에서 선택 가능한 컬럼
+export type ResultAvailableColumns<
+  TSchema,
+  T extends keyof TSchema | string,
+  TResult = any,
+  TJoined = EmptyRecord,
+> = AvailableColumns<TSchema, T, TResult, TJoined> | `${keyof TResult & string}`;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
 export type AvailableColumns<

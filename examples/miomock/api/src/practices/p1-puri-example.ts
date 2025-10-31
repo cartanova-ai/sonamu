@@ -96,7 +96,6 @@ async function examples() {
     })
     .groupBy("departments.id", "departments.name")
     .having("employee_count", ">", 0)
-    // TODO(Haze, 251030): OrderBy 등의 조건절에서는 TResult의 컬럼들을 베이스로 가져올 수 있어야 함.
     .orderBy("employee_count", "desc")
     .limit(10)
     .debug();
