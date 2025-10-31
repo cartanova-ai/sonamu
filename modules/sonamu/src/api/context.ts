@@ -1,4 +1,4 @@
-import type { FastifyReply } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
 import {
   type Server,
@@ -6,9 +6,11 @@ import {
   type ServerResponse,
   type IncomingHttpHeaders,
 } from "http";
+import type { FileStorage } from "./file-storage";
 
 export interface ContextExtend {}
 export type Context = {
+  request: FastifyRequest;
   reply: FastifyReply<
     Server,
     IncomingMessage,
@@ -18,3 +20,8 @@ export type Context = {
   >;
   headers: IncomingHttpHeaders;
 } & ContextExtend;
+
+export type UploadContext = {
+  file?: FileStorage;
+  files: FileStorage[];
+};

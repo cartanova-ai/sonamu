@@ -4,6 +4,8 @@ import type { ApiParam, ApiParamType } from "../types/types";
 import { z } from "zod";
 import { PuriWrapper, TransactionalOptions } from "../database/puri-wrapper";
 import { DB } from "../database/db";
+import { Sonamu } from "./sonamu";
+import type { UploadContext } from "./context";
 
 export interface GuardKeys {
   query: true;
@@ -168,6 +170,53 @@ export function transactional(options: TransactionalOptions = {}) {
         // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
         return startTransaction();
       }
+    };
+
+    return descriptor;
+  };
+}
+
+export function upload() {
+  return function (
+    _target: Object,
+    _propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (this: any, ...args: any[]) {
+      const { request } = Sonamu.getContext();
+      const uploadContext: UploadContext = {
+        file: undefined,
+        files: [],
+      };
+
+      const storage = Sonamu.storage;
+      if (!storage) {
+        throw new Error("Storage가 설정되지 않았습니다.");
+      }
+
+      if (request.file) {
+        const rawFile = await request.file();
+        if (rawFile) {
+          const { FileStorage } = await import("./file-storage");
+          uploadContext.file = new FileStorage(rawFile, storage);
+        }
+      }
+
+      if (request.files) {
+        const { FileStorage } = await import("./file-storage");
+        const rawFilesIterator = request.files();
+        for await (const rawFile of rawFilesIterator) {
+          if (rawFile) {
+            uploadContext.files.push(new FileStorage(rawFile, storage));
+          }
+        }
+      }
+
+      return Sonamu.uploadStorage.run({ uploadContext }, () => {
+        return originalMethod.apply(this, args);
+      });
     };
 
     return descriptor;

@@ -1150,6 +1150,10 @@ const RAW_RUNTIME_STATE =
       "npm:2.0.13"\
     ],\
     [\
+      "@types/mime-types",\
+      "npm:3.0.1"\
+    ],\
+    [\
       "@types/minimist",\
       "npm:1.2.5"\
     ],\
@@ -9455,6 +9459,15 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/@types-mdx-npm-2.0.13-52981f86f6-b73ed5f081.zip/node_modules/@types/mdx/",\
         "packageDependencies": [\
           ["@types/mdx", "npm:2.0.13"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@types/mime-types", [\
+      ["npm:3.0.1", {\
+        "packageLocation": "./.yarn/cache/@types-mime-types-npm-3.0.1-846d03fc45-96534e23b2.zip/node_modules/@types/mime-types/",\
+        "packageDependencies": [\
+          ["@types/mime-types", "npm:3.0.1"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -20317,6 +20330,7 @@ const RAW_RUNTIME_STATE =
           ["@types/knex", null],\
           ["@types/lodash", "npm:4.17.20"],\
           ["@types/luxon", "npm:3.7.1"],\
+          ["@types/mime-types", "npm:3.0.1"],\
           ["@types/mysql2", null],\
           ["@types/node", "npm:22.18.13"],\
           ["@types/nodemon", null],\
@@ -20337,6 +20351,7 @@ const RAW_RUNTIME_STATE =
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
           ["luxon", "npm:3.7.2"],\
+          ["mime-types", "npm:3.0.1"],\
           ["minimatch", "npm:10.1.1"],\
           ["mysql2", "npm:3.15.3"],\
           ["node-sql-parser", "npm:5.3.13"],\
@@ -20378,6 +20393,7 @@ const RAW_RUNTIME_STATE =
           ["@types/knex", null],\
           ["@types/lodash", "npm:4.17.20"],\
           ["@types/luxon", "npm:3.7.1"],\
+          ["@types/mime-types", "npm:3.0.1"],\
           ["@types/mysql2", null],\
           ["@types/node", "npm:22.18.13"],\
           ["@types/nodemon", null],\
@@ -20398,6 +20414,7 @@ const RAW_RUNTIME_STATE =
           ["knex", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
           ["luxon", "npm:3.7.2"],\
+          ["mime-types", "npm:3.0.1"],\
           ["minimatch", "npm:10.1.1"],\
           ["mysql2", "npm:3.15.3"],\
           ["node-sql-parser", "npm:5.3.13"],\
@@ -20436,6 +20453,7 @@ const RAW_RUNTIME_STATE =
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
           ["@types/luxon", "npm:3.7.1"],\
+          ["@types/mime-types", "npm:3.0.1"],\
           ["@types/node", "npm:22.18.13"],\
           ["@types/prettier", "npm:3.0.0"],\
           ["@types/prompts", "npm:2.4.9"],\
@@ -20453,6 +20471,7 @@ const RAW_RUNTIME_STATE =
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
           ["luxon", "npm:3.7.2"],\
+          ["mime-types", "npm:3.0.1"],\
           ["minimatch", "npm:10.1.1"],\
           ["mysql2", "npm:3.15.3"],\
           ["node-sql-parser", "npm:5.3.13"],\
