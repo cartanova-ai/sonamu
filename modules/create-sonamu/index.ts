@@ -145,16 +145,26 @@ async function init() {
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
   // 3. Set up Yarn Berry
-  const { isBerry } = await prompts({
-    type: "confirm",
-    name: "isBerry",
-    message: "Would you like to set up Yarn Berry?",
-    initial: true,
-  });
+  const { isBerry } = await prompts(
+    {
+      type: "confirm",
+      name: "isBerry",
+      message: "Would you like to set up Yarn Berry?",
+      initial: true,
+    },
+    {
+      onCancel: createCancelHandler(),
+    }
+  );
 
   if (isBerry) {
-    for await (const dir of ["api", "web"]) {
-      await setupYarnBerry(targetDir, dir);
+    try {
+      for await (const dir of ["api", "web"]) {
+        await setupYarnBerry(targetRoot, dir);
+      }
+    } catch (error) {
+      cleanup();
+      throw error;
     }
   } else {
     console.log(`\nTo set up Yarn Berry, run the following commands:\n`);
@@ -165,12 +175,17 @@ async function init() {
   }
 
   // 4. Set up Database using Docker
-  const { isDatabase } = await prompts({
-    type: "confirm",
-    name: "isDatabase",
-    message: "Would you like to set up a database using Docker?",
-    initial: true,
-  });
+  const { isDatabase } = await prompts(
+    {
+      type: "confirm",
+      name: "isDatabase",
+      message: "Would you like to set up a database using Docker?",
+      initial: true,
+    },
+    {
+      onCancel: createCancelHandler(),
+    }
+  );
 
   if (isDatabase) {
     console.log(`\nSetting up a database using Docker...`);
