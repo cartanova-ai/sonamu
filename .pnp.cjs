@@ -13922,11 +13922,10 @@ const RAW_RUNTIME_STATE =
           ["@types/supports-color", null],\
           ["debug", "virtual:643ed7cc338bcf145a82d8b05b3bef6bcf150ca545df386225596f10ce53cc90b88b3ca83e348ade1ccea5f3f8e76c92d2f0e2ba544da60d40aff9921c56872d#npm:4.4.3"],\
           ["ms", "npm:2.1.3"],\
-          ["supports-color", null]\
+          ["supports-color", "npm:10.2.2"]\
         ],\
         "packagePeers": [\
-          "@types/supports-color",\
-          "supports-color"\
+          "@types/supports-color"\
         ],\
         "linkType": "HARD"\
       }],\
@@ -13936,11 +13935,10 @@ const RAW_RUNTIME_STATE =
           ["@types/supports-color", null],\
           ["debug", "virtual:6980d746315e200d733ac14bc61fd9dc1bb1d8f496f99e468bb1bcc09f5d859b0db3c76483bb3e0170b7528fb84c0d09747a22b49b3cc65cc0812ca649302b94#npm:4.3.4"],\
           ["ms", "npm:2.1.2"],\
-          ["supports-color", null]\
+          ["supports-color", "npm:10.2.2"]\
         ],\
         "packagePeers": [\
-          "@types/supports-color",\
-          "supports-color"\
+          "@types/supports-color"\
         ],\
         "linkType": "HARD"\
       }],\

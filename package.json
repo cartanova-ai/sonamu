@@ -13,6 +13,7 @@
     "build:ui": "cowsay 'ui 빌드합니다.' && yarn workspace @sonamu-kit/ui build",
     "build:sonamu": "cowsay 'sonamu 빌드합니다.' && yarn workspace sonamu build",
     "build": "yarn build:react-sui && yarn build:ui && yarn build:sonamu",
+    "dev:sonamu": "cowsay 'sonamu dev 실행합니다.' && yarn workspace sonamu dev",
     "miomock:api": "cowsay 'miomock api 실행합니다.' && yarn workspace miomock-api dev:serve",
     "miomock:web": "cowsay 'miomock web 실행합니다.' && yarn workspace miomock-web dev",
     "miomock:sonamu-ui": "cowsay 'miomock sonamu ui 실행합니다.' && yarn --cwd examples/miomock/api sonamu ui",
