@@ -87,11 +87,11 @@ export class FileStorage {
     const buffer = await this.toBuffer();
 
     await this._driver.put(key, buffer, {
-      contentType: options?.contentType || this.mimetype,
+      contentType: options?.contentType ?? this.mimetype,
       visibility: options?.visibility,
     });
 
-    return this._driver.getUrl(key);
+    return this._driver.getSignedUrl(key);
   }
 
   get raw(): MultipartFile {
