@@ -1,4 +1,4 @@
-import _ from "lodash-es";
+import { last, set } from "lodash-es";
 import React, { ComponentType } from "react";
 import { Route } from "react-router-dom";
 
@@ -25,11 +25,11 @@ export function loadDynamicRoutes(
       .replace(/^\.\/pages\//, "")
       .replace(/\.tsx$/, "")
       .split("/");
-    if ((_.last(p) ?? "").startsWith("_")) {
+    if ((last(p) ?? "").startsWith("_")) {
       return result;
     }
-    return _.set(result, p, {
-      path: _.last(p),
+    return set(result, p, {
+      path: last(p),
       module: modules[key],
     });
   }, {} as ModulesObject);
