@@ -949,7 +949,7 @@ export class Syncer {
         const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
         return await exists(srcPath);
       }
-    ); // TODO
+    );
     const modules = await importMultiple(filePaths);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -1228,7 +1228,6 @@ export class Syncer {
   }
 
   async checkExistsGenCode(
-    // TODO
     entityId: string,
     templateKey: TemplateKey,
     enumId?: string
