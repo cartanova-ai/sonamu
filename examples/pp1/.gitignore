@@ -1,0 +1,40 @@
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+# VSCode
+*.code-workspace
+
+# OSX
+.DS_Store
+**/.DS_Store
+
+# JS/TS
+node_modules
+**/tsconfig.tsbuildinfo
+api/dist/*
+
+# log
+logs/*
+
+# Next.js
+web/.next/
+admin/.next/
+admin/out/**
+web/out/**
+
+# tmp
+api/tmp/*
+tmp/*
+api/public/tmp/*
+api/public/xls/tmp/*
+api/public/tmp/upload-temp/*
+api/public/uploaded/*
+
+# CDN
+cdn/data/*
+web/.env.local
+
+# build
+web/build/*
+deploy/web/nginx/static

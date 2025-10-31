@@ -1,0 +1,43 @@
+{
+  "describe": {
+    "scope": "typescript",
+    "prefix": "jd",
+    "body": ["describe(\"${1:title}\", () => {", "  $2", "});"]
+  },
+  "test": {
+    "scope": "typescript",
+    "prefix": "jt",
+    "body": ["test(\"${1:title}\", async () => {", "  $2", "});"]
+  },
+  "expect-exception": {
+    "scope": "typescript",
+    "prefix": "expect-exception",
+    "body": [
+      "await expect(",
+      "  $1",
+      ").rejects.toThrow(",
+      "  new ${2:Exception}(\"$3\")",
+      ");"
+    ]
+  },
+  "expect.toBe": {
+    "scope": "typescript",
+    "prefix": "tobe",
+    "body": ["expect($1).toBe($2)"]
+  },
+  "expect.not.toBe": {
+    "scope": "typescript",
+    "prefix": "nottobe",
+    "body": ["expect($1).not.toBe($2)"]
+  },
+  "expect.toContain": {
+    "scope": "typescript",
+    "prefix": "tocontain",
+    "body": ["expect($1).toContain(\"$2\")"]
+  },
+  "expect.not.toContain": {
+    "scope": "typescript",
+    "prefix": "nottocontain",
+    "body": ["expect($1).not.toContain(\"$2\")"]
+  }
+}

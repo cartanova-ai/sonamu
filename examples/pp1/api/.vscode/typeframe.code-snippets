@@ -1,0 +1,60 @@
+{
+  "Template": {
+    "scope": "typescript",
+    "prefix": "template",
+    "body": [
+      "import { TemplateOptions } from \"../../application/typeframe/typeframe.types\";",
+      "import { SMDManager, MDNamesRecord } from \"../../typeframe/f9-md/f9-md\";",
+      "import { Template } from \"./base-template\";",
+      "",
+      "export class Template__$1 extends Template {",
+      "  constructor() {",
+      "    super(\"$1\");",
+      "  }",
+      "",
+      "  getTargetAndPath(names: MDNamesRecord) {",
+      "    return {",
+      "      target: \"$2\",",
+      "      path: `$3`,",
+      "    };",
+      "  }",
+      "",
+      "  render({ mdId }: TemplateOptions[\"$1\"]) {",
+      "    const names = SMDManager.getNamesFromId(mdId);",
+      "",
+      "    return {",
+      "      ...this.getTargetAndPath(names),",
+      "      body: `",
+      "/*",
+      "$1",
+      "${JSON.stringify({",
+      "  key: this.key,",
+      "  options: mdId,",
+      "})}",
+      "*/",
+      "      `.trim(),",
+      "      importKeys: [],",
+      "    };",
+      "  }",
+      "}"
+    ],
+    "description": "Typeframe Code Template"
+  },
+  "SMDInput": {
+    "scope": "typescript",
+    "prefix": "SMDInput",
+    "body": [
+      "export const $1SMDInput: SMDInput<${1/(.*)/${1:/capitalize}/}FieldExpr> = {",
+      " \"id\": \"${1/(.*)/${1:/capitalize}/}\",",
+      " \"title\": \"${1/(.*)/${1:/capitalize}/}\",",
+      "  props: [",
+      "     $2",
+      "  ],",
+      "  subsets: {",
+      "   \"A\": [\"id\", \"created_at\"],",
+      "  },",
+      "};"
+    ],
+    "description": "Typeframe SMDInput"
+  }
+}

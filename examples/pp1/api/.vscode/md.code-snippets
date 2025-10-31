@@ -1,0 +1,41 @@
+{
+  "서브 MD": {
+    "scope": "typescript",
+    "prefix": "submd",
+    "body": [
+      "export const ${1:subMdId}SMDInput: SMDInput = {",
+      "  id: \"${1/(.*)/${1:/capitalize}/}\",",
+      "  table: \"${2:tableName}\",",
+      "  parentId: \"${3:parentId}\",",
+      "  title: \"서브MD타이틀\",",
+      "  props: [",
+      "    integer(\"id\", { minimum: 1 }),",
+      "    relation(\"${3/(.*)/${1:/downcase}/}\", {",
+      "      mdId: \"$3\",",
+      "      relationType: \"BelongsToOne\",",
+      "      join: {",
+      "        from: \"$2.${3/(.*)/${1:/downcase}/}_id\",",
+      "        to: \"${3/(.*)/${1:/downcase}/}s.id\",",
+      "      },",
+      "      onUpdate: \"CASCADE\",",
+      "      onDelete: \"CASCADE\",",
+      "      title: \"타이틀\",",
+      "    }),",
+      "  ],",
+      "};"
+    ]
+  },
+  "enum 정의": {
+    "scope": "typescript",
+    "prefix": "enum",
+    "body": [
+      "export const ${TM_FILENAME_BASE/(.*)\\..+$/${1:/pascalcase}/}${1/(.*)/${1:/pascalcase}/} = z.enum([\"$2\"]);",
+      "export type ${TM_FILENAME_BASE/(.*)\\..+$/${1:/pascalcase}/}${1/(.*)/${1:/pascalcase}/} = z.infer<typeof ${TM_FILENAME_BASE/(.*)\\..+$/${1:/pascalcase}/}${1/(.*)/${1:/pascalcase}/}>;",
+      "",
+      "// ${1/(.*)/${1:/upcase}/}",
+      "export const ${1/(.*)/${1:/upcase}/}: EnumsLabelKo<${TM_FILENAME_BASE/(.*)\\..+$/${1:/pascalcase}/}${1/(.*)/${1:/pascalcase}/}> = {",
+      " \"$2\": { ko: \"$3\" }",
+      "};"
+    ]
+  }
+}

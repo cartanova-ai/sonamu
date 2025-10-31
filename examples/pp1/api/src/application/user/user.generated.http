@@ -1,0 +1,47 @@
+
+
+GET {{baseUrl}}/api/user/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=name
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[withoutCount]=false
+	&params[id]=0
+	&params[role]=normal
+	&params[status]=ready
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/user/login
+Content-Type: application/json
+
+{ "loginParams": { "string_id": "STRING_ID", "pw": "PW" } }
+
+
+###
+
+GET {{baseUrl}}/api/user/me
+	?
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/logout
+	?
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/user/test1
+	?
+Content-Type: application/json

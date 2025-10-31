@@ -1,0 +1,19 @@
+{
+  "Scaffold practice file": {
+    "scope": "typescript",
+    "prefix": "practice",
+    "body": [
+      "import { BaseModel } from \"../typeframe/database/f9-base-model\";",
+      "",
+      "console.clear();",
+      "console.log(\"$1\");",
+      "",
+      "async function bootstrap() {",
+      "}",
+      "bootstrap().finally(async () => {",
+      "  await BaseModel.destroy();",
+      "});"
+    ],
+    "description": "Practice 기본 코드"
+  }
+}

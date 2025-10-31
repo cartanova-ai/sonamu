@@ -1,0 +1,7 @@
+{
+  "id": "File",
+  "table": "files",
+  "title": "파일",
+  "props": [],
+  "indexes": []
+}

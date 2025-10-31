@@ -1,0 +1,19 @@
+{
+  "id": "Brand",
+  "title": "브랜드",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true },
+    { "name": "name", "type": "string", "length": 128 },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "indexes": [{ "type": "unique", "columns": ["name"] }],
+  "subsets": { "A": ["id", "name", "created_at"] },
+  "enums": {
+    "BrandOrderBy": { "id-desc": "최신순" },
+    "BrandSearchField": { "id": "ID" }
+  }
+}

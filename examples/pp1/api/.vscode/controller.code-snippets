@@ -1,0 +1,57 @@
+{
+  "fastify.get": {
+    "scope": "typescript",
+    "prefix": "fget",
+    "body": [
+      "/*",
+      "  /${TM_FILENAME/([^.]+)\\..+/$1/}/${1:path}",
+      "*/",
+      "fastify.get<{",
+      "  Querystring: {};",
+      "}>(",
+      "  \"/${1:path}\",",
+      "  {",
+      "    schema: {",
+      "      description: \"${TM_FILENAME/([^.]+)\\..+/${1:/capitalize}/} ${1/(.*)/${1:/capitalize}/} ${2:설명}\",",
+      "      querystring: {",
+      "        properties: {},",
+      "        required: [],",
+      "      },",
+      "    },",
+      "  },",
+      "  async (request, _reply): Promise<${TM_FILENAME/([^.]+)\\..+/${1:/capitalize}/}Response.${1/(.*)/${1:/capitalize}/}> => {",
+      "  }",
+      ");"
+    ]
+  },
+  "fastify.post": {
+    "scope": "typescript",
+    "prefix": "fpost",
+    "body": [
+      "/*",
+      "  /${TM_FILENAME/([^.]+)\\..+/$1/}/${1:path}",
+      "*/",
+      "fastify.post<{",
+      "  Body: {};",
+      "}>(",
+      "  \"/${1:path}\",",
+      "  {",
+      "    schema: {",
+      "      description: \"${TM_FILENAME/([^.]+)\\..+/${1:/capitalize}/} ${1/(.*)/${1:/capitalize}/} ${2:설명}\",",
+      "      body: {",
+      "        properties: {},",
+      "        required: [],",
+      "      },",
+      "    },",
+      "  },",
+      "  async (request, _reply): Promise<${TM_FILENAME/([^.]+)\\..+/${1:/capitalize}/}Response.${1/(.*)/${1:/capitalize}/}> => {",
+      "  }",
+      ");"
+    ]
+  },
+  "not implemented yet": {
+    "scope": "typescript",
+    "prefix": "notimpl",
+    "body": ["throw new Error('not implemented yet');"]
+  }
+}
