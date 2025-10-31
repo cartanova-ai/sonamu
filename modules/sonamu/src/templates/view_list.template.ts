@@ -225,11 +225,11 @@ export class Template__view_list extends Template {
       (col) => col.name === "orderBy"
     )?.zodType;
     if (orderByZodType && orderByZodType instanceof z.ZodEnum) {
-      def.orderBy = Object.keys(orderByZodType.Enum)[0];
+      def.orderBy = Object.keys(orderByZodType.options)[0];
     }
     const searchZodType = columns.find((col) => col.name === "search")?.zodType;
     if (searchZodType && searchZodType instanceof z.ZodEnum) {
-      def.search = Object.keys(searchZodType.Enum)[0];
+      def.search = Object.keys(searchZodType.options)[0];
     }
     return def;
   }

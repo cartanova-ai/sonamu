@@ -149,7 +149,7 @@ export class Template__view_form extends Template {
         } else if (col.zodType instanceof z.ZodNumber) {
           value = 0;
         } else if (col.zodType instanceof z.ZodEnum) {
-          value = Object.keys(col.zodType.Enum)[0];
+          value = Object.keys(col.zodType.options)[0];
         } else if (col.zodType instanceof z.ZodBoolean) {
           value = false;
         } else if (col.zodType instanceof z.ZodDate) {
