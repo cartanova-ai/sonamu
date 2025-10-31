@@ -2,30 +2,34 @@ export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
 export type Expand<T> = T extends any[]
   ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
   : T extends object
-    ? { [K in keyof T]: T[K] } & {}
+    ? { [K in keyof T]: T[K] } & Record<string, never>
     : T;
+
+type DeepEqual<T, U> = [T] extends [U] ? [U] extends [T] ? true : false : false;
+type Extends<T, U> = DeepEqual<T, Record<string, never>> extends true ? false : (T extends U ? true : false);
+export type EmptyRecord = Record<string, never>;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
 export type AvailableColumns<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
-    | keyof TSchema[T]
+  | (Extends<TJoined, Record<string, any>> extends false
+    // 이게 TSchema[T]에 존재하면
+    ? keyof TSchema[T]
+    : {
+        [K in keyof TJoined]: TJoined[K] extends Record<string, any>
+          ? `${string & K}.${keyof TJoined[K] & string}`
+          : never;
+      }[keyof TJoined])
       | `${T & string}.${keyof TSchema[T] & string}`
-      | (TJoined extends Record<string, any>
-          ? {
-              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
-                ? `${string & K}.${keyof TJoined[K] & string}`
-                : never;
-            }[keyof TJoined]
-          : never)
   : // 서브쿼리 케이스 (T는 alias string)
     | keyof TResult
       | `${T & string}.${keyof TResult & string}`
-      | (TJoined extends Record<string, any>
+      | (Extends<TJoined, Record<string, any>> extends true
           ? {
               [K in keyof TJoined]: TJoined[K] extends Record<string, any>
                 ? `${string & K}.${keyof TJoined[K] & string}`
@@ -39,7 +43,7 @@ export type ExtractColumnType<
   T extends keyof TSchema | string,
   Path extends string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
     Path extends keyof TSchema[T]
@@ -100,7 +104,7 @@ export type SelectValue<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > =
   | AvailableColumns<TSchema, T, TResult, TJoined> // 기존 컬럼
   | SqlFunction<"string" | "number" | "boolean" | "date">; // SQL 함수
@@ -110,7 +114,7 @@ export type SelectObject<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > = Record<string, SelectValue<TSchema, T, TResult, TJoined>>;
 
 // Select 결과 타입 추론
@@ -119,7 +123,7 @@ export type ParseSelectObject<
   T extends keyof TSchema | string,
   S extends SelectObject<TSchema, T, TResult, TJoined>,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > = {
   [K in keyof S]: S[K] extends SqlFunction<any>
     ? ExtractSqlType<S[K]> // SQL 함수면 타입 추출
@@ -131,7 +135,7 @@ export type WhereCondition<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > =
   // 메인 테이블/서브쿼리 조건들
   (T extends keyof TSchema
@@ -152,14 +156,14 @@ export type WhereCondition<
                 | TJoined[K][K extends keyof TJoined[K] ? K : never][]
             : never;
         }
-      : {});
+      : Record<string, never>);
 
 // Fulltext index 컬럼 추출 타입 (메인 테이블 + 조인된 테이블)
 export type FulltextColumns<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
     | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }

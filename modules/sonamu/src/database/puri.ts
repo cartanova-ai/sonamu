@@ -1,15 +1,16 @@
 import { Knex } from "knex";
-import {
-  SqlFunction,
-  SelectObject,
-  ParseSelectObject,
-  WhereCondition,
-  ComparisonOperator,
+import type {
   AvailableColumns,
-  ExtractColumnType,
+  ComparisonOperator,
+  EmptyRecord,
   Expand,
+  ExtractColumnType,
   FulltextColumns,
   InsertData,
+  ParseSelectObject,
+  SelectObject,
+  SqlFunction,
+  WhereCondition,
 } from "./puri.types";
 import chalk from "chalk";
 
@@ -18,7 +19,7 @@ export class Puri<
   TSchema,
   TTable extends keyof TSchema | string,
   TResult = TTable extends keyof TSchema ? TSchema[TTable] : unknown,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > {
   private knexQuery: Knex.QueryBuilder;
 
@@ -289,10 +290,14 @@ export class Puri<
   }
 
   // Join
-  join<TJoinTable extends keyof TSchema>(
+  join<
+    TJoinTable extends keyof TSchema,
+    TLColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+    TRColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+  >(
     table: TJoinTable,
-    left: string,
-    right: string
+    left: TLColumn,
+    right: TRColumn,
   ): Puri<
     TSchema,
     TTable,
@@ -347,10 +352,14 @@ export class Puri<
     return this as any;
   }
 
-  leftJoin<TJoinTable extends keyof TSchema>(
+  leftJoin<
+    TJoinTable extends keyof TSchema,
+    TLColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+    TRColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+  >(
     table: TJoinTable,
-    left: string,
-    right: string
+    left: TLColumn,
+    right: TRColumn,
   ): Puri<
     TSchema,
     TTable,
@@ -481,6 +490,7 @@ export class Puri<
   }
 
   // Insert/Update/Delete
+  // TODO(Haze, 251030): InsertData<T>에서 nullable type을 제대로 처리하지 못하는 것 같음.
   async insert(
     data: TTable extends keyof TSchema ? InsertData<TSchema[TTable]> : unknown
   ): Promise<number[]> {
@@ -629,7 +639,7 @@ class WhereGroup<
   TSchema,
   TTable extends keyof TSchema | string,
   TResult = any,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > {
   constructor(private builder: Knex.QueryBuilder) {}
 
@@ -764,7 +774,7 @@ class WhereGroup<
 export class JoinClauseGroup<
   TSchema,
   TTable extends keyof TSchema | string,
-  TJoined = {},
+  TJoined = EmptyRecord,
 > {
   constructor(private callback: Knex.JoinClause) {}
 
