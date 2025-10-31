@@ -11,7 +11,7 @@ import { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
 import { Context, ApiDecoratorOptions } from "../api";
 import { FastifyMultipartOptions } from "@fastify/multipart";
-import type { Driver } from "../api/driver";
+import type { Driver } from "../file-storage/driver";
 
 /* 
   Enums
