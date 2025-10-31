@@ -5,31 +5,33 @@ export type Expand<T> = T extends any[]
     ? { [K in keyof T]: T[K] } & {}
     : T;
 
-// {table_name}.{column_name}만 나옴.
-export type FullColumnNames<T, TResult, TJoined = null> =
-  | `${T & string}.${keyof TResult & string}`
-  | {
-      [K in keyof TJoined]: TJoined[K] extends Record<string, any>
-        ? `${string & K}.${keyof TJoined[K] & string}`
-        : never;
-    }[keyof TJoined];
-
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
-// 기본적으로 Join이 되지 않은 것(null)로 처리해서, T가 테이블인지 subquery인지 파악한 다음, Join 여부를 보고 가능한 타입을 결정
 export type AvailableColumns<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
-    TJoined extends Record<string, any>
-    ? FullColumnNames<T, TSchema[T], TJoined>
-    : keyof TSchema[T]
+    | keyof TSchema[T]
+      | `${T & string}.${keyof TSchema[T] & string}`
+      | (TJoined extends Record<string, any>
+          ? {
+              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
+                ? `${string & K}.${keyof TJoined[K] & string}`
+                : never;
+            }[keyof TJoined]
+          : never)
   : // 서브쿼리 케이스 (T는 alias string)
-    TJoined extends Record<string, any>
-    ? FullColumnNames<T, TResult, TJoined>
-    : keyof TResult;
+    | keyof TResult
+      | `${T & string}.${keyof TResult & string}`
+      | (TJoined extends Record<string, any>
+          ? {
+              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
+                ? `${string & K}.${keyof TJoined[K] & string}`
+                : never;
+            }[keyof TJoined]
+          : never);
 
 // 컬럼 경로에서 타입 추출
 export type ExtractColumnType<
@@ -98,7 +100,7 @@ export type SelectValue<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > =
   | AvailableColumns<TSchema, T, TResult, TJoined> // 기존 컬럼
   | SqlFunction<"string" | "number" | "boolean" | "date">; // SQL 함수
@@ -108,7 +110,7 @@ export type SelectObject<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > = Record<string, SelectValue<TSchema, T, TResult, TJoined>>;
 
 // Select 결과 타입 추론
@@ -117,7 +119,7 @@ export type ParseSelectObject<
   T extends keyof TSchema | string,
   S extends SelectObject<TSchema, T, TResult, TJoined>,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > = {
   [K in keyof S]: S[K] extends SqlFunction<any>
     ? ExtractSqlType<S[K]> // SQL 함수면 타입 추출
@@ -129,7 +131,7 @@ export type WhereCondition<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > =
   // 메인 테이블/서브쿼리 조건들
   (T extends keyof TSchema
@@ -157,7 +159,7 @@ export type FulltextColumns<
   TSchema,
   T extends keyof TSchema | string,
   TResult = any,
-  TJoined = null,
+  TJoined = {},
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
     | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
