@@ -1,4 +1,4 @@
-import { Knex } from "knex";
+import type { Knex } from "knex";
 import type {
   AvailableColumns,
   ComparisonOperator,
@@ -8,6 +8,7 @@ import type {
   FulltextColumns,
   InsertData,
   ParseSelectObject,
+  ResultAvailableColumns,
   SelectObject,
   SqlFunction,
   WhereCondition,
@@ -398,7 +399,7 @@ export class Puri<
   }
 
   // OrderBy
-  orderBy<TColumn extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
+  orderBy<TColumn extends ResultAvailableColumns<TSchema, TTable, TResult, TJoined>>(
     column: TColumn,
     direction: "asc" | "desc"
   ): Puri<TSchema, TTable, TResult, TJoined>;
@@ -422,7 +423,7 @@ export class Puri<
   }
 
   // Group by (조인된 테이블 컬럼도 지원)
-  groupBy<TColumns extends AvailableColumns<TSchema, TTable, TResult, TJoined>>(
+  groupBy<TColumns extends ResultAvailableColumns<TSchema, TTable, TResult, TJoined>>(
     ...columns: TColumns[]
   ): Puri<TSchema, TTable, TResult, TJoined>;
   groupBy(...columns: string[]): Puri<TSchema, TTable, TResult, TJoined> {
@@ -431,6 +432,12 @@ export class Puri<
   }
 
   having(condition: string): Puri<TSchema, TTable, TResult, TJoined>;
+  having(condition: string): Puri<TSchema, TTable, TResult, TJoined>;
+  having<TColumn extends ResultAvailableColumns<TSchema, TTable, TResult, TJoined>>(
+    condition: TColumn,
+    operator: ComparisonOperator,
+    value: any
+  ): Puri<TSchema, TTable, TResult, TJoined>;
   having(
     condition: string,
     operator: ComparisonOperator,
