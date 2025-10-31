@@ -31,12 +31,12 @@
     "lodash": "^4.17.21",
     "mime": "^4.1.0",
     "mysql2": "^3.14.5",
-    "sonamu": "^0.4.12",
+    "sonamu": "workspace:^",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@sonamu-kit/react-sui": "^0.1.14",
-    "@sonamu-kit/ui": "^0.4.1",
+    "@sonamu-kit/react-sui": "workspace:^",
+    "@sonamu-kit/ui": "workspace:^",
     "@swc/cli": "^0.7.8",
     "@types/bcrypt": "^6",
     "@types/lodash": "^4",
@@ -50,11 +50,5 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vitest": "^3.2.4"
-  },
-  "packageManager": "yarn@4.10.3",
-  "resolutions": {
-    "sonamu": "portal:../../../modules/sonamu",
-    "@sonamu-kit/react-sui": "portal:../../../modules/react-sui",
-    "@sonamu-kit/ui": "portal:../../../modules/ui"
   }
 }

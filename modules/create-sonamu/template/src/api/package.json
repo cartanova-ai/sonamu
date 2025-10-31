@@ -29,8 +29,8 @@
     "@types/lodash": "^4",
     "@types/luxon": "^3",
     "@types/node": "^24.5.0",
-    "source-map-support": "^0.5.21",
     "prettier": "^3.6.2",
+    "source-map-support": "^0.5.21",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vitest": "^3.2.4"

@@ -1,12 +1,11 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { intersection, isObject, uniq } from "lodash-es";
+import { intersection, isObject, uniq, get, cloneDeep, set } from "lodash-es";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
 import equal from "fast-deep-equal";
 import qs from "qs";
-import _ from "lodash-es";
 import { format } from "date-fns";
 import { caster } from "./caster";
 
@@ -70,9 +69,9 @@ export function useTypeForm<
 
     let targetZType: unknown;
     if (zType instanceof z.ZodObject) {
-      targetZType = _.get(zType.shape, zTypeObjPath);
+      targetZType = get(zType.shape, zTypeObjPath);
     } else if (zType instanceof z.ZodArray) {
-      targetZType = _.get(zType, zTypeObjPath);
+      targetZType = get(zType, zTypeObjPath);
     }
 
     if (targetZType === undefined) {
@@ -93,7 +92,7 @@ export function useTypeForm<
       _emptyStringTo?: "normal" | "nullable" | "optional"
     ): any => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
-      const srcValue = _.get(form, objPath) as unknown;
+      const srcValue = get(form, objPath) as unknown;
 
       const formatValue = (value: unknown): string => {
         if (value === undefined || value === null) {
@@ -123,8 +122,8 @@ export function useTypeForm<
             newValue = prop.value === "" ? undefined : prop.value;
           }
 
-          const newForm = _.cloneDeep(form);
-          _.set(newForm, objPath, newValue);
+          const newForm = cloneDeep(form);
+          set(newForm, objPath, newValue);
           setForm(newForm);
         },
         ...(error && { error }),

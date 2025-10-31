@@ -1,0 +1,28 @@
+{
+  "private": true,
+  "workspaces": [
+    "examples/miomock/*",
+    "modules/sonamu",
+    "modules/react-sui",
+    "modules/ui",
+    "modules/docs",
+    "modules/create-sonamu"
+  ],
+  "scripts": {
+    "build:react-sui": "cowsay 'react-sui 빌드합니다.' && yarn workspace @sonamu-kit/react-sui build",
+    "build:ui": "cowsay 'ui 빌드합니다.' && yarn workspace @sonamu-kit/ui build",
+    "build:sonamu": "cowsay 'sonamu 빌드합니다.' && yarn workspace sonamu build",
+    "build": "yarn build:react-sui && yarn build:ui && yarn build:sonamu",
+
+    "miomock:api": "cowsay 'miomock api 실행합니다.' && yarn workspace miomock-api dev:serve",
+    "miomock:web": "cowsay 'miomock web 실행합니다.' && yarn workspace miomock-web dev",
+    "miomock:sonamu-ui": "cowsay 'miomock sonamu ui 실행합니다.' && yarn --cwd examples/miomock/api sonamu ui",
+    "miomock": "run-p miomock:api miomock:web miomock:sonamu-ui"
+  },
+  "packageManager": "yarn@4.10.3",
+  "devDependencies": {
+    "cowsay": "^1.6.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3"
+  }
+}
