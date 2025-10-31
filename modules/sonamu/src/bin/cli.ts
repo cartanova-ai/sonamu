@@ -8,9 +8,9 @@ dotenv.config();
 import path from "path";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
-import fs from "fs";
+import { mkdir, readFile, readdir, writeFile } from "fs/promises";
+import { exists } from "../utils/fs-utils";
 import process from "process";
-import _ from "lodash";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
@@ -91,12 +91,12 @@ bootstrap().finally(async () => {
 async function dev_serve() {
   const nodemon = await import("nodemon");
 
-  const nodemonConfig = (() => {
+  const nodemonConfig = await (async () => {
     const projectNodemonPath = path.join(Sonamu.apiRootPath, "nodemon.json");
-    const hasProjectNodemon = fs.existsSync(projectNodemonPath);
+    const hasProjectNodemon = await exists(projectNodemonPath);
 
     if (hasProjectNodemon) {
-      return JSON.parse(fs.readFileSync(projectNodemonPath, "utf8"));
+      return JSON.parse(await readFile(projectNodemonPath, "utf8"));
     }
 
     return {
@@ -125,7 +125,7 @@ async function dev_serve() {
 async function serve() {
   const distIndexPath = path.join(Sonamu.apiRootPath, "dist", "index.js");
 
-  if (!fs.existsSync(distIndexPath)) {
+  if (!(await exists(distIndexPath))) {
     console.log(
       chalk.red("dist/index.js not found. Please build your project first.")
     );
@@ -280,7 +280,7 @@ async function fixture_init() {
     execSync(`${mysqlCmd} -e 'DROP DATABASE IF EXISTS \`${conn.database}\`'`);
     execSync(`${mysqlCmd} -e 'CREATE DATABASE \`${conn.database}\`'`);
     execSync(`${mysqlCmd} ${conn.database} < ${dumpFilename}`);
-    if (fs.existsSync(migrationsDump)) {
+    if (await exists(migrationsDump)) {
       execSync(`${mysqlCmd} ${conn.database} < ${migrationsDump}`);
     }
 
@@ -305,11 +305,11 @@ async function fixture_sync() {
 
 async function stub_practice(name: string) {
   const practiceDir = path.join(Sonamu.apiRootPath, "src", "practices");
-  const fileNames = fs.readdirSync(practiceDir);
+  const fileNames = await readdir(practiceDir);
 
-  const maxSeqNo = (() => {
-    if (fs.existsSync(practiceDir) === false) {
-      fs.mkdirSync(practiceDir, { recursive: true });
+  const maxSeqNo = await (async () => {
+    if (!(await exists(practiceDir))) {
+      await mkdir(practiceDir, { recursive: true });
     }
 
     const filteredSeqs = fileNames
@@ -347,7 +347,7 @@ async function stub_practice(name: string) {
     `await BaseModel.destroy();`,
     `});`,
   ].join("\n");
-  fs.writeFileSync(dstPath, code);
+  await writeFile(dstPath, code);
 
   execSync(`code ${dstPath}`);
 
