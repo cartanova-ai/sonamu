@@ -19,11 +19,12 @@ import {
 } from "../types/types";
 import inflection from "inflection";
 import path from "path";
-import fs from "fs";
+import { writeFile } from "fs/promises";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import prettier from "prettier";
 import { nonNullable } from "../utils/utils";
+import { exists } from "../utils/fs-utils";
 
 export class Entity {
   id: string;
@@ -574,7 +575,7 @@ export class Entity {
       `dist/application/${typesModulePath}.js`
     );
 
-    if (fs.existsSync(typesFileDistPath)) {
+    if (await exists(typesFileDistPath)) {
       const importPath = path.relative(__dirname, typesFileDistPath);
       const t = await import(importPath);
       this.types = Object.keys(t).reduce((result, key) => {
@@ -627,7 +628,7 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
     );
     const json = this.toJson();
-    fs.writeFileSync(
+    await writeFile(
       jsonPath,
       await prettier.format(JSON.stringify(json), {
         parser: "json",

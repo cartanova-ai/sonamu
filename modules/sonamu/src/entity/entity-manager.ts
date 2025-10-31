@@ -6,7 +6,7 @@ import path from "path";
 import { Entity } from "./entity";
 import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
-import fs from "fs";
+import { readFile } from "fs/promises";
 
 export type EntityNamesRecord = Record<
   | "fs"
@@ -41,7 +41,7 @@ class EntityManagerClass {
     !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
     for await (const file of glob(path.resolve(pathPattern!))) {
-      await this.register(JSON.parse(fs.readFileSync(file).toString()));
+      await this.register(JSON.parse((await readFile(file)).toString()));
     }
     this.isAutoloaded = true;
   }

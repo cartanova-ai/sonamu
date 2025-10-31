@@ -1,7 +1,8 @@
 import path, { dirname } from "path";
 import { globAsync, importMultiple } from "../utils/utils";
-import { createReadStream, existsSync, readFileSync, writeFileSync } from "fs";
-import { writeFile } from "fs/promises";
+import { createReadStream } from "fs";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { exists } from "../utils/fs-utils";
 import crypto from "crypto";
 import equal from "fast-deep-equal";
 import _, { chunk } from "lodash";
@@ -73,13 +74,17 @@ import { Template__view_search_input } from "../templates/view_search_input.temp
 import { Template__view_list_columns } from "../templates/view_list_columns.template";
 import { Template__generated_http } from "../templates/generated_http.template";
 import { Sonamu } from "../api/sonamu";
-import { execSync } from "child_process";
 import { Template__generated_sso } from "../templates/generated_sso.template";
 import { setTimeout as setTimeoutPromises } from "timers/promises";
 import assert from "assert";
 import * as swc from "@swc/core";
 import { minimatch } from "minimatch";
-import { mkdirSync } from "fs";
+import {
+  everyAsync,
+  filterAsync,
+  mapAsync,
+  reduceAsync,
+} from "../utils/async-utils";
 
 type FileType =
   | "model"
@@ -154,7 +159,7 @@ export class Syncer {
         const srcCodePath = path
           .join(currentDirname, `../shared/${target}.shared.ts.txt`)
           .replace("/dist/", "/src/");
-        if (!existsSync(srcCodePath)) {
+        if (!(await exists(srcCodePath))) {
           return;
         }
 
@@ -166,7 +171,7 @@ export class Syncer {
 
         const srcChecksum = await this.getChecksumOfFile(srcCodePath);
         const dstChecksum = await (async () => {
-          if (existsSync(dstCodePath) === false) {
+          if (!(await exists(dstCodePath))) {
             return "";
           }
           return this.getChecksumOfFile(dstCodePath);
@@ -175,7 +180,7 @@ export class Syncer {
         if (srcChecksum === dstChecksum) {
           return;
         }
-        writeFileSync(dstCodePath, readFileSync(srcCodePath));
+        await writeFile(dstCodePath, await readFile(srcCodePath));
         console.log(chalk.blue("shared.ts is synced"));
       })
     );
@@ -274,10 +279,7 @@ export class Syncer {
           Sonamu.apiRootPath,
           `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`
         );
-        if (
-          entity.parentId === undefined &&
-          existsSync(typeFilePath) === false
-        ) {
+        if (entity.parentId === undefined && !(await exists(typeFilePath))) {
           await this.generateTemplate("init_types", { entityId });
         }
       }
@@ -393,17 +395,17 @@ export class Syncer {
           const jsPath = diffFile
             .replace("/src/", "/dist/")
             .replace(".ts", ".js");
-          mkdirSync(path.dirname(jsPath), { recursive: true }); // 파일 새로 추가된 경우 디렉토리 생성
-          writeFileSync(jsPath, code);
+          await mkdir(path.dirname(jsPath), { recursive: true }); // 파일 새로 추가된 경우 디렉토리 생성
+          await writeFile(jsPath, code);
 
           if (map) {
             const mapPath = jsPath + ".map";
-            mkdirSync(path.dirname(mapPath), { recursive: true });
-            writeFileSync(mapPath, map);
+            await mkdir(path.dirname(mapPath), { recursive: true });
+            await writeFile(mapPath, map);
 
             const sourceMapComment =
               "\n//# sourceMappingURL=" + path.basename(mapPath);
-            writeFileSync(jsPath, sourceMapComment, {
+            await writeFile(jsPath, sourceMapComment, {
               flag: "a" /*파일 끝에 붙이기만 해요*/,
             });
           }
@@ -518,11 +520,11 @@ export class Syncer {
   }
 
   async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
-    if (!existsSync(fromPath)) {
+    if (!(await exists(fromPath))) {
       return;
     }
 
-    const oldFileContent = readFileSync(fromPath).toString();
+    const oldFileContent = (await readFile(fromPath)).toString();
 
     const newFileContent = (() => {
       const nfc = oldFileContent.replace(
@@ -553,8 +555,8 @@ export class Syncer {
                 .replace(`/${apiDir}/`, `/${target}/`)
                 .replace("/application/", "/services/");
               const dir = dirname(dst);
-              if (!existsSync(dir)) {
-                mkdirSync(dir, { recursive: true });
+              if (!(await exists(dir))) {
+                await mkdir(dir, { recursive: true });
               }
               console.log(
                 chalk.bold("Copied: ") +
@@ -599,18 +601,18 @@ export class Syncer {
   }
 
   async getPreviousChecksums(): Promise<PathAndChecksum[]> {
-    if (existsSync(this.checksumsPath) === false) {
+    if (!(await exists(this.checksumsPath))) {
       return [];
     }
 
     const previousChecksums = JSON.parse(
-      readFileSync(this.checksumsPath, "utf-8")
+      (await readFile(this.checksumsPath, "utf-8"))
     ) as PathAndChecksum[];
     return previousChecksums;
   }
 
   async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
-    await writeFileSync(
+    await writeFile(
       this.checksumsPath,
       JSON.stringify(checksums, null, 2),
       "utf-8"
@@ -635,7 +637,7 @@ export class Syncer {
   async readApisFromFile(filePath: string) {
     const sourceFile = ts.createSourceFile(
       filePath,
-      readFileSync(filePath).toString(),
+      (await readFile(filePath)).toString(),
       ts.ScriptTarget.Latest
     );
 
@@ -939,12 +941,15 @@ export class Syncer {
     );
     // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
 
-    const filePaths = (await globAsync(pathPattern)).filter((path) => {
-      // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
-      // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
-      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-      return existsSync(srcPath);
-    });
+    const filePaths = await filterAsync(
+      await globAsync(pathPattern),
+      async (path) => {
+        // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
+        // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
+        const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+        return await exists(srcPath);
+      }
+    );
     const modules = await importMultiple(filePaths);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -970,16 +975,15 @@ export class Syncer {
     ];
     // console.debug(chalk.magenta(`autoload:types @ ${pathPatterns.join("\n")}`));
 
-    const filePaths = (
-      await Promise.all(pathPatterns.map((pattern) => globAsync(pattern)))
-    )
-      .flat()
-      .filter((path) => {
+    const filePaths = await filterAsync(
+      (await mapAsync(pathPatterns, globAsync)).flat(),
+      async (path) => {
         // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
         // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
         const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-        return existsSync(srcPath);
-      });
+        return await exists(srcPath);
+      }
+    );
     const modules = await importMultiple(filePaths, doRefresh);
     const functions = modules
       .map(({ imported }) => Object.entries(imported))
@@ -1158,10 +1162,10 @@ export class Syncer {
     return await Promise.all(
       dstFilePaths.map(async (dstFilePath) => {
         const dir = path.dirname(dstFilePath);
-        if (existsSync(dir) === false) {
-          mkdirSync(dir, { recursive: true });
+        if (!(await exists(dir))) {
+          await mkdir(dir, { recursive: true });
         }
-        writeFileSync(dstFilePath, pathAndCode.code);
+        await writeFile(dstFilePath, pathAndCode.code);
         console.log(
           chalk.bold("Generated: ") +
             chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`)
@@ -1193,17 +1197,20 @@ export class Syncer {
       )
     ).flat();
 
-    const filteredPathAndCodes: PathAndCode[] = (() => {
+    const filteredPathAndCodes: PathAndCode[] = await (async () => {
       if (generateOptions.overwrite === true) {
         return pathAndCodes;
       } else {
-        return pathAndCodes.filter((pathAndCode) => {
+        return await filterAsync(pathAndCodes, async (pathAndCode) => {
           const { targets } = Sonamu.config.sync;
           const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
           const dstFilePaths = targets.map((target) =>
             filePath.replace("/:target/", `/${target}/`)
           );
-          return dstFilePaths.every((dstPath) => existsSync(dstPath) === false);
+          return await everyAsync(
+            dstFilePaths,
+            async (dstPath) => !(await exists(dstPath))
+          );
         });
       }
     })();
@@ -1220,11 +1227,11 @@ export class Syncer {
     );
   }
 
-  checkExistsGenCode(
+  async checkExistsGenCode(
     entityId: string,
     templateKey: TemplateKey,
     enumId?: string
-  ): { subPath: string; fullPath: string; isExists: boolean } {
+  ): Promise<{ subPath: string; fullPath: string; isExists: boolean }> {
     const { target, path: genPath } = this.getTemplate(
       templateKey
     ).getTargetAndPath(EntityManager.getNamesFromId(entityId), enumId);
@@ -1234,32 +1241,33 @@ export class Syncer {
     return {
       subPath,
       fullPath,
-      isExists: existsSync(fullPath),
+      isExists: await exists(fullPath),
     };
   }
 
-  checkExists(
+  async checkExists(
     entityId: string,
     enums: {
       [name: string]: z.ZodEnum<any>;
     }
-  ): Record<`${TemplateKey}${string}`, boolean> {
+  ): Promise<Record<`${TemplateKey}${string}`, boolean>> {
     const keys: TemplateKey[] = TemplateKey.options;
     const names = EntityManager.getNamesFromId(entityId);
     const enumsKeys = Object.keys(enums).filter(
       (name) => name !== names.constant
     );
 
-    return keys.reduce(
-      (result, key) => {
+    return await reduceAsync(
+      keys,
+      async (result, key) => {
         const tpl = this.getTemplate(key);
         if (key.startsWith("view_enums")) {
-          enumsKeys.map((componentId) => {
+          await mapAsync(enumsKeys, async (componentId) => {
             const { target, path: p } = tpl.getTargetAndPath(
               names,
               componentId
             );
-            result[`${key}__${componentId}`] = existsSync(
+            result[`${key}__${componentId}`] = await exists(
               path.join(Sonamu.appRootPath, target, p)
             );
           });
@@ -1269,13 +1277,13 @@ export class Syncer {
         const { target, path: p } = tpl.getTargetAndPath(names);
         const { targets } = Sonamu.config.sync;
         if (target.includes(":target")) {
-          targets.map((t) => {
-            result[`${key}__${t}`] = existsSync(
+          await mapAsync(targets, async (t) => {
+            result[`${key}__${t}`] = await exists(
               path.join(Sonamu.appRootPath, target.replace(":target", t), p)
             );
           });
         } else {
-          result[key] = existsSync(path.join(Sonamu.appRootPath, target, p));
+          result[key] = await exists(path.join(Sonamu.appRootPath, target, p));
         }
 
         return result;
@@ -1606,9 +1614,9 @@ export class Syncer {
     })(); // iife
 
     for await (const delPath of delPaths) {
-      if (existsSync(delPath)) {
+      if (await exists(delPath)) {
         console.log(chalk.red(`DELETE ${delPath}`));
-        execSync(`rm -rf ${delPath}`);
+        await rm(delPath, { recursive: true, force: true });
       } else {
         console.log(chalk.yellow(`NOT_EXISTS ${delPath}`));
       }

@@ -1,5 +1,6 @@
 import path from "path";
-import fs from "fs";
+import { readFile } from "fs/promises";
+import { exists } from "../utils/fs-utils";
 import { AsyncLocalStorage } from "async_hooks";
 import chalk from "chalk";
 import fastify from "fastify";
@@ -146,15 +147,15 @@ class SonamuClass {
     this.apiRootPath = apiRootPath ?? findApiRootPath();
     const configPath = path.join(this.apiRootPath, "sonamu.config.json");
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
-    if (fs.existsSync(configPath) === false) {
+    if (!(await exists(configPath))) {
       throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
     }
     this.config = JSON.parse(
-      fs.readFileSync(configPath).toString()
+      (await readFile(configPath)).toString()
     ) as SonamuConfig;
-    if (fs.existsSync(secretsPath)) {
+    if (await exists(secretsPath)) {
       this.secrets = JSON.parse(
-        fs.readFileSync(secretsPath).toString()
+        (await readFile(secretsPath)).toString()
       ) as SonamuSecrets;
     }
 
