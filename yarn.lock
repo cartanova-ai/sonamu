@@ -3480,6 +3480,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/mime-types@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "@types/mime-types@npm:3.0.1"
+  checksum: 10/96534e23b2180e5396a1e6a44f51ec59e349bd43daed4b5cb4548493126e9641cdc65f8292477e80c5e6063cf625330dae8edaf31357553b60baa23c32a8bafd
+  languageName: node
+  linkType: hard
+
 "@types/minimist@npm:^1.2.5":
   version: 1.2.5
   resolution: "@types/minimist@npm:1.2.5"
@@ -10246,15 +10253,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mime@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "mime@npm:4.1.0"
-  bin:
-    mime: bin/cli.js
-  checksum: 10/154c06eeaf803c4a87f44b3dbd3fafc50afed7154f9ea2d2dde4ae464be33a7c6943de6981d636abd5da3523d2bd66ee1ad2adb2e4c2e7a2fe5e0075bcde62d5
-  languageName: node
-  linkType: hard
-
 "mimic-fn@npm:^2.1.0":
   version: 2.1.0
   resolution: "mimic-fn@npm:2.1.0"
@@ -10436,10 +10434,8 @@ __metadata:
     fastify: "npm:^4"
     fastify-file-upload: "npm:^4.0.0"
     fastify-qs: "npm:^5.0.0"
-    flydrive: "npm:^1.3.0"
     knex: "npm:^3.1.0"
     lodash: "npm:^4.17.21"
-    mime: "npm:^4.1.0"
     mysql2: "npm:^3.14.5"
     prettier: "npm:^3.6.2"
     sonamu: "workspace:^"
@@ -13281,6 +13277,7 @@ __metadata:
     "@types/inflection": "npm:^1.13.0"
     "@types/lodash": "npm:^4.14.198"
     "@types/luxon": "npm:^3.0.1"
+    "@types/mime-types": "npm:^3.0.1"
     "@types/node": "npm:^22"
     "@types/prettier": "npm:^3.0.0"
     "@types/prompts": "npm:^2.0.14"
@@ -13298,6 +13295,7 @@ __metadata:
     knex: "npm:^3.1.0"
     lodash: "npm:^4.17.21"
     luxon: "npm:^3.0.3"
+    mime-types: "npm:^3.0.1"
     minimatch: "npm:^10.0.3"
     mysql2: "npm:^3.6.1"
     node-sql-parser: "npm:^5.2.0"

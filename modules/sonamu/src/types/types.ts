@@ -11,6 +11,7 @@ import { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
 import { Context, ApiDecoratorOptions } from "../api";
 import { FastifyMultipartOptions } from "@fastify/multipart";
+import type { Driver } from "../api/driver";
 
 /* 
   Enums
@@ -832,7 +833,7 @@ export type ManyToManyBaseSchema<
 
 export type SonamuFastifyConfig = {
   contextProvider: (
-    defaultContext: Pick<Context, "headers" | "reply">,
+    defaultContext: Pick<Context, "request" | "reply" | "headers">,
     request: FastifyRequest,
     reply: FastifyReply
   ) => Context;
@@ -886,6 +887,8 @@ export type SonamuServerOptions = {
   };
 
   apiConfig: SonamuFastifyConfig;
+
+  storage?: Driver;
 
   lifecycle?: {
     onStart?: (server: FastifyInstance) => Promise<void> | void;
