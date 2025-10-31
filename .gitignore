@@ -9,6 +9,7 @@
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+.yarn/install-state.gz
 
 # Dependencies
 node_modules
