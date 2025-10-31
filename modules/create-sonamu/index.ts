@@ -8,8 +8,21 @@ import { spawn } from "node:child_process";
 import chalk from "chalk";
 import ora from "ora";
 
+// 생성된 파일/디렉토리 전역에서 추적하기 위한 변수
+let createdTargetRoot: string | null = null;
+let isCleaningUp = false;
+
 async function init() {
-  let result: prompts.Answers<"targetDir">;
+  // Graceful shutdown 핸들러 설정
+  const shutdownHandler = () => {
+    cleanup();
+    process.exit(1);
+  };
+
+  process.on("SIGINT", shutdownHandler);
+  process.on("SIGTERM", shutdownHandler);
+
+  let result: prompts.Answers<"targetDir" | "targetPath">;
 
   try {
     result = await prompts(
@@ -22,19 +35,18 @@ async function init() {
         },
       ],
       {
-        onCancel: () => {
-          throw new Error("Operation cancelled.");
-        },
+        onCancel: createCancelHandler(),
       }
     );
   } catch (e) {
+    cleanup();
     console.error(e);
     process.exit(1);
   }
 
   let { targetDir } = result;
 
-  const targetRoot = path.join(process.cwd(), targetDir);
+  createdTargetRoot = targetRoot; // 생성된 디렉토리 추적 시작
   const templateRoot = new URL("./template/src", import.meta.url).pathname;
 
   const copy = (src: string, dest: string) => {
@@ -158,43 +170,10 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
   }
 }
 
-async function getCommandOutput(
-  command: string,
-  args: string[],
-  cwd: string
-): Promise<string> {
-  const child = spawn(command, args, {
-    cwd,
-    stdio: ["inherit", "pipe", "pipe"],
-    env: { ...process.env },
-  });
+  // 성공적으로 완료되면 cleanup 방지
+  createdTargetRoot = null;
 
-  let output = "";
-  let errorOutput = "";
-
-  return new Promise((resolve, reject) => {
-    child.stdout?.on("data", (data) => {
-      output += data.toString();
-    });
-
-    child.stderr?.on("data", (data) => {
-      errorOutput += data.toString();
-    });
-
-    child.on("error", (error) => {
-      reject(error);
-    });
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(
-          new Error(`Command failed with exit code ${code}: ${errorOutput}`)
-        );
-      } else {
-        resolve(output);
-      }
-    });
-  });
+  return targetRoot;
 }
 
 async function executeCommand(
@@ -331,15 +310,69 @@ async function promptDatabase(projectName: string) {
       initial: `${projectName}`,
     },
     {
-      type: "password",
-      name: "DB_PASSWORD",
-      message: "Enter the MySQL database password:",
-    },
-  ]);
+      onCancel: createCancelHandler(),
+    }
+  );
 
   return answers;
 }
 
-init().catch((e) => {
-  console.error(e);
-});
+// 공통 취소 핸들러
+function createCancelHandler() {
+  return () => {
+    cleanup();
+    throw new Error("Operation cancelled.");
+  };
+};
+
+// 재귀적으로 디렉토리 삭제 함수
+function removeDirectory(dirPath: string): void {
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
+
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  } catch (error) {
+    // 삭제 실패 시 에러를 무시하고 계속 진행
+    console.error(chalk.yellow(`Warning: Failed to remove ${dirPath}`));
+  }
+}
+
+// 생성된 파일 정리 함수
+function cleanup() {
+  if (isCleaningUp || !createdTargetRoot) {
+    return;
+  }
+
+  isCleaningUp = true;
+  console.log(chalk.yellow("\n\n Operation cancelled. Cleaning up created files...\n"));
+
+  try {
+    if (fs.existsSync(createdTargetRoot)) {
+      removeDirectory(createdTargetRoot);
+      console.log(chalk.green(`Cleaned up ${createdTargetRoot}\n`));
+    }
+  } catch (error) {
+    console.error(chalk.red(`Failed to clean up: ${error}`));
+  }
+}
+
+init()
+  .then(async (createdTarget: string) => {
+    console.log(chalk.green("\nProject created successfully!\n"));
+
+    // code 명령어로 생성된 api, web 열기
+    try {
+      await executeCommand("code", [path.join(createdTarget, "api")], process.cwd());
+      await executeCommand("code", [path.join(createdTarget, "web")], process.cwd());
+    } catch (error) {
+      // code 명령어가 실패하는 경우, (code command가 설정되지 않은 경우)
+      console.log(chalk.yellow("Note: Failed to open project in VSCode. Please set up the code command."));
+    }
+  })
+  .catch((e) => {
+    cleanup();
+    console.error(e);
+    process.exit(1);
+  });
