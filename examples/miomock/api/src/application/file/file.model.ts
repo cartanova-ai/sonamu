@@ -5,14 +5,12 @@ import {
   NotFoundException,
   BadRequestException,
   api,
+  upload,
   Sonamu,
 } from "sonamu";
 import { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileSubsetQueries } from "../sonamu.generated.sso";
 import { FileListParams, FileSaveParams } from "./file.types";
-import mime from "mime";
-import { createHash } from "crypto";
-import { fileDisk } from "../../libs/storage";
 
 /*
   File Model
@@ -136,30 +134,32 @@ class FileModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "POST", clients: ["axios-multipart"] })
+  @upload()
   async upload(): Promise<{
     file: { name: string; url: string; mime_type: string };
   }> {
-    const { file: fileFn, files: filesFn } = Sonamu.getContext();
-
-    const file = await fileFn();
-    console.log(file);
-
+    const { file } = Sonamu.getUploadContext();
     if (file === undefined) {
       throw new BadRequestException("파일 업로드되지 않음");
     }
 
-    const buffer = await file.toBuffer();
+    const md5 = await file.md5();
+    const key = `${md5}.${file.extname}`;
 
-    const ext = mime.getExtension(file.mimetype);
-    const md5 = createHash("md5").update(buffer).digest("hex");
-    const key = `${md5}.${ext}`;
+    const url = await file.saveToDisk(key);
 
-    await fileDisk.put(key, buffer);
+    console.log("clientName", file.clientName);
+    console.log("filename", file.filename);
+    console.log("fieldName", file.fieldName);
+    console.log("size", file.size);
+    console.log("extname", file.extname);
+    console.log("mimetype", file.mimetype);
+    console.log("md5", md5);
 
     return {
       file: {
-        name: file.filename,
-        url: await fileDisk.getUrl(key),
+        name: file.clientName,
+        url,
         mime_type: file.mimetype,
       },
     };

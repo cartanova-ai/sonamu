@@ -2315,7 +2315,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "flydrive",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"\
+      "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"\
     ],\
     [\
       "follow-redirects",\
@@ -3351,7 +3351,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "mime",\
-      "npm:4.1.0"\
+      "npm:3.0.0"\
     ],\
     [\
       "mime-db",\
@@ -13550,8 +13550,8 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0", {\
-        "packageLocation": "./.yarn/__virtual__/flydrive-virtual-3677eda1ec/0/cache/flydrive-npm-1.3.0-249d03342f-64b414001f.zip/node_modules/flydrive/",\
+      ["virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0", {\
+        "packageLocation": "./.yarn/__virtual__/flydrive-virtual-f76eb05633/0/cache/flydrive-npm-1.3.0-249d03342f-64b414001f.zip/node_modules/flydrive/",\
         "packageDependencies": [\
           ["@aws-sdk/client-s3", null],\
           ["@aws-sdk/s3-request-presigner", null],\
@@ -13562,7 +13562,7 @@ const RAW_RUNTIME_STATE =
           ["@types/aws-sdk__s3-request-presigner", null],\
           ["@types/google-cloud__storage", null],\
           ["etag", "npm:1.8.1"],\
-          ["flydrive", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"],\
+          ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["mime-types", "npm:3.0.1"]\
         ],\
         "packagePeers": [\
@@ -16970,13 +16970,6 @@ const RAW_RUNTIME_STATE =
           ["mime", "npm:3.0.0"]\
         ],\
         "linkType": "HARD"\
-      }],\
-      ["npm:4.1.0", {\
-        "packageLocation": "./.yarn/cache/mime-npm-4.1.0-7795763cdc-154c06eeaf.zip/node_modules/mime/",\
-        "packageDependencies": [\
-          ["mime", "npm:4.1.0"]\
-        ],\
-        "linkType": "HARD"\
       }]\
     ]],\
     ["mime-db", [\
@@ -17203,10 +17196,8 @@ const RAW_RUNTIME_STATE =
           ["fastify", "npm:4.29.1"],\
           ["fastify-file-upload", "npm:4.0.0"],\
           ["fastify-qs", "npm:5.0.0"],\
-          ["flydrive", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
-          ["mime", "npm:4.1.0"],\
           ["miomock-api", "workspace:examples/miomock/api"],\
           ["mysql2", "npm:3.15.3"],\
           ["prettier", "npm:3.6.2"],\
@@ -20346,7 +20337,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "npm:4.0.2"],\
-          ["flydrive", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"],\
+          ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
@@ -20409,7 +20400,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "npm:4.0.2"],\
-          ["flydrive", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"],\
+          ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\
@@ -20466,7 +20457,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "npm:4.0.2"],\
-          ["flydrive", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.3.0"],\
+          ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
           ["lodash", "npm:4.17.21"],\

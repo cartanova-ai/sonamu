@@ -1,7 +1,6 @@
 import {} from "sonamu";
 import { Session } from "@fastify/secure-session";
 import { UserSubsetSS } from "../application/sonamu.generated";
-import { FastifyRequest } from "fastify";
 
 declare module "sonamu" {
   export interface ContextExtend {
@@ -12,8 +11,6 @@ declare module "sonamu" {
       login: (user: UserSubsetSS) => Promise<void>;
       logout: () => void;
     };
-    file: FastifyRequest["file"];
-    files: FastifyRequest["files"];
   }
 
   export interface GuardKeys {

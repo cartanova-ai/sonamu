@@ -82,6 +82,8 @@ class TransactionalExampleModelClass extends BaseModelClass {
       password: userData.password,
       role: "normal",
       is_verified: false,
+      birth_date: null,
+      last_login_at: null,
     });
 
     // 두 번째 작업에서 에러 발생
