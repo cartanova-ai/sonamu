@@ -7322,7 +7322,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"encoding@npm:^0.1.13":
+"encoding@npm:*, encoding@npm:^0.1.13":
   version: 0.1.13
   resolution: "encoding@npm:0.1.13"
   dependencies:
@@ -13205,6 +13205,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react@npm:*":
+  version: 19.2.0
+  resolution: "react@npm:19.2.0"
+  checksum: 10/e13bcdb8e994c3cfa922743cb75ca8deb60531bf02f584d2d8dab940a8132ce8a2e6ef16f8ed7f372b4072e7a7eeff589b2812dabbedfa73e6e46201dac8a9d0
+  languageName: node
+  linkType: hard
+
 "react@npm:^18.2.0":
   version: 18.3.1
   resolution: "react@npm:18.3.1"
@@ -14079,7 +14086,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semantic-ui-react@npm:^2.1.3, semantic-ui-react@npm:^2.1.4, semantic-ui-react@npm:^2.1.5":
+"semantic-ui-react@npm:*, semantic-ui-react@npm:^2.1.3, semantic-ui-react@npm:^2.1.4, semantic-ui-react@npm:^2.1.5":
   version: 2.1.5
   resolution: "semantic-ui-react@npm:2.1.5"
   dependencies:
