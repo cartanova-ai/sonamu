@@ -44,7 +44,7 @@ const RAW_RUNTIME_STATE =
     }\
   ],\
   "enableTopLevelFallback": true,\
-  "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)|(^(?:examples\\\\/pp1\\\\/web)$)|(^(?:examples\\\\/miomock\\\\/web)$)|(^(?:(?:^|\\\\/|(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)\\\\/)template\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?=.)[^/]*?\\\\/?)$)",\
+  "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)|(^(?:examples\\\\/pp1\\\\/web)$)|(^(?:(?:^|\\\\/|(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)\\\\/)template\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?=.)[^/]*?\\\\/?)$)",\
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
     ["@sonamu-kit/react-sui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui", "virtual:ec1165dc3ba755bd97ba5fc629693b8ad3a96768ebc17ce62072a62831d1dc62c48ad69b4abb8e13b70f6645296201c1f005a51121887d268f22eafc0ae24bb6#workspace:modules/react-sui", "workspace:modules/react-sui"]],\
