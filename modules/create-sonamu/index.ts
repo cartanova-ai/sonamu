@@ -168,7 +168,7 @@ async function init() {
     }
   } else {
     console.log(`\nTo set up Yarn Berry, run the following commands:\n`);
-    console.log(chalk.gray(`  $ cd ${targetDir}/api`));
+    console.log(chalk.gray(`  $ cd ${targetRoot}/api`));
     console.log(chalk.gray(`  $ yarn set version berry`));
     console.log(chalk.gray(`  $ yarn install`));
     console.log(chalk.gray(`  $ yarn dlx @yarnpkg/sdks vscode\n`));
@@ -191,15 +191,22 @@ async function init() {
     console.log(`\nSetting up a database using Docker...`);
 
     // 프롬프트로 입력 받아서 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD .env 파일에 추가
-    const answers = await promptDatabase(targetDir);
-    const env = `# Database
-DB_HOST=0.0.0.0
-DB_USER=root
-DB_PASSWORD=${answers.DB_PASSWORD}
-COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
-MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
-MYSQL_DATABASE=${answers.MYSQL_DATABASE}
-`;
+    let answers: PromptDatabaseAnswers;
+    try {
+      answers = await promptDatabase(targetDir);
+    } catch (error) {
+      cleanup();
+      throw error;
+    }
+    const env = `
+                # Database
+                  DB_HOST=0.0.0.0
+                  DB_USER=root
+                  DB_PASSWORD=${answers.DB_PASSWORD}
+                  COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
+                  MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
+                  MYSQL_DATABASE=${answers.MYSQL_DATABASE}
+                `;
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
 
     // docker-compose 실행
@@ -350,27 +357,40 @@ async function setupYarnBerry(projectName: string, dir: string) {
   }
 }
 
+interface PromptDatabaseAnswers {
+  COMPOSE_PROJECT_NAME: string;
+  MYSQL_CONTAINER_NAME: string;
+  MYSQL_DATABASE: string;
+  DB_PASSWORD: string;
+}
 // 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수
-async function promptDatabase(projectName: string) {
-  const answers = await prompts([
-    {
-      type: "text",
-      name: "COMPOSE_PROJECT_NAME",
-      message: "Enter the Docker project name:",
-      initial: `${projectName}`,
-    },
-    {
-      type: "text",
-      name: "MYSQL_CONTAINER_NAME",
-      message: "Enter the MySQL container name:",
-      initial: `${projectName}-mysql`,
-    },
-    {
-      type: "text",
-      name: "MYSQL_DATABASE",
-      message: "Enter the MySQL database name:",
-      initial: `${projectName}`,
-    },
+async function promptDatabase(projectName: string): Promise<PromptDatabaseAnswers> {
+  const answers = await prompts(
+    [
+      {
+        type: "text",
+        name: "COMPOSE_PROJECT_NAME",
+        message: "Enter the Docker project name:",
+        initial: `${projectName}`,
+      },
+      {
+        type: "text",
+        name: "MYSQL_CONTAINER_NAME",
+        message: "Enter the MySQL container name:",
+        initial: `${projectName}-mysql`,
+      },
+      {
+        type: "text",
+        name: "MYSQL_DATABASE",
+        message: "Enter the MySQL database name:",
+        initial: `${projectName}`,
+      },
+      {
+        type: "password",
+        name: "DB_PASSWORD",
+        message: "Enter the MySQL database password:",
+      },
+    ],
     {
       onCancel: createCancelHandler(),
     }
