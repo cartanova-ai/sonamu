@@ -1,6 +1,6 @@
 import fastifySecureSession from "@fastify/secure-session";
 import fastifyPassport from "@fastify/passport";
-import { Context, Sonamu, FSDriver } from "sonamu";
+import { Context, Sonamu, FSDriver, S3Driver } from "sonamu";
 import path from "path";
 
 const host = "localhost";
@@ -62,8 +62,14 @@ async function bootstrap() {
 
     storage: (() => {
       if (process.env.NODE_ENV === "production") {
-        // TODO: S3Driver로 교체
-        // return new S3Driver({ ... });
+        return new S3Driver({
+          bucket: "miomock",
+          region: "ap-northeast-2",
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+        });
       }
       return new FSDriver({
         location: path.join(__dirname, "/../", "public", "uploaded"),

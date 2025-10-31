@@ -1,3 +1,10 @@
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+  S3ClientConfig,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs/promises";
 import path from "path";
 
@@ -43,5 +50,56 @@ export class FSDriver implements Driver {
   // 로컬 파일시스템은 signed URL을 지원하지 않으므로 일반 URL 반환
   async getSignedUrl(key: string, _expiresIn?: number): Promise<string> {
     return this.getUrl(key);
+  }
+}
+
+export type S3DriverConfig = S3ClientConfig & {
+  bucket: string;
+};
+
+export class S3Driver implements Driver {
+  s3: S3Client;
+
+  constructor(private config: S3DriverConfig) {
+    this.s3 = new S3Client(config);
+  }
+
+  async put(
+    key: string,
+    contents: Buffer,
+    options?: { contentType?: string; visibility?: "public" | "private" }
+  ): Promise<void> {
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        Body: contents,
+        ContentType: options?.contentType,
+        ACL: this.getAcl(options?.visibility),
+      })
+    );
+  }
+
+  getUrl(key: string): string {
+    return `https://${this.config.bucket}.s3.${this.config.region}.amazonaws.com/${key}`;
+  }
+
+  async getSignedUrl(key: string, expiresIn?: number): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.config.bucket,
+      Key: key,
+    });
+
+    return getSignedUrl(this.s3, command, {
+      expiresIn: expiresIn ?? 60 * 60 * 24 * 7,
+    });
+  }
+
+  private getAcl(visibility?: "public" | "private") {
+    if (visibility === "public") {
+      return "public-read";
+    }
+
+    return visibility;
   }
 }
