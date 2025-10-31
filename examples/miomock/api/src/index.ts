@@ -1,6 +1,6 @@
 import fastifySecureSession from "@fastify/secure-session";
 import fastifyPassport from "@fastify/passport";
-import { Context, ContextExtend, Sonamu } from "sonamu";
+import { Context, Sonamu, FSDriver } from "sonamu";
 import path from "path";
 
 const host = "localhost";
@@ -53,14 +53,23 @@ async function bootstrap() {
             login: request.login.bind(request) as Context["passport"]["login"],
             logout: request.logout.bind(request),
           },
-          file: request.file?.bind(request),
-          files: request.files?.bind(request),
         };
       },
       guardHandler: (_guard, _request, _api) => {
         console.log("NOTHING YET");
       },
     },
+
+    storage: (() => {
+      if (process.env.NODE_ENV === "production") {
+        // TODO: S3Driver로 교체
+        // return new S3Driver({ ... });
+      }
+      return new FSDriver({
+        location: path.join(__dirname, "/../", "public", "uploaded"),
+        urlPrefix: "/api/public/uploaded",
+      });
+    })(),
 
     lifecycle: {
       onStart: () => {
