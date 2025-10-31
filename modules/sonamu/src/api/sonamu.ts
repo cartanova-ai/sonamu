@@ -29,7 +29,7 @@ import type { Context, UploadContext } from "./context";
 import type { Syncer } from "../syncer/syncer";
 import type { FSWatcher } from "chokidar";
 import { formatInTimeZone } from "date-fns-tz";
-import type { Driver } from "./driver";
+import type { Driver } from "../file-storage/driver";
 
 export type SonamuConfig = {
   projectName?: string;
