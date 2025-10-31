@@ -25,10 +25,11 @@ import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplic
 import type { ExtendedApi } from "./decorators";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
-import type { Context } from "./context";
+import type { Context, UploadContext } from "./context";
 import type { Syncer } from "../syncer/syncer";
 import type { FSWatcher } from "chokidar";
 import { formatInTimeZone } from "date-fns-tz";
+import type { Driver } from "./driver";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -55,12 +56,26 @@ class SonamuClass {
     context: Context;
   }> = new AsyncLocalStorage();
 
+  public uploadStorage: AsyncLocalStorage<{
+    uploadContext: UploadContext;
+  }> = new AsyncLocalStorage();
+
   public getContext(): Context {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
       return store.context;
     }
     throw new Error("Sonamu cannot find context");
+  }
+
+  public getUploadContext(): UploadContext {
+    const store = this.uploadStorage.getStore();
+    if (store?.uploadContext) {
+      return store.uploadContext;
+    }
+    throw new Error(
+      "Sonamu cannot find upload context. Did you use @upload decorator?"
+    );
   }
 
   private _apiRootPath: string | null = null;
@@ -116,6 +131,14 @@ class SonamuClass {
   }
   get secrets(): SonamuSecrets | null {
     return this._secrets;
+  }
+
+  private _storage: Driver | null = null;
+  set storage(storage: Driver) {
+    this._storage = storage;
+  }
+  get storage(): Driver | null {
+    return this._storage;
   }
 
   // HMR 처리
@@ -205,6 +228,11 @@ class SonamuClass {
   ) {
     const server = fastify(options.fastify);
     this.server = server;
+
+    // Storage 설정 저장
+    if (options.storage) {
+      this.storage = options.storage;
+    }
 
     // 플러그인 등록
     if (options.plugins) {
@@ -364,8 +392,9 @@ class SonamuClass {
       // 결과 (AsyncLocalStorage 적용)
       const context = config.contextProvider(
         {
-          headers: request.headers,
+          request,
           reply,
+          headers: request.headers,
         },
         request,
         reply
