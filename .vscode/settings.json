@@ -4,5 +4,10 @@
     "**/.pnp.*": true
   },
   "typescript.tsdk": ".yarn/sdks/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "rest-client.environmentVariables": {
+    "$shared": {
+      "baseUrl": "http://localhost:10280"
+    }
+  }
 }
