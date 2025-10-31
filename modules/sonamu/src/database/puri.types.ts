@@ -7,6 +7,12 @@ export type Expand<T> = T extends any[]
 
 type DeepEqual<T, U> = [T] extends [U] ? [U] extends [T] ? true : false : false;
 type Extends<T, U> = DeepEqual<T, Record<string, never>> extends true ? false : (T extends U ? true : false);
+type NullableToOptional<T> = {
+  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<T[K], null | undefined>
+} & Partial<{
+  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K]
+}>;
+
 export type EmptyRecord = Record<string, never>;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
@@ -199,8 +205,4 @@ export type FulltextColumns<
           : never);
 
 // Insert 타입: id, created_at 제외
-export type InsertData<T> = {
-  [K in keyof T as K extends "id" | "created_at" | "__fulltext__"
-    ? never
-    : K]: T[K];
-};
+export type InsertData<T> = NullableToOptional<Omit<T, "id" | "created_at" | "__fulltext__">>;
