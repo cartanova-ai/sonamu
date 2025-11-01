@@ -1,23 +1,22 @@
 import { z } from "zod";
+import type { $ZodType } from "zod/v4/core";
+
+function isNumberType(zodType: $ZodType): zodType is z.ZodNumber {
+  return zodType instanceof z.ZodNumber;
+}
+
+function isNullOrOptional(zodType: $ZodType): zodType is z.ZodNullable | z.ZodOptional {
+  return zodType instanceof z.ZodNullable || zodType instanceof z.ZodOptional;
+}
 
 // optional, nullable 무관하게 ZodNumber 체크
-function isZodNumberAnyway(zodType: z.ZodType<any>) {
-  if (zodType instanceof z.ZodNumber) {
+function isZodNumberAnyway(zodType: $ZodType) {
+  if (isNumberType(zodType)) {
     return true;
-  } else if (
-    zodType instanceof z.ZodNullable &&
-    zodType._def.innerType instanceof z.ZodNumber
-  ) {
-    return true;
-  } else if (
-    zodType instanceof z.ZodOptional &&
-    zodType._def.innerType instanceof z.ZodNumber
-  ) {
-  } else if (
-    zodType instanceof z.ZodOptional &&
-    zodType._def.innerType instanceof z.ZodOptional &&
-    zodType._type.def.innerType instanceof z.ZodNumber
-  ) {
+  }
+
+  // ZodNullable 또는 ZodOptional일 때
+  if (isNullOrOptional(zodType) && isNumberType(zodType.def.innerType)) {
     return true;
   }
 
@@ -25,19 +24,21 @@ function isZodNumberAnyway(zodType: z.ZodType<any>) {
 }
 
 // ZodType을 이용해 raw를 Type Coercing
-export function caster(zodType: z.ZodType<any>, raw: any): any {
+export function caster(zodType: $ZodType, raw: any): any {
   if (isZodNumberAnyway(zodType) && typeof raw === "string") {
     // number
     return Number(raw);
   } else if (
     zodType instanceof z.ZodUnion &&
-    zodType.options.some((opt: z.ZodType<any>) => isZodNumberAnyway(opt))
+    zodType.options.some((opt) => isZodNumberAnyway(opt))
   ) {
     // zArrayable Number 케이스 처리
     if (Array.isArray(raw)) {
-      const numType = zodType.options.find(
-        (opt: z.ZodType<any>) => opt instanceof z.ZodNumber
-      );
+      const numType = zodType.options.find(opt => isNumberType(opt));
+      // 브라우저 환경이므로 Node.js의 assert 대신 Error throw 사용
+      if (!numType) {
+        throw new Error("Expected to find a number type in union");
+      }
       return raw.map((elem: any) => caster(numType, elem));
     } else {
       return Number(raw);
@@ -48,22 +49,35 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
   ) {
     // boolean
     return raw === "true";
-  } else if (zodType instanceof z.ZodArray) {
+  } else if (
+    raw !== null &&
+    Array.isArray(raw) &&
+    zodType instanceof z.ZodArray
+  ) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (zodType instanceof z.ZodObject && typeof raw === "object") {
+  } else if (
+    zodType instanceof z.ZodObject &&
+    typeof raw === "object" &&
+    raw !== null
+  ) {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {
       r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
       return r;
     }, {} as any);
   } else if (zodType instanceof z.ZodOptional) {
-    return caster(zodType._def.innerType, raw);
+    // optional
+    return caster(zodType.def.innerType, raw);
+  } else if (zodType instanceof z.ZodNullable) {
+    // nullable
+    return caster(zodType.def.innerType, raw);
   } else if (
     zodType instanceof z.ZodDate &&
     typeof raw === "string" &&
     new Date(raw).toString() !== "Invalid Date"
   ) {
+    // date
     return new Date(raw);
   } else {
     // 나머지는 처리 안함
