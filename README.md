@@ -11,7 +11,7 @@ Sonamu는 E2E Type-safety, 효율적인 서브셋 쿼리, 스캐폴딩을 통한
 ### 1. 프로젝트 클론
 
 ```bash
-git clone https://github.com/sonamu-kit/sonamu.git
+git clone https://github.com/cartanova-ai/sonamu.git
 cd sonamu
 ```
 
