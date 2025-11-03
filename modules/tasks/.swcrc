@@ -1,0 +1,14 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "isModule": "unknown",
+  "jsc": {
+    "externalHelpers": true,
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true
+    },
+    "target": "es2015"
+  },
+  "minify": true,
+  "sourceMaps": true
+}

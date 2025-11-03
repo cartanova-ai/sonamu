@@ -1,0 +1,42 @@
+{
+  "name": "@sonamu-kit/task",
+  "version": "0.0.1",
+  "description": "Sonamu Task - Simple & Distributed Task Queue",
+  "main": "./dist/index.js",
+  "exports": "./dist/index.js",
+  "scripts": {
+    "dev": "nodemon exec",
+    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "check": "tsc --noEmit && prettier -c ./**/*.ts",
+    "check:type": "tsc --noEmit",
+    "check:format": "prettier -c -w ./**/*.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ping-alive/sonamu.git"
+  },
+  "dependencies": {
+    "@logtape/logtape": "^1.1.2",
+    "@logtape/pretty": "^1.1.2",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "mysql2": "^3.6.1",
+    "node-cron": "^4.0.0",
+    "sonamu": "workspace:^",
+    "source-map-support": "^0.5.21",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@swc/cli": "^0.7.8",
+    "@types/node": "^24.9.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.6"
+  },
+  "peerDependencies": {
+    "knex": "^3.1.0",
+    "mysql2": "^3.6.1",
+    "nodemon": "3.1.10",
+    "source-map-support": "^0.5.21"
+  }
+}

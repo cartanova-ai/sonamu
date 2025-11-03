@@ -1,0 +1,6 @@
+{
+  "watch": ["src"],
+  "ext": "ts,json",
+  "exec": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly && node -r source-map-support/register dist/index.js",
+  "signal": "SIGUSR2"
+}
