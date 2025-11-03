@@ -273,6 +273,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                     >
                       <Checkbox
                         label={`${conn.name} / ${conn.status}`}
+                        disabled={conn.status === 'error'}
                         checked={selectedConnKeys.includes(conn.connKey)}
                         onChange={(_e, data) => {
                           if (data.checked) {
@@ -293,6 +294,11 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
+                {conns.some((conn) => conn.status === 'error') && (
+                  <Table.Row className="table-empty">
+                    <Table.Cell colSpan={6}><b>Some connections are in error state. Please check the connection settings and try again.</b></Table.Cell>
+                  </Table.Row>
+                )}
                 {codes.length === 0 && (
                   <Table.Row className="table-empty">
                     <Table.Cell colSpan={6}>No migration code files</Table.Cell>
@@ -344,6 +350,13 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                             color="yellow"
                             icon="minus"
                             content="PENDING"
+                          />
+                        ) :conn.status === 'error' ? (
+                          <Label
+                            size="mini"
+                            color="red"
+                            icon="times"
+                            content="ERROR"
                           />
                         ) : (
                           <Label
