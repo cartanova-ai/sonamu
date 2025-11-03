@@ -141,7 +141,7 @@ export class FixtureManagerClass {
   }
 
   async getChecksum(db: Knex, tableName: string) {
-    const [checksumRow] = await db.raw(`CHECKSUM TABLE ${tableName}`);
+    const [[checksumRow]] = await db.raw(`CHECKSUM TABLE ${tableName}`);
     return checksumRow.Checksum;
   }
 
@@ -178,19 +178,19 @@ export class FixtureManagerClass {
             console.log(chalk.blue(tableName), rows.length);
             await transaction
               .insert(
-                rows.map((row: any) =>
-                  Object.values(row).map((v) => {
-                    if (v === null) {
-                      return null;
-                    } else if (typeof v === "boolean") {
-                      return v ? 1 : 0;
-                    } else if (typeof v === "object") {
-                      return JSON.stringify(v);
+                rows.map((row: any) => {
+                  return Object.fromEntries(Object.entries(row).map(([key, value]) => {
+                    if (value === null) {
+                      return [key, null];
+                    } else if (typeof value === "boolean") {
+                      return [key, value ? 1 : 0];
+                    } else if (typeof value === "object" && !(value instanceof Date)) {
+                      return [key, JSON.stringify(value)];
                     } else {
-                      return v;
+                      return [key, value];
                     }
-                  })
-                )
+                  }));
+                })
               )
               .into(tableName);
             console.log("OK");
