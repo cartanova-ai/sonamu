@@ -142,6 +142,22 @@ class TransactionalTestModelClass extends BaseModelClass {
 
     return { companyId: companyId!, userIds, employeeIds };
   }
+
+  @transactional({ readOnly: true })
+  async readOnly(): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", 1).first();
+  }
+
+  @transactional({ readOnly: true })
+  async readOnly_throwError(): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").insert({
+      email: "read-only@example.com",
+      username: "read-only-user",
+      password: "pass123",
+    });
+  }
 }
 
 const TestModel = new TransactionalTestModelClass();
@@ -248,7 +264,7 @@ describe("@transactional decorator", () => {
   });
 
   describe("Example 4: Nested Transaction", () => {
-    test.only("should handle nested @transactional methods", async () => {
+    test("should handle nested @transactional methods", async () => {
       // 테스트 사용자 생성
       const wdb = TestModel.getPuri("w");
       await wdb.debugTransaction();
@@ -348,6 +364,35 @@ describe("@transactional decorator", () => {
         .table("companies")
         .where("id", result.companyId)
         .delete();
+    });
+  });
+
+  describe("Example 6: Read Only Transaction", () => {
+    test("should handle read only transaction", async () => {
+      const wdb = TestModel.getPuri("w");
+
+      await TestModel.readOnly();
+
+      // 트랜잭션 상태 롤백인지 확인
+      const [trxStates] = await wdb.knex.raw(`
+        SELECT *
+        FROM performance_schema.events_transactions_current
+        WHERE THREAD_ID = (
+            SELECT THREAD_ID
+            FROM performance_schema.threads
+            WHERE PROCESSLIST_ID = CONNECTION_ID()
+          )
+      `);
+      expect(trxStates.length).toBe(1);
+      expect(trxStates[0].ACCESS_MODE).toBe("READ ONLY");
+    });
+  });
+
+  describe("Example 7: Read Only Transaction (throw error)", () => {
+    test("should throw error when insert in read only transaction", async () => {
+      await expect(TestModel.readOnly_throwError()).rejects.toThrow(
+        "Cannot execute statement in a READ ONLY transaction"
+      );
     });
   });
 });

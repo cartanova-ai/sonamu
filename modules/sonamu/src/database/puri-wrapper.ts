@@ -13,15 +13,13 @@ type TableName<DBSchema extends DatabaseSchemaExtend> = Extract<
 export type TransactionalOptions = {
   isolation?: Exclude<Knex.IsolationLevels, "snapshot">; // snapshot: mssql only
   dbPreset?: DBPreset;
+  readOnly?: boolean;
 };
 
 export class PuriWrapper<
-  DBSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend,
+  DBSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend
 > {
-  constructor(
-    public knex: Knex,
-    public upsertBuilder: UpsertBuilder
-  ) {}
+  constructor(public knex: Knex, public upsertBuilder: UpsertBuilder) {}
 
   raw(sql: string): Knex.Raw {
     return this.knex.raw(sql);
@@ -45,13 +43,13 @@ export class PuriWrapper<
     callback: (trx: PuriWrapper) => Promise<T>,
     options: TransactionalOptions = {}
   ): Promise<T> {
-    const { isolation } = options;
+    const { isolation, readOnly } = options;
 
     return this.knex.transaction(
       async (trx) => {
         return callback(new PuriWrapper(trx, this.upsertBuilder));
       },
-      { isolationLevel: isolation }
+      { isolationLevel: isolation, readOnly }
     );
   }
 

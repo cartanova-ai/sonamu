@@ -9,7 +9,12 @@ export type ImageUploaderProps = {} & DistributiveOmit<
   ImageUploaderFrameProps,
   "uploader"
 >;
+
 export function ImageUploader(props: ImageUploaderProps) {
+  if (props.mode === "lazy") {
+    return <ImageUploaderFrame {...props} />;
+  }
+
   const uploader = async (domFiles: File[]): Promise<string[]> => {
     return await Promise.all(
       domFiles.map(async (domFile) => {
