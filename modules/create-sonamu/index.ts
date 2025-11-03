@@ -230,15 +230,14 @@ async function init() {
       cleanup();
       throw error;
     }
-    const env = `
-                # Database
-                  DB_HOST=0.0.0.0
-                  DB_USER=root
-                  DB_PASSWORD=${answers.DB_PASSWORD}
-                  COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
-                  MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
-                  MYSQL_DATABASE=${answers.MYSQL_DATABASE}
-                `;
+    const env = `# Database Configuration
+DB_HOST=0.0.0.0
+DB_USER=root
+DB_PASSWORD=${answers.DB_PASSWORD}
+COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
+MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
+MYSQL_DATABASE=${answers.MYSQL_DATABASE}
+`;
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
 
     // docker-compose 실행
