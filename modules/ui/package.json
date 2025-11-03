@@ -40,6 +40,7 @@
     "@sonamu-kit/react-sui": "workspace:^",
     "@vitejs/plugin-react": "^4.0.3",
     "axios": "^1.5.0",
+    "chalk": "^4.1.2",
     "classnames": "^2.3.2",
     "debug": "^4.3.7",
     "fastify": "^4.21.0",

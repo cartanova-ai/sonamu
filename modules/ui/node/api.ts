@@ -25,6 +25,7 @@ import { pluralize, underscore } from "inflection";
 import path from "path";
 import { openai } from "./openai";
 import { range } from "lodash";
+import chalk from "chalk";
 
 export async function createServer(options: {
   projectName: string;
@@ -38,6 +39,36 @@ export async function createServer(options: {
   const { listen, apiRootPath, watch, projectName } = options;
 
   const server = fastify();
+
+  const originalErrorHandler = server.errorHandler;
+  server.setErrorHandler((error, request, reply) => {
+    originalErrorHandler(error, request, reply);
+
+    const statusCode = reply.statusCode || 500;
+    
+    const lines: string[] = [];
+    
+    // 시간, 메소드, 경로, 상태코드를 타이틀에
+    const timestamp = new Date().toLocaleString('ko-KR');
+    lines.push(`╭─[${timestamp}] ${request.method} ${request.url} [${statusCode}]`);
+    
+    // 에러 메시지
+    const errorMsg = error.message || "Unknown error";
+    lines.push(`│ ❌ ${errorMsg}`);
+    
+    // 스택 트레이스
+    if (error.stack) {
+      const stackLines = error.stack.split("\n").slice(1);
+      stackLines.forEach((line) => {
+        lines.push(`│   ${line.trim()}`);
+      });
+    }
+    
+    lines.push(`╰─`);
+    
+    const errorLog = lines.map((line) => chalk.red(line)).join("\n");
+    console.error("\n" + errorLog + "\n");
+  });
 
   // 웹 빌드 데이터로 정적 데이터 서빙
   server.register(import("@fastify/static"), {
