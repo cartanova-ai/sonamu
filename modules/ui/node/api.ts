@@ -353,8 +353,7 @@ export async function createServer(options: {
     const typeIds = (() => {
       const typeIds = Object.entries(Sonamu.syncer.types)
         .filter(
-          ([_typeId, zodType]) =>
-            (zodType._def.typeName as string) !== "ZodEnum"
+          ([_typeId, zodType]) => (zodType.def.type as string) !== "enum"
         )
         .map(([typeId, _zodType]) => typeId);
 
