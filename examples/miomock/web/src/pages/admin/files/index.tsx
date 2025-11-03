@@ -11,9 +11,7 @@ import {
   Transition,
   Button,
   Label,
-  Input,
   Form,
-  Progress,
 } from "semantic-ui-react";
 import classNames from "classnames";
 import { DateTime } from "luxon";
@@ -38,15 +36,20 @@ import { FileListParams, FileSaveParams } from "src/services/file/file.types";
 import { FileSearchInput } from "src/components/file/FileSearchInput";
 import { FileOrderBySelect } from "src/components/file/FileOrderBySelect";
 import { ImageUploader } from "src/admin-common/ImageUploader";
+import { ApiLogViewer } from "src/admin-common/ApiLogViewer";
 
 type FileListProps = {};
 export default function FileList({}: FileListProps) {
-  // 테스트 상태
-  const saveForm = useTypeForm(FileSaveParams, {
+  // Eager 모드 테스트 상태
+  const eagerForm = useTypeForm(FileSaveParams, {
     name: "",
     url: "",
     mime_type: "",
   });
+
+  // Lazy 모드 테스트 상태
+  const [lazyFile, setLazyFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   // 리스트 필터
   const { listParams, register } = useListParams(FileListParams, {
     num: 12,
@@ -136,20 +139,77 @@ export default function FileList({}: FileListProps) {
         </div>
       </div>
 
-      {/* 테스트 섹션 */}
-      <Segment color="blue">
-        <Label attached="top" color="blue">
-          FileService 테스트
-        </Label>
-        <Form>
-          <Form.Group>
-            <Form.Field width={16}>
-              <label>파일 업로드</label>
-              <ImageUploader multiple={false} {...saveForm.register("url")} />
-            </Form.Field>
-          </Form.Group>
-        </Form>
-      </Segment>
+      <div style={{ display: "flex", gap: "1rem" }}>
+        <div style={{ flex: 1 }}>
+          <Segment color="blue">
+            <Label attached="top" color="blue">
+              Eager 모드 테스트 (기존 방식)
+            </Label>
+            <Form>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <label>파일 업로드 (즉시 업로드)</label>
+                  <ImageUploader
+                    multiple={false}
+                    {...eagerForm.register("url")}
+                  />
+                </Form.Field>
+              </Form.Group>
+            </Form>
+          </Segment>
+
+          <Segment color="green">
+            <Label attached="top" color="green">
+              Lazy 모드 테스트 (submit 시점에 업로드)
+            </Label>
+            <Form>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <label>파일 선택 (업로드 대기)</label>
+                  <ImageUploader
+                    mode="lazy"
+                    value={lazyFile}
+                    multiple={false}
+                    onChange={(e, data) => setLazyFile(data.value)}
+                  />
+                </Form.Field>
+              </Form.Group>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <Button
+                    color="green"
+                    onClick={async () => {
+                      setUploading(true);
+                      try {
+                        if (lazyFile) {
+                          const { url } = (await FileService.upload(lazyFile))
+                            .file;
+                          alert(`업로드 완료! URL: ${url}`);
+                          setLazyFile(null); // 업로드 후 초기화
+                          mutate();
+                        }
+                      } finally {
+                        setUploading(false);
+                      }
+                    }}
+                    disabled={lazyFile === null}
+                    loading={uploading}
+                  >
+                    저장 (클릭 시 업로드 시작)
+                  </Button>
+                  <span style={{ marginLeft: "1em" }}>
+                    {lazyFile ? lazyFile.name : "파일 대기 중"}
+                  </span>
+                </Form.Field>
+              </Form.Group>
+            </Form>
+          </Segment>
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <ApiLogViewer bodyOnly={true} />
+        </div>
+      </div>
 
       <Segment basic padded className="contents-segment" loading={isLoading}>
         <div className="buttons-row">

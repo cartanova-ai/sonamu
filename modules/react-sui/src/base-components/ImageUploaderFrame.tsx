@@ -2,6 +2,7 @@ import React, {
   ChangeEvent,
   HTMLAttributes,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,48 +27,91 @@ type AllEvent =
   | ChangeEvent<HTMLInputElement>
   | DragEndEvent
   | React.MouseEvent<HTMLButtonElement, MouseEvent>;
-type OnChangeSingle = (e: AllEvent, data: { value: string | null }) => void;
-type OnChangeMultiple = (e: AllEvent, data: { value: string[] }) => void;
-export type ImageUploaderFrameProps = ({
-  uploader: (domFiles: File[]) => Promise<string[]>;
+
+type OnChange<T> = (e: AllEvent, data: { value: T }) => void;
+type CommonProps<T> = Omit<HTMLAttributes<HTMLDivElement>, "onChange"> & {
   maxSize?: number;
+  accept?: string;
 } & (
-  | {
-      multiple: true;
-      value: string[];
-      onChange: OnChangeMultiple;
+    | {
+        multiple: true;
+        value: T[];
+        onChange: OnChange<T[]>;
+      }
+    | {
+        multiple: false;
+        value: T | null;
+        onChange: OnChange<T | null>;
+      }
+  );
+
+type EagerModeProps = { mode: "eager" } & CommonProps<string> & {
+    uploader?: (domFiles: File[]) => Promise<string[]>;
+  };
+type LazyModeProps = { mode: "lazy" } & CommonProps<File>;
+export type ImageUploaderFrameProps = EagerModeProps | LazyModeProps;
+
+function asArray<T>(v: T | T[] | null | undefined): T[] {
+  if (v == null) return [];
+  return (Array.isArray(v) ? v : [v]).filter(
+    (item) => item != null && item !== ""
+  );
+}
+
+function useObjectUrls(files: File[]) {
+  const [map, setMap] = useState<Map<File, string>>(new Map());
+
+  useEffect(() => {
+    const next = new Map<File, string>();
+    for (const f of files) {
+      const kept = map.get(f);
+      next.set(f, kept ?? URL.createObjectURL(f));
     }
-  | {
-      multiple: false;
-      value: string | null;
-      onChange: OnChangeSingle;
+
+    for (const [f, url] of map.entries()) {
+      if (!files.includes(f)) URL.revokeObjectURL(url);
     }
-)) &
-  HTMLAttributes<HTMLDivElement>;
-export function ImageUploaderFrame({
-  uploader,
-  multiple,
-  maxSize,
-  value,
-  onChange,
-  ...divProps
-}: ImageUploaderFrameProps) {
-  const [images, setImages] = useState<string[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+
+    setMap(next);
+  }, [files]);
+
+  useEffect(
+    () => () => {
+      for (const url of map.values()) URL.revokeObjectURL(url);
+    },
+    [map]
+  );
+
+  const urls = useMemo(() => files.map((f) => map.get(f) ?? ""), [files, map]);
+
+  return urls;
+}
+
+export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
+  const mode = props.mode ?? "eager";
+  const uploader =
+    mode === "eager" ? (props as EagerModeProps).uploader : undefined;
+
+  const { multiple, maxSize, value, onChange, ...divProps } = props;
   const [loading, setLoading] = useState<boolean>(false);
   const ref = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    if (value === null || value === undefined) {
-      setImages([]);
-    } else if (value === "") {
-      setImages([]);
-    } else if (typeof value === "string") {
-      setImages([value]);
-    } else {
-      setImages(value);
-    }
-  }, [value]);
+  // Eager mode: value는 string[]
+  const images = useMemo(
+    () => (mode === "eager" ? asArray<string>(value as any) : []),
+    [mode, value]
+  );
+  // Lazy mode: value는 File[]
+  const files = useMemo(
+    () => (mode === "lazy" ? asArray<File>(value as any) : []),
+    [mode, value]
+  );
+  const previewUrls = useObjectUrls(mode === "lazy" ? files : []);
+
+  const items: string[] = useMemo(
+    () => (mode === "eager" ? images : previewUrls),
+    [mode, images, previewUrls]
+  );
 
   const setImagesWithOnChange = (
     e: AllEvent,
@@ -75,17 +119,72 @@ export function ImageUploaderFrame({
   ): void => {
     const res = callback(images);
     if (multiple) {
-      (onChange as OnChangeMultiple)(e, {
+      (onChange as OnChange<string[]>)(e, {
         value: res,
       });
     } else {
-      (onChange as OnChangeSingle)(e, {
+      (onChange as OnChange<string | null>)(e, {
+        value: res.length > 0 ? res[0] : null,
+      });
+    }
+  };
+
+  const setFilesWithOnChange = (
+    e: AllEvent,
+    callback: (files: File[]) => File[]
+  ): void => {
+    const res = callback(files);
+    if (multiple) {
+      (onChange as OnChange<File[]>)(e, {
+        value: res,
+      });
+    } else {
+      (onChange as OnChange<File | null>)(e, {
         value: res.length > 0 ? res[0] : null,
       });
     }
   };
 
   const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (mode === "eager") {
+      handleEagerChange(e);
+    } else {
+      handleLazyChange(e);
+    }
+  };
+
+  const handleLazyChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const fileInput = e.target;
+    if (fileInput.files && fileInput.files.length > 0) {
+      if (multiple === true) {
+        // maxSize 갯수 제한에 따른 메세지 처리
+        if (maxSize && files.length + fileInput.files.length > maxSize) {
+          if (files.length > 0) {
+            alert(
+              `최대 ${maxSize}개까지 업로드가 가능하므로, 추가로 ${
+                maxSize - files.length
+              }개 선택이 가능합니다.`
+            );
+          } else {
+            alert(`최대 ${maxSize}개까지 업로드가 가능합니다.`);
+          }
+          fileInput.value = "";
+          return;
+        }
+        const newFiles = Array.from(fileInput.files);
+        setFilesWithOnChange(e, (files) => {
+          return [...files, ...newFiles];
+        });
+      } else {
+        setFilesWithOnChange(e, () => {
+          return [fileInput.files![0]];
+        });
+      }
+      fileInput.value = "";
+    }
+  };
+
+  const handleEagerChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const fileInput = e.target;
     if (fileInput.files && fileInput.files.length > 0) {
       setLoading(true);
@@ -130,29 +229,49 @@ export function ImageUploaderFrame({
 
   const getHandlerImageDelButtonClicked = (index: number) => {
     return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      setImagesWithOnChange(e, (images) =>
-        images.filter((_image, _index) => _index !== index)
-      );
+      if (mode === "eager") {
+        setImagesWithOnChange(e, (images) =>
+          images.filter((_image, _index) => _index !== index)
+        );
+      } else {
+        setFilesWithOnChange(e, (files) =>
+          files.filter((_file, _index) => _index !== index)
+        );
+      }
     };
   };
 
   const uploadSingleFile = async (domFile: File): Promise<string> => {
+    if (!uploader) {
+      throw new Error("uploader is required for eager mode");
+    }
     return new Promise((resolve) => {
       uploader([domFile]).then((result) => resolve(result[0]));
     });
   };
 
+  const [activeId, setActiveId] = useState<string | null>(null);
   const handleDragStart = (e: DragStartEvent) => {
-    setActiveId(e.active.id);
+    setActiveId(e.active.id as string);
   };
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (over && active.id !== over.id) {
-      setImagesWithOnChange(e, (images) => {
-        const oldIndex = images.indexOf(active.id);
-        const newIndex = images.indexOf(over.id);
-        return arrayMove(images, oldIndex, newIndex);
-      });
+      if (mode === "eager") {
+        // eager 모드인 경우, images 순서 변경
+        setImagesWithOnChange(e, (images) => {
+          const oldIndex = items.indexOf(active.id as string);
+          const newIndex = items.indexOf(over.id as string);
+          return arrayMove(images, oldIndex, newIndex);
+        });
+      } else {
+        // lazy 모드인 경우, files 순서 변경
+        setFilesWithOnChange(e, (files) => {
+          const oldIndex = items.findIndex((item) => item === active.id);
+          const newIndex = items.findIndex((item) => item === over.id);
+          return arrayMove(files, oldIndex, newIndex);
+        });
+      }
     }
     setActiveId(null);
   };
@@ -172,30 +291,30 @@ export function ImageUploaderFrame({
         multiple={multiple}
         style={{ display: "none" }}
       />
-      {(multiple === true || images.length === 0) && (
+      {(multiple === true || items.length === 0) && (
         <Button
           size="tiny"
           style={{ width: 150, height: "36px", marginRight: "1em" }}
           onClick={handleButtonClick}
-          disabled={maxSize !== undefined && images.length >= maxSize}
+          disabled={maxSize !== undefined && items.length >= maxSize}
           loading={loading}
         >
-          파일 선택{maxSize ? ` (${images.length} / ${maxSize})` : ""}
+          파일 선택{maxSize ? ` (${items.length} / ${maxSize})` : ""}
         </Button>
       )}
-      {images.length > 0 && (
+      {items.length > 0 && (
         <div className="images">
           <DndContext
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
             onDragStart={handleDragStart}
           >
-            <SortableContext items={images} strategy={rectSortingStrategy}>
-              {images.map((image, index) => (
+            <SortableContext items={items} strategy={rectSortingStrategy}>
+              {items.map((item, index) => (
                 <UploadedImage
                   key={index}
-                  id={image}
-                  src={image}
+                  id={item}
+                  src={item}
                   handle={multiple}
                   onDelButtonClicked={getHandlerImageDelButtonClicked(index)}
                 />
