@@ -1,13 +1,14 @@
 {
   "$schema": "https://swc.rs/schema.json",
-  "isModule": "unknown",
+  "module": {
+    "type": "commonjs"
+  },
   "jsc": {
-    "externalHelpers": true,
     "parser": {
       "syntax": "typescript",
       "decorators": true
     },
-    "target": "es2015"
+    "target": "es5"
   },
   "minify": true,
   "sourceMaps": true

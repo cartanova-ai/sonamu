@@ -7,7 +7,7 @@ CREATE TABLE sonamu_tasks (
   -- Task의 Namespace
   namespace VARCHAR(255) NOT NULL,
 
-  -- pending, pending_for_retry, max_retries_exceeded, error, completed
+  -- pending, pending_for_retry, error, completed
   status VARCHAR(32) NOT NULL DEFAULT "pending",
 
   -- Task의 재시도 횟수를 상태로 저장
@@ -22,11 +22,11 @@ CREATE TABLE sonamu_task_events (
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   -- Event의 종류 네임스페이스
-  -- start | stop | fetch:(main|retry) | process:(start|error|complete):(main|retry)
+  -- start | stop | fetch | process:(start|error|complete)
   event_type VARCHAR(255) NOT NULL,
 
   -- TaskNode에서 자동 생성된 노드의 UUIDv7
-  node_id BINARY(16) NOT NULL,
+  node_id BINARY(32) NOT NULL,
   -- 사용자가 지정한 노드 이름
   node_name VARCHAR(64),
 
@@ -39,7 +39,9 @@ CREATE TABLE sonamu_task_events (
   -- TaskNode Stop: app_shutdown | process_signal | unknown
   -- Process Error: no_route | serialization | timeout | max_retries_exceeded | exception
   reason VARCHAR(32),
-  error VARCHAR(10000),
+
+  error_message VARCHAR(1000),
+  error_stack TEXT,
 
   FOREIGN KEY (task_id) REFERENCES sonamu_tasks(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
