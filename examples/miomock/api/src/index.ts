@@ -84,6 +84,13 @@ async function bootstrap() {
       onShutdown: () => {
         console.log("graceful shutdown");
       },
+      onError: (error, _request, reply) => {
+        console.error(error);
+        reply.status(500).send({
+          name: error.name,
+          message: error.message,
+        });
+      },
     },
   });
 }
