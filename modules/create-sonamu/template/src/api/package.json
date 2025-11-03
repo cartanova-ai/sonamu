@@ -19,12 +19,12 @@
     "lodash": "^4.17.21",
     "luxon": "^3.7.2",
     "mysql2": "^3.14.5",
-    "sonamu": "^0.4.11",
+    "sonamu": "latest",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@sonamu-kit/react-sui": "^0.1.14",
-    "@sonamu-kit/ui": "^0.4.1",
+    "@sonamu-kit/react-sui": "latest",
+    "@sonamu-kit/ui": "latest",
     "@swc/cli": "^0.7.8",
     "@types/lodash": "^4",
     "@types/luxon": "^3",
