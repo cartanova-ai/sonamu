@@ -10662,6 +10662,7 @@ const RAW_RUNTIME_STATE =
           ["@types/sonamu", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
+          ["chalk", "npm:4.1.2"],\
           ["classnames", "npm:2.5.1"],\
           ["corepack", "npm:0.34.1"],\
           ["debug", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.4.3"],\
@@ -10730,6 +10731,7 @@ const RAW_RUNTIME_STATE =
           ["@types/sonamu", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
+          ["chalk", "npm:4.1.2"],\
           ["classnames", "npm:2.5.1"],\
           ["corepack", "npm:0.34.1"],\
           ["debug", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.4.3"],\
@@ -10798,6 +10800,7 @@ const RAW_RUNTIME_STATE =
           ["@types/sonamu", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
+          ["chalk", "npm:4.1.2"],\
           ["classnames", "npm:2.5.1"],\
           ["corepack", "npm:0.34.1"],\
           ["debug", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.4.3"],\
@@ -10865,6 +10868,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-syntax-highlighter", "npm:15.5.13"],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
+          ["chalk", "npm:4.1.2"],\
           ["classnames", "npm:2.5.1"],\
           ["corepack", "npm:0.34.1"],\
           ["debug", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.4.3"],\

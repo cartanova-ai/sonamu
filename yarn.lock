@@ -4364,6 +4364,7 @@ __metadata:
     "@types/react-syntax-highlighter": "npm:^15.5.13"
     "@vitejs/plugin-react": "npm:^4.0.3"
     axios: "npm:^1.5.0"
+    chalk: "npm:^4.1.2"
     classnames: "npm:^2.3.2"
     corepack: "npm:^0.34.1"
     debug: "npm:^4.3.7"

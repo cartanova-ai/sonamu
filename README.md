@@ -43,3 +43,9 @@ yarn build
 yarn miomock
 ```
 Miomock 프로젝트가 의존하는 모든 프레임워크 패키지를 빌드하고, Miomock API, Web와 Sonamu UI를 실행합니다.
+
+## 기타
+
+### CJS 미지원 때문에 업데이트를 포기한 모듈들
+
+- `chalk`: v5로 가지 못하고 v4로 유지합니다.
