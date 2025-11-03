@@ -239,28 +239,6 @@ MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
 MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 `;
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
-
-    // docker-compose 실행
-    const databaseRoot = path.join(targetRoot, "api", "database");
-    const envFile = path.join(targetRoot, "api", ".env");
-    const command = `docker compose --env-file ${envFile} up -d`;
-
-    const [c, ...args] = command.split(" ");
-
-    try {
-      await executeCommand(c, args, databaseRoot);
-      console.log(
-        chalk.green(`\nA database has been set up in ${databaseRoot}\n`)
-      );
-    } catch (e) {
-      console.log(`\n❌ Failed to set up a database in ${databaseRoot}`);
-      console.log(
-        `To set up a database using Docker, run the following commands:\n`
-      );
-      console.log(chalk.gray(`  $ cd ${targetRoot}/api/database`));
-      console.log(chalk.gray(`  $ docker compose --env-file ${envFile} up -d`));
-      console.log(`\nOr use your preferred database management tool.`);
-    }
   } else {
     console.log(
       `\nTo set up a database using Docker, run the following commands:\n`
