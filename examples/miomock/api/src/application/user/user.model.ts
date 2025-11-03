@@ -261,7 +261,7 @@ class UserModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "GET" })
-  @transactional({ isolation: "serializable" })
+  @transactional({ readOnly: true })
   async trxTest(): Promise<void> {
     const wdb = this.getPuri("w");
 
