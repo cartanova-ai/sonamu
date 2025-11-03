@@ -8,6 +8,14 @@ Sonamu는 E2E Type-safety, 효율적인 서브셋 쿼리, 스캐폴딩을 통한
 
 ## 프로젝트 셋업
 
+### 0. 개발 환경
+
+다음 환경이 필요합니다: 
+
+- Node.js v22 이상
+- Yarn v4 이상
+- Docker CLI(`docker` 명령어 실행 가능)
+
 ### 1. 프로젝트 클론
 
 ```bash
@@ -18,11 +26,18 @@ cd sonamu
 ### 2. 의존성 설치
 
 ```bash
+corepack enable
 yarn install
 ```
 워크스페이스 내 모든 package들의 의존성이 최상단 `.yarn/cache` 디렉토리에 설치됩니다.
 
 ### 3. 예제 프로젝트 실행
+
+```bash
+./examples/miomock/api/database/setup-db.sh
+```
+최초 한 번 데이터베이스를 설정해주어야 합니다.
+
 ```bash
 yarn build
 yarn miomock
