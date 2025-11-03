@@ -16,6 +16,7 @@ import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../entity/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
+import { SWC_BUILD_COMMAND } from "./build-config";
 
 let migrator: Migrator;
 
@@ -102,10 +103,10 @@ async function dev_serve() {
     return {
       watch: ["src/index.ts"],
       ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
-      exec: [
-        "swc src -d dist --strip-leading-paths --source-maps -C module.type=commonjs -C jsc.parser.syntax=typescript -C jsc.parser.decorators=true -C jsc.target=es5",
-        "node -r source-map-support/register -r dotenv/config dist/index.js",
-      ].join(" && "),
+      exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
+      events: {
+        restart: SWC_BUILD_COMMAND,
+      },
     };
   })();
 
