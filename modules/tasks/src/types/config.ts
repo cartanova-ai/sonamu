@@ -1,9 +1,12 @@
 import type { LoggerConfig, LogLevel, Sink } from "@logtape/logtape";
 import type { Duration } from "date-fns";
-import type { SonamuDBConfig } from "sonamu";
-import type { TaskNodeEvent } from "./";
+import type { RetryConfig, TaskRouterContext } from "./tasks";
+import type { EventType, TaskNodeEvent } from "./events";
+import type { Knex } from "knex";
 
-type OnEventFunction<T extends TaskNodeEvent = TaskNodeEvent> = (event: T) => void | Promise<void>;
+export type OnEventFunction<T extends TaskNodeEvent = TaskNodeEvent> = (
+  event: T,
+) => void | Promise<void>;
 
 // TODO(251103, Haze): Periodic Task에 대한 지원을 추가해야함.
 export interface TaskNodeConfig {
@@ -16,8 +19,7 @@ export interface TaskNodeConfig {
     loggers?: LoggerConfig<string, string>[];
   };
 
-  // Default: DBClass에서 읽는 것으로 처리함.
-  database?: SonamuDBConfig;
+  database: Knex.Config;
 
   // TaskNode에 이름을 지정할 수 있음
   name?: string;
@@ -25,18 +27,14 @@ export interface TaskNodeConfig {
   // MySQL에서 Task를 가져오기 위한 주기
   duration?: Duration;
 
-  // Task를 처리하기 위한 하위 Worker의 수
-  maxWorkers?: number;
+  // // TODO: Task를 처리하기 위한 하위 Worker의 수
+  // maxWorkers?: number;
 
   // 전역적 재시도 설정 (없으면 각 Task의 설정을 따름)
-  retry?: {
-    // 최대 횟수
-    maxAttempts?: number;
-    // 재시도 간격
-    delay?: Duration | (() => Duration);
-  };
+  retry?: Partial<RetryConfig>;
 
-  onEvent?: OnEventFunction;
+  // 어느 Namespace의 Task를 어떻게 처리할지
+  routes: (Omit<TaskRouterContext, "retry"> & { retry?: RetryConfig })[];
 }
 
-export type TaskNodeConfigInput = TaskNodeConfig | (() => TaskNodeConfig | Promise<TaskNodeConfig>);
+export type TaskNodeConfigInput = TaskNodeConfig | (() => TaskNodeConfig);
