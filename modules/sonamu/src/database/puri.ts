@@ -7,6 +7,7 @@ import type {
   ExtractColumnType,
   FulltextColumns,
   InsertData,
+  MergeJoined,
   ParseSelectObject,
   ResultAvailableColumns,
   SelectObject,
@@ -303,7 +304,7 @@ export class Puri<
     TSchema,
     TTable,
     TResult,
-    TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    MergeJoined<TJoined, Record<TJoinTable, TSchema[TJoinTable]>>
   >;
   join<TJoinTable extends keyof TSchema>(
     table: TJoinTable,
@@ -314,7 +315,7 @@ export class Puri<
     TSchema,
     TTable,
     TResult,
-    TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    MergeJoined<TJoined, Record<TJoinTable, TSchema[TJoinTable]>>
   >;
   join<TSubResult, TAlias extends string>(
     subquery: Puri<TSchema, any, TSubResult, any>,

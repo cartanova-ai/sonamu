@@ -3,7 +3,13 @@ export type Expand<T> = T extends any[]
   ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
   : T extends object
     ? { [K in keyof T]: T[K] } & Record<string, never>
-    : T;
+  : T;
+    
+// EmptyRecord가 남아있으면 AvailableColumns 추론이 제대로 되지 않음 (EmptyRecord를 {}로 변경하면 정상 동작함)
+export type MergeJoined<TExisting, TNew> = 
+  TExisting extends EmptyRecord 
+    ? TNew  // 첫 join: EmptyRecord 제거하고 대체
+    : TExisting & TNew;  // 이후 join: 누적
 
 type DeepEqual<T, U> = [T] extends [U] ? [U] extends [T] ? true : false : false;
 type Extends<T, U> = DeepEqual<T, Record<string, never>> extends true ? false : (T extends U ? true : false);
