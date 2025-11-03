@@ -123,7 +123,7 @@ export function stream(options: StreamDecoratorOptions) {
 }
 
 export function transactional(options: TransactionalOptions = {}) {
-  const { isolation, dbPreset = "w" } = options;
+  const { isolation, readOnly, dbPreset = "w" } = options;
 
   return function (
     _target: Object,
@@ -145,7 +145,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
       // AsyncLocalStorage 컨텍스트 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
       const startTransaction = async () => {
-        const puri = this.getPuri(dbPreset);
+        const puri = this.getPuri(dbPreset) as PuriWrapper;
 
         return puri.transaction(
           async (trx: PuriWrapper) => {
@@ -159,7 +159,7 @@ export function transactional(options: TransactionalOptions = {}) {
               DB.getTransactionContext().deleteTransaction(dbPreset);
             }
           },
-          { isolation }
+          { isolation, readOnly }
         );
       };
 
