@@ -8,6 +8,7 @@ import { Template } from "./base-template";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
 import inflection from "inflection";
+import assert from "assert";
 
 export type SourceCode = {
   label: string;
@@ -316,6 +317,7 @@ z.object({
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const [table1, table2] = prop.joinTable.split("__");
+          assert(table1 && table2, `joinTableName is invalid: ${prop.joinTable}`);
           const singular1 = inflection.singularize(table1);
           const singular2 = inflection.singularize(table2);
           return `${prop.joinTable}: ManyToManyBaseSchema<"${singular1}", "${singular2}">;`;
