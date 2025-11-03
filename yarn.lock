@@ -4367,12 +4367,15 @@ __metadata:
     "@types/node": "npm:^24.9.2"
     date-fns: "npm:^4.1.0"
     date-fns-tz: "npm:^3.2.0"
+    knex: "npm:^3.1.0"
     mysql2: "npm:^3.6.1"
     node-cron: "npm:^4.0.0"
+    nodemon: "npm:^3.1.10"
     prettier: "npm:^3.2.5"
-    sonamu: "workspace:^"
+    rou3: "npm:^0.7.9"
     source-map-support: "npm:^0.5.21"
     typescript: "npm:^5.9.3"
+    uuidv7: "npm:^1.0.2"
     vitest: "npm:^4.0.6"
     zod: "npm:^4.1.12"
   peerDependencies:
@@ -14117,6 +14120,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"rou3@npm:^0.7.9":
+  version: 0.7.9
+  resolution: "rou3@npm:0.7.9"
+  checksum: 10/600c997a0b9c7e64f2f625aef2a2fac32e9d3cc3dd7231b7db7ff916b715c861c9b8d60dd0c732c6f05843a94ae5cc34af427bc2411d843517f4df9d1de6272e
+  languageName: node
+  linkType: hard
+
 "run-parallel@npm:^1.1.9":
   version: 1.2.0
   resolution: "run-parallel@npm:1.2.0"
@@ -16229,6 +16239,15 @@ __metadata:
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
   checksum: 10/474acf1146cb2701fe3b074892217553dfcf9a031280919ba1b8d651a068c9b15d863b7303cb15bd00a862b498e6cf4ad7b4a08fb134edd5a6f7641681cb54a2
+  languageName: node
+  linkType: hard
+
+"uuidv7@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "uuidv7@npm:1.0.2"
+  bin:
+    uuidv7: cli.js
+  checksum: 10/729b4f6af3cff9c2cf018902e4f0c91b40a70c7e7afdf21737f513e120475cf5592e3374e2c397cd9540e7380010b5b09df8d65038390e61446fd4db5b48f1c7
   languageName: node
   linkType: hard
 
