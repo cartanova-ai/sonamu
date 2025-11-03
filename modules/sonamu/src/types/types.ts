@@ -822,7 +822,7 @@ export type RelationNode = {
 export interface DatabaseSchemaExtend {}
 export type ManyToManyBaseSchema<
   FromIdKey extends string,
-  ToIdKey extends string,
+  ToIdKey extends string
 > = {
   id: number;
 } & {
@@ -893,5 +893,10 @@ export type SonamuServerOptions = {
   lifecycle?: {
     onStart?: (server: FastifyInstance) => Promise<void> | void;
     onShutdown?: (server: FastifyInstance) => Promise<void> | void;
+    onError?: (
+      error: Error,
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => Promise<void> | void;
   };
 };

@@ -504,6 +504,10 @@ class SonamuClass {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
 
+    if (options.lifecycle?.onError) {
+      server.setErrorHandler(options.lifecycle?.onError);
+    }
+
     server
       .listen({ port, host })
       .then(async () => {
