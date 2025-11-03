@@ -432,14 +432,8 @@ export class Puri<
   }
 
   having(condition: string): Puri<TSchema, TTable, TResult, TJoined>;
-  having(condition: string): Puri<TSchema, TTable, TResult, TJoined>;
   having<TColumn extends ResultAvailableColumns<TSchema, TTable, TResult, TJoined>>(
     condition: TColumn,
-    operator: ComparisonOperator,
-    value: any
-  ): Puri<TSchema, TTable, TResult, TJoined>;
-  having(
-    condition: string,
     operator: ComparisonOperator,
     value: any
   ): Puri<TSchema, TTable, TResult, TJoined>;
