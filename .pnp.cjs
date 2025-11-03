@@ -19483,6 +19483,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/node-fetch-npm-3.3.2-5267e015f2-24207ca8c8.zip/node_modules/node-fetch/",\
         "packageDependencies": [\
           ["data-uri-to-buffer", "npm:4.0.1"],\
+          ["encoding", "npm:0.1.13"],\
           ["fetch-blob", "npm:3.2.0"],\
           ["formdata-polyfill", "npm:4.0.10"],\
           ["node-fetch", "npm:3.3.2"]\
@@ -19493,13 +19494,12 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/__virtual__/node-fetch-virtual-19777fc9fe/0/cache/node-fetch-npm-2.7.0-587d57004e-b24f8a3dc9.zip/node_modules/node-fetch/",\
         "packageDependencies": [\
           ["@types/encoding", null],\
-          ["encoding", null],\
+          ["encoding", "npm:0.1.13"],\
           ["node-fetch", "virtual:24650732458bad159ebd92bb95f48e5b098fb67937f7a4506511e436fe99c372501c33061789e8e1d8d4a6d30bfdc828fa3fd4ae0402d34dc6d4fbf5b774326d#npm:2.7.0"],\
           ["whatwg-url", "npm:5.0.0"]\
         ],\
         "packagePeers": [\
-          "@types/encoding",\
-          "encoding"\
+          "@types/encoding"\
         ],\
         "linkType": "HARD"\
       }]\
