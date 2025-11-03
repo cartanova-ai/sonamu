@@ -4,9 +4,10 @@
     "examples/miomock/*",
     "modules/sonamu",
     "modules/react-sui",
-    "modules/ui",
+    "modules/create-sonamu",
     "modules/docs",
-    "modules/create-sonamu"
+    "modules/tasks",
+    "modules/ui"
   ],
   "scripts": {
     "build:react-sui": "cowsay 'react-sui 빌드합니다.' && yarn workspace @sonamu-kit/react-sui build",
