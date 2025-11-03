@@ -130,6 +130,7 @@ class DBClass {
         },
         connection: {
           database: config.database,
+          ...config.defaultOptions?.connection,
         },
       },
       config.defaultOptions
@@ -139,12 +140,14 @@ class DBClass {
     const test: MySQLConfig = _.merge({}, defaultKnexConfig, {
       connection: {
         database: `${config.database}_test`,
+        ...config.defaultOptions?.connection,
       },
     });
 
     const fixture_local = _.merge({}, defaultKnexConfig, {
       connection: {
         database: `${config.database}_fixture_local`,
+        ...config.defaultOptions?.connection,
       },
     });
 
@@ -161,6 +164,7 @@ class DBClass {
     const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
       connection: {
         database: `${config.database}_fixture_remote`,
+        ...config.defaultOptions?.connection,
       },
     });
 

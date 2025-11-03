@@ -601,7 +601,7 @@ export class Migrator {
   > {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
-    const tdbConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
+    const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
     const shadowDatabase = tdbConn.database + "__migration_shadow";
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
@@ -610,7 +610,7 @@ export class Migrator {
       chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`)
     );
     execSync(
-      `mysqldump -h${tdbConn.host} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`
+      `mysqldump -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`
     );
     execSync(
       `sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`
@@ -624,7 +624,7 @@ export class Migrator {
     // ShadowDB 테이블 + 데이터 생성
     console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
     execSync(
-      `mysql -h${tdbConn.host} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
+      `mysql -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
     );
 
     // shadow db 테스트 진행
