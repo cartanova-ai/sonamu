@@ -450,17 +450,9 @@ function cleanup() {
 }
 
 init()
-  .then(async (createdTarget: string) => {
+  .then((createdTarget: string) => {
     console.log(chalk.green("\nProject created successfully!\n"));
-
-    // code 명령어로 생성된 api, web 열기
-    try {
-      await executeCommand("code", [path.join(createdTarget, "api")], process.cwd());
-      await executeCommand("code", [path.join(createdTarget, "web")], process.cwd());
-    } catch (error) {
-      // code 명령어가 실패하는 경우, (code command가 설정되지 않은 경우)
-      console.log(chalk.yellow("Note: Failed to open project in VSCode. Please set up the code command."));
-    }
+    console.log(chalk.green(`project was created in ${chalk.blue(createdTarget)}\n`));
   })
   .catch((e) => {
     cleanup();
