@@ -5,8 +5,8 @@ services:
     platform: linux/arm64
     image: mysql:8.0
     container_name: miomock-mysql
-    # volumes:
-    # - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    volumes:
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql # 얘가 있어야 데이터베이스(schema)가 생깁니다.
     environment:
       MYSQL_DATABASE: miomock
       MYSQL_ROOT_PASSWORD: miomock123
