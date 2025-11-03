@@ -209,7 +209,8 @@ export class Migrator {
           try {
             return await tConn.migrate.status();
           } catch (err) {
-            return "error";
+            console.warn(chalk.yellow(`${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`));
+            return 'error'/*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/;
           }
         })();
         const pending = await (async () => {
@@ -224,9 +225,9 @@ export class Migrator {
         })();
         const currentVersion = await (async () => {
           try {
-            return tConn.migrate.currentVersion();
+            return await tConn.migrate.currentVersion();
           } catch (err) {
-            return "error";
+            return 'error';
           }
         })();
 
