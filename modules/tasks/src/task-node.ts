@@ -98,23 +98,41 @@ export async function processEvent<T extends TaskNodeEvent>(
           timestamp: data.timestamp,
           task_id: data.task.id,
           task_retry_count: data.task.retryCount,
+          reason: data.reason,
           error_message: data.error?.message,
           error_stack: data.error?.stack,
         }).into("sonamu_task_events")
       );
 
-      executes.push(
-        knex("sonamu_tasks")
-          .where("id", data.task.id)
-          .update((data.task.retryCount + 1) >= (retry?.maxAttempts ?? 0) ? {
+      if ((data.task.retryCount + 1) >= (retry?.maxAttempts ?? 0)) {
+        executes.push(
+          knex("sonamu_tasks")
+            .where("id", data.task.id)
+            .delete()
+        );
+
+        executes.push(
+          knex.insert({
+            id: data.task.id,
+            created_at: data.task.createdAt,
+            completed_at: data.timestamp,
+            namespace: data.task.namespace,
+            payload: data.task.payload,
+            retry_count: data.task.retryCount,
             status: "error",
-            updated_at: new Date(),
-          } : {
-            status: "pending_for_retry",
-            retry_count: data.task.retryCount + 1,
-            updated_at: new Date(),
-          })
-      );
+          }).into("sonamu_archived_tasks")
+        );
+      } else {
+        executes.push(
+          knex("sonamu_tasks")
+            .where("id", data.task.id)
+            .update({
+              status: "pending_for_retry",
+              retry_count: data.task.retryCount + 1,
+              updated_at: data.timestamp,
+            })
+        );
+      }
       break;
 
     case "process:complete":
@@ -132,10 +150,19 @@ export async function processEvent<T extends TaskNodeEvent>(
       executes.push(
         knex("sonamu_tasks")
           .where("id", data.task.id)
-          .update({
-            status: "completed",
-            updated_at: new Date(),
-          })
+          .delete()
+      );
+
+      executes.push(
+        knex.insert({
+          id: data.task.id,
+          created_at: data.task.createdAt,
+          completed_at: data.timestamp,
+          namespace: data.task.namespace,
+          payload: data.task.payload,
+          retry_count: data.task.retryCount,
+          status: "completed",
+        }).into("sonamu_archived_tasks")
       );
       break;
 
@@ -157,9 +184,9 @@ export async function taskWrapper(taskNode: SonamuTaskNode) {
     timestamp: new Date(),
   }, trx);
 
+  // NOTE: 대기 처리를 Queue를 별도로 분리한다면 where status = "pending_for_retry"를 추가하면 됨.
   const rawTask = await trx.select("id", "created_at", "updated_at", "namespace", "status", "retry_count", "payload")
     .from("sonamu_tasks")
-    .whereIn("status", ["pending"])
     .forUpdate()
     .skipLocked()
     .limit(1)
