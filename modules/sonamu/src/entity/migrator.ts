@@ -1190,7 +1190,8 @@ export class Migrator {
         if (isManyToManyRelationProp(prop)) {
           // ManyToMany 케이스
           const relMd = EntityManager.get(prop.with);
-          const [table1, table2] = prop.joinTable.split("__");
+          const table1 = entity.table;
+          const table2 = relMd.table;
           const join = {
             from: `${entity.table}.id`,
             through: {
