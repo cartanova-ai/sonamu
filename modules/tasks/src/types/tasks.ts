@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import type { Callback } from "./utils";
 import type { Duration } from "date-fns";
 
@@ -21,7 +21,7 @@ export interface TaskInfo<T extends z.ZodType = z.ZodType> {
   updatedAt: Date;
   status: TaskState;
   namespace: string;
-  retryCount: number;
+  attempt: number;
   // Task의 payload.
   payload: Buffer | z.infer<T>;
 }
@@ -30,7 +30,7 @@ export interface RetryConfig {
   // 최대 횟수 (def: 1)
   maxAttempts: number;
   // 재시도 간격
-  delay?: Duration | (() => Duration);
+  delay?: Duration | ((attempt: number) => Duration);
 }
 
 export interface TaskRouterContext<T extends z.ZodType = z.ZodType> {

@@ -1,4 +1,4 @@
-import { type Knex } from "knex";
+import type { Knex } from "knex";
 import type {
   NodeInfo,
   TaskInfo,
@@ -70,7 +70,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
             node_name: data.node.name,
             timestamp: data.timestamp,
             task_id: knex.fn.uuidToBin(data.task.id),
-            task_retry_count: data.task.retryCount,
+            task_attempt: data.task.attempt,
           })
           .into("sonamu_task_events"),
       );
@@ -88,28 +88,9 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
             node_name: data.node.name,
             timestamp: data.timestamp,
             task_id: knex.fn.uuidToBin(data.task.id),
-            task_retry_count: data.task.retryCount,
+            task_attempt: data.task.attempt,
           })
           .into("sonamu_task_events"),
-      );
-      console.log(
-        knex
-          .insert({
-            event_type: data.type,
-            node_id: knex.fn.uuidToBin(data.node.id),
-            node_name: data.node.name,
-            timestamp: data.timestamp,
-            task_id: knex.fn.uuidToBin(data.task.id),
-            task_retry_count: data.task.retryCount,
-          })
-          .into("sonamu_task_events")
-          .toQuery(),
-      );
-      console.log(
-        knex("sonamu_tasks")
-          .where("id", knex.fn.uuidToBin(data.task.id))
-          .delete()
-          .toQuery(),
       );
       executes.push(
         knex("sonamu_tasks")
@@ -124,7 +105,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
             completed_at: data.timestamp,
             namespace: data.task.namespace,
             payload: data.task.payload,
-            retry_count: data.task.retryCount,
+            attempt: data.task.attempt,
             status: "completed",
           })
           .into("sonamu_archived_tasks"),
@@ -144,7 +125,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
           node_name: data.node.name,
           timestamp: data.timestamp,
           task_id: knex.fn.uuidToBin(data.task.id),
-          task_retry_count: data.task.retryCount,
+          task_attempt: data.task.attempt,
           reason: data.reason,
           error_message: data.error?.message,
           error_stack: data.error?.stack,
@@ -152,7 +133,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
         .into("sonamu_task_events"),
     );
 
-    if (data.task.retryCount + 1 >= (matched?.data.retry.maxAttempts ?? 1)) {
+    if (data.task.attempt + 1 >= (matched?.data.retry.maxAttempts ?? 1)) {
       executes.push(
         knex("sonamu_tasks")
           .where("id", knex.fn.uuidToBin(data.task.id))
@@ -167,7 +148,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
             completed_at: data.timestamp,
             namespace: data.task.namespace,
             payload: data.task.payload,
-            retry_count: data.task.retryCount,
+            attempt: data.task.attempt,
             status: "error",
           })
           .into("sonamu_archived_tasks"),
@@ -178,7 +159,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
           .where("id", knex.fn.uuidToBin(data.task.id))
           .update({
             status: "pending_for_retry",
-            retry_count: data.task.retryCount + 1,
+            attempt: data.task.attempt + 1,
             updated_at: data.timestamp,
           }),
       );
@@ -214,7 +195,7 @@ export async function wrapRemoteTask(
       "updated_at",
       "namespace",
       "status",
-      "retry_count",
+      "attempt",
       "payload",
     )
     .from("sonamu_tasks")
@@ -228,14 +209,13 @@ export async function wrapRemoteTask(
     return;
   }
 
-  console.log(rawTask);
   const taskInfo: TaskInfo = {
     id: knex.fn.binToUuid(rawTask.id),
     createdAt: rawTask.created_at,
     updatedAt: rawTask.updated_at,
     status: rawTask.status,
     namespace: rawTask.namespace,
-    retryCount: rawTask.retry_count,
+    attempt: rawTask.attempt,
     payload: rawTask.payload,
   };
 
