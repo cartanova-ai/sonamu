@@ -171,7 +171,11 @@ export class BaseModelClass {
       const nullKeys = Object.keys(groups).filter(
         (key) =>
           groups[key].length > 1 &&
-          groups[key].every((field) => row[field] === null)
+          groups[key].every(
+            (field) =>
+              row[field] === null ||
+              (Array.isArray(row[field]) && row[field].length === 0)
+          )
       );
 
       const hydrated = Object.keys(row).reduce((r, field) => {
