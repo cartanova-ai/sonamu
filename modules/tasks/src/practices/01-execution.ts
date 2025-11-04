@@ -41,6 +41,14 @@ function getConfig(): TaskNodeConfig {
           console.log("Processed", ctx);
         },
       },
+      {
+        path: "/test2",
+        retry: { maxAttempts: 3, delay: { seconds: 1 } },
+        schema: schema,
+        target: async (_: TaskContext<typeof schema>) => {
+          throw new Error();
+        },
+      },
     ],
 
     retry: {
@@ -52,7 +60,7 @@ function getConfig(): TaskNodeConfig {
       {
         type: "remote",
         // node-cron은 초까지 지원하기 때문에 이렇게 30초마다 돌릴 수 있음.
-        expression: "*/30 * * * * *",
+        expression: "*/10 * * * * *",
         options: {
           timezone: "Asia/Seoul",
           name: "remote-job",
@@ -61,9 +69,9 @@ function getConfig(): TaskNodeConfig {
       },
       {
         type: "local",
-        expression: "* * * * *",
+        expression: "*/10 * * * * *",
         payload: {},
-        namespace: "/test",
+        namespace: "/test2",
         options: {
           timezone: "Asia/Seoul",
           name: "remote-job",

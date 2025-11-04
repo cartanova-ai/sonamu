@@ -3,7 +3,7 @@ import knex, { type Knex } from "knex";
 import { createTask, type ScheduledTask } from "node-cron";
 import { type RouterContext, addRoute, createRouter } from "rou3";
 import { v7 } from "uuid";
-import { wrapRemoteTask } from "./tasks";
+import { wrapRemoteTask, wrapLocalTask } from "./tasks";
 import {
   resolve,
   type EventType,
@@ -17,7 +17,6 @@ import {
   type TaskNodeConfig,
   type TaskRouterContext,
 } from "./types";
-import { wrapLocalTask } from "./tasks/local-task";
 
 export class SonamuScheduler {
   #status: "running" | "stopped" | "disposed" = "stopped";
@@ -80,7 +79,7 @@ export class SonamuScheduler {
               updatedAt: new Date(),
               status: "pending",
               namespace: task.namespace,
-              retryCount: 0,
+              attempt: 1,
               payload: task.payload,
             });
 

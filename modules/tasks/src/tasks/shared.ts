@@ -35,7 +35,7 @@ export async function routedAction(
   const { data: ctx, params } = matched;
 
   // 재시도 횟수를 체크함.
-  if (ctx.retry.maxAttempts < taskInfo.retryCount) {
+  if (ctx.retry.maxAttempts < taskInfo.attempt) {
     throw new SonamuTaskError("max_retries_exceeded");
   }
 
