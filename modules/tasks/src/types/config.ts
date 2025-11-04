@@ -2,6 +2,7 @@ import type { LoggerConfig, LogLevel, Sink } from "@logtape/logtape";
 import type { Knex } from "knex";
 import type { UnroutedTaskEvent } from "./events";
 import type { RetryConfig, TaskRouterContext } from "./tasks";
+import z from "zod";
 
 export type OnEventFunction<T extends UnroutedTaskEvent = UnroutedTaskEvent> = (
   event: T,
@@ -21,11 +22,12 @@ export interface RemoteTaskConfig {
 }
 
 // 로컬에서 router로 잡아서 실행할 태스크
-export interface LocalTaskConfig {
+export interface LocalTaskConfig<T extends z.ZodType = z.ZodType> {
   type: "local";
   expression: string;
   // router 태울 namespace
   namespace: string;
+  payload: Buffer | z.infer<T>;
   options?: {
     timezone?: string;
     name?: string;

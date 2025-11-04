@@ -5185,8 +5185,8 @@ const RAW_RUNTIME_STATE =
       "npm:1.0.2"\
     ],\
     [\
-      "uuidv7",\
-      "npm:1.0.2"\
+      "uuid",\
+      "npm:13.0.0"\
     ],\
     [\
       "validate-npm-package-license",\
@@ -10721,7 +10721,7 @@ const RAW_RUNTIME_STATE =
           ["rou3", "npm:0.7.9"],\
           ["source-map-support", "npm:0.5.21"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
-          ["uuidv7", "npm:1.0.2"],\
+          ["uuid", "npm:13.0.0"],\
           ["vitest", "virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:4.0.6"],\
           ["zod", "npm:4.1.12"]\
         ],\
@@ -24396,11 +24396,11 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
-    ["uuidv7", [\
-      ["npm:1.0.2", {\
-        "packageLocation": "./.yarn/cache/uuidv7-npm-1.0.2-460de5691b-729b4f6af3.zip/node_modules/uuidv7/",\
+    ["uuid", [\
+      ["npm:13.0.0", {\
+        "packageLocation": "./.yarn/cache/uuid-npm-13.0.0-29831a4f1f-2742b24d1e.zip/node_modules/uuid/",\
         "packageDependencies": [\
-          ["uuidv7", "npm:1.0.2"]\
+          ["uuid", "npm:13.0.0"]\
         ],\
         "linkType": "HARD"\
       }]\

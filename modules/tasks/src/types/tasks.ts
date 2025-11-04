@@ -15,15 +15,15 @@ export type TaskState =
   | "error"
   | "completed";
 
-export interface TaskInfo {
-  id: number;
+export interface TaskInfo<T extends z.ZodType = z.ZodType> {
+  id: string;
   createdAt: Date;
   updatedAt: Date;
   status: TaskState;
   namespace: string;
   retryCount: number;
   // Task의 payload.
-  payload: Buffer;
+  payload: Buffer | z.infer<T>;
 }
 
 export interface RetryConfig {

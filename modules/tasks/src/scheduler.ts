@@ -1,22 +1,23 @@
 import EventEmitter from "events";
-import knex, { Knex } from "knex";
-import { RouterContext, createRouter, addRoute } from "rou3";
+import knex, { type Knex } from "knex";
+import { createTask, type ScheduledTask } from "node-cron";
+import { type RouterContext, addRoute, createRouter } from "rou3";
+import { v7 } from "uuid";
+import { wrapRemoteTask } from "./tasks";
 import {
+  resolve,
   type EventType,
   type LocalTaskConfig,
-  type RemoteTaskConfig,
   type NodeInfo,
   type OnEventFunction,
+  type RemoteTaskConfig,
   type Resolvable,
-  resolve,
-  type TaskNodeConfig,
-  type TaskRouterContext,
   type RetryConfig,
   type TaskEvent,
+  type TaskNodeConfig,
+  type TaskRouterContext,
 } from "./types";
-import { createTask, type ScheduledTask } from "node-cron";
-import { wrapRemoteTask } from "./tasks";
-import { uuidv7obj } from "uuidv7";
+import { wrapLocalTask } from "./tasks/local-task";
 
 export class SonamuScheduler {
   #status: "running" | "stopped" | "disposed" = "stopped";
@@ -139,7 +140,7 @@ export async function createScheduler(
   const scheduler = new SonamuScheduler(
     knex(config.database),
     createRouter(),
-    { id: uuidv7obj(), name: config.name },
+    { id: v7(), name: config.name },
     config.retry,
   );
 

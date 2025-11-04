@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "nodemon exec",
     "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
-    "check": "tsc --noEmit && prettier -c ./**/*.ts",
+    "check": "tsc --noEmit && prettier -c --ignore-path ./src/**/*.ts",
     "check:type": "tsc --noEmit",
-    "check:format": "prettier -c -w ./**/*.ts"
+    "check:format": "prettier -c -w ./src/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -25,7 +25,7 @@
     "node-cron": "^4.0.0",
     "rou3": "^0.7.9",
     "source-map-support": "^0.5.21",
-    "uuidv7": "^1.0.2",
+    "uuid": "^13.0.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
