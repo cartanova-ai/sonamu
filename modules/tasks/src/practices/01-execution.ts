@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { SonamuTaskNode } from "../task-node";
-import type { TaskContext, TaskNodeConfig, TaskNodeEvent } from "../types";
+import { createScheduler } from "../scheduler";
+import type { TaskContext, TaskNodeConfig, TaskEvent } from "../types";
 
 function getConfig(): TaskNodeConfig {
   const schema = z.object();
@@ -13,7 +13,7 @@ function getConfig(): TaskNodeConfig {
     },
     database: {
       client: "mysql2",
-      pool: { min: 1, max: 5, },
+      pool: { min: 1, max: 5 },
       connection: {
         database: "miomock",
         host: "0.0.0.0",
@@ -31,30 +31,44 @@ function getConfig(): TaskNodeConfig {
           }
           return next();
         },
-      }
-    },
-    routes: [{
-      path: "/test",
-      schema: schema,
-      target: async (ctx: TaskContext<typeof schema>) => {
-        console.log("Processed", ctx);
       },
-    }],
+    },
+    routes: [
+      {
+        path: "/test",
+        schema: schema,
+        target: async (ctx: TaskContext<typeof schema>) => {
+          console.log("Processed", ctx);
+        },
+      },
+    ],
+
     retry: {
       delay: {},
-      maxAttempts: 1
-    }
+      maxAttempts: 1,
+    },
+
+    tasks: [
+      {
+        type: "remote",
+        expression: "* * * * *",
+        options: {
+          timezone: "Asia/Seoul",
+          name: "remote-job",
+          noOverlap: false,
+        },
+      },
+    ],
   };
 }
 
-
-(() => {
+(async () => {
   const config = getConfig();
   console.log(config);
-  const taskNode = new SonamuTaskNode(config);
-  taskNode.on("*", (evt: TaskNodeEvent) => {
+  const scheduler = await createScheduler(config);
+  scheduler.on("*", (evt: TaskEvent) => {
     console.log("Event:", evt);
   });
 
-  taskNode.run();
+  scheduler.start();
 })();

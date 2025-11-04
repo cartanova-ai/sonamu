@@ -8,11 +8,11 @@ export type EventType =
   | "fetch"
   | "process:start"
   | "process:error"
-  | "process:complete"
-  // | "fetch:retry"
-  // | "process:start:retry"
-  // | "process:error:retry"
-  // | "process:complete:retry";
+  | "process:complete";
+// | "fetch:retry"
+// | "process:start:retry"
+// | "process:error:retry"
+// | "process:complete:retry";
 
 // TaskNode가 왜 중단되는지를 남김.
 //  - app_shutdown: 애플리케이션의 정상적인 종료
@@ -90,7 +90,12 @@ export interface ProcessErrorEvent extends BaseNodeEvent {
   error?: Error;
 }
 
-export type TaskNodeEvent = StartEvent | StopEvent | FetchEvent | ProcessStartEvent | ProcessCompleteEvent | ProcessErrorEvent;
+export type RoutedTaskEvent =
+  | ProcessStartEvent
+  | ProcessCompleteEvent
+  | ProcessErrorEvent;
+export type UnroutedTaskEvent = StartEvent | StopEvent | FetchEvent;
+export type TaskEvent = UnroutedTaskEvent | RoutedTaskEvent;
 
 export interface IRawEvent {
   event_type: EventType;
@@ -102,4 +107,4 @@ export interface IRawEvent {
   error_message?: string;
   error_stack?: string;
   timestamp: Date;
-};
+}
