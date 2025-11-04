@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -17,6 +18,8 @@ export interface Driver {
     contents: Buffer,
     options?: { contentType?: string; visibility?: "public" | "private" }
   ): Promise<void>;
+
+  del(key: string): Promise<void>;
 
   getUrl(key: string): string;
 
@@ -41,6 +44,10 @@ export class FSDriver implements Driver {
     await fs.mkdir(dir, { recursive: true });
 
     await fs.writeFile(filePath, contents);
+  }
+
+  async del(key: string) {
+    await fs.rm(path.join(this.config.location, key));
   }
 
   getUrl(key: string): string {
@@ -76,6 +83,15 @@ export class S3Driver implements Driver {
         Body: contents,
         ContentType: options?.contentType,
         ACL: this.getAcl(options?.visibility),
+      })
+    );
+  }
+
+  async del(key: string): Promise<void> {
+    await this.s3.send(
+      new DeleteObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
       })
     );
   }
