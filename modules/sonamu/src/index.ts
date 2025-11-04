@@ -15,7 +15,7 @@ export * from "./utils/controller";
 export * from "./utils/model";
 export * from "./utils/utils";
 export * from "./testing/fixture-manager";
-export * from "./entity/migrator";
+export * from "./migration/migrator";
 export * from "./entity/entity-manager";
 export * from "./entity/entity";
 export * from "./file-storage/driver";

@@ -681,8 +681,8 @@ export async function createServer(options: {
 
   server.post<{
     Body: {
-      action: "latest" | "rollback" | "shadow";
-      targets: string[];
+      action: "apply" | "rollback" | "shadow";
+      targets: (keyof SonamuDBConfig)[];
     };
   }>(
     "/api/migrations/runAction",
