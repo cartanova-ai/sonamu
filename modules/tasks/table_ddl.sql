@@ -1,6 +1,6 @@
 -- TaskNode에서 처리할 Task 목록
 CREATE TABLE sonamu_tasks (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+  id BINARY(16) PRIMARY KEY,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -19,7 +19,7 @@ CREATE TABLE sonamu_tasks (
 
 -- TaskNode에서 처리가 끝난 Task 목록
 CREATE TABLE sonamu_archived_tasks (
-  id INT PRIMARY KEY,
+  id BINARY(16) PRIMARY KEY,
   created_at TIMESTAMP NOT NULL,
   completed_at TIMESTAMP NOT NULL,
   namespace VARCHAR(255) NOT NULL,
@@ -41,12 +41,12 @@ CREATE TABLE sonamu_task_events (
   event_type VARCHAR(255) NOT NULL,
 
   -- TaskNode에서 자동 생성된 노드의 UUIDv7
-  node_id BINARY(32) NOT NULL,
+  node_id BINARY(16) NOT NULL,
   -- 사용자가 지정한 노드 이름
   node_name VARCHAR(64),
 
   -- Task의 id
-  task_id INT,
+  task_id BINARY(16),
   -- Task의 당시 retry_count를 기록해둠.
   task_retry_count INTEGER,
 

@@ -51,7 +51,19 @@ function getConfig(): TaskNodeConfig {
     tasks: [
       {
         type: "remote",
+        // node-cron은 초까지 지원하기 때문에 이렇게 30초마다 돌릴 수 있음.
+        expression: "*/30 * * * * *",
+        options: {
+          timezone: "Asia/Seoul",
+          name: "remote-job",
+          noOverlap: false,
+        },
+      },
+      {
+        type: "local",
         expression: "* * * * *",
+        payload: {},
+        namespace: "/test",
         options: {
           timezone: "Asia/Seoul",
           name: "remote-job",

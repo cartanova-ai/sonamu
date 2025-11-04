@@ -1,4 +1,4 @@
-import type { Knex } from "knex";
+import { type Knex } from "knex";
 import type {
   NodeInfo,
   TaskInfo,
@@ -20,7 +20,7 @@ export async function saveUnroutedTaskEvent(
       return knex
         .insert({
           event_type: data.type,
-          node_id: data.node.id.toHex(),
+          node_id: knex.fn.uuidToBin(data.node.id),
           node_name: data.node.name,
           timestamp: data.timestamp,
         })
@@ -29,7 +29,7 @@ export async function saveUnroutedTaskEvent(
       return knex
         .insert({
           event_type: data.type,
-          node_id: data.node.id.toHex(),
+          node_id: knex.fn.uuidToBin(data.node.id),
           node_name: data.node.name,
           timestamp: data.timestamp,
           reason: data.reason,
@@ -41,7 +41,7 @@ export async function saveUnroutedTaskEvent(
       return knex
         .insert({
           event_type: data.type,
-          node_id: data.node.id.toHex(),
+          node_id: knex.fn.uuidToBin(data.node.id),
           node_name: data.node.name,
           timestamp: data.timestamp,
         })
@@ -66,10 +66,10 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
         knex
           .insert({
             event_type: data.type,
-            node_id: data.node.id.toHex(),
+            node_id: knex.fn.uuidToBin(data.node.id),
             node_name: data.node.name,
             timestamp: data.timestamp,
-            task_id: data.task.id,
+            task_id: knex.fn.uuidToBin(data.task.id),
             task_retry_count: data.task.retryCount,
           })
           .into("sonamu_task_events"),
@@ -84,21 +84,42 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
         knex
           .insert({
             event_type: data.type,
-            node_id: data.node.id.toHex(),
+            node_id: knex.fn.uuidToBin(data.node.id),
             node_name: data.node.name,
             timestamp: data.timestamp,
-            task_id: data.task.id,
+            task_id: knex.fn.uuidToBin(data.task.id),
             task_retry_count: data.task.retryCount,
           })
           .into("sonamu_task_events"),
       );
-
-      executes.push(knex("sonamu_tasks").where("id", data.task.id).delete());
-
+      console.log(
+        knex
+          .insert({
+            event_type: data.type,
+            node_id: knex.fn.uuidToBin(data.node.id),
+            node_name: data.node.name,
+            timestamp: data.timestamp,
+            task_id: knex.fn.uuidToBin(data.task.id),
+            task_retry_count: data.task.retryCount,
+          })
+          .into("sonamu_task_events")
+          .toQuery(),
+      );
+      console.log(
+        knex("sonamu_tasks")
+          .where("id", knex.fn.uuidToBin(data.task.id))
+          .delete()
+          .toQuery(),
+      );
+      executes.push(
+        knex("sonamu_tasks")
+          .where("id", knex.fn.uuidToBin(data.task.id))
+          .delete(),
+      );
       executes.push(
         knex
           .insert({
-            id: data.task.id,
+            id: knex.fn.uuidToBin(data.task.id),
             created_at: data.task.createdAt,
             completed_at: data.timestamp,
             namespace: data.task.namespace,
@@ -119,10 +140,10 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
       knex
         .insert({
           event_type: data.type,
-          node_id: data.node.id.toHex(),
+          node_id: knex.fn.uuidToBin(data.node.id),
           node_name: data.node.name,
           timestamp: data.timestamp,
-          task_id: data.task.id,
+          task_id: knex.fn.uuidToBin(data.task.id),
           task_retry_count: data.task.retryCount,
           reason: data.reason,
           error_message: data.error?.message,
@@ -132,12 +153,16 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
     );
 
     if (data.task.retryCount + 1 >= (matched?.data.retry.maxAttempts ?? 1)) {
-      executes.push(knex("sonamu_tasks").where("id", data.task.id).delete());
+      executes.push(
+        knex("sonamu_tasks")
+          .where("id", knex.fn.uuidToBin(data.task.id))
+          .delete(),
+      );
 
       executes.push(
         knex
           .insert({
-            id: data.task.id,
+            id: knex.fn.uuidToBin(data.task.id),
             created_at: data.task.createdAt,
             completed_at: data.timestamp,
             namespace: data.task.namespace,
@@ -150,7 +175,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
     } else {
       executes.push(
         knex("sonamu_tasks")
-          .where("id", data.task.id)
+          .where("id", knex.fn.uuidToBin(data.task.id))
           .update({
             status: "pending_for_retry",
             retry_count: data.task.retryCount + 1,
@@ -203,8 +228,9 @@ export async function wrapRemoteTask(
     return;
   }
 
+  console.log(rawTask);
   const taskInfo: TaskInfo = {
-    id: rawTask.id,
+    id: knex.fn.binToUuid(rawTask.id),
     createdAt: rawTask.created_at,
     updatedAt: rawTask.updated_at,
     status: rawTask.status,

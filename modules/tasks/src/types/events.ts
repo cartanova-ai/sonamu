@@ -1,4 +1,3 @@
-import { UUID } from "uuidv7";
 import type { TaskInfo } from "./tasks";
 
 // Event에는 시간, Event 타입, Task에 대한 namespace, Task ID, 처리한 TaskNode의 노드 이름, 이벤트에 대한 메타 정보 데이터 등이 들어감.
@@ -38,7 +37,7 @@ export type ProcessErrorReasonEnum =
 
 export interface NodeInfo {
   // 자동으로 생성되는 uuidv7
-  id: UUID;
+  id: string;
 
   // 명시적으로 지정한 node 이름
   name?: string;
