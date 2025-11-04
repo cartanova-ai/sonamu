@@ -65,7 +65,6 @@ export class SonamuScheduler {
   addTask(...tasks: (RemoteTaskConfig | LocalTaskConfig)[]) {
     for (const task of tasks) {
       const onEvent = this.#emit.bind(this);
-      // Local Job 추가하기
       const func =
         task.type === "remote"
           ? wrapRemoteTask.bind(
@@ -75,7 +74,15 @@ export class SonamuScheduler {
               onEvent,
               this.#knex,
             )
-          : () => {};
+          : wrapLocalTask.bind(this, this.#router, this.nodeInfo, onEvent, {
+              id: v7(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              status: "pending",
+              namespace: task.namespace,
+              retryCount: 0,
+              payload: task.payload,
+            });
 
       const cronTask = createTask(task.expression, func, task.options);
       this.#tasks.push(cronTask);
