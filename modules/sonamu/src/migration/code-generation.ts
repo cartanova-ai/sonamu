@@ -9,9 +9,53 @@ import {
 } from "../types/types";
 
 /**
+ * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
+ */
+export async function generateCreateCode_ColumnAndIndexes(
+  table: string,
+  columns: MigrationColumn[],
+  indexes: MigrationIndex[]
+): Promise<GenMigrationCode> {
+  // fulltext index 분리
+  const [ngramIndexes, standardIndexes] = _.partition(
+    indexes,
+    (i) => i.type === "fulltext" && i.parser === "ngram"
+  );
+
+  // 컬럼, 인덱스 처리
+  const lines: string[] = [
+    'import { Knex } from "knex";',
+    "",
+    "export async function up(knex: Knex): Promise<void> {",
+    `await knex.schema.createTable("${table}", (table) => {`,
+    "// columns",
+    ...genColumnDefinitions(columns),
+    "",
+    "// indexes",
+    ...standardIndexes.map((index) => genIndexDefinition(index, table)),
+    "});",
+    // ngram은 knex.raw로 처리하므로 createTable 밖에서 실행
+    ...ngramIndexes.map((index) => genIndexDefinition(index, table)),
+    "}",
+    "",
+    "export async function down(knex: Knex): Promise<void> {",
+    ` return knex.schema.dropTable("${table}");`,
+    "}",
+  ];
+  return {
+    table,
+    type: "normal",
+    title: `create__${table}`,
+    formatted: await prettier.format(lines.join("\n"), {
+      parser: "typescript",
+    }),
+  };
+}
+
+/**
  * MigrationColumn[] 읽어서 컬럼 정의하는 구문 생성
  */
-export function genColumnDefinitions(columns: MigrationColumn[]): string[] {
+function genColumnDefinitions(columns: MigrationColumn[]): string[] {
   return columns.map((column) => {
     const chains: string[] = [];
     if (column.name === "id") {
@@ -61,68 +105,9 @@ export function genColumnDefinitions(columns: MigrationColumn[]): string[] {
 }
 
 /**
- * MigrationIndex[] 읽어서 인덱스/유니크 정의하는 구문 생성
- */
-export function genIndexDefinitions(indexes: MigrationIndex[]): string[] {
-  if (indexes.length === 0) {
-    return [];
-  }
-
-  const methodMap = {
-    index: "index",
-    fulltext: "index",
-    unique: "unique",
-  };
-
-  const lines = _.uniq(
-    indexes.reduce((r, index) => {
-      r.push(
-        `table.${methodMap[index.type]}([${index.columns
-          .map((col) => `'${col}'`)
-          .join(",")}], ${
-          index.type === "fulltext"
-            ? "undefined, { indexType: 'FULLTEXT' }"
-            : ""
-        })`
-      );
-      return r;
-    }, [] as string[])
-  );
-  return lines;
-}
-
-/**
- * MigrationForeign[] 읽어서 외부키 constraint 정의하는 구문 생성
- */
-export function genForeignDefinitions(
-  table: string,
-  foreigns: MigrationForeign[]
-): { up: string[]; down: string[] } {
-  return foreigns.reduce(
-    (r, foreign) => {
-      const columnsStringQuote = foreign.columns
-        .map((col) => `'${col.replace(`${table}.`, "")}'`)
-        .join(",");
-      r.up.push(
-        `table.foreign('${foreign.columns.join(",")}')
-            .references('${foreign.to}')
-            .onUpdate('${foreign.onUpdate}')
-            .onDelete('${foreign.onDelete}')`
-      );
-      r.down.push(`table.dropForeign([${columnsStringQuote}])`);
-      return r;
-    },
-    {
-      up: [] as string[],
-      down: [] as string[],
-    }
-  );
-}
-
-/**
  * 개별 인덱스 정의 생성
  */
-export function genIndexDefinition(index: MigrationIndex, table: string) {
+function genIndexDefinition(index: MigrationIndex, table: string) {
   const methodMap = {
     index: "index",
     fulltext: "index",
@@ -141,65 +126,6 @@ export function genIndexDefinition(index: MigrationIndex, table: string) {
     .join(",")}]${
     index.type === "fulltext" ? ", undefined, 'FULLTEXT'" : ""
   })`;
-}
-
-/**
- * 인덱스 삭제 정의 생성
- */
-export function genIndexDropDefinition(index: MigrationIndex) {
-  const methodMap = {
-    index: "Index",
-    fulltext: "Index",
-    unique: "Unique",
-  };
-
-  return `table.drop${methodMap[index.type]}([${index.columns
-    .map((columnName) => `'${columnName}'`)
-    .join(",")}])`;
-}
-
-/**
- * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
- */
-export async function generateCreateCode_ColumnAndIndexes(
-  table: string,
-  columns: MigrationColumn[],
-  indexes: MigrationIndex[]
-): Promise<GenMigrationCode> {
-  // fulltext index 분리
-  const [ngramIndexes, standardIndexes] = _.partition(
-    indexes,
-    (i) => i.type === "fulltext" && i.parser === "ngram"
-  );
-
-  // 컬럼, 인덱스 처리
-  const lines: string[] = [
-    'import { Knex } from "knex";',
-    "",
-    "export async function up(knex: Knex): Promise<void> {",
-    `await knex.schema.createTable("${table}", (table) => {`,
-    "// columns",
-    ...genColumnDefinitions(columns),
-    "",
-    "// indexes",
-    ...standardIndexes.map((index) => genIndexDefinition(index, table)),
-    "});",
-    // ngram은 knex.raw로 처리하므로 createTable 밖에서 실행
-    ...ngramIndexes.map((index) => genIndexDefinition(index, table)),
-    "}",
-    "",
-    "export async function down(knex: Knex): Promise<void> {",
-    ` return knex.schema.dropTable("${table}");`,
-    "}",
-  ];
-  return {
-    table,
-    type: "normal",
-    title: `create__${table}`,
-    formatted: await prettier.format(lines.join("\n"), {
-      parser: "typescript",
-    }),
-  };
 }
 
 /**
@@ -253,174 +179,24 @@ export async function generateCreateCode_Foreign(
 }
 
 /**
- * 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
+ * MigrationForeign[] 읽어서 외부키 constraint 정의하는 구문 생성
  */
-export function getAlterColumnsTo(
-  entityColumns: MigrationColumn[],
-  dbColumns: MigrationColumn[]
-) {
-  const columnsTo = {
-    add: [] as MigrationColumn[],
-    drop: [] as MigrationColumn[],
-    alter: [] as MigrationColumn[],
-  };
-
-  // 컬럼명 기준 비교
-  const extraColumns = {
-    db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
-    entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
-  };
-  if (extraColumns.entity.length > 0) {
-    columnsTo.add = columnsTo.add.concat(extraColumns.entity);
-  }
-  if (extraColumns.db.length > 0) {
-    columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
-  }
-
-  // 동일 컬럼명의 세부 필드 비교
-  const sameDbColumns = _.intersectionBy(
-    dbColumns,
-    entityColumns,
-    (col) => col.name
-  );
-  const sameMdColumns = _.intersectionBy(
-    entityColumns,
-    dbColumns,
-    (col) => col.name
-  );
-  columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
-    equal(a, b)
-  );
-
-  return columnsTo;
-}
-
-/**
- * 인덱스의 add, drop 여부 확인
- */
-export function getAlterIndexesTo(
-  entityIndexes: MigrationIndex[],
-  dbIndexes: MigrationIndex[]
-) {
-  // 인덱스 비교
-  let indexesTo = {
-    add: [] as MigrationIndex[],
-    drop: [] as MigrationIndex[],
-  };
-  const extraIndexes = {
-    db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
-      [col.type, col.columns.join("-")].join("//")
-    ),
-    entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
-      [col.type, col.columns.join("-")].join("//")
-    ),
-  };
-  if (extraIndexes.entity.length > 0) {
-    indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
-  }
-  if (extraIndexes.db.length > 0) {
-    indexesTo.drop = indexesTo.drop.concat(extraIndexes.db);
-  }
-
-  return indexesTo;
-}
-
-/**
- * 추출된 컬럼들을 기준으로 각각 라인 생성
- */
-export function getAlterColumnLinesTo(
-  columnsTo: ReturnType<typeof getAlterColumnsTo>,
-  entityColumns: MigrationColumn[],
+function genForeignDefinitions(
   table: string,
-  dbForeigns: MigrationForeign[]
-) {
-  let linesTo = {
-    add: {
-      up: [] as string[],
-      down: [] as string[],
-    },
-    drop: {
-      up: [] as string[],
-      down: [] as string[],
-    },
-    alter: {
-      up: [] as string[],
-      down: [] as string[],
-    },
-  };
-
-  linesTo.add = {
-    up: ["// add", ...genColumnDefinitions(columnsTo.add)],
-    down: [
-      "// rollback - add",
-      `table.dropColumns(${columnsTo.add
-        .map((col) => `'${col.name}'`)
-        .join(", ")})`,
-    ],
-  };
-
-  // drop할 컬럼에 걸린 FK 찾기
-  const dropColumnNames = columnsTo.drop.map((col) => col.name);
-  const fkToDropBeforeColumn = dbForeigns.filter((fk) =>
-    fk.columns.some((col) => dropColumnNames.includes(col))
-  );
-
-  const dropFkLines = fkToDropBeforeColumn.map((fk) => {
-    const columnsStringQuote = fk.columns.map((col) => `'${col}'`).join(",");
-    return `table.dropForeign([${columnsStringQuote}])`;
-  });
-
-  const restoreFkLines = genForeignDefinitions(table, fkToDropBeforeColumn).up;
-
-  linesTo.drop = {
-    up: [
-      ...(dropFkLines.length > 0
-        ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
-        : []),
-      "// drop columns",
-      `table.dropColumns(${columnsTo.drop
-        .map((col) => `'${col.name}'`)
-        .join(", ")})`,
-    ],
-    down: [
-      "// rollback - drop columns",
-      ...genColumnDefinitions(columnsTo.drop),
-      ...(restoreFkLines.length > 0
-        ? ["// restore foreign keys", ...restoreFkLines]
-        : []),
-    ],
-  };
-  linesTo.alter = columnsTo.alter.reduce(
-    (r, dbColumn) => {
-      const entityColumn = entityColumns.find(
-        (col) => col.name == dbColumn.name
+  foreigns: MigrationForeign[]
+): { up: string[]; down: string[] } {
+  return foreigns.reduce(
+    (r, foreign) => {
+      const columnsStringQuote = foreign.columns
+        .map((col) => `'${col.replace(`${table}.`, "")}'`)
+        .join(",");
+      r.up.push(
+        `table.foreign('${foreign.columns.join(",")}')
+            .references('${foreign.to}')
+            .onUpdate('${foreign.onUpdate}')
+            .onDelete('${foreign.onDelete}')`
       );
-      if (entityColumn === undefined) {
-        return r;
-      }
-
-      // 컬럼 변경사항
-      const columnDiffUp = _.difference(
-        genColumnDefinitions([entityColumn]),
-        genColumnDefinitions([dbColumn])
-      );
-      const columnDiffDown = _.difference(
-        genColumnDefinitions([dbColumn]),
-        genColumnDefinitions([entityColumn])
-      );
-      if (columnDiffUp.length > 0) {
-        r.up = [
-          ...r.up,
-          "// alter column",
-          ...columnDiffUp.map((l) => l.replace(";", "") + ".alter();"),
-        ];
-        r.down = [
-          ...r.down,
-          "// rollback - alter column",
-          ...columnDiffDown.map((l) => l.replace(";", "") + ".alter();"),
-        ];
-      }
-
+      r.down.push(`table.dropForeign([${columnsStringQuote}])`);
       return r;
     },
     {
@@ -428,8 +204,6 @@ export function getAlterColumnLinesTo(
       down: [] as string[],
     }
   );
-
-  return linesTo;
 }
 
 /**
@@ -547,6 +321,201 @@ export async function generateAlterCode_ColumnAndIndexes(
       type: "normal",
     },
   ];
+}
+
+/**
+ * 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
+ */
+function getAlterColumnsTo(
+  entityColumns: MigrationColumn[],
+  dbColumns: MigrationColumn[]
+) {
+  const columnsTo = {
+    add: [] as MigrationColumn[],
+    drop: [] as MigrationColumn[],
+    alter: [] as MigrationColumn[],
+  };
+
+  // 컬럼명 기준 비교
+  const extraColumns = {
+    db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
+    entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
+  };
+  if (extraColumns.entity.length > 0) {
+    columnsTo.add = columnsTo.add.concat(extraColumns.entity);
+  }
+  if (extraColumns.db.length > 0) {
+    columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
+  }
+
+  // 동일 컬럼명의 세부 필드 비교
+  const sameDbColumns = _.intersectionBy(
+    dbColumns,
+    entityColumns,
+    (col) => col.name
+  );
+  const sameMdColumns = _.intersectionBy(
+    entityColumns,
+    dbColumns,
+    (col) => col.name
+  );
+  columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
+    equal(a, b)
+  );
+
+  return columnsTo;
+}
+
+/**
+ * 추출된 컬럼들을 기준으로 각각 라인 생성
+ */
+function getAlterColumnLinesTo(
+  columnsTo: ReturnType<typeof getAlterColumnsTo>,
+  entityColumns: MigrationColumn[],
+  table: string,
+  dbForeigns: MigrationForeign[]
+) {
+  let linesTo = {
+    add: {
+      up: [] as string[],
+      down: [] as string[],
+    },
+    drop: {
+      up: [] as string[],
+      down: [] as string[],
+    },
+    alter: {
+      up: [] as string[],
+      down: [] as string[],
+    },
+  };
+
+  linesTo.add = {
+    up: ["// add", ...genColumnDefinitions(columnsTo.add)],
+    down: [
+      "// rollback - add",
+      `table.dropColumns(${columnsTo.add
+        .map((col) => `'${col.name}'`)
+        .join(", ")})`,
+    ],
+  };
+
+  // drop할 컬럼에 걸린 FK 찾기
+  const dropColumnNames = columnsTo.drop.map((col) => col.name);
+  const fkToDropBeforeColumn = dbForeigns.filter((fk) =>
+    fk.columns.some((col) => dropColumnNames.includes(col))
+  );
+
+  const dropFkLines = fkToDropBeforeColumn.map((fk) => {
+    const columnsStringQuote = fk.columns.map((col) => `'${col}'`).join(",");
+    return `table.dropForeign([${columnsStringQuote}])`;
+  });
+
+  const restoreFkLines = genForeignDefinitions(table, fkToDropBeforeColumn).up;
+
+  linesTo.drop = {
+    up: [
+      ...(dropFkLines.length > 0
+        ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
+        : []),
+      "// drop columns",
+      `table.dropColumns(${columnsTo.drop
+        .map((col) => `'${col.name}'`)
+        .join(", ")})`,
+    ],
+    down: [
+      "// rollback - drop columns",
+      ...genColumnDefinitions(columnsTo.drop),
+      ...(restoreFkLines.length > 0
+        ? ["// restore foreign keys", ...restoreFkLines]
+        : []),
+    ],
+  };
+  linesTo.alter = columnsTo.alter.reduce(
+    (r, dbColumn) => {
+      const entityColumn = entityColumns.find(
+        (col) => col.name == dbColumn.name
+      );
+      if (entityColumn === undefined) {
+        return r;
+      }
+
+      // 컬럼 변경사항
+      const columnDiffUp = _.difference(
+        genColumnDefinitions([entityColumn]),
+        genColumnDefinitions([dbColumn])
+      );
+      const columnDiffDown = _.difference(
+        genColumnDefinitions([dbColumn]),
+        genColumnDefinitions([entityColumn])
+      );
+      if (columnDiffUp.length > 0) {
+        r.up = [
+          ...r.up,
+          "// alter column",
+          ...columnDiffUp.map((l) => l.replace(";", "") + ".alter();"),
+        ];
+        r.down = [
+          ...r.down,
+          "// rollback - alter column",
+          ...columnDiffDown.map((l) => l.replace(";", "") + ".alter();"),
+        ];
+      }
+
+      return r;
+    },
+    {
+      up: [] as string[],
+      down: [] as string[],
+    }
+  );
+
+  return linesTo;
+}
+
+/**
+ * 인덱스의 add, drop 여부 확인
+ */
+function getAlterIndexesTo(
+  entityIndexes: MigrationIndex[],
+  dbIndexes: MigrationIndex[]
+) {
+  // 인덱스 비교
+  let indexesTo = {
+    add: [] as MigrationIndex[],
+    drop: [] as MigrationIndex[],
+  };
+  const extraIndexes = {
+    db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
+      [col.type, col.columns.join("-")].join("//")
+    ),
+    entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
+      [col.type, col.columns.join("-")].join("//")
+    ),
+  };
+  if (extraIndexes.entity.length > 0) {
+    indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
+  }
+  if (extraIndexes.db.length > 0) {
+    indexesTo.drop = indexesTo.drop.concat(extraIndexes.db);
+  }
+
+  return indexesTo;
+}
+
+/**
+ * 인덱스 삭제 정의 생성
+ */
+function genIndexDropDefinition(index: MigrationIndex) {
+  const methodMap = {
+    index: "Index",
+    fulltext: "Index",
+    unique: "Unique",
+  };
+
+  return `table.drop${methodMap[index.type]}([${index.columns
+    .map((columnName) => `'${columnName}'`)
+    .join(",")}])`;
 }
 
 /**
