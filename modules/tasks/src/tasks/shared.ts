@@ -1,9 +1,10 @@
 import type { MatchedRoute } from "rou3";
-import type { TaskInfo, TaskRouterContext, NodeInfo } from "../types";
+import type { TaskItem, TaskRouterContext, SchedulerInfo } from "../types";
 import { SonamuTaskError } from "../errors";
 import { z } from "zod";
 
 // UTF-8 JSON Buffer를 Zod Type으로 변환하는 함수.
+// NOTE: 여기를 잘 처리하면 serialize/parse를 JSON이 아닌 형식으로도 변환할 수 있음.
 export async function convertTo<T extends z.ZodType>(
   schema: T,
   payload: Buffer | string | any,
@@ -27,10 +28,10 @@ export async function convertTo<T extends z.ZodType>(
   }
 }
 
-// Router에서 잡힌 후, Task 처리
+// Router에서 매칭 후, 모든 TaskItem의 처리
 export async function routedAction(
-  matched: MatchedRoute<TaskRouterContext & { node: NodeInfo }>,
-  taskInfo: TaskInfo,
+  matched: MatchedRoute<TaskRouterContext & { info: SchedulerInfo }>,
+  taskInfo: TaskItem,
 ) {
   const { data: ctx, params } = matched;
 
@@ -39,9 +40,9 @@ export async function routedAction(
     throw new SonamuTaskError("max_retries_exceeded");
   }
 
-  // 데이터를 파싱해서 context를 만들고 던짐.
+  // 데이터를 파싱해서 context를 만들고 실제 route 함수를 실행.
   const result = ctx.target({
-    task: {
+    taskItem: {
       ...taskInfo,
       payload: await convertTo(ctx.schema, taskInfo.payload),
     },
