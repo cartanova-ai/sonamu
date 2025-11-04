@@ -1,5 +1,5 @@
--- TaskNode에서 처리할 Task 목록
-CREATE TABLE sonamu_tasks (
+-- TaskNode에서 처리할 Task Item 목록
+CREATE TABLE sonamu_task_items (
   id BINARY(16) PRIMARY KEY,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -17,8 +17,8 @@ CREATE TABLE sonamu_tasks (
   payload MEDIUMBLOB NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- TaskNode에서 처리가 끝난 Task 목록
-CREATE TABLE sonamu_archived_tasks (
+-- TaskNode에서 처리가 끝난 Task Item 목록
+CREATE TABLE sonamu_archived_task_items (
   id BINARY(16) PRIMARY KEY,
   created_at TIMESTAMP NOT NULL,
   completed_at TIMESTAMP NOT NULL,
@@ -46,9 +46,9 @@ CREATE TABLE sonamu_task_events (
   node_name VARCHAR(64),
 
   -- Task의 id
-  task_id BINARY(16),
+  task_item_id BINARY(16),
   -- Task의 당시 몇번째인지 기록해둠.
-  task_attempt INTEGER,
+  attempt INTEGER,
 
   -- event_type이 stop일 때와 process:error:*일 때만 있음
   -- TaskNode Stop: app_shutdown | process_signal | unknown
