@@ -1,4 +1,4 @@
-import { SubsetQuery } from "sonamu";
+import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";
 import {
   CompanySubsetKey,
   DepartmentSubsetKey,
@@ -6,6 +6,12 @@ import {
   FileSubsetKey,
   ProjectSubsetKey,
   UserSubsetKey,
+  CompanyBaseSchema,
+  DepartmentBaseSchema,
+  EmployeeBaseSchema,
+  FileBaseSchema,
+  ProjectBaseSchema,
+  UserBaseSchema,
 } from "./sonamu.generated";
 
 // SubsetQuery: Company
@@ -226,3 +232,16 @@ export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
     loaders: [],
   },
 };
+
+// DatabaseSchema
+declare module "sonamu" {
+  export interface DatabaseSchemaExtend {
+    companies: CompanyBaseSchema;
+    departments: DepartmentBaseSchema;
+    employees: EmployeeBaseSchema;
+    files: FileBaseSchema;
+    projects: ProjectBaseSchema;
+    users: UserBaseSchema;
+    projects__employees: ManyToManyBaseSchema<"project", "employee">;
+  }
+}

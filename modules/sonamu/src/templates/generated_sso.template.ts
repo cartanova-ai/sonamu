@@ -1,4 +1,8 @@
-import { SubsetQuery, TemplateOptions } from "../types/types";
+import {
+  isManyToManyRelationProp,
+  SubsetQuery,
+  TemplateOptions,
+} from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
 import { Template } from "./base-template";
 import inflection from "inflection";
@@ -6,6 +10,8 @@ import { SourceCode } from "./generated.template";
 import _ from "lodash";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
+import { Entity } from "../entity/entity";
+import assert from "assert";
 
 export class Template__generated_sso extends Template {
   constructor() {
@@ -62,6 +68,12 @@ export class Template__generated_sso extends Template {
       })
       .filter(nonNullable);
 
+    // DatabaseSchema 생성
+    const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
+    if (dbSchemaSourceCode) {
+      sourceCodes.push(dbSchemaSourceCode);
+    }
+
     const sourceCode = sourceCodes.reduce(
       (result, ts) => {
         if (ts === null) {
@@ -82,7 +94,47 @@ export class Template__generated_sso extends Template {
       ...this.getTargetAndPath(),
       body: sourceCode.lines.join("\n"),
       importKeys: sourceCode.importKeys,
-      customHeaders: [`import { SubsetQuery } from "sonamu";`],
+      customHeaders: [
+        `import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";`,
+      ],
+    };
+  }
+
+  getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
+    if (entities.length === 0) {
+      return null;
+    }
+
+    const entitySchemaLines = entities.map(
+      (entity) => `${entity.table}: ${entity.id}BaseSchema;`
+    );
+
+    const joinTableSchemaLines = _.uniq(
+      entities.flatMap((entity) =>
+        entity.props.filter(isManyToManyRelationProp).map((prop) => {
+          const [table1, table2] = prop.joinTable.split("__");
+          assert(
+            table1 && table2,
+            `joinTableName is invalid: ${prop.joinTable}`
+          );
+          const singular1 = inflection.singularize(table1);
+          const singular2 = inflection.singularize(table2);
+          return `${prop.joinTable}: ManyToManyBaseSchema<"${singular1}", "${singular2}">;`;
+        })
+      )
+    );
+
+    return {
+      label: `DatabaseSchema`,
+      lines: [
+        `declare module "sonamu" {`,
+        `  export interface DatabaseSchemaExtend {`,
+        ...entitySchemaLines,
+        ...joinTableSchemaLines,
+        `  }`,
+        `}`,
+      ],
+      importKeys: entities.map((entity) => `${entity.id}BaseSchema`),
     };
   }
 }
