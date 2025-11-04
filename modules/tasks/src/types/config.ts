@@ -1,8 +1,15 @@
-import type { LoggerConfig, LogLevel, Sink } from "@logtape/logtape";
 import type { Knex } from "knex";
 import type { UnroutedTaskEvent } from "./events";
-import type { RetryConfig, TaskRouterContext } from "./tasks";
-import z from "zod";
+import type { z } from "zod";
+import type { Duration } from "date-fns";
+import type { TaskRouterContext } from "./context";
+
+export interface RetryConfig {
+  // 최대 횟수 (def: 1, 재시도를 안함)
+  maxAttempts: number;
+  // 재시도 간격
+  delay?: Duration | ((attempt: number) => Duration);
+}
 
 export type OnEventFunction<T extends UnroutedTaskEvent = UnroutedTaskEvent> = (
   event: T,
@@ -37,17 +44,7 @@ export interface LocalTaskConfig<T extends z.ZodType = z.ZodType> {
   };
 }
 
-// TODO(251103, Haze): Periodic Task에 대한 지원을 추가해야함.
-export interface TaskNodeConfig {
-  // 로깅을 어떻게 할지에 대한 설정 (LogTape 참조)
-  log: {
-    // Default: INFO
-    level?: LogLevel;
-    // Default: Console Sinker only
-    sinkers?: Record<string, Sink>;
-    loggers?: LoggerConfig<string, string>[];
-  };
-
+export interface SchedulerConfig {
   database: Knex.Config;
 
   // TaskNode에 이름을 지정할 수 있음

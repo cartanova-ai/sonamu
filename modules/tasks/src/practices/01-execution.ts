@@ -1,16 +1,11 @@
 import { z } from "zod";
 import { createScheduler } from "../scheduler";
-import type { TaskContext, TaskNodeConfig, TaskEvent } from "../types";
+import type { TaskContext, SchedulerConfig, TaskEvent } from "../types";
 
-function getConfig(): TaskNodeConfig {
+function getConfig(): SchedulerConfig {
   const schema = z.object();
 
   return {
-    log: {
-      level: "info",
-      // sinkers: {},
-      // loggers: []
-    },
     database: {
       client: "mysql2",
       pool: { min: 1, max: 5 },
