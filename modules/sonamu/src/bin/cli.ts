@@ -103,10 +103,10 @@ async function dev_serve() {
     return {
       watch: ["src/index.ts"],
       ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
-      exec: "node -r source-map-support/register -r dotenv/config dist/index.js",
-      events: {
-        restart: SWC_BUILD_COMMAND,
-      },
+      exec: [
+        SWC_BUILD_COMMAND,
+        "node -r source-map-support/register -r dotenv/config dist/index.js",
+      ].join(" && "),
     };
   })();
 
