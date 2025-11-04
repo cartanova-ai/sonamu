@@ -179,17 +179,22 @@ export class FixtureManagerClass {
             await transaction
               .insert(
                 rows.map((row: any) => {
-                  return Object.fromEntries(Object.entries(row).map(([key, value]) => {
-                    if (value === null) {
-                      return [key, null];
-                    } else if (typeof value === "boolean") {
-                      return [key, value ? 1 : 0];
-                    } else if (typeof value === "object" && !(value instanceof Date)) {
-                      return [key, JSON.stringify(value)];
-                    } else {
-                      return [key, value];
-                    }
-                  }));
+                  return Object.fromEntries(
+                    Object.entries(row).map(([key, value]) => {
+                      if (value === null) {
+                        return [key, null];
+                      } else if (typeof value === "boolean") {
+                        return [key, value ? 1 : 0];
+                      } else if (
+                        typeof value === "object" &&
+                        !(value instanceof Date)
+                      ) {
+                        return [key, JSON.stringify(value)];
+                      } else {
+                        return [key, value];
+                      }
+                    })
+                  );
                 })
               )
               .into(tableName);

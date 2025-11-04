@@ -9,5 +9,6 @@
     "$shared": {
       "baseUrl": "http://localhost:10280"
     }
-  }
+  },
+  "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs"
 }
