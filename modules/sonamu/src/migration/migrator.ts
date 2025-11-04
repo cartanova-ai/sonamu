@@ -146,7 +146,7 @@ export class Migrator {
     if (onlyTs.length > 0) {
       console.debug({ onlyTs });
       throw new ServiceUnavailableException(
-        `There are un-compiled TS migration files.\nPlease compile them first.\n\n${onlyTs
+        `There are un-compiled TS migration files.\nPlease compile them first. You might want to run a development server with HMR.\n\n${onlyTs
           .map((f) => f.name)
           .join("\n")}`
       );
