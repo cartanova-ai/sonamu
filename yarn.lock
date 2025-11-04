@@ -4375,7 +4375,7 @@ __metadata:
     rou3: "npm:^0.7.9"
     source-map-support: "npm:^0.5.21"
     typescript: "npm:^5.9.3"
-    uuidv7: "npm:^1.0.2"
+    uuid: "npm:^13.0.0"
     vitest: "npm:^4.0.6"
     zod: "npm:^4.1.12"
   peerDependencies:
@@ -16242,12 +16242,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuidv7@npm:^1.0.2":
-  version: 1.0.2
-  resolution: "uuidv7@npm:1.0.2"
+"uuid@npm:^13.0.0":
+  version: 13.0.0
+  resolution: "uuid@npm:13.0.0"
   bin:
-    uuidv7: cli.js
-  checksum: 10/729b4f6af3cff9c2cf018902e4f0c91b40a70c7e7afdf21737f513e120475cf5592e3374e2c397cd9540e7380010b5b09df8d65038390e61446fd4db5b48f1c7
+    uuid: dist-node/bin/uuid
+  checksum: 10/2742b24d1e00257e60612572e4d28679423469998cafbaf1fe9f1482e3edf9c40754b31bfdb3d08d71b29239f227a304588f75210b3b48f2609f0673f1feccef
   languageName: node
   linkType: hard
 

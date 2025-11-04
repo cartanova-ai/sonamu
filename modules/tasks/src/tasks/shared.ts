@@ -6,10 +6,18 @@ import { z } from "zod";
 // UTF-8 JSON Buffer를 Zod Type으로 변환하는 함수.
 export async function convertTo<T extends z.ZodType>(
   schema: T,
-  payload: Buffer,
+  payload: Buffer | string | any,
 ): Promise<z.infer<T>> {
   try {
-    return schema.parseAsync(JSON.parse(payload.toString()));
+    if (payload instanceof Buffer) {
+      return schema.parseAsync(JSON.parse(payload.toString()));
+    }
+
+    if (typeof payload === "string") {
+      return schema.parseAsync(JSON.parse(payload));
+    }
+
+    return schema.parseAsync(payload);
   } catch (error) {
     if (error instanceof Error) {
       throw new SonamuTaskError("validation", error);
