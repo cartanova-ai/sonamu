@@ -747,14 +747,6 @@ const RAW_RUNTIME_STATE =
       "npm:0.3.31"\
     ],\
     [\
-      "@logtape/logtape",\
-      "npm:1.1.2"\
-    ],\
-    [\
-      "@logtape/pretty",\
-      "virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:1.1.2"\
-    ],\
-    [\
       "@lukeed/ms",\
       "npm:2.0.2"\
     ],\
@@ -8614,37 +8606,6 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
-    ["@logtape/logtape", [\
-      ["npm:1.1.2", {\
-        "packageLocation": "./.yarn/cache/@logtape-logtape-npm-1.1.2-318ce6f010-dec4438a76.zip/node_modules/@logtape/logtape/",\
-        "packageDependencies": [\
-          ["@logtape/logtape", "npm:1.1.2"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["@logtape/pretty", [\
-      ["npm:1.1.2", {\
-        "packageLocation": "./.yarn/cache/@logtape-pretty-npm-1.1.2-f63bb8d450-02828275ed.zip/node_modules/@logtape/pretty/",\
-        "packageDependencies": [\
-          ["@logtape/pretty", "npm:1.1.2"]\
-        ],\
-        "linkType": "SOFT"\
-      }],\
-      ["virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:1.1.2", {\
-        "packageLocation": "./.yarn/__virtual__/@logtape-pretty-virtual-cde99d9219/0/cache/@logtape-pretty-npm-1.1.2-f63bb8d450-02828275ed.zip/node_modules/@logtape/pretty/",\
-        "packageDependencies": [\
-          ["@logtape/logtape", "npm:1.1.2"],\
-          ["@logtape/pretty", "virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:1.1.2"],\
-          ["@types/logtape__logtape", null]\
-        ],\
-        "packagePeers": [\
-          "@logtape/logtape",\
-          "@types/logtape__logtape"\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
     ["@lukeed/ms", [\
       ["npm:2.0.2", {\
         "packageLocation": "./.yarn/cache/@lukeed-ms-npm-2.0.2-5e69b6e173-6ae47ed3eb.zip/node_modules/@lukeed/ms/",\
@@ -10706,8 +10667,6 @@ const RAW_RUNTIME_STATE =
       ["workspace:modules/tasks", {\
         "packageLocation": "./modules/tasks/",\
         "packageDependencies": [\
-          ["@logtape/logtape", "npm:1.1.2"],\
-          ["@logtape/pretty", "virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:1.1.2"],\
           ["@sonamu-kit/task", "workspace:modules/tasks"],\
           ["@swc/cli", "virtual:27115e1e96d48f29e7b97deacd3cf0c41d7a15cdc5c338ea17dc28226703358f15f24e48d290585b52a5ce02c69104bbb1f824af0ba84dc0c50833863f44dff1#npm:0.7.8"],\
           ["@types/node", "npm:24.9.2"],\
