@@ -10,8 +10,8 @@ CREATE TABLE sonamu_tasks (
   -- pending, pending_for_retry
   status VARCHAR(32) NOT NULL DEFAULT "pending",
 
-  -- Task의 재시도 횟수를 상태로 저장
-  retry_count INTEGER NOT NULL DEFAULT 0,
+  -- Task의 시도 횟수를 상태로 저장
+  attempt INTEGER NOT NULL DEFAULT 1,
 
   -- payload는 JSON이든 무엇이든 일단 BLOB으로 저장
   payload MEDIUMBLOB NOT NULL
@@ -25,8 +25,8 @@ CREATE TABLE sonamu_archived_tasks (
   namespace VARCHAR(255) NOT NULL,
   payload MEDIUMBLOB NOT NULL,
 
-  -- Task의 마지막 재시도 횟수를 상태로 저장
-  retry_count INTEGER NOT NULL,
+  -- Task가 몇번째 시도에 끝났는지 저장
+  attempt INTEGER NOT NULL DEFAULT 1,
 
   -- error, completed
   status VARCHAR(32) NOT NULL
@@ -47,8 +47,8 @@ CREATE TABLE sonamu_task_events (
 
   -- Task의 id
   task_id BINARY(16),
-  -- Task의 당시 retry_count를 기록해둠.
-  task_retry_count INTEGER,
+  -- Task의 당시 몇번째인지 기록해둠.
+  task_attempt INTEGER,
 
   -- event_type이 stop일 때와 process:error:*일 때만 있음
   -- TaskNode Stop: app_shutdown | process_signal | unknown
