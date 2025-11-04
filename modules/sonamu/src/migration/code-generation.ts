@@ -6,12 +6,13 @@ import {
   MigrationColumn,
   MigrationForeign,
   MigrationIndex,
+  MigrationSet,
 } from "../types/types";
 
 /**
  * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
  */
-export async function generateCreateCode_ColumnAndIndexes(
+async function generateCreateCode_ColumnAndIndexes(
   table: string,
   columns: MigrationColumn[],
   indexes: MigrationIndex[]
@@ -123,15 +124,13 @@ function genIndexDefinition(index: MigrationIndex, table: string) {
 
   return `table.${methodMap[index.type]}([${index.columns
     .map((col) => `'${col}'`)
-    .join(",")}]${
-    index.type === "fulltext" ? ", undefined, 'FULLTEXT'" : ""
-  })`;
+    .join(",")}]${index.type === "fulltext" ? ", undefined, 'FULLTEXT'" : ""})`;
 }
 
 /**
  * 테이블 생성하는 케이스 - FK 생성
  */
-export async function generateCreateCode_Foreign(
+async function generateCreateCode_Foreign(
   table: string,
   foreigns: MigrationForeign[]
 ): Promise<GenMigrationCode[]> {
@@ -209,7 +208,7 @@ function genForeignDefinitions(
 /**
  * 테이블 변경 케이스 - 컬럼/인덱스 변경
  */
-export async function generateAlterCode_ColumnAndIndexes(
+async function generateAlterCode_ColumnAndIndexes(
   table: string,
   entityColumns: MigrationColumn[],
   entityIndexes: MigrationIndex[],
@@ -521,7 +520,7 @@ function genIndexDropDefinition(index: MigrationIndex) {
 /**
  * 테이블 변경 케이스 - Foreign Key 변경
  */
-export async function generateAlterCode_Foreigns(
+async function generateAlterCode_Foreigns(
   table: string,
   entityForeigns: MigrationForeign[],
   dbForeigns: MigrationForeign[],
@@ -635,4 +634,144 @@ export async function generateAlterCode_Foreigns(
       type: "normal",
     },
   ];
+}
+
+/**
+ * 주어진 EntitySet을 기반으로 테이블 CREATE 마이그레이션 코드를 생성합니다.
+ * @param entitySet
+ * @returns CREATE 마이그레이션 코드
+ */
+export async function generateCreateCode(
+  entitySet: MigrationSet
+): Promise<GenMigrationCode[]> {
+  return [
+    await generateCreateCode_ColumnAndIndexes(
+      entitySet.table,
+      entitySet.columns,
+      entitySet.indexes
+    ),
+    ...(await generateCreateCode_Foreign(entitySet.table, entitySet.foreigns)),
+  ];
+}
+
+/**
+ * 주어진 entitySet을 목표로, dbSet을 현 상황으로 하여 테이블 ALTER 마이그레이션 코드를 생성합니다.
+ * @param entitySet 현 상황의 MigrationSet
+ * @param dbSet 목표 상황의 MigrationSet
+ * @returns ALTER 마이그레이션 코드
+ */
+export async function generateAlterCode(
+  entitySet: MigrationSet,
+  dbSet: MigrationSet
+): Promise<GenMigrationCode[]> {
+  const replaceColumnDefaultTo = (col: MigrationColumn) => {
+    // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
+    if (
+      col.type === "float" &&
+      col.defaultTo &&
+      String(col.defaultTo).includes('"') === false
+    ) {
+      col.defaultTo = `"${Number(col.defaultTo).toFixed(col.scale ?? 2)}"`;
+    }
+    // string인 경우 기본값이 빈 스트링인 경우 대응
+    if (col.type === "string" && col.defaultTo === "") {
+      col.defaultTo = '""';
+    }
+    // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
+    // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
+    if (col.type === "boolean" && col.defaultTo !== undefined) {
+      if (col.defaultTo === "0" || col.defaultTo === "false") {
+        col.defaultTo = "0";
+      } else if (col.defaultTo === "1" || col.defaultTo === "true") {
+        col.defaultTo = "1";
+      }
+    }
+    return col;
+  };
+  const entityColumns = _.sortBy(entitySet.columns, (a) => a.name).map(
+    replaceColumnDefaultTo
+  );
+  const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(
+    replaceColumnDefaultTo
+  );
+
+  /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
+        const entityColumn = entitySet.columns.find(
+          (col) => col.name === "price_krw"
+        );
+        const dbColumn = dbSet.columns.find(
+          (col) => col.name === "price_krw"
+        );
+        console.debug({ entityColumn, dbColumn });
+         */
+
+  const entityIndexes = _.sortBy(entitySet.indexes, (a) =>
+    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-")
+  );
+  const dbIndexes = _.sortBy(dbSet.indexes, (a) =>
+    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-")
+  );
+
+  const replaceNoActionOnMySQL = (f: MigrationForeign) => {
+    // MySQL에서 RESTRICT와 NO ACTION은 동일함
+    const { onDelete, onUpdate } = f;
+    return {
+      ...f,
+      onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
+      onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
+    };
+  };
+
+  const entityForeigns = _.sortBy(entitySet.foreigns, (a) =>
+    [a.to, ...a.columns].join("-")
+  ).map((f) => replaceNoActionOnMySQL(f));
+  const dbForeigns = _.sortBy(dbSet.foreigns, (a) =>
+    [a.to, ...a.columns].join("-")
+  ).map((f) => replaceNoActionOnMySQL(f));
+
+  // 삭제될 컬럼 목록 계산
+  const droppingColumns = _.differenceBy(
+    dbColumns,
+    entityColumns,
+    (col) => col.name
+  );
+
+  const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = [];
+
+  // 1. columnsAndIndexes 처리
+  const isEqualColumns = equal(entityColumns, dbColumns);
+  const isEqualIndexes = equal(
+    entityIndexes.map((index) => _.omit(index, ["parser"])),
+    dbIndexes
+  );
+  if (!isEqualColumns || !isEqualIndexes) {
+    alterCodes.push(
+      await generateAlterCode_ColumnAndIndexes(
+        entitySet.table,
+        entityColumns,
+        entityIndexes,
+        dbColumns,
+        dbIndexes,
+        dbSet.foreigns
+      )
+    );
+  }
+
+  // 2. foreigns 처리 (삭제될 컬럼 정보 전달)
+  if (equal(entityForeigns, dbForeigns) === false) {
+    alterCodes.push(
+      await generateAlterCode_Foreigns(
+        entitySet.table,
+        entityForeigns,
+        dbForeigns,
+        droppingColumns
+      )
+    );
+  }
+
+  if (alterCodes.every((alterCode) => alterCode === null)) {
+    return [];
+  }
+
+  return alterCodes.filter((alterCode) => alterCode !== null).flat();
 }

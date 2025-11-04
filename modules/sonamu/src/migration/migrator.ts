@@ -4,73 +4,25 @@ import chalk from "chalk";
 import { DateTime } from "luxon";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
-import equal from "fast-deep-equal";
-import inflection from "inflection";
 import prompts from "prompts";
 import { execSync } from "child_process";
 import path from "path";
-
-import {
-  GenMigrationCode,
-  isBelongsToOneRelationProp,
-  isHasManyRelationProp,
-  isManyToManyRelationProp,
-  isOneToOneRelationProp,
-  isRelationProp,
-  isVirtualProp,
-  isStringProp,
-  KnexColumnType,
-  MigrationColumn,
-  MigrationForeign,
-  MigrationIndex,
-  MigrationJoinTable,
-  MigrationSet,
-  MigrationSetAndJoinTable,
-  isDecimalProp,
-  isFloatProp,
-  isTextProp,
-  isEnumProp,
-  isIntegerProp,
-  isKnexError,
-  RelationOn,
-} from "../types/types";
+import { GenMigrationCode, MigrationSet } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
-import { Entity } from "../entity/entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { SonamuDBConfig } from "../database/db";
-import {
-  generateCreateCode_ColumnAndIndexes,
-  generateCreateCode_Foreign,
-  generateAlterCode_ColumnAndIndexes,
-  generateAlterCode_Foreigns,
-} from "./code-generation";
+import { generateCreateCode, generateAlterCode } from "./code-generation";
+import { MigrationStatus, MigrationCode, ConnString } from "./types";
+import { getMigrationSetFromDB } from "./migration-set";
+import { getMigrationSetFromEntity } from "./migration-set";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
   readonly mode: MigratorMode;
 };
-type MigrationCode = {
-  name: string;
-  path: string;
-};
-type ConnString = `${"mysql2"}://${string}@${string}:${number}/${string}`; // mysql2://account@host:port/database
-export type MigrationStatus = {
-  codes: MigrationCode[];
-  conns: {
-    name: string;
-    connKey: string;
-    connString: ConnString;
-    currentVersion: string;
-    status: string | number;
-    pending: string[];
-  }[];
-  preparedCodes: GenMigrationCode[];
-};
 
 export class Migrator {
-  readonly mode: MigratorMode;
-
   targets: {
     compare?: Knex;
     pending: Knex;
@@ -78,11 +30,10 @@ export class Migrator {
     apply: Knex[];
   };
 
-  constructor(options: MigratorOptions) {
-    this.mode = options.mode;
+  constructor(private readonly options: MigratorOptions) {
     const { dbConfig } = Sonamu;
 
-    if (this.mode === "dev") {
+    if (this.options.mode === "dev") {
       const devDB = knex(dbConfig.development_master);
       const testDB = knex(dbConfig.test);
       const fixtureLocalDB = knex(dbConfig.fixture_local);
@@ -108,7 +59,7 @@ export class Migrator {
         shadow: testDB,
         apply: applyDBs,
       };
-    } else if (this.mode === "deploy") {
+    } else if (this.options.mode === "deploy") {
       const productionDB = knex(dbConfig.production_master);
       const testDB = knex(dbConfig.test);
 
@@ -118,7 +69,7 @@ export class Migrator {
         apply: [productionDB],
       };
     } else {
-      throw new Error(`잘못된 모드 ${this.mode} 입력`);
+      throw new Error(`잘못된 모드 ${this.options.mode} 입력`);
     }
   }
 
@@ -181,6 +132,15 @@ export class Migrator {
     };
   }
 
+  /**
+   * 타겟별 마이그레이션 상태와 코드 생성/준비 상태를 구해옵니다.
+   * 실제로 DB에 접근도 하고 마이그레이션 코드 파일도 확인하고,
+   * 필요하다면 적용할 수 있는 코드를 생성까지 해옵니다.
+   *
+   * CLI와 Sonamu UI에서 사용됩니다.
+   *
+   * @returns
+   */
   async getStatus(): Promise<MigrationStatus> {
     const { normal, onlyTs, onlyJs } = await this.getMigrationCodes();
     if (onlyTs.length > 0) {
@@ -215,8 +175,12 @@ export class Migrator {
           try {
             return await tConn.migrate.status();
           } catch (err) {
-            console.warn(chalk.yellow(`${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`));
-            return 'error'/*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/;
+            console.warn(
+              chalk.yellow(
+                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`
+              )
+            );
+            return "error" /*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/;
           }
         })();
         const pending = await (async () => {
@@ -233,7 +197,7 @@ export class Migrator {
           try {
             return await tConn.migrate.currentVersion();
           } catch (err) {
-            return 'error';
+            return "error";
           }
         })();
 
@@ -289,6 +253,16 @@ export class Migrator {
     */
   }
 
+  /**
+   * 마이그레이션을 적용하거나 롤백합니다.
+   * Sonamu UI에서 마이그레이션 작업을 수행할 때 사용됩니다.
+   *
+   * CLI와 Sonamu UI에서 사용됩니다.
+   *
+   * @param action 작업 유형 (apply/rollback)
+   * @param targets 작업 대상 DB 설정 키 (keyof SonamuDBConfig)
+   * @returns 작업 결과
+   */
   async runAction(
     action: "apply" | "rollback",
     targets: (keyof SonamuDBConfig)[]
@@ -359,6 +333,14 @@ export class Migrator {
     return result;
   }
 
+  /**
+   * 마이그레이션 코드 파일을 삭제합니다.
+   *
+   * Sonamu UI에서 사용됩니다.
+   *
+   * @param codeNames 삭제할 마이그레이션 코드 파일 이름 배열
+   * @returns 삭제된 마이그레이션 코드 파일 개수
+   */
   async delCodes(codeNames: string[]): Promise<number> {
     const { conns } = await this.getStatus();
     if (
@@ -393,6 +375,13 @@ export class Migrator {
     return _.sum(res);
   }
 
+  /**
+   * 마이그레이션 코드 파일을 생성합니다.
+   *
+   * Sonamu UI에서 사용됩니다.
+   *
+   * @returns 생성된 마이그레이션 코드 파일 개수
+   */
   async generatePreparedCodes(): Promise<number> {
     const { preparedCodes } = await this.getStatus();
     if (preparedCodes.length === 0) {
@@ -417,6 +406,11 @@ export class Migrator {
     return preparedCodes.length;
   }
 
+  /**
+   * pending 마이그레이션 목록을 삭제합니다.
+   *
+   * CLI에서 사용됩니다.
+   */
   async clearPendingList(): Promise<void> {
     const [, pendingList] = (await this.targets.pending.migrate.list()) as [
       unknown,
@@ -437,6 +431,11 @@ export class Migrator {
     await this.cleanUpDist(true);
   }
 
+  /**
+   * 마이그레이션 코드 파일을 확인합니다.
+   *
+   * CLI에서 사용됩니다.
+   */
   async check(): Promise<void> {
     const codes = await this.compareMigrations(this.targets.compare!);
     if (codes.length === 0) {
@@ -449,6 +448,14 @@ export class Migrator {
     console.log(codes[0]);
   }
 
+  /**
+   * 마이그레이션을 수행합니다.
+   *
+   * runAction이 인자로 들어온 타겟들에 대해 주어진 동작(apply/rollback)을 수행한다면,
+   * 이 함수는 생성자로 들어온 connection(knex)들에 대해 마이그레이션을 수행합니다.
+   *
+   * CLI에서 사용됩니다.
+   */
   async run(): Promise<void> {
     // pending 마이그레이션 확인
     const [, pendingList] = await this.targets.pending.migrate.list();
@@ -527,6 +534,14 @@ export class Migrator {
     }
   }
 
+  /**
+   * 타겟으로 지정된 DB를 롤백합니다.
+   *
+   * runAction이 인자로 들어온 타겟들에 대해 주어진 동작(apply/rollback)을 수행한다면,
+   * 이 함수는 생성자로 들어온 connection(knex)들에 대해 롤백을 수행합니다.
+   *
+   * CLI에서 사용됩니다.
+   */
   async rollback() {
     console.time(chalk.red("rollback:"));
     const rollbackAllResult = await Promise.all(
@@ -539,6 +554,14 @@ export class Migrator {
     console.timeEnd(chalk.red("rollback:"));
   }
 
+  /**
+   * 빌드된 마이그레이션 파일을 삭제합니다.
+   *
+   * CLI에서 사용됩니다.
+   *
+   * @param force 강제 삭제 여부
+   * @returns
+   */
   async cleanUpDist(force: boolean = false): Promise<void> {
     async function getFilesUnder(dir: string): Promise<string[]> {
       const migrationPath = path.join(Sonamu.apiRootPath, dir, "migrations");
@@ -599,6 +622,13 @@ export class Migrator {
     }
   }
 
+  /**
+   * Shadow DB 테스트를 진행합니다.
+   *
+   * Sonamu UI에서 사용됩니다.
+   *
+   * @returns Shadow DB 테스트 결과
+   */
   async runShadowTest(): Promise<
     {
       connKey: string;
@@ -608,7 +638,8 @@ export class Migrator {
   > {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
-    const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
+    const tdbConn = Sonamu.dbConfig.test
+      .connection as Knex.MySql2ConnectionConfig;
     const shadowDatabase = tdbConn.database + "__migration_shadow";
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
@@ -671,6 +702,13 @@ export class Migrator {
     }
   }
 
+  /**
+   * 모든 DB를 롤백하고 전체 마이그레이션 파일을 삭제합니다.
+   *
+   * CLI에서 사용됩니다.
+   *
+   * @returns
+   */
   async resetAll() {
     const answer = await prompts({
       type: "confirm",
@@ -699,20 +737,18 @@ export class Migrator {
     console.timeEnd(chalk.red("delete migration files"));
   }
 
-  async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
+  private async compareMigrations(
+    compareDB: Knex
+  ): Promise<GenMigrationCode[]> {
     // Entity 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
     // 조인테이블 포함하여 Entity에서 MigrationSet 추출
     const entitySetsWithJoinTable = entityIds
-      .filter((entityId) => {
-        const entity = EntityManager.get(entityId);
-        return entity.props.length > 0;
-      })
-      .map((entityId) => {
-        const entity = EntityManager.get(entityId);
-        return this.getMigrationSetFromEntity(entity);
-      });
+      .filter((entityId) => EntityManager.get(entityId).props.length > 0)
+      .map((entityId) =>
+        getMigrationSetFromEntity(EntityManager.get(entityId))
+      );
 
     // 조인테이블만 추출
     const joinTablesWithDup = entitySetsWithJoinTable
@@ -743,152 +779,20 @@ export class Migrator {
     const codes: GenMigrationCode[] = (
       await Promise.all(
         entitySets.map(async (entitySet) => {
-          const dbSet = await this.getMigrationSetFromDB(
-            compareDB,
-            entitySet.table
-          );
+          const dbSet = await getMigrationSetFromDB(compareDB, entitySet.table);
+
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
-            return [
-              await generateCreateCode_ColumnAndIndexes(
-                entitySet.table,
-                entitySet.columns,
-                entitySet.indexes
-              ),
-              ...(await generateCreateCode_Foreign(
-                entitySet.table,
-                entitySet.foreigns
-              )),
-            ];
-          }
-
-          // 기존 테이블 존재하는 케이스
-          const replaceColumnDefaultTo = (col: MigrationColumn) => {
-            // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
-            if (
-              col.type === "float" &&
-              col.defaultTo &&
-              String(col.defaultTo).includes('"') === false
-            ) {
-              col.defaultTo = `"${Number(col.defaultTo).toFixed(
-                col.scale ?? 2
-              )}"`;
-            }
-            // string인 경우 기본값이 빈 스트링인 경우 대응
-            if (col.type === "string" && col.defaultTo === "") {
-              col.defaultTo = '""';
-            }
-            // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
-            // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
-            if (col.type === "boolean" && col.defaultTo !== undefined) {
-              if (col.defaultTo === "0" || col.defaultTo === "false") {
-                col.defaultTo = "0";
-              } else if (col.defaultTo === "1" || col.defaultTo === "true") {
-                col.defaultTo = "1";
-              }
-            }
-            return col;
-          };
-          const entityColumns = _.sortBy(entitySet.columns, (a) => a.name).map(
-            replaceColumnDefaultTo
-          );
-          const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(
-            replaceColumnDefaultTo
-          );
-
-          /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
-          const entityColumn = entitySet.columns.find(
-            (col) => col.name === "price_krw"
-          );
-          const dbColumn = dbSet.columns.find(
-            (col) => col.name === "price_krw"
-          );
-          console.debug({ entityColumn, dbColumn });
-           */
-
-          const entityIndexes = _.sortBy(entitySet.indexes, (a) =>
-            [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join(
-              "-"
-            )
-          );
-          const dbIndexes = _.sortBy(dbSet.indexes, (a) =>
-            [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join(
-              "-"
-            )
-          );
-
-          const replaceNoActionOnMySQL = (f: MigrationForeign) => {
-            // MySQL에서 RESTRICT와 NO ACTION은 동일함
-            const { onDelete, onUpdate } = f;
-            return {
-              ...f,
-              onUpdate: onUpdate === "RESTRICT" ? "NO ACTION" : onUpdate,
-              onDelete: onDelete === "RESTRICT" ? "NO ACTION" : onDelete,
-            };
-          };
-
-          const entityForeigns = _.sortBy(entitySet.foreigns, (a) =>
-            [a.to, ...a.columns].join("-")
-          ).map((f) => replaceNoActionOnMySQL(f));
-          const dbForeigns = _.sortBy(dbSet.foreigns, (a) =>
-            [a.to, ...a.columns].join("-")
-          ).map((f) => replaceNoActionOnMySQL(f));
-
-          // 삭제될 컬럼 목록 계산
-          const droppingColumns = _.differenceBy(
-            dbColumns,
-            entityColumns,
-            (col) => col.name
-          );
-
-          const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] =
-            [];
-
-          // 1. columnsAndIndexes 처리
-          const isEqualColumns = equal(entityColumns, dbColumns);
-          const isEqualIndexes = equal(
-            entityIndexes.map((index) => _.omit(index, ["parser"])),
-            dbIndexes
-          );
-          if (!isEqualColumns || !isEqualIndexes) {
-            alterCodes.push(
-              await generateAlterCode_ColumnAndIndexes(
-                entitySet.table,
-                entityColumns,
-                entityIndexes,
-                dbColumns,
-                dbIndexes,
-                dbSet.foreigns
-              )
-            );
-          }
-
-          // 2. foreigns 처리 (삭제될 컬럼 정보 전달)
-          if (equal(entityForeigns, dbForeigns) === false) {
-            alterCodes.push(
-              await generateAlterCode_Foreigns(
-                entitySet.table,
-                entityForeigns,
-                dbForeigns,
-                droppingColumns
-              )
-            );
-          }
-
-          if (alterCodes.every((alterCode) => alterCode === null)) {
-            return null;
+            return await generateCreateCode(entitySet);
           } else {
-            return alterCodes.filter((alterCode) => alterCode !== null).flat();
+            // 기존 테이블 존재하는 케이스
+            return await generateAlterCode(entitySet, dbSet);
           }
         })
       )
-    )
-      .flat()
-      .filter((code) => code !== null) as GenMigrationCode[];
+    ).flat();
 
-    /*
-      normal 타입이 앞으로, foreign 이 뒤로
-    */
+    // normal 타입이 앞으로, foreign이 뒤로
     codes.sort((codeA, codeB) => {
       if (codeA.type === "foreign" && codeB.type == "normal") {
         return 1;
@@ -902,506 +806,11 @@ export class Migrator {
     return codes;
   }
 
-  /*
-    기존 테이블 정보 읽어서 MigrationSet 형식으로 리턴
-  */
-  async getMigrationSetFromDB(
-    compareDB: Knex,
-    table: string
-  ): Promise<MigrationSet | null> {
-    let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
-    try {
-      [dbColumns, dbIndexes, dbForeigns] = await this.readTable(
-        compareDB,
-        table
-      );
-    } catch (e: unknown) {
-      if (isKnexError(e) && e.code === "ER_NO_SUCH_TABLE") {
-        return null;
-      }
-      console.error(e);
-      return null;
-    }
-
-    const columns: MigrationColumn[] = dbColumns.map((dbColumn) => {
-      const dbColType = this.resolveDBColType(dbColumn.Type, dbColumn.Field);
-      return {
-        name: dbColumn.Field,
-        nullable: dbColumn.Null !== "NO",
-        ...dbColType,
-        ...(() => {
-          if (dbColumn.Default !== null) {
-            return {
-              defaultTo: dbColumn.Default,
-            };
-          }
-          return {};
-        })(),
-      };
-    });
-
-    const dbIndexesGroup = _.groupBy(
-      dbIndexes.filter(
-        (dbIndex) =>
-          dbIndex.Key_name !== "PRIMARY" &&
-          !dbForeigns.find(
-            (dbForeign) => dbForeign.keyName === dbIndex.Key_name
-          )
-      ),
-      (dbIndex) => dbIndex.Key_name
-    );
-
-    const parseIndexType = (index: DBIndex) => {
-      if (index.Index_type === "FULLTEXT") {
-        return "fulltext";
-      }
-      return index.Non_unique === 1 ? "index" : "unique";
-    };
-
-    // indexes 처리
-    const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map(
-      (keyName) => {
-        const currentIndexes = dbIndexesGroup[keyName];
-        return {
-          type: parseIndexType(currentIndexes[0]),
-          columns: currentIndexes.map(
-            (currentIndex) => currentIndex.Column_name
-          ),
-        };
-      }
-    );
-    // console.log(table);
-    // console.table(dbIndexes);
-    // console.table(dbForeigns);
-
-    // foreigns 처리
-    const foreigns: MigrationForeign[] = dbForeigns.map((dbForeign) => {
-      return {
-        columns: [dbForeign.from],
-        to: `${dbForeign.referencesTable}.${dbForeign.referencesField}`,
-        onUpdate: dbForeign.onUpdate as RelationOn,
-        onDelete: dbForeign.onDelete as RelationOn,
-      };
-    });
-
-    return {
-      table,
-      columns,
-      indexes,
-      foreigns,
-    };
-  }
-
-  resolveDBColType(
-    colType: string,
-    colField: string
-  ): Pick<
-    MigrationColumn,
-    "type" | "unsigned" | "length" | "precision" | "scale"
-  > {
-    let [rawType, unsigned] = colType.split(" ");
-    const matched = rawType.match(/\(([0-9]+)\)/);
-    let length;
-    if (matched !== null && matched[1]) {
-      rawType = rawType.replace(/\(([0-9]+)\)/, "");
-      length = parseInt(matched[1]);
-    }
-
-    if (rawType === "char" && colField === "uuid") {
-      return {
-        type: "uuid",
-      };
-    }
-
-    switch (rawType) {
-      case "int":
-        return {
-          type: "integer",
-          unsigned: unsigned === "unsigned",
-        };
-      case "varchar":
-        // case "char":
-        return {
-          type: "string",
-          ...(length !== undefined && {
-            length,
-          }),
-        };
-      case "text":
-      case "mediumtext":
-      case "longtext":
-      case "timestamp":
-      case "json":
-      case "date":
-      case "time":
-        return {
-          type: rawType,
-        };
-      case "datetime":
-        return {
-          type: "datetime",
-        };
-      case "tinyint":
-        return {
-          type: "boolean",
-        };
-      default:
-        // decimal 처리
-        if (rawType.startsWith("decimal")) {
-          const [, precision, scale] =
-            rawType.match(/decimal\(([0-9]+),([0-9]+)\)/) ?? [];
-          return {
-            type: "decimal",
-            precision: parseInt(precision),
-            scale: parseInt(scale),
-            ...(unsigned === "unsigned" && {
-              unsigned: true,
-            }),
-          };
-        } else if (rawType.startsWith("float")) {
-          const [, precision, scale] =
-            rawType.match(/float\(([0-9]+),([0-9]+)\)/) ?? [];
-          return {
-            type: "float",
-            precision: parseInt(precision),
-            scale: parseInt(scale),
-            ...(unsigned === "unsigned" && {
-              unsigned: true,
-            }),
-          };
-        }
-        throw new Error(`resolve 불가능한 DB컬럼 타입 ${colType} ${rawType}`);
-    }
-  }
-
-  /*
-    기존 테이블 읽어서 cols, indexes 반환
-  */
-  async readTable(
-    compareDB: Knex,
-    tableName: string
-  ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
-    // 테이블 정보
-    try {
-      const [_cols] = (await compareDB.raw(
-        `SHOW FIELDS FROM ${tableName}`
-      )) as [DBColumn[]];
-      const cols = _cols.map((col) => ({
-        ...col,
-        // Default 값은 숫자나 MySQL Expression이 아닌 경우 ""로 감싸줌
-        ...(col.Default !== null && {
-          Default:
-            col.Default.replace(/[0-9]+/g, "").length > 0 &&
-            col.Extra !== "DEFAULT_GENERATED"
-              ? `"${col.Default}"`
-              : col.Default,
-        }),
-      }));
-
-      const [indexes] = await compareDB.raw(`SHOW INDEX FROM ${tableName}`);
-      const [[row]] = await compareDB.raw(`SHOW CREATE TABLE ${tableName}`);
-      const ddl = row["Create Table"];
-      const matched = ddl.match(/CONSTRAINT .+/g);
-      const foreignKeys = (matched ?? []).map((line: string) => {
-        // 해당 라인을 정규식으로 파싱
-        const matched = line.match(
-          /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON [A-Z ]+)*/
-        );
-        if (!matched) {
-          throw new Error(`인식할 수 없는 FOREIGN KEY CONSTRAINT ${line}`);
-        }
-        const [, keyName, from, referencesTable, referencesField, onClause] =
-          matched;
-        // console.debug({ tableName, line, onClause });
-
-        const [onUpdateFull, _onUpdate] =
-          (onClause ?? "").match(/ON UPDATE ([A-Z ]+)$/) ?? [];
-        const onUpdate = _onUpdate ?? "NO ACTION";
-
-        const onDelete =
-          (onClause ?? "")
-            .replace(onUpdateFull ?? "", "")
-            .match(/ON DELETE ([A-Z ]+)/)?.[1]
-            ?.trim() ?? "NO ACTION";
-
-        return {
-          keyName,
-          from,
-          referencesTable,
-          referencesField,
-          onDelete,
-          onUpdate,
-        };
-      });
-      return [cols, indexes, foreignKeys];
-    } catch (e) {
-      throw e;
-    }
-  }
-
-  /*
-    Entity 내용 읽어서 MigrationSetAndJoinTable 추출
-  */
-  getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTable {
-    const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
-      (r, prop) => {
-        // virtual 필드 제외
-        if (isVirtualProp(prop)) {
-          return r;
-        }
-        // HasMany 케이스는 아무 처리도 하지 않음
-        if (isHasManyRelationProp(prop)) {
-          return r;
-        }
-
-        // 일반 컬럼
-        if (!isRelationProp(prop)) {
-          // type resolve
-          let type: KnexColumnType;
-          if (isTextProp(prop)) {
-            type = prop.textType;
-          } else if (isEnumProp(prop)) {
-            type = "string";
-          } else {
-            type = prop.type as KnexColumnType;
-          }
-
-          const column = {
-            name: prop.name,
-            type,
-            ...(isIntegerProp(prop) && { unsigned: prop.unsigned === true }),
-            ...((isStringProp(prop) || isEnumProp(prop)) && {
-              length: prop.length,
-            }),
-            nullable: prop.nullable === true,
-            ...(() => {
-              if (prop.dbDefault !== undefined) {
-                return {
-                  defaultTo: prop.dbDefault,
-                };
-              }
-              return {};
-            })(),
-            // FIXME: float(N, M) deprecated
-            // Decimal, Float 타입의 경우 precision, scale 추가
-            ...((isDecimalProp(prop) || isFloatProp(prop)) && {
-              precision: prop.precision ?? 8,
-              scale: prop.scale ?? 2,
-            }),
-          };
-
-          r.columns.push(column);
-        }
-
-        if (isManyToManyRelationProp(prop)) {
-          // ManyToMany 케이스
-          const relMd = EntityManager.get(prop.with);
-          const [table1, table2] = prop.joinTable.split("__");
-          const join = {
-            from: `${entity.table}.id`,
-            through: {
-              from: `${prop.joinTable}.${inflection.singularize(table1)}_id`,
-              to: `${prop.joinTable}.${inflection.singularize(table2)}_id`,
-              onUpdate: prop.onUpdate,
-              onDelete: prop.onDelete,
-            },
-            to: `${relMd.table}.id`,
-          };
-          const through = join.through;
-          const fields = [through.from, through.to];
-          r.joinTables.push({
-            table: through.from.split(".")[0],
-            indexes: [
-              {
-                type: "unique",
-                columns: ["uuid"],
-              },
-              // 조인 테이블에 걸린 인덱스 찾아와서 연결
-              ...entity.indexes
-                .filter((index) =>
-                  index.columns.find((col) =>
-                    col.includes(prop.joinTable + ".")
-                  )
-                )
-                .map((index) => ({
-                  ...index,
-                  columns: index.columns.map((col) =>
-                    col.replace(prop.joinTable + ".", "")
-                  ),
-                })),
-            ],
-            columns: [
-              {
-                name: "id",
-                type: "integer",
-                nullable: false,
-                unsigned: true,
-              },
-              ...fields.map((field) => {
-                return {
-                  name: field.split(".")[1],
-                  type: "integer",
-                  nullable: false,
-                  unsigned: true,
-                } as MigrationColumn;
-              }),
-              {
-                name: "uuid",
-                nullable: true,
-                type: "uuid",
-              },
-            ],
-            foreigns: fields.map((field) => {
-              // 현재 필드가 어떤 테이블에 속하는지 판단
-              const col = field.split(".")[1];
-              const to = (() => {
-                if (
-                  inflection.singularize(join.to.split(".")[0]) + "_id" ===
-                  col
-                ) {
-                  return join.to;
-                } else {
-                  return join.from;
-                }
-              })();
-              return {
-                columns: [col],
-                to,
-                onUpdate: through.onUpdate,
-                onDelete: through.onDelete,
-              };
-            }),
-          });
-          return r;
-        } else if (
-          isBelongsToOneRelationProp(prop) ||
-          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-        ) {
-          // -OneRelation 케이스
-          const idColumnName = prop.name + "_id";
-          r.columns.push({
-            name: idColumnName,
-            type: "integer",
-            unsigned: true,
-            nullable: prop.nullable ?? false,
-          });
-          if ((prop.useConstraint ?? true) === true) {
-            r.foreigns.push({
-              columns: [idColumnName],
-              to: `${inflection
-                .underscore(inflection.pluralize(prop.with))
-                .toLowerCase()}.id`,
-              onUpdate: prop.onUpdate ?? "RESTRICT",
-              onDelete: prop.onDelete ?? "RESTRICT",
-            });
-          }
-        }
-
-        return r;
-      },
-      {
-        table: entity.table,
-        columns: [] as MigrationColumn[],
-        indexes: [] as MigrationIndex[],
-        foreigns: [] as MigrationForeign[],
-        joinTables: [] as MigrationJoinTable[],
-      }
-    );
-
-    // indexes
-    migrationSet.indexes = entity.indexes.filter((index) =>
-      index.columns.find((col) => col.includes(".") === false)
-    );
-
-    // uuid
-    migrationSet.columns = migrationSet.columns.concat({
-      name: "uuid",
-      nullable: true,
-      type: "uuid",
-    } as MigrationColumn);
-    migrationSet.indexes = migrationSet.indexes.concat({
-      type: "unique",
-      columns: ["uuid"],
-    } as MigrationIndex);
-
-    return migrationSet;
-  }
-
-
-
-  /*
-    마이그레이션 컬럼 배열 비교용 코드
-  */
-  showMigrationSet(which: "Entity" | "DB", migrationSet: MigrationSet): void {
-    const { columns, indexes, foreigns } = migrationSet;
-    const styledChalk =
-      which === "Entity" ? chalk.bgGreen.black : chalk.bgBlue.black;
-    console.log(
-      styledChalk(
-        `${which} ${migrationSet.table} Columns\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t`
-      )
-    );
-    console.table(
-      columns.map((column) => {
-        return {
-          ..._.pick(column, [
-            "name",
-            "type",
-            "nullable",
-            "unsigned",
-            "length",
-            "defaultTo",
-            "precision",
-            "scale",
-          ]),
-        };
-      }),
-      [
-        "name",
-        "type",
-        "nullable",
-        "unsigned",
-        "length",
-        "defaultTo",
-        "precision",
-        "scale",
-      ]
-    );
-
-    if (indexes.length > 0) {
-      console.log(
-        styledChalk(
-          `${which} ${migrationSet.table} Indexes\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t`
-        )
-      );
-      console.table(
-        indexes.map((index) => {
-          return {
-            ..._.pick(index, ["type", "columns", "name"]),
-          };
-        })
-      );
-    }
-
-    if (foreigns.length > 0) {
-      console.log(
-        chalk.bgMagenta.black(
-          `${which} ${migrationSet.table} Foreigns\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t`
-        )
-      );
-      console.table(
-        foreigns.map((foreign) => {
-          return {
-            ..._.pick(foreign, ["columns", "to", "onUpdate", "onDelete"]),
-          };
-        })
-      );
-    }
-  }
-
-
   /**
    * 마이그레이션 대상 커넥션을 종료합니다.
+   *
+   * CLI에서 사용됩니다.
+   *
    * @returns {Promise<void>} 종료 결과
    */
   async destroy(): Promise<void> {
@@ -1412,37 +821,3 @@ export class Migrator {
     );
   }
 }
-
-type DBColumn = {
-  Field: string;
-  Type: string;
-  Null: string;
-  Key: string;
-  Default: string | null;
-  Extra: string;
-};
-type DBIndex = {
-  Table: string;
-  Non_unique: number;
-  Key_name: string;
-  Seq_in_index: number;
-  Column_name: string;
-  Collation: string | null;
-  Cardinality: number | null;
-  Sub_part: number | null;
-  Packed: string | null;
-  Null: string;
-  Index_type: string;
-  Comment: string;
-  Index_comment: string;
-  Visible: string;
-  Expression: string | null;
-};
-type DBForeign = {
-  keyName: string;
-  from: string;
-  referencesTable: string;
-  referencesField: string;
-  onDelete: string;
-  onUpdate: string;
-};
