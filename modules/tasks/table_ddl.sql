@@ -1,13 +1,13 @@
 -- TaskNode에서 처리할 Task 목록
 CREATE TABLE sonamu_tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   -- Task의 Namespace
   namespace VARCHAR(255) NOT NULL,
 
-  -- pending, pending_for_retry, error, completed
+  -- pending, pending_for_retry
   status VARCHAR(32) NOT NULL DEFAULT "pending",
 
   -- Task의 재시도 횟수를 상태로 저장
@@ -17,9 +17,24 @@ CREATE TABLE sonamu_tasks (
   payload MEDIUMBLOB NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- TaskNode에서 처리가 끝난 Task 목록
+CREATE TABLE sonamu_archived_tasks (
+  id INT PRIMARY KEY,
+  created_at TIMESTAMP NOT NULL,
+  completed_at TIMESTAMP NOT NULL,
+  namespace VARCHAR(255) NOT NULL,
+  payload MEDIUMBLOB NOT NULL,
+
+  -- Task의 마지막 재시도 횟수를 상태로 저장
+  retry_count INTEGER NOT NULL,
+
+  -- error, completed
+  status VARCHAR(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE sonamu_task_events (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   -- Event의 종류 네임스페이스
   -- start | stop | fetch | process:(start|error|complete)
@@ -41,7 +56,5 @@ CREATE TABLE sonamu_task_events (
   reason VARCHAR(32),
 
   error_message VARCHAR(1000),
-  error_stack TEXT,
-
-  FOREIGN KEY (task_id) REFERENCES sonamu_tasks(id) ON DELETE RESTRICT
+  error_stack TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
