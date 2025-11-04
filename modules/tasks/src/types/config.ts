@@ -1,12 +1,39 @@
 import type { LoggerConfig, LogLevel, Sink } from "@logtape/logtape";
-import type { Duration } from "date-fns";
-import type { RetryConfig, TaskRouterContext } from "./tasks";
-import type { EventType, TaskNodeEvent } from "./events";
 import type { Knex } from "knex";
+import type { UnroutedTaskEvent } from "./events";
+import type { RetryConfig, TaskRouterContext } from "./tasks";
 
-export type OnEventFunction<T extends TaskNodeEvent = TaskNodeEvent> = (
+export type OnEventFunction<T extends UnroutedTaskEvent = UnroutedTaskEvent> = (
   event: T,
 ) => void | Promise<void>;
+
+// MySQL에서 받아와서 있으면 실행할 태스크
+export interface RemoteTaskConfig {
+  type: "remote";
+  expression: string;
+  options?: {
+    timezone?: string;
+    name?: string;
+    noOverlap?: boolean;
+    maxExecutions?: number;
+    maxRandomDelay?: number;
+  };
+}
+
+// 로컬에서 router로 잡아서 실행할 태스크
+export interface LocalTaskConfig {
+  type: "local";
+  expression: string;
+  // router 태울 namespace
+  namespace: string;
+  options?: {
+    timezone?: string;
+    name?: string;
+    noOverlap?: boolean;
+    maxExecutions?: number;
+    maxRandomDelay?: number;
+  };
+}
 
 // TODO(251103, Haze): Periodic Task에 대한 지원을 추가해야함.
 export interface TaskNodeConfig {
@@ -24,17 +51,12 @@ export interface TaskNodeConfig {
   // TaskNode에 이름을 지정할 수 있음
   name?: string;
 
-  // MySQL에서 Task를 가져오기 위한 주기
-  duration?: Duration;
-
-  // // TODO: Task를 처리하기 위한 하위 Worker의 수
-  // maxWorkers?: number;
+  // Task 설정
+  tasks: (RemoteTaskConfig | LocalTaskConfig)[];
 
   // 전역적 재시도 설정 (없으면 각 Task의 설정을 따름)
-  retry?: Partial<RetryConfig>;
+  retry?: RetryConfig;
 
   // 어느 Namespace의 Task를 어떻게 처리할지
   routes: (Omit<TaskRouterContext, "retry"> & { retry?: RetryConfig })[];
 }
-
-export type TaskNodeConfigInput = TaskNodeConfig | (() => TaskNodeConfig);
