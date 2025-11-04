@@ -2694,22 +2694,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@logtape/logtape@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@logtape/logtape@npm:1.1.2"
-  checksum: 10/dec4438a76609c386dbaea6e8975464833b1b40e8d260d9c4ec42aabee3a1fa672e9fd2f6a523be21c15bdbfeb526fd461d74dcd14a1030a841a41aa67231d25
-  languageName: node
-  linkType: hard
-
-"@logtape/pretty@npm:^1.1.2":
-  version: 1.1.2
-  resolution: "@logtape/pretty@npm:1.1.2"
-  peerDependencies:
-    "@logtape/logtape": ^1.1.2
-  checksum: 10/02828275ed27664a4f44b43a2f982da43821b50d661a683ab7665f4c553ddc067275dcfc7fd281a85a4a6175f05e781d7eef1204bb8f03055e4ab4cd83dadb7c
-  languageName: node
-  linkType: hard
-
 "@lukeed/ms@npm:^2.0.1, @lukeed/ms@npm:^2.0.2":
   version: 2.0.2
   resolution: "@lukeed/ms@npm:2.0.2"
@@ -4361,8 +4345,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@sonamu-kit/task@workspace:modules/tasks"
   dependencies:
-    "@logtape/logtape": "npm:^1.1.2"
-    "@logtape/pretty": "npm:^1.1.2"
     "@swc/cli": "npm:^0.7.8"
     "@types/node": "npm:^24.9.2"
     date-fns: "npm:^4.1.0"
