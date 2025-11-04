@@ -11,5 +11,6 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
   created_at: true,
 }).extend({
   employee_ids: z.array(z.number().int().positive()),
+  tag_ids: z.array(z.number().int().positive()),
 });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;

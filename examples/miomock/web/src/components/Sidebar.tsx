@@ -46,6 +46,11 @@ const menuItems: MenuItemProps[] = [
     icon: "folder",
   },
   {
+    title: "태그 관리",
+    path: "/admin/tags",
+    icon: "tag",
+  },
+  {
     title: "파일 업로드",
     path: "/admin/files",
     icon: "upload",

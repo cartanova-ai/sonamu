@@ -115,12 +115,18 @@ class ProjectModelClass extends BaseModelClass {
     const puri = this.getPuri("w");
 
     // register
-    spa.map(({ employee_ids, ...sp }) => {
+    spa.map(({ employee_ids, tag_ids, ...sp }) => {
       const project_id = puri.ubRegister("projects", sp);
       employee_ids.map((employee_id) => {
         puri.ubRegister("projects__employees", {
           project_id,
           employee_id,
+        });
+      });
+      tag_ids.map((tag_id) => {
+        puri.ubRegister("project_tags", {
+          project_id,
+          tag_id,
         });
       });
     });
@@ -129,12 +135,19 @@ class ProjectModelClass extends BaseModelClass {
     return puri.transaction(async (trx) => {
       const ids = await trx.ubUpsert("projects");
       const peIds = await trx.ubUpsert("projects__employees");
+      const ptIds = await trx.ubUpsert("project_tags");
 
       // 기존에 포함되었으나, 현재는 포함되지 않는 경우
       await trx
         .table("projects__employees")
         .whereIn("project_id", ids)
         .whereNotIn("id", peIds)
+        .delete();
+
+      await trx
+        .table("project_tags")
+        .whereIn("project_id", ids)
+        .whereNotIn("id", ptIds)
         .delete();
 
       return ids;

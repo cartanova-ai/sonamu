@@ -36,48 +36,37 @@ import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { ProjectSaveParams } from "src/services/project/project.types";
-import { ProjectService } from "src/services/project/project.service";
-import { ProjectSubsetA } from "src/services/sonamu.generated";
-import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
-import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
-import { TagIdAsyncSelect } from "src/components/tag/TagIdAsyncSelect";
+import { TagSaveParams } from "src/services/tag/tag.types";
+import { TagService } from "src/services/tag/tag.service";
+import { TagSubsetA } from "src/services/sonamu.generated";
 
-export default function ProjectsFormPage() {
+export default function TagsFormPage() {
   // 라우팅 searchParams
   const [searchParams] = useSearchParams();
   const query = {
     id: searchParams.get("id") ?? undefined,
   };
 
-  return <ProjectsForm id={query?.id ? Number(query.id) : undefined} />;
+  return <TagsForm id={query?.id ? Number(query.id) : undefined} />;
 }
-type ProjectsFormProps = {
+type TagsFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
-export function ProjectsForm({ id, mode }: ProjectsFormProps) {
+export function TagsForm({ id, mode }: TagsFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<ProjectSubsetA | undefined>();
+  const [row, setRow] = useState<TagSubsetA | undefined>();
 
-  // ProjectSaveParams 폼
-  const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
-    name: "",
-    status: "planning",
-    description: null,
-    employee_ids: [],
-    tag_ids: [],
-  });
+  // TagSaveParams 폼
+  const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
 
   // 수정일 때 기존 row 콜
   useEffect(() => {
     if (id) {
-      ProjectService.getProject("A", id).then((row) => {
+      TagService.getTag("A", id).then((row) => {
         setRow(row);
         setForm({
           ...row,
-          employee_ids: row.employee ? row.employee.map((e) => e.id) : [],
-          tag_ids: row.tags ? row.tags.map((t) => t.id) : [],
         });
       });
     }
@@ -89,12 +78,12 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
-    ProjectService.save([form])
+    TagService.save([form])
       .then(([id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
-          goBack("/admin/projects");
+          goBack("/admin/tags");
         }
       })
       .catch(defaultCatch);
@@ -102,7 +91,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
 
   // 페이지
   const PAGE = {
-    title: `PROJECT${id ? `#${id} 수정` : " 등록"}`,
+    title: `TAG${id ? `#${id} 수정` : " 등록"}`,
   };
 
   return (
@@ -116,7 +105,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 <BackLink
                   primary
                   size="tiny"
-                  to="/admin/projects"
+                  to="/admin/tags"
                   content="목록"
                   icon="list"
                 />
@@ -134,44 +123,8 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             )}
             <Form.Group widths="equal">
               <Form.Field>
-                <label>PROJECT명</label>
-                <Input placeholder="PROJECT명" {...register(`name`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>상태</label>
-                <ProjectStatusSelect {...register(`status`)} textPrefix="" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>설명</label>
-                <TextArea
-                  rows={8}
-                  placeholder="설명"
-                  {...register(`description`)}
-                />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>EmployeeIds</label>
-                <EmployeeIdAsyncSelect
-                  {...register("employee_ids")}
-                  multiple
-                  subset="A"
-                />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>Tags</label>
-                <TagIdAsyncSelect
-                  {...register("tag_ids")}
-                  multiple
-                  subset="A"
-                />
+                <label>태그명</label>
+                <Input placeholder="태그명" {...register(`name`)} />
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">

@@ -17,7 +17,11 @@
   },
   {
     "path": "/dist/application/project/project.model.js",
-    "checksum": "767a7b948f2fed0fa9c449c4dc666ba3f754ded4"
+    "checksum": "a9b45dcbd50de7ede7eb918a9b8fa62b154416bd"
+  },
+  {
+    "path": "/dist/application/tag/tag.model.js",
+    "checksum": "5db04574d6d913e94bf37ca7eff7207421677f6e"
   },
   {
     "path": "/dist/application/user/user.model.js",
@@ -57,15 +61,23 @@
   },
   {
     "path": "/src/application/project/project.entity.json",
-    "checksum": "633cb9de65102aab15737569251610665bf5ab93"
+    "checksum": "ba87fca83b6110c52dd3a3417d7665f03d9fb2b1"
   },
   {
     "path": "/src/application/project/project.types.ts",
-    "checksum": "5ea3a76fdb4e38729d097eec5e1acfab89bd1dc2"
+    "checksum": "797eb624d5f76bcf89ec088bd12ee2ff8725294e"
   },
   {
     "path": "/src/application/sonamu.generated.ts",
-    "checksum": "95a0879ba1173821edbf4ef9d06a9466455be7f9"
+    "checksum": "2d4c5550bc2fa86a568987f870177a2cc674aa44"
+  },
+  {
+    "path": "/src/application/tag/tag.entity.json",
+    "checksum": "7b30f0b806e800ba45602abf2d03f972449d9be8"
+  },
+  {
+    "path": "/src/application/tag/tag.types.ts",
+    "checksum": "967c4c95f31b80889b256df17180f00d80ab48c5"
   },
   {
     "path": "/src/application/user/user.entity.json",
