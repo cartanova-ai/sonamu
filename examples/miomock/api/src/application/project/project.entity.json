@@ -34,6 +34,17 @@
       "desc": "설명",
       "type": "text",
       "textType": "longtext"
+    },
+    {
+      "type": "relation",
+      "name": "tags",
+      "with": "Tag",
+      "nullable": true,
+      "desc": "TAG리스트",
+      "relationType": "ManyToMany",
+      "joinTable": "project_tags",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
     }
   ],
   "indexes": [],
@@ -48,7 +59,9 @@
       "employee.employee_number",
       "name",
       "status",
-      "description"
+      "description",
+      "tags.id",
+      "tags.name"
     ]
   },
   "enums": {

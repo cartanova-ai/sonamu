@@ -109,6 +109,19 @@ export default function ProjectList({}: ProjectListProps) {
     },
     { label: "설명", tc: (row) => <>{row.description}</>, collapsing: true },
     {
+      label: "TAGS",
+      tc: (row) => (
+        <>
+          {row.tags?.map((tag) => (
+            <Label key={tag.id} className="mb-2 mr-2">
+              {tag.name}
+            </Label>
+          ))}
+        </>
+      ),
+      collapsing: true,
+    },
+    {
       label: "직원",
       tc: (row) => (
         <>
@@ -152,71 +165,78 @@ export default function ProjectList({}: ProjectListProps) {
           </div>
         </div>
 
-        <Table
-          celled
-          compact
-          selectable
-          className={classNames({ hidden: total === undefined || total === 0 })}
-        >
-          <Table.Header>
-            <TableRow>
-              <Table.HeaderCell collapsing>
-                <Checkbox
-                  label="ID"
-                  checked={isAllSelected}
-                  onChange={isAllSelected ? deselectAll : selectAll}
-                />
-              </Table.HeaderCell>
-              {
-                /* Header */
-                columns.map(
-                  (col, index) =>
-                    col.th ?? (
-                      <Table.HeaderCell key={index} collapsing={col.collapsing}>
-                        {col.label}
-                      </Table.HeaderCell>
-                    )
-                )
-              }
-              <Table.HeaderCell>관리</Table.HeaderCell>
-            </TableRow>
-          </Table.Header>
-          <Table.Body>
-            {rows &&
-              rows.map((row, rowIndex) => (
-                <Table.Row key={row.id}>
-                  <Table.Cell>
-                    <Checkbox
-                      label={row.id}
-                      checked={getSelected(row.id)}
-                      onChange={() => toggle(row.id)}
-                      onClick={(e) => handleCheckboxClick(e, rowIndex)}
-                    />
-                  </Table.Cell>
-                  {
-                    /* Body */
-                    columns.map((col, colIndex) => (
-                      <Table.Cell
-                        key={colIndex}
-                        collapsing={col.collapsing}
-                        className={col.className}
-                      >
-                        {col.tc(row, rowIndex)}
-                      </Table.Cell>
-                    ))
-                  }
-                  <Table.Cell collapsing>
-                    <EditButton
-                      as={Link}
-                      to={`${PAGE.route}/form?id=${row.id}`}
-                      state={{ from: PAGE.route }}
-                    />
-                    <DelButton onClick={() => confirmDel([row.id])} />
-                  </Table.Cell>
-                </Table.Row>
-              ))}
-          </Table.Body>
-        </Table>
+        <div className="table-container">
+          <Table
+            celled
+            compact
+            selectable
+            className={classNames({
+              hidden: total === undefined || total === 0,
+            })}
+          >
+            <Table.Header>
+              <TableRow>
+                <Table.HeaderCell collapsing>
+                  <Checkbox
+                    label="ID"
+                    checked={isAllSelected}
+                    onChange={isAllSelected ? deselectAll : selectAll}
+                  />
+                </Table.HeaderCell>
+                {
+                  /* Header */
+                  columns.map(
+                    (col, index) =>
+                      col.th ?? (
+                        <Table.HeaderCell
+                          key={index}
+                          collapsing={col.collapsing}
+                        >
+                          {col.label}
+                        </Table.HeaderCell>
+                      )
+                  )
+                }
+                <Table.HeaderCell>관리</Table.HeaderCell>
+              </TableRow>
+            </Table.Header>
+            <Table.Body>
+              {rows &&
+                rows.map((row, rowIndex) => (
+                  <Table.Row key={row.id}>
+                    <Table.Cell>
+                      <Checkbox
+                        label={row.id}
+                        checked={getSelected(row.id)}
+                        onChange={() => toggle(row.id)}
+                        onClick={(e) => handleCheckboxClick(e, rowIndex)}
+                      />
+                    </Table.Cell>
+                    {
+                      /* Body */
+                      columns.map((col, colIndex) => (
+                        <Table.Cell
+                          key={colIndex}
+                          collapsing={col.collapsing}
+                          className={col.className}
+                        >
+                          {col.tc(row, rowIndex)}
+                        </Table.Cell>
+                      ))
+                    }
+                    <Table.Cell collapsing>
+                      <EditButton
+                        as={Link}
+                        to={`${PAGE.route}/form?id=${row.id}`}
+                        state={{ from: PAGE.route }}
+                      />
+                      <DelButton onClick={() => confirmDel([row.id])} />
+                    </Table.Cell>
+                  </Table.Row>
+                ))}
+            </Table.Body>
+          </Table>
+        </div>
         <div
           className={classNames("pagination-row", {
             hidden: (total ?? 0) === 0,
