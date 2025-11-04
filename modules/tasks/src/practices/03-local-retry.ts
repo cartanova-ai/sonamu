@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createScheduler } from "../scheduler";
-import type { TaskContext, SchedulerConfig, TaskEvent } from "../types";
+import type { TaskContext, SchedulerConfig } from "../types";
 
 function getConfig(): SchedulerConfig {
   const schema = z.object();
@@ -38,10 +38,23 @@ function getConfig(): SchedulerConfig {
       },
       {
         path: "/test2",
-        retry: { maxAttempts: 3, delay: { seconds: 1 } },
+        retry: {
+          maxAttempts: 3,
+          // delay는 함수로 넘겨서 Exponential Backoff 등을 구현할 수 있음.
+          delay: (attempt: number) => {
+            return { seconds: Math.pow(3, attempt) };
+          },
+        },
         schema: schema,
-        target: async (_: TaskContext<typeof schema>) => {
-          throw new Error();
+        target: async ({ taskItem, retry }: TaskContext<typeof schema>) => {
+          console.log(
+            `Attempt: ${taskItem.attempt}, Max Attempts: ${retry.maxAttempts}, Time: ${new Date()}`,
+          );
+
+          // 마지막 시도에서만 성공하게 함.
+          if (taskItem.attempt !== retry.maxAttempts) {
+            throw new Error("실패!");
+          }
         },
       },
     ],
@@ -53,23 +66,16 @@ function getConfig(): SchedulerConfig {
 
     tasks: [
       {
-        type: "remote",
-        // node-cron은 초까지 지원하기 때문에 이렇게 30초마다 돌릴 수 있음.
-        expression: "*/10 * * * * *",
-        options: {
-          timezone: "Asia/Seoul",
-          name: "remote-job",
-          noOverlap: false,
-        },
-      },
-      {
         type: "local",
         expression: "*/10 * * * * *",
+
+        // local에서 실행할 때는 어느 namespace에서 어느 payload로 실행할지를 넣어야 함.
         payload: {},
         namespace: "/test2",
+
+        // node-cron에서 쓰는 options를 공유함.
         options: {
           timezone: "Asia/Seoul",
-          name: "remote-job",
           noOverlap: false,
         },
       },
@@ -78,12 +84,6 @@ function getConfig(): SchedulerConfig {
 }
 
 (async () => {
-  const config = getConfig();
-  console.log(config);
-  const scheduler = await createScheduler(config);
-  scheduler.on("*", (evt: TaskEvent) => {
-    console.log("Event:", evt);
-  });
-
+  const scheduler = await createScheduler(getConfig());
   scheduler.start();
 })();
