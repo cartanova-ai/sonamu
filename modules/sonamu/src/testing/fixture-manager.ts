@@ -94,8 +94,6 @@ export class FixtureManagerClass {
       return tableNames;
     })();
 
-    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 0`);
-
     // migrations 제외한 테이블 목록
     const tableListStr = tableNames.join(", ");
 
@@ -121,21 +119,25 @@ export class FixtureManagerClass {
     );
 
     // 병렬로 truncate + insert 실행
-    await Promise.all(
-      changedTables.map(async (tableName) => {
-        await this.tdb(tableName).truncate();
-        const rawQuery = `INSERT INTO ${
-          (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
-        }.${tableName}
-      SELECT * FROM ${
-        (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig)
-          .database
-      }.${tableName}`;
-        await this.tdb.raw(rawQuery);
-      })
-    );
+    await this.tdb.transaction(async (trx) => {
+      await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
 
-    await this.tdb.raw(`SET FOREIGN_KEY_CHECKS = 1`);
+      await Promise.all(
+        changedTables.map(async (tableName) => {
+          await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+          await trx(tableName).truncate();
+          const rawQuery = `INSERT INTO ${
+            (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
+          }.${tableName}
+        SELECT * FROM ${
+          (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig)
+            .database
+        }.${tableName}`;
+          await trx.raw(rawQuery);
+        })
+      );
+      await trx.raw(`SET FOREIGN_KEY_CHECKS = 1`);
+    });
 
     // console.timeEnd("FIXTURE-CleanAndSeed");
   }
