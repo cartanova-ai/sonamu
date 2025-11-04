@@ -26,15 +26,16 @@ export type EmptyRecord = Record<string, never>;
 export type ResultAvailableColumns<
   TSchema,
   T extends keyof TSchema | string,
+  TOriginal = any,
   TResult = any,
   TJoined = EmptyRecord,
-> = AvailableColumns<TSchema, T, TResult, TJoined> | `${keyof TResult & string}`;
+> = AvailableColumns<TSchema, T, TOriginal, TJoined> | `${keyof TResult & string}`;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
 export type AvailableColumns<
   TSchema,
   T extends keyof TSchema | string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
@@ -48,8 +49,8 @@ export type AvailableColumns<
       }[keyof TJoined])
       | `${T & string}.${keyof TSchema[T] & string}`
   : // 서브쿼리 케이스 (T는 alias string)
-    | keyof TResult
-      | `${T & string}.${keyof TResult & string}`
+    | keyof TOriginal
+      | `${T & string}.${keyof TOriginal & string}`
       | (Extends<TJoined, Record<string, any>> extends true
           ? {
               [K in keyof TJoined]: TJoined[K] extends Record<string, any>
@@ -63,7 +64,7 @@ export type ExtractColumnType<
   TSchema,
   T extends keyof TSchema | string,
   Path extends string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
@@ -84,8 +85,8 @@ export type ExtractColumnType<
         : never
   : // 서브쿼리 케이스 (T는 alias)
     Path extends `${T & string}.${infer Column}`
-    ? Column extends keyof TResult
-      ? TResult[Column] // 서브쿼리 alias.컬럼
+    ? Column extends keyof TOriginal
+      ? TOriginal[Column] // 서브쿼리 alias.컬럼
       : never
     : Path extends `${infer Table}.${infer Column}`
       ? Table extends keyof TJoined
@@ -95,8 +96,8 @@ export type ExtractColumnType<
             : never
           : never
         : never
-      : Path extends keyof TResult
-        ? TResult[Path] // 서브쿼리 컬럼 직접 접근 (가장 마지막에)
+      : Path extends keyof TOriginal
+        ? TOriginal[Path] // 서브쿼리 컬럼 직접 접근 (가장 마지막에)
         : never;
 
 // SQL 함수 타입 정의
@@ -124,38 +125,38 @@ type ExtractSqlType<T> =
 export type SelectValue<
   TSchema,
   T extends keyof TSchema | string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > =
-  | AvailableColumns<TSchema, T, TResult, TJoined> // 기존 컬럼
+  | AvailableColumns<TSchema, T, TOriginal, TJoined> // 기존 컬럼
   | SqlFunction<"string" | "number" | "boolean" | "date">; // SQL 함수
 
 // Select 객체 타입 정의
 export type SelectObject<
   TSchema,
   T extends keyof TSchema | string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
-> = Record<string, SelectValue<TSchema, T, TResult, TJoined>>;
+> = Record<string, SelectValue<TSchema, T, TOriginal, TJoined>>;
 
 // Select 결과 타입 추론
 export type ParseSelectObject<
   TSchema,
   T extends keyof TSchema | string,
-  S extends SelectObject<TSchema, T, TResult, TJoined>,
-  TResult = any,
+  S extends SelectObject<TSchema, T, TOriginal, TJoined>,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > = {
   [K in keyof S]: S[K] extends SqlFunction<any>
     ? ExtractSqlType<S[K]> // SQL 함수면 타입 추출
-    : ExtractColumnType<TSchema, T, S[K] & string, TResult, TJoined>;
+    : ExtractColumnType<TSchema, T, S[K] & string, TOriginal, TJoined>;
 };
 
 // Where 조건 타입 (조인된 테이블 컬럼도 포함)
 export type WhereCondition<
   TSchema,
   T extends keyof TSchema | string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > =
   // 메인 테이블/서브쿼리 조건들
@@ -164,7 +165,7 @@ export type WhereCondition<
         [K in keyof TSchema[T]]?: TSchema[T][K] | TSchema[T][K][];
       }
     : {
-        [K in keyof TResult]?: TResult[K] | TResult[K][];
+        [K in keyof TOriginal]?: TOriginal[K] | TOriginal[K][];
       }) &
     // 조인된 테이블들의 조건들
     (TJoined extends Record<string, any>
@@ -183,7 +184,7 @@ export type WhereCondition<
 export type FulltextColumns<
   TSchema,
   T extends keyof TSchema | string,
-  TResult = any,
+  TOriginal = any,
   TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
@@ -203,10 +204,10 @@ export type FulltextColumns<
             }[keyof TJoined]
           : never)
   : // 서브쿼리 케이스 (T는 alias)
-    | (TResult extends { __fulltext__: readonly (infer Col)[] }
+    | (TOriginal extends { __fulltext__: readonly (infer Col)[] }
           ? Col & string
           : never)
-      | (TResult extends { __fulltext__: readonly (infer Col)[] }
+      | (TOriginal extends { __fulltext__: readonly (infer Col)[] }
           ? `${T & string}.${Col & string}`
           : never)
       | (TJoined extends Record<string, any>

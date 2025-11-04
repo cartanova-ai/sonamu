@@ -33,9 +33,9 @@ export class PuriWrapper<
 
   // 새로 추가: 서브쿼리로 시작
   fromSubquery<TSubResult, TAlias extends string>(
-    subquery: Puri<DBSchema, any, TSubResult, any>,
+    subquery: Puri<DBSchema, any, any, TSubResult, any>,
     alias: TAlias extends string ? TAlias : never
-  ): Puri<DBSchema, TAlias, TSubResult, {}> {
+  ): Puri<DBSchema, TAlias, TSubResult, TSubResult, {}> {
     return new Puri(this.knex, subquery, alias);
   }
 
