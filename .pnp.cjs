@@ -5407,6 +5407,7 @@ const RAW_RUNTIME_STATE =
           ["corepack", "npm:0.34.1"],\
           ["cowsay", "npm:1.6.0"],\
           ["npm-run-all", "npm:4.1.5"],\
+          ["prettier", "npm:3.6.2"],\
           ["root-workspace-0b6124", "workspace:."],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
@@ -21659,6 +21660,7 @@ const RAW_RUNTIME_STATE =
           ["corepack", "npm:0.34.1"],\
           ["cowsay", "npm:1.6.0"],\
           ["npm-run-all", "npm:4.1.5"],\
+          ["prettier", "npm:3.6.2"],\
           ["root-workspace-0b6124", "workspace:."],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
