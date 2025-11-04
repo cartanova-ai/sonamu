@@ -119,7 +119,6 @@ export class Template__generated extends Template {
       "SQLDateTimeString",
       "SubsetQuery",
       "SonamuQueryMode",
-      "ManyToManyBaseSchema",
     ].filter((mod) => body.includes(mod));
 
     return {
