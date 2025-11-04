@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode, ManyToManyBaseSchema } from "sonamu";
+import { zArrayable, SonamuQueryMode } from "sonamu";
 
 // CustomScalar: Number
 const Number = z.number();
@@ -383,16 +383,3 @@ export type UserSubsetMapping = {
 };
 export const UserSubsetKey = z.enum(["A", "P", "SS"]);
 export type UserSubsetKey = z.infer<typeof UserSubsetKey>;
-
-// DatabaseSchema
-declare module "sonamu" {
-  export interface DatabaseSchemaExtend {
-    companies: CompanyBaseSchema;
-    departments: DepartmentBaseSchema;
-    employees: EmployeeBaseSchema;
-    files: FileBaseSchema;
-    projects: ProjectBaseSchema;
-    users: UserBaseSchema;
-    projects__employees: ManyToManyBaseSchema<"project", "employee">;
-  }
-}
