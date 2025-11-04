@@ -1,0 +1,1 @@
+[여기](../migration/migrator.ts)로 이사갔어요.
