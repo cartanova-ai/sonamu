@@ -11,7 +11,6 @@ import _ from "lodash";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
 import { Entity } from "../entity/entity";
-import assert from "assert";
 
 export class Template__generated_sso extends Template {
   constructor() {
@@ -112,14 +111,11 @@ export class Template__generated_sso extends Template {
     const joinTableSchemaLines = _.uniq(
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
-          const [table1, table2] = prop.joinTable.split("__");
-          assert(
-            table1 && table2,
-            `joinTableName is invalid: ${prop.joinTable}`
+          const fromTableKey = inflection.singularize(entity.table);
+          const toTableKey = inflection.singularize(
+            EntityManager.get(prop.with).table
           );
-          const singular1 = inflection.singularize(table1);
-          const singular2 = inflection.singularize(table2);
-          return `${prop.joinTable}: ManyToManyBaseSchema<"${singular1}", "${singular2}">;`;
+          return `${prop.joinTable}: ManyToManyBaseSchema<"${fromTableKey}", "${toTableKey}">;`;
         })
       )
     );
