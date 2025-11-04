@@ -39,6 +39,7 @@ import { EntityManager } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+import { SonamuDBConfig } from "../database/db";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
@@ -116,7 +117,7 @@ export class Migrator {
     }
   }
 
-  async getMigrationCodes(): Promise<{
+  private async getMigrationCodes(): Promise<{
     normal: MigrationCode[];
     onlyTs: MigrationCode[];
     onlyJs: MigrationCode[];
@@ -175,6 +176,10 @@ export class Migrator {
     };
   }
 
+  /**
+   * 마이그레이션 상태를 가져옵니다.
+   * @returns {Promise<MigrationStatus>} 마이그레이션 상태
+   */
   async getStatus(): Promise<MigrationStatus> {
     const { normal, onlyTs, onlyJs } = await this.getMigrationCodes();
     if (onlyTs.length > 0) {
@@ -284,8 +289,8 @@ export class Migrator {
   }
 
   async runAction(
-    action: "latest" | "rollback",
-    targets: string[]
+    action: "apply" | "rollback",
+    targets: (keyof SonamuDBConfig)[]
   ): Promise<
     {
       connKey: string;
@@ -318,7 +323,7 @@ export class Migrator {
     // action
     const result = await (async () => {
       switch (action) {
-        case "latest":
+        case "apply":
           return Promise.all(
             conns.map(async ({ connKey, knex }) => {
               const [batchNo, applied] = await knex.migrate.latest();
@@ -2033,6 +2038,10 @@ export class Migrator {
     ];
   }
 
+  /**
+   * 마이그레이션 대상 커넥션을 종료합니다.
+   * @returns {Promise<void>} 종료 결과
+   */
   async destroy(): Promise<void> {
     await Promise.all(
       this.targets.apply.map((db) => {

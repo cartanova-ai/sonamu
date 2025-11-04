@@ -10,6 +10,7 @@ import {
   FixtureRecord,
   FixtureSearchOptions,
   FixtureImportResult,
+  SonamuDBConfig,
 } from "sonamu";
 
 type SWRError = {
@@ -270,8 +271,8 @@ export namespace SonamuUIService {
   }
 
   export function migrationsRunAction(
-    action: "latest" | "rollback" | "shadow",
-    targets: string[]
+    action: "apply" | "rollback" | "shadow",
+    targets: (keyof SonamuDBConfig)[]
   ): Promise<
     {
       connKey: string;

@@ -105,7 +105,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   };
 
   const openActionModal = (
-    action: "latest" | "rollback" | "shadow",
+    action: "apply" | "rollback" | "shadow",
     _targets?: string[]
   ) => {
     if (!conns) {
@@ -236,7 +236,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 icon="play"
                 content="Apply to Latest"
                 disabled={selectedConnKeys.length === 0}
-                onClick={() => openActionModal("latest")}
+                onClick={() => openActionModal("apply")}
               />
               <Button
                 size="tiny"

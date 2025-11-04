@@ -9,7 +9,7 @@ import classNames from "classnames";
 import { useState } from "react";
 
 type MigrationActionFormProps = {
-  action: "latest" | "rollback" | "shadow";
+  action: "apply" | "rollback" | "shadow";
   targets: string[];
   conns: MigrationStatus["conns"];
 };
@@ -28,7 +28,7 @@ export function MigrationActionForm({
       doShadowDbTesting: z.boolean(),
     }),
     {
-      doShadowDbTesting: action === "latest",
+      doShadowDbTesting: action === "apply",
     }
   );
 
@@ -76,7 +76,7 @@ export function MigrationActionForm({
                 ))}
               </div>
             </div>
-            {action === "latest" && (
+            {action === "apply" && (
               <div className="shadow-db-testing">
                 <h4>Shadow DB Testing</h4>
                 <BooleanToggle {...register("doShadowDbTesting")} />
