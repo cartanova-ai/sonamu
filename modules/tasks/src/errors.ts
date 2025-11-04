@@ -2,7 +2,7 @@ import { ProcessErrorReasonEnum } from "./types";
 
 export class SonamuTaskError extends Error {
   cause: Error | undefined;
-  type: ProcessErrorReasonEnum
+  type: ProcessErrorReasonEnum;
 
   constructor(type?: ProcessErrorReasonEnum, cause?: Error) {
     if (!type) {
@@ -10,7 +10,7 @@ export class SonamuTaskError extends Error {
     }
 
     super(`SonamuTaskError: ${type}`);
-    this.name = 'SonamuTaskError';
+    this.name = "SonamuTaskError";
     this.type = type;
     if (cause) {
       this.cause = cause;

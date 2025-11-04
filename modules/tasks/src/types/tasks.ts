@@ -27,7 +27,7 @@ export interface TaskInfo {
 }
 
 export interface RetryConfig {
-  // 최대 횟수 (def: 3)
+  // 최대 횟수 (def: 1)
   maxAttempts: number;
   // 재시도 간격
   delay?: Duration | (() => Duration);
@@ -35,13 +35,13 @@ export interface RetryConfig {
 
 export interface TaskRouterContext<T extends z.ZodType = z.ZodType> {
   path: string;
+  retry: RetryConfig;
   schema: T;
   target: Callback<TaskContext<T>, void>;
-  retry: RetryConfig;
 }
 
 export type TaskContext<T extends z.ZodType = z.ZodType> = {
-  task: Omit<TaskInfo, "payload"> & { payload: z.infer<T>; };
-  retry: RetryConfig;
   params?: Record<string, string>;
+  retry: RetryConfig;
+  task: Omit<TaskInfo, "payload"> & { payload: z.infer<T> };
 };
