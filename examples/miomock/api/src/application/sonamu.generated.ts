@@ -64,6 +64,14 @@ export const ProjectStatusLabel = {
   cancelled: "취소",
 };
 
+// Enums: Tag
+export const TagOrderBy = z.enum(["id-desc"]).describe("TagOrderBy");
+export type TagOrderBy = z.infer<typeof TagOrderBy>;
+export const TagOrderByLabel = { "id-desc": "ID최신순" };
+export const TagSearchField = z.enum(["id"]).describe("TagSearchField");
+export type TagSearchField = z.infer<typeof TagSearchField>;
+export const TagSearchFieldLabel = { id: "ID" };
+
 // Enums: User
 export const UserOrderBy = z.enum(["id-desc"]).describe("UserOrderBy");
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
@@ -124,8 +132,17 @@ export const ProjectBaseSchema = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
+  // tags: ManyToMany Tag
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema>;
+
+// BaseSchema: Tag
+export const TagBaseSchema = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  name: z.string().max(30),
+});
+export type TagBaseSchema = z.infer<typeof TagBaseSchema>;
 
 // BaseSchema: User
 export const UserBaseSchema = z.object({
@@ -214,6 +231,20 @@ export const ProjectBaseListParams = z
   })
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
+
+// BaseListParams: Tag
+export const TagBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: TagSearchField,
+    keyword: z.string(),
+    orderBy: TagOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+  })
+  .partial();
+export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
 
 // BaseListParams: User
 export const UserBaseListParams = z
@@ -330,6 +361,12 @@ export const ProjectSubsetA = z.object({
         .nullable(),
     }),
   ),
+  tags: z.array(
+    z.object({
+      id: z.int().nonnegative(),
+      name: z.string().max(30),
+    }),
+  ),
 });
 export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;
 export type ProjectSubsetMapping = {
@@ -337,6 +374,19 @@ export type ProjectSubsetMapping = {
 };
 export const ProjectSubsetKey = z.enum(["A"]);
 export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
+
+// Subsets: Tag
+export const TagSubsetA = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  name: z.string().max(30),
+});
+export type TagSubsetA = z.infer<typeof TagSubsetA>;
+export type TagSubsetMapping = {
+  A: TagSubsetA;
+};
+export const TagSubsetKey = z.enum(["A"]);
+export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({
