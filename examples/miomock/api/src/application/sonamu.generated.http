@@ -104,6 +104,42 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/tag/findById
+	?subset=A
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/tag/findMany
+	?subset=A
+	&params[num]=24
+	&params[page]=1
+	&params[search]=id
+	&params[keyword]=KEYWORD
+	&params[orderBy]=id-desc
+	&params[queryMode]=both
+	&params[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/tag/save
+Content-Type: application/json
+
+{ "spa": [{ "id": 0, "created_at": "2000-01-01", "name": "NAME" }] }
+
+
+###
+
+POST {{baseUrl}}/api/tag/del
+Content-Type: application/json
+
+{ "ids": [0] }
+
+
+###
+
 GET {{baseUrl}}/api/project/findById
 	?subset=A
 	&id=0
@@ -135,7 +171,8 @@ Content-Type: application/json
       "name": "NAME",
       "status": "planning",
       "description": null,
-      "employee_ids": [0]
+      "employee_ids": [0],
+      "tag_ids": [0]
     }
   ]
 }

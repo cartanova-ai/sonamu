@@ -1,11 +1,11 @@
 /* App Layout */
 .app {
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 /* Sidebar Styles */
@@ -74,7 +74,7 @@
   flex: 1;
   padding: 2rem;
   background: #fff;
-  overflow-x: auto;
+  overflow: auto;
 }
 
 /* Mobile Responsive */
@@ -132,4 +132,11 @@
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
+}
+
+.table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  margin: 14px 0;
 }

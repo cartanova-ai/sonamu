@@ -5,12 +5,14 @@ import {
   EmployeeSubsetKey,
   FileSubsetKey,
   ProjectSubsetKey,
+  TagSubsetKey,
   UserSubsetKey,
   CompanyBaseSchema,
   DepartmentBaseSchema,
   EmployeeBaseSchema,
   FileBaseSchema,
   ProjectBaseSchema,
+  TagBaseSchema,
   UserBaseSchema,
 } from "./sonamu.generated";
 
@@ -174,9 +176,38 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
           ],
           loaders: [],
         },
+        {
+          as: "tags",
+          table: "tags",
+          manyJoin: {
+            fromTable: "projects",
+            fromCol: "id",
+            idField: "id",
+            through: {
+              table: "project_tags",
+              fromCol: "project_id",
+              toCol: "tag_id",
+            },
+            toTable: "tags",
+            toCol: "id",
+          },
+          oneJoins: [],
+          select: ["tags.id", "tags.name"],
+          loaders: [],
+        },
       ],
     },
   };
+
+// SubsetQuery: Tag
+export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {
+  A: {
+    select: ["tags.id", "tags.created_at", "tags.name"],
+    virtual: [],
+    joins: [],
+    loaders: [],
+  },
+};
 
 // SubsetQuery: User
 export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
@@ -241,7 +272,9 @@ declare module "sonamu" {
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     projects: ProjectBaseSchema;
+    tags: TagBaseSchema;
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"project", "employee">;
+    project_tags: ManyToManyBaseSchema<"project", "tag">;
   }
 }
