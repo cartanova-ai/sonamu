@@ -35,8 +35,8 @@ import {
   isKnexError,
   RelationOn,
 } from "../types/types";
-import { EntityManager } from "./entity-manager";
-import { Entity } from "./entity";
+import { EntityManager } from "../entity/entity-manager";
+import { Entity } from "../entity/entity";
 import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 

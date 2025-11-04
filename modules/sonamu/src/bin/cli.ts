@@ -14,7 +14,7 @@ import process from "process";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
-import { Migrator } from "../entity/migrator";
+import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { SWC_BUILD_COMMAND } from "./build-config";
 
