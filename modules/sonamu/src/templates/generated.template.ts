@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { TemplateOptions, isManyToManyRelationProp } from "../types/types";
+import { TemplateOptions } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
 import { Entity } from "../entity/entity";
 import { EntityPropNode } from "../types/types";
@@ -7,8 +7,6 @@ import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
 import { Template } from "./base-template";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
-import inflection from "inflection";
-import assert from "assert";
 
 export type SourceCode = {
   label: string;
@@ -45,12 +43,6 @@ export class Template__generated extends Template {
       })
       .flat();
 
-    // DatabaseSchema 생성
-    const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
-    if (dbSchemaSourceCode) {
-      sourceCodes.push(dbSchemaSourceCode);
-    }
-
     // Sort
     const LABEL_KEY_ORDER = [
       "Enums",
@@ -58,7 +50,6 @@ export class Template__generated extends Template {
       "BaseListParams",
       "Subsets",
       "SubsetQueries",
-      "DatabaseSchema",
     ];
     sourceCodes.sort((a, b) => {
       const [aKey] = a.label.split(":");
@@ -192,7 +183,9 @@ export class Template__generated extends Template {
       `export const ${schemaName} = ${schemaBody}`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
         (fulltextColumns.length > 0
-          ? ` & { readonly __fulltext__: readonly [${fulltextColumns.map((col) => `"${col}"`).join(", ")}] }`
+          ? ` & { readonly __fulltext__: readonly [${fulltextColumns
+              .map((col) => `"${col}"`)
+              .join(", ")}] }`
           : ""),
     ];
 
@@ -301,41 +294,6 @@ z.object({
       label: `Subsets: ${entity.id}`,
       lines,
       importKeys: _.uniq(importKeys),
-    };
-  }
-
-  getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
-    if (entities.length === 0) {
-      return null;
-    }
-
-    const entitySchemaLines = entities.map(
-      (entity) => `${entity.table}: ${entity.id}BaseSchema;`
-    );
-
-    const joinTableSchemaLines = _.uniq(
-      entities.flatMap((entity) =>
-        entity.props.filter(isManyToManyRelationProp).map((prop) => {
-          const [table1, table2] = prop.joinTable.split("__");
-          assert(table1 && table2, `joinTableName is invalid: ${prop.joinTable}`);
-          const singular1 = inflection.singularize(table1);
-          const singular2 = inflection.singularize(table2);
-          return `${prop.joinTable}: ManyToManyBaseSchema<"${singular1}", "${singular2}">;`;
-        })
-      )
-    );
-
-    return {
-      label: `DatabaseSchema`,
-      lines: [
-        `declare module "sonamu" {`,
-        `  export interface DatabaseSchemaExtend {`,
-        ...entitySchemaLines,
-        ...joinTableSchemaLines,
-        `  }`,
-        `}`,
-      ],
-      importKeys: [],
     };
   }
 }
