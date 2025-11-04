@@ -1,7 +1,6 @@
 import path from "path";
 import { glob } from "fs/promises";
 import fs from "fs";
-import { groupBy, isObject, set } from "lodash";
 
 export async function globAsync(pathPattern: string): Promise<string[]> {
   const files: string[] = [];
@@ -43,7 +42,7 @@ export async function findAppRootPath() {
 
 export function findApiRootPath() {
   // NOTE: for support npm / yarn workspaces
-  const workspacePath = process.env["INIT_CWD"]
+  const workspacePath = process.env["INIT_CWD"];
   if (workspacePath && workspacePath.length !== 0) {
     return workspacePath;
   }
@@ -64,49 +63,4 @@ export function findApiRootPath() {
 
 export function nonNullable<T>(value: T): value is NonNullable<T> {
   return value !== null && value !== undefined;
-}
-
-export function hydrate<T>(rows: T[]): T[] {
-  return rows.map((row: any) => {
-    // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
-    const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-    const groups = groupBy(nestedKeys, (key) => key.split("__")[0]);
-    const nullKeys = Object.keys(groups).filter(
-      (key) =>
-        groups[key].length > 1 &&
-        groups[key].every((field) => row[field] === null)
-    );
-
-    const hydrated = Object.keys(row).reduce((r, field) => {
-      if (!field.includes("__")) {
-        if (Array.isArray(row[field]) && isObject(row[field][0])) {
-          r[field] = hydrate(row[field]);
-          return r;
-        } else {
-          r[field] = row[field];
-          return r;
-        }
-      }
-
-      const parts = field.split("__");
-      const objPath =
-        parts[0] +
-        parts
-          .slice(1)
-          .map((part) => `[${part}]`)
-          .join("");
-      set(
-        r,
-        objPath,
-        row[field] && Array.isArray(row[field]) && isObject(row[field][0])
-          ? hydrate(row[field])
-          : row[field]
-      );
-
-      return r;
-    }, {} as any);
-    nullKeys.map((nullKey) => (hydrated[nullKey] = null));
-
-    return hydrated;
-  });
 }
