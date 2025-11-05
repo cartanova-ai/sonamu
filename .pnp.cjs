@@ -51,9 +51,9 @@ const RAW_RUNTIME_STATE =
   "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)|(^(?:(?:^|\\\\/|(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)\\\\/)template\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?=.)[^/]*?\\\\/?)$)",\
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
-    ["@sonamu-kit/react-sui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui", "virtual:ec1165dc3ba755bd97ba5fc629693b8ad3a96768ebc17ce62072a62831d1dc62c48ad69b4abb8e13b70f6645296201c1f005a51121887d268f22eafc0ae24bb6#workspace:modules/react-sui", "workspace:modules/react-sui"]],\
+    ["@sonamu-kit/react-sui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui", "virtual:ec1165dc3ba755bd97ba5fc629693b8ad3a96768ebc17ce62072a62831d1dc62c48ad69b4abb8e13b70f6645296201c1f005a51121887d268f22eafc0ae24bb6#workspace:modules/react-sui", "workspace:modules/react-sui"]],\
     ["@sonamu-kit/task", ["workspace:modules/tasks"]],\
-    ["@sonamu-kit/ui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui", "virtual:8769572cd4b24c3531bbe482b0f26582eda2c2420c0dbfa27e5ca07536b095c571ef034d978b59899aea8da1552f15e66ef4a413ccc1cbd899d080e55417bec1#workspace:modules/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui", "workspace:modules/ui"]],\
+    ["@sonamu-kit/ui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui", "virtual:8769572cd4b24c3531bbe482b0f26582eda2c2420c0dbfa27e5ca07536b095c571ef034d978b59899aea8da1552f15e66ef4a413ccc1cbd899d080e55417bec1#workspace:modules/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui", "workspace:modules/ui"]],\
     ["create-sonamu", ["workspace:modules/create-sonamu"]],\
     ["miomock-api", ["workspace:examples/miomock/api"]],\
     ["miomock-web", ["workspace:examples/miomock/web"]],\
@@ -10496,13 +10496,13 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui", {\
-        "packageLocation": "./.yarn/__virtual__/@sonamu-kit-react-sui-virtual-fa858b2d09/1/modules/react-sui/",\
+      ["virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui", {\
+        "packageLocation": "./.yarn/__virtual__/@sonamu-kit-react-sui-virtual-3fe2279c32/1/modules/react-sui/",\
         "packageDependencies": [\
           ["@dnd-kit/core", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:4.0.3"],\
           ["@dnd-kit/sortable", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:5.1.0"],\
           ["@dnd-kit/utilities", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:3.2.2"],\
-          ["@sonamu-kit/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui"],\
+          ["@sonamu-kit/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui"],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
           ["@types/lodash-es", "npm:4.17.12"],\
@@ -10699,7 +10699,7 @@ const RAW_RUNTIME_STATE =
           ["@rollup/plugin-commonjs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:25.0.8"],\
           ["@rollup/plugin-json", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.1.0"],\
           ["@rollup/plugin-node-resolve", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.3.1"],\
-          ["@sonamu-kit/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui"],\
+          ["@sonamu-kit/react-sui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui"],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
@@ -10710,6 +10710,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-dom", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:18.3.7"],\
           ["@types/react-syntax-highlighter", "npm:15.5.13"],\
           ["@types/sonamu", null],\
+          ["@types/sonamu-kit__react-sui", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
           ["chalk", "npm:4.1.2"],\
@@ -10752,6 +10753,79 @@ const RAW_RUNTIME_STATE =
           ["zod", "npm:4.1.12"]\
         ],\
         "packagePeers": [\
+          "@sonamu-kit/react-sui",\
+          "@types/sonamu-kit__react-sui",\
+          "@types/sonamu",\
+          "sonamu"\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui", {\
+        "packageLocation": "./.yarn/__virtual__/@sonamu-kit-ui-virtual-b54c1382ad/1/modules/ui/",\
+        "packageDependencies": [\
+          ["@fastify/cors", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
+          ["@fastify/formbody", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.0.2"],\
+          ["@fastify/multipart", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:9.3.0"],\
+          ["@fastify/static", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.12.0"],\
+          ["@rollup/plugin-alias", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:5.1.1"],\
+          ["@rollup/plugin-commonjs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:25.0.8"],\
+          ["@rollup/plugin-json", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.1.0"],\
+          ["@rollup/plugin-node-resolve", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.3.1"],\
+          ["@sonamu-kit/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui"],\
+          ["@sonamu-kit/ui", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui"],\
+          ["@types/inflection", "npm:1.13.2"],\
+          ["@types/lodash", "npm:4.17.20"],\
+          ["@types/node", "npm:20.19.24"],\
+          ["@types/prop-types", "npm:15.7.15"],\
+          ["@types/qs", "npm:6.14.0"],\
+          ["@types/react", "npm:18.3.26"],\
+          ["@types/react-dom", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:18.3.7"],\
+          ["@types/react-syntax-highlighter", "npm:15.5.13"],\
+          ["@types/sonamu", null],\
+          ["@types/sonamu-kit__react-sui", null],\
+          ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
+          ["axios", "npm:1.13.1"],\
+          ["chalk", "npm:4.1.2"],\
+          ["classnames", "npm:2.5.1"],\
+          ["corepack", "npm:0.34.1"],\
+          ["debug", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.4.3"],\
+          ["dotenv", "npm:16.6.1"],\
+          ["esbuild", "npm:0.19.12"],\
+          ["fastify", "npm:4.29.1"],\
+          ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
+          ["inflection", "npm:2.0.1"],\
+          ["jotai", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:2.15.0"],\
+          ["knex", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:3.1.0"],\
+          ["lodash", "npm:4.17.21"],\
+          ["npm-run-all", "npm:4.1.5"],\
+          ["openai", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.104.0"],\
+          ["prettier", "npm:2.7.1"],\
+          ["prop-types", "npm:15.8.1"],\
+          ["qs", "npm:6.14.0"],\
+          ["react", "npm:18.3.1"],\
+          ["react-dom", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:18.3.1"],\
+          ["react-markdown", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:9.1.0"],\
+          ["react-router-dom", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.3.0"],\
+          ["react-syntax-highlighter", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.6.6"],\
+          ["remark-gfm", "npm:4.0.1"],\
+          ["rollup", "npm:3.29.5"],\
+          ["rollup-plugin-dts", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:5.3.1"],\
+          ["rollup-plugin-esbuild", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:5.0.0"],\
+          ["sass", "npm:1.93.2"],\
+          ["semantic-ui-css", "npm:2.5.0"],\
+          ["semantic-ui-react", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:2.1.5"],\
+          ["sonamu", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/sonamu"],\
+          ["source-map-support", "npm:0.5.21"],\
+          ["supports-color", "npm:9.4.0"],\
+          ["swr", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:2.3.6"],\
+          ["tsc-watch", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.3.1"],\
+          ["tsup", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"],\
+          ["vite", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.5.14"],\
+          ["zod", "npm:4.1.12"]\
+        ],\
+        "packagePeers": [\
+          "@types/sonamu-kit__react-sui",\
           "@types/sonamu",\
           "sonamu"\
         ],\
@@ -10768,7 +10842,7 @@ const RAW_RUNTIME_STATE =
           ["@rollup/plugin-commonjs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:25.0.8"],\
           ["@rollup/plugin-json", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.1.0"],\
           ["@rollup/plugin-node-resolve", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.3.1"],\
-          ["@sonamu-kit/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui"],\
+          ["@sonamu-kit/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:8769572cd4b24c3531bbe482b0f26582eda2c2420c0dbfa27e5ca07536b095c571ef034d978b59899aea8da1552f15e66ef4a413ccc1cbd899d080e55417bec1#workspace:modules/ui"],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
@@ -10779,6 +10853,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-dom", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:18.3.7"],\
           ["@types/react-syntax-highlighter", "npm:15.5.13"],\
           ["@types/sonamu", null],\
+          ["@types/sonamu-kit__react-sui", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
           ["chalk", "npm:4.1.2"],\
@@ -10821,6 +10896,7 @@ const RAW_RUNTIME_STATE =
           ["zod", "npm:4.1.12"]\
         ],\
         "packagePeers": [\
+          "@types/sonamu-kit__react-sui",\
           "@types/sonamu",\
           "sonamu"\
         ],\
@@ -10837,7 +10913,7 @@ const RAW_RUNTIME_STATE =
           ["@rollup/plugin-commonjs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:25.0.8"],\
           ["@rollup/plugin-json", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.1.0"],\
           ["@rollup/plugin-node-resolve", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.3.1"],\
-          ["@sonamu-kit/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui"],\
+          ["@sonamu-kit/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui"],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
@@ -10848,6 +10924,7 @@ const RAW_RUNTIME_STATE =
           ["@types/react-dom", "virtual:6bf2da6f277985c69c7a8750920432d18bb4ebadf2d7434d0515f1e9666f7f01675c5e444492713faca0d36e642347d2be0acf398c88117a3d6fd1a1ce72e621#npm:18.3.7"],\
           ["@types/react-syntax-highlighter", "npm:15.5.13"],\
           ["@types/sonamu", null],\
+          ["@types/sonamu-kit__react-sui", null],\
           ["@vitejs/plugin-react", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.7.0"],\
           ["axios", "npm:1.13.1"],\
           ["chalk", "npm:4.1.2"],\
@@ -10890,6 +10967,7 @@ const RAW_RUNTIME_STATE =
           ["zod", "npm:4.1.12"]\
         ],\
         "packagePeers": [\
+          "@types/sonamu-kit__react-sui",\
           "@types/sonamu",\
           "sonamu"\
         ],\
@@ -10906,7 +10984,7 @@ const RAW_RUNTIME_STATE =
           ["@rollup/plugin-commonjs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:25.0.8"],\
           ["@rollup/plugin-json", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.1.0"],\
           ["@rollup/plugin-node-resolve", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:15.3.1"],\
-          ["@sonamu-kit/react-sui", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#workspace:modules/react-sui"],\
+          ["@sonamu-kit/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "workspace:modules/ui"],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/lodash", "npm:4.17.20"],\
@@ -22530,7 +22608,7 @@ const RAW_RUNTIME_STATE =
           ["@fastify/cors", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
           ["@fastify/formbody", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.4.0"],\
           ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
-          ["@sonamu-kit/ui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui"],\
+          ["@sonamu-kit/ui", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.8"],\
           ["@swc/core", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.14.0"],\
           ["@types/fastify", null],\
