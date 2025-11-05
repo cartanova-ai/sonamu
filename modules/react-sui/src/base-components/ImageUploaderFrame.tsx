@@ -32,6 +32,7 @@ type OnChange<T> = (e: AllEvent, data: { value: T }) => void;
 type CommonProps<T> = Omit<HTMLAttributes<HTMLDivElement>, "onChange"> & {
   maxSize?: number;
   accept?: string;
+  preview?: boolean;
 } & (
     | {
         multiple: true;
@@ -45,8 +46,10 @@ type CommonProps<T> = Omit<HTMLAttributes<HTMLDivElement>, "onChange"> & {
       }
   );
 
-type EagerModeProps = { mode: "eager" } & CommonProps<string> & {
-    uploader?: (domFiles: File[]) => Promise<string[]>;
+export type UploadedFile = { url: string; name: string };
+
+type EagerModeProps = { mode: "eager" } & CommonProps<UploadedFile> & {
+    uploader: (domFiles: File[]) => Promise<UploadedFile[]>;
   };
 type LazyModeProps = { mode: "lazy" } & CommonProps<File>;
 export type ImageUploaderFrameProps = EagerModeProps | LazyModeProps;
@@ -92,13 +95,13 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const uploader =
     mode === "eager" ? (props as EagerModeProps).uploader : undefined;
 
-  const { multiple, maxSize, value, onChange, ...divProps } = props;
+  const { multiple, maxSize, value, onChange, accept, ...divProps } = props;
   const [loading, setLoading] = useState<boolean>(false);
   const ref = useRef<HTMLInputElement | null>(null);
 
   // Eager mode: value는 string[]
   const images = useMemo(
-    () => (mode === "eager" ? asArray<string>(value as any) : []),
+    () => (mode === "eager" ? asArray<UploadedFile>(value as any) : []),
     [mode, value]
   );
   // Lazy mode: value는 File[]
@@ -109,21 +112,21 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const previewUrls = useObjectUrls(mode === "lazy" ? files : []);
 
   const items: string[] = useMemo(
-    () => (mode === "eager" ? images : previewUrls),
+    () => (mode === "eager" ? images.map((image) => image.url) : previewUrls),
     [mode, images, previewUrls]
   );
 
   const setImagesWithOnChange = (
     e: AllEvent,
-    callback: (images: string[]) => string[]
+    callback: (images: UploadedFile[]) => UploadedFile[]
   ): void => {
     const res = callback(images);
     if (multiple) {
-      (onChange as OnChange<string[]>)(e, {
+      (onChange as OnChange<UploadedFile[]>)(e, {
         value: res,
       });
     } else {
-      (onChange as OnChange<string | null>)(e, {
+      (onChange as OnChange<UploadedFile | null>)(e, {
         value: res.length > 0 ? res[0] : null,
       });
     }
@@ -203,18 +206,18 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
           setLoading(false);
           fileInput.value = "";
         }
-        const fileUrls = await Promise.all(
+        const uploadedFiles = await Promise.all(
           Array.from(fileInput.files).map((domFile) =>
             uploadSingleFile(domFile)
           )
         );
         setImagesWithOnChange(e, (images) => {
-          return [...images, ...fileUrls];
+          return [...images, ...uploadedFiles];
         });
       } else {
-        const fileUrl = await uploadSingleFile(fileInput.files[0]);
+        const uploadedFile = await uploadSingleFile(fileInput.files[0]);
         setImagesWithOnChange(e, (images) => {
-          return [...images, fileUrl];
+          return [...images, uploadedFile];
         });
       }
       setLoading(false);
@@ -241,13 +244,12 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     };
   };
 
-  const uploadSingleFile = async (domFile: File): Promise<string> => {
+  const uploadSingleFile = async (domFile: File): Promise<UploadedFile> => {
     if (!uploader) {
       throw new Error("uploader is required for eager mode");
     }
-    return new Promise((resolve) => {
-      uploader([domFile]).then((result) => resolve(result[0]));
-    });
+    const result = await uploader([domFile]);
+    return result[0];
   };
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -289,6 +291,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
         onChange={handleChange}
         ref={ref}
         multiple={multiple}
+        accept={accept}
         style={{ display: "none" }}
       />
       {(multiple === true || items.length === 0) && (
@@ -317,6 +320,10 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
                   src={item}
                   handle={multiple}
                   onDelButtonClicked={getHandlerImageDelButtonClicked(index)}
+                  preview={props.preview ?? true}
+                  name={
+                    mode === "eager" ? images[index]?.name : files[index]?.name
+                  }
                 />
               ))}
               <DragOverlay>
@@ -341,12 +348,16 @@ type UploadedImageProps = {
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => void;
   handle?: boolean;
+  preview: ImageUploaderFrameProps["preview"];
+  name?: string;
 };
 export function UploadedImage({
   id,
   src,
   onDelButtonClicked,
   handle,
+  preview,
+  name,
 }: UploadedImageProps) {
   const {
     attributes,
@@ -363,25 +374,16 @@ export function UploadedImage({
   const handleImgClick = () => {
     window.open(src);
   };
-  const handleCopyClick = () => {
-    copyToClipboard(src);
-    alert("URL 복사됨");
-  };
 
-  function copyToClipboard(val: string) {
-    const element = document.createElement("textarea");
-    element.value = val;
-    element.setAttribute("readonly", "");
-    element.style.position = "absolute";
-    element.style.left = "-9999px";
-    document.body.appendChild(element);
-    element.select();
-    var returnValue = document.execCommand("copy");
-    document.body.removeChild(element);
-    if (!returnValue) {
-      throw new Error("copied nothing");
+  const handleCopyClick = async () => {
+    try {
+      await navigator.clipboard.writeText(src);
+      alert("URL 복사됨");
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      alert("URL 복사 실패");
     }
-  }
+  };
 
   return (
     <div
@@ -393,9 +395,9 @@ export function UploadedImage({
         opacity: isDragging ? 0.3 : 1,
       }}
       ref={setNodeRef}
-      onClick={() => window.open(src)}
+      onClick={handleImgClick}
     >
-      <img src={src} onClick={handleImgClick} />
+      {preview ? <img src={src} /> : <span>{name ?? ""}</span>}
       <ButtonGroup size="mini" className="buttons">
         {handle && (
           <Button
