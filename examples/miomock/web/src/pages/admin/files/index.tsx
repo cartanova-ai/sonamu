@@ -49,6 +49,7 @@ export default function FileList({}: FileListProps) {
 
   // Lazy 모드 테스트 상태
   const [lazyFile, setLazyFile] = useState<File | null>(null);
+  const [lazyFiles, setLazyFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   // 리스트 필터
   const { listParams, register } = useListParams(FileListParams, {
@@ -199,6 +200,60 @@ export default function FileList({}: FileListProps) {
                   </Button>
                   <span style={{ marginLeft: "1em" }}>
                     {lazyFile ? lazyFile.name : "파일 대기 중"}
+                  </span>
+                </Form.Field>
+              </Form.Group>
+            </Form>
+          </Segment>
+
+          <Segment color="olive">
+            <Label attached="top" color="olive">
+              Lazy 모드 테스트 (Multiple)
+            </Label>
+            <Form>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <label>파일 선택 (업로드 대기)</label>
+                  <ImageUploader
+                    mode="lazy"
+                    accept="image/*"
+                    value={lazyFiles}
+                    preview={false}
+                    multiple={true}
+                    onChange={(e, data) => setLazyFiles(data.value)}
+                  />
+                </Form.Field>
+              </Form.Group>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <Button
+                    color="green"
+                    onClick={async () => {
+                      setUploading(true);
+                      try {
+                        if (lazyFiles.length > 0) {
+                          const urls = await Promise.all(
+                            lazyFiles.map(async (file) => {
+                              const { url } = (await FileService.upload(file))
+                                .file;
+                              return url;
+                            })
+                          );
+                          alert(`업로드 완료! URL: ${urls.join(", ")}`);
+                          setLazyFiles([]); // 업로드 후 초기화
+                          mutate();
+                        }
+                      } finally {
+                        setUploading(false);
+                      }
+                    }}
+                    disabled={lazyFiles.length === 0}
+                    loading={uploading}
+                  >
+                    저장 (클릭 시 업로드 시작)
+                  </Button>
+                  <span style={{ marginLeft: "1em" }}>
+                    {`${lazyFiles.length}개의 파일 대기 중`}
                   </span>
                 </Form.Field>
               </Form.Group>

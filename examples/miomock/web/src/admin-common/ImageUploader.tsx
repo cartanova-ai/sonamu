@@ -15,11 +15,11 @@ export function ImageUploader(props: ImageUploaderProps) {
     return <ImageUploaderFrame {...props} />;
   }
 
-  const uploader = async (domFiles: File[]): Promise<string[]> => {
+  const uploader = async (domFiles: File[]) => {
     return await Promise.all(
       domFiles.map(async (domFile) => {
         const response = await FileService.upload(domFile);
-        return response.file.url;
+        return response.file;
       })
     );
   };
