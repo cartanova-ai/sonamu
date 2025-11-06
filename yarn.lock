@@ -4430,7 +4430,8 @@ __metadata:
     vite: "npm:^4.4.5"
     zod: "npm:^4.1.12"
   peerDependencies:
-    sonamu: "workspace:^"
+    "@sonamu-kit/react-sui": ^0.1.14
+    sonamu: ^0.5.0
   languageName: unknown
   linkType: soft
 
