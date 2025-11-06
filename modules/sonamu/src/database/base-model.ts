@@ -218,6 +218,7 @@ export class BaseModelClass {
     subset,
     subsetQuery,
     build,
+    afterBuild,
     debug,
     db: _db,
     optimizeCountQuery,
@@ -226,6 +227,13 @@ export class BaseModelClass {
     params: T;
     subsetQuery: SubsetQuery;
     build: (buildParams: {
+      qb: Knex.QueryBuilder;
+      db: Knex;
+      select: (string | Knex.Raw)[];
+      joins: SubsetQuery["joins"];
+      virtual: string[];
+    }) => Knex.QueryBuilder;
+    afterBuild?: (buildParams: {
       qb: Knex.QueryBuilder;
       db: Knex;
       select: (string | Knex.Raw)[];
@@ -303,7 +311,16 @@ export class BaseModelClass {
         applyJoinClause(clonedQb, joins);
       }
 
-      const parsedQuery = parser.astify(clonedQb.toQuery());
+      const processedQb =
+        afterBuild?.({
+          qb: clonedQb,
+          db,
+          select,
+          joins,
+          virtual,
+        }) ?? clonedQb;
+
+      const parsedQuery = parser.astify(processedQb.toQuery());
       const q = Array.isArray(parsedQuery) ? parsedQuery[0] : parsedQuery;
       if (q.type !== "select") {
         throw new Error("Invalid query");
@@ -346,10 +363,19 @@ export class BaseModelClass {
       }
 
       // select, rows
-      const listQuery = qb.clone().select(select);
+      const clonedQb = qb.clone().select(select);
 
       // join
-      applyJoinClause(listQuery, joins);
+      applyJoinClause(clonedQb, joins);
+
+      const listQuery =
+        afterBuild?.({
+          qb: clonedQb,
+          db,
+          select,
+          joins,
+          virtual,
+        }) ?? clonedQb;
 
       let rows = await listQuery;
       // debug: listQuery
