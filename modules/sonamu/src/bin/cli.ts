@@ -1,27 +1,29 @@
-/* Global Begin */
 import chalk from "chalk";
-console.log(chalk.bgBlue(`BEGIN ${new Date()}`));
-
 import dotenv from "dotenv";
 dotenv.config();
 
 import path from "path";
 import { tsicli } from "tsicli";
 import { execSync } from "child_process";
-import { mkdir, readFile, readdir, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 import process from "process";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
+import { findApiRootPath } from "../utils/utils";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
-import { SWC_BUILD_COMMAND } from "./build-config";
+// import { SWC_BUILD_COMMAND } from "./build-config";
+import { NodemonSettings } from "nodemon";
 
 let migrator: Migrator;
 
 async function bootstrap() {
-  await Sonamu.init(false, false);
+  // dev:serve 명령어가 아닌 경우에만 Sonamu 초기화
+  if (process.argv[2] !== "dev:serve") {
+    await Sonamu.init(false, false);
+  }
 
   await tsicli(process.argv, {
     types: {
@@ -84,16 +86,13 @@ bootstrap().finally(async () => {
     await migrator.destroy();
   }
   await FixtureManager.destroy();
-
-  /* Global End */
-  console.log(chalk.bgBlue(`END ${new Date()}\n`));
 });
 
 async function dev_serve() {
   const nodemon = await import("nodemon");
 
   const nodemonConfig = await (async () => {
-    const projectNodemonPath = path.join(Sonamu.apiRootPath, "nodemon.json");
+    const projectNodemonPath = path.join(findApiRootPath(), "nodemon.json");
     const hasProjectNodemon = await exists(projectNodemonPath);
 
     if (hasProjectNodemon) {
@@ -104,12 +103,11 @@ async function dev_serve() {
       watch: ["src/index.ts"],
       ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
       exec: [
-        SWC_BUILD_COMMAND,
-        "node -r source-map-support/register -r dotenv/config dist/index.js",
+        // SWC_BUILD_COMMAND,
+        "node --no-warnings -r source-map-support/register -r dotenv/config dist/index.js",
       ].join(" && "),
-    };
+    } as NodemonSettings;
   })();
-
   nodemon.default(nodemonConfig);
 
   // 프로세스 종료 처리
