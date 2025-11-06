@@ -24,6 +24,8 @@ export interface Driver {
   getUrl(key: string): string;
 
   getSignedUrl(key: string, expiresIn?: number): Promise<string>;
+
+  destroy(): void;
 }
 
 export type FSDriverConfig = {
@@ -57,6 +59,10 @@ export class FSDriver implements Driver {
   // 로컬 파일시스템은 signed URL을 지원하지 않으므로 일반 URL 반환
   async getSignedUrl(key: string, _expiresIn?: number): Promise<string> {
     return this.getUrl(key);
+  }
+
+  destroy() {
+    // 아무것도 하지 않음
   }
 }
 
@@ -117,5 +123,9 @@ export class S3Driver implements Driver {
     }
 
     return visibility;
+  }
+
+  destroy() {
+    this.s3.destroy();
   }
 }

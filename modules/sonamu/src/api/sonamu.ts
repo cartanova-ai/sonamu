@@ -561,6 +561,7 @@ class SonamuClass {
     const { BaseModel } = require("../database/base-model");
     await BaseModel.destroy();
     await this.watcher?.close();
+    this.storage?.destroy();
   }
 }
 export const Sonamu = new SonamuClass();
