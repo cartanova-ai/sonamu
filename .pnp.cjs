@@ -2639,6 +2639,10 @@ const RAW_RUNTIME_STATE =
       "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"\
     ],\
     [\
+      "fastify-sse-v2",\
+      "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1"\
+    ],\
+    [\
       "fastq",\
       "npm:1.19.1"\
     ],\
@@ -2809,6 +2813,10 @@ const RAW_RUNTIME_STATE =
     [\
       "get-intrinsic",\
       "npm:1.3.1"\
+    ],\
+    [\
+      "get-iterator",\
+      "npm:1.0.2"\
     ],\
     [\
       "get-package-type",\
@@ -3297,6 +3305,14 @@ const RAW_RUNTIME_STATE =
     [\
       "istanbul-reports",\
       "npm:3.2.0"\
+    ],\
+    [\
+      "it-pushable",\
+      "npm:1.4.2"\
+    ],\
+    [\
+      "it-to-stream",\
+      "npm:1.0.0"\
     ],\
     [\
       "jackspeak",\
@@ -3997,6 +4013,14 @@ const RAW_RUNTIME_STATE =
     [\
       "p-cancelable",\
       "npm:3.0.0"\
+    ],\
+    [\
+      "p-defer",\
+      "npm:3.0.0"\
+    ],\
+    [\
+      "p-fifo",\
+      "npm:1.0.0"\
     ],\
     [\
       "p-limit",\
@@ -15613,6 +15637,31 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["fastify-sse-v2", [\
+      ["npm:4.2.1", {\
+        "packageLocation": "./.yarn/cache/fastify-sse-v2-npm-4.2.1-e81450cba1-7b81887889.zip/node_modules/fastify-sse-v2/",\
+        "packageDependencies": [\
+          ["fastify-sse-v2", "npm:4.2.1"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1", {\
+        "packageLocation": "./.yarn/__virtual__/fastify-sse-v2-virtual-d48d93444a/0/cache/fastify-sse-v2-npm-4.2.1-e81450cba1-7b81887889.zip/node_modules/fastify-sse-v2/",\
+        "packageDependencies": [\
+          ["@types/fastify", null],\
+          ["fastify", "npm:4.29.1"],\
+          ["fastify-plugin", "npm:4.5.1"],\
+          ["fastify-sse-v2", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1"],\
+          ["it-pushable", "npm:1.4.2"],\
+          ["it-to-stream", "npm:1.0.0"]\
+        ],\
+        "packagePeers": [\
+          "@types/fastify",\
+          "fastify"\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["fastq", [\
       ["npm:1.19.1", {\
         "packageLocation": "./.yarn/cache/fastq-npm-1.19.1-ca0a13ec3f-75679dc226.zip/node_modules/fastq/",\
@@ -16121,6 +16170,15 @@ const RAW_RUNTIME_STATE =
           ["has-symbols", "npm:1.1.0"],\
           ["hasown", "npm:2.0.2"],\
           ["math-intrinsics", "npm:1.1.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["get-iterator", [\
+      ["npm:1.0.2", {\
+        "packageLocation": "./.yarn/cache/get-iterator-npm-1.0.2-5e7d7f186f-4a819aa91e.zip/node_modules/get-iterator/",\
+        "packageDependencies": [\
+          ["get-iterator", "npm:1.0.2"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -17707,6 +17765,31 @@ const RAW_RUNTIME_STATE =
           ["html-escaper", "npm:2.0.2"],\
           ["istanbul-lib-report", "npm:3.0.1"],\
           ["istanbul-reports", "npm:3.2.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["it-pushable", [\
+      ["npm:1.4.2", {\
+        "packageLocation": "./.yarn/cache/it-pushable-npm-1.4.2-efcd9e4c2d-7eb0fcc93c.zip/node_modules/it-pushable/",\
+        "packageDependencies": [\
+          ["fast-fifo", "npm:1.3.2"],\
+          ["it-pushable", "npm:1.4.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["it-to-stream", [\
+      ["npm:1.0.0", {\
+        "packageLocation": "./.yarn/cache/it-to-stream-npm-1.0.0-294db689c3-c947bedf25.zip/node_modules/it-to-stream/",\
+        "packageDependencies": [\
+          ["buffer", "npm:6.0.3"],\
+          ["fast-fifo", "npm:1.3.2"],\
+          ["get-iterator", "npm:1.0.2"],\
+          ["it-to-stream", "npm:1.0.0"],\
+          ["p-defer", "npm:3.0.0"],\
+          ["p-fifo", "npm:1.0.0"],\
+          ["readable-stream", "npm:3.6.2"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -20102,6 +20185,26 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/p-cancelable-npm-3.0.0-e6c8101c97-a5eab7cf5a.zip/node_modules/p-cancelable/",\
         "packageDependencies": [\
           ["p-cancelable", "npm:3.0.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["p-defer", [\
+      ["npm:3.0.0", {\
+        "packageLocation": "./.yarn/cache/p-defer-npm-3.0.0-5c4fecb489-ac3b0976a1.zip/node_modules/p-defer/",\
+        "packageDependencies": [\
+          ["p-defer", "npm:3.0.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["p-fifo", [\
+      ["npm:1.0.0", {\
+        "packageLocation": "./.yarn/cache/p-fifo-npm-1.0.0-70306fa5f2-4cdce44ff8.zip/node_modules/p-fifo/",\
+        "packageDependencies": [\
+          ["fast-fifo", "npm:1.3.2"],\
+          ["p-defer", "npm:3.0.0"],\
+          ["p-fifo", "npm:1.0.0"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -22632,6 +22735,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
+          ["fastify-sse-v2", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1"],\
           ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
@@ -22697,6 +22801,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
+          ["fastify-sse-v2", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1"],\
           ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:3.1.0"],\
@@ -22756,6 +22861,7 @@ const RAW_RUNTIME_STATE =
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
+          ["fastify-sse-v2", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:4.2.1"],\
           ["flydrive", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:1.3.0"],\
           ["inflection", "npm:1.13.4"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\

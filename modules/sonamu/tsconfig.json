@@ -6,6 +6,10 @@
     "outDir": "dist",
     "sourceMap": true,
     "lib": ["esnext", "dom"],
+
+    // NOTE(Haze, 251106): SSE 관련 fastify 타입 이슈로 명시적으로 추가함.
+    "types": ["fastify-sse-v2"],
+
     "declaration": true,
     "declarationMap": true,
 

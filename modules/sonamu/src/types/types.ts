@@ -12,6 +12,8 @@ import { z } from "zod";
 import type { Context, ApiDecoratorOptions } from "../api";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
 import type { Driver } from "../file-storage/driver";
+import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
+
 
 /*
   Enums
@@ -879,10 +881,12 @@ export type SonamuServerOptions = {
   };
 
   plugins?: {
-    formbody?: boolean | FastifyFormbodyOptions;
-    qs?: boolean | QsPluginOptions;
     cors?: boolean | FastifyCorsOptions;
+    formbody?: boolean | FastifyFormbodyOptions;
     multipart?: boolean | FastifyMultipartOptions;
+    qs?: boolean | QsPluginOptions;
+    sse?: boolean | SsePluginOptions;
+
     custom?: (server: FastifyInstance) => void;
   };
 
