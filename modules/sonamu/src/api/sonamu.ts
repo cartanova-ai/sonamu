@@ -456,7 +456,11 @@ class SonamuClass {
         return;
       }
 
-      await this.handleFileChange(event, filePath);
+      try {
+        await this.handleFileChange(event, filePath);
+      } catch (e) {
+        console.error(e);
+      }
     });
   }
 
