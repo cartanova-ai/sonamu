@@ -1,18 +1,24 @@
-import path from "path";
-import { readFile } from "fs/promises";
-import { exists } from "../utils/fs-utils";
 import { AsyncLocalStorage } from "async_hooks";
 import chalk from "chalk";
 import fastify from "fastify";
+import { readFile } from "fs/promises";
+import path from "path";
+import { exists } from "../utils/fs-utils";
 
-import { ZodError } from "zod";
-import { getZodObjectFromApi } from "./code-converters";
+import type { FSWatcher } from "chokidar";
+import { formatInTimeZone } from "date-fns-tz";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { IncomingMessage, Server, ServerResponse } from "http";
+import { ZodError, ZodObject } from "zod";
+import { DB, SonamuDBConfig } from "../database/db";
+import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
 import {
   BadRequestException,
   NotFoundException,
 } from "../exceptions/so-exceptions";
-import { humanizeZodError } from "../utils/zod-error";
-import { fastifyCaster } from "./caster";
+import type { Driver } from "../file-storage/driver";
+import { createSSEFactory } from "../stream/sse";
+import type { Syncer } from "../syncer/syncer";
 import {
   ApiParamType,
   SonamuFastifyConfig,
@@ -20,16 +26,11 @@ import {
 } from "../types/types";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
-import { DB, SonamuDBConfig } from "../database/db";
-import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
-import type { ExtendedApi } from "./decorators";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { IncomingMessage, Server, ServerResponse } from "http";
+import { humanizeZodError } from "../utils/zod-error";
+import { fastifyCaster } from "./caster";
+import { getZodObjectFromApi } from "./code-converters";
 import type { Context, UploadContext } from "./context";
-import type { Syncer } from "../syncer/syncer";
-import type { FSWatcher } from "chokidar";
-import { formatInTimeZone } from "date-fns-tz";
-import type { Driver } from "../file-storage/driver";
+import type { ExtendedApi } from "./decorators";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -389,16 +390,31 @@ class SonamuClass {
         return cachedData;
       }
 
-      // 결과 (AsyncLocalStorage 적용)
-      const context = config.contextProvider(
-        {
-          request,
-          reply,
-          headers: request.headers,
-        },
+      // createSSEFactory 함수에 미리 request의 socket과 reply를 바인딩.
+      const createSSE = (<T extends ZodObject>(
+        _request: FastifyRequest,
+        _reply: FastifyReply,
+        _events: T
+      ) => createSSEFactory(_request.socket, _reply, _events)).bind(
+        null,
         request,
-        reply
+        reply,
       );
+
+      // 결과 (AsyncLocalStorage 적용)
+      const context: Context = {
+        ...config.contextProvider(
+          {
+            request,
+            reply,
+            headers: request.headers,
+          },
+          request,
+          reply
+        ),
+        createSSE,
+      };
+
       const model = this.syncer.models[api.modelName];
       return this.asyncLocalStorage.run({ context }, async () => {
         const result = await (model as any)[api.methodName].apply(
@@ -453,10 +469,11 @@ class SonamuClass {
     }
 
     const pluginsModules = {
-      formbody: "@fastify/formbody",
-      qs: "fastify-qs",
       cors: "@fastify/cors",
+      formbody: "@fastify/formbody",
       multipart: "@fastify/multipart",
+      qs: "fastify-qs",
+      sse: "fastify-sse-v2",
     } as const;
 
     const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(

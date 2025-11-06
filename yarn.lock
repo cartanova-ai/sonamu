@@ -6414,7 +6414,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"buffer@npm:*":
+"buffer@npm:*, buffer@npm:^6.0.3":
   version: 6.0.3
   resolution: "buffer@npm:6.0.3"
   dependencies:
@@ -8377,7 +8377,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-fifo@npm:^1.2.0, fast-fifo@npm:^1.3.2":
+"fast-fifo@npm:^1.0.0, fast-fifo@npm:^1.2.0, fast-fifo@npm:^1.3.2":
   version: 1.3.2
   resolution: "fast-fifo@npm:1.3.2"
   checksum: 10/6bfcba3e4df5af7be3332703b69a7898a8ed7020837ec4395bb341bd96cc3a6d86c3f6071dd98da289618cf2234c70d84b2a6f09a33dd6f988b1ff60d8e54275
@@ -8472,7 +8472,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fastify-plugin@npm:^4.0.0, fastify-plugin@npm:^4.5.0":
+"fastify-plugin@npm:^4.0.0, fastify-plugin@npm:^4.3.0, fastify-plugin@npm:^4.5.0":
   version: 4.5.1
   resolution: "fastify-plugin@npm:4.5.1"
   checksum: 10/7c6d777ada0f01c8a1166a2a669cccfd6074c7764121f07cce997745f198227a271c7a317aaf0da273b329f24307f0eba3f093d872d29b839b33deb525bbafe2
@@ -8503,6 +8503,19 @@ __metadata:
     fastify-plugin: "npm:^5.0.1"
     qs: "npm:^6.13.0"
   checksum: 10/f424094ee27011aa812a0dfedf2378fa93f639f44c7fe8a4bfd141837543b0e9bfe8eb1bf25195d76389b2e1981f4f64e8f8bada2e01a560a29c7f8d39378bc1
+  languageName: node
+  linkType: hard
+
+"fastify-sse-v2@npm:^4.2.1":
+  version: 4.2.1
+  resolution: "fastify-sse-v2@npm:4.2.1"
+  dependencies:
+    fastify-plugin: "npm:^4.3.0"
+    it-pushable: "npm:^1.4.2"
+    it-to-stream: "npm:^1.0.0"
+  peerDependencies:
+    fastify: ">=4"
+  checksum: 10/7b818878895615a13a9edd8fe62b44d4046f01d9f58880b88eee526d2b9195b27f44048509bbd4b4027654863d0a38d1374ae7071b7ee52efb1cbf3320a54e36
   languageName: node
   linkType: hard
 
@@ -8961,6 +8974,13 @@ __metadata:
     hasown: "npm:^2.0.2"
     math-intrinsics: "npm:^1.1.0"
   checksum: 10/bb579dda84caa4a3a41611bdd483dade7f00f246f2a7992eb143c5861155290df3fdb48a8406efa3dfb0b434e2c8fafa4eebd469e409d0439247f85fc3fa2cc1
+  languageName: node
+  linkType: hard
+
+"get-iterator@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "get-iterator@npm:1.0.2"
+  checksum: 10/4a819aa91ecb61f4fd507bd62e3468d55f642f06011f944c381a739a21f685c36a37feb9324c8971e7c0fc70ca172066c45874fa2d1dcdf4b4fb8e43f16058c2
   languageName: node
   linkType: hard
 
@@ -10387,6 +10407,29 @@ __metadata:
     html-escaper: "npm:^2.0.0"
     istanbul-lib-report: "npm:^3.0.0"
   checksum: 10/6773a1d5c7d47eeec75b317144fe2a3b1da84a44b6282bebdc856e09667865e58c9b025b75b3d87f5bc62939126cbba4c871ee84254537d934ba5da5d4c4ec4e
+  languageName: node
+  linkType: hard
+
+"it-pushable@npm:^1.4.2":
+  version: 1.4.2
+  resolution: "it-pushable@npm:1.4.2"
+  dependencies:
+    fast-fifo: "npm:^1.0.0"
+  checksum: 10/7eb0fcc93cf0dfe0a064b6eb4e6b5f7b0e34d725ff3c5249c8989be5b3a8c77f3b4b1fa2bbbada08f74937194dd16409dbc97677195c4ed1ca2d87db47e91072
+  languageName: node
+  linkType: hard
+
+"it-to-stream@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "it-to-stream@npm:1.0.0"
+  dependencies:
+    buffer: "npm:^6.0.3"
+    fast-fifo: "npm:^1.0.0"
+    get-iterator: "npm:^1.0.2"
+    p-defer: "npm:^3.0.0"
+    p-fifo: "npm:^1.0.0"
+    readable-stream: "npm:^3.6.0"
+  checksum: 10/c947bedf25c21b27a7d3bf299aa7072f3ea9c4a4bfe2e8586428ae8760cfe3d37339445c48184436ba71e23bee03d5692a8420a0f7f0537cb118104cd54d2aaa
   languageName: node
   linkType: hard
 
@@ -12498,6 +12541,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"p-defer@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "p-defer@npm:3.0.0"
+  checksum: 10/ac3b0976a1c76b67cca1a34e00f7299b0cc230891f820749686aa84f8947326bbe0f8e3b7d9ca511578ee06f0c1a6e0ff68c8e9c325eac455f09d99f91697161
+  languageName: node
+  linkType: hard
+
+"p-fifo@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "p-fifo@npm:1.0.0"
+  dependencies:
+    fast-fifo: "npm:^1.0.0"
+    p-defer: "npm:^3.0.0"
+  checksum: 10/4cdce44ff8266351014a460705a804c02760e5b721a018dbef6fae7d25caf83af2e343be58810297473383c1783bb7048388cb5c22938b3f904818531bc44ee7
+  languageName: node
+  linkType: hard
+
 "p-limit@npm:^2.2.0":
   version: 2.3.0
   resolution: "p-limit@npm:2.3.0"
@@ -13408,7 +13468,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"readable-stream@npm:^3.1.1, readable-stream@npm:^3.4.0":
+"readable-stream@npm:^3.1.1, readable-stream@npm:^3.4.0, readable-stream@npm:^3.6.0":
   version: 3.6.2
   resolution: "readable-stream@npm:3.6.2"
   dependencies:
@@ -14788,6 +14848,7 @@ __metadata:
     fast-deep-equal: "npm:^3.1.3"
     fastify: "npm:^4.23.2"
     fastify-qs: "npm:^4.0.0"
+    fastify-sse-v2: "npm:^4.2.1"
     flydrive: "npm:^1.3.0"
     inflection: "npm:^1.13.2"
     knex: "npm:^3.1.0"

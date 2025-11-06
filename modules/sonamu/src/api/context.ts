@@ -1,12 +1,14 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
-import {
-  type Server,
-  type IncomingMessage,
-  type ServerResponse,
-  type IncomingHttpHeaders,
+import type {
+  Server,
+  IncomingMessage,
+  ServerResponse,
+  IncomingHttpHeaders,
 } from "http";
 import type { FileStorage } from "../file-storage/file-storage";
+import type { ZodObject } from "zod";
+import type { createSSEFactory } from "../stream/sse";
 
 export interface ContextExtend {}
 export type Context = {
@@ -19,6 +21,9 @@ export type Context = {
     unknown
   >;
   headers: IncomingHttpHeaders;
+  createSSE: <T extends ZodObject>(
+    events: T
+  ) => ReturnType<typeof createSSEFactory<T>>;
 } & ContextExtend;
 
 export type UploadContext = {
