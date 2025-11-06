@@ -1,7 +1,6 @@
 import React, {
   ChangeEvent,
   HTMLAttributes,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -61,29 +60,30 @@ function asArray<T>(v: T | T[] | null | undefined): T[] {
   );
 }
 
+// TODO: 임시로 주석처리
 function useObjectUrls(files: File[]) {
-  const [map, setMap] = useState<Map<File, string>>(new Map());
+  const [map, _setMap] = useState<Map<File, string>>(new Map());
 
-  useEffect(() => {
-    const next = new Map<File, string>();
-    for (const f of files) {
-      const kept = map.get(f);
-      next.set(f, kept ?? URL.createObjectURL(f));
-    }
+  // useEffect(() => {
+  //   const next = new Map<File, string>();
+  //   for (const f of files) {
+  //     const kept = map.get(f);
+  //     next.set(f, kept ?? URL.createObjectURL(f));
+  //   }
 
-    for (const [f, url] of map.entries()) {
-      if (!files.includes(f)) URL.revokeObjectURL(url);
-    }
+  //   for (const [f, url] of map.entries()) {
+  //     if (!files.includes(f)) URL.revokeObjectURL(url);
+  //   }
 
-    setMap(next);
-  }, [files]);
+  //   setMap(next);
+  // }, [files]);
 
-  useEffect(
-    () => () => {
-      for (const url of map.values()) URL.revokeObjectURL(url);
-    },
-    [map]
-  );
+  // useEffect(
+  //   () => () => {
+  //     for (const url of map.values()) URL.revokeObjectURL(url);
+  //   },
+  //   [map]
+  // );
 
   const urls = useMemo(() => files.map((f) => map.get(f) ?? ""), [files, map]);
 
