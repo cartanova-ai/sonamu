@@ -14,7 +14,6 @@ import type { FastifyMultipartOptions } from "@fastify/multipart";
 import type { Driver } from "../file-storage/driver";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 
-
 /*
   Enums
 */
@@ -824,7 +823,7 @@ export type RelationNode = {
 export interface DatabaseSchemaExtend {}
 export type ManyToManyBaseSchema<
   FromIdKey extends string,
-  ToIdKey extends string
+  ToIdKey extends string,
 > = {
   id: number;
 } & {
@@ -835,7 +834,10 @@ export type ManyToManyBaseSchema<
 
 export type SonamuFastifyConfig = {
   contextProvider: (
-    defaultContext: Pick<Context, "request" | "reply" | "headers">,
+    defaultContext: Pick<
+      Context,
+      "request" | "reply" | "headers" | "createSSE"
+    >,
     request: FastifyRequest,
     reply: FastifyReply
   ) => Context;

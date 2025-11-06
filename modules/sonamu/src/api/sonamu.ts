@@ -398,7 +398,7 @@ class SonamuClass {
       ) => createSSEFactory(_request.socket, _reply, _events)).bind(
         null,
         request,
-        reply,
+        reply
       );
 
       // 결과 (AsyncLocalStorage 적용)
@@ -408,11 +408,11 @@ class SonamuClass {
             request,
             reply,
             headers: request.headers,
+            createSSE,
           },
           request,
           reply
         ),
-        createSSE,
       };
 
       const model = this.syncer.models[api.modelName];
