@@ -1,6 +1,6 @@
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import { bootstrap } from "../testing/bootstrap";
-import { BaseModelClass, transactional, api } from "sonamu";
+import { BaseModelClass, transactional } from "sonamu";
 import { UserSaveParams } from "../application/user/user.types";
 import assert from "assert";
 

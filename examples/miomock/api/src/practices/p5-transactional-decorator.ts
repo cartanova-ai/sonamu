@@ -199,7 +199,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
 
     // 4. DB에 순서대로 저장
     const [companyId] = await wdb.ubUpsert("companies");
-    const [departmentId] = await wdb.ubUpsert("departments");
+    const [_departmentId] = await wdb.ubUpsert("departments");
     const userIds = await wdb.ubUpsert("users");
     const employeeIds = await wdb.ubUpsert("employees");
 
