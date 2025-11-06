@@ -4,10 +4,10 @@ const baseconfig: SonamuDBBaseConfig = {
   database: "miomock",
   defaultOptions: {
     connection: {
-      host: "0.0.0.0",
-      port: 3306,
-      user: "root",
-      password: "miomock123",
+      host: process.env.MIOMOCK_DB_HOST ?? "0.0.0.0",
+      port: Number(process.env.MIOMOCK_DB_PORT ?? 3306),
+      user: process.env.MIOMOCK_DB_USER ?? "root",
+      password: process.env.MIOMOCK_DB_PASSWORD ?? "miomock123",
       typeCast: function (field: any, next: any) {
         if (field.type == "TINY" && field.length == 1) {
           const value = field.string();
