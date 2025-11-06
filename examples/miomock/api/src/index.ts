@@ -7,9 +7,6 @@ const host = "localhost";
 const port = 10280;
 
 async function bootstrap() {
-  const current = "../../../";
-  console.log(path.resolve(current));
-
   await Sonamu.createServer({
     listen: { port, host },
     plugins: {
