@@ -202,9 +202,7 @@ export function upload() {
           const { FileStorage } = await import("../file-storage/file-storage");
           uploadContext.file = new FileStorage(rawFile, storage);
         }
-      }
-
-      if (request.files) {
+      } else if (request.files) {
         const { FileStorage } = await import("../file-storage/file-storage");
         const rawFilesIterator = request.files();
         for await (const rawFile of rawFilesIterator) {
