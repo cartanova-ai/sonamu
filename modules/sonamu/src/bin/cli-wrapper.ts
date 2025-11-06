@@ -35,8 +35,12 @@ if (!existsSync(scriptPath)) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [scriptPath, ...args], {
-  stdio: "inherit",
-});
+const result = spawnSync(
+  process.execPath,
+  ["--no-warnings", scriptPath, ...args],
+  {
+    stdio: "inherit",
+  }
+);
 
 process.exit(result.status ?? 1);
