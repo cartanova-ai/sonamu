@@ -332,25 +332,22 @@ async function stub_practice(name: string) {
   const fileName = `p${currentSeqNo}-${name}.ts`;
   const dstPath = path.join(practiceDir, fileName);
 
-  // FIXME
   const code = [
-    `import { BaseModel } from "sonamu";`,
+    `import { Sonamu } from "sonamu";`,
     "",
     `console.clear();`,
     `console.log("${fileName}");`,
     "",
-    `async function bootstrap() {`,
+    `Sonamu.runScript(async () => {`,
     ` // TODO`,
-    `}`,
-    `bootstrap().finally(async () => {`,
-    `await BaseModel.destroy();`,
     `});`,
+    "",
   ].join("\n");
   await writeFile(dstPath, code);
 
   execSync(`code ${dstPath}`);
 
-  const runCode = `yarn node -r source-map-support/register dist/practices/${fileName.replace(
+  const runCode = `yarn node -r dotenv/config-r source-map-support/register dist/practices/${fileName.replace(
     ".ts",
     ".js"
   )}`;
