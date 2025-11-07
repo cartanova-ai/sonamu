@@ -163,8 +163,8 @@ class DBClass {
     );
     const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
       connection: {
+        // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
         database: `${config.database}_fixture_remote`,
-        ...config.defaultOptions?.connection,
       },
     });
 
