@@ -24,6 +24,7 @@ export type SonamuDBBaseConfig = {
     development_slave?: MySQLConfig;
     production?: MySQLConfig;
     production_slave?: MySQLConfig;
+    remote_fixture?: MySQLConfig;
   };
 };
 
@@ -161,12 +162,12 @@ class DBClass {
       devMasterOptions,
       devSlaveOptions
     );
+    // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
     const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
       connection: {
         database: `${config.database}_fixture_remote`,
-        ...config.defaultOptions?.connection,
       },
-    });
+    }, config.environments?.remote_fixture);
 
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};

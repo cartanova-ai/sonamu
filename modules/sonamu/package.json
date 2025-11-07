@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "typescript",
@@ -72,6 +72,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
+    "@sonamu-kit/react-sui": "^0.1.14",
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
     "mysql2": "^3.6.1",
