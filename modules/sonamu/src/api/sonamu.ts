@@ -464,6 +464,18 @@ class SonamuClass {
     });
   }
 
+  /*
+     A function that automatically handles init and destroy when using Sonamu via scripts.    
+  */
+  async runScript(fn: () => Promise<void>) {
+    await this.init(true, false, undefined, false);
+    try {
+      await fn();
+    } finally {
+      await this.destroy();
+    }
+  }
+
   private registerPlugins(
     server: FastifyInstance,
     plugins: SonamuServerOptions["plugins"]
