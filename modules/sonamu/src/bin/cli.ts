@@ -347,7 +347,7 @@ async function stub_practice(name: string) {
 
   execSync(`code ${dstPath}`);
 
-  const runCode = `yarn node -r dotenv/config-r source-map-support/register dist/practices/${fileName.replace(
+  const runCode = `yarn node -r dotenv/config -r source-map-support/register dist/practices/${fileName.replace(
     ".ts",
     ".js"
   )}`;
