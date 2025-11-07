@@ -331,20 +331,26 @@ export function numF(
   return num && new Intl.NumberFormat().format(num);
 }
 
-export function dateF(sqlDateString: string | null | undefined): string | null {
-  if (sqlDateString === null || sqlDateString === undefined) {
+export function dateF(
+  sqlDateStringOrDate: Date | string | null | undefined
+): string | null {
+  if (sqlDateStringOrDate === null || sqlDateStringOrDate === undefined) {
     return null;
+  } else if (sqlDateStringOrDate instanceof Date) {
+    return format(sqlDateStringOrDate, "yyyy-MM-dd");
   } else {
-    return sqlDateString.slice(0, 10);
+    return sqlDateStringOrDate.slice(0, 10);
   }
 }
 export function datetimeF(
-  sqlDateString: string | null | undefined
+  sqlDateStringOrDate: Date | string | null | undefined
 ): string | null {
-  if (sqlDateString === null || sqlDateString === undefined) {
+  if (sqlDateStringOrDate === null || sqlDateStringOrDate === undefined) {
     return null;
+  } else if (sqlDateStringOrDate instanceof Date) {
+    return format(sqlDateStringOrDate, "yyyy-MM-dd HH:mm:ss");
   } else {
-    return sqlDateString.slice(0, 19);
+    return sqlDateStringOrDate.slice(0, 19);
   }
 }
 
