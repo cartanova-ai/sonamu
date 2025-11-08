@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button, Dropdown, Input, Segment, Tab } from "semantic-ui-react";
 import {
   ExtendedEntity,
@@ -22,7 +22,6 @@ const DB_NAMES = [
 export default function FixtureIndex() {
   const {
     data: entitiesData,
-    error: entitiesError,
     isLoading: entitiesLoading,
   } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");

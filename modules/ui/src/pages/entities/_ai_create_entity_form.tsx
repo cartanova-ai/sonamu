@@ -12,13 +12,13 @@ type AICreateEntityFormProps = {};
 export function AICreateEntityForm({}: AICreateEntityFormProps) {
   // useCommonModal
   const { doneModal } = useCommonModal();
-  const { loading, response } = useAICreateForm<EntityJson>({
+  const { response } = useAICreateForm<EntityJson>({
     type: "entity",
   });
   const [entity, setEntity] = useState<EntityJson | null>(null);
 
   // useSheetTable
-  const { regRow, regCell, isFocused } = useSheetTable({
+  const { regRow, regCell } = useSheetTable({
     sheets: [
       {
         name: "props",
