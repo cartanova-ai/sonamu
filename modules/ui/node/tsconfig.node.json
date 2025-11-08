@@ -3,6 +3,8 @@
     "target": "ESNext",
     "module": "CommonJS",
     "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
     "composite": true,
     "skipLibCheck": true,
     "moduleResolution": "node",
