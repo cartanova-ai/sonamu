@@ -1,3 +1,4 @@
+import { SonamuDBConfig } from "../database/db";
 import { GenMigrationCode } from "../types/types";
 
 export type MigrationCode = {
@@ -10,7 +11,7 @@ export type MigrationStatus = {
   codes: MigrationCode[];
   conns: {
     name: string;
-    connKey: string;
+    connKey: keyof SonamuDBConfig;
     connString: ConnString;
     currentVersion: string;
     status: string | number;
