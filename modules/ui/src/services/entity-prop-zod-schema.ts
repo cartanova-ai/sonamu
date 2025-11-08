@@ -129,7 +129,7 @@ export namespace EntityPropZodSchema {
   export function safeParse(form: {
     type: string;
     relationType?: string;
-  }): z.SafeParseSuccess<any> | z.SafeParseError<any> {
+  }): z.ZodSafeParseSuccess<any> | z.ZodSafeParseError<any> {
     const zodSchema = (() => {
       switch (form.type) {
         case "string":
