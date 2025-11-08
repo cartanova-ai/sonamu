@@ -13,6 +13,7 @@ import classNames from "classnames";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { MigrationActionForm } from "../entities/_action_form";
+import { SonamuDBConfig } from "sonamu";
 
 type MigrationsIndexProps = {};
 export default function MigrationsIndex(_props: MigrationsIndexProps) {
@@ -26,14 +27,14 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
 
-  const [selectedConnKeys, setSelectedConnKeys] = useState<string[]>([]);
+  const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
   const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
   const toggleConnKeys = (
     preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE"
   ) => {
-    const targetKeys = (() => {
+    const targetKeys: (keyof SonamuDBConfig)[] = (() => {
       switch (preset) {
         case "ALL":
           return [
@@ -106,7 +107,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
 
   const openActionModal = (
     action: "apply" | "rollback" | "shadow",
-    _targets?: string[]
+    _targets?: (keyof SonamuDBConfig)[]
   ) => {
     if (!conns) {
       return;
