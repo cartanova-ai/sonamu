@@ -20,7 +20,7 @@ export function AICreateEnumForm({
 }: AICreateEnumFormProps) {
   // useCommonModal
   const { doneModal } = useCommonModal();
-  const { response, loading } = useAICreateForm<EnumJson>({
+  const { response } = useAICreateForm<EnumJson>({
     type: "enum",
   });
   const [newEnum, setNewEnum] = useState<EnumJson | null>(null);

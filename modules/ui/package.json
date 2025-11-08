@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "rm -rf dist build && yarn build:client && yarn build:node",
-    "build:client": "vite build",
+    "build:client": "tsc --noEmit && vite build",
     "build:node": "tsup --config ./tsup.config.js && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
     "dev:client": "DEBUG_UI=true vite",

@@ -86,7 +86,7 @@ export function useEntitySearch(options?: {
       Object.values(item.subsets).forEach((subset) => {
         subset.forEach((value) => addToIndex(value, index));
       });
-      Object.entries(item.enumLabels).forEach(([key, value]) => {
+      Object.entries(item.enumLabels).forEach(([key]) => {
         addToIndex(key, index);
         // TODO: Enum 필드 추가
       });
@@ -215,7 +215,7 @@ export function useEntitySearch(options?: {
       });
 
       // Enums 검사
-      Object.entries(item.enumLabels).forEach(([key, value]) => {
+      Object.entries(item.enumLabels).forEach(([key]) => {
         const keyScore = calculateFieldScore(query, key);
         if (keyScore > 0.2) {
           if (maxScore < keyScore) {

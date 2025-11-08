@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
 import _ from "lodash";
@@ -17,7 +17,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
   const navigate = useNavigate();
 
-  const { data, error, mutate } = SonamuUIService.useEntities();
+  const { data } = SonamuUIService.useEntities();
   const { entities: documents } = data ?? {};
 
   const { search, setSearchItems } = useEntitySearch({
