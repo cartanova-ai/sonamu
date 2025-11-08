@@ -4,13 +4,13 @@ import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { BooleanToggle, useTypeForm } from "@sonamu-kit/react-sui";
-import { MigrationStatus } from "sonamu";
+import { MigrationStatus, SonamuDBConfig } from "sonamu";
 import classNames from "classnames";
 import { useState } from "react";
 
 type MigrationActionFormProps = {
   action: "apply" | "rollback" | "shadow";
-  targets: string[];
+  targets: (keyof SonamuDBConfig)[];
   conns: MigrationStatus["conns"];
 };
 export function MigrationActionForm({
