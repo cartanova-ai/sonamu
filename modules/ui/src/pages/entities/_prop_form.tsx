@@ -119,19 +119,21 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     const result = EntityPropZodSchema.safeParse(form);
     if (!result.success) {
       console.error(result.error);
-      result.error.errors.forEach((e) => {
-        if (e.path.length) {
-          addError(e.path[0].toString(), {
-            content: e.message,
+      result.error.issues.forEach((issue: z.core.$ZodIssue) => {
+        if (issue.path.length) {
+          addError(issue.path[0].toString(), {
+            content: issue.message,
             pointing: "above",
           });
         }
-        if (e.code === "invalid_union") {
-          e.unionErrors[0].issues.forEach((i) => {
-            addError(i.path[0].toString(), {
-              content: i.message,
-              pointing: "above",
-            });
+        if (issue.code === "invalid_union") {
+          issue.errors.flat().forEach((error: z.core.$ZodIssue) => {
+            if (error.path.length) {
+              addError(error.path[0].toString(), {
+                content: error.message,
+                pointing: "above",
+              });
+            }
           });
         }
       });
