@@ -47,7 +47,7 @@ if (!existsSync(scriptPath)) {
 
 const result = spawnSync(
   process.execPath,
-  ["--no-warnings", scriptPath, ...args],
+  ["-r", "source-map-support/register", "--no-warnings", scriptPath, ...args],
   {
     stdio: "inherit",
   }
