@@ -16,9 +16,10 @@ export * from "./utils/controller";
 export * from "./utils/model";
 export * from "./utils/utils";
 export * from "./testing/fixture-manager";
-export * from "./migration/migrator";
 export * from "./entity/entity-manager";
 export * from "./entity/entity";
+export * from "./migration/migrator";
+export * from "./migration/types";
 export * from "./file-storage/driver";
 
 // export * from "./api/code-converters";
