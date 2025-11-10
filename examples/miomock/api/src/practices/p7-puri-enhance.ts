@@ -11,6 +11,13 @@ Sonamu.runScript(async () => {
       .increment("salary", 1000)
       .debug();
 
+    // decrement
+    await trx
+      .table("employees")
+      .where("id", 1)
+      .decrement("salary", 1000)
+      .debug();
+
     // where절 object
     await trx
       .table("employees")
