@@ -17,9 +17,12 @@ export type TransactionalOptions = {
 };
 
 export class PuriWrapper<
-  DBSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend
+  DBSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend,
 > {
-  constructor(public knex: Knex, public upsertBuilder: UpsertBuilder) {}
+  constructor(
+    public knex: Knex,
+    public upsertBuilder: UpsertBuilder
+  ) {}
 
   raw(sql: string): Knex.Raw {
     return this.knex.raw(sql);
@@ -40,14 +43,14 @@ export class PuriWrapper<
   }
 
   async transaction<T>(
-    callback: (trx: PuriWrapper) => Promise<T>,
+    callback: (trx: PuriTransactionWrapper) => Promise<T>,
     options: TransactionalOptions = {}
   ): Promise<T> {
     const { isolation, readOnly } = options;
 
     return this.knex.transaction(
       async (trx) => {
-        return callback(new PuriWrapper(trx, this.upsertBuilder));
+        return callback(new PuriTransactionWrapper(trx, this.upsertBuilder));
       },
       { isolationLevel: isolation, readOnly }
     );
@@ -125,5 +128,22 @@ export class PuriWrapper<
     } else {
       return `Not in Transaction, ConnID: ${connectionId}`;
     }
+  }
+}
+
+export class PuriTransactionWrapper extends PuriWrapper {
+  constructor(
+    public trx: Knex.Transaction,
+    public upsertBuilder: UpsertBuilder
+  ) {
+    super(trx, upsertBuilder);
+  }
+
+  async rollback(): Promise<void> {
+    await this.trx.rollback();
+  }
+
+  async commit(): Promise<void> {
+    await this.trx.commit();
   }
 }

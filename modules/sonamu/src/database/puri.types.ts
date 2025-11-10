@@ -1,20 +1,33 @@
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
 export type Expand<T> = T extends any[]
   ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
-  : T extends object ? { [K in keyof T]: T[K] } : T;
-    
-// EmptyRecord가 남아있으면 AvailableColumns 추론이 제대로 되지 않음 (EmptyRecord를 {}로 변경하면 정상 동작함)
-export type MergeJoined<TExisting, TNew> = 
-  TExisting extends EmptyRecord 
-    ? TNew  // 첫 join: EmptyRecord 제거하고 대체
-    : TExisting & TNew;  // 이후 join: 누적
+  : T extends object
+    ? { [K in keyof T]: T[K] }
+    : T;
 
-type DeepEqual<T, U> = [T] extends [U] ? [U] extends [T] ? true : false : false;
-type Extends<T, U> = DeepEqual<T, Record<string, never>> extends true ? false : (T extends U ? true : false);
+// EmptyRecord가 남아있으면 AvailableColumns 추론이 제대로 되지 않음 (EmptyRecord를 {}로 변경하면 정상 동작함)
+export type MergeJoined<TExisting, TNew> = TExisting extends EmptyRecord
+  ? TNew // 첫 join: EmptyRecord 제거하고 대체
+  : TExisting & TNew; // 이후 join: 누적
+
+type DeepEqual<T, U> = [T] extends [U]
+  ? [U] extends [T]
+    ? true
+    : false
+  : false;
+type Extends<T, U> =
+  DeepEqual<T, Record<string, never>> extends true
+    ? false
+    : T extends U
+      ? true
+      : false;
 type NullableToOptional<T> = {
-  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<T[K], null | undefined>
+  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<
+    T[K],
+    null | undefined
+  >;
 } & Partial<{
-  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K]
+  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
 }>;
 
 // Join 등이 Empty 상태일 떄 {}가 아니라 EmptyRecord를 써서
@@ -27,7 +40,9 @@ export type ResultAvailableColumns<
   TOriginal = any,
   TResult = any,
   TJoined = EmptyRecord,
-> = AvailableColumns<TSchema, T, TOriginal, TJoined> | `${keyof TResult & string}`;
+> =
+  | AvailableColumns<TSchema, T, TOriginal, TJoined>
+  | `${keyof TResult & string}`;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
 export type AvailableColumns<
@@ -37,14 +52,14 @@ export type AvailableColumns<
   TJoined = EmptyRecord,
 > = T extends keyof TSchema
   ? // 기존 테이블 케이스
-  | (Extends<TJoined, Record<string, any>> extends false
-    // 이게 TSchema[T]에 존재하면
-    ? keyof TSchema[T]
-    : {
-        [K in keyof TJoined]: TJoined[K] extends Record<string, any>
-          ? `${string & K}.${keyof TJoined[K] & string}`
-          : never;
-      }[keyof TJoined])
+    | (Extends<TJoined, Record<string, any>> extends false
+          ? // 이게 TSchema[T]에 존재하면
+            keyof TSchema[T]
+          : {
+              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
+                ? `${string & K}.${keyof TJoined[K] & string}`
+                : never;
+            }[keyof TJoined])
       | `${T & string}.${keyof TSchema[T] & string}`
   : // 서브쿼리 케이스 (T는 alias string)
     | keyof TOriginal
@@ -156,27 +171,15 @@ export type WhereCondition<
   T extends keyof TSchema | string,
   TOriginal = any,
   TJoined = EmptyRecord,
-> =
-  // 메인 테이블/서브쿼리 조건들
-  (T extends keyof TSchema
-    ? {
-        [K in keyof TSchema[T]]?: TSchema[T][K] | TSchema[T][K][];
-      }
-    : {
-        [K in keyof TOriginal]?: TOriginal[K] | TOriginal[K][];
-      }) &
-    // 조인된 테이블들의 조건들
-    (TJoined extends Record<string, any>
-      ? {
-          [K in keyof TJoined as TJoined[K] extends Record<string, any>
-            ? keyof TJoined[K] & string
-            : never]?: TJoined[K] extends Record<string, any>
-            ?
-                | TJoined[K][K extends keyof TJoined[K] ? K : never]
-                | TJoined[K][K extends keyof TJoined[K] ? K : never][]
-            : never;
-        }
-      : Record<string, never>);
+> = {
+  [key in AvailableColumns<TSchema, T, TOriginal, TJoined>]?: ExtractColumnType<
+    TSchema,
+    T,
+    key & string,
+    TOriginal,
+    TJoined
+  >;
+};
 
 // Fulltext index 컬럼 추출 타입 (메인 테이블 + 조인된 테이블)
 export type FulltextColumns<
@@ -219,4 +222,6 @@ export type FulltextColumns<
           : never);
 
 // Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<Omit<T, "id" | "created_at" | "__fulltext__">>;
+export type InsertData<T> = NullableToOptional<
+  Omit<T, "id" | "created_at" | "__fulltext__">
+>;

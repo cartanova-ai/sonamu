@@ -224,7 +224,9 @@ export class Puri<
   }
 
   // WhereIn (조인된 테이블 컬럼도 지원)
-  whereIn<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  whereIn<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
     column: TColumn,
     values: ExtractColumnType<
       TSchema,
@@ -264,7 +266,10 @@ export class Puri<
 
   whereMatch<
     TColumn extends FulltextColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(column: TColumn, value: string): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  >(
+    column: TColumn,
+    value: string
+  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
     return this;
   }
@@ -276,7 +281,9 @@ export class Puri<
     ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
   ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
     this.knexQuery.where((builder) => {
-      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(builder);
+      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
+        builder
+      );
       callback(group);
     });
     return this;
@@ -288,7 +295,9 @@ export class Puri<
     ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
   ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
     this.knexQuery.orWhere((builder) => {
-      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(builder);
+      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
+        builder
+      );
       callback(group);
     });
     return this;
@@ -297,12 +306,22 @@ export class Puri<
   // Join
   join<
     TJoinTable extends keyof TSchema,
-    TLColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
-    TRColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+    TLColumn extends AvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    >,
+    TRColumn extends AvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    >,
   >(
     table: TJoinTable,
     left: TLColumn,
-    right: TRColumn,
+    right: TRColumn
   ): Puri<
     TSchema,
     TTable,
@@ -327,7 +346,13 @@ export class Puri<
     alias: TAlias,
     left: string,
     right: string
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined & Record<TAlias, TSubResult>>;
+  ): Puri<
+    TSchema,
+    TTable,
+    TOriginal,
+    TResult,
+    TJoined & Record<TAlias, TSubResult>
+  >;
   join(
     table: string,
     left: string,
@@ -361,12 +386,22 @@ export class Puri<
 
   leftJoin<
     TJoinTable extends keyof TSchema,
-    TLColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
-    TRColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined & Record<TJoinTable, TSchema[TJoinTable]>>,
+    TLColumn extends AvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    >,
+    TRColumn extends AvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
+    >,
   >(
     table: TJoinTable,
     left: TLColumn,
-    right: TRColumn,
+    right: TRColumn
   ): Puri<
     TSchema,
     TTable,
@@ -407,7 +442,15 @@ export class Puri<
   }
 
   // OrderBy
-  orderBy<TColumn extends ResultAvailableColumns<TSchema, TTable, TOriginal, TResult, TJoined>>(
+  orderBy<
+    TColumn extends ResultAvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TResult,
+      TJoined
+    >,
+  >(
     column: TColumn,
     direction: "asc" | "desc"
   ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
@@ -431,21 +474,39 @@ export class Puri<
   }
 
   // Group by (조인된 테이블 컬럼도 지원)
-  groupBy<TColumns extends ResultAvailableColumns<TSchema, TTable, TOriginal, TResult, TJoined>>(
-    ...columns: TColumns[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  groupBy(...columns: string[]): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  groupBy<
+    TColumns extends ResultAvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TResult,
+      TJoined
+    >,
+  >(...columns: TColumns[]): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
+  groupBy(
+    ...columns: string[]
+  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
     this.knexQuery.groupBy(...(columns as string[]));
     return this;
   }
 
   having(condition: string): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  having<TColumn extends ResultAvailableColumns<TSchema, TTable, TOriginal, TResult, TJoined>>(
+  having<
+    TColumn extends ResultAvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TResult,
+      TJoined
+    >,
+  >(
     condition: TColumn,
     operator: ComparisonOperator,
     value: any
   ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  having(...conditions: string[]): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  having(
+    ...conditions: string[]
+  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
     this.knexQuery.having(...(conditions as [string, string, string]));
     return this;
   }
@@ -641,6 +702,16 @@ export class Puri<
   raw(): Knex.QueryBuilder {
     return this.knexQuery;
   }
+
+  increment<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
+    column: TColumn,
+    value: number
+  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+    this.knexQuery.increment(column, value);
+    return this;
+  }
 }
 
 // 11. Database 클래스
@@ -685,7 +756,9 @@ class WhereGroup<
   orWhere(
     conditions: WhereCondition<TSchema, TTable, TOriginal, TJoined>
   ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  orWhere<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
     column: TColumn,
     value: ExtractColumnType<
       TSchema,
@@ -695,7 +768,9 @@ class WhereGroup<
       TJoined
     >
   ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  orWhere<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
     column: TColumn,
     operator: ComparisonOperator | "like",
     value: ExtractColumnType<
@@ -712,7 +787,9 @@ class WhereGroup<
     return this;
   }
 
-  whereIn<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  whereIn<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
     column: TColumn,
     values: ExtractColumnType<
       TSchema,
@@ -789,18 +866,28 @@ export class JoinClauseGroup<
   constructor(private callback: Knex.JoinClause) {}
 
   on(
-    callback: (joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>) => void
+    callback: (
+      joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>
+    ) => void
   ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  on(column: string, value: any): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
+  on(
+    column: string,
+    value: any
+  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
   on(...args: any[]): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined> {
     this.callback.on(...(args as [string, string]));
     return this;
   }
 
   orOn(
-    callback: (joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>) => void
+    callback: (
+      joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>
+    ) => void
   ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  orOn(column: string, value: any): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
+  orOn(
+    column: string,
+    value: any
+  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
   orOn(...args: any[]): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined> {
     this.callback.orOn(...(args as [string, string]));
     return this;
