@@ -219,18 +219,31 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
     returnTypeDef: string,
     paramsWithoutContext: ApiParam[]
   ) {
-    const formDataDef = [
-      'formData.append("file", file);',
-      ...paramsWithoutContext.map(
-        (param) => `formData.append('${param.name}', String(${param.name}));`
-      ),
-    ].join("\n");
+    const isMultiple = api.uploadOptions?.mode === "multiple";
+    const fileParamName = isMultiple ? "files" : "file";
+    const fileParamType = isMultiple ? "File[]" : "File";
+
+    const formDataDef = isMultiple
+      ? [
+          `${fileParamName}.forEach(f => formData.append("${fileParamName}", f));`,
+          ...paramsWithoutContext.map(
+            (param) =>
+              `formData.append('${param.name}', String(${param.name}));`
+          ),
+        ].join("\n")
+      : [
+          `formData.append("${fileParamName}", ${fileParamName});`,
+          ...paramsWithoutContext.map(
+            (param) =>
+              `formData.append('${param.name}', String(${param.name}));`
+          ),
+        ].join("\n");
 
     const paramsDefComma = paramsDef !== "" ? ", " : "";
     return `
 export async function ${api.methodName}${typeParamsDef}(
   ${paramsDef}${paramsDefComma}
-  file: File,
+  ${fileParamName}: ${fileParamType},
   onUploadProgress?: (pe:AxiosProgressEvent) => void
   ): Promise<${returnTypeDef}> {
     const formData = new FormData();
