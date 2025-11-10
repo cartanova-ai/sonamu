@@ -680,9 +680,9 @@ export async function generateAlterCode(
     // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
     // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
     if (col.type === "boolean" && col.defaultTo !== undefined) {
-      if (col.defaultTo === "0" || col.defaultTo === "false") {
+      if (col.defaultTo === "0" || col.defaultTo.toLowerCase() === "false") {
         col.defaultTo = "0";
-      } else if (col.defaultTo === "1" || col.defaultTo === "true") {
+      } else if (col.defaultTo === "1" || col.defaultTo.toLowerCase() === "true") {
         col.defaultTo = "1";
       }
     }
