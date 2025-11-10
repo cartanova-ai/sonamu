@@ -16,12 +16,14 @@ export function ImageUploader(props: ImageUploaderProps) {
   }
 
   const uploader = async (domFiles: File[]) => {
-    return await Promise.all(
-      domFiles.map(async (domFile) => {
-        const response = await FileService.upload(domFile);
-        return response.file;
-      })
-    );
+    if (props.multiple) {
+      const response = await FileService.uploadMultiple(domFiles);
+      return response.files;
+    } else {
+      const response = await FileService.upload(domFiles[0]);
+      return [response.file];
+    }
   };
+
   return <ImageUploaderFrame {...props} mode="eager" uploader={uploader} />;
 }

@@ -242,6 +242,14 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/file/uploadMultiple
+Content-Type: application/json
+
+{}
+
+
+###
+
 GET {{baseUrl}}/api/employee/findById
 	?subset=A
 	&id=0

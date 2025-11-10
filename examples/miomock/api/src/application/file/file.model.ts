@@ -139,22 +139,15 @@ class FileModelClass extends BaseModelClass {
     file: { name: string; url: string; mime_type: string };
   }> {
     const { file } = Sonamu.getUploadContext();
+
+    console.log("file", file);
     if (file === undefined) {
       throw new BadRequestException("파일 업로드되지 않음");
     }
 
     const md5 = await file.md5();
     const key = `${md5}.${file.extname}`;
-
     const url = await file.saveToDisk(key);
-
-    console.log("clientName", file.clientName);
-    console.log("filename", file.filename);
-    console.log("fieldName", file.fieldName);
-    console.log("size", file.size);
-    console.log("extname", file.extname);
-    console.log("mimetype", file.mimetype);
-    console.log("md5", md5);
 
     return {
       file: {
@@ -162,6 +155,35 @@ class FileModelClass extends BaseModelClass {
         url,
         mime_type: file.mimetype,
       },
+    };
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios-multipart"] })
+  @upload({ mode: "multiple" })
+  async uploadMultiple(): Promise<{
+    files: { name: string; url: string; mime_type: string }[];
+  }> {
+    const { files: _files } = Sonamu.getUploadContext();
+
+    console.log("files", _files);
+    if (_files.length === 0) {
+      throw new BadRequestException("파일 업로드되지 않음");
+    }
+
+    const files = await Promise.all(
+      _files.map(async (file) => {
+        const md5 = await file.md5();
+        const key = `${md5}.${file.extname}`;
+        return {
+          name: file.clientName,
+          url: await file.saveToDisk(key),
+          mime_type: file.mimetype,
+        };
+      })
+    );
+
+    return {
+      files,
     };
   }
 }

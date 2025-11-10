@@ -37,6 +37,7 @@ import { FileSearchInput } from "src/components/file/FileSearchInput";
 import { FileOrderBySelect } from "src/components/file/FileOrderBySelect";
 import { ImageUploader } from "src/admin-common/ImageUploader";
 import { ApiLogViewer } from "src/admin-common/ApiLogViewer";
+import z from "zod";
 
 type FileListProps = {};
 export default function FileList({}: FileListProps) {
@@ -46,6 +47,14 @@ export default function FileList({}: FileListProps) {
     url: "",
     mime_type: "",
   });
+  const eagerMultipleForm = useTypeForm(
+    z.object({
+      urls: z.array(z.string()),
+    }),
+    {
+      urls: [],
+    }
+  );
 
   // Lazy 모드 테스트 상태
   const [lazyFile, setLazyFile] = useState<File | null>(null);
@@ -153,6 +162,23 @@ export default function FileList({}: FileListProps) {
                   <ImageUploader
                     multiple={false}
                     {...eagerForm.register("url")}
+                  />
+                </Form.Field>
+              </Form.Group>
+            </Form>
+          </Segment>
+
+          <Segment color="blue">
+            <Label attached="top" color="blue">
+              Eager 모드 테스트 (Multiple)
+            </Label>
+            <Form>
+              <Form.Group>
+                <Form.Field width={16}>
+                  <label>파일 업로드 (즉시 업로드)</label>
+                  <ImageUploader
+                    multiple={true}
+                    {...eagerMultipleForm.register("urls")}
                   />
                 </Form.Field>
               </Form.Group>
