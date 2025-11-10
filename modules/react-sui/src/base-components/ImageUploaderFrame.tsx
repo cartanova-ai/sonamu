@@ -1,6 +1,7 @@
 import React, {
   ChangeEvent,
   HTMLAttributes,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -60,32 +61,23 @@ function asArray<T>(v: T | T[] | null | undefined): T[] {
   );
 }
 
-// TODO: 임시로 주석처리
 function useObjectUrls(files: File[]) {
-  const [map, _setMap] = useState<Map<File, string>>(new Map());
+  const [urls, setUrls] = useState<string[]>([]);
 
-  // useEffect(() => {
-  //   const next = new Map<File, string>();
-  //   for (const f of files) {
-  //     const kept = map.get(f);
-  //     next.set(f, kept ?? URL.createObjectURL(f));
-  //   }
+  // files의 내용을 반영한 시그니처
+  const signature = useMemo(
+    () => files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|"),
+    [files]
+  );
 
-  //   for (const [f, url] of map.entries()) {
-  //     if (!files.includes(f)) URL.revokeObjectURL(url);
-  //   }
+  useEffect(() => {
+    const created = files.map((f) => URL.createObjectURL(f));
+    setUrls(created);
 
-  //   setMap(next);
-  // }, [files]);
-
-  // useEffect(
-  //   () => () => {
-  //     for (const url of map.values()) URL.revokeObjectURL(url);
-  //   },
-  //   [map]
-  // );
-
-  const urls = useMemo(() => files.map((f) => map.get(f) ?? ""), [files, map]);
+    return () => {
+      for (const u of created) URL.revokeObjectURL(u);
+    };
+  }, [signature]); // files 대신 signature에 의존하여 불필요한 리렌더링 방지
 
   return urls;
 }
