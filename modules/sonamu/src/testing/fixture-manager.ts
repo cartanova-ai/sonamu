@@ -568,6 +568,8 @@ export class FixtureManagerClass {
       if (!isRelationProp(prop)) {
         if (prop.type === "json") {
           insertData[propName] = JSON.stringify(column.value);
+        } else if (prop.type === "timestamp" || prop.type === "datetime") {
+          insertData[propName] = new Date(column.value);
         } else {
           insertData[propName] = column.value;
         }
