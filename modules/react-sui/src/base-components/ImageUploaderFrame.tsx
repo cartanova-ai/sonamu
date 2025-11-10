@@ -51,7 +51,9 @@ export type UploadedFile = { url: string; name: string };
 type EagerModeProps = { mode: "eager" } & CommonProps<UploadedFile> & {
     uploader: (domFiles: File[]) => Promise<UploadedFile[]>;
   };
-type LazyModeProps = { mode: "lazy" } & CommonProps<File>;
+type LazyModeProps = { mode: "lazy" } & CommonProps<File> & {
+    uploader?: never;
+  };
 export type ImageUploaderFrameProps = EagerModeProps | LazyModeProps;
 
 function asArray<T>(v: T | T[] | null | undefined): T[] {
@@ -83,11 +85,19 @@ function useObjectUrls(files: File[]) {
 }
 
 export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
-  const mode = props.mode ?? "eager";
-  const uploader =
-    mode === "eager" ? (props as EagerModeProps).uploader : undefined;
+  // DOM에 전달하지 않을 props 제거
+  const {
+    multiple,
+    maxSize,
+    value,
+    onChange,
+    accept,
+    mode,
+    uploader,
+    preview = true,
+    ...divProps
+  } = props;
 
-  const { multiple, maxSize, value, onChange, accept, ...divProps } = props;
   const [loading, setLoading] = useState<boolean>(false);
   const ref = useRef<HTMLInputElement | null>(null);
 
@@ -312,7 +322,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
                   src={item}
                   handle={multiple}
                   onDelButtonClicked={getHandlerImageDelButtonClicked(index)}
-                  preview={props.preview ?? true}
+                  preview={preview}
                   name={
                     mode === "eager" ? images[index]?.name : files[index]?.name
                   }
