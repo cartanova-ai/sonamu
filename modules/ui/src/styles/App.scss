@@ -325,7 +325,9 @@ code {
   color: rgba(0, 0, 0, 0.87);
   border-radius: 0.28571429rem;
   box-shadow: 0 0 0 0 transparent inset;
-  transition: color 0.1s ease, border-color 0.1s ease;
+  transition:
+    color 0.1s ease,
+    border-color 0.1s ease;
 
   display: flex;
   .old-value {
@@ -753,7 +755,8 @@ code {
     flex: 1;
     margin-top: 0.5rem;
     background-color: #f5f5f5;
-    box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px,
+    box-shadow:
+      rgba(60, 64, 67, 0.3) 0px 1px 2px 0px,
       rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
     border-radius: 0.5em;
     height: fit-content;
@@ -835,6 +838,12 @@ code {
 
         .unique-violated {
           color: #999;
+        }
+
+        .scrollable-cell-content {
+          max-width: 200px;
+          overflow-x: auto;
+          overflow-y: hidden;
         }
       }
     }

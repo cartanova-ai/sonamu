@@ -21,13 +21,16 @@ export default function FixtureRecordViewer({
   setFixtureRecords,
 }: FixtureResultProps) {
   const groupedRecords = Object.entries(
-    fixtureRecords.reduce((acc, record) => {
-      if (!acc[record.entityId]) {
-        acc[record.entityId] = [];
-      }
-      acc[record.entityId].push(record);
-      return acc;
-    }, {} as Record<string, FixtureRecord[]>)
+    fixtureRecords.reduce(
+      (acc, record) => {
+        if (!acc[record.entityId]) {
+          acc[record.entityId] = [];
+        }
+        acc[record.entityId].push(record);
+        return acc;
+      },
+      {} as Record<string, FixtureRecord[]>
+    )
   );
 
   const refineColumns = (columns: Record<string, any>) => {
@@ -129,32 +132,34 @@ export default function FixtureRecordViewer({
                   {refineColumns(record.columns).map(
                     ([key, { prop, value }]) => (
                       <Table.Cell key={key} collapsing>
-                        {(Array.isArray(value) ? value : [value]).map(
-                          (v, index) =>
-                            prop.type === "relation" &&
-                            prop.relationType !== "BelongsToOne" ? (
-                              <div key={index}>
-                                {JSON.stringify(v)}
-                                {v !== null && (
-                                  <Checkbox
-                                    checked={selectedIds.has(
-                                      `${prop.with}#${v}`
-                                    )}
-                                    onChange={(_, data) => {
-                                      onRelationToggle(
-                                        record.fixtureId,
-                                        prop.with,
-                                        v,
-                                        data.checked as boolean
-                                      );
-                                    }}
-                                  />
-                                )}
-                              </div>
-                            ) : (
-                              JSON.stringify(v)
-                            )
-                        )}
+                        <div className="scrollable-cell-content">
+                          {(Array.isArray(value) ? value : [value]).map(
+                            (v, index) =>
+                              prop.type === "relation" &&
+                              prop.relationType !== "BelongsToOne" ? (
+                                <div key={index}>
+                                  {JSON.stringify(v)}
+                                  {v !== null && (
+                                    <Checkbox
+                                      checked={selectedIds.has(
+                                        `${prop.with}#${v}`
+                                      )}
+                                      onChange={(_, data) => {
+                                        onRelationToggle(
+                                          record.fixtureId,
+                                          prop.with,
+                                          v,
+                                          data.checked as boolean
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                JSON.stringify(v)
+                              )
+                          )}
+                        </div>
                       </Table.Cell>
                     )
                   )}
@@ -166,7 +171,9 @@ export default function FixtureRecordViewer({
                     {refineColumns(record.target.columns).map(
                       ([key, { value }]) => (
                         <Table.Cell key={key} collapsing>
-                          {JSON.stringify(value)}
+                          <div className="scrollable-cell-content">
+                            {JSON.stringify(value)}
+                          </div>
                         </Table.Cell>
                       )
                     )}
@@ -179,7 +186,9 @@ export default function FixtureRecordViewer({
                     {refineColumns(record.unique.columns).map(
                       ([key, { value }]) => (
                         <Table.Cell key={key} collapsing>
-                          {JSON.stringify(value)}
+                          <div className="scrollable-cell-content">
+                            {JSON.stringify(value)}
+                          </div>
                         </Table.Cell>
                       )
                     )}
