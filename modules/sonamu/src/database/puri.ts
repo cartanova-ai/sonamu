@@ -709,7 +709,23 @@ export class Puri<
     column: TColumn,
     value: number
   ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+    if (value <= 0) {
+      throw new Error("Increment value must be greater than 0");
+    }
     this.knexQuery.increment(column, value);
+    return this;
+  }
+
+  decrement<
+    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
+  >(
+    column: TColumn,
+    value: number
+  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+    if (value <= 0) {
+      throw new Error("Decrement value must be greater than 0");
+    }
+    this.knexQuery.decrement(column, value);
     return this;
   }
 }
