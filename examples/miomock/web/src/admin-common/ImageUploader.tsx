@@ -12,7 +12,7 @@ export type ImageUploaderProps = {} & DistributiveOmit<
 
 export function ImageUploader(props: ImageUploaderProps) {
   if (props.mode === "lazy") {
-    return <ImageUploaderFrame {...props} />;
+    return <ImageUploaderFrame {...props} mode="lazy" />;
   }
 
   const uploader = async (domFiles: File[]) => {
@@ -23,5 +23,5 @@ export function ImageUploader(props: ImageUploaderProps) {
       })
     );
   };
-  return <ImageUploaderFrame {...props} uploader={uploader} />;
+  return <ImageUploaderFrame {...props} mode="eager" uploader={uploader} />;
 }
