@@ -158,71 +158,61 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     }
   };
 
+  const isMaxSizeExceeded = (fileInput: HTMLInputElement) => {
+    if (maxSize && files.length + (fileInput.files?.length ?? 0) > maxSize) {
+      alert(`최대 ${maxSize}개까지 업로드가 가능합니다.`);
+      return true;
+    }
+    return false;
+  };
+
   const handleLazyChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const fileInput = e.target;
     if (fileInput.files && fileInput.files.length > 0) {
       if (multiple === true) {
         // maxSize 갯수 제한에 따른 메세지 처리
-        if (maxSize && files.length + fileInput.files.length > maxSize) {
-          if (files.length > 0) {
-            alert(
-              `최대 ${maxSize}개까지 업로드가 가능하므로, 추가로 ${
-                maxSize - files.length
-              }개 선택이 가능합니다.`
-            );
-          } else {
-            alert(`최대 ${maxSize}개까지 업로드가 가능합니다.`);
-          }
-          fileInput.value = "";
+        if (isMaxSizeExceeded(fileInput)) {
           return;
         }
+
         const newFiles = Array.from(fileInput.files);
-        setFilesWithOnChange(e, (files) => {
-          return [...files, ...newFiles];
-        });
+        setFilesWithOnChange(e, () => [...files, ...newFiles]);
       } else {
-        setFilesWithOnChange(e, () => {
-          return [fileInput.files![0]];
-        });
+        setFilesWithOnChange(e, () => [fileInput.files![0]]);
       }
       fileInput.value = "";
     }
   };
 
   const handleEagerChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (!uploader) {
+      throw new Error("uploader is required for eager mode");
+    }
+
     const fileInput = e.target;
-    if (fileInput.files && fileInput.files.length > 0) {
-      setLoading(true);
+    if (!fileInput.files || fileInput.files.length === 0) {
+      return;
+    }
+
+    if (multiple === true && isMaxSizeExceeded(fileInput)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
       if (multiple === true) {
-        // maxSize 갯수 제한에 따른 메세지 처리
-        if (maxSize && images.length + fileInput.files.length > maxSize) {
-          if (images.length > 0) {
-            alert(
-              `최대 ${maxSize}개까지 업로드가 가능하므로, 추가로 ${
-                maxSize - images.length
-              }개 선택이 가능합니다.`
-            );
-          } else {
-            alert(`최대 ${maxSize}개까지 업로드가 가능합니다.`);
-          }
-          setLoading(false);
-          fileInput.value = "";
-        }
-        const uploadedFiles = await Promise.all(
-          Array.from(fileInput.files).map((domFile) =>
-            uploadSingleFile(domFile)
-          )
-        );
-        setImagesWithOnChange(e, (images) => {
-          return [...images, ...uploadedFiles];
-        });
+        const uploadedFiles = await uploader(Array.from(fileInput.files));
+        setImagesWithOnChange(e, () => [...images, ...uploadedFiles]);
       } else {
-        const uploadedFile = await uploadSingleFile(fileInput.files[0]);
-        setImagesWithOnChange(e, (images) => {
-          return [...images, uploadedFile];
-        });
+        const uploadedFiles = await uploader([fileInput.files[0]]);
+        setImagesWithOnChange(e, () => uploadedFiles);
       }
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+      alert("파일 업로드 실패");
+    } finally {
       setLoading(false);
+      fileInput.value = "";
     }
   };
 
@@ -244,14 +234,6 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
         );
       }
     };
-  };
-
-  const uploadSingleFile = async (domFile: File): Promise<UploadedFile> => {
-    if (!uploader) {
-      throw new Error("uploader is required for eager mode");
-    }
-    const result = await uploader([domFile]);
-    return result[0];
   };
 
   const [activeId, setActiveId] = useState<string | null>(null);
