@@ -40,12 +40,16 @@ export type StreamDecoratorOptions = {
   guards?: GuardKey[];
   description?: string;
 };
+export type UploadDecoratorOptions = {
+  mode?: "single" | "multiple";
+};
 export const registeredApis: {
   modelName: string;
   methodName: string;
   path: string;
   options: ApiDecoratorOptions;
   streamOptions?: StreamDecoratorOptions;
+  uploadOptions?: UploadDecoratorOptions;
 }[] = [];
 export type ExtendedApi = {
   modelName: string;
@@ -53,6 +57,7 @@ export type ExtendedApi = {
   path: string;
   options: ApiDecoratorOptions;
   streamOptions?: StreamDecoratorOptions;
+  uploadOptions?: UploadDecoratorOptions;
   typeParameters: ApiParamType.TypeParam[];
   parameters: ApiParam[];
   returnType: ApiParamType;
@@ -176,13 +181,23 @@ export function transactional(options: TransactionalOptions = {}) {
   };
 }
 
-export function upload() {
+export function upload(options: UploadDecoratorOptions = {}) {
   return function (
     _target: Object,
     _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;
+    const modelName = _target.constructor.name.match(/(.+)Class$/)![1];
+    const methodName = _propertyKey;
+
+    // registeredApis에서 해당 API 찾아서 uploadOptions 추가
+    const existingApi = registeredApis.find(
+      (api) => api.modelName === modelName && api.methodName === methodName
+    );
+    if (existingApi) {
+      existingApi.uploadOptions = options;
+    }
 
     descriptor.value = async function (this: any, ...args: any[]) {
       const { request } = Sonamu.getContext();
@@ -196,19 +211,18 @@ export function upload() {
         throw new Error("Storage가 설정되지 않았습니다.");
       }
 
-      if (request.file) {
-        const rawFile = await request.file();
-        if (rawFile) {
-          const { FileStorage } = await import("../file-storage/file-storage");
-          uploadContext.file = new FileStorage(rawFile, storage);
-        }
-      } else if (request.files) {
-        const { FileStorage } = await import("../file-storage/file-storage");
+      const { FileStorage } = await import("../file-storage/file-storage");
+      if (options.mode === "multiple") {
         const rawFilesIterator = request.files();
         for await (const rawFile of rawFilesIterator) {
           if (rawFile) {
             uploadContext.files.push(new FileStorage(rawFile, storage));
           }
+        }
+      } else {
+        const rawFile = await request.file();
+        if (rawFile) {
+          uploadContext.file = new FileStorage(rawFile, storage);
         }
       }
 
