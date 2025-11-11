@@ -400,7 +400,7 @@ export function zodTypeToZodCode(zt: z.ZodType<any>): string {
         .join(",")}])`;
     case "enum":
       // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
-      return `z.enum([${Object.entries((zt as z.ZodEnum).def.entries)
+      return `z.enum({${Object.entries((zt as z.ZodEnum).def.entries)
         .map(([key, val]) =>
           typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`)
         .join(", ")}})`;
