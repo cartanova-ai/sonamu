@@ -77,7 +77,7 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
         columnType = "text";
       }
       chains.push(
-        `${column.type}('${column.name}'${
+        `${columnType}('${column.name}'${
           column.length ? `, ${column.length}` : ""
         }${extraType ? `, '${extraType}'` : ""})`
       );
