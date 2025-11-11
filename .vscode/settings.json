@@ -10,5 +10,9 @@
       "baseUrl": "http://localhost:10280"
     }
   },
-  "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs"
+  "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs",
+  "files.readonlyInclude": {
+    "examples/**/web/src/services/**/*": true,
+    "examples/**/web/public/sitemap.xml": true
+  }
 }
