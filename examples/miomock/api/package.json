@@ -14,10 +14,8 @@
     "practice": "node dist/practices/$0.js"
   },
   "dependencies": {
-    "@fastify/multipart": "^8",
     "@fastify/passport": "^2.2.0",
     "@fastify/secure-session": "^5.2.0",
-    "@fastify/static": "^7",
     "@swc/core": "^1.13.5",
     "bcrypt": "^6.0.0",
     "chokidar": "^4.0.3",

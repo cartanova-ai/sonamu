@@ -13,6 +13,10 @@ async function bootstrap() {
       formbody: true,
       qs: true,
       multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
+      static: {
+        root: path.join(__dirname, "/../", "public"),
+        prefix: "/api/public",
+      },
       custom: (server) => {
         server.register(fastifySecureSession, {
           secret: "miomock-secret-key-change-this-in-production",
@@ -30,11 +34,6 @@ async function bootstrap() {
         fastifyPassport.registerUserDeserializer(
           async (serialized, _request) => serialized
         );
-
-        server.register(import("@fastify/static"), {
-          root: path.join(__dirname, "/../", "public"),
-          prefix: "/api/public",
-        });
       },
     },
 
