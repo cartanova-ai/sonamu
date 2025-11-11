@@ -29,8 +29,9 @@ import { findApiRootPath } from "../utils/utils";
 import { humanizeZodError } from "../utils/zod-error";
 import { fastifyCaster } from "./caster";
 import { getZodObjectFromApi } from "./code-converters";
-import type { Context, UploadContext } from "./context";
+import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
+import fastifyPassport from "@fastify/passport";
 
 export type SonamuConfig = {
   projectName?: string;
@@ -240,6 +241,16 @@ class SonamuClass {
       this.registerPlugins(server, options.plugins);
     }
 
+    if (options.auth) {
+      if (!options.plugins?.session) {
+        throw new Error(
+          "Auth requires session plugin. Please add plugins.session configuration."
+        );
+      }
+
+      this.registerAuth(server, options.auth);
+    }
+
     // API 라우팅 설정
     await this.withFastify(server, options.apiConfig, {
       enableSync: initOptions?.enableSync,
@@ -401,7 +412,6 @@ class SonamuClass {
         reply
       );
 
-      // 결과 (AsyncLocalStorage 적용)
       const context: Context = {
         ...config.contextProvider(
           {
@@ -409,6 +419,17 @@ class SonamuClass {
             reply,
             headers: request.headers,
             createSSE,
+
+            // auth
+            user: request.user ?? null,
+            passport: {
+              login: request.login.bind(
+                request
+              ) as AuthContext["passport"]["login"],
+              logout: request.logout.bind(
+                request
+              ) as AuthContext["passport"]["logout"],
+            },
           },
           request,
           reply
@@ -491,6 +512,7 @@ class SonamuClass {
       qs: "fastify-qs",
       sse: "fastify-sse-v2",
       static: "@fastify/static",
+      session: "@fastify/secure-session",
     } as const;
 
     const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(
@@ -513,6 +535,24 @@ class SonamuClass {
 
     if (plugins.custom) {
       plugins.custom(server);
+    }
+  }
+
+  private async registerAuth(
+    server: FastifyInstance,
+    options: NonNullable<SonamuServerOptions["auth"]>
+  ) {
+    server.register(fastifyPassport.initialize());
+    server.register(fastifyPassport.secureSession());
+
+    if (typeof options === "boolean") {
+      fastifyPassport.registerUserSerializer(async (user, _request) => user);
+      fastifyPassport.registerUserDeserializer(
+        async (serialized, _request) => serialized
+      );
+    } else {
+      fastifyPassport.registerUserSerializer(options.userSerializer);
+      fastifyPassport.registerUserDeserializer(options.userDeserializer);
     }
   }
 

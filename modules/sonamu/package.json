@@ -35,6 +35,8 @@
     "@fastify/cors": "^8.1.0",
     "@fastify/formbody": "^7.1.0",
     "@fastify/multipart": "^8",
+    "@fastify/passport": "^2.2.0",
+    "@fastify/secure-session": "^5.2.0",
     "@fastify/static": "^7",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
