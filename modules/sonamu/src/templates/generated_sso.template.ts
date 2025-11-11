@@ -89,12 +89,14 @@ export class Template__generated_sso extends Template {
       } as Omit<SourceCode, "label">
     );
 
+    const body = sourceCode.lines.join("\n");
+    const isUsingManyToManyBaseSchema = body.includes("ManyToManyBaseSchema");
     return {
       ...this.getTargetAndPath(),
       body: sourceCode.lines.join("\n"),
       importKeys: sourceCode.importKeys,
       customHeaders: [
-        `import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";`,
+        `import { SubsetQuery, ${isUsingManyToManyBaseSchema ? "ManyToManyBaseSchema" : ""} } from "sonamu";`,
       ],
     };
   }
