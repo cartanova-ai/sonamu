@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.5.2",
+  "version": "0.5.4",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "typescript",
@@ -11,7 +11,8 @@
   "exports": "./dist/index.js",
   "scripts": {
     "dev": "nodemon exec",
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly"
+    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "publish": "yarn build && yarn npm publish"
   },
   "license": "MIT",
   "author": {
