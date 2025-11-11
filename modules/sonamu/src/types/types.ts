@@ -13,6 +13,7 @@ import type { Context, ApiDecoratorOptions } from "../api";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
 import type { Driver } from "../file-storage/driver";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
+import type { FastifyStaticOptions } from "@fastify/static";
 
 /*
   Enums
@@ -888,6 +889,7 @@ export type SonamuServerOptions = {
     multipart?: boolean | FastifyMultipartOptions;
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
+    static?: boolean | FastifyStaticOptions;
 
     custom?: (server: FastifyInstance) => void;
   };

@@ -11929,10 +11929,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "miomock-api@workspace:examples/miomock/api"
   dependencies:
-    "@fastify/multipart": "npm:^8"
     "@fastify/passport": "npm:^2.2.0"
     "@fastify/secure-session": "npm:^5.2.0"
-    "@fastify/static": "npm:^7"
     "@sonamu-kit/react-sui": "workspace:^"
     "@sonamu-kit/ui": "workspace:^"
     "@swc/cli": "npm:^0.7.8"
@@ -14829,6 +14827,7 @@ __metadata:
     "@fastify/cors": "npm:^8.1.0"
     "@fastify/formbody": "npm:^7.1.0"
     "@fastify/multipart": "npm:^8"
+    "@fastify/static": "npm:^7"
     "@sonamu-kit/ui": "workspace:^"
     "@swc/cli": "npm:^0.7.8"
     "@swc/core": "npm:^1.13.19"

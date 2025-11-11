@@ -490,6 +490,7 @@ class SonamuClass {
       multipart: "@fastify/multipart",
       qs: "fastify-qs",
       sse: "fastify-sse-v2",
+      static: "@fastify/static",
     } as const;
 
     const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(

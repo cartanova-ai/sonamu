@@ -35,6 +35,7 @@
     "@fastify/cors": "^8.1.0",
     "@fastify/formbody": "^7.1.0",
     "@fastify/multipart": "^8",
+    "@fastify/static": "^7",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
     "chokidar": "^4.0.3",

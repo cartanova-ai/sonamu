@@ -576,11 +576,11 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@fastify/deepmerge",\
-      "npm:2.0.2"\
+      "npm:3.1.0"\
     ],\
     [\
       "@fastify/error",\
-      "npm:4.2.0"\
+      "npm:3.4.1"\
     ],\
     [\
       "@fastify/fast-json-stringify-compiler",\
@@ -600,7 +600,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@fastify/multipart",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"\
+      "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:9.3.0"\
     ],\
     [\
       "@fastify/passport",\
@@ -616,7 +616,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@fastify/static",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:7.0.4"\
+      "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.12.0"\
     ],\
     [\
       "@fluentui/react-component-event-listener",\
@@ -8144,25 +8144,6 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1", {\
-        "packageLocation": "./.yarn/__virtual__/@fastify-multipart-virtual-4c13867d1c/0/cache/@fastify-multipart-npm-8.3.1-d62c16c1ce-3760105b52.zip/node_modules/@fastify/multipart/",\
-        "packageDependencies": [\
-          ["@fastify/busboy", "npm:3.2.0"],\
-          ["@fastify/deepmerge", "npm:2.0.2"],\
-          ["@fastify/error", "npm:4.2.0"],\
-          ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
-          ["@types/fastify", null],\
-          ["fastify", "npm:4.29.1"],\
-          ["fastify-plugin", "npm:4.5.1"],\
-          ["secure-json-parse", "npm:2.7.0"],\
-          ["stream-wormhole", "npm:1.1.0"]\
-        ],\
-        "packagePeers": [\
-          "@types/fastify",\
-          "fastify"\
-        ],\
-        "linkType": "HARD"\
-      }],\
       ["virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:9.3.0", {\
         "packageLocation": "./.yarn/__virtual__/@fastify-multipart-virtual-fb8feb8220/0/cache/@fastify-multipart-npm-9.3.0-5d4c46a0ed-db7b3907da.zip/node_modules/@fastify/multipart/",\
         "packageDependencies": [\
@@ -8174,6 +8155,25 @@ const RAW_RUNTIME_STATE =
           ["fastify", "npm:4.29.1"],\
           ["fastify-plugin", "npm:5.1.0"],\
           ["secure-json-parse", "npm:4.1.0"]\
+        ],\
+        "packagePeers": [\
+          "@types/fastify",\
+          "fastify"\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:8.3.1", {\
+        "packageLocation": "./.yarn/__virtual__/@fastify-multipart-virtual-665951acb3/0/cache/@fastify-multipart-npm-8.3.1-d62c16c1ce-3760105b52.zip/node_modules/@fastify/multipart/",\
+        "packageDependencies": [\
+          ["@fastify/busboy", "npm:3.2.0"],\
+          ["@fastify/deepmerge", "npm:2.0.2"],\
+          ["@fastify/error", "npm:4.2.0"],\
+          ["@fastify/multipart", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:8.3.1"],\
+          ["@types/fastify", null],\
+          ["fastify", "npm:4.29.1"],\
+          ["fastify-plugin", "npm:4.5.1"],\
+          ["secure-json-parse", "npm:2.7.0"],\
+          ["stream-wormhole", "npm:1.1.0"]\
         ],\
         "packagePeers": [\
           "@types/fastify",\
@@ -8234,25 +8234,6 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:7.0.4", {\
-        "packageLocation": "./.yarn/__virtual__/@fastify-static-virtual-b7db525fdd/0/cache/@fastify-static-npm-7.0.4-b0d1d7cdf2-9471ff60df.zip/node_modules/@fastify/static/",\
-        "packageDependencies": [\
-          ["@fastify/accept-negotiator", "npm:1.1.0"],\
-          ["@fastify/send", "npm:2.1.0"],\
-          ["@fastify/static", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:7.0.4"],\
-          ["@types/fastify", null],\
-          ["content-disposition", "npm:0.5.4"],\
-          ["fastify", "npm:4.29.1"],\
-          ["fastify-plugin", "npm:4.5.1"],\
-          ["fastq", "npm:1.19.1"],\
-          ["glob", "npm:10.4.5"]\
-        ],\
-        "packagePeers": [\
-          "@types/fastify",\
-          "fastify"\
-        ],\
-        "linkType": "HARD"\
-      }],\
       ["virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:6.12.0", {\
         "packageLocation": "./.yarn/__virtual__/@fastify-static-virtual-3c8f30b354/0/cache/@fastify-static-npm-6.12.0-0cdbb38792-33304062bd.zip/node_modules/@fastify/static/",\
         "packageDependencies": [\
@@ -8265,6 +8246,25 @@ const RAW_RUNTIME_STATE =
           ["fastify-plugin", "npm:4.5.1"],\
           ["glob", "npm:8.1.0"],\
           ["p-limit", "npm:3.1.0"]\
+        ],\
+        "packagePeers": [\
+          "@types/fastify",\
+          "fastify"\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.0.4", {\
+        "packageLocation": "./.yarn/__virtual__/@fastify-static-virtual-625638de3b/0/cache/@fastify-static-npm-7.0.4-b0d1d7cdf2-9471ff60df.zip/node_modules/@fastify/static/",\
+        "packageDependencies": [\
+          ["@fastify/accept-negotiator", "npm:1.1.0"],\
+          ["@fastify/send", "npm:2.1.0"],\
+          ["@fastify/static", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.0.4"],\
+          ["@types/fastify", null],\
+          ["content-disposition", "npm:0.5.4"],\
+          ["fastify", "npm:4.29.1"],\
+          ["fastify-plugin", "npm:4.5.1"],\
+          ["fastq", "npm:1.19.1"],\
+          ["glob", "npm:10.4.5"]\
         ],\
         "packagePeers": [\
           "@types/fastify",\
@@ -19437,10 +19437,8 @@ const RAW_RUNTIME_STATE =
       ["workspace:examples/miomock/api", {\
         "packageLocation": "./examples/miomock/api/",\
         "packageDependencies": [\
-          ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
           ["@fastify/passport", "npm:2.5.0"],\
           ["@fastify/secure-session", "npm:5.3.0"],\
-          ["@fastify/static", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:7.0.4"],\
           ["@sonamu-kit/react-sui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.8"],\
@@ -22640,7 +22638,8 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/s3-request-presigner", "npm:3.921.0"],\
           ["@fastify/cors", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
           ["@fastify/formbody", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.4.0"],\
-          ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
+          ["@fastify/multipart", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:8.3.1"],\
+          ["@fastify/static", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.0.4"],\
           ["@sonamu-kit/react-sui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.8"],\
@@ -22710,7 +22709,8 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/s3-request-presigner", "npm:3.921.0"],\
           ["@fastify/cors", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
           ["@fastify/formbody", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.4.0"],\
-          ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
+          ["@fastify/multipart", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:8.3.1"],\
+          ["@fastify/static", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.0.4"],\
           ["@sonamu-kit/react-sui", "virtual:84d4ddfca726e5538083296fff8aadc8178f8174d094f5b889b681df43ba3b69ce43819790289c478a96af6f8c1e8b9be4faf75a90325b1f57502de90ce0f25e#workspace:modules/react-sui"],\
           ["@sonamu-kit/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.8"],\
@@ -22779,7 +22779,8 @@ const RAW_RUNTIME_STATE =
           ["@aws-sdk/s3-request-presigner", "npm:3.921.0"],\
           ["@fastify/cors", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:8.5.0"],\
           ["@fastify/formbody", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.4.0"],\
-          ["@fastify/multipart", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:8.3.1"],\
+          ["@fastify/multipart", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:8.3.1"],\
+          ["@fastify/static", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:7.0.4"],\
           ["@sonamu-kit/ui", "virtual:8769572cd4b24c3531bbe482b0f26582eda2c2420c0dbfa27e5ca07536b095c571ef034d978b59899aea8da1552f15e66ef4a413ccc1cbd899d080e55417bec1#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.8"],\
           ["@swc/core", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.14.0"],\
