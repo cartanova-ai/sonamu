@@ -6,11 +6,6 @@ declare module "sonamu" {
   export interface ContextExtend {
     ip: string;
     session: Session;
-    user: UserSubsetSS | null;
-    passport: {
-      login: (user: UserSubsetSS) => Promise<void>;
-      logout: () => void;
-    };
   }
 
   export interface GuardKeys {
