@@ -9,11 +9,16 @@ import type {
 } from "fastify";
 import type { QsPluginOptions } from "fastify-qs";
 import { z } from "zod";
-import type { Context, ApiDecoratorOptions } from "../api";
+import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
 import type { Driver } from "../file-storage/driver";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { FastifyStaticOptions } from "@fastify/static";
+import { SecureSessionPluginOptions } from "@fastify/secure-session";
+import {
+  DeserializeFunction,
+  SerializeFunction,
+} from "@fastify/passport/dist/Authenticator";
 
 /*
   Enums
@@ -838,7 +843,8 @@ export type SonamuFastifyConfig = {
     defaultContext: Pick<
       Context,
       "request" | "reply" | "headers" | "createSSE"
-    >,
+    > &
+      AuthContext,
     request: FastifyRequest,
     reply: FastifyReply
   ) => Context;
@@ -890,9 +896,17 @@ export type SonamuServerOptions = {
     qs?: boolean | QsPluginOptions;
     sse?: boolean | SsePluginOptions;
     static?: boolean | FastifyStaticOptions;
+    session?: boolean | SecureSessionPluginOptions;
 
     custom?: (server: FastifyInstance) => void;
   };
+
+  auth?:
+    | boolean
+    | {
+        userSerializer: SerializeFunction<unknown, unknown>;
+        userDeserializer: DeserializeFunction<unknown, unknown>;
+      };
 
   apiConfig: SonamuFastifyConfig;
 

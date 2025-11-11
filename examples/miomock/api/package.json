@@ -14,8 +14,6 @@
     "practice": "node dist/practices/$0.js"
   },
   "dependencies": {
-    "@fastify/passport": "^2.2.0",
-    "@fastify/secure-session": "^5.2.0",
     "@swc/core": "^1.13.5",
     "bcrypt": "^6.0.0",
     "chokidar": "^4.0.3",
@@ -23,7 +21,6 @@
     "dotenv": "^17.2.2",
     "fastify": "^4",
     "fastify-file-upload": "^4.0.0",
-    "fastify-qs": "^5.0.0",
     "knex": "^3.1.0",
     "lodash": "^4.17.21",
     "mysql2": "^3.14.5",
@@ -37,7 +34,6 @@
     "@types/bcrypt": "^6",
     "@types/lodash": "^4",
     "@types/node": "^24.5.0",
-    "@types/qs": "^6.9.16",
     "@types/source-map-support": "^0",
     "@typescript/native-preview": "^7.0.0-dev.20250923.1",
     "@vitest/coverage-v8": "^3.2.4",

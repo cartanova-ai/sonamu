@@ -1,4 +1,4 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest, PassportUser } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
 import type {
   Server,
@@ -24,7 +24,16 @@ export type Context = {
   createSSE: <T extends ZodObject>(
     events: T
   ) => ReturnType<typeof createSSEFactory<T>>;
-} & ContextExtend;
+} & AuthContext &
+  ContextExtend;
+
+export type AuthContext = {
+  user: PassportUser | null;
+  passport: {
+    login: (user: PassportUser) => Promise<void>;
+    logout: () => void;
+  };
+};
 
 export type UploadContext = {
   file?: FileStorage;
