@@ -2,15 +2,28 @@
 
 import { spawnSync, execSync } from "child_process";
 import { resolve } from "path";
-import { existsSync } from "fs";
+import { existsSync, rmSync } from "fs";
 import chalk from "chalk";
-import { SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-config";
+import {
+  BUILD_DIR,
+  SWC_BUILD_COMMAND,
+  TSC_TYPE_CHECK_COMMAND,
+} from "./build-config";
 
 const scriptPath = resolve(__dirname, "cli.js");
 const args = process.argv.slice(2);
 
 // build 명령어는 dist 없이도 실행 가능하도록 cli.ts 외부에서 처리(Sonamu.init에서 dist 필요)
 function build(checkTypes: boolean = false) {
+  try {
+    if (existsSync(BUILD_DIR)) {
+      rmSync(BUILD_DIR, { recursive: true, force: true });
+    }
+  } catch (error) {
+    console.error(chalk.red("Remove build directory failed."), error);
+    process.exit(1);
+  }
+
   try {
     execSync(SWC_BUILD_COMMAND, { cwd: process.cwd(), stdio: "inherit" });
   } catch (error) {
@@ -21,7 +34,10 @@ function build(checkTypes: boolean = false) {
   if (checkTypes) {
     try {
       console.log(chalk.blue("Checking types with tsc..."));
-      execSync(TSC_TYPE_CHECK_COMMAND, { cwd: process.cwd(), stdio: "inherit" });
+      execSync(TSC_TYPE_CHECK_COMMAND, {
+        cwd: process.cwd(),
+        stdio: "inherit",
+      });
     } catch (error) {
       console.error(chalk.red("Type check failed."), error);
       process.exit(1);
