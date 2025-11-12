@@ -1,9 +1,24 @@
 /**
- * 주어진 경로 아래에 존재하는 패키지들에 대해 필요시 npm publish를 실행합니다.
+ * 이 monorepo에 속한 패키지들을 NPM에 퍼블리시할 때 사용하는 스크립트입니다.
+ * 
+ * 이 스크립트가 작동하는 방식:
+ *  1. publish 함수에 인자로 들어온 패키지 경로들에 대해서
+ *  2. 각 패키지의 package.json 파일을 읽어서 패키지 이름과 버전을 추출하고,
+ *  3. 패키지의 현재 버전이 NPM에 퍼블리시되어 있지 않다면 퍼블리시를 수행합니다.
+ * 
+ * 이 스크립트는 딱히 인자를 받지 않고, 환경변수에 따라 달리 움직이지도 않습니다.
+ * CI 환경 뿐만 아니라 로컬에서도 추가적인 설정 없이 바로 실행할 수 있습니다.
+ * tsx를 사용하도록 감싸놓은 yarn publish 명령을 사용하면 됩니다.
+ * 
+ * 스크립트는 최상위 디렉토리에서 실행할 것을 상정하여 작성되었습니다.
+ * 최상위 디렉토리에서 yarn publish를 사용하여 실행하는 것 이외의 케이스는 고려하지 않았습니다.
+ * 
+ * NPM 퍼블리시를 위해 yarn workspace <package-name> npm publish 명령을 사용합니다.
+ * 따라서 실행 환경의 ~/.yarnrc.yml 파일에 npmAuthToken이 설정되어 있어야 합니다.
  */
 
 import { resolve as pathResolve } from "path";
-import { readdir, readFile, stat } from "fs/promises";
+import { readFile } from "fs/promises";
 import { exec } from "child_process";
 
 type LocalPackageInfo = {
@@ -11,6 +26,10 @@ type LocalPackageInfo = {
   version: string;
 };
 
+/**
+ * 이 스크립트의 메인 함수입니다.
+ * @param packagePaths 퍼블리시할 패키지들의 경로 목록입니다.
+ */
 async function publish(...packagePaths: string[]) {
   const packages = await resolveAllPackages(...packagePaths);
 
@@ -99,6 +118,9 @@ async function publishPackage(localPackage: LocalPackageInfo): Promise<void> {
   });
 }
 
+// 아래 목록은 "NPM에 존재하지 않으면 퍼블리시를 진행할 패키지들의 경로" 목록입니다.
+// modules 폴더 아래에 있지만 별도로 퍼블리시하지 않는 패키지도 있기에, 이렇게 수동으로 지정하도록 하였습니다.
+// 패키지가 추가되거나 제거될 때는 이 목록도 수정해야 합니다.
 publish(
   "./modules/sonamu",
   "./modules/ui",
