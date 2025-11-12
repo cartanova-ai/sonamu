@@ -5,6 +5,10 @@ import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
 const Number = z.number();
 type Number = z.infer<typeof Number>;
 
+// CustomScalar: StringArray
+const StringArray = z.array(z.string());
+type StringArray = z.infer<typeof StringArray>;
+
 // Enums: Company
 export const CompanyOrderBy = z.enum(["id-desc"]).describe("CompanyOrderBy");
 export type CompanyOrderBy = z.infer<typeof CompanyOrderBy>;
@@ -133,6 +137,7 @@ export const ProjectBaseSchema = z.object({
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
   // tags: ManyToMany Tag
+  image_urls: StringArray.nullable(),
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema>;
 
@@ -346,6 +351,7 @@ export const ProjectSubsetA = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
+  image_urls: StringArray.nullable(),
   employee: z.array(
     z.object({
       id: z.int().nonnegative(),

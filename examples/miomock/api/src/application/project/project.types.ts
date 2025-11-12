@@ -14,3 +14,6 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
   tag_ids: z.array(z.number().int().positive()),
 });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
+
+export const StringArray = z.array(z.string());
+export type StringArray = z.infer<typeof StringArray>;
