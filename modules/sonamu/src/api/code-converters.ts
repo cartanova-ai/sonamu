@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { $ZodLooseShape } from "zod/v4/core"
 import {
   ApiParam,
   ApiParamType,
@@ -26,6 +27,17 @@ import {
   isVirtualProp,
 } from "../types/types";
 import { ExtendedApi } from "./decorators";
+import type { Literal } from "zod/v4/core/util";
+
+// <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
+type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
+type AnyZodObject = z.ZodObject<$ZodLooseShape>;
+type AnyZodArray = z.ZodArray<z.ZodType>;
+type AnyZodNullable = z.ZodNullable<z.ZodType>;
+type AnyZodOptional = z.ZodOptional<z.ZodType>;
+type AnyZodDefault = z.ZodDefault<z.ZodType>;
+type AnyZodLiteral = z.ZodLiteral<Literal>;
+type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 
 /*
   ExtendedApi 에서 ZodObject 리턴
@@ -33,7 +45,7 @@ import { ExtendedApi } from "./decorators";
 export function getZodObjectFromApi(
   api: ExtendedApi,
   references: {
-    [id: string]: z.ZodObject<any>;
+    [id: string]: AnyZodObject;
   } = {}
 ) {
   if (api.typeParameters?.length > 0) {
@@ -66,7 +78,7 @@ export function getZodObjectFromApi(
 export function getZodObjectFromApiParams(
   apiParams: ApiParam[],
   references: {
-    [id: string]: z.ZodObject<any>;
+    [id: string]: AnyZodObject;
   } = {}
 ): z.ZodObject {
   return z.object(
@@ -89,7 +101,7 @@ export function getZodObjectFromApiParams(
 export function getZodTypeFromApiParamType(
   paramType: ApiParamType,
   references: {
-    [id: string]: z.ZodObject<any>;
+    [id: string]: AnyZodObject;
   }
 ): z.ZodType<unknown> {
   switch (paramType) {
@@ -135,7 +147,7 @@ export function getZodTypeFromApiParamType(
             }
             const [obj, literalOrUnion] = refType.args!.map((arg) =>
               getZodTypeFromApiParamType(arg, references)
-            ) as [z.ZodObject<any>, z.ZodUnion<any> | z.ZodLiteral<string>];
+            ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
               keys = literalOrUnion.def.options.map(
@@ -338,7 +350,7 @@ export function propToZodTypeDef(
 }
 
 // TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
-export function zodTypeToZodCode(zt: z.ZodType<any>): string {
+export function zodTypeToZodCode(zt: z.ZodType): string {
   switch (zt.def.type) {
     case "string":
       return "z.string()";
@@ -361,15 +373,15 @@ export function zodTypeToZodCode(zt: z.ZodType<any>): string {
     case "never":
       return "z.never()";
     case "nullable":
-      return zodTypeToZodCode((zt as z.ZodNullable<any>).def.innerType) + ".nullable()";
+      return zodTypeToZodCode((zt as AnyZodNullable).def.innerType) + ".nullable()";
     case "default":
-      const zDefaultDef = (zt as z.ZodDefault<any>).def;
+      const zDefaultDef = (zt as AnyZodDefault).def;
       return (
         zodTypeToZodCode(zDefaultDef.innerType) +
-        `.default(${zDefaultDef.defaultValue()})`
+        `.default(${zDefaultDef.defaultValue})`
       );
     case "record":
-      const zRecordDef = (zt as z.ZodRecord<any, any>).def;
+      const zRecordDef = (zt as AnyZodRecord).def;
       return `z.record(${zodTypeToZodCode(zRecordDef.keyType)}, ${zodTypeToZodCode(
         zRecordDef.valueType
       )})`;
@@ -395,8 +407,8 @@ export function zodTypeToZodCode(zt: z.ZodType<any>): string {
       }
       return `z.literal([${items.join(", ")}])`;
     case "union":
-      return `z.union([${(zt as z.ZodUnion<any>).def.options
-        .map((option: z.ZodType<any>) => zodTypeToZodCode(option))
+      return `z.union([${(zt as AnyZodUnion).def.options
+        .map((option: z.ZodType) => zodTypeToZodCode(option))
         .join(",")}])`;
     case "enum":
       // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
@@ -543,16 +555,16 @@ export function unwrapPromiseOnce(paramType: ApiParamType) {
 }
 
 // TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
-export function serializeZodType(zt: z.ZodTypeAny): any {
+export function serializeZodType(zt: z.ZodType): any {
   switch (zt.def.type) {
     case "object":
       return {
         type: "object",
-        shape: Object.keys((zt as z.ZodObject<any>).shape).reduce(
+        shape: Object.keys((zt as AnyZodObject).shape).reduce(
           (result, key) => {
             return {
               ...result,
-              [key]: serializeZodType((zt as z.ZodObject<any>).shape[key]),
+              [key]: serializeZodType((zt as AnyZodObject).shape[key]),
             };
           },
           {}
@@ -561,7 +573,7 @@ export function serializeZodType(zt: z.ZodTypeAny): any {
     case "array":
       return {
         type: "array",
-        element: serializeZodType((zt as z.ZodArray<any>).def.element),
+        element: serializeZodType((zt as AnyZodArray).def.element),
       };
     case "enum":
       return {
@@ -584,12 +596,12 @@ export function serializeZodType(zt: z.ZodTypeAny): any {
       };
     case "nullable":
       return {
-        ...serializeZodType((zt as z.ZodNullable<any>).def.innerType),
+        ...serializeZodType((zt as AnyZodNullable).def.innerType),
         nullable: true,
       };
     case "optional":
       return {
-        ...serializeZodType((zt as z.ZodOptional<any>).def.innerType),
+        ...serializeZodType((zt as AnyZodOptional).def.innerType),
         optional: true,
       };
     case "any":
@@ -599,13 +611,13 @@ export function serializeZodType(zt: z.ZodTypeAny): any {
     case "record":
       return {
         type: "record",
-        keyType: serializeZodType((zt as z.ZodRecord<any, any>).def.keyType),
-        valueType: serializeZodType((zt as z.ZodRecord<any, any>).def.valueType),
+        keyType: serializeZodType((zt as AnyZodRecord).def.keyType),
+        valueType: serializeZodType((zt as AnyZodRecord).def.valueType),
       };
     case "union":
       return {
         type: "union",
-        options: (zt.def as z.ZodUnion<z.ZodType<any>[]>).options.map((option) =>
+        options: (zt.def as AnyZodUnion).options.map((option) =>
           serializeZodType(option)
         ),
       };
@@ -631,16 +643,14 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "never":
       return zt.def.type;
     case "nullable":
-      return zodTypeToTsTypeDef((zt as z.ZodNullable<any>).def.innerType) + " | null";
+      return zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType) + " | null";
     case "default":
-      return zodTypeToTsTypeDef((zt as z.ZodDefault<any>).def.innerType);
+      return zodTypeToTsTypeDef((zt as AnyZodDefault).def.innerType);
     case "record":
-      const recordType = zt as z.ZodRecord<any, any>;
-      return `{ [ key: ${zodTypeToTsTypeDef(
-        recordType.def.keyType
-      )} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
+      const recordType = zt as AnyZodRecord;
+      return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
     case "literal":
-      return Array.from((zt as z.ZodLiteral<any>).values).map(value => {
+      return Array.from((zt as z.ZodLiteral).values).map(value => {
         if (typeof value === "string") {
           return `"${value}"`;
         }
@@ -656,15 +666,15 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
         return `${value}`;
       }).join(" | ")
     case "union":
-      return `${(zt as z.ZodUnion<z.ZodTypeAny[]>).options
+      return `${(zt as AnyZodUnion).options
         .map((option) => zodTypeToTsTypeDef(option))
         .join(" | ")}`;
     case "enum":
       return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
     case "array":
-      return `${zodTypeToTsTypeDef((zt as z.ZodArray<z.ZodType>).element)}[]`;
+      return `${zodTypeToTsTypeDef((zt as AnyZodArray).element)}[]`;
     case "object":
-      const shape = (zt as z.ZodObject<any>).shape;
+      const shape = (zt as AnyZodObject).shape;
       return [
         "{",
         ...Object.keys(shape).map((key) => {
@@ -677,7 +687,7 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
         "}",
       ].join("\n");
     case "optional":
-      return zodTypeToTsTypeDef((zt as z.ZodOptional<any>).def.innerType) + " | undefined";
+      return zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType) + " | undefined";
     default:
       throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
   }
