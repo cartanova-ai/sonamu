@@ -134,6 +134,17 @@ export default function ProjectList({}: ProjectListProps) {
       ),
       collapsing: true,
     },
+    {
+      label: "이미지",
+      tc: (row) => (
+        <>
+          {row.image_urls?.map((url) => (
+            <img key={url} src={url} style={{ height: "100px" }} />
+          ))}
+        </>
+      ),
+      collapsing: true,
+    },
   ];
 
   return (
