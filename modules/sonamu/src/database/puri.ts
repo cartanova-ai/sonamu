@@ -559,6 +559,31 @@ export class Puri<
     return result;
   }
 
+  // Pluck
+  async pluck<
+    TColumn extends ResultAvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TResult,
+      TJoined
+    >,
+  >(
+    column: TColumn
+  ): Promise<
+    ExtractColumnType<TSchema, TTable, TColumn & string, TOriginal, TJoined>[]
+  > {
+    type Result = ExtractColumnType<
+      TSchema,
+      TTable,
+      TColumn & string,
+      TOriginal,
+      TJoined
+    >[];
+
+    return this.knexQuery.pluck(column) as Promise<Result>;
+  }
+
   // Insert/Update/Delete
   // TODO(Haze, 251030): InsertData<T>에서 nullable type을 제대로 처리하지 못하는 것 같음.
   async insert(
