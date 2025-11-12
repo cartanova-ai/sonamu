@@ -1548,7 +1548,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "@types/node",\
-      "npm:24.9.2"\
+      "npm:24.10.1"\
     ],\
     [\
       "@types/node-fetch",\
@@ -1655,16 +1655,8 @@ const RAW_RUNTIME_STATE =
       "npm:1.3.0"\
     ],\
     [\
-      "@vitest/coverage-v8",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.2.4"\
-    ],\
-    [\
       "@vitest/expect",\
       "npm:3.2.4"\
-    ],\
-    [\
-      "@vitest/mocker",\
-      "virtual:d1a1b6ac2751222d2b2adad0c406276f73d3270cadda495f602a03a0dbb4c37dd11fdf8e34ef7c57fe1e491c84e403ae771549f68b6c467f3d585b3af0ba4e7a#npm:3.2.4"\
     ],\
     [\
       "@vitest/pretty-format",\
@@ -5134,7 +5126,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "undici-types",\
-      "npm:6.21.0"\
+      "npm:7.16.0"\
     ],\
     [\
       "unherit",\
@@ -5238,15 +5230,11 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "vite",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:7.1.12"\
+      "virtual:cb1d79df3b4901790c8808db427c397bd3f613c8181bce1e1c99f654fcf8f1484eb3efeaaa7477306f7c95ff2d882d1e762cb59fa3743be7fbfd628566f4b6c1#npm:7.1.12"\
     ],\
     [\
       "vite-node",\
       "npm:3.2.4"\
-    ],\
-    [\
-      "vitest",\
-      "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.2.4"\
     ],\
     [\
       "volar-service-css",\
@@ -5465,6 +5453,7 @@ const RAW_RUNTIME_STATE =
       [null, {\
         "packageLocation": "./",\
         "packageDependencies": [\
+          ["@types/node", "npm:24.10.1"],\
           ["corepack", "npm:0.34.1"],\
           ["cowsay", "npm:1.6.0"],\
           ["npm-run-all", "npm:4.1.5"],\
@@ -11842,6 +11831,17 @@ const RAW_RUNTIME_STATE =
           ["punycode", "npm:2.3.1"],\
           ["string_decoder", "npm:1.3.0"],\
           ["undici-types", "npm:6.21.0"]\
+        ],\
+        "linkType": "HARD"\
+      }],\
+      ["npm:24.10.1", {\
+        "packageLocation": "./.yarn/cache/@types-node-npm-24.10.1-d514f50dfd-ddac8c97be.zip/node_modules/@types/node/",\
+        "packageDependencies": [\
+          ["@types/node", "npm:24.10.1"],\
+          ["buffer", "npm:6.0.3"],\
+          ["punycode", "npm:2.3.1"],\
+          ["string_decoder", "npm:1.3.0"],\
+          ["undici-types", "npm:7.16.0"]\
         ],\
         "linkType": "HARD"\
       }],\
@@ -22238,6 +22238,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:.", {\
         "packageLocation": "./",\
         "packageDependencies": [\
+          ["@types/node", "npm:24.10.1"],\
           ["corepack", "npm:0.34.1"],\
           ["cowsay", "npm:1.6.0"],\
           ["npm-run-all", "npm:4.1.5"],\
