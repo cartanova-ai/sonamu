@@ -561,27 +561,18 @@ export class Puri<
 
   // Pluck
   async pluck<
-    TColumn extends ResultAvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TResult,
-      TJoined
+    TColumn extends Exclude<
+      ResultAvailableColumns<TSchema, TTable, TOriginal, TResult, TJoined>,
+      "__fulltext__" | `${TTable & string}.__fulltext__`
     >,
   >(
     column: TColumn
   ): Promise<
     ExtractColumnType<TSchema, TTable, TColumn & string, TOriginal, TJoined>[]
   > {
-    type Result = ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >[];
-
-    return this.knexQuery.pluck(column) as Promise<Result>;
+    return this.knexQuery.pluck(column) as Promise<
+      ExtractColumnType<TSchema, TTable, TColumn & string, TOriginal, TJoined>[]
+    >;
   }
 
   // Insert/Update/Delete
