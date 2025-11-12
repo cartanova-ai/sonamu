@@ -11,19 +11,25 @@ export type ImageUploaderProps = {} & DistributiveOmit<
 >;
 
 export function ImageUploader(props: ImageUploaderProps) {
-  if (props.mode === "lazy") {
-    return <ImageUploaderFrame {...props} mode="lazy" />;
+  if (props.multiple) {
+    return (
+      <ImageUploaderFrame
+        {...props}
+        uploader={async (domFiles: File[]) => {
+          const response = await FileService.uploadMultiple(domFiles);
+          return response.files;
+        }}
+      />
+    );
+  } else {
+    return (
+      <ImageUploaderFrame
+        {...props}
+        uploader={async (domFile: File) => {
+          const response = await FileService.upload(domFile);
+          return response.file;
+        }}
+      />
+    );
   }
-
-  const uploader = async (domFiles: File[]) => {
-    if (props.multiple) {
-      const response = await FileService.uploadMultiple(domFiles);
-      return response.files;
-    } else {
-      const response = await FileService.upload(domFiles[0]);
-      return [response.file];
-    }
-  };
-
-  return <ImageUploaderFrame {...props} mode="eager" uploader={uploader} />;
 }

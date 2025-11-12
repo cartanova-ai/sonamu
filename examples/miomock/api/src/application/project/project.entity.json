@@ -45,6 +45,13 @@
       "joinTable": "project_tags",
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE"
+    },
+    {
+      "name": "image_urls",
+      "nullable": true,
+      "desc": "이미지URLS",
+      "type": "json",
+      "id": "StringArray"
     }
   ],
   "indexes": [],
@@ -61,7 +68,8 @@
       "status",
       "description",
       "tags.id",
-      "tags.name"
+      "tags.name",
+      "image_urls"
     ]
   },
   "enums": {
