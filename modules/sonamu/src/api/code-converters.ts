@@ -662,7 +662,7 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "enum":
       return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
     case "array":
-      return `${zodTypeToTsTypeDef((zt as z.ZodArray<any>).element.type)}[]`;
+      return `${zodTypeToTsTypeDef((zt as z.ZodArray<z.ZodType>).element)}[]`;
     case "object":
       const shape = (zt as z.ZodObject<any>).shape;
       return [
