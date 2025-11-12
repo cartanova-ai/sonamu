@@ -4613,7 +4613,7 @@ __metadata:
     zod: "npm:^4.1.12"
   peerDependencies:
     "@sonamu-kit/react-sui": ^0.1.17
-    sonamu: ^0.5.0
+    sonamu: ^0.5.6
   languageName: unknown
   linkType: soft
 
