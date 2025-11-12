@@ -15143,7 +15143,6 @@ __metadata:
     typescript: "npm:^5.2.2"
     zod: "npm:^4.1.12"
   peerDependencies:
-    "@sonamu-kit/react-sui": ^0.1.17
     fastify: ^4.23.2
     knex: ^3.1.0
     mysql2: ^3.6.1
