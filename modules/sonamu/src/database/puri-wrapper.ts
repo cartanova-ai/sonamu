@@ -46,14 +46,50 @@ export class PuriWrapper<
     callback: (trx: PuriTransactionWrapper) => Promise<T>,
     options: TransactionalOptions = {}
   ): Promise<T> {
-    const { isolation, readOnly } = options;
+    const { isolation, readOnly, dbPreset = "w" } = options;
 
-    return this.knex.transaction(
-      async (trx) => {
-        return callback(new PuriTransactionWrapper(trx, this.upsertBuilder));
-      },
-      { isolationLevel: isolation, readOnly }
-    );
+    // @transactional 데코레이터와 동일한 로직: 이미 트랜잭션 컨텍스트가 있는지 확인
+    const { DB } = await import("./db");
+    const existingContext = DB.transactionStorage.getStore();
+
+    if (existingContext) {
+      // 해당 preset의 트랜잭션이 이미 있으면 재사용
+      const existingTrx = existingContext.getTransaction(dbPreset);
+      if (existingTrx) {
+        return callback(existingTrx);
+      }
+    }
+
+    // AsyncLocalStorage 컨텍스트가 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
+    const startTransaction = async () => {
+      return this.knex.transaction(
+        async (trx) => {
+          const trxWrapper = new PuriTransactionWrapper(
+            trx,
+            this.upsertBuilder
+          );
+
+          // TransactionContext에 트랜잭션 저장
+          DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
+
+          try {
+            return await callback(trxWrapper);
+          } finally {
+            // 트랜잭션 제거
+            DB.getTransactionContext().deleteTransaction(dbPreset);
+          }
+        },
+        { isolationLevel: isolation, readOnly }
+      );
+    };
+
+    // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
+    if (!existingContext) {
+      return DB.runWithTransaction(startTransaction);
+    } else {
+      // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
+      return startTransaction();
+    }
   }
 
   ubRegister<TTable extends TableName<DBSchema>>(
