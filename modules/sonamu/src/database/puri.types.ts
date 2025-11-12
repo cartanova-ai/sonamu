@@ -40,9 +40,11 @@ export type ResultAvailableColumns<
   TOriginal = any,
   TResult = any,
   TJoined = EmptyRecord,
-> =
+> = Exclude<
   | AvailableColumns<TSchema, T, TOriginal, TJoined>
-  | `${keyof TResult & string}`;
+  | `${keyof TResult & string}`,
+  "__fulltext__" | `${T & string}.__fulltext__`
+>;
 
 // 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
 export type AvailableColumns<

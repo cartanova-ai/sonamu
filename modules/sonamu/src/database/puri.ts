@@ -561,9 +561,12 @@ export class Puri<
 
   // Pluck
   async pluck<
-    TColumn extends Exclude<
-      ResultAvailableColumns<TSchema, TTable, TOriginal, TResult, TJoined>,
-      "__fulltext__" | `${TTable & string}.__fulltext__`
+    TColumn extends ResultAvailableColumns<
+      TSchema,
+      TTable,
+      TOriginal,
+      TResult,
+      TJoined
     >,
   >(
     column: TColumn
