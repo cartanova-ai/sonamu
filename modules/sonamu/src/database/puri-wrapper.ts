@@ -52,22 +52,14 @@ export class PuriWrapper<
     const { DB } = await import("./db");
     const existingContext = DB.transactionStorage.getStore();
 
-    if (existingContext) {
-      // 해당 preset의 트랜잭션이 이미 있으면 재사용
-      const existingTrx = existingContext.getTransaction(dbPreset);
-      if (existingTrx) {
-        return callback(existingTrx);
-      }
-    }
-
     // AsyncLocalStorage 컨텍스트가 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
-    const startTransaction = async () => {
-      return this.knex.transaction(
+    const startTransaction = async (
+      knex: Knex | Knex.Transaction,
+      upsertBuilder: UpsertBuilder
+    ) => {
+      return knex.transaction(
         async (trx) => {
-          const trxWrapper = new PuriTransactionWrapper(
-            trx,
-            this.upsertBuilder
-          );
+          const trxWrapper = new PuriTransactionWrapper(trx, upsertBuilder);
 
           // TransactionContext에 트랜잭션 저장
           DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
@@ -85,10 +77,18 @@ export class PuriWrapper<
 
     // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
     if (!existingContext) {
-      return DB.runWithTransaction(startTransaction);
+      return DB.runWithTransaction(() =>
+        startTransaction(this.knex, this.upsertBuilder)
+      );
+    }
+
+    // 해당 preset의 트랜잭션이 이미 있으면 SAVEPOINT로 중첩 트랜잭션 생성
+    const existingTrx = existingContext.getTransaction(dbPreset);
+    if (existingTrx) {
+      return startTransaction(existingTrx.trx, existingTrx.upsertBuilder);
     } else {
       // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
-      return startTransaction();
+      return startTransaction(this.knex, this.upsertBuilder);
     }
   }
 

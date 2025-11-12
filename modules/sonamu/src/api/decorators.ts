@@ -156,10 +156,14 @@ export function transactional(options: TransactionalOptions = {}) {
       const startTransaction = async () => {
         const puri = this.getPuri(dbPreset) as PuriWrapper;
 
-        return puri.transaction(
-          async (trx: PuriTransactionWrapper) => {
+        return puri.knex.transaction(
+          async (trx) => {
+            const trxWrapper = new PuriTransactionWrapper(
+              trx,
+              this.getUpsertBuilder()
+            );
             // TransactionContext에 트랜잭션 저장
-            DB.getTransactionContext().setTransaction(dbPreset, trx);
+            DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
 
             try {
               return await originalMethod.apply(this, args);
@@ -168,7 +172,7 @@ export function transactional(options: TransactionalOptions = {}) {
               DB.getTransactionContext().deleteTransaction(dbPreset);
             }
           },
-          { isolation, readOnly }
+          { isolationLevel: isolation, readOnly }
         );
       };
 
