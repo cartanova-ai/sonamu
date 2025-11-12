@@ -182,6 +182,50 @@ async function examples() {
 
   console.log(`Found ${specificUsers.length} users with specific roles`);
 
+  console.log("\n=== Example 7.5: Using pluck ===");
+  // 기본 컬럼 pluck - 특정 컬럼의 값들만 배열로 반환
+  const userIds = await db.table("users").where("role", "admin").pluck("id");
+
+  console.log(`Found ${userIds.length} admin user IDs:`, userIds);
+  assert(Array.isArray(userIds));
+  if (userIds.length > 0) {
+    assert(typeof userIds[0] === "number");
+    console.log("First user ID:", userIds[0]);
+  }
+
+  // 조인된 테이블 컬럼 pluck
+  const departmentNames = await db
+    .table("users")
+    .join("employees", "users.id", "employees.user_id")
+    .leftJoin("departments", "employees.department_id", "departments.id")
+    .where("users.role", "admin")
+    .pluck("departments.name");
+
+  console.log(
+    `Found ${departmentNames.length} department names:`,
+    departmentNames
+  );
+  assert(Array.isArray(departmentNames));
+  if (departmentNames.length > 0 && departmentNames[0] !== null) {
+    assert(typeof departmentNames[0] === "string");
+  }
+
+  // select로 선택된 컬럼 pluck
+  const usernames = await db
+    .table("users")
+    .select({
+      userId: "id",
+      userName: "username",
+    })
+    .where("role", "admin")
+    .pluck("userName");
+
+  console.log(`Found ${usernames.length} usernames:`, usernames);
+  assert(Array.isArray(usernames));
+  if (usernames.length > 0) {
+    assert(typeof usernames[0] === "string");
+  }
+
   console.log("\n=== Example 8: Transaction Example ===");
   await db.transaction(async (trx) => {
     // 트랜잭션 내에서 쿼리 실행
