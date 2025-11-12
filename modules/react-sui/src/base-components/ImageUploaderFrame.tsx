@@ -1,6 +1,7 @@
 import React, {
   ChangeEvent,
   HTMLAttributes,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -23,45 +24,53 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import classnames from "classnames";
 
+// lazy 모드에서 uploader 실행 후 최종 값을 반환
+export function upload(): Promise<string[]> {
+  return new Promise((resolve) => {
+    document.dispatchEvent(
+      new CustomEvent("app:image-uploader/commit", {
+        detail: {
+          channel: "image-uploader",
+          done: resolve,
+        },
+      })
+    );
+  });
+}
+
 type AllEvent =
   | ChangeEvent<HTMLInputElement>
   | DragEndEvent
   | React.MouseEvent<HTMLButtonElement, MouseEvent>;
 
 type OnChange<T> = (e: AllEvent, data: { value: T }) => void;
-type CommonProps<T> = Omit<HTMLAttributes<HTMLDivElement>, "onChange"> & {
-  maxSize?: number;
-  accept?: string;
-  preview?: boolean;
-} & (
-    | {
-        multiple: true;
-        value: T[];
-        onChange: OnChange<T[]>;
-      }
-    | {
-        multiple: false;
-        value: T | null;
-        onChange: OnChange<T | null>;
-      }
-  );
 
 export type UploadedFile = { url: string; name: string };
 
-type EagerModeProps = { mode: "eager" } & CommonProps<UploadedFile> & {
-    uploader: (domFiles: File[]) => Promise<UploadedFile[]>;
-  };
-type LazyModeProps = { mode: "lazy" } & CommonProps<File> & {
-    uploader?: never;
-  };
-export type ImageUploaderFrameProps = EagerModeProps | LazyModeProps;
+export type CommonProps = Omit<HTMLAttributes<HTMLDivElement>, "onChange"> & {
+  mode: "eager" | "lazy";
+  maxSize?: number;
+  accept?: string;
+  preview?: boolean;
+};
 
-function asArray<T>(v: T | T[] | null | undefined): T[] {
-  if (v == null) return [];
-  return (Array.isArray(v) ? v : [v]).filter(
-    (item) => item != null && item !== ""
-  );
-}
+// 단일 파일 모드
+type SingleProps = CommonProps & {
+  multiple?: false; // 생략되면 단일로 간주
+  value: string;
+  onChange: OnChange<string>;
+  uploader: (domFile: File) => Promise<UploadedFile>;
+};
+
+// 다중 파일 모드
+type MultiProps = CommonProps & {
+  multiple: true;
+  value: string[];
+  onChange: OnChange<string[]>;
+  uploader: (domFiles: File[]) => Promise<UploadedFile[]>;
+};
+
+export type ImageUploaderFrameProps = SingleProps | MultiProps;
 
 function useObjectUrls(files: File[]) {
   const [urls, setUrls] = useState<string[]>([]);
@@ -84,10 +93,20 @@ function useObjectUrls(files: File[]) {
   return urls;
 }
 
+function asArray<T>(v: T | T[] | null | undefined): T[] {
+  if (Array.isArray(v)) return v.filter(Boolean) as T[];
+  if (v == null || (typeof v === "string" && (v as any as string) === ""))
+    return [];
+  return [v as T];
+}
+
+// 신규 파일 고유 키 (name/mtime/size가 동일하면 같은 키로 간주)
+const pendingKeyOf = (f: File) => `new:${f.name}:${f.lastModified}:${f.size}`;
+
+/** forwardRef로 commit() 노출 */
 export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
-  // DOM에 전달하지 않을 props 제거
   const {
-    multiple,
+    multiple = true,
     maxSize,
     value,
     onChange,
@@ -98,169 +117,266 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     ...divProps
   } = props;
 
+  // value는 내부에서 항상 string[]로 사용
+  const urls = useMemo<string[]>(() => asArray<string>(value as any), [value]);
+
   const [loading, setLoading] = useState<boolean>(false);
-  const ref = useRef<HTMLInputElement | null>(null);
+  const refInput = useRef<HTMLInputElement | null>(null);
 
-  // Eager mode: value는 string[]
-  const images = useMemo(
-    () => (mode === "eager" ? asArray<UploadedFile>(value as any) : []),
-    [mode, value]
-  );
-  // Lazy mode: value는 File[]
-  const files = useMemo(
-    () => (mode === "lazy" ? asArray<File>(value as any) : []),
-    [mode, value]
-  );
-  const previewUrls = useObjectUrls(mode === "lazy" ? files : []);
+  // lazy 전용: 업로드 전 대기 파일
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const pendingPreviewUrls = useObjectUrls(mode === "lazy" ? pendingFiles : []);
 
-  const items: string[] = useMemo(
-    () => (mode === "eager" ? images.map((image) => image.url) : previewUrls),
-    [mode, images, previewUrls]
+  const emitChange = useCallback(
+    (e: AllEvent | {}, next: string[]) => {
+      if (multiple) {
+        (onChange as OnChange<string[]>)(e as AllEvent, { value: next });
+      } else {
+        (onChange as OnChange<string>)(e as AllEvent, { value: next[0] ?? "" });
+      }
+    },
+    [multiple, onChange]
   );
 
-  const setImagesWithOnChange = (
-    e: AllEvent,
-    callback: (images: UploadedFile[]) => UploadedFile[]
-  ): void => {
-    const res = callback(images);
-    if (multiple) {
-      (onChange as OnChange<UploadedFile[]>)(e, {
-        value: res,
-      });
-    } else {
-      (onChange as OnChange<UploadedFile | null>)(e, {
-        value: res.length > 0 ? res[0] : null,
-      });
-    }
+  // uploader를 항상 File[] -> UploadedFile[]으로 정규화
+  const uploadNormalized = useCallback(
+    async (files: File[]): Promise<UploadedFile[]> => {
+      if (multiple) {
+        const res = await (uploader as (fs: File[]) => Promise<UploadedFile[]>)(
+          files
+        );
+        return res;
+      }
+      const single = await (uploader as (f: File) => Promise<UploadedFile>)(
+        files[0]
+      );
+      return [single];
+    },
+    [uploader, multiple]
+  );
+
+  // ----- 통합 리스트 상태 (기존 + 신규) -----
+  // 표시 순서(id 배열). 기존/신규를 한 리스트로 통합 표시
+  const [order, setOrder] = useState<string[]>([]);
+
+  // 현재 존재하는 아이디 목록 계산
+  const existingIds = useMemo(() => urls.map((u) => `exist:${u}`), [urls]);
+  const pendingIds = useMemo(
+    () => (mode === "lazy" ? pendingFiles.map((f) => pendingKeyOf(f)) : []),
+    [mode, pendingFiles]
+  );
+  const currentIds = useMemo(
+    () => [...existingIds, ...pendingIds],
+    [existingIds, pendingIds]
+  );
+
+  // order를 현재 아이템에 맞게 보정(유지 가능한 건 유지, 새로 생긴 건 뒤에 추가)
+  useEffect(() => {
+    setOrder((prev) => {
+      if (!prev || prev.length === 0) return currentIds;
+      const set = new Set(currentIds);
+      const kept = prev.filter((id) => set.has(id));
+      const missing = currentIds.filter((id) => !prev.includes(id));
+      return [...kept, ...missing];
+    });
+  }, [currentIds]);
+
+  // 화면에 뿌릴 통합 아이템
+  type UnifiedItem = {
+    id: string;
+    kind: "exist" | "new";
+    src: string;
+    name: string;
   };
 
-  const setFilesWithOnChange = (
-    e: AllEvent,
-    callback: (files: File[]) => File[]
-  ): void => {
-    const res = callback(files);
-    if (multiple) {
-      (onChange as OnChange<File[]>)(e, {
-        value: res,
-      });
-    } else {
-      (onChange as OnChange<File | null>)(e, {
-        value: res.length > 0 ? res[0] : null,
+  const idToItem = useMemo(() => {
+    const map = new Map<string, UnifiedItem>();
+    // exist
+    urls.forEach((u) =>
+      map.set(`exist:${u}`, {
+        id: `exist:${u}`,
+        kind: "exist",
+        src: u,
+        name: u.split("/").pop() ?? "",
+      })
+    );
+    // new
+    if (mode === "lazy") {
+      const previews = pendingPreviewUrls; // same order as pendingFiles
+      pendingFiles.forEach((f, i) => {
+        const id = pendingKeyOf(f);
+        map.set(id, {
+          id,
+          kind: "new",
+          src: previews[i] ?? "",
+          name: f.name,
+        });
       });
     }
-  };
+    return map;
+  }, [urls, mode, pendingFiles, pendingPreviewUrls]);
 
-  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    if (mode === "eager") {
-      handleEagerChange(e);
-    } else {
-      handleLazyChange(e);
-    }
-  };
+  const unifiedItems: UnifiedItem[] = useMemo(
+    () => order.map((id) => idToItem.get(id)).filter(Boolean) as UnifiedItem[],
+    [order, idToItem]
+  );
 
-  const isMaxSizeExceeded = (fileInput: HTMLInputElement) => {
-    if (maxSize && files.length + (fileInput.files?.length ?? 0) > maxSize) {
+  const totalCount = urls.length + (mode === "lazy" ? pendingFiles.length : 0);
+
+  const isMaxSizeExceeded = (incomingCount: number) => {
+    if (maxSize && totalCount + incomingCount > maxSize) {
       alert(`최대 ${maxSize}개까지 업로드가 가능합니다.`);
       return true;
     }
     return false;
   };
 
-  const handleLazyChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const fileInput = e.target;
-    if (fileInput.files && fileInput.files.length > 0) {
-      if (multiple === true) {
-        // maxSize 갯수 제한에 따른 메세지 처리
-        if (isMaxSizeExceeded(fileInput)) {
-          return;
-        }
+  const handleFilePick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const fileList = input.files ? Array.from(input.files) : [];
+    if (fileList.length === 0) return;
 
-        const newFiles = Array.from(fileInput.files);
-        setFilesWithOnChange(e, () => [...files, ...newFiles]);
-      } else {
-        setFilesWithOnChange(e, () => [fileInput.files![0]]);
-      }
-      fileInput.value = "";
-    }
-  };
-
-  const handleEagerChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    if (!uploader) {
-      throw new Error("uploader is required for eager mode");
-    }
-
-    const fileInput = e.target;
-    if (!fileInput.files || fileInput.files.length === 0) {
+    if (isMaxSizeExceeded(fileList.length)) {
+      input.value = "";
       return;
     }
 
-    if (multiple === true && isMaxSizeExceeded(fileInput)) {
+    if (mode === "lazy") {
+      // 업로드 전: 내부 pending에만 쌓아둠
+      setPendingFiles((prev) =>
+        multiple ? [...prev, ...fileList] : [fileList[0]]
+      );
+      input.value = "";
       return;
     }
 
+    // eager: 선택 즉시 업로드 → 외부 urls에 바로 반영
     setLoading(true);
     try {
-      if (multiple === true) {
-        const uploadedFiles = await uploader(Array.from(fileInput.files));
-        setImagesWithOnChange(e, () => [...images, ...uploadedFiles]);
-      } else {
-        const uploadedFiles = await uploader([fileInput.files[0]]);
-        setImagesWithOnChange(e, () => uploadedFiles);
-      }
-    } catch (error) {
-      console.error("Failed to upload files:", error);
+      const uploaded = await uploadNormalized(fileList);
+      const uploadedUrls = uploaded.map((u) => u.url);
+      const next = multiple
+        ? [...urls, ...uploadedUrls]
+        : uploadedUrls.slice(0, 1);
+      emitChange(e, next);
+    } catch (err) {
+      console.error("Failed to upload files:", err);
       alert("파일 업로드 실패");
     } finally {
       setLoading(false);
-      fileInput.value = "";
+      input.value = "";
     }
   };
 
-  const handleButtonClick = (
-    _e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
-    ref.current?.click();
+  const handlePickButton = () => {
+    refInput.current?.click();
   };
 
-  const getHandlerImageDelButtonClicked = (index: number) => {
+  // 삭제
+  const handleDeleteExisting = (index: number) => {
     return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      if (mode === "eager") {
-        setImagesWithOnChange(e, (images) =>
-          images.filter((_image, _index) => _index !== index)
-        );
-      } else {
-        setFilesWithOnChange(e, (files) =>
-          files.filter((_file, _index) => _index !== index)
-        );
-      }
+      e.stopPropagation();
+      const next = urls.filter((_u, i) => i !== index);
+      emitChange(e, next);
+      // order는 currentIds 변경에 따라 effect로 보정됨
+    };
+  };
+  const handleDeleteNewLazy = (index: number) => {
+    return (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      setPendingFiles((prev) => prev.filter((_f, i) => i !== index));
     };
   };
 
+  // 드래그: 통합 섹션 정렬
   const [activeId, setActiveId] = useState<string | null>(null);
+
   const handleDragStart = (e: DragStartEvent) => {
     setActiveId(e.active.id as string);
   };
-  const handleDragEnd = (e: DragEndEvent) => {
+
+  const handleDragEndUnified = (e: DragEndEvent) => {
     const { active, over } = e;
-    if (over && active.id !== over.id) {
-      if (mode === "eager") {
-        // eager 모드인 경우, images 순서 변경
-        setImagesWithOnChange(e, (images) => {
-          const oldIndex = items.indexOf(active.id as string);
-          const newIndex = items.indexOf(over.id as string);
-          return arrayMove(images, oldIndex, newIndex);
-        });
-      } else {
-        // lazy 모드인 경우, files 순서 변경
-        setFilesWithOnChange(e, (files) => {
-          const oldIndex = items.findIndex((item) => item === active.id);
-          const newIndex = items.findIndex((item) => item === over.id);
-          return arrayMove(files, oldIndex, newIndex);
-        });
-      }
-    }
     setActiveId(null);
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = order.indexOf(active.id as string);
+    const newIndex = order.indexOf(over.id as string);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const newOrder = arrayMove(order, oldIndex, newIndex);
+    setOrder(newOrder);
+
+    // 1) 기존 url의 새로운 순서 계산 → 외부 onChange
+    const nextUrls = newOrder
+      .filter((id) => id.startsWith("exist:"))
+      .map((id) => id.slice("exist:".length));
+    onChange(e, { value: nextUrls as any });
+
+    // 2) pendingFiles의 새로운 순서 계산
+    if (mode === "lazy") {
+      const keyToFile = new Map(pendingFiles.map((f) => [pendingKeyOf(f), f]));
+      const nextPending = newOrder
+        .filter((id) => id.startsWith("new:"))
+        .map((id) => keyToFile.get(id))
+        .filter(Boolean) as File[];
+      setPendingFiles(nextPending);
+    }
   };
+
+  // 커밋: 순서 보존하여 병합
+  const handleCommit = useCallback(async () => {
+    if (mode !== "lazy") return urls;
+    if (pendingFiles.length === 0) return urls;
+
+    setLoading(true);
+    try {
+      const uploaded = await uploadNormalized(pendingFiles); // UploadedFile[]
+      const uploadedUrls = uploaded.map((u) => u.url);
+
+      // order 순서대로 exist/new를 펼쳐서 최종 next 생성
+      let upIdx = 0;
+      const next: string[] = [];
+      for (const id of order) {
+        if (id.startsWith("exist:")) next.push(id.slice("exist:".length));
+        else if (id.startsWith("new:")) next.push(uploadedUrls[upIdx++] ?? "");
+      }
+      const cleaned = next.filter(Boolean);
+
+      onChange({} as any, {
+        value: (multiple ? cleaned : cleaned.slice(0, 1)) as any,
+      });
+      setPendingFiles([]);
+      return multiple ? cleaned : cleaned.slice(0, 1);
+    } catch (err) {
+      console.error("Failed to upload files:", err);
+      alert("파일 업로드 실패");
+      return urls;
+    } finally {
+      setLoading(false);
+    }
+  }, [mode, multiple, pendingFiles, urls, order, onChange, uploadNormalized]);
+
+  // 업로드 후 next를 계산해서 onChange 호출 + done(next)로 반환
+  useEffect(() => {
+    const listener = async (ev: Event) => {
+      const { channel, done } =
+        (
+          ev as CustomEvent<{
+            channel: string;
+            done: (v: string[]) => void;
+          }>
+        ).detail || {};
+
+      if (channel !== "image-uploader") return;
+
+      handleCommit().then(done);
+    };
+
+    document.addEventListener("app:image-uploader/commit", listener);
+    return () =>
+      document.removeEventListener("app:image-uploader/commit", listener);
+  }, [handleCommit]);
 
   return (
     <div
@@ -272,55 +388,71 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     >
       <input
         type="file"
-        onChange={handleChange}
-        ref={ref}
+        onChange={handleFilePick}
+        ref={refInput}
         multiple={multiple}
         accept={accept}
         style={{ display: "none" }}
       />
-      {(multiple === true || items.length === 0) && (
-        <Button
-          size="tiny"
-          style={{ width: 150, height: "36px", marginRight: "1em" }}
-          onClick={handleButtonClick}
-          disabled={maxSize !== undefined && items.length >= maxSize}
-          loading={loading}
+      <Button
+        size="tiny"
+        style={{ width: 150, height: "36px", marginRight: "1em" }}
+        onClick={handlePickButton}
+        disabled={
+          (maxSize !== undefined && totalCount >= maxSize) ||
+          (multiple === false && (urls.length > 0 || pendingFiles.length > 0))
+        }
+        loading={loading}
+      >
+        파일 선택{maxSize ? ` (${totalCount} / ${maxSize})` : ""}
+      </Button>
+
+      {/* 단일 리스트: 기존+신규 모두 함께 정렬 가능 */}
+      <div className="images unified">
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEndUnified}
         >
-          파일 선택{maxSize ? ` (${items.length} / ${maxSize})` : ""}
-        </Button>
-      )}
-      {items.length > 0 && (
-        <div className="images">
-          <DndContext
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-            onDragStart={handleDragStart}
+          <SortableContext
+            items={unifiedItems.map((x) => x.id)}
+            strategy={rectSortingStrategy}
           >
-            <SortableContext items={items} strategy={rectSortingStrategy}>
-              {items.map((item, index) => (
-                <UploadedImage
-                  key={index}
-                  id={item}
-                  src={item}
-                  handle={multiple}
-                  onDelButtonClicked={getHandlerImageDelButtonClicked(index)}
-                  preview={preview}
-                  name={
-                    mode === "eager" ? images[index]?.name : files[index]?.name
-                  }
-                />
-              ))}
-              <DragOverlay>
-                {activeId !== null ? (
-                  <div className="uploaded-image active">
-                    <img src={activeId} />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </SortableContext>
-          </DndContext>
-        </div>
-      )}
+            {unifiedItems.map((item) => (
+              <UploadedImage
+                key={item.id}
+                id={item.id}
+                src={item.src}
+                handle={true}
+                onDelButtonClicked={
+                  item.kind === "exist"
+                    ? (() => {
+                        const idx = urls.findIndex(
+                          (u) => `exist:${u}` === item.id
+                        );
+                        return idx >= 0 ? handleDeleteExisting(idx) : undefined;
+                      })()
+                    : (() => {
+                        const idx = pendingFiles.findIndex(
+                          (f) => pendingKeyOf(f) === item.id
+                        );
+                        return idx >= 0 ? handleDeleteNewLazy(idx) : undefined;
+                      })()
+                }
+                preview={preview}
+                name={item.name}
+              />
+            ))}
+            <DragOverlay>
+              {activeId ? (
+                <div className="uploaded-image active">
+                  <img src={idToItem.get(activeId)?.src ?? ""} alt="" />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </SortableContext>
+        </DndContext>
+      </div>
     </div>
   );
 }

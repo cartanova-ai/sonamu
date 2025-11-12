@@ -132,6 +132,7 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
         "projects.name",
         "projects.status",
         "projects.description",
+        "projects.image_urls",
       ],
       virtual: [],
       joins: [],

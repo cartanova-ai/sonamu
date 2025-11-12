@@ -3,9 +3,6 @@ import React, {
   useState,
   Dispatch,
   SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
   useCallback,
 } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -31,6 +28,7 @@ import {
   useTypeForm,
   useGoBack,
   formatDateTime,
+  upload,
 } from "@sonamu-kit/react-sui";
 import { defaultCatch } from "src/services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
@@ -42,6 +40,7 @@ import { ProjectSubsetA } from "src/services/sonamu.generated";
 import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
 import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
 import { TagIdAsyncSelect } from "src/components/tag/TagIdAsyncSelect";
+import { ImageUploader } from "src/admin-common/ImageUploader";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams
@@ -67,6 +66,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
     description: null,
     employee_ids: [],
     tag_ids: [],
+    image_urls: [],
   });
 
   // 수정일 때 기존 row 콜
@@ -78,6 +78,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
           ...row,
           employee_ids: row.employee ? row.employee.map((e) => e.id) : [],
           tag_ids: row.tags ? row.tags.map((t) => t.id) : [],
+          image_urls: row.image_urls ?? [],
         });
       });
     }
@@ -88,17 +89,20 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
 
   // 저장
   const { goBack } = useGoBack();
-  const handleSubmit = useCallback(() => {
-    ProjectService.save([form])
-      .then(([id]) => {
-        if (mode === "modal") {
-          // doneModal();
-        } else {
-          goBack("/admin/projects");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode, id]);
+  const handleSubmit = useCallback(
+    (urls: string[]) => {
+      ProjectService.save([{ ...form, image_urls: urls }])
+        .then(([id]) => {
+          if (mode === "modal") {
+            // doneModal();
+          } else {
+            goBack("/admin/projects");
+          }
+        })
+        .catch(defaultCatch);
+    },
+    [form, mode, id]
+  );
 
   // 페이지
   const PAGE = {
@@ -174,11 +178,24 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 />
               </Form.Field>
             </Form.Group>
+            <Form.Group widths="equal">
+              <Form.Field>
+                <label>ImageUrls</label>
+                <ImageUploader
+                  multiple={false}
+                  mode="lazy"
+                  {...register("image_urls")}
+                />
+              </Form.Field>
+            </Form.Group>
             <Segment basic textAlign="center">
               <Button
                 type="submit"
                 primary
-                onClick={handleSubmit}
+                onClick={async () => {
+                  const urls = await upload();
+                  handleSubmit(urls);
+                }}
                 content="저장"
                 icon="save"
               />

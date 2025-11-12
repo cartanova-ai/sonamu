@@ -27,6 +27,7 @@ import {
   formatDate,
   formatDateTime,
   useTypeForm,
+  upload,
 } from "@sonamu-kit/react-sui";
 
 import { FileSubsetA } from "src/services/sonamu.generated";
@@ -57,8 +58,23 @@ export default function FileList({}: FileListProps) {
   );
 
   // Lazy 모드 테스트 상태
-  const [lazyFile, setLazyFile] = useState<File | null>(null);
-  const [lazyFiles, setLazyFiles] = useState<File[]>([]);
+  const lazyForm = useTypeForm(
+    z.object({
+      url: z.string(),
+    }),
+    {
+      url: "",
+    }
+  );
+  const lazyMultipleForm = useTypeForm(
+    z.object({
+      urls: z.array(z.string()),
+    }),
+    {
+      urls: [],
+    }
+  );
+
   const [uploading, setUploading] = useState(false);
   // 리스트 필터
   const { listParams, register } = useListParams(FileListParams, {
@@ -195,9 +211,8 @@ export default function FileList({}: FileListProps) {
                   <label>파일 선택 (업로드 대기)</label>
                   <ImageUploader
                     mode="lazy"
-                    value={lazyFile}
                     multiple={false}
-                    onChange={(e, data) => setLazyFile(data.value)}
+                    {...lazyForm.register("url")}
                   />
                 </Form.Field>
               </Form.Group>
@@ -208,24 +223,21 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        if (lazyFile) {
-                          const { url } = (await FileService.upload(lazyFile))
-                            .file;
-                          alert(`업로드 완료! URL: ${url}`);
-                          setLazyFile(null); // 업로드 후 초기화
+                        if (lazyForm.form.url) {
+                          const urls = await upload();
                           mutate();
                         }
                       } finally {
                         setUploading(false);
                       }
                     }}
-                    disabled={lazyFile === null}
+                    disabled={lazyForm.form.url === ""}
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)
                   </Button>
                   <span style={{ marginLeft: "1em" }}>
-                    {lazyFile ? lazyFile.name : "파일 대기 중"}
+                    {lazyForm.form.url ? lazyForm.form.url : "파일 대기 중"}
                   </span>
                 </Form.Field>
               </Form.Group>
@@ -243,10 +255,9 @@ export default function FileList({}: FileListProps) {
                   <ImageUploader
                     mode="lazy"
                     accept="image/*"
-                    value={lazyFiles}
                     preview={false}
                     multiple={true}
-                    onChange={(e, data) => setLazyFiles(data.value)}
+                    {...lazyMultipleForm.register("urls")}
                   />
                 </Form.Field>
               </Form.Group>
@@ -257,29 +268,21 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        if (lazyFiles.length > 0) {
-                          const urls = await Promise.all(
-                            lazyFiles.map(async (file) => {
-                              const { url } = (await FileService.upload(file))
-                                .file;
-                              return url;
-                            })
-                          );
-                          alert(`업로드 완료! URL: ${urls.join(", ")}`);
-                          setLazyFiles([]); // 업로드 후 초기화
+                        if (lazyMultipleForm.form.urls.length > 0) {
+                          const urls = await upload();
                           mutate();
                         }
                       } finally {
                         setUploading(false);
                       }
                     }}
-                    disabled={lazyFiles.length === 0}
+                    disabled={lazyMultipleForm.form.urls.length === 0}
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)
                   </Button>
                   <span style={{ marginLeft: "1em" }}>
-                    {`${lazyFiles.length}개의 파일 대기 중`}
+                    {`${lazyMultipleForm.form.urls.length}개의 파일 대기 중`}
                   </span>
                 </Form.Field>
               </Form.Group>
