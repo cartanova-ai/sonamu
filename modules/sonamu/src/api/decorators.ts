@@ -2,7 +2,11 @@ import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { z } from "zod";
-import { PuriWrapper, TransactionalOptions } from "../database/puri-wrapper";
+import {
+  PuriTransactionWrapper,
+  PuriWrapper,
+  TransactionalOptions,
+} from "../database/puri-wrapper";
 import { DB } from "../database/db";
 import { Sonamu } from "./sonamu";
 import type { UploadContext } from "./context";
@@ -153,7 +157,7 @@ export function transactional(options: TransactionalOptions = {}) {
         const puri = this.getPuri(dbPreset) as PuriWrapper;
 
         return puri.transaction(
-          async (trx: PuriWrapper) => {
+          async (trx: PuriTransactionWrapper) => {
             // TransactionContext에 트랜잭션 저장
             DB.getTransactionContext().setTransaction(dbPreset, trx);
 
