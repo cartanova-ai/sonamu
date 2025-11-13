@@ -442,23 +442,42 @@ class SonamuClass {
   }
 
   startWatcher(): void {
-    const watchPath = path.join(this.apiRootPath, "src");
+    const watchPath = [
+      path.join(this.apiRootPath, "src"),
+      path.join(this.apiRootPath, "sonamu.config.ts"),
+    ];
     const chokidar = require("chokidar") as typeof import("chokidar");
+
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
-        (!!stats?.isFile() &&
-          !path.endsWith(".ts") &&
-          !path.endsWith(".json")) ||
-        path.endsWith("src/index.ts"),
+        !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
       ignoreInitial: true,
     });
+
     this.watcher.on("all", async (event: string, filePath: string) => {
       if (event !== "change" && event !== "add") {
         return;
       }
 
       try {
+        // src/index.ts 또는 sonamu.config.ts 변경 시 재시작
+        const isIndexTs =
+          filePath === path.join(this.apiRootPath, "src", "index.ts");
+        const isConfigTs =
+          filePath === path.join(this.apiRootPath, "sonamu.config.ts");
+
+        if (isIndexTs || isConfigTs) {
+          const relativePath = filePath.replace(this.apiRootPath, "api");
+          console.log(
+            chalk.bold(
+              `Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`
+            )
+          );
+          process.kill(process.pid, "SIGUSR2");
+          return;
+        }
+
         await this.handleFileChange(event, filePath);
       } catch (e) {
         console.error(e);
