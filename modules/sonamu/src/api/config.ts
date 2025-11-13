@@ -3,6 +3,25 @@ import { Knex } from "knex";
 import path from "path";
 import { exists } from "../utils/fs-utils";
 import { unlink, writeFile } from "fs/promises";
+import { Driver } from "../file-storage/driver";
+import {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifyServerOptions,
+} from "fastify";
+import { SonamuFastifyConfig } from "../types/types";
+import { FastifyCorsOptions } from "@fastify/cors";
+import { FastifyFormbodyOptions } from "@fastify/formbody";
+import { FastifyMultipartOptions } from "@fastify/multipart";
+import { SecureSessionPluginOptions } from "@fastify/secure-session";
+import { FastifyStaticOptions } from "@fastify/static";
+import { QsPluginOptions } from "fastify-qs";
+import { SsePluginOptions } from "fastify-sse-v2/lib/types";
+import {
+  DeserializeFunction,
+  SerializeFunction,
+} from "@fastify/passport/dist/Authenticator";
 
 type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
@@ -37,6 +56,48 @@ export type SonamuConfig = {
       production?: DatabaseConfig;
       production_slave?: DatabaseConfig;
       remote_fixture?: DatabaseConfig;
+    };
+  };
+
+  server: {
+    fastify?: FastifyServerOptions;
+
+    listen?: {
+      port: number;
+      host?: string;
+    };
+
+    plugins?: {
+      cors?: boolean | FastifyCorsOptions;
+      formbody?: boolean | FastifyFormbodyOptions;
+      multipart?: boolean | FastifyMultipartOptions;
+      qs?: boolean | QsPluginOptions;
+      sse?: boolean | SsePluginOptions;
+      static?: boolean | FastifyStaticOptions;
+      session?: boolean | SecureSessionPluginOptions;
+
+      custom?: (server: FastifyInstance) => void;
+    };
+
+    auth?:
+      | boolean
+      | {
+          userSerializer: SerializeFunction<unknown, unknown>;
+          userDeserializer: DeserializeFunction<unknown, unknown>;
+        };
+
+    apiConfig: SonamuFastifyConfig;
+
+    storage?: Driver;
+
+    lifecycle?: {
+      onStart?: (server: FastifyInstance) => Promise<void> | void;
+      onShutdown?: (server: FastifyInstance) => Promise<void> | void;
+      onError?: (
+        error: Error,
+        request: FastifyRequest,
+        reply: FastifyReply
+      ) => Promise<void> | void;
     };
   };
 };

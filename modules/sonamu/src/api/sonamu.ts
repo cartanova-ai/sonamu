@@ -200,13 +200,15 @@ class SonamuClass {
     !doSilent && console.timeEnd(chalk.cyan("Sonamu.init"));
   }
 
-  async createServer(
-    options: SonamuServerOptions,
-    initOptions?: {
-      enableSync?: boolean;
-      doSilent?: boolean;
+  async createServer(initOptions?: {
+    enableSync?: boolean;
+    doSilent?: boolean;
+  }) {
+    if (this.isInitialized === false) {
+      await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
-  ) {
+
+    const options = this.config.server;
     const server = fastify(options.fastify);
     this.server = server;
 
