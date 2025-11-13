@@ -92,7 +92,8 @@ type FileType =
   | "functions"
   | "generated"
   | "entity"
-  | "frame";
+  | "frame"
+  | "config";
 type GlobPattern = {
   [key in FileType]: string;
 };
@@ -138,6 +139,8 @@ export class Syncer {
     /* compiled-JS 체크 */
     model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
     frame: Sonamu.apiRootPath + "/dist/application/**/*.frame.js",
+    /* config 체크 */
+    config: Sonamu.apiRootPath + "/sonamu.config.ts",
   };
 
   get checksumsPath(): string {
@@ -253,7 +256,7 @@ export class Syncer {
     // 다른 부분 찾아 액션
     const diffGroups = _.groupBy(diffFiles, (r) => {
       const matched = r.match(
-        /\.(model|types|functions|entity|generated|frame)\.[tj]s/
+        /\.(model|types|functions|entity|generated|frame|config)\.[tj]s/
       );
       return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
@@ -360,6 +363,11 @@ export class Syncer {
       await this.actionGenerateServices(params);
 
       await this.actionGenerateHttps();
+    }
+
+    // 트리거: config
+    if (diffTypes.includes("config")) {
+      await this.actionSyncConfig();
     }
 
     return {
@@ -573,6 +581,21 @@ export class Syncer {
     ).flat();
   }
 
+  // web/.sonamu.env 에 현재 설정값 저장
+  async actionSyncConfig() {
+    const { host, port } = Sonamu.config.server.listen ?? {};
+    const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
+
+    await Promise.all(
+      Sonamu.config.sync.targets.map(async (target) => {
+        await writeFile(
+          path.join(Sonamu.appRootPath, target, ".sonamu.env"),
+          content
+        );
+      })
+    );
+  }
+
   async getCurrentChecksums(): Promise<PathAndChecksum[]> {
     const filePaths = (
       await Promise.all(
@@ -606,7 +629,7 @@ export class Syncer {
     }
 
     const previousChecksums = JSON.parse(
-      (await readFile(this.checksumsPath, "utf-8"))
+      await readFile(this.checksumsPath, "utf-8")
     ) as PathAndChecksum[];
     return previousChecksums;
   }
@@ -1478,19 +1501,25 @@ export class Syncer {
         element: this.zodTypeToRenderingNode(innerType, baseKey),
       };
     } else if (zodType instanceof z.ZodUnion) {
-      const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map((opt) =>
-        this.zodTypeToRenderingNode(opt, baseKey)
+      const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map(
+        (opt) => this.zodTypeToRenderingNode(opt, baseKey)
       );
       // TODO: ZodUnion이 들어있는 경우 핸들링
       return optionNodes[0];
     } else if (zodType instanceof z.ZodOptional) {
       return {
-        ...this.zodTypeToRenderingNode((zodType as z.ZodOptional<z.ZodType>).def.innerType, baseKey),
+        ...this.zodTypeToRenderingNode(
+          (zodType as z.ZodOptional<z.ZodType>).def.innerType,
+          baseKey
+        ),
         optional: true,
       };
     } else if (zodType instanceof z.ZodNullable) {
       return {
-        ...this.zodTypeToRenderingNode((zodType as z.ZodNullable<z.ZodType>).def.innerType, baseKey),
+        ...this.zodTypeToRenderingNode(
+          (zodType as z.ZodNullable<z.ZodType>).def.innerType,
+          baseKey
+        ),
         nullable: true,
       };
     } else {
