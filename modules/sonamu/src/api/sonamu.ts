@@ -19,11 +19,7 @@ import {
 import type { Driver } from "../file-storage/driver";
 import { createSSEFactory } from "../stream/sse";
 import type { Syncer } from "../syncer/syncer";
-import {
-  ApiParamType,
-  SonamuFastifyConfig,
-  SonamuServerOptions,
-} from "../types/types";
+import { ApiParamType, SonamuFastifyConfig } from "../types/types";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
 import { humanizeZodError } from "../utils/zod-error";
@@ -32,7 +28,7 @@ import { getZodObjectFromApi } from "./code-converters";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
-import { loadConfig, SonamuConfig } from "./config";
+import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
 
 export type SonamuSecrets = {
   [key: string]: string;

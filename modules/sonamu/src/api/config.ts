@@ -23,7 +23,7 @@ import {
   SerializeFunction,
 } from "@fastify/passport/dist/Authenticator";
 
-type DatabaseConfig = Omit<Knex.Config, "connection"> & {
+export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
 };
 
@@ -59,46 +59,48 @@ export type SonamuConfig = {
     };
   };
 
-  server: {
-    fastify?: FastifyServerOptions;
+  server: SonamuServerOptions;
+};
 
-    listen?: {
-      port: number;
-      host?: string;
-    };
+export type SonamuServerOptions = {
+  fastify?: FastifyServerOptions;
 
-    plugins?: {
-      cors?: boolean | FastifyCorsOptions;
-      formbody?: boolean | FastifyFormbodyOptions;
-      multipart?: boolean | FastifyMultipartOptions;
-      qs?: boolean | QsPluginOptions;
-      sse?: boolean | SsePluginOptions;
-      static?: boolean | FastifyStaticOptions;
-      session?: boolean | SecureSessionPluginOptions;
+  listen?: {
+    port: number;
+    host?: string;
+  };
 
-      custom?: (server: FastifyInstance) => void;
-    };
+  plugins?: {
+    cors?: boolean | FastifyCorsOptions;
+    formbody?: boolean | FastifyFormbodyOptions;
+    multipart?: boolean | FastifyMultipartOptions;
+    qs?: boolean | QsPluginOptions;
+    sse?: boolean | SsePluginOptions;
+    static?: boolean | FastifyStaticOptions;
+    session?: boolean | SecureSessionPluginOptions;
 
-    auth?:
-      | boolean
-      | {
-          userSerializer: SerializeFunction<unknown, unknown>;
-          userDeserializer: DeserializeFunction<unknown, unknown>;
-        };
+    custom?: (server: FastifyInstance) => void;
+  };
 
-    apiConfig: SonamuFastifyConfig;
+  auth?:
+    | boolean
+    | {
+        userSerializer: SerializeFunction<unknown, unknown>;
+        userDeserializer: DeserializeFunction<unknown, unknown>;
+      };
 
-    storage?: Driver;
+  apiConfig: SonamuFastifyConfig;
 
-    lifecycle?: {
-      onStart?: (server: FastifyInstance) => Promise<void> | void;
-      onShutdown?: (server: FastifyInstance) => Promise<void> | void;
-      onError?: (
-        error: Error,
-        request: FastifyRequest,
-        reply: FastifyReply
-      ) => Promise<void> | void;
-    };
+  storage?: Driver;
+
+  lifecycle?: {
+    onStart?: (server: FastifyInstance) => Promise<void> | void;
+    onShutdown?: (server: FastifyInstance) => Promise<void> | void;
+    onError?: (
+      error: Error,
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => Promise<void> | void;
   };
 };
 
