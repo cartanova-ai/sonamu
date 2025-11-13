@@ -1,24 +1,7 @@
 import type { GuardKey } from "./../api/decorators";
-import type { FastifyCorsOptions } from "@fastify/cors";
-import type { FastifyFormbodyOptions } from "@fastify/formbody";
-import type {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  FastifyServerOptions,
-} from "fastify";
-import type { QsPluginOptions } from "fastify-qs";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
-import type { FastifyMultipartOptions } from "@fastify/multipart";
-import type { Driver } from "../file-storage/driver";
-import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
-import type { FastifyStaticOptions } from "@fastify/static";
-import { SecureSessionPluginOptions } from "@fastify/secure-session";
-import {
-  DeserializeFunction,
-  SerializeFunction,
-} from "@fastify/passport/dist/Authenticator";
 
 /*
   Enums
@@ -878,47 +861,5 @@ export type SonamuFastifyConfig = {
           key: string;
           ttl?: number;
         };
-  };
-};
-
-export type SonamuServerOptions = {
-  fastify?: FastifyServerOptions;
-
-  listen?: {
-    port: number;
-    host?: string;
-  };
-
-  plugins?: {
-    cors?: boolean | FastifyCorsOptions;
-    formbody?: boolean | FastifyFormbodyOptions;
-    multipart?: boolean | FastifyMultipartOptions;
-    qs?: boolean | QsPluginOptions;
-    sse?: boolean | SsePluginOptions;
-    static?: boolean | FastifyStaticOptions;
-    session?: boolean | SecureSessionPluginOptions;
-
-    custom?: (server: FastifyInstance) => void;
-  };
-
-  auth?:
-    | boolean
-    | {
-        userSerializer: SerializeFunction<unknown, unknown>;
-        userDeserializer: DeserializeFunction<unknown, unknown>;
-      };
-
-  apiConfig: SonamuFastifyConfig;
-
-  storage?: Driver;
-
-  lifecycle?: {
-    onStart?: (server: FastifyInstance) => Promise<void> | void;
-    onShutdown?: (server: FastifyInstance) => Promise<void> | void;
-    onError?: (
-      error: Error,
-      request: FastifyRequest,
-      reply: FastifyReply
-    ) => Promise<void> | void;
   };
 };

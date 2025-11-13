@@ -4,28 +4,7 @@ import _ from "lodash";
 import { Sonamu } from "../api";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
-import { SonamuConfig } from "../api/config";
-
-type MySQLConfig = Omit<Knex.Config, "connection"> & {
-  connection?: Knex.MySql2ConnectionConfig;
-};
-
-export type SonamuDBBaseConfig = {
-  // 기본 데이터베이스 이름
-  database: string;
-
-  // 모든 환경에 적용될 기본 Knex 옵션
-  defaultOptions?: MySQLConfig;
-
-  // 환경별 설정
-  environments?: {
-    development?: MySQLConfig;
-    development_slave?: MySQLConfig;
-    production?: MySQLConfig;
-    production_slave?: MySQLConfig;
-    remote_fixture?: MySQLConfig;
-  };
-};
+import { DatabaseConfig, SonamuConfig } from "../api/config";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
@@ -115,7 +94,7 @@ class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<MySQLConfig> = _.merge(
+    const defaultKnexConfig: Partial<DatabaseConfig> = _.merge(
       {
         client: "mysql2",
         pool: {
@@ -135,7 +114,7 @@ class DBClass {
     );
 
     // 로컬 환경 설정
-    const test: MySQLConfig = _.merge({}, defaultKnexConfig, {
+    const test: DatabaseConfig = _.merge({}, defaultKnexConfig, {
       connection: {
         database: `${config.name}_test`,
         ...config.defaultOptions?.connection,
