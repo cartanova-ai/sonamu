@@ -28,6 +28,10 @@
     "checksum": "a49138a166d918b95abb01c2ce948696b21c3ab8"
   },
   {
+    "path": "/sonamu.config.ts",
+    "checksum": "26d09e9723f98a0c90d9bc5836722620a5c7ee0b"
+  },
+  {
     "path": "/src/application/company/company.entity.json",
     "checksum": "35ef8760e1bacb3ac295203f7b7371e998bc2dc3"
   },

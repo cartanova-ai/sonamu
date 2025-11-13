@@ -2444,7 +2444,7 @@ const RAW_RUNTIME_STATE =
     ],\
     [\
       "dotenv",\
-      "npm:16.6.1"\
+      "npm:17.2.3"\
     ],\
     [\
       "dset",\
@@ -20104,6 +20104,7 @@ const RAW_RUNTIME_STATE =
           ["@vitejs/plugin-react-swc", "virtual:ec1165dc3ba755bd97ba5fc629693b8ad3a96768ebc17ce62072a62831d1dc62c48ad69b4abb8e13b70f6645296201c1f005a51121887d268f22eafc0ae24bb6#npm:4.2.0"],\
           ["axios", "npm:1.13.1"],\
           ["classnames", "npm:2.5.1"],\
+          ["dotenv", "npm:17.2.3"],\
           ["jotai", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:2.15.0"],\
           ["lodash-es", "npm:4.17.21"],\
           ["luxon", "npm:3.7.2"],\
