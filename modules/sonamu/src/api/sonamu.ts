@@ -32,23 +32,8 @@ import { getZodObjectFromApi } from "./code-converters";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
+import { loadConfig, SonamuConfig } from "./config";
 
-export type SonamuConfig = {
-  projectName?: string;
-  api: {
-    dir: string;
-  };
-  sync: {
-    targets: string[];
-  };
-  route: {
-    prefix: string;
-  };
-  timezone?: string;
-  ui?: {
-    port: number;
-  };
-};
 export type SonamuSecrets = {
   [key: string]: string;
 };
@@ -170,14 +155,8 @@ class SonamuClass {
 
     // API 루트 패스
     this.apiRootPath = apiRootPath ?? findApiRootPath();
-    const configPath = path.join(this.apiRootPath, "sonamu.config.json");
+    this.config = await loadConfig(this.apiRootPath);
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
-    if (!(await exists(configPath))) {
-      throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
-    }
-    this.config = JSON.parse(
-      (await readFile(configPath)).toString()
-    ) as SonamuConfig;
     if (await exists(secretsPath)) {
       this.secrets = JSON.parse(
         (await readFile(secretsPath)).toString()
@@ -185,7 +164,7 @@ class SonamuClass {
     }
 
     // DB 로드
-    this.dbConfig = await DB.readKnexfile();
+    this.dbConfig = DB.generateDBConfig(this.config.database);
     !doSilent && console.log(chalk.green("DB Config Loaded!"));
     attachOnDuplicateUpdate();
 
@@ -278,7 +257,7 @@ class SonamuClass {
     this.server = server;
 
     // timezone 설정
-    const timezone = this.config.timezone;
+    const timezone = this.config.api.timezone;
     if (timezone) {
       const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
@@ -298,7 +277,7 @@ class SonamuClass {
 
     // 전체 라우팅 리스트
     server.get(
-      `${this.config.route.prefix}/routes`,
+      `${this.config.api.route.prefix}/routes`,
       async (_request, _reply): Promise<any> => {
         return this.syncer.apis;
       }
@@ -306,7 +285,7 @@ class SonamuClass {
 
     // Healthcheck API
     server.get(
-      `${this.config.route.prefix}/healthcheck`,
+      `${this.config.api.route.prefix}/healthcheck`,
       async (_request, _reply): Promise<string> => {
         return "ok";
       }
@@ -317,7 +296,8 @@ class SonamuClass {
       server.all("*", (request, reply) => {
         const found = this.syncer.apis.find(
           (api) =>
-            this.config.route.prefix + api.path === request.url.split("?")[0] &&
+            this.config.api.route.prefix + api.path ===
+              request.url.split("?")[0] &&
             (api.options.httpMethod ?? "GET") === request.method.toUpperCase()
         );
         if (found) {
@@ -335,7 +315,7 @@ class SonamuClass {
         // route
         server.route({
           method: api.options.httpMethod!,
-          url: this.config.route.prefix + api.path,
+          url: this.config.api.route.prefix + api.path,
           handler: this.getApiHandler(api, config),
         }); // END server.route
       });
