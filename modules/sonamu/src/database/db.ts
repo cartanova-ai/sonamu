@@ -1,11 +1,10 @@
 export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
-import path from "path";
 import _ from "lodash";
 import { Sonamu } from "../api";
-import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
+import { SonamuConfig } from "../api/config";
 
 type MySQLConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
@@ -50,25 +49,6 @@ class DBClass {
 
   public getTransactionContext(): TransactionContext {
     return this.transactionStorage.getStore() ?? new TransactionContext();
-  }
-
-  async readKnexfile(): Promise<SonamuDBConfig> {
-    const dbConfigPath: string = path.join(
-      Sonamu.apiRootPath,
-      "/dist/configs/db.js"
-    );
-    try {
-      const knexfileModule = await import(dbConfigPath);
-      const config =
-        knexfileModule.default?.default ??
-        knexfileModule.default ??
-        knexfileModule;
-      return this.generateDBConfig(config);
-    } catch {}
-
-    throw new ServiceUnavailableException(
-      `다음 경로에서 DB설정 파일을 찾을 수 없습니다: ${dbConfigPath}. 먼저 빌드(yarn build)를 수행해주세요.`
-    );
   }
 
   getDB(which: DBPreset): Knex {
@@ -134,7 +114,7 @@ class DBClass {
     }
   }
 
-  private generateDBConfig(config: SonamuDBBaseConfig): SonamuDBConfig {
+  public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
     const defaultKnexConfig: Partial<MySQLConfig> = _.merge(
       {
         client: "mysql2",
@@ -147,7 +127,7 @@ class DBClass {
           directory: "./dist/migrations",
         },
         connection: {
-          database: config.database,
+          database: config.name,
           ...config.defaultOptions?.connection,
         },
       },
@@ -157,14 +137,14 @@ class DBClass {
     // 로컬 환경 설정
     const test: MySQLConfig = _.merge({}, defaultKnexConfig, {
       connection: {
-        database: `${config.database}_test`,
+        database: `${config.name}_test`,
         ...config.defaultOptions?.connection,
       },
     });
 
     const fixture_local = _.merge({}, defaultKnexConfig, {
       connection: {
-        database: `${config.database}_fixture_local`,
+        database: `${config.name}_fixture_local`,
         ...config.defaultOptions?.connection,
       },
     });
@@ -186,7 +166,7 @@ class DBClass {
       devMasterOptions,
       {
         connection: {
-          database: `${config.database}_fixture_remote`,
+          database: `${config.name}_fixture_remote`,
         },
       },
       config.environments?.remote_fixture
