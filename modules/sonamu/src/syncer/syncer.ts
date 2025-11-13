@@ -422,6 +422,10 @@ export class Syncer {
 
     // module reload - doSyncActions 전에 캐시 삭제
     function clearModuleAndDependents(filePath: string) {
+      if (!require.resolve) {
+        return; // ESM 환경에서는 캐시 삭제가 불가능합니다. ESM으로 전환중이지만 아직 CJS 기준 HMR 구현체가 남아있기 떄문에 임시로 가드를 설치해둡니다.
+      }
+
       const resolved = require.resolve(filePath);
       const toDelete = new Set([resolved]);
 
