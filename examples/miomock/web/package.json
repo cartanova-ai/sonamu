@@ -12,6 +12,7 @@
     "@sonamu-kit/react-sui": "workspace:^",
     "axios": "^1.12.2",
     "classnames": "^2.5.1",
+    "dotenv": "^17.2.3",
     "jotai": "^2.14.0",
     "lodash-es": "^4.17.21",
     "luxon": "^3.7.2",
