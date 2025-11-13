@@ -7,11 +7,16 @@
     "framework",
     "orm"
   ],
-  "main": "./dist/index.js",
-  "exports": "./dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "dev": "nodemon exec",
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "build": "rm -rf dist && swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
     "publish": "yarn build && yarn npm publish"
   },
   "license": "MIT",
