@@ -110,7 +110,7 @@ export class Template__service extends Template {
               .join(", ")} }`;
 
             // 기본 URL
-            const apiBaseUrl = `${Sonamu.config.route.prefix}${api.path}`;
+            const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
             return [
               // 클라이언트별로 생성
