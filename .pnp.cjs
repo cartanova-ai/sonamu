@@ -31,6 +31,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:modules/docs"\
     },\
     {\
+      "name": "@sonamu-kit/loader",\
+      "reference": "workspace:modules/loader"\
+    },\
+    {\
       "name": "@sonamu-kit/react-sui",\
       "reference": "workspace:modules/react-sui"\
     },\
@@ -51,6 +55,7 @@ const RAW_RUNTIME_STATE =
   "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)|(^(?:(?:^|\\\\/|(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)\\\\/)template\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?=.)[^/]*?\\\\/?)$)",\
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
+    ["@sonamu-kit/loader", ["workspace:modules/loader"]],\
     ["@sonamu-kit/react-sui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/react-sui", "virtual:b54c1382ad51135d039ea63a4bf50c8a53cd9697f32e3a2ee4a04d064bf969bf4641821aa6c94d7923923761b3a9e49b1c83e179b2a2a939446589a6fb0d6460#workspace:modules/react-sui", "virtual:ec1165dc3ba755bd97ba5fc629693b8ad3a96768ebc17ce62072a62831d1dc62c48ad69b4abb8e13b70f6645296201c1f005a51121887d268f22eafc0ae24bb6#workspace:modules/react-sui", "workspace:modules/react-sui"]],\
     ["@sonamu-kit/task", ["workspace:modules/tasks"]],\
     ["@sonamu-kit/ui", ["virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#workspace:modules/ui", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui", "virtual:8769572cd4b24c3531bbe482b0f26582eda2c2420c0dbfa27e5ca07536b095c571ef034d978b59899aea8da1552f15e66ef4a413ccc1cbd899d080e55417bec1#workspace:modules/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui", "workspace:modules/ui"]],\
@@ -373,6 +378,10 @@ const RAW_RUNTIME_STATE =
     [\
       "@borewit/text-codec",\
       "npm:0.1.1"\
+    ],\
+    [\
+      "@braidai/lang",\
+      "npm:1.1.2"\
     ],\
     [\
       "@ctrl/tinycolor",\
@@ -745,6 +754,10 @@ const RAW_RUNTIME_STATE =
     [\
       "@jridgewell/trace-mapping",\
       "npm:0.3.31"\
+    ],\
+    [\
+      "@loaderkit/resolve",\
+      "npm:1.0.4"\
     ],\
     [\
       "@lukeed/ms",\
@@ -1349,6 +1362,10 @@ const RAW_RUNTIME_STATE =
     [\
       "@smithy/uuid",\
       "npm:1.1.0"\
+    ],\
+    [\
+      "@sonamu-kit/loader",\
+      "workspace:modules/loader"\
     ],\
     [\
       "@sonamu-kit/react-sui",\
@@ -2377,6 +2394,10 @@ const RAW_RUNTIME_STATE =
     [\
       "duplexer",\
       "npm:0.1.2"\
+    ],\
+    [\
+      "dynohot",\
+      "npm:2.1.1"\
     ],\
     [\
       "eastasianwidth",\
@@ -6827,6 +6848,15 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@braidai/lang", [\
+      ["npm:1.1.2", {\
+        "packageLocation": "./.yarn/cache/@braidai-lang-npm-1.1.2-0413b7475b-04ece1b744.zip/node_modules/@braidai/lang/",\
+        "packageDependencies": [\
+          ["@braidai/lang", "npm:1.1.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@ctrl/tinycolor", [\
       ["npm:3.6.1", {\
         "packageLocation": "./.yarn/cache/@ctrl-tinycolor-npm-3.6.1-069c7f7e08-f3c77b2d29.zip/node_modules/@ctrl/tinycolor/",\
@@ -8814,6 +8844,16 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@loaderkit/resolve", [\
+      ["npm:1.0.4", {\
+        "packageLocation": "./.yarn/cache/@loaderkit-resolve-npm-1.0.4-7ef3fac299-e999f0fc28.zip/node_modules/@loaderkit/resolve/",\
+        "packageDependencies": [\
+          ["@braidai/lang", "npm:1.1.2"],\
+          ["@loaderkit/resolve", "npm:1.0.4"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
     ["@lukeed/ms", [\
       ["npm:2.0.2", {\
         "packageLocation": "./.yarn/cache/@lukeed-ms-npm-2.0.2-5e69b6e173-6ae47ed3eb.zip/node_modules/@lukeed/ms/",\
@@ -10645,6 +10685,21 @@ const RAW_RUNTIME_STATE =
           ["tslib", "npm:2.8.1"]\
         ],\
         "linkType": "HARD"\
+      }]\
+    ]],\
+    ["@sonamu-kit/loader", [\
+      ["workspace:modules/loader", {\
+        "packageLocation": "./modules/loader/",\
+        "packageDependencies": [\
+          ["@loaderkit/resolve", "npm:1.0.4"],\
+          ["@sonamu-kit/loader", "workspace:modules/loader"],\
+          ["@swc/core", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:1.14.0"],\
+          ["@types/node", "npm:24.10.1"],\
+          ["dynohot", "npm:2.1.1"],\
+          ["json5", "npm:2.2.3"],\
+          ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
+        ],\
+        "linkType": "SOFT"\
       }]\
     ]],\
     ["@sonamu-kit/react-sui", [\
@@ -14870,6 +14925,21 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/duplexer-npm-0.1.2-952c810235-62ba61a830.zip/node_modules/duplexer/",\
         "packageDependencies": [\
           ["duplexer", "npm:0.1.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["dynohot", [\
+      ["npm:2.1.1", {\
+        "packageLocation": "./.yarn/cache/dynohot-npm-2.1.1-c93281a93b-189fbdb712.zip/node_modules/dynohot/",\
+        "packageDependencies": [\
+          ["@babel/core", "npm:7.28.5"],\
+          ["@babel/generator", "npm:7.28.5"],\
+          ["@babel/traverse", "npm:7.28.5"],\
+          ["@braidai/lang", "npm:1.1.2"],\
+          ["convert-source-map", "npm:2.0.0"],\
+          ["dynohot", "npm:2.1.1"],\
+          ["tslib", "npm:2.8.1"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -19732,6 +19802,7 @@ const RAW_RUNTIME_STATE =
           ["@typescript/native-preview", "npm:7.0.0-dev.20251029.1"],\
           ["@vitest/coverage-v8", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.2.4"],\
           ["bcrypt", "npm:6.0.0"],\
+          ["chalk", "npm:4.1.2"],\
           ["chokidar", "npm:4.0.3"],\
           ["date-fns", "npm:4.1.0"],\
           ["dotenv", "npm:17.2.3"],\

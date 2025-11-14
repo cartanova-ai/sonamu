@@ -938,7 +938,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.26.0, @babel/core@npm:^7.28.0":
+"@babel/core@npm:^7.26.0, @babel/core@npm:^7.26.9, @babel/core@npm:^7.28.0":
   version: 7.28.5
   resolution: "@babel/core@npm:7.28.5"
   dependencies:
@@ -961,7 +961,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/generator@npm:^7.28.5":
+"@babel/generator@npm:^7.26.9, @babel/generator@npm:^7.28.5":
   version: 7.28.5
   resolution: "@babel/generator@npm:7.28.5"
   dependencies:
@@ -1141,7 +1141,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/traverse@npm:^7.27.1, @babel/traverse@npm:^7.28.3, @babel/traverse@npm:^7.28.5":
+"@babel/traverse@npm:^7.26.9, @babel/traverse@npm:^7.27.1, @babel/traverse@npm:^7.28.3, @babel/traverse@npm:^7.28.5":
   version: 7.28.5
   resolution: "@babel/traverse@npm:7.28.5"
   dependencies:
@@ -1177,6 +1177,13 @@ __metadata:
   version: 0.1.1
   resolution: "@borewit/text-codec@npm:0.1.1"
   checksum: 10/94c1fef259292d77c98ad1c2ffa66e366d752153962d37a7999489ada9632a9d36d3fe291759791705b1f501e33cd7b65128d193e0ca8a955107fe5cd8fde548
+  languageName: node
+  linkType: hard
+
+"@braidai/lang@npm:^1.0.0":
+  version: 1.1.2
+  resolution: "@braidai/lang@npm:1.1.2"
+  checksum: 10/04ece1b744eb8b6c2417afe220ad96c7078f83ed533117cc49300b6322f6b58f5e649c80bd990c27e2d16bfdd976481d5252ff3206b7069fc863890ab1b96277
   languageName: node
   linkType: hard
 
@@ -2876,6 +2883,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@loaderkit/resolve@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "@loaderkit/resolve@npm:1.0.4"
+  dependencies:
+    "@braidai/lang": "npm:^1.0.0"
+  checksum: 10/e999f0fc289c2e3f9f80ec92db69c123a5a74b5db7c4bc10292658fc9ef2e1afe6430346ca6cd52d941d7fc407bf28188c95bbbe0aa212c02c8716b5c4b03316
+  languageName: node
+  linkType: hard
+
 "@lukeed/ms@npm:^2.0.1, @lukeed/ms@npm:^2.0.2":
   version: 2.0.2
   resolution: "@lukeed/ms@npm:2.0.2"
@@ -4469,6 +4485,19 @@ __metadata:
   checksum: 10/fe77b1cebbbf2d541ee2f07eec6d4573af16e08dd3228758f59dcbe85a504112cefe81b971818cf39e2e3fa0ed1fcc61d392cddc50fca13d9dc9bd835e366db0
   languageName: node
   linkType: hard
+
+"@sonamu-kit/loader@workspace:modules/loader":
+  version: 0.0.0-use.local
+  resolution: "@sonamu-kit/loader@workspace:modules/loader"
+  dependencies:
+    "@loaderkit/resolve": "npm:^1.0.4"
+    "@swc/core": "npm:^1.13.5"
+    "@types/node": "npm:^24.10.1"
+    dynohot: "npm:^2.0.0"
+    json5: "npm:^2.2.3"
+    typescript: "npm:^5.9.3"
+  languageName: unknown
+  linkType: soft
 
 "@sonamu-kit/react-sui@workspace:^, @sonamu-kit/react-sui@workspace:modules/react-sui":
   version: 0.0.0-use.local
@@ -6788,7 +6817,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:4, chalk@npm:^4.1.2":
+"chalk@npm:4, chalk@npm:^4, chalk@npm:^4.1.2":
   version: 4.1.2
   resolution: "chalk@npm:4.1.2"
   dependencies:
@@ -7626,6 +7655,20 @@ __metadata:
   version: 0.1.2
   resolution: "duplexer@npm:0.1.2"
   checksum: 10/62ba61a830c56801db28ff6305c7d289b6dc9f859054e8c982abd8ee0b0a14d2e9a8e7d086ffee12e868d43e2bbe8a964be55ddbd8c8957714c87373c7a4f9b0
+  languageName: node
+  linkType: hard
+
+"dynohot@npm:^2.0.0":
+  version: 2.1.1
+  resolution: "dynohot@npm:2.1.1"
+  dependencies:
+    "@babel/core": "npm:^7.26.9"
+    "@babel/generator": "npm:^7.26.9"
+    "@babel/traverse": "npm:^7.26.9"
+    "@braidai/lang": "npm:^1.0.0"
+    convert-source-map: "npm:^2.0.0"
+    tslib: "npm:^2.8.1"
+  checksum: 10/189fbdb7121d116d0c0febe301c0ab454a7652aba94ffad1b4ffabd11048d10b8101026fe82dc1f405e623fb986b6bccc0905e42af92179e4c8e0a98da291d01
   languageName: node
   linkType: hard
 
@@ -12219,6 +12262,7 @@ __metadata:
     "@typescript/native-preview": "npm:^7.0.0-dev.20250923.1"
     "@vitest/coverage-v8": "npm:^3.2.4"
     bcrypt: "npm:^6.0.0"
+    chalk: "npm:^4"
     chokidar: "npm:^4.0.3"
     date-fns: "npm:^4.1.0"
     dotenv: "npm:^17.2.2"
@@ -16055,7 +16099,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.0, tslib@npm:^2.4.0, tslib@npm:^2.6.2":
+"tslib@npm:^2.0.0, tslib@npm:^2.4.0, tslib@npm:^2.6.2, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10/3e2e043d5c2316461cb54e5c7fe02c30ef6dccb3384717ca22ae5c6b5bc95232a6241df19c622d9c73b809bea33b187f6dbc73030963e29950c2141bc32a79f7
