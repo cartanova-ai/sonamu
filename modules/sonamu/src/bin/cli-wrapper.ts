@@ -10,7 +10,7 @@ import {
   TSC_TYPE_CHECK_COMMAND,
 } from "./build-config";
 
-const scriptPath = resolve(__dirname, "cli.js");
+const scriptPath = resolve(import.meta.dirname, "cli.js");
 const args = process.argv.slice(2);
 
 // build 명령어는 dist 없이도 실행 가능하도록 cli.ts 외부에서 처리(Sonamu.init에서 dist 필요)
