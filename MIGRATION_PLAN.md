@@ -66,11 +66,12 @@ sonamu.generated.ts (자동 생성: BaseSchema, Enums, Subsets)
 - 의존성 추적이 복잡 (재귀적 캐시 클리어)
 - CJS 설정과 ESM 설정이 혼재 (일관성 없음)
 
-**목표 (ESM + dynohot):**
+**목표 (ESM + @sonamu-kit/loader + dynohot):**
 1. 파일 변경 감지 (chokidar 유지 - 코드 생성 트리거용)
-2. **로더가 자동 트랜스파일** (온디맨드, 캐싱)
-3. **dynohot이 자동 HMR** (`import.meta.hot.accept()`)
+2. **@sonamu-kit/loader가 자동 트랜스파일** (온디맨드, 캐싱, .ts → .js 변환)
+3. **dynohot이 자동 HMR** (import 그래프 기반 모듈 재로드)
 4. Syncer는 **코드 생성만** 담당 (본연의 역할)
+5. **HMR은 import하는 쪽에서 관리** (`import.meta.hot.accept('경로', callback)`)
 
 ---
 
@@ -135,39 +136,176 @@ sonamu.generated.ts (자동 생성: BaseSchema, Enums, Subsets)
 - `utils.ts:19, 50`
 - `entity.ts:556`
 
-### 2.3 의존성 체인
+### 2.3 Syncer 동작 흐름 (상세)
 
+#### 2.3.1 서버 시작 시 초기화
+
+**시작점**: `api/src/index.ts` (애플리케이션 엔트리)
 ```
-서버 시작:
-  index.ts
-    → Sonamu.init()
-      → EntityManager.autoload()
-        → *.entity.json 읽기
-      → new Syncer()
-        → autoloadTypes() [dist/**/*.types.js]
-        → autoloadModels() [dist/**/*.model.js]
-        → autoloadApis() [registeredApis 전역 배열]
-      → startWatcher() [src/ 감시]
+index.ts
+  → Sonamu.init(true, false, undefined, true)  // (doSilent, doTest, dbConfig, enableSync)
+      [sonamu.ts:180-218]
 
-파일 변경 (현재):
-  *.entity.json 변경
-    → handleFileChange()
-      → syncer.syncFromWatcher()
-        1. SWC 트랜스파일 (TS → CJS)
-        2. clearModuleAndDependents()
-        3. doSyncActions() - sonamu.generated.ts 생성
-        4. autoloadTypes/Models/Apis()
-      → finishHMR()
+    1. EntityManager.autoload(doSilent)  [sonamu.ts:200]
+       - 모든 *.entity.json 파일 로드 (글로브: `${apiRootPath}/src/application/**/*.entity.json`)
+       - Entity 인스턴스 생성 및 검증
 
-파일 변경 (목표):
-  *.entity.json 변경
-    → handleFileChange()
-      → syncer.doSyncActions() - 코드 생성만
-        → sonamu.generated.ts 파일 쓰기
-          → dynohot이 변경 감지
-            → import.meta.hot.accept() 트리거
-              → 의존 모듈 자동 리로드
+    2. new Syncer()  [sonamu.ts:204]
+
+    3. syncer.autoloadTypes()  [syncer.ts:969-999]
+       - 글로브: `dist/application/**/*.types.js`
+       - 글로브: `dist/application/**/*.generated.js`
+       - importMultiple()로 동적 로드
+       - Zod 스키마만 필터링하여 this.types에 저장
+
+    4. syncer.autoloadModels()  [syncer.ts:941-966]
+       - 글로브: `dist/application/**/*.{model,frame}.js`
+       - src에 원본이 있는 파일만 필터링 (삭제된 파일 제외)
+       - importMultiple()로 동적 로드
+       - *Model, *Frame export만 this.models에 저장
+
+    5. syncer.autoloadApis()  [syncer.ts:926-939]
+       - 글로브: `src/application/**/*.{model,frame}.ts`
+       - readApisFromFile()로 @api 데코레이터 파싱
+       - registeredApis 전역 배열에서 API 정보 수집
+       - this.apis에 저장
+
+    6. syncer.sync()  [sonamu.ts:212]
+       - 초기 동기화 수행 (체크섬 비교)
+
+    7. Sonamu.startWatcher()  [sonamu.ts:215, 463-486]
+       - 감시 대상: `${apiRootPath}/src/**/*`
+       - 감시 파일: *.ts, *.json (index.ts 제외)
+       - chokidar 이벤트: 'change', 'add'
+       - 핸들러: handleFileChange()
 ```
+
+#### 2.3.2 파일 변경 감지 및 HMR (현재 방식)
+
+**Watch 디렉토리**: `${apiRootPath}/src/`
+**감시 대상**: `*.ts`, `*.json` (단, `src/index.ts` 제외)
+**이벤트 타입**: `change`, `add`
+
+**호출 체인 (현재 CJS 방식)**:
+```
+파일 저장 (예: api/src/application/user/user.entity.json)
+  ↓
+chokidar 'change' 이벤트  [sonamu.ts:475]
+  ↓
+Sonamu.handleFileChange(event, filePath)  [sonamu.ts:596-619]
+  - this.pendingFiles.push(filePath)
+  - this.hmrStartTime 기록 (첫 파일인 경우)
+  ↓
+syncer.syncFromWatcher([filePath])  [syncer.ts:371-474]
+  │
+  ├─ 1단계: 트랜스파일 (TS 파일인 경우)  [syncer.ts:375-421]
+  │    - SWC로 src/*.ts → dist/*.js 변환
+  │    - 하드코딩: module.type = "commonjs", target = "es5"
+  │    - 5개씩 청크로 병렬 처리
+  │
+  ├─ 2단계: 모듈 캐시 클리어  [syncer.ts:423-453]
+  │    - clearModuleAndDependents(jsPath)
+  │    - require.resolve()로 절대 경로 확인
+  │    - require.cache에서 해당 모듈 삭제
+  │    - children에 해당 모듈 포함한 부모들도 삭제 (재귀)
+  │    - dist/index.js 포함 시 SIGUSR2 전송 (프로세스 재시작)
+  │
+  ├─ 3단계: 코드 생성  [syncer.ts:455-464]
+  │    - doSyncActions(targetFilePaths)
+  │      │
+  │      ├─ entity/types 변경 → EntityManager.reload()  [syncer.ts:267]
+  │      │   - require.cache에서 sonamu.generated.js 삭제
+  │      │   - 모든 entity.json 재로드
+  │      │
+  │      ├─ actionGenerateSchemas()  [syncer.ts:269]
+  │      │   - generated.template.ts 실행 → sonamu.generated.ts 생성
+  │      │   - generated_sso.template.ts 실행 → sonamu.generated.sso.ts 생성
+  │      │
+  │      ├─ entity 신규 추가인 경우  [syncer.ts:272-301]
+  │      │   - init_types.template.ts → *.types.ts 생성
+  │      │   - entity.template.ts → *.entity.ts 생성
+  │      │   - model.template.ts → *.model.ts 생성
+  │      │
+  │      ├─ model 변경 → actionGenerateServices()  [syncer.ts:322-357]
+  │      │   - service.template.ts → *.service.ts 생성
+  │      │
+  │      └─ 항상 → actionGenerateHttps()  [syncer.ts:359]
+  │          - generated_http.template.ts → sonamu.generated.http 생성
+  │
+  ├─ 4단계: 모듈 재로드  [syncer.ts:466-471]
+  │    - this.apis = []
+  │    - this.types = {}
+  │    - this.models = {}
+  │    - autoloadTypes() 재실행
+  │    - autoloadModels() 재실행
+  │    - autoloadApis() 재실행
+  │
+  └─ 5단계: UI 동기화  [syncer.ts:473]
+       - syncUI() (프론트엔드 타입 복사)
+  ↓
+Sonamu.finishHMR()  [sonamu.ts:621-632]
+  - 체크섬 저장
+  - 소요 시간 출력
+```
+
+**현재 방식의 주요 문제점**:
+- **Syncer가 너무 많은 역할**: 트랜스파일 + 캐시 관리 + 코드 생성 + 모듈 로드
+- **require.cache 의존**: ESM에서 사용 불가
+- **하드코딩된 CJS 설정**: .swcrc 무시하고 syncer.ts에 직접 CJS 출력 설정
+- **수동 의존성 추적**: clearModuleAndDependents()가 재귀적으로 부모 찾기
+
+#### 2.3.3 파일 변경 감지 및 HMR (목표 ESM 방식)
+
+**호출 체인 (ESM + @sonamu-kit/loader + dynohot)**:
+```
+파일 저장 (예: api/src/application/user/user.entity.json)
+  ↓
+chokidar 'change' 이벤트  [sonamu.ts:475]
+  ↓
+Sonamu.handleFileChange(event, filePath)  [sonamu.ts:596-619]
+  ↓
+syncer.doSyncActions(targetFilePaths)  [syncer.ts:246-367]
+  - 트랜스파일 제거 (로더가 담당)
+  - 캐시 클리어 제거 (dynohot이 담당)
+  - 순수하게 코드 생성만 수행
+  │
+  ├─ entity/types 변경 → EntityManager.reload()
+  │   - require.cache 제거 (ESM에서는 불필요)
+  │   - 모든 entity.json 재로드
+  │
+  ├─ actionGenerateSchemas()
+  │   - sonamu.generated.ts 파일 쓰기
+  │     ↓
+  │     dynohot이 파일 변경 감지
+  │     ↓
+  │     autoloadTypes()에서 import.meta.hot.accept() 호출
+  │       accept('./path/to/sonamu.generated.js', (newModule) => {
+  │         // 새 모듈로 this.types 업데이트
+  │       })
+  │     ↓
+  │     의존 모듈들 자동 재로드 (import 그래프 기반)
+  │
+  ├─ actionGenerateServices() (필요시)
+  │   - *.service.ts 파일 쓰기
+  │
+  └─ actionGenerateHttps()
+      - sonamu.generated.http 파일 쓰기
+  ↓
+Syncer의 autoload 함수들에서 import.meta.hot.accept()로 HMR 관리
+  - autoloadTypes(): generated.ts, types.ts 파일들에 대한 accept()
+  - autoloadModels(): model.ts 파일들에 대한 accept()
+  - autoloadApis(): API 데코레이터 재파싱
+  ↓
+Sonamu.finishHMR()
+  - 체크섬 저장
+  - 소요 시간 출력
+```
+
+**ESM 방식의 개선점**:
+- **Syncer는 코드 생성만**: 본연의 역할에 집중
+- **@sonamu-kit/loader가 트랜스파일**: `import './foo.ts'` 시 자동 변환
+- **dynohot이 HMR 관리**: import 그래프 기반 자동 의존성 추적
+- **accept()는 import하는 쪽에서**: 모듈 내부가 아닌 사용처에서 관리
 
 ---
 
@@ -865,27 +1003,45 @@ export function resolveModulePath(relativePath: string): string {
 }
 
 /**
- * globbing 패턴을 dev/prod 모드에 맞게 변환
+ * globbing 패턴을 환경 또는 명시적 방향에 맞게 변환 (양방향)
  *
  * @param pattern - glob 패턴
+ * @param direction - 변환 방향 ('toDev' | 'toProd' | 'auto')
  * @returns 변환된 패턴
  *
  * @example
- * // Dev: src/application/**\/*.model.ts
- * // Prod: dist/application/**\/*.model.js
+ * // Dev 모드에서 auto: dist → src, .js → .ts
  * resolveGlobPattern('dist/application/**\/*.model.js')
+ * // → 'src/application/**\/*.model.ts'
+ *
+ * // 명시적 toProd 변환 (환경 무관)
+ * resolveGlobPattern('src/application/**\/*.ts', 'toProd')
+ * // → 'dist/application/**\/*.js'
  */
-export function resolveGlobPattern(pattern: string): string {
+export function resolveGlobPattern(
+  pattern: string,
+  direction: 'toDev' | 'toProd' | 'auto' = 'auto'
+): string {
   const isDevMode = isHMREnabled();
 
-  if (isDevMode) {
+  // auto는 현재 환경에 맞춰 변환
+  if (direction === 'auto') {
+    direction = isDevMode ? 'toDev' : 'toProd';
+  }
+
+  if (direction === 'toDev') {
+    // dist → src, .js → .ts
     return pattern
       .replace(/\/dist\//g, '/src/')
       .replace(/\.js\*/g, '.ts*')
       .replace(/\.js$/g, '.ts');
+  } else {
+    // src → dist, .ts → .js
+    return pattern
+      .replace(/\/src\//g, '/dist/')
+      .replace(/\.ts\*/g, '.js*')
+      .replace(/\.ts$/g, '.js');
   }
-
-  return pattern;
 }
 
 /**
@@ -1599,215 +1755,307 @@ ls -la .yarn/unplugged/
 
 ## Phase 6: HMR accept() 추가
 
-> **목표**: 생성된 파일과 사용자 코드에 `import.meta.hot.accept()` 추가
+> **목표**: **모듈을 import하는 쪽에서** `import.meta.hot.accept(모듈경로, 콜백)` 추가
 
-### Step 6.1: generated.template.ts에 HMR 코드 추가
+### 핵심 개념 변경
 
-**파일**: `modules/sonamu/src/templates/generated.template.ts`
-
-**현재 코드:**
+**잘못된 접근** (각 모듈 내부에 HMR 코드 추가):
 ```typescript
-render({ entities, subsets }: TemplateOptions["generated"]) {
-  const sourceCode = new SourceCode();
+// ❌ sonamu.generated.ts (생성된 파일)
+export const UserSchema = z.object({...});
 
-  // ... 스키마 생성 로직
-
-  return {
-    body: sourceCode.lines.join('\n'),
-  };
-}
-```
-
-**새 코드:**
-```typescript
-render({ entities, subsets }: TemplateOptions["generated"]) {
-  const sourceCode = new SourceCode();
-
-  // ... 스키마 생성 로직 (동일)
-
-  // HMR 코드 추가
-  sourceCode.addLine('');
-  sourceCode.addLine('// Hot Module Replacement');
-  sourceCode.addLine('if (import.meta.hot) {');
-  sourceCode.addLine('  import.meta.hot.accept(() => {');
-  sourceCode.addLine('    console.log("[HMR] sonamu.generated.ts updated");');
-  sourceCode.addLine('  });');
-  sourceCode.addLine('}');
-
-  return {
-    body: sourceCode.lines.join('\n'),
-  };
-}
-```
-
-### Step 6.2: generated_sso.template.ts에 HMR 코드 추가
-
-**파일**: `modules/sonamu/src/templates/generated_sso.template.ts`
-
-**동일한 패턴:**
-```typescript
-render({ entities, subsets }: TemplateOptions["generated_sso"]) {
-  const sourceCode = new SourceCode();
-
-  // ... Subset Query 생성 로직
-
-  // HMR 코드 추가
-  sourceCode.addLine('');
-  sourceCode.addLine('// Hot Module Replacement');
-  sourceCode.addLine('if (import.meta.hot) {');
-  sourceCode.addLine('  import.meta.hot.accept(() => {');
-  sourceCode.addLine('    console.log("[HMR] sonamu.generated.sso.ts updated");');
-  sourceCode.addLine('  });');
-  sourceCode.addLine('}');
-
-  return {
-    body: sourceCode.lines.join('\n'),
-  };
-}
-```
-
-### Step 6.3: model.template.ts에 HMR 코드 추가
-
-**파일**: `modules/sonamu/src/templates/model.template.ts`
-
-**생성되는 모델 파일 끝에 추가:**
-```typescript
-render({ entityName }: TemplateOptions["model"]) {
-  const sourceCode = new SourceCode();
-
-  // ... 모델 클래스 생성 로직
-
-  sourceCode.addLine('');
-  sourceCode.addLine(`export const ${entityName}Model = new ${entityName}ModelClass();`);
-
-  // HMR 코드 추가
-  sourceCode.addLine('');
-  sourceCode.addLine('// Hot Module Replacement');
-  sourceCode.addLine('if (import.meta.hot) {');
-  sourceCode.addLine('  import.meta.hot.accept(() => {');
-  sourceCode.addLine(`    console.log("[HMR] ${entityName}.model.ts updated");`);
-  sourceCode.addLine('  });');
-  sourceCode.addLine('}');
-
-  return {
-    body: sourceCode.lines.join('\n'),
-  };
-}
-```
-
-### Step 6.4: init_types.template.ts에 HMR 코드 추가
-
-**파일**: `modules/sonamu/src/templates/init_types.template.ts`
-
-```typescript
-render({ entityName }: TemplateOptions["init_types"]) {
-  const sourceCode = new SourceCode();
-
-  // ... 타입 정의 생성 로직
-
-  // HMR 코드 추가
-  sourceCode.addLine('');
-  sourceCode.addLine('// Hot Module Replacement');
-  sourceCode.addLine('if (import.meta.hot) {');
-  sourceCode.addLine('  import.meta.hot.accept();');
-  sourceCode.addLine('}');
-
-  return {
-    body: sourceCode.lines.join('\n'),
-  };
-}
-```
-
-### Step 6.5: 기존 사용자 파일에 수동으로 추가
-
-**기존 모델 파일 (예: `examples/miomock/api/src/application/user/user.model.ts`)**
-
-파일 끝에 추가:
-```typescript
-export const UserModel = new UserModelClass();
-
-// Hot Module Replacement
 if (import.meta.hot) {
   import.meta.hot.accept(() => {
-    console.log('[HMR] user.model.ts updated');
+    console.log('Updated');
   });
 }
 ```
 
-**기존 타입 파일 (예: `examples/miomock/api/src/application/user/user.types.ts`)**
-
-파일 끝에 추가:
+**올바른 접근** (import하는 쪽에서 accept 호출):
 ```typescript
-// ... 타입 정의
+// ✅ syncer.ts (모듈을 사용하는 쪽)
+import * as generatedModule from './application/sonamu.generated.js';
 
-// Hot Module Replacement
 if (import.meta.hot) {
-  import.meta.hot.accept();
+  import.meta.hot.accept('./application/sonamu.generated.js', (newModule) => {
+    // 새 모듈로 업데이트
+    this.types = { ...this.types, ...extractTypes(newModule) };
+    console.log('[HMR] sonamu.generated.ts reloaded');
+  });
 }
 ```
 
-### Step 6.6: 일괄 추가 스크립트 작성
+**이유**:
+- dynohot은 import 그래프를 추적하여 의존 모듈을 자동 재로드
+- accept()는 "이 모듈이 변경되면 내가 처리할게"라는 선언
+- 모듈 내부가 아닌 **사용처에서** 재로드 후 처리 방법을 정의해야 함
+- 생성된 파일에 HMR 코드를 넣으면 코드 생성 템플릿이 복잡해지고 불필요
 
-**파일**: `scripts/add-hmr-to-existing-files.ts`
+### Step 6.1: syncer.autoloadTypes()에 HMR accept() 추가
 
+**파일**: `modules/sonamu/src/syncer/syncer.ts`
+
+**현재 코드** (Lines 969-999):
 ```typescript
-import { readdir, readFile, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { glob } from 'glob';
-
-const HMR_CODE = `
-// Hot Module Replacement
-if (import.meta.hot) {
-  import.meta.hot.accept();
-}
-`;
-
-async function addHMRToFile(filePath: string) {
-  const content = await readFile(filePath, 'utf8');
-
-  // 이미 HMR 코드가 있으면 스킵
-  if (content.includes('import.meta.hot')) {
-    console.log(`⏭️  Skipping ${filePath} (already has HMR)`);
-    return;
+async autoloadTypes(
+  doRefresh: boolean = false
+): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+  if (!doRefresh && Object.keys(this.types).length > 0) {
+    return this.types;
   }
 
-  // 파일 끝에 추가
-  const newContent = content.trimEnd() + '\n' + HMR_CODE;
-  await writeFile(filePath, newContent);
+  const pathPatterns = [
+    path.join(Sonamu.apiRootPath, "/dist/application/**/*.types.js"),
+    path.join(Sonamu.apiRootPath, "/dist/application/**/*.generated.js"),
+  ];
 
-  console.log(`✅ Added HMR to ${filePath}`);
+  const filePaths = await filterAsync(
+    (await mapAsync(pathPatterns, globAsync)).flat(),
+    async (path) => {
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return await exists(srcPath);
+    }
+  );
+
+  const modules = await importMultiple(filePaths, doRefresh);
+  const functions = modules
+    .map(({ imported }) => Object.entries(imported))
+    .flat();
+  this.types = Object.fromEntries(
+    functions.filter(([, f]) => f instanceof z.ZodType)
+  ) as typeof this.types;
+
+  return this.types;
 }
-
-async function main() {
-  const apiRoot = process.argv[2] || 'examples/miomock/api';
-
-  // 모델 파일
-  const modelFiles = await glob(`${apiRoot}/src/application/**/*.model.ts`);
-
-  // 타입 파일
-  const typeFiles = await glob(`${apiRoot}/src/application/**/*.types.ts`);
-
-  // 프레임 파일
-  const frameFiles = await glob(`${apiRoot}/src/application/**/*.frame.ts`);
-
-  const allFiles = [...modelFiles, ...typeFiles, ...frameFiles];
-
-  console.log(`Found ${allFiles.length} files to process`);
-
-  for (const file of allFiles) {
-    await addHMRToFile(file);
-  }
-
-  console.log('✨ Done!');
-}
-
-main();
 ```
 
-**실행:**
+**새 코드** (HMR accept 추가):
+```typescript
+async autoloadTypes(
+  doRefresh: boolean = false
+): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+  if (!doRefresh && Object.keys(this.types).length > 0) {
+    return this.types;
+  }
+
+  const pathPatterns = [
+    path.join(Sonamu.apiRootPath, "/dist/application/**/*.types.js"),
+    path.join(Sonamu.apiRootPath, "/dist/application/**/*.generated.js"),
+  ];
+
+  const filePaths = await filterAsync(
+    (await mapAsync(pathPatterns, globAsync)).flat(),
+    async (path) => {
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return await exists(srcPath);
+    }
+  );
+
+  const modules = await importMultiple(filePaths, doRefresh);
+  const functions = modules
+    .map(({ imported }) => Object.entries(imported))
+    .flat();
+  this.types = Object.fromEntries(
+    functions.filter(([, f]) => f instanceof z.ZodType)
+  ) as typeof this.types;
+
+  // HMR: types 파일들에 대한 accept 등록
+  if (import.meta.hot) {
+    for (const filePath of filePaths) {
+      import.meta.hot.accept(filePath, async (newModule) => {
+        if (newModule) {
+          // 변경된 모듈의 Zod 타입만 추출하여 업데이트
+          const newTypes = Object.fromEntries(
+            Object.entries(newModule).filter(([, f]) => f instanceof z.ZodType)
+          );
+          this.types = { ...this.types, ...newTypes };
+          console.log(chalk.green(`[HMR] Types reloaded: ${path.basename(filePath)}`));
+        }
+      });
+    }
+  }
+
+  return this.types;
+}
+```
+
+### Step 6.2: syncer.autoloadModels()에 HMR accept() 추가
+
+**파일**: `modules/sonamu/src/syncer/syncer.ts`
+
+**현재 코드** (Lines 941-966):
+```typescript
+async autoloadModels(): Promise<{ [modelName: string]: unknown }> {
+  const pathPattern = path.join(
+    Sonamu.apiRootPath,
+    "dist/application/**/*.{model,frame}.js"
+  );
+
+  const filePaths = await filterAsync(
+    await globAsync(pathPattern),
+    async (path) => {
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return await exists(srcPath);
+    }
+  );
+
+  const modules = await importMultiple(filePaths);
+  const functions = modules
+    .map(({ imported }) => Object.entries(imported))
+    .flat();
+  this.models = Object.fromEntries(
+    functions.filter(
+      ([name]) => name.endsWith("Model") || name.endsWith("Frame")
+    )
+  );
+
+  return this.models;
+}
+```
+
+**새 코드** (HMR accept 추가):
+```typescript
+async autoloadModels(): Promise<{ [modelName: string]: unknown }> {
+  const pathPattern = path.join(
+    Sonamu.apiRootPath,
+    "dist/application/**/*.{model,frame}.js"
+  );
+
+  const filePaths = await filterAsync(
+    await globAsync(pathPattern),
+    async (path) => {
+      const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
+      return await exists(srcPath);
+    }
+  );
+
+  const modules = await importMultiple(filePaths);
+  const functions = modules
+    .map(({ imported }) => Object.entries(imported))
+    .flat();
+  this.models = Object.fromEntries(
+    functions.filter(
+      ([name]) => name.endsWith("Model") || name.endsWith("Frame")
+    )
+  );
+
+  // HMR: model 파일들에 대한 accept 등록
+  if (import.meta.hot) {
+    for (const filePath of filePaths) {
+      import.meta.hot.accept(filePath, async (newModule) => {
+        if (newModule) {
+          // 변경된 모듈의 Model/Frame만 추출하여 업데이트
+          const newModels = Object.fromEntries(
+            Object.entries(newModule).filter(
+              ([name]) => name.endsWith("Model") || name.endsWith("Frame")
+            )
+          );
+          this.models = { ...this.models, ...newModels };
+          console.log(chalk.green(`[HMR] Models reloaded: ${path.basename(filePath)}`));
+        }
+      });
+    }
+  }
+
+  return this.models;
+}
+```
+
+### Step 6.3: syncer.autoloadApis()에 HMR accept() 추가
+
+**파일**: `modules/sonamu/src/syncer/syncer.ts`
+
+**현재 코드** (Lines 926-939):
+```typescript
+async autoloadApis() {
+  const pathPattern = path.join(
+    Sonamu.apiRootPath,
+    "/src/application/**/*.{model,frame}.ts"
+  );
+
+  const filePaths = await globAsync(pathPattern);
+  const result = await Promise.all(
+    filePaths.map((filePath) => this.readApisFromFile(filePath))
+  );
+  this.apis = result.flat();
+  return this.apis;
+}
+```
+
+**새 코드** (HMR accept 추가):
+```typescript
+async autoloadApis() {
+  const pathPattern = path.join(
+    Sonamu.apiRootPath,
+    "/src/application/**/*.{model,frame}.ts"
+  );
+
+  const filePaths = await globAsync(pathPattern);
+  const result = await Promise.all(
+    filePaths.map((filePath) => this.readApisFromFile(filePath))
+  );
+  this.apis = result.flat();
+
+  // HMR: API 파일들에 대한 accept 등록
+  if (import.meta.hot) {
+    for (const filePath of filePaths) {
+      // src/*.ts 파일이므로 로더가 처리
+      import.meta.hot.accept(filePath, async () => {
+        // API 데코레이터 재파싱
+        const newApis = await this.readApisFromFile(filePath);
+
+        // 기존 API 중 이 파일에서 온 것들 제거
+        this.apis = this.apis.filter(api => api.filePath !== filePath);
+
+        // 새 API 추가
+        this.apis.push(...newApis);
+
+        console.log(chalk.green(`[HMR] APIs reloaded: ${path.basename(filePath)}`));
+      });
+    }
+  }
+
+  return this.apis;
+}
+```
+
+### Step 6.4: 간단한 HMR 테스트
+
+**개발 서버 시작:**
 ```bash
-cd ~/Projects/sonamu
-npx tsx scripts/add-hmr-to-existing-files.ts examples/miomock/api
+cd examples/miomock/api
+yarn dev
+```
+
+**테스트 시나리오:**
+
+1. **Entity 파일 변경 테스트**
+   ```bash
+   # user.entity.json 파일 수정 (필드 하나 추가)
+   # → sonamu.generated.ts 재생성
+   # → autoloadTypes()의 accept() 콜백 실행
+   # → 콘솔에 "[HMR] Types reloaded: sonamu.generated.ts" 출력
+   ```
+
+2. **Model 파일 변경 테스트**
+   ```bash
+   # user.model.ts 파일 수정 (함수 하나 수정)
+   # → autoloadModels()의 accept() 콜백 실행
+   # → 콘솔에 "[HMR] Models reloaded: user.model.js" 출력
+   ```
+
+3. **API 데코레이터 변경 테스트**
+   ```bash
+   # user.model.ts의 @api 데코레이터 수정
+   # → autoloadApis()의 accept() 콜백 실행
+   # → 콘솔에 "[HMR] APIs reloaded: user.model.ts" 출력
+   ```
+
+**예상 로그:**
+```
+Detected(change): api/src/application/user/user.entity.json
+[HMR] Types reloaded: sonamu.generated.ts
+HMR Done! 145ms
 ```
 
 ---
