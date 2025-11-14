@@ -1,25 +1,25 @@
-import { DatabaseSchemaExtend, DB, Sonamu } from "sonamu";
-import { Nuri, NuriWrapper } from "./nuri/nuri";
+import { BaseModel, Puri, Sonamu } from "sonamu";
 import chalk from "chalk";
 
 Sonamu.runScript(async () => {
-  const knex = DB.getDB("r");
-  const nuri = new NuriWrapper<DatabaseSchemaExtend>(knex);
+  const puri = BaseModel.getPuri("r");
 
   // Test: from
-  const test1 = nuri.from({ users: "users" });
+  const test1 = puri.from({ users: "users" });
   expectAndLog("select * from `users`", test1.toQuery());
 
   // Test: select with alias
-  const test3 = nuri.from({ users: "users" }).select({
+  const test3 = puri.from({ users: "users" }).select({
     id: "users.id",
     username: "users.username",
   });
+  // @ts-ignore - unused
   const t3Result = await test3;
   expectAndLog(
     "select `u`.`id` as `id`, `u`.`name` as `name` from `users` as `u`",
     test3.toQuery()
   );
+  // @ts-ignore - unused
   type Test3Result = Awaited<typeof test3>[0];
 
   // Test: select 타입 체크
@@ -34,14 +34,14 @@ Sonamu.runScript(async () => {
   };
 
   // Test: where
-  const test5 = nuri.from({ users: "users" }).where({ "users.role": "normal" });
+  const test5 = puri.from({ users: "users" }).where({ "users.role": "normal" });
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where `users`.`bio` = 'abcddd'",
     test5.toQuery()
   );
 
   // Test: where with group
-  const test6 = nuri.from({ users: "users" }).whereGroup((group) => {
+  const test6 = puri.from({ users: "users" }).whereGroup((group) => {
     group.where({
       "users.id": 10,
     });
@@ -54,7 +54,7 @@ Sonamu.runScript(async () => {
   );
 
   // Test: join
-  const test7 = nuri
+  const test7 = puri
     .from({ users: "users" })
     .join("employees", "users.id", "employees.user_id");
   expectAndLog(
@@ -63,7 +63,7 @@ Sonamu.runScript(async () => {
   );
 
   // test: join with callback
-  const test8 = nuri
+  const test8 = puri
     .from({ users: "users" })
     .join("employees", (j) => {
       j.on("users.id", "employees.user_id");
@@ -78,41 +78,44 @@ Sonamu.runScript(async () => {
   );
 
   // test: join with subquery
-  const sq = nuri.from({ users: "users" }).select({
+  const sq = puri.from({ users: "users" }).select({
     id: "users.id",
     username: "users.username",
   });
-  const test9 = nuri
+  // @ts-ignore - unused
+  const test9 = puri
     .from({ users: "users" })
     .join({ c: sq }, "users.id", "c.id")
     .where("c.username", "test");
 
   // test: join with subquery and callback
-  const test10 = nuri.from("users").join({ c: sq }, (j) => {
+  // @ts-ignore - unused
+  const test10 = puri.from("users").join({ c: sq }, (j) => {
     j.on("users.username", "c.username");
     j.orOn("users.id", "c.id");
   });
 
   // test: select with sql expression
-  const test11 = nuri.from({ users: "users" }).select({
+  const test11 = puri.from({ users: "users" }).select({
     id: "users.id",
     username: "users.username",
-    salary: Nuri.sum("users.salary"),
-    aa: Nuri.rawString("users.username"),
-    dd: Nuri.rawDate("users.created_at"),
-    cc: Nuri.rawBoolean("users.is_active"),
+    salary: Puri.sum("users.salary"),
+    aa: Puri.rawString("users.username"),
+    dd: Puri.rawDate("users.created_at"),
+    cc: Puri.rawBoolean("users.is_active"),
   });
+  // @ts-ignore - unused
   type T11 = Awaited<typeof test11>[0];
 
   // test: where match
-  const test12 = nuri.from({ users: "users" }).whereMatch("users.bio", "test");
+  const test12 = puri.from({ users: "users" }).whereMatch("users.bio", "test");
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where MATCH (`users`.`bio`) AGAINST ('test')",
     test12.toQuery()
   );
 
   // test: order by (ResultAvailableColumns)
-  const test13 = nuri
+  const test13 = puri
     .from({ users: "users" })
     .select({
       aa: "users.id",
@@ -124,11 +127,13 @@ Sonamu.runScript(async () => {
   );
 
   // test: pluck
-  const test14 = nuri.from({ users: "users" }).pluck("id");
+  const test14 = puri.from({ users: "users" }).pluck("id");
+  // @ts-ignore - unused
   const t14Result = await test14;
 
   // test: insert
-  const test15 = nuri.from({ users: "users" }).insert({
+  // @ts-ignore - unused
+  const test15 = puri.from({ users: "users" }).insert({
     email: "test@test.com",
     username: "test",
     password: "test",
@@ -136,12 +141,14 @@ Sonamu.runScript(async () => {
   });
 
   // test: join 상황에서 insert 시도시 불가
-  const test16 = nuri.from("users").insert({
+  // @ts-ignore - unused
+  const test16 = puri.from("users").insert({
     bio: "aa",
   });
 
   // test: JOIN 후 업데이트
-  const test17 = nuri
+  // @ts-ignore - unused
+  const test17 = puri
     .from({ u: "users" })
     .join({ e: "employees" }, "u.id", "e.user_id")
     .update({

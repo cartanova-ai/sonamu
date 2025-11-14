@@ -53,17 +53,14 @@ async function examples() {
   }
 
   console.log("\n=== Example 3: Subquery Example ===");
-  const subQuery = db
-    .table("users")
-    .select({
-      id: "users.id",
-      username: "users.username",
-      role: "users.role",
-    })
-    .where("role", "=", "admin");
+  const subQuery = db.table("users").where("role", "admin").select({
+    id: "users.id",
+    username: "users.username",
+    role: "users.role",
+  });
 
   const mainQuery = db
-    .fromSubquery(subQuery, "admin_users")
+    .table({ admin_users: subQuery })
     .join("employees", "admin_users.id", "employees.user_id")
     .select({
       user_id: "admin_users.id",
@@ -243,7 +240,7 @@ async function examples() {
   const departments = await db
     .table("departments")
     .leftJoin(
-      "departments as parent_dept",
+      { parent_dept: "departments" },
       "departments.parent_id",
       "parent_dept.id"
     )
@@ -251,7 +248,7 @@ async function examples() {
     .select({
       dept_id: "departments.id",
       dept_name: "departments.name",
-      parent_name: Puri.rawString("parent_dept.name"),
+      parent_name: "parent_dept.name",
       company_name: "companies.name",
     })
     .limit(10)
