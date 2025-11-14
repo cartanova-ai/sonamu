@@ -1,137 +1,139 @@
 import type { Knex } from "knex";
 import type {
   AvailableColumns,
-  ComparisonOperator,
-  EmptyRecord,
-  Expand,
-  ExtractColumnType,
-  FulltextColumns,
-  InsertData,
-  MergeJoined,
-  ParseSelectObject,
-  ResultAvailableColumns,
   SelectObject,
-  SqlFunction,
+  ParseSelectObject,
   WhereCondition,
+  ComparisonOperator,
+  ExtractColumnType,
+  SqlExpression,
+  Expand,
+  FulltextColumns,
+  ResultAvailableColumns,
+  InsertData,
+  SingleTableValue,
 } from "./puri.types";
 import chalk from "chalk";
+import assert from "assert";
 
-// 메인 Puri 클래스
-export class Puri<
-  TSchema,
-  TTable extends keyof TSchema | string,
-  TOriginal = TTable extends keyof TSchema ? TSchema[TTable] : unknown,
-  TResult = TTable extends keyof TSchema ? TSchema[TTable] : unknown,
-  TJoined = EmptyRecord,
-> {
+export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
 
   // 생성자 시그니처들
+  constructor(knex: Knex, tableName: string);
   constructor(
     knex: Knex,
-    tableName: TTable extends keyof TSchema ? TTable : unknown
-  );
-  constructor(
-    knex: Knex,
-    subquery: Puri<TSchema, any, any, TOriginal, any>,
-    alias: TTable extends string ? TTable : never
+    tableSpec: Record<string, string | Puri<TSchema, any, any>>
   );
   constructor(
     private knex: Knex,
-    tableNameOrSubquery: any,
-    alias?: TTable extends string ? TTable : never
+    tableNameOrSpec: any
   ) {
-    if (typeof tableNameOrSubquery === "string") {
-      // 일반 테이블로 시작
-      this.knexQuery = knex(tableNameOrSubquery).from(tableNameOrSubquery);
+    if (typeof tableNameOrSpec === "string") {
+      // Case: new Puri(knex, "users")
+      this.knexQuery = this.knex(tableNameOrSpec).from(tableNameOrSpec);
+    } else if (typeof tableNameOrSpec === "object") {
+      const entries = Object.entries(tableNameOrSpec);
+      if (entries.length !== 1) {
+        throw new Error("Table spec must have exactly one entry");
+      }
+      assert(entries[0]);
+      const [alias, spec] = entries[0];
+      if (typeof spec === "string") {
+        this.knexQuery = this.knex(spec).from({ [alias]: spec });
+      } else if (spec instanceof Puri) {
+        const subqueryBuilder = spec.raw();
+        this.knexQuery = this.knex.from(subqueryBuilder.as(alias));
+      } else {
+        throw new Error("Invalid table specification");
+      }
     } else {
-      // 서브쿼리로 시작
-      this.knexQuery = knex.from(tableNameOrSubquery.raw().as(alias));
+      throw new Error("Invalid table specification");
     }
   }
 
-  // Static SQL helper functions
-  static count(column: string = "*"): SqlFunction<"number"> {
+  // Static SQL helper functions for SELECT
+  static count(column: string = "*"): SqlExpression<"number"> {
     return {
-      _type: "sql_function",
+      _type: "sql_expression",
       _return: "number",
       _sql: `COUNT(${column})`,
     };
   }
-
-  static sum(column: string): SqlFunction<"number"> {
-    return { _type: "sql_function", _return: "number", _sql: `SUM(${column})` };
-  }
-
-  static avg(column: string): SqlFunction<"number"> {
-    return { _type: "sql_function", _return: "number", _sql: `AVG(${column})` };
-  }
-
-  static max(column: string): SqlFunction<"number"> {
-    return { _type: "sql_function", _return: "number", _sql: `MAX(${column})` };
-  }
-
-  static min(column: string): SqlFunction<"number"> {
-    return { _type: "sql_function", _return: "number", _sql: `MIN(${column})` };
-  }
-
-  static concat(...args: string[]): SqlFunction<"string"> {
+  static sum(column: string): SqlExpression<"number"> {
     return {
-      _type: "sql_function",
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `SUM(${column})`,
+    };
+  }
+  static avg(column: string): SqlExpression<"number"> {
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `AVG(${column})`,
+    };
+  }
+  static max(column: string): SqlExpression<"number"> {
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `MAX(${column})`,
+    };
+  }
+  static min(column: string): SqlExpression<"number"> {
+    return {
+      _type: "sql_expression",
+      _return: "number",
+      _sql: `MIN(${column})`,
+    };
+  }
+  static concat(...args: string[]): SqlExpression<"string"> {
+    return {
+      _type: "sql_expression",
       _return: "string",
       _sql: `CONCAT(${args.join(", ")})`,
     };
   }
-
-  static upper(column: string): SqlFunction<"string"> {
+  static upper(column: string): SqlExpression<"string"> {
     return {
-      _type: "sql_function",
+      _type: "sql_expression",
       _return: "string",
       _sql: `UPPER(${column})`,
     };
   }
-
-  static lower(column: string): SqlFunction<"string"> {
+  static lower(column: string): SqlExpression<"string"> {
     return {
-      _type: "sql_function",
+      _type: "sql_expression",
       _return: "string",
       _sql: `LOWER(${column})`,
     };
   }
 
-  // Raw functions
-  static rawString(sql: string): SqlFunction<"string"> {
-    return { _type: "sql_function", _return: "string", _sql: sql };
+  // Raw functions for SELECT
+  static rawString(sql: string): SqlExpression<"string"> {
+    return { _type: "sql_expression", _return: "string", _sql: sql };
+  }
+  static rawNumber(sql: string): SqlExpression<"number"> {
+    return { _type: "sql_expression", _return: "number", _sql: sql };
+  }
+  static rawBoolean(sql: string): SqlExpression<"boolean"> {
+    return { _type: "sql_expression", _return: "boolean", _sql: sql };
+  }
+  static rawDate(sql: string): SqlExpression<"date"> {
+    return { _type: "sql_expression", _return: "date", _sql: sql };
   }
 
-  static rawNumber(sql: string): SqlFunction<"number"> {
-    return { _type: "sql_function", _return: "number", _sql: sql };
-  }
-
-  static rawBoolean(sql: string): SqlFunction<"boolean"> {
-    return { _type: "sql_function", _return: "boolean", _sql: sql };
-  }
-
-  static rawDate(sql: string): SqlFunction<"date"> {
-    return { _type: "sql_function", _return: "date", _sql: sql };
-  }
-
-  // Alias 기반 Select
-  select<TSelect extends SelectObject<TSchema, TTable, TOriginal, TJoined>>(
+  // SELECT
+  select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect
-  ): Puri<
-    TSchema,
-    TTable,
-    TOriginal,
-    ParseSelectObject<TSchema, TTable, TSelect, TOriginal, TJoined>,
-    TJoined
-  > {
+  ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
     const selectClauses: (string | Knex.Raw)[] = [];
 
     for (const [alias, columnOrFunction] of Object.entries(selectObj)) {
       if (
         typeof columnOrFunction === "object" &&
-        columnOrFunction._type === "sql_function"
+        columnOrFunction._type === "sql_expression"
       ) {
         // SQL 함수인 경우
         selectClauses.push(
@@ -154,50 +156,27 @@ export class Puri<
     return this as any;
   }
 
-  // 전체 선택 (편의 메서드)
-  selectAll(): Puri<
-    TSchema,
-    TTable,
-    TOriginal,
-    TTable extends keyof TSchema
-      ? TSchema[TTable] & TJoined
-      : TResult & TJoined,
-    TJoined
-  > {
+  // SELECT *
+  selectAll(): this {
     this.knexQuery.select("*");
     return this as any;
   }
 
-  // Where 조건 (조인된 테이블 컬럼도 지원)
-  where(
-    conditions: WhereCondition<TSchema, TTable, TOriginal, TJoined>
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  where<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  // WHERE: 객체 - 사용: .where({ "u.id": 1, "u.status": "active" })
+  where(conditions: WhereCondition<TTables>): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", 1)
+  where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  where<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", ">", 10)
+  where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator | "like",
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  where(
-    columnOrConditions: any,
-    operatorOrValue?: any,
-    value?: any
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+    operator: ComparisonOperator,
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
+  where(columnOrConditions: any, operatorOrValue?: any, value?: any): this {
     if (typeof columnOrConditions === "object") {
       this.knexQuery.where(columnOrConditions);
     } else if (arguments.length === 2) {
@@ -223,293 +202,277 @@ export class Puri<
     return this;
   }
 
-  // WhereIn (조인된 테이블 컬럼도 지원)
-  whereIn<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  // WHERE IN
+  whereIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  whereIn(
-    column: string,
-    values: any[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+    values: ExtractColumnType<TTables, TColumn & string>[]
+  ): Puri<TSchema, TTables, TResult> {
     this.knexQuery.whereIn(column, values);
     return this;
   }
 
-  whereNotIn<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  // WHERE NOT IN
+  whereNotIn<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    values: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  whereNotIn(
-    column: string,
-    values: any[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
-    this.knexQuery.whereNotIn(column, values);
+    values: ExtractColumnType<TTables, TColumn & string>[]
+  ): Puri<TSchema, TTables, TResult> {
+    this.knexQuery.whereIn(column, values);
     return this;
   }
 
-  whereMatch<
-    TColumn extends FulltextColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  // WHERE MATCH
+  whereMatch<TColumn extends FulltextColumns<TTables>>(
     column: TColumn,
     value: string
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  ): this {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
     return this;
   }
 
-  // WhereGroup (괄호 그룹핑 지원)
-  whereGroup(
-    callback: (
-      group: WhereGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  // WHERE 괄호 그룹핑
+  whereGroup(callback: (g: WhereGroup<TTables>) => void): this {
     this.knexQuery.where((builder) => {
-      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
-        builder
-      );
+      const group = new WhereGroup<TTables>(builder);
       callback(group);
     });
     return this;
   }
-
-  orWhereGroup(
-    callback: (
-      group: WhereGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  orWhereGroup(callback: (g: WhereGroup<TTables>) => void): this {
     this.knexQuery.orWhere((builder) => {
-      const group = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
-        builder
-      );
+      const group = new WhereGroup<TTables>(builder);
       callback(group);
     });
     return this;
   }
 
-  // Join
-  join<
-    TJoinTable extends keyof TSchema,
-    TLColumn extends AvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
-    >,
-    TRColumn extends AvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
-    >,
-  >(
-    table: TJoinTable,
-    left: TLColumn,
-    right: TRColumn
+  // JOIN: 서브쿼리 + Alias
+  join<TJoinAlias extends string, TSubResult>(
+    tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${keyof TSubResult & string}`
   ): Puri<
     TSchema,
-    TTable,
-    TOriginal,
-    TResult,
-    MergeJoined<TJoined, Record<TJoinTable, TSchema[TJoinTable]>>
+    TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
+    TResult
   >;
+  // JOIN: 테이블 + Alias
+  join<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${keyof TSchema[TJoinTable] & string}`
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinAlias, TSchema[TJoinTable]>, // TTables 확장!
+    TResult
+  >;
+  // JOIN: 테이블명
   join<TJoinTable extends keyof TSchema>(
-    table: TJoinTable,
-    joinCallback: (
-      joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>
+    tableName: TJoinTable,
+    left: AvailableColumns<TTables>,
+    right: `${TJoinTable & string}.${keyof TSchema[TJoinTable] & string}`
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinTable, TSchema[TJoinTable]>, // 테이블명이 키
+    TResult
+  >;
+  // JOIN: 서브쿼리 + Alias + 콜백
+  join<TJoinAlias extends string, TSubResult>(
+    tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinAlias, TSubResult>>
     ) => void
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult>, TResult>;
+  // JOIN: 테이블 + Alias + 콜백
+  join<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinAlias, TSchema[TJoinTable]>>
+    ) => void
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSchema[TJoinTable]>, TResult>;
+  // JOIN: 테이블명 + 콜백
+  join<TJoinTable extends keyof TSchema>(
+    tableName: TJoinTable,
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinTable, TSchema[TJoinTable]>>
+    ) => void
+  ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
+  // JOIN 실제 구현
+  join(tableNameOrSpec: any, ...args: any[]): any {
+    return this.__commonJoin("join", tableNameOrSpec, ...args);
+  }
+
+  // LEFT JOIN: 서브쿼리 + Alias
+  leftJoin<TJoinAlias extends string, TSubResult>(
+    tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${keyof TSubResult & string}`
   ): Puri<
     TSchema,
-    TTable,
-    TOriginal,
-    TResult,
-    MergeJoined<TJoined, Record<TJoinTable, TSchema[TJoinTable]>>
+    TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
+    TResult
   >;
-  join<TSubResult, TAlias extends string>(
-    subquery: Puri<TSchema, any, any, TSubResult, any>,
-    alias: TAlias,
-    left: string,
-    right: string
+  // LEFT JOIN: 테이블 + Alias
+  leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${keyof TSchema[TJoinTable] & string}`
   ): Puri<
     TSchema,
-    TTable,
-    TOriginal,
-    TResult,
-    TJoined & Record<TAlias, TSubResult>
+    TTables & Record<TJoinAlias, TSchema[TJoinTable]>, // TTables 확장!
+    TResult
   >;
-  join(
-    table: string,
-    left: string,
-    right: string
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  join(
-    tableOrSubquery: string | keyof TSchema | Puri<TSchema, any, any, any, any>,
+  // LEFT JOIN: 테이블명
+  leftJoin<TJoinTable extends keyof TSchema>(
+    tableName: TJoinTable,
+    left: AvailableColumns<TTables>,
+    right: `${TJoinTable & string}.${keyof TSchema[TJoinTable] & string}`
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinTable, TSchema[TJoinTable]>, // 테이블명이 키
+    TResult
+  >;
+  // LEFT JOIN: 서브쿼리 + Alias + 콜백
+  leftJoin<TJoinAlias extends string, TSubResult>(
+    tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinAlias, TSubResult>>
+    ) => void
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult>, TResult>;
+  // LEFT JOIN: 테이블 + Alias + 콜백
+  leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinAlias, TSchema[TJoinTable]>>
+    ) => void
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSchema[TJoinTable]>, TResult>;
+  // LEFT JOIN: 테이블명 + 콜백
+  leftJoin<TJoinTable extends keyof TSchema>(
+    tableName: TJoinTable,
+    callback: (
+      j: JoinClauseGroup<TTables, Record<TJoinTable, TSchema[TJoinTable]>>
+    ) => void
+  ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
+  // LEFT JOIN 실제 구현
+  leftJoin(tableNameOrSpec: any, ...args: any[]): any {
+    return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
+  }
+
+  __commonJoin(
+    joinType: "join" | "leftJoin",
+    tableNameOrSpec: any,
     ...args: any[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, any> {
-    if (tableOrSubquery instanceof Puri) {
-      // 서브쿼리 조인: join(subquery, alias, left, right)
-      const [alias, left, right] = args;
-      this.knexQuery.join(tableOrSubquery.raw().as(alias), left, right);
-    } else if (
-      args.length === 2 &&
-      typeof args[0] === "string" &&
-      typeof args[1] === "string"
-    ) {
-      const [left, right] = args;
-      this.knexQuery.join(tableOrSubquery as string, left, right);
-    } else if (args.length === 1 && typeof args[0] === "function") {
-      const joinCallback = args[0];
-      this.knexQuery.join(tableOrSubquery as string, (joinClause) => {
-        joinCallback(new JoinClauseGroup(joinClause));
-      });
+  ): this {
+    if (typeof tableNameOrSpec === "string") {
+      // Case 1: join("posts", ...)
+      const tableName = tableNameOrSpec;
+
+      if (args.length === 1 && typeof args[0] === "function") {
+        // join("posts", callback)
+        const callback = args[0];
+        this.knexQuery[joinType](tableName, (joinClause) => {
+          callback(new JoinClauseGroup(joinClause));
+        });
+      } else {
+        // join("posts", left, right)
+        const [left, right] = args;
+        this.knexQuery[joinType](tableName, left, right);
+      }
+    } else if (typeof tableNameOrSpec === "object") {
+      // Case 2: join({ alias: "table" }, ...) or join({ alias: subquery }, ...)
+      const entries = Object.entries(tableNameOrSpec);
+      if (entries.length !== 1) {
+        throw new Error("Table spec must have exactly one entry");
+      }
+      assert(entries[0]);
+      const [[alias, spec]] = entries;
+
+      if (typeof spec === "string") {
+        // 테이블: join({ p: "posts" }, ...)
+        if (args.length === 1 && typeof args[0] === "function") {
+          // Callback
+          const callback = args[0];
+          this.knexQuery[joinType]({ [alias]: spec }, (joinClause) => {
+            callback(new JoinClauseGroup(joinClause));
+          });
+        } else {
+          // Simple
+          const [left, right] = args;
+          this.knexQuery[joinType]({ [alias]: spec }, left, right);
+        }
+      } else if (spec instanceof Puri) {
+        // 서브쿼리: join({ sq: subquery }, ...)
+        if (args.length === 1 && typeof args[0] === "function") {
+          // Callback
+          const callback = args[0];
+          this.knexQuery[joinType](spec.raw().as(alias), (joinClause) => {
+            callback(new JoinClauseGroup(joinClause));
+          });
+        } else {
+          // Simple
+          const [left, right] = args;
+          this.knexQuery[joinType](spec.raw().as(alias), left, right);
+        }
+      } else {
+        throw new Error("Invalid table specification");
+      }
     } else {
       throw new Error("Invalid arguments");
     }
-    return this as any;
+
+    return this;
   }
 
-  leftJoin<
-    TJoinTable extends keyof TSchema,
-    TLColumn extends AvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
-    >,
-    TRColumn extends AvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TJoined & Record<TJoinTable, TSchema[TJoinTable]>
-    >,
-  >(
-    table: TJoinTable,
-    left: TLColumn,
-    right: TRColumn
-  ): Puri<
-    TSchema,
-    TTable,
-    TOriginal,
-    TResult,
-    TJoined & Record<TJoinTable, Partial<TSchema[TJoinTable]>>
-  >;
-  leftJoin<TSubResult, TAlias extends string>(
-    subquery: Puri<TSchema, any, any, TSubResult, any>,
-    alias: TAlias,
-    left: string,
-    right: string
-  ): Puri<
-    TSchema,
-    TTable,
-    TOriginal,
-    TResult,
-    TJoined & Record<TAlias, Partial<TSubResult>>
-  >;
-  leftJoin(
-    table: string,
-    left: string,
-    right: string
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  leftJoin(
-    tableOrSubquery: string | keyof TSchema | Puri<TSchema, any, any, any, any>,
-    ...args: any[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, any> {
-    if (tableOrSubquery instanceof Puri) {
-      // 서브쿼리 조인: leftJoin(subquery, alias, left, right)
-      const [alias, left, right] = args;
-      this.knexQuery.leftJoin(tableOrSubquery.raw().as(alias), left, right);
-    } else {
-      const [left, right] = args;
-      this.knexQuery.leftJoin(tableOrSubquery as string, left, right);
-    }
-    return this as any;
-  }
-
-  // OrderBy
-  orderBy<
-    TColumn extends ResultAvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TResult,
-      TJoined
-    >,
-  >(
+  // ORDER BY
+  orderBy<TColumn extends ResultAvailableColumns<TTables, TResult>>(
     column: TColumn,
     direction: "asc" | "desc"
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  orderBy(
-    column: string,
-    direction: "asc" | "desc" = "asc"
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  ): this;
+  orderBy(column: string, direction: "asc" | "desc" = "asc"): this {
     this.knexQuery.orderBy(column, direction);
     return this;
   }
 
   // 기본 쿼리 메서드들
-  limit(count: number): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  limit(count: number): this {
     this.knexQuery.limit(count);
     return this;
   }
 
-  offset(count: number): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  offset(count: number): this {
     this.knexQuery.offset(count);
     return this;
   }
 
-  // Group by (조인된 테이블 컬럼도 지원)
-  groupBy<
-    TColumns extends ResultAvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TResult,
-      TJoined
-    >,
-  >(...columns: TColumns[]): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  groupBy(
-    ...columns: string[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  // GROUP BY
+  groupBy<TColumns extends ResultAvailableColumns<TTables, TResult>>(
+    ...columns: TColumns[]
+  ): this;
+  groupBy(...columns: string[]): this {
     this.knexQuery.groupBy(...(columns as string[]));
     return this;
   }
 
-  having(condition: string): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  having<
-    TColumn extends ResultAvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TResult,
-      TJoined
-    >,
-  >(
-    condition: TColumn,
+  // HAVING
+  having(condition: string): this;
+  having<TColumn extends ResultAvailableColumns<TTables, TResult>>(
+    column: TColumn,
     operator: ComparisonOperator,
     value: any
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined>;
-  having(
-    ...conditions: string[]
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
-    this.knexQuery.having(...(conditions as [string, string, string]));
+  ): this;
+  // HAVING 구현
+  having(...conditions: any[]): this {
+    if (conditions.length === 1) {
+      // having("COUNT(*) > 10")
+      this.knexQuery.having(conditions[0]);
+    } else if (conditions.length === 3) {
+      // having("count", ">", 10)
+      this.knexQuery.having(conditions[0], conditions[1], conditions[2]);
+    } else {
+      throw new Error("Invalid having arguments");
+    }
     return this;
   }
+
   // 실행 메서드들 - thenable 구현
   then<TResult1, TResult2 = never>(
     onfulfilled?:
@@ -531,12 +494,12 @@ export class Puri<
   finally(onfinally?: (() => void) | null): Promise<Expand<TResult>> {
     return this.knexQuery.finally(onfinally);
   }
-
-  // 안전한 실행 메서드들
+  // 하나만 쿼리
   async first(): Promise<Expand<TResult> | undefined> {
     return this.knexQuery.first() as Promise<Expand<TResult> | undefined>;
   }
 
+  // 하나만 쿼리 실패 시 에러
   async firstOrFail(): Promise<TResult> {
     const result = await this.knexQuery.first();
     if (!result) {
@@ -545,11 +508,13 @@ export class Puri<
     return result as TResult;
   }
 
+  // 쿼리 후 인덱스 리턴
   async at(index: number): Promise<Expand<TResult> | undefined> {
     const results = await this;
     return results[index] as Expand<TResult> | undefined;
   }
 
+  // 쿼리 후 인덱스 리턴 실패 시 에러
   async assertAt(index: number): Promise<Expand<TResult>> {
     const results = await this;
     const result = results[index];
@@ -559,50 +524,39 @@ export class Puri<
     return result;
   }
 
-  // Pluck
-  async pluck<
-    TColumn extends ResultAvailableColumns<
-      TSchema,
-      TTable,
-      TOriginal,
-      TResult,
-      TJoined
-    >,
-  >(
+  // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
+  async pluck<TColumn extends ResultAvailableColumns<TTables, TResult>>(
     column: TColumn
-  ): Promise<
-    ExtractColumnType<TSchema, TTable, TColumn & string, TOriginal, TJoined>[]
-  > {
+  ): Promise<ExtractColumnType<TTables, TColumn & string>[]> {
     return this.knexQuery.pluck(column) as Promise<
-      ExtractColumnType<TSchema, TTable, TColumn & string, TOriginal, TJoined>[]
+      ExtractColumnType<TTables, TColumn & string>[]
     >;
   }
 
-  // Insert/Update/Delete
-  // TODO(Haze, 251030): InsertData<T>에서 nullable type을 제대로 처리하지 못하는 것 같음.
-  async insert(
-    data: TTable extends keyof TSchema ? InsertData<TSchema[TTable]> : unknown
-  ): Promise<number[]> {
+  // INSERT
+  async insert(data: InsertData<SingleTableValue<TTables>>): Promise<number[]> {
     return this.knexQuery.insert(data);
   }
 
-  async update(
-    data: Partial<TTable extends keyof TSchema ? TSchema[TTable] : unknown>
-  ): Promise<number> {
+  // UPDATE
+  async update(data: WhereCondition<TTables>): Promise<number> {
     return this.knexQuery.update(data);
   }
 
+  // DELETE
   async delete(): Promise<number> {
     return this.knexQuery.delete();
   }
 
+  // 확인 쿼리 리턴
   toQuery(): string {
     return this.knexQuery.toQuery();
   }
 
-  debug(): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  // 쿼리 디버깅 로그 출력
+  debug(): this {
     console.log(
-      `${chalk.cyan("[Puri Debug]")} ${chalk.yellow(this.formatSQL(this.toQuery()))}`
+      `${chalk.cyan("[Puri Debug]")} ${chalk.yellow(this.toQuery())}`
     );
     return this;
   }
@@ -718,29 +672,26 @@ export class Puri<
     return indentedLines.join("\n").trim();
   }
 
+  // Knex 쿼리 빌더 직접 접근
   raw(): Knex.QueryBuilder {
     return this.knexQuery;
   }
 
-  increment<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  // Increment/Decrement
+  increment<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  ): this {
     if (value <= 0) {
       throw new Error("Increment value must be greater than 0");
     }
     this.knexQuery.increment(column, value);
     return this;
   }
-
-  decrement<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  decrement<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number
-  ): Puri<TSchema, TTable, TOriginal, TResult, TJoined> {
+  ): this {
     if (value <= 0) {
       throw new Error("Decrement value must be greater than 0");
     }
@@ -749,143 +700,56 @@ export class Puri<
   }
 }
 
-// 11. Database 클래스
-class WhereGroup<
-  TSchema,
-  TTable extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> {
+export class WhereGroup<TTables extends Record<string, any>> {
   constructor(private builder: Knex.QueryBuilder) {}
 
-  where(
-    conditions: WhereCondition<TSchema, TTable, TOriginal, TJoined>
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  where<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+  // where 메서드들
+  where(conditions: WhereCondition<TTables>): this;
+  where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  where<TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>>(
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator | "like",
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  where(raw: string): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  where(...args: any[]): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
+    operator: ComparisonOperator,
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  where(...args: any[]): WhereGroup<TTables> {
     this.builder.where(args[0], ...args.slice(1));
     return this;
   }
 
-  orWhere(
-    conditions: WhereCondition<TSchema, TTable, TOriginal, TJoined>
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+  // orWhere 메서드들
+  orWhere(conditions: WhereCondition<TTables>): this;
+  orWhere<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  orWhere<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator | "like",
-    value: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere(raw: string): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhere(...args: any[]): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
+    operator: ComparisonOperator,
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  orWhere(...args: any[]): WhereGroup<TTables> {
     this.builder.orWhere(args[0], ...args.slice(1));
     return this;
   }
 
-  whereIn<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
-    column: TColumn,
-    values: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >[]
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  whereIn(
-    column: string,
-    values: any[]
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
-    this.builder.whereIn(column, values);
-    return this;
-  }
-
-  orWhereIn<
-    TColumn extends AvailableColumns<TSchema, TTable, TOriginal, TJoined>,
-  >(
-    column: TColumn,
-    values: ExtractColumnType<
-      TSchema,
-      TTable,
-      TColumn & string,
-      TOriginal,
-      TJoined
-    >[]
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined>;
-  orWhereIn(
-    column: string,
-    values: any[]
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
-    this.builder.orWhereIn(column, values);
-    return this;
-  }
-
-  // 중첩 그룹 지원
-  whereGroup(
-    callback: (
-      group: WhereGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
+  // 중첩 그룹
+  whereGroup(callback: (g: WhereGroup<TTables>) => void): this;
+  whereGroup(callback: (g: WhereGroup<TTables>) => void): WhereGroup<TTables> {
     this.builder.where((subBuilder) => {
-      const subGroup = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
-        subBuilder
-      );
+      const subGroup = new WhereGroup<TTables>(subBuilder);
       callback(subGroup);
     });
     return this;
   }
-
+  orWhereGroup(callback: (g: WhereGroup<TTables>) => void): this;
   orWhereGroup(
-    callback: (
-      group: WhereGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => WhereGroup<TSchema, TTable, TOriginal, TJoined>
-  ): WhereGroup<TSchema, TTable, TOriginal, TJoined> {
+    callback: (g: WhereGroup<TTables>) => void
+  ): WhereGroup<TTables> {
     this.builder.orWhere((subBuilder) => {
-      const subGroup = new WhereGroup<TSchema, TTable, TOriginal, TJoined>(
-        subBuilder
-      );
+      const subGroup = new WhereGroup<TTables>(subBuilder);
       callback(subGroup);
     });
     return this;
@@ -893,37 +757,39 @@ class WhereGroup<
 }
 
 export class JoinClauseGroup<
-  TSchema,
-  TTable extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
+  TLeft extends Record<string, any>,
+  TRight extends Record<string, any>,
 > {
   constructor(private callback: Knex.JoinClause) {}
 
+  // ON(AND): 컬럼 = 컬럼
+  on(left: AvailableColumns<TLeft>, right: AvailableColumns<TRight>): this;
+  // ON(AND): 컬럼 (연산자) 컬럼
   on(
-    callback: (
-      joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => void
-  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  on(
-    column: string,
-    value: any
-  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  on(...args: any[]): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined> {
+    left: AvailableColumns<TLeft>,
+    operator: ComparisonOperator,
+    right: AvailableColumns<TRight>
+  ): this;
+  // ON(AND): 콜백
+  on(callback: (nested: JoinClauseGroup<TLeft, TRight>) => void): this;
+  // ON(AND) 구현
+  on(...args: any[]): this {
     this.callback.on(...(args as [string, string]));
     return this;
   }
 
+  // ON(OR): 컬럼 = 컬럼
+  orOn(left: AvailableColumns<TLeft>, right: AvailableColumns<TRight>): this;
+  // ON(OR): 컬럼 (연산자) 컬럼
   orOn(
-    callback: (
-      joinClause: JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>
-    ) => void
-  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  orOn(
-    column: string,
-    value: any
-  ): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined>;
-  orOn(...args: any[]): JoinClauseGroup<TSchema, TTable, TOriginal, TJoined> {
+    left: AvailableColumns<TLeft>,
+    operator: ComparisonOperator,
+    right: AvailableColumns<TRight>
+  ): this;
+  // ON(OR): 콜백
+  orOn(callback: (nested: JoinClauseGroup<TLeft, TRight>) => void): this;
+  // ON(OR) 구현
+  orOn(...args: any[]): this {
     this.callback.orOn(...(args as [string, string]));
     return this;
   }
