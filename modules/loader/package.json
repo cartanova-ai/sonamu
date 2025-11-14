@@ -1,0 +1,33 @@
+{
+  "name": "@sonamu-kit/loader",
+  "type": "module",
+  "version": "2.1.1",
+  "exports": {
+    ".": "./dist/register.js",
+    "./loader": "./dist/loader.js"
+  },
+  "imports": {
+    "#ts/*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -b",
+    "test": "node --no-warnings --experimental-vm-modules --enable-source-maps --test-reporter=spec --test 'dist/__tests__/**/*.js'"
+  },
+  "dependencies": {
+    "@loaderkit/resolve": "^1.0.4",
+    "@swc/core": "^1.13.5",
+    "json5": "^2.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "dynohot": "^2.0.0",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/braidnetworks/loaderkit.git"
+  },
+  "author": "https://github.com/laverdet/",
+  "license": "ISC",
+  "homepage": "https://github.com/braidnetworks/loaderkit/packages/ts#readme"
+}
