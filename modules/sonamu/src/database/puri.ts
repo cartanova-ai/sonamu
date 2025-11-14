@@ -162,89 +162,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this as any;
   }
 
-  // WHERE: 객체 - 사용: .where({ "u.id": 1, "u.status": "active" })
-  where(conditions: WhereCondition<TTables>): this;
-  // WHERE: 컬럼 - 사용: .where("u.id", 1)
-  where<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    value: ExtractColumnType<TTables, TColumn & string>
-  ): this;
-  // WHERE: 컬럼 - 사용: .where("u.id", ">", 10)
-  where<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    operator: ComparisonOperator,
-    value: ExtractColumnType<TTables, TColumn & string>
-  ): this;
-  // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
-  where(columnOrConditions: any, operatorOrValue?: any, value?: any): this {
-    if (typeof columnOrConditions === "object") {
-      this.knexQuery.where(columnOrConditions);
-    } else if (arguments.length === 2) {
-      if (operatorOrValue === null) {
-        this.knexQuery.whereNull(columnOrConditions);
-        return this;
-      }
-      this.knexQuery.where(columnOrConditions, operatorOrValue);
-    } else if (arguments.length === 3) {
-      if (value === null) {
-        if (operatorOrValue === "!=") {
-          this.knexQuery.whereNotNull(columnOrConditions);
-          return this;
-        } else if (operatorOrValue === "=") {
-          this.knexQuery.whereNull(columnOrConditions);
-          return this;
-        }
-      }
-      this.knexQuery.where(columnOrConditions, operatorOrValue, value);
-    } else {
-      this.knexQuery.where(columnOrConditions);
-    }
-    return this;
-  }
-
-  // WHERE IN
-  whereIn<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[]
-  ): Puri<TSchema, TTables, TResult> {
-    this.knexQuery.whereIn(column, values);
-    return this;
-  }
-
-  // WHERE NOT IN
-  whereNotIn<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    values: ExtractColumnType<TTables, TColumn & string>[]
-  ): Puri<TSchema, TTables, TResult> {
-    this.knexQuery.whereIn(column, values);
-    return this;
-  }
-
-  // WHERE MATCH
-  whereMatch<TColumn extends FulltextColumns<TTables>>(
-    column: TColumn,
-    value: string
-  ): this {
-    this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
-    return this;
-  }
-
-  // WHERE 괄호 그룹핑
-  whereGroup(callback: (g: WhereGroup<TTables>) => void): this {
-    this.knexQuery.where((builder) => {
-      const group = new WhereGroup<TTables>(builder);
-      callback(group);
-    });
-    return this;
-  }
-  orWhereGroup(callback: (g: WhereGroup<TTables>) => void): this {
-    this.knexQuery.orWhere((builder) => {
-      const group = new WhereGroup<TTables>(builder);
-      callback(group);
-    });
-    return this;
-  }
-
   // JOIN: 서브쿼리 + Alias
   join<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
@@ -422,6 +339,89 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  // WHERE: 객체 - 사용: .where({ "u.id": 1, "u.status": "active" })
+  where(conditions: WhereCondition<TTables>): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", 1)
+  where<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", ">", 10)
+  where<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    operator: ComparisonOperator,
+    value: ExtractColumnType<TTables, TColumn & string>
+  ): this;
+  // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
+  where(columnOrConditions: any, operatorOrValue?: any, value?: any): this {
+    if (typeof columnOrConditions === "object") {
+      this.knexQuery.where(columnOrConditions);
+    } else if (arguments.length === 2) {
+      if (operatorOrValue === null) {
+        this.knexQuery.whereNull(columnOrConditions);
+        return this;
+      }
+      this.knexQuery.where(columnOrConditions, operatorOrValue);
+    } else if (arguments.length === 3) {
+      if (value === null) {
+        if (operatorOrValue === "!=") {
+          this.knexQuery.whereNotNull(columnOrConditions);
+          return this;
+        } else if (operatorOrValue === "=") {
+          this.knexQuery.whereNull(columnOrConditions);
+          return this;
+        }
+      }
+      this.knexQuery.where(columnOrConditions, operatorOrValue, value);
+    } else {
+      this.knexQuery.where(columnOrConditions);
+    }
+    return this;
+  }
+
+  // WHERE IN
+  whereIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[]
+  ): Puri<TSchema, TTables, TResult> {
+    this.knexQuery.whereIn(column, values);
+    return this;
+  }
+
+  // WHERE NOT IN
+  whereNotIn<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    values: ExtractColumnType<TTables, TColumn & string>[]
+  ): Puri<TSchema, TTables, TResult> {
+    this.knexQuery.whereIn(column, values);
+    return this;
+  }
+
+  // WHERE MATCH
+  whereMatch<TColumn extends FulltextColumns<TTables>>(
+    column: TColumn,
+    value: string
+  ): this {
+    this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
+    return this;
+  }
+
+  // WHERE 괄호 그룹핑
+  whereGroup(callback: (g: WhereGroup<TTables>) => void): this {
+    this.knexQuery.where((builder) => {
+      const group = new WhereGroup<TTables>(builder);
+      callback(group);
+    });
+    return this;
+  }
+  orWhereGroup(callback: (g: WhereGroup<TTables>) => void): this {
+    this.knexQuery.orWhere((builder) => {
+      const group = new WhereGroup<TTables>(builder);
+      callback(group);
+    });
+    return this;
+  }
+
   // ORDER BY
   orderBy<TColumn extends ResultAvailableColumns<TTables, TResult>>(
     column: TColumn,
@@ -484,21 +484,19 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): Promise<Expand<TResult1> | TResult2> {
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
-
   catch<TResult2 = never>(
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<Expand<TResult> | TResult2> {
     return this.knexQuery.catch(onrejected);
   }
-
   finally(onfinally?: (() => void) | null): Promise<Expand<TResult>> {
     return this.knexQuery.finally(onfinally);
   }
+
   // 하나만 쿼리
   async first(): Promise<Expand<TResult> | undefined> {
     return this.knexQuery.first() as Promise<Expand<TResult> | undefined>;
   }
-
   // 하나만 쿼리 실패 시 에러
   async firstOrFail(): Promise<TResult> {
     const result = await this.knexQuery.first();
@@ -513,7 +511,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const results = await this;
     return results[index] as Expand<TResult> | undefined;
   }
-
   // 쿼리 후 인덱스 리턴 실패 시 에러
   async assertAt(index: number): Promise<Expand<TResult>> {
     const results = await this;
@@ -541,6 +538,29 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // UPDATE
   async update(data: WhereCondition<TTables>): Promise<number> {
     return this.knexQuery.update(data);
+  }
+
+  // Increment
+  increment<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    value: number
+  ): this {
+    if (value <= 0) {
+      throw new Error("Increment value must be greater than 0");
+    }
+    this.knexQuery.increment(column, value);
+    return this;
+  }
+  // Decrement
+  decrement<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    value: number
+  ): this {
+    if (value <= 0) {
+      throw new Error("Decrement value must be greater than 0");
+    }
+    this.knexQuery.decrement(column, value);
+    return this;
   }
 
   // DELETE
@@ -675,28 +695,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // Knex 쿼리 빌더 직접 접근
   raw(): Knex.QueryBuilder {
     return this.knexQuery;
-  }
-
-  // Increment/Decrement
-  increment<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    value: number
-  ): this {
-    if (value <= 0) {
-      throw new Error("Increment value must be greater than 0");
-    }
-    this.knexQuery.increment(column, value);
-    return this;
-  }
-  decrement<TColumn extends AvailableColumns<TTables>>(
-    column: TColumn,
-    value: number
-  ): this {
-    if (value <= 0) {
-      throw new Error("Decrement value must be greater than 0");
-    }
-    this.knexQuery.decrement(column, value);
-    return this;
   }
 }
 
