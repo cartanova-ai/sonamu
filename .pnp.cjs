@@ -19732,6 +19732,7 @@ const RAW_RUNTIME_STATE =
           ["@typescript/native-preview", "npm:7.0.0-dev.20251029.1"],\
           ["@vitest/coverage-v8", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.2.4"],\
           ["bcrypt", "npm:6.0.0"],\
+          ["chalk", "npm:4.1.2"],\
           ["chokidar", "npm:4.0.3"],\
           ["date-fns", "npm:4.1.0"],\
           ["dotenv", "npm:17.2.3"],\
