@@ -1,10 +1,15 @@
-// Phase 2: From + Select를 위한 타입 정의
-
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> = {
   [TAlias in keyof TTables]: `${TAlias & string}.${Exclude<keyof TTables[TAlias], "__fulltext__"> & string}`;
 }[keyof TTables];
 
+// Group By, Order By, Having 등에서 선택 가능한 컬럼
+export type ResultAvailableColumns<
+  TTables extends Record<string, any>,
+  TResult = any,
+> = AvailableColumns<TTables> | `${keyof TResult & string}`;
+
+// Select 값 타입 확장
 export type SelectValue<TTables extends Record<string, any>> =
   | AvailableColumns<TTables>
   | SqlExpression<"string" | "number" | "boolean" | "date">;
@@ -45,17 +50,22 @@ export type ExtractColumnType<
     : never
   : never;
 
-export type Expand<T> = T extends any[]
-  ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
-  : T extends object
-    ? { [K in keyof T]: T[K] }
-    : T;
-
 // Where 조건 객체 타입
 // 예: { "u.id": 1, "u.status": "active" }
 export type WhereCondition<TTables extends Record<string, any>> = {
   [key in AvailableColumns<TTables>]?: ExtractColumnType<TTables, key & string>;
 };
+
+// Fulltext index 컬럼 추출 타입
+export type FulltextColumns<TTables extends Record<string, any>> = {
+  [TAlias in keyof TTables]: TTables[TAlias] extends {
+    __fulltext__: readonly (infer Col)[];
+  }
+    ? Col extends string
+      ? `${TAlias & string}.${Col}`
+      : never
+    : never;
+}[keyof TTables];
 
 // 비교 연산자
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
@@ -67,3 +77,37 @@ export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> =
     _return: T;
     _sql: string;
   };
+
+// 결과 타입 가독성을 위한 타입 확장
+export type Expand<T> = T extends any[]
+  ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
+  : T extends object
+    ? { [K in keyof T]: T[K] }
+    : T;
+
+type IsSingleKey<TTables extends Record<string, any>> =
+  keyof TTables extends infer K
+    ? K extends keyof TTables
+      ? keyof TTables extends K // 역방향 체크로 단일 키 확인
+        ? true
+        : false
+      : false
+    : false;
+
+export type SingleTableValue<TTables extends Record<string, any>> =
+  IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
+
+// Nullable을 Optional로 변환
+type NullableToOptional<T> = {
+  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<
+    T[K],
+    null | undefined
+  >;
+} & Partial<{
+  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
+}>;
+
+// Insert 타입: id, created_at 제외
+export type InsertData<T> = NullableToOptional<
+  Omit<T, "id" | "created_at" | "__fulltext__">
+>;

@@ -15,6 +15,7 @@ Sonamu.runScript(async () => {
     id: "users.id",
     username: "users.username",
   });
+  const t3Result = await test3;
   expectAndLog(
     "select `u`.`id` as `id`, `u`.`name` as `name` from `users` as `u`",
     test3.toQuery()
@@ -102,6 +103,52 @@ Sonamu.runScript(async () => {
     cc: Nuri.rawBoolean("users.is_active"),
   });
   type T11 = Awaited<typeof test11>[0];
+
+  // test: where match
+  const test12 = nuri.from({ users: "users" }).whereMatch("users.bio", "test");
+  expectAndLog(
+    "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where MATCH (`users`.`bio`) AGAINST ('test')",
+    test12.toQuery()
+  );
+
+  // test: order by (ResultAvailableColumns)
+  const test13 = nuri
+    .from({ users: "users" })
+    .select({
+      aa: "users.id",
+    })
+    .orderBy("aa", "desc");
+  expectAndLog(
+    "select `users`.`id` as `id`, `users`.`name` as `name` from `users` order by `users`.`id` asc",
+    test13.toQuery()
+  );
+
+  // test: pluck
+  const test14 = nuri.from({ users: "users" }).pluck("id");
+  const t14Result = await test14;
+
+  // test: insert
+  const test15 = nuri.from({ users: "users" }).insert({
+    email: "test@test.com",
+    username: "test",
+    password: "test",
+    role: "normal",
+  });
+
+  // test: join 상황에서 insert 시도시 불가
+  const test16 = nuri.from("users").insert({
+    bio: "aa",
+  });
+
+  // test: JOIN 후 업데이트
+  const test17 = nuri
+    .from({ u: "users" })
+    .join({ e: "employees" }, "u.id", "e.user_id")
+    .update({
+      "u.bio": "aa",
+      "e.id": 1,
+      "e.salary": "10000",
+    });
 });
 
 function expectAndLog(expected: string, actual: string) {
