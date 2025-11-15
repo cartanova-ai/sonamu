@@ -72,10 +72,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@rollup/plugin-alias": "^5.0.0",
-    "@rollup/plugin-commonjs": "^25.0.4",
-    "@rollup/plugin-json": "^6.0.0",
-    "@rollup/plugin-node-resolve": "^15.1.0",
     "@types/inflection": "^1.13.0",
     "@types/lodash": "^4.14.198",
     "@types/node": "^20.6.3",
@@ -89,9 +85,6 @@
     "esbuild": "^0.19.2",
     "npm-run-all": "^4.1.5",
     "prettier": "2.7.1",
-    "rollup": "^3.28.0",
-    "rollup-plugin-dts": "^5.3.1",
-    "rollup-plugin-esbuild": "^5.0.0",
     "source-map-support": "^0.5.21",
     "tsc-watch": "^6.0.4",
     "tsup": "^8.1.0",
