@@ -74,6 +74,25 @@ class DBClass {
   getDB(which: DBPreset): Knex {
     const dbConfig = Sonamu.dbConfig;
 
+    // 테스트 트랜잭션 격리
+    if (process.env.NODE_ENV === "test") {
+      if (this.testTransaction) {
+        return this.testTransaction;
+      } else if (this.wdb) {
+        return this.wdb;
+      } else {
+        this["wdb"] = knex({
+          ...dbConfig["test"],
+          // 단일 풀
+          pool: {
+            min: 1,
+            max: 1,
+          },
+        });
+        return this["wdb"];
+      }
+    }
+
     const instanceName = which === "w" ? "wdb" : "rdb";
 
     if (!this[instanceName]) {
@@ -84,16 +103,14 @@ class DBClass {
           config =
             which === "w"
               ? dbConfig["development_master"]
-              : dbConfig["development_slave"] ?? dbConfig["development_master"];
+              : (dbConfig["development_slave"] ??
+                dbConfig["development_master"]);
           break;
         case "production":
           config =
             which === "w"
               ? dbConfig["production_master"]
-              : dbConfig["production_slave"] ?? dbConfig["production_master"];
-          break;
-        case "test":
-          config = dbConfig["test"];
+              : (dbConfig["production_slave"] ?? dbConfig["production_master"]);
           break;
         default:
           throw new Error(
@@ -163,11 +180,17 @@ class DBClass {
       devSlaveOptions
     );
     // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
-    const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
-      connection: {
-        database: `${config.database}_fixture_remote`,
+    const fixture_remote = _.merge(
+      {},
+      defaultKnexConfig,
+      devMasterOptions,
+      {
+        connection: {
+          database: `${config.database}_fixture_remote`,
+        },
       },
-    }, config.environments?.remote_fixture);
+      config.environments?.remote_fixture
+    );
 
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};
@@ -189,6 +212,18 @@ class DBClass {
       production_master,
       production_slave,
     };
+  }
+
+  // Test 환경에서 트랜잭션 사용
+  public testTransaction: Knex.Transaction | null = null;
+  async createTestTransaction(): Promise<Knex.Transaction> {
+    const db = this.getDB("w");
+    this.testTransaction = await db.transaction();
+    return this.testTransaction;
+  }
+  async clearTestTransaction(): Promise<void> {
+    await this.testTransaction?.rollback();
+    this.testTransaction = null;
   }
 }
 export const DB = new DBClass();
