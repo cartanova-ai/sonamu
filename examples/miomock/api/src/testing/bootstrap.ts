@@ -1,17 +1,29 @@
-import { DatabaseSchemaExtend, FixtureManager, Sonamu } from "sonamu";
+import { DB, FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-export function bootstrap(tableNames?: (keyof DatabaseSchemaExtend)[]) {
+let mode: "trx" | "fm" = "fm";
+
+export function bootstrap() {
   beforeAll(async () => {
     await Sonamu.initForTesting();
-    FixtureManager.init();
+    if (mode === "fm") {
+      await FixtureManager.init();
+    }
   });
   beforeEach(async () => {
-    await FixtureManager.cleanAndSeed(tableNames);
     vi.clearAllMocks();
+    if (mode === "trx") {
+      await DB.createTestTransaction();
+    }
+    if (mode === "fm") {
+      await FixtureManager.cleanAndSeed();
+    }
   });
-  afterEach(() => {
+  afterEach(async () => {
     vi.useRealTimers();
+    if (mode === "trx") {
+      await DB.clearTestTransaction();
+    }
   });
   afterAll(() => {
     vi.restoreAllMocks();
