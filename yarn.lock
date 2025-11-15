@@ -4525,6 +4525,8 @@ __metadata:
     "@fastify/multipart": "npm:^9.0.1"
     "@fastify/static": "npm:^6.10.2"
     "@sonamu-kit/react-sui": "workspace:^"
+    "@swc/cli": "npm:^0.7.8"
+    "@swc/core": "npm:^1.13.19"
     "@types/inflection": "npm:^1.13.0"
     "@types/lodash": "npm:^4.14.198"
     "@types/node": "npm:^20.6.3"
