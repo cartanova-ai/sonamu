@@ -311,25 +311,26 @@ Sonamu.finishHMR()
 
 ## 3. 빌드 시스템 정리 (선행 작업)
 
-> **이유**: ESM 마이그레이션 전에 빌드 설정을 일관되게 정리해야 혼란 방지
+> **이유**: ESM 마이그레이션 전에 불필요한 파일 제거 및 하드코딩된 설정 수정
 
 ### 3.1 목표: "SWC 천하통일"
 
 **최종 빌드 아키텍처:**
 - **백엔드 패키지**: SWC (트랜스파일) + TSC (타입 체크 & 선언)
 - **프론트엔드 패키지**: Vite (번들링) + TSC (타입 체크)
-- **설정 파일 최소화**: tsconfig.base.json 공유
+- **설정 파일**: 각 패키지가 독립적으로 유지 (향후 독립 가능성 고려)
 
 ### 3.2 제거할 파일
 
 ```bash
-# 미사용 파일
-rm modules/ui/rollup.config.mjs
-rm modules/ui/tsup.config.js
-
-# 중복 설정 (통합 후)
-rm modules/tasks/.swcrc  # sonamu의 .swcrc 사용
+# 미사용 파일만 제거
+rm modules/ui/rollup.config.mjs  # 완전 미사용
+rm modules/ui/tsup.config.js     # ui/node는 SWC로 통일
 ```
+
+**주의**:
+- ❌ tsconfig.base.json 생성하지 않음 (각 패키지 독립성 유지)
+- ❌ tasks/.swcrc 제거하지 않음 (신규 패키지, 독립 설정 유지)
 
 ### 3.3 제거할 의존성
 
@@ -347,133 +348,42 @@ rm modules/tasks/.swcrc  # sonamu의 .swcrc 사용
 }
 ```
 
-**`modules/sonamu/package.json`에서 제거:**
-```json
-"devDependencies": {
-  "tsup": "^8.1.0"  // 미사용
-}
-```
+### 3.4 tasks/.swcrc 확인 및 ESM 통일
 
-### 3.4 tsconfig.base.json 생성
+**현재**: `modules/tasks/.swcrc`가 CJS 출력 중
+**목표**: ESM 출력으로 변경 (sonamu와 일관성 유지)
 
-**위치**: `/tsconfig.base.json`
-
-```json
-{
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["esnext"],
-    "moduleResolution": "bundler",
-
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true,
-
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
-  }
-}
-```
-
-### 3.5 패키지별 tsconfig 간소화
-
-**`modules/sonamu/tsconfig.json`**:
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "lib": ["esnext", "dom"],
-    "types": ["node", "fastify-sse-v2"],
-    "declaration": true,
-    "declarationMap": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
-}
-```
-
-**`modules/tasks/tsconfig.json`**:
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
-}
-```
-
-**`modules/loader/tsconfig.json`**: (유지 - 특수 케이스)
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "composite": true,
-    "isolatedDeclarations": true,
-    "verbatimModuleSyntax": true,
-    "declaration": true
-  },
-  "include": ["src/**/*"]
-}
-```
-
-### 3.6 .swcrc 통일
-
-**`modules/sonamu/.swcrc`** (이미 ESM이지만 확인):
+**`modules/tasks/.swcrc`** 수정:
 ```json
 {
   "module": {
-    "type": "es6",
+    "type": "es6",        // ← commonjs에서 변경
     "resolveFully": true
   },
   "jsc": {
     "parser": {
       "syntax": "typescript",
-      "decorators": true
+      "decorators": true   // tasks에서도 데코레이터 사용 가능성
     },
     "baseUrl": ".",
-    "target": "esnext"
+    "target": "esnext"     // ← es5에서 변경
   },
   "minify": false,
   "sourceMaps": true
 }
 ```
 
-**`modules/tasks/.swcrc`** 삭제 후:
-
-**`modules/tasks/package.json` 수정**:
+**`modules/tasks/package.json`** 확인:
 ```json
 {
+  "type": "module",  // ← 반드시 추가/확인
   "scripts": {
-    "build": "swc src -d dist --config-file ../sonamu/.swcrc --strip-leading-paths && tsc --emitDeclarationOnly"
+    "build": "swc src -d dist --strip-leading-paths --source-maps"
   }
 }
 ```
 
-### 3.7 하드코딩된 SWC 설정 제거
+### 3.5 하드코딩된 SWC 설정 제거
 
 **`modules/sonamu/src/bin/build-config.ts`**:
 
@@ -504,256 +414,124 @@ const { code, map } = await swc.transformFile(diffFile, {
 
 **변경:**
 ```typescript
-import { readFile } from 'fs/promises';
-import path from 'path';
-
-// .swcrc 읽기
-const swcrcPath = path.join(Sonamu.apiRootPath, '.swcrc');
-const swcConfig = JSON.parse(await readFile(swcrcPath, 'utf8'));
-
-// 파일 트랜스파일
+// .swcrc 사용 (하드코딩 제거)
 const { code, map } = await swc.transformFile(diffFile, {
-  ...swcConfig,
+  configFile: path.join(Sonamu.apiRootPath, '.swcrc'),
   filename: diffFile,
 });
 ```
 
-### 3.8 ui/node 빌드 스크립트 변경
+**참고**: Phase 3에서 이 트랜스파일 코드 자체를 제거할 예정 (로더가 담당)
 
-**`modules/ui/package.json`**:
+### 3.6 빌드 검증
 
-**기존:**
-```json
-{
-  "scripts": {
-    "build:node": "tsup --config ./tsup.config.js && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly"
-  }
-}
+**모든 패키지 빌드 테스트:**
+```bash
+# 워크스페이스 루트에서
+yarn workspaces foreach -A run build
+
+# 또는 개별 패키지
+cd modules/sonamu && yarn build
+cd modules/tasks && yarn build
+cd modules/loader && yarn build
+cd modules/ui && yarn build
 ```
 
-**변경:**
-```json
-{
-  "scripts": {
-    "build:node": "swc node -d dist --config-file ../sonamu/.swcrc --strip-leading-paths && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly"
-  }
-}
-```
-
-### 3.9 react-sui 빌드 스크립트 수정
-
-**`modules/react-sui/package.json`**:
-
-**기존:**
-```json
-{
-  "scripts": {
-    "build": "tsc && vite build"
-  }
-}
-```
-
-**문제**: `tsc`가 JS 파일 출력 (Vite가 바로 덮어씀)
-
-**변경:**
-```json
-{
-  "scripts": {
-    "build": "tsc --noEmit && vite build"
-  }
-}
-```
+**예상 결과:**
+- ✅ 모든 패키지가 ESM으로 빌드
+- ✅ dist/ 디렉토리에 .js + .d.ts 생성
+- ✅ .swcrc 설정이 올바르게 적용됨
 
 ---
 
 ## Phase 0: 준비 및 백업
 
-### Step 0.1: 현재 상태 백업
+### Step 0.1: Git 브랜치 생성
 
 ```bash
-# Git 커밋 상태 확인
 cd ~/Projects/sonamu
-git status
-
-# 변경사항이 있다면 커밋
-git add .
-git commit -m "chore: 마이그레이션 전 상태 저장"
-
-# 백업 브랜치 생성
-git branch backup/before-hmr-migration
 git checkout -b feat/esm-dynohot-hmr
 ```
 
-### Step 0.2: 테스트 기준선 확보
+### Step 0.2: 현재 개발 서버 동작 확인
 
 ```bash
-# 현재 모든 테스트 실행
-yarn test
-
-# 테스트 결과 저장
-yarn test > test-baseline.txt 2>&1
-
-# miomock 예제 프로젝트 실행 확인
 cd examples/miomock/api
-yarn dev:serve
+yarn dev
 
-# 다른 터미널에서 API 테스트
+# 다른 터미널에서
 curl http://localhost:3000/api/health
 ```
 
-**테스트 시나리오 문서화:**
-
-`MIGRATION_TEST_CHECKLIST.md` 생성:
-```markdown
-# HMR 테스트 체크리스트
-
-## 1. Entity 변경
-- [ ] user.entity.json에 새 필드 추가
-- [ ] sonamu.generated.ts 자동 생성 확인
-- [ ] 서버 재시작 없이 API 응답에 새 필드 포함 확인
-
-## 2. Types 변경
-- [ ] user.types.ts에 새 타입 추가
-- [ ] 타입 에러 없이 임포트 확인
-- [ ] 웹 프로젝트로 sync 확인
-
-## 3. Model 변경
-- [ ] user.model.ts 메서드 수정
-- [ ] 서버 재시작 없이 새 로직 반영 확인
-- [ ] API 엔드포인트 동작 확인
-
-## 4. Generated 파일
-- [ ] sonamu.generated.ts 변경 시 의존 모듈 리로드
-- [ ] 순환 참조 문제 없음 확인
-
-## 5. 성능
-- [ ] HMR 완료 시간 측정 (이전 vs 이후)
-- [ ] 메모리 사용량 확인
-```
-
-### Step 0.3: 의존성 설치
-
-```bash
-# 루트에서 실행
-cd ~/Projects/sonamu
-
-# dynohot 설치
-yarn add -D -W dynohot@^2.1.1
-
-# modules/sonamu에 추가
-cd modules/sonamu
-yarn add -D dynohot@^2.1.1
-yarn add -D @sonamu-kit/loader@workspace:^
-
-# package.json에 dependenciesMeta 추가 (yarn berry)
-```
-
-**`modules/sonamu/package.json`에 추가:**
-```json
-{
-  "devDependencies": {
-    "@sonamu-kit/loader": "workspace:^",
-    "dynohot": "^2.1.1"
-  },
-  "dependenciesMeta": {
-    "dynohot@2.1.1": {
-      "unplugged": true
-    }
-  }
-}
-```
+**HMR 동작 확인:**
+1. user.entity.json에 필드 추가
+2. 콘솔에서 HMR 로그 확인
+3. API 응답 확인
 
 ---
 
-## Phase 1: 빌드 설정 통일 (SWC 천하통일)
+## Phase 1: 빌드 시스템 정리
 
-> **목표**: ESM 마이그레이션 전에 빌드 설정 정리
+> **Section 3에서 정의한 내용 실행**
 
 ### Step 1.1: 미사용 파일 제거
 
 ```bash
 cd ~/Projects/sonamu
 
-# 롤업 설정 제거
+# rollup 설정 제거
 rm modules/ui/rollup.config.mjs
 
 # tsup 설정 제거
 rm modules/ui/tsup.config.js
 
-# tasks/.swcrc 제거
-rm modules/tasks/.swcrc
+git add -A
+git commit -m "chore: 미사용 빌드 설정 파일 제거 (rollup, tsup)"
 ```
 
-### Step 1.2: tsconfig.base.json 생성
+### Step 1.2: tasks/.swcrc ESM 통일
 
-**파일**: `/tsconfig.base.json`
+**파일**: `modules/tasks/.swcrc`
 
+**변경:**
 ```json
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "lib": ["esnext"],
-    "moduleResolution": "bundler",
+  "module": {
+    "type": "es6",
+    "resolveFully": true
+  },
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true
+    },
+    "baseUrl": ".",
+    "target": "esnext"
+  },
+  "minify": false,
+  "sourceMaps": true
+}
+```
 
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noErrorTruncation": true,
+**파일**: `modules/tasks/package.json`
 
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+**"type": "module" 확인:**
+```json
+{
+  "name": "@sonamu-kit/tasks",
+  "type": "module",
+  "scripts": {
+    "build": "swc src -d dist --strip-leading-paths --source-maps && tsc --emitDeclarationOnly"
   }
 }
 ```
 
-### Step 1.3: 패키지 tsconfig 간소화
-
-**`modules/sonamu/tsconfig.json` 업데이트:**
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "lib": ["esnext", "dom"],
-    "types": ["node", "fastify-sse-v2"],
-    "declaration": true,
-    "declarationMap": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
-}
+```bash
+git add modules/tasks/.swcrc modules/tasks/package.json
+git commit -m "chore(tasks): .swcrc ESM 통일"
 ```
 
-**`modules/tasks/tsconfig.json` 업데이트:**
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
-}
-```
-
-### Step 1.4: 하드코딩된 SWC 설정 제거
+### Step 1.3: 하드코딩된 SWC 설정 제거
 
 **파일**: `modules/sonamu/src/bin/build-config.ts`
 
@@ -765,385 +543,85 @@ export const SWC_BUILD_COMMAND = `swc src -d ${BUILD_DIR} --strip-leading-paths 
 **변경 후:**
 ```typescript
 export const SWC_BUILD_COMMAND = `swc src -d ${BUILD_DIR} --strip-leading-paths --source-maps`;
-// .swcrc의 설정을 사용 (ESM, esnext)
+// .swcrc 설정 사용
 ```
 
-### Step 1.5: ui/node 빌드 스크립트 변경
+```bash
+git add modules/sonamu/src/bin/build-config.ts
+git commit -m "refactor(sonamu): SWC 빌드 명령에서 하드코딩 제거, .swcrc 사용"
+```
+
+### Step 1.4: 의존성 제거
 
 **파일**: `modules/ui/package.json`
 
-**변경 전:**
 ```json
 {
-  "scripts": {
-    "build:node": "tsup --config ./tsup.config.js && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly"
+  "devDependencies": {
+    // 제거
+    // "@rollup/plugin-alias": "^5.0.0",
+    // "@rollup/plugin-commonjs": "^25.0.4",
+    // "@rollup/plugin-json": "^6.0.0",
+    // "@rollup/plugin-node-resolve": "^15.1.0",
+    // "rollup": "^3.28.0",
+    // "rollup-plugin-dts": "^5.3.1",
+    // "rollup-plugin-esbuild": "^5.0.0",
+    // "tsup": "^8.1.0"
   }
 }
 ```
 
-**변경 후:**
-```json
-{
-  "scripts": {
-    "build:node": "swc node -d dist --config-file ../sonamu/.swcrc --strip-leading-paths && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly"
-  }
-}
-```
-
-### Step 1.6: tasks 빌드 스크립트 변경
-
-**파일**: `modules/tasks/package.json`
-
-**변경 전:**
-```json
-{
-  "scripts": {
-    "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly"
-  }
-}
-```
-
-**변경 후:**
-```json
-{
-  "scripts": {
-    "build": "swc src --config-file ../sonamu/.swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly"
-  }
-}
-```
-
-### Step 1.7: react-sui 빌드 스크립트 수정
-
-**파일**: `modules/react-sui/package.json`
-
-**변경 전:**
-```json
-{
-  "scripts": {
-    "build": "tsc && vite build"
-  }
-}
-```
-
-**변경 후:**
-```json
-{
-  "scripts": {
-    "build": "tsc --noEmit && vite build"
-  }
-}
-```
-
-### Step 1.8: 불필요한 의존성 제거
-
-**`modules/ui/package.json`에서 제거:**
 ```bash
 cd modules/ui
-yarn remove @rollup/plugin-alias @rollup/plugin-commonjs @rollup/plugin-json @rollup/plugin-node-resolve rollup rollup-plugin-dts rollup-plugin-esbuild tsup
+# package.json 수동 편집 후
+yarn install
+
+cd ../..
+git add modules/ui/package.json yarn.lock
+git commit -m "chore(ui): 미사용 빌드 도구 의존성 제거"
 ```
 
-**`modules/sonamu/package.json`에서 제거:**
+### Step 1.5: 빌드 검증
+
 ```bash
-cd modules/sonamu
-yarn remove tsup
+yarn workspaces foreach -A run build
 ```
 
-### Step 1.9: 빌드 테스트
-
-```bash
-# 루트에서 전체 빌드
-cd ~/Projects/sonamu
-yarn build
-
-# 에러 없이 빌드되는지 확인
-# 각 패키지의 dist/ 폴더 확인
-
-# sonamu 빌드 확인
-ls -la modules/sonamu/dist/
-
-# ui 빌드 확인
-ls -la modules/ui/dist/
-ls -la modules/ui/build/
-
-# 정상 동작 확인
-cd examples/miomock/api
-yarn dev:serve
-```
-
-**체크포인트:**
-- [ ] 모든 패키지 빌드 성공
-- [ ] dist/ 폴더에 .js 파일 생성 확인
-- [ ] dist/ 폴더에 .d.ts 파일 생성 확인
-- [ ] miomock 예제 앱 정상 실행
+**예상 결과:**
+- ✅ 모든 패키지 빌드 성공
+- ✅ dist/ 디렉토리 생성
+- ✅ ESM 모듈 출력 확인
 
 ---
 
 ## Phase 2: ESM 유틸리티 준비
 
-> **목표**: ESM 환경에서 필요한 유틸리티 함수 작성
-
-### Step 2.1: esm-utils.ts 생성
+### Step 2.1: esm-utils.ts 작성
 
 **파일**: `modules/sonamu/src/utils/esm-utils.ts`
 
-```typescript
-import { fileURLToPath, pathToFileURL } from 'url';
-import { dirname } from 'path';
+**내용**: 앞서 Section 2에서 정의한 코드 그대로 작성
+- getFilename()
+- getDirname()
+- createImportUrl()
+- isHMREnabled()
+- isDevMode()
 
-/**
- * import.meta.url로부터 __filename 생성
- *
- * @example
- * const __filename = getFilename(import.meta.url);
- */
-export function getFilename(metaUrl: string): string {
-  return fileURLToPath(metaUrl);
-}
-
-/**
- * import.meta.url로부터 __dirname 생성
- *
- * @example
- * const __dirname = getDirname(import.meta.url);
- */
-export function getDirname(metaUrl: string): string {
-  return dirname(fileURLToPath(metaUrl));
-}
-
-/**
- * 절대 경로를 file:// URL로 변환 (동적 임포트용)
- *
- * @param absolutePath - 절대 파일 경로
- * @param options.cacheBust - 캐시 우회를 위한 타임스탬프 추가 여부
- * @returns file:// URL 문자열
- *
- * @example
- * const url = createImportUrl('/path/to/file.js');
- * await import(url);
- */
-export function createImportUrl(
-  absolutePath: string,
-  options: { cacheBust?: boolean } = {}
-): string {
-  const { cacheBust = true } = options;
-  const fileUrl = pathToFileURL(absolutePath).href;
-
-  if (cacheBust) {
-    return `${fileUrl}?t=${Date.now()}`;
-  }
-
-  return fileUrl;
-}
-
-/**
- * HMR 환경 감지
- *
- * @returns dev 환경(dynohot)인지 여부
- */
-export function isHMREnabled(): boolean {
-  return typeof import.meta.hot !== 'undefined';
-}
-
-/**
- * dev 모드 감지
- *
- * @returns dev/prod 모드 구분
- */
-export function isDevMode(): boolean {
-  return isHMREnabled() || process.env.NODE_ENV === 'development';
-}
-```
-
-### Step 2.2: path-utils.ts 생성
+### Step 2.2: path-utils.ts 작성
 
 **파일**: `modules/sonamu/src/utils/path-utils.ts`
 
-```typescript
-import path from 'path';
-import { Sonamu } from '../api/sonamu';
-import { isHMREnabled } from './esm-utils';
+**내용**: 앞서 Section 2에서 정의한 코드 그대로 작성 (양방향 변환 포함)
+- resolveModulePath()
+- resolveGlobPattern() with 'toDev' | 'toProd' | 'auto'
+- changeExtension()
 
-/**
- * dev/prod 모드에 따라 모듈 경로 해석
- *
- * Dev 모드: src/*.ts
- * Prod 모드: dist/*.js
- *
- * @param relativePath - API 루트 기준 상대 경로
- * @returns 절대 경로
- *
- * @example
- * // Dev: /path/to/api/src/application/user/user.model.ts
- * // Prod: /path/to/api/dist/application/user/user.model.js
- * resolveModulePath('src/application/user/user.model.ts')
- */
-export function resolveModulePath(relativePath: string): string {
-  const isDevMode = isHMREnabled();
-
-  // 앞의 슬래시 제거
-  const cleanPath = relativePath.startsWith('/')
-    ? relativePath.slice(1)
-    : relativePath;
-
-  if (isDevMode) {
-    // Dev 모드: src/*.ts
-    const srcPath = cleanPath
-      .replace(/^dist\//, 'src/')
-      .replace(/\.js$/, '.ts');
-
-    return path.join(Sonamu.apiRootPath, srcPath);
-  } else {
-    // Prod 모드: dist/*.js
-    const distPath = cleanPath
-      .replace(/^src\//, 'dist/')
-      .replace(/\.ts$/, '.js');
-
-    return path.join(Sonamu.apiRootPath, distPath);
-  }
-}
-
-/**
- * globbing 패턴을 환경 또는 명시적 방향에 맞게 변환 (양방향)
- *
- * @param pattern - glob 패턴
- * @param direction - 변환 방향 ('toDev' | 'toProd' | 'auto')
- * @returns 변환된 패턴
- *
- * @example
- * // Dev 모드에서 auto: dist → src, .js → .ts
- * resolveGlobPattern('dist/application/**\/*.model.js')
- * // → 'src/application/**\/*.model.ts'
- *
- * // 명시적 toProd 변환 (환경 무관)
- * resolveGlobPattern('src/application/**\/*.ts', 'toProd')
- * // → 'dist/application/**\/*.js'
- */
-export function resolveGlobPattern(
-  pattern: string,
-  direction: 'toDev' | 'toProd' | 'auto' = 'auto'
-): string {
-  const isDevMode = isHMREnabled();
-
-  // auto는 현재 환경에 맞춰 변환
-  if (direction === 'auto') {
-    direction = isDevMode ? 'toDev' : 'toProd';
-  }
-
-  if (direction === 'toDev') {
-    // dist → src, .js → .ts
-    return pattern
-      .replace(/\/dist\//g, '/src/')
-      .replace(/\.js\*/g, '.ts*')
-      .replace(/\.js$/g, '.ts');
-  } else {
-    // src → dist, .ts → .js
-    return pattern
-      .replace(/\/src\//g, '/dist/')
-      .replace(/\.ts\*/g, '.js*')
-      .replace(/\.ts$/g, '.js');
-  }
-}
-
-/**
- * 파일 경로에서 확장자 변환
- *
- * @param filePath - 파일 경로
- * @param toExtension - 변환할 확장자 ('.ts' 또는 '.js')
- * @returns 변환된 경로
- */
-export function changeExtension(
-  filePath: string,
-  toExtension: '.ts' | '.js'
-): string {
-  return filePath.replace(/\.(ts|js)$/, toExtension);
-}
-```
-
-### Step 2.3: 유틸리티 테스트 작성
-
-**파일**: `modules/sonamu/src/utils/esm-utils.test.ts`
-
-```typescript
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getFilename, getDirname, createImportUrl, isHMREnabled } from './esm-utils';
-
-describe('esm-utils', () => {
-  describe('getFilename', () => {
-    it('should extract filename from file:// URL', () => {
-      const url = 'file:///Users/test/project/src/file.ts';
-      const filename = getFilename(url);
-      expect(filename).toBe('/Users/test/project/src/file.ts');
-    });
-  });
-
-  describe('getDirname', () => {
-    it('should extract dirname from file:// URL', () => {
-      const url = 'file:///Users/test/project/src/file.ts';
-      const dirname = getDirname(url);
-      expect(dirname).toBe('/Users/test/project/src');
-    });
-  });
-
-  describe('createImportUrl', () => {
-    it('should create file:// URL with cache bust', () => {
-      const path = '/Users/test/project/src/file.ts';
-      const url = createImportUrl(path);
-      expect(url).toMatch(/^file:\/\/.*\/file\.ts\?t=\d+$/);
-    });
-
-    it('should create file:// URL without cache bust', () => {
-      const path = '/Users/test/project/src/file.ts';
-      const url = createImportUrl(path, { cacheBust: false });
-      expect(url).toBe('file:///Users/test/project/src/file.ts');
-    });
-  });
-
-  describe('isHMREnabled', () => {
-    it('should return false in test environment', () => {
-      expect(isHMREnabled()).toBe(false);
-    });
-  });
-});
-```
-
-**파일**: `modules/sonamu/src/utils/path-utils.test.ts`
-
-```typescript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { resolveModulePath, resolveGlobPattern } from './path-utils';
-
-// Mock Sonamu
-vi.mock('../api/sonamu', () => ({
-  Sonamu: {
-    apiRootPath: '/test/api'
-  }
-}));
-
-describe('path-utils', () => {
-  describe('resolveModulePath', () => {
-    it('should resolve to dist in prod mode', () => {
-      const result = resolveModulePath('src/application/user/user.model.ts');
-      expect(result).toBe('/test/api/dist/application/user/user.model.js');
-    });
-
-    // HMR 모드 테스트는 실제 환경에서만 가능
-  });
-
-  describe('resolveGlobPattern', () => {
-    it('should keep dist pattern in prod mode', () => {
-      const result = resolveGlobPattern('/test/api/dist/application/**/*.model.js');
-      expect(result).toBe('/test/api/dist/application/**/*.model.js');
-    });
-  });
-});
-```
-
-### Step 2.4: 테스트 실행
+### Step 2.3: 커밋
 
 ```bash
-cd modules/sonamu
-yarn test src/utils/esm-utils.test.ts
-yarn test src/utils/path-utils.test.ts
+git add modules/sonamu/src/utils/esm-utils.ts
+git add modules/sonamu/src/utils/path-utils.ts
+git commit -m "feat(sonamu): ESM 유틸리티 추가 (esm-utils, path-utils)"
 ```
 
 ---
