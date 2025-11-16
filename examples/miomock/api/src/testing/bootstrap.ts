@@ -1,7 +1,7 @@
 import { DB, FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-let mode: "trx" | "fm" = "fm";
+let mode: "trx" | "fm" = "trx";
 
 export function bootstrap() {
   beforeAll(async () => {
