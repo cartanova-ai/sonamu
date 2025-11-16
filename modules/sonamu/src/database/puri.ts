@@ -16,7 +16,12 @@ import type {
 import chalk from "chalk";
 import assert from "assert";
 
-export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
+export class Puri<
+  TSchema,
+  TTables extends Record<string, any>,
+  TResult,
+  TResolved = Expand<TResult>[],
+> {
   private knexQuery: Knex.QueryBuilder;
 
   // 생성자 시그니처들
@@ -385,7 +390,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     values: ExtractColumnType<TTables, TColumn & string>[]
   ): Puri<TSchema, TTables, TResult> {
     this.knexQuery.whereIn(column, values);
-    return this;
+    return this as any;
   }
 
   // WHERE NOT IN
@@ -394,7 +399,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     values: ExtractColumnType<TTables, TColumn & string>[]
   ): Puri<TSchema, TTables, TResult> {
     this.knexQuery.whereIn(column, values);
-    return this;
+    return this as any;
   }
 
   // WHERE MATCH
@@ -474,14 +479,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // 실행 메서드들 - thenable 구현
-  then<TResult1, TResult2 = never>(
+  then<TResult1 = TResolved, TResult2 = never>(
     onfulfilled?:
-      | ((
-          value: Expand<TResult>[]
-        ) => Expand<TResult1> | PromiseLike<Expand<TResult1>>)
+      | ((value: TResolved) => TResult1 | PromiseLike<TResult1>)
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<Expand<TResult1> | TResult2> {
+  ): Promise<TResult1 | TResult2> {
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
@@ -495,7 +498,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
   // 하나만 쿼리
   async first(): Promise<Expand<TResult> | undefined> {
-    return this.knexQuery.first() as Promise<Expand<TResult> | undefined>;
+    return this.knexQuery.first();
   }
   // 하나만 쿼리 실패 시 에러
   async firstOrFail(): Promise<TResult> {
@@ -503,17 +506,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     if (!result) {
       throw new Error("No results found");
     }
-    return result as TResult;
+    return result;
   }
 
   // 쿼리 후 인덱스 리턴
   async at(index: number): Promise<Expand<TResult> | undefined> {
-    const results = await this;
-    return results[index] as Expand<TResult> | undefined;
+    const results = (await this) as any[];
+    return results[index];
   }
   // 쿼리 후 인덱스 리턴 실패 시 에러
   async assertAt(index: number): Promise<Expand<TResult>> {
-    const results = await this;
+    const results = (await this) as any[];
     const result = results[index];
     if (result === undefined) {
       throw new Error(`No result found at index ${index}`);
@@ -531,13 +534,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // INSERT
-  async insert(data: InsertData<SingleTableValue<TTables>>): Promise<number[]> {
-    return this.knexQuery.insert(data);
+  insert(
+    data: InsertData<SingleTableValue<TTables>>
+  ): Puri<TSchema, {}, number, number[]> {
+    this.knexQuery.insert(data);
+    return this as any;
   }
 
   // UPDATE
-  async update(data: WhereCondition<TTables>): Promise<number> {
-    return this.knexQuery.update(data);
+  update(data: WhereCondition<TTables>): Puri<TSchema, {}, number, number> {
+    this.knexQuery.update(data);
+    return this as any;
   }
 
   // Increment
@@ -564,8 +571,9 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // DELETE
-  async delete(): Promise<number> {
-    return this.knexQuery.delete();
+  delete(): Puri<TSchema, {}, number, number> {
+    this.knexQuery.delete();
+    return this as any;
   }
 
   // 확인 쿼리 리턴
