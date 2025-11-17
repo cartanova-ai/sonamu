@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Checkbox, Dropdown, Segment } from "semantic-ui-react";
+import { Button, Checkbox, Dropdown, Segment, Icon } from "semantic-ui-react";
 import { FixtureImportResult } from "sonamu";
 import inflection from "inflection";
 import Markdown from "react-markdown";
@@ -12,8 +12,8 @@ import { defaultCatch } from "../../services/sonamu.shared";
 
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
 // 울며 겨자먹기 workaround입니다. 누가 고쳐주세요 ㅠㅡㅠ
-import {Prism, SyntaxHighlighterProps} from 'react-syntax-highlighter';
-const SyntaxHighlighter = (Prism as any) as React.FC<SyntaxHighlighterProps>;
+import { Prism, SyntaxHighlighterProps } from "react-syntax-highlighter";
+const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 
 type ThemeKey = keyof typeof markdownTheme;
 
@@ -44,31 +44,35 @@ export default function FixtureCodeViewer({
   };
 
   return (
-    <Segment className="fixture-code-viewer">
-      <Dropdown
-        placeholder="Theme"
-        selection
-        options={getThemeOptions()}
-        onChange={(_, { value }) => setMarkdownTheme(value as ThemeKey)}
-        value={theme}
-        className="theme-dropdown"
-      />
+    <Segment className="fixture-code-viewer-container">
+      <div className="top-controls">
+        <Dropdown
+          placeholder="Theme"
+          selection
+          options={getThemeOptions()}
+          onChange={(_, { value }) => setMarkdownTheme(value as ThemeKey)}
+          value={theme}
+          className="theme-dropdown"
+        />
+      </div>
+
       {entities.map((entity) => {
         const results = fixtureResults.filter(
           (result) => result.entityId === entity.id
         );
         if (results.length === 0) return null;
         return (
-          <div key={entity.id} className="fixture-code">
-            <h3 style={{ margin: "1em" }}>Entity: {entity.id}</h3>
+          <div key={entity.id} className="fixture-entity-group">
+            <h3>Entity: {entity.id}</h3>
             {results.map((result) => (
-              <FixtureCode
-                key={result.data.id}
-                fixture={result}
-                entity={entity}
-                targetDB={targetDB}
-                theme={theme}
-              />
+              <div key={result.data.id} className="fixture-code-item">
+                <FixtureCode
+                  fixture={result}
+                  entity={entity}
+                  targetDB={targetDB}
+                  theme={theme}
+                />
+              </div>
             ))}
           </div>
         );
@@ -174,44 +178,50 @@ const FixtureCode = ({
   }, [fixture, selectedSubset, targetDB]);
 
   return (
-    <div
-      key={`${fixture.entityId}#${fixture.data.id}`}
-      className="fixture-code"
-    >
-      <div className="header">
-        <Dropdown
-          placeholder="Subset"
-          selection
-          options={subsetKeys.map((key) => ({
-            key,
-            value: key,
-            text: key,
-          }))}
-          onChange={(_, { value }) => setSelectedSubset(value as string)}
-          value={selectedSubset}
-        />
+    <div>
+      <div className="fixture-code-header">
+        <strong>
+          Fixture ID: {fixture.entityId}#{fixture.data.id}
+        </strong>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <Dropdown
+            placeholder="Subset"
+            selection
+            options={subsetKeys.map((key) => ({
+              key,
+              value: key,
+              text: key,
+            }))}
+            onChange={(_, { value }) => setSelectedSubset(value as string)}
+            value={selectedSubset}
+          />
+        </div>
       </div>
 
-      <div className="description">
+      <div className="fixture-code-body">
+        {/* 1. Raw Data JSON */}
         <CodeBlock
           code={JSON.stringify(fixture.data, null, 2)}
           language="json"
           theme={theme}
+          filename="fixture-raw-data.json"
         />
-        <div style={{ margin: 0 }}>
+
+        {/* 2. Generated Code Blocks */}
+        <div style={{ margin: "15px 0" }}>
           {codes.get(selectedSubset) && (
             <>
               <CodeBlock
                 code={codes.get(selectedSubset)?.fixture ?? ""}
                 language="javascript"
                 theme={theme}
-                filename="fixture.ts"
+                filename="fixture-loader.ts"
               />
               <CodeBlock
                 code={codes.get(selectedSubset)?.test ?? ""}
                 language="javascript"
                 theme={theme}
-                filename="fixture.test.ts"
+                filename="fixture-test-expects.ts"
                 lineSelection={true}
               />
             </>
@@ -237,6 +247,7 @@ const CodeBlock = ({
 }) => {
   const [selectedLines, setSelectedLines] = useState<boolean[]>([]);
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleLineToggle = (index: number) => {
     setSelectedLines((prev) => {
@@ -246,21 +257,25 @@ const CodeBlock = ({
     });
   };
 
-  const handleCopy = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-    code: string
-  ) => {
+  const handleCopy = (code: string) => {
     const lines = String(code).split("\n");
     const textToCopy = lineSelection
       ? lines.filter((_, index) => selectedLines[index]).join("\n")
       : String(code);
-    navigator.clipboard.writeText(textToCopy);
-    const target = e.currentTarget.querySelector("i");
-    if (target) {
-      target.className = "check circle outline icon";
-      setTimeout(() => {
-        target.className = "clipboard outline icon";
-      }, 1000);
+
+    // Use execCommand for broader compatibility in iFrames
+    try {
+      const tempElement = document.createElement("textarea");
+      tempElement.value = textToCopy;
+      document.body.appendChild(tempElement);
+      tempElement.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempElement);
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
     }
   };
 
@@ -275,10 +290,13 @@ const CodeBlock = ({
       }\n${code}\n\`\`\``}
       components={{
         code({ children, className, node, ref, ...rest }) {
+          // Remove leading/trailing newlines which might be added by the markdown parser
+          const codeContent = String(children).trimEnd();
+
           return (
             <div className="code">
               <div className="code-header">
-                <span>{filename}</span>
+                <span>{filename ?? language}</span>
                 <div>
                   {lineSelection && (
                     <Checkbox
@@ -295,74 +313,96 @@ const CodeBlock = ({
                     />
                   )}
                   <Button
-                    icon="clipboard outline"
-                    onClick={(e) => handleCopy(e, String(children))}
-                  />
+                    icon
+                    onClick={() => handleCopy(codeContent)}
+                    size="tiny"
+                  >
+                    <Icon
+                      name={
+                        copied ? "check circle outline" : "clipboard outline"
+                      }
+                    />
+                    {copied ? "복사 완료" : "복사"}
+                  </Button>
                 </div>
               </div>
 
               <SyntaxHighlighter
                 {...rest}
-                children={String(children).trimEnd()}
+                children={codeContent}
                 language={language}
-                style={markdownTheme[theme ?? "oneDark"]}
+                style={markdownTheme[theme ?? "materialDark"]}
                 renderer={({ rows, stylesheet }) => (
-                  <>
-                    {rows.map((row, i) => (
-                      <div
-                        key={i}
-                        className={`code-line ${
-                          hoveredLine === i ? "hovered" : ""
-                        }`}
-                      >
-                        {lineSelection && (
-                          <Checkbox
-                            checked={selectedLines[i] ?? false}
-                            onChange={() => handleLineToggle(i)}
-                            onMouseEnter={() => setHoveredLine(i)}
-                            onMouseLeave={() => setHoveredLine(null)}
-                          />
-                        )}
-                        <span>
-                          {row.children?.map((child: any, j: number) => {
-                            if (child.type === "element") {
-                              return (
-                                <span
-                                  key={j}
-                                  className={child.properties.className.join(
-                                    " "
-                                  )}
-                                  style={{
-                                    ...child.properties.className.reduce(
-                                      (acc: any, className: string) => {
-                                        if (stylesheet[className]) {
-                                          return {
-                                            ...acc,
-                                            ...stylesheet[className],
-                                          };
-                                        }
-                                        return acc;
-                                      },
-                                      {}
-                                    ),
-                                    fontWeight:
-                                      hoveredLine === i ? "bold" : "normal",
-                                  }}
-                                >
-                                  {child.children.map(
-                                    (grandChild: any, k: number) => (
-                                      <span key={k}>{grandChild.value}</span>
-                                    )
-                                  )}
-                                </span>
-                              );
-                            }
-                            return <span key={j}>{child.value}</span>;
-                          })}
-                        </span>
-                      </div>
-                    ))}
-                  </>
+                  <div style={{ position: "relative" }}>
+                    {rows.map((row, i) => {
+                      const isSelected = selectedLines[i] ?? false;
+                      const isHovered = hoveredLine === i;
+
+                      return (
+                        <div
+                          key={i}
+                          className={`code-line ${isHovered ? "hovered" : ""}`}
+                          style={
+                            isSelected
+                              ? { backgroundColor: "rgba(0, 123, 255, 0.1)" }
+                              : {}
+                          }
+                          onMouseEnter={() => setHoveredLine(i)}
+                          onMouseLeave={() => setHoveredLine(null)}
+                          onClick={() => lineSelection && handleLineToggle(i)}
+                        >
+                          {lineSelection && (
+                            <Checkbox
+                              checked={isSelected}
+                              // Prevent click on checkbox from triggering the parent div's onClick
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => handleLineToggle(i)}
+                            />
+                          )}
+                          <span>
+                            {row.children?.map((child: any, j: number) => {
+                              if (child.type === "element") {
+                                return (
+                                  <span
+                                    key={j}
+                                    className={child.properties.className.join(
+                                      " "
+                                    )}
+                                    // SyntaxHighlighter 스타일 적용
+                                    style={{
+                                      ...child.properties.className.reduce(
+                                        (acc: any, className: string) => {
+                                          if (stylesheet[className]) {
+                                            return {
+                                              ...acc,
+                                              ...stylesheet[className],
+                                            };
+                                          }
+                                          return acc;
+                                        },
+                                        {}
+                                      ),
+                                      // Line-specific style adjustment (optional, but good practice)
+                                      fontWeight: isHovered
+                                        ? "normal"
+                                        : "normal",
+                                    }}
+                                  >
+                                    {child.children.map(
+                                      (grandChild: any, k: number) => (
+                                        <span key={k}>{grandChild.value}</span>
+                                      )
+                                    )}
+                                  </span>
+                                );
+                              }
+                              return <span key={j}>{child.value}</span>;
+                            })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               />
             </div>

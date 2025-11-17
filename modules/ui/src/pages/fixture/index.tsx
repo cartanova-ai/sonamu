@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Dropdown, Input, Segment, Tab } from "semantic-ui-react";
+import { Button, Dropdown, Input, Segment, Tab, Icon } from "semantic-ui-react";
 import {
   ExtendedEntity,
   SonamuUIService,
@@ -24,7 +24,7 @@ export default function FixtureIndex() {
   const { data: entitiesData, isLoading: entitiesLoading } =
     SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
-  const [targetDB, setTargetDB] = useState("fixture_remote");
+  const [targetDB, setTargetDB] = useState("fixture_remote"); // 저장할 대상 DB
 
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
   const [importResults, setImportResults] = useState<FixtureImportResult[]>([]);
@@ -46,6 +46,9 @@ export default function FixtureIndex() {
 
   const [searchEntity, setSearchEntity] = useState<ExtendedEntity | null>(null);
 
+  /**
+   * 검색 실행 (Source DB에서 Fixture Record 가져오기)
+   */
   const search = () => {
     if (!form.entityId || !form.field || !form.value) return;
 
@@ -62,10 +65,15 @@ export default function FixtureIndex() {
       .catch(defaultCatch);
   };
 
-  const importFixture = () => {
+  /**
+   * Fixture 저장 실행 (Target DB에 Fixture Record 저장)
+   */
+  const saveFixture = () => {
     if (fixtureRecords.length === 0) return;
     setActiveTab(1);
 
+    // SonamuUIService.importFixtures는 '가져오기'와 '저장하기' 모두에 사용되는 내부 함수입니다.
+    // 여기서는 '저장하기' 기능을 수행합니다.
     SonamuUIService.importFixtures(targetDB, fixtureRecords)
       .then((results) => {
         setImportResults(results);
@@ -220,104 +228,154 @@ export default function FixtureIndex() {
   return (
     <div className="fixture-index">
       <Segment className="fixture-header">
-        <div className="search-section">
-          <Dropdown
-            placeholder="Select DB to search"
-            header="Search source DB"
-            selection
-            options={DB_NAMES.map((db) => ({
-              key: db,
-              value: db,
-              text: db.replace("_master", ""),
-            }))}
-            value={sourceDB}
-            onChange={(_, { value }) => setSourceDB(value as string)}
-          />
-          <Dropdown
-            placeholder="Entities"
-            search
-            selection
-            options={
-              entitiesData?.entities?.map((entity) => ({
-                key: entity.id,
-                value: entity.id,
-                text: entity.id,
-              })) || []
-            }
-            {...register("entityId")}
-          />
-          {searchEntity && (
-            <div className="search-field">
+        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+          {/* 1. Search Section (메인 검색 컨트롤) */}
+          <div className="search-section">
+            <div className="search-title">
+              <Icon name="search" style={{ marginRight: "5px" }} />
+              검색 대상 설정
+            </div>
+
+            {/* Source DB Dropdown */}
+            <div className="db-dropdown-wrapper">
               <Dropdown
-                placeholder="Columns"
-                search
+                fluid
+                placeholder="검색할 DB 선택"
                 selection
-                options={searchEntity.props
-                  .filter((p) => {
-                    if (p.type === "virtual") return false;
-                    if (p.type === "relation") {
-                      if (p.relationType === "BelongsToOne") return true;
-                      if (p.relationType === "OneToOne" && p.hasJoinColumn)
-                        return true;
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map((prop) => ({
-                    key: prop.name,
-                    value: prop.name,
-                    text: prop.name,
-                  }))}
-                {...register("field")}
-              />
-              <Input placeholder="Search" {...register("value")} />
-              <Dropdown
-                placeholder="Search Type"
-                selection
-                options={[
-                  { key: "equals", text: "Equals", value: "equals" },
-                  { key: "like", text: "Like", value: "like" },
-                ]}
-                {...register("searchType")}
+                options={DB_NAMES.map((db) => ({
+                  key: db,
+                  value: db,
+                  text: db.replace("_master", ""),
+                }))}
+                value={sourceDB}
+                onChange={(_, { value }) => setSourceDB(value as string)}
               />
             </div>
-          )}
-          <Button
-            onClick={search}
-            disabled={!form.entityId || !form.field || !form.value}
-            loading={entitiesLoading}
-            primary
-            content="Search"
-          />
-        </div>
 
-        <div className="import-section">
-          <Dropdown
-            placeholder="Select DB to import"
-            header="Import target DB"
-            selection
-            options={DB_NAMES.map((db) => ({
-              key: db,
-              value: db,
-              text: db,
-            }))}
-            value={targetDB}
-            onChange={(_, { value }) => setTargetDB(value as string)}
-          />
-          <Button
-            onClick={importFixture}
-            primary
-            content="Import Fixture"
-            disabled={fixtureRecords.length === 0}
-          />
+            {/* Entity Dropdown */}
+            <div style={{ flexGrow: 1, minWidth: "200px" }}>
+              <Dropdown
+                fluid
+                placeholder="엔티티 선택"
+                search
+                selection
+                loading={entitiesLoading}
+                options={
+                  entitiesData?.entities?.map((entity) => ({
+                    key: entity.id,
+                    value: entity.id,
+                    text: entity.id,
+                  })) || []
+                }
+                {...register("entityId")}
+              />
+            </div>
+
+            {/* Search Field Group */}
+            {searchEntity && (
+              <div className="search-field-group">
+                <Dropdown
+                  placeholder="컬럼 선택"
+                  selection
+                  options={searchEntity.props
+                    .filter((p) => {
+                      if (p.type === "virtual") return false;
+                      if (p.type === "relation") {
+                        if (p.relationType === "BelongsToOne") return true;
+                        if (p.relationType === "OneToOne" && p.hasJoinColumn)
+                          return true;
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((prop) => ({
+                      key: prop.name,
+                      value: prop.name,
+                      text: prop.name,
+                    }))}
+                  {...register("field")}
+                  style={{ flexBasis: "150px" }}
+                />
+                <Input
+                  placeholder="검색 값 입력"
+                  {...register("value")}
+                  style={{ flexGrow: 1 }}
+                />
+                <Dropdown
+                  selection
+                  options={[
+                    { key: "equals", text: "Equals", value: "equals" },
+                    { key: "like", text: "Like", value: "like" },
+                  ]}
+                  {...register("searchType")}
+                  style={{ flexBasis: "100px" }}
+                />
+              </div>
+            )}
+
+            {/* Search Button */}
+            <Button
+              onClick={search}
+              disabled={
+                !form.entityId || !form.field || !form.value || entitiesLoading
+              }
+              loading={entitiesLoading}
+              primary
+              content="검색"
+            />
+          </div>
+
+          {/* 2. Save Section (저장 컨트롤) */}
+          <div className="save-section">
+            <div className="save-title">
+              <Icon name="database" style={{ marginRight: "5px" }} />
+              저장 DB 설정
+            </div>
+
+            {/* Target DB Dropdown */}
+            <div className="db-dropdown-wrapper">
+              <Dropdown
+                fluid
+                placeholder="저장할 대상 DB 선택"
+                header="Fixture Target DB"
+                selection
+                options={DB_NAMES.map((db) => ({
+                  key: db,
+                  value: db,
+                  text: db,
+                }))}
+                value={targetDB}
+                onChange={(_, { value }) => setTargetDB(value as string)}
+              />
+            </div>
+
+            {/* Save Button */}
+            <Button
+              onClick={saveFixture}
+              color="blue"
+              content="저장"
+              disabled={fixtureRecords.length === 0}
+            />
+          </div>
         </div>
       </Segment>
 
       <div className="fixture-viewer">
-        <Button
-          onClick={() => setMode(mode === "table" ? "graph" : "table")}
-          content={mode === "table" ? "Show Graph" : "Show Table"}
-        />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "15px",
+          }}
+        >
+          <Button
+            onClick={() => setMode(mode === "table" ? "graph" : "table")}
+            content={mode === "table" ? "그래프 보기" : "테이블 보기"}
+            icon={mode === "table" ? "sitemap" : "table"}
+            basic
+            color="grey"
+          />
+        </div>
         <Tab
           panes={panes}
           activeIndex={activeTab}
@@ -325,6 +383,11 @@ export default function FixtureIndex() {
             if (typeof activeIndex === "number") {
               setActiveTab(activeIndex);
             }
+          }}
+          style={{
+            boxShadow: "0 5px 15px rgba(0, 0, 0, 0.08)",
+            borderRadius: "12px",
+            overflow: "hidden",
           }}
         />
       </div>
