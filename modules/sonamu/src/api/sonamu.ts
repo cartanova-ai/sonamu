@@ -413,27 +413,28 @@ class SonamuClass {
       );
 
       const context: Context = {
-        ...config.contextProvider(
-          {
-            request,
-            reply,
-            headers: request.headers,
-            createSSE,
-
-            // auth
-            user: request.user ?? null,
-            passport: {
-              login: request.login.bind(
-                request
-              ) as AuthContext["passport"]["login"],
-              logout: request.logout.bind(
-                request
-              ) as AuthContext["passport"]["logout"],
+        ...(await Promise.resolve(
+          config.contextProvider(
+            {
+              request,
+              reply,
+              headers: request.headers,
+              createSSE,
+              // auth
+              user: request.user ?? null,
+              passport: {
+                login: request.login.bind(
+                  request
+                ) as AuthContext["passport"]["login"],
+                logout: request.logout.bind(
+                  request
+                ) as AuthContext["passport"]["logout"],
+              },
             },
-          },
-          request,
-          reply
-        ),
+            request,
+            reply
+          )
+        )),
       };
 
       const model = this.syncer.models[api.modelName];
