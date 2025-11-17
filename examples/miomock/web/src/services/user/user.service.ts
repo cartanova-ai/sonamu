@@ -54,6 +54,7 @@ export namespace UserService {
         [`/api/user/findMany`, { subset, params }],
         swrOptions?.conditional,
       ),
+      { loadingTimeout: 1000 },
     );
   }
   export async function getUsers<T extends UserSubsetKey>(
@@ -63,6 +64,7 @@ export namespace UserService {
     return fetch({
       method: "GET",
       url: `/api/user/findMany?${qs.stringify({ subset, params })}`,
+      signal: AbortSignal.timeout(1000),
     });
   }
 
