@@ -1,9 +1,9 @@
 import { TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import { Template__view_list } from "./view_list.template";
 import { Sonamu } from "../../api";
-import { getZodTypeById, zodTypeToRenderingNode } from "../template-zod";
+import { getZodTypeById, zodTypeToRenderingNode } from "../entity-zod";
 
 export class Template__model extends Template {
   constructor() {

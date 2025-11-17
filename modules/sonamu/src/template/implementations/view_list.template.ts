@@ -4,8 +4,11 @@ import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
 import { getRelationPropFromColName, getEnumInfoFromColName } from "../common";
-import { RenderedTemplate } from "../base-template";
-import { Template } from "../base-template";
+import { RenderedTemplate } from "../template";
+import { Template } from "../template";
+import { zodTypeToRenderingNode } from "../entity-zod";
+import { getZodTypeById } from "../entity-zod";
+import { getColumnsNode } from "../entity-zod";
 
 export class Template__view_list extends Template {
   constructor() {
@@ -234,11 +237,11 @@ export class Template__view_list extends Template {
     return def;
   }
 
-  render(
-    { entityId }: TemplateOptions["view_list"],
-    columnsNode: RenderingNode,
-    listParamsNode: RenderingNode
-  ) {
+  async render({ entityId }: TemplateOptions["view_list"]) {
+    const columnsNode = await getColumnsNode(entityId, "A");
+    const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
+    const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
+
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);
 

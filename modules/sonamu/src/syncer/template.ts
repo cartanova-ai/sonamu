@@ -13,28 +13,10 @@ import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import * as _ from "lodash-es";
 import { Template } from "../template";
-import { RenderedTemplate } from "../template/base-template";
+import { RenderedTemplate } from "../template/template";
 import { EntityManager } from "../entity/entity-manager";
 import { wrapIf } from "../utils/lodash-able";
 import prettier from "prettier";
-// 모든 템플릿을 자동으로 로드하기 위한 import
-import "../template/implementations/entity.template";
-import "../template/implementations/init_types.template";
-import "../template/implementations/generated.template";
-import "../template/implementations/generated_sso.template";
-import "../template/implementations/generated_http.template";
-import "../template/implementations/model.template";
-import "../template/implementations/model_test.template";
-import "../template/implementations/service.template";
-import "../template/implementations/view_list.template";
-import "../template/implementations/view_list_columns.template";
-import "../template/implementations/view_search_input.template";
-import "../template/implementations/view_form.template";
-import "../template/implementations/view_id_all_select.template";
-import "../template/implementations/view_id_async_select.template";
-import "../template/implementations/view_enums_select.template";
-import "../template/implementations/view_enums_dropdown.template";
-import "../template/implementations/view_enums_buttonset.template";
 
 export async function generateTemplate(
   key: TemplateKey,
@@ -90,25 +72,7 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
 ): Promise<PathAndCode[]> {
   const template = Template.find(key);
 
-  const extra: unknown[] = [];
-  // TODO: 향후 필요시 extra 정보 추가
-  // if (["model", "view_list", "view_form"].includes(key)) {
-  //   const entityId = (options as TemplateOptions["model"]).entityId;
-  //   if (key === "view_list" || key === "model") {
-  //     // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
-  //     // const columnsNode = await getColumnsNode(entityId, "A");
-  //     // const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
-  //     // const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
-  //     // extra = [columnsNode, listParamsNode];
-  //   } else if (key === "view_form") {
-  //     // view_form 필요 정보 (세이브파라미터 노드)
-  //     // const saveParamsZodType = await getZodTypeById(`${entityId}SaveParams`);
-  //     // const saveParamsNode = zodTypeToRenderingNode(saveParamsZodType);
-  //     // extra = [saveParamsNode];
-  //   }
-  // }
-
-  const rendered = await template.render(options, ...extra);
+  const rendered = await template.render(options);
   const resolved = await resolveRenderedTemplate(key, rendered);
 
   let preTemplateResolved: PathAndCode[] = [];

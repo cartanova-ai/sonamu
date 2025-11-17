@@ -35,7 +35,7 @@ import { AbsolutePath, toProjectRelativePath } from "../utils/path-utils";
 import { centerText } from "../utils/console-util";
 import { BaseModel } from "../database/base-model";
 import assert from "assert";
-import { Template } from "../template/base-template";
+import { Template } from "../template/template";
 export type SonamuConfig = {
   projectName?: string;
   api: {

@@ -11,7 +11,7 @@ import {
   apiParamToTsCodeAsObject,
 } from "../../api/code-converters";
 import { ExtendedApi } from "../../api/decorators";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import { Sonamu } from "../../api/sonamu";
 
 export class Template__service extends Template {

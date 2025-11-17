@@ -36,11 +36,11 @@ export async function getColumnsNode(
   subsetKey: string
 ): Promise<RenderingNode> {
   const entity = EntityManager.get(entityId);
-  const subsetA = entity.subsets[subsetKey];
-  if (subsetA === undefined) {
-    throw new ServiceUnavailableException("SubsetA 가 없습니다.");
+  const subset = entity.subsets[subsetKey];
+  if (subset === undefined) {
+    throw new ServiceUnavailableException(`Subset ${subsetKey} 가 없습니다.`);
   }
-  const propNodes = entity.fieldExprsToPropNodes(subsetA);
+  const propNodes = entity.fieldExprsToPropNodes(subset);
   const rootPropNode: EntityPropNode = {
     nodeType: "object",
     children: propNodes,
