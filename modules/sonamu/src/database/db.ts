@@ -6,6 +6,8 @@ import { Sonamu } from "../api";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
+import { runtimePath } from "../utils/path-utils";
+import { importFresh } from "../utils/esm-utils";
 
 type MySQLConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
@@ -55,20 +57,20 @@ class DBClass {
   async readKnexfile(): Promise<SonamuDBConfig> {
     const dbConfigPath: string = path.join(
       Sonamu.apiRootPath,
-      "/dist/configs/db.js"
+      runtimePath("/src/configs/db.ts")
     );
     try {
-      const knexfileModule = await import(dbConfigPath);
+      const knexfileModule = await importFresh(dbConfigPath); // 절대경로는 그냥은 못 들어가요. 그래서 importFresh로 wrapping해주었습니다.
       const config =
         knexfileModule.default?.default ??
         knexfileModule.default ??
         knexfileModule;
       return this.generateDBConfig(config);
-    } catch {}
-
-    throw new ServiceUnavailableException(
-      `다음 경로에서 DB설정 파일을 찾을 수 없습니다: ${dbConfigPath}. 먼저 빌드(yarn build)를 수행해주세요.`
-    );
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `다음 경로에서 DB설정 파일을 읽으려는데 문제가 발생하였습니다: ${dbConfigPath}. 오류: ${error}`
+      );
+    }
   }
 
   getDB(which: DBPreset): Knex {
@@ -84,13 +86,14 @@ class DBClass {
           config =
             which === "w"
               ? dbConfig["development_master"]
-              : dbConfig["development_slave"] ?? dbConfig["development_master"];
+              : (dbConfig["development_slave"] ??
+                dbConfig["development_master"]);
           break;
         case "production":
           config =
             which === "w"
               ? dbConfig["production_master"]
-              : dbConfig["production_slave"] ?? dbConfig["production_master"];
+              : (dbConfig["production_slave"] ?? dbConfig["production_master"]);
           break;
         case "test":
           config = dbConfig["test"];
@@ -163,11 +166,17 @@ class DBClass {
       devSlaveOptions
     );
     // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
-    const fixture_remote = _.merge({}, defaultKnexConfig, devMasterOptions, {
-      connection: {
-        database: `${config.database}_fixture_remote`,
+    const fixture_remote = _.merge(
+      {},
+      defaultKnexConfig,
+      devMasterOptions,
+      {
+        connection: {
+          database: `${config.database}_fixture_remote`,
+        },
       },
-    }, config.environments?.remote_fixture);
+      config.environments?.remote_fixture
+    );
 
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};

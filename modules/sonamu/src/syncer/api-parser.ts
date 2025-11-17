@@ -14,6 +14,10 @@ import { AbsolutePath } from "../utils/path-utils";
  * @returns API 메소드 정보 배열 (타입 파라미터, 파라미터, 리턴 타입 등)
  */
 export async function readApisFromFile(filePath: AbsolutePath) {
+  if (!filePath.endsWith(".ts")) { 
+    throw new Error(`${filePath} does not seem to be a TypeScript file. Please check the file path. We only support parsing TypeScript files.`);
+  }
+  
   const sourceFile = ts.createSourceFile(
     filePath,
     (await readFile(filePath)).toString(),

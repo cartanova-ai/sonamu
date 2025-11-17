@@ -18,8 +18,8 @@ import { findApiRootPath } from "../utils/utils";
 let migrator: Migrator;
 
 async function bootstrap() {
-  // dev:serve 명령어가 아닌 경우에만 Sonamu 초기화
-  if (process.argv[2] !== "dev:serve") {
+  // dev 명령어가 아닌 경우에만 Sonamu 초기화
+  if (process.argv[2] !== "dev") {
     await Sonamu.init(false, false);
   }
 
