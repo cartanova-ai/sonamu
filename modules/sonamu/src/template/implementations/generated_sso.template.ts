@@ -4,7 +4,7 @@ import {
   TemplateOptions,
 } from "../../types/types";
 import { EntityManager } from "../../entity/entity-manager";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import inflection from "inflection";
 import { SourceCode } from "./generated.template";
 import * as _ from "lodash-es";

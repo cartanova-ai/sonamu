@@ -1,6 +1,6 @@
 import { TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { Template } from "../base-template";
+import { Template } from "../template";
 
 export class Template__view_enums_buttonset extends Template {
   constructor() {

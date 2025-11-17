@@ -1,6 +1,6 @@
 import { TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import { Sonamu } from "../../api";
 
 export class Template__init_types extends Template {

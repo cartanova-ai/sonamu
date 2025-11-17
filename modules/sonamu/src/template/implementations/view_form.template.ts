@@ -2,10 +2,11 @@ import inflection from "inflection";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { RenderedTemplate } from "../base-template";
-import { Template } from "../base-template";
+import { RenderedTemplate } from "../template";
+import { Template } from "../template";
 import { getRelationPropFromColName, getEnumInfoFromColName } from "../common";
 import * as _ from "lodash-es";
+import { getZodTypeById, zodTypeToRenderingNode } from "../entity-zod";
 
 export class Template__view_form extends Template {
   constructor() {
@@ -170,10 +171,10 @@ export class Template__view_form extends Template {
     );
   }
 
-  render(
-    { entityId }: TemplateOptions["view_form"],
-    saveParamsNode: RenderingNode
-  ) {
+  async render({ entityId }: TemplateOptions["view_form"]) {
+    const saveParamsZodType = await getZodTypeById(`${entityId}SaveParams`);
+    const saveParamsNode = zodTypeToRenderingNode(saveParamsZodType);
+
     const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
     const columns = (saveParamsNode.children as RenderingNode[])

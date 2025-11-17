@@ -3,7 +3,7 @@ import { z } from "zod";
 import { TemplateOptions } from "../../types/types";
 import { getZodObjectFromApi } from "../../api/code-converters";
 import { ExtendedApi } from "../../api/decorators";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import prettier from "prettier";
 import { Sonamu } from "../../api/sonamu";
 

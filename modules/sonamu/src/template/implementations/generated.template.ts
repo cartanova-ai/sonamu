@@ -4,7 +4,7 @@ import { EntityManager } from "../../entity/entity-manager";
 import { Entity } from "../../entity/entity";
 import { EntityPropNode } from "../../types/types";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
-import { Template } from "../base-template";
+import { Template } from "../template";
 import { nonNullable } from "../../utils/utils";
 import { Sonamu } from "../../api";
 
