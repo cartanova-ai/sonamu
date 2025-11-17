@@ -129,7 +129,7 @@ export class Puri<
     return { _type: "sql_expression", _return: "date", _sql: sql };
   }
 
-  // SELECT
+  // SELECT (overwrite)
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect
   ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
@@ -159,6 +159,13 @@ export class Puri<
 
     this.knexQuery.select(selectClauses);
     return this as any;
+  }
+
+  // SELECT (select는 overwrite, appendSelect는 append)
+  appendSelect<TSelect extends SelectObject<TTables>>(
+    selectObj: TSelect
+  ): Puri<TSchema, TTables, TResult & ParseSelectObject<TTables, TSelect>> {
+    return this.select(selectObj) as any;
   }
 
   // SELECT *
@@ -525,12 +532,16 @@ export class Puri<
   }
 
   // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
-  async pluck<TColumn extends ResultAvailableColumns<TTables, TResult>>(
+  async pluck<
+    TColumn extends keyof TResult | ResultAvailableColumns<TTables, TResult>,
+  >(
     column: TColumn
-  ): Promise<ExtractColumnType<TTables, TColumn & string>[]> {
-    return this.knexQuery.pluck(column) as Promise<
-      ExtractColumnType<TTables, TColumn & string>[]
-    >;
+  ): Promise<
+    TColumn extends keyof TResult
+      ? TResult[TColumn][]
+      : ExtractColumnType<TTables, TColumn & string>[]
+  > {
+    return this.knexQuery.pluck(column as string) as any;
   }
 
   // INSERT
