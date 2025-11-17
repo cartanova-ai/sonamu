@@ -83,7 +83,7 @@ export async function loadModels(): Promise<LoadedModels> {
   }
   console.log(
     chalk.gray(
-      `[Loading] Loaded model/frame instances from "*.{model,frame}.ts" files: ${count} files.`
+      `[Loading] Loaded model/frame instances from ${runtimePath("*.{model,frame}.ts")} files: ${count} files.`
     )
   );
 
@@ -95,10 +95,7 @@ export async function loadModels(): Promise<LoadedModels> {
  */
 export async function loadTypes(): Promise<LoadedTypes> {
   const typePathsPatterns = [
-    path.join(
-      Sonamu.apiRootPath, 
-      runtimePath("src/application/**/*.types.ts")
-    ),
+    path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
     path.join(
       Sonamu.apiRootPath,
       runtimePath("src/application/**/*.generated.ts")
@@ -122,7 +119,7 @@ export async function loadTypes(): Promise<LoadedTypes> {
   }
   console.log(
     chalk.gray(
-      `[Loading] Loaded zod types from "*.types.ts" files: ${count} files.`
+      `[Loading] Loaded zod types from ${runtimePath("*.types.ts")} and ${runtimePath("*.generated.ts")} files: ${count} files.`
     )
   );
 
