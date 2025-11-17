@@ -12,7 +12,7 @@ import { exists } from "../utils/fs-utils";
 import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
 import * as _ from "lodash-es";
-import { Template } from "../template";
+import { Template } from "../template/template";
 import { RenderedTemplate } from "../template/template";
 import { EntityManager } from "../entity/entity-manager";
 import { wrapIf } from "../utils/lodash-able";
