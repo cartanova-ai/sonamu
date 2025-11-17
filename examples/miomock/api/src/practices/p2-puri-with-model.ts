@@ -63,7 +63,7 @@ async function examples() {
 
   // 서브쿼리를 조인하여 부서 정보와 평균 급여를 함께 조회
   const departmentsWithAvgSalary = await puri
-    .fromSubquery(avgSalarySubquery, "dept_avg")
+    .from({ dept_avg: avgSalarySubquery })
     .join("departments", "dept_avg.dept_id", "departments.id")
     .join("companies", "departments.company_id", "companies.id")
     .select({
@@ -111,9 +111,9 @@ async function examples() {
 
   // 두 서브쿼리를 조인하여 부서별 통계 조회
   const departmentStats = await puri
-    .fromSubquery(employeeCountSubquery, "emp_cnt")
+    .from({ emp_cnt: employeeCountSubquery })
     .join("departments", "emp_cnt.dept_id", "departments.id")
-    .join(maxSalarySubquery, "max_sal", "emp_cnt.dept_id", "max_sal.dept_id")
+    .join({ max_sal: maxSalarySubquery }, "emp_cnt.dept_id", "max_sal.dept_id")
     .select({
       department_id: "departments.id",
       department_name: "departments.name",

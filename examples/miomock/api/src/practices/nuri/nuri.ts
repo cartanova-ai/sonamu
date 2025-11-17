@@ -842,6 +842,7 @@ export class NuriWrapper<
     const { isolation, readOnly, dbPreset = "w" } = options;
 
     // @transactional 데코레이터와 동일한 로직: 이미 트랜잭션 컨텍스트가 있는지 확인
+    // @ts-ignore FIXME: import path 수정 필요
     const { DB } = await import("./db");
     const existingContext = DB.transactionStorage.getStore();
 
