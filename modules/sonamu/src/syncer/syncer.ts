@@ -341,8 +341,14 @@ export class Syncer {
       )
     );
 
+    // 아래 친구들은 다 쓸모가 있습니다.
+    this.types = {};
+    this.models = {};
+    this.apis = [];
     await this.autoloadTypes(); // generated_http.template.ts에서 syncer.types를 씁니다.
-
+    await this.autoloadModels(); // API를 로드하기 전에 미리 로드해야 합니다.
+    await this.autoloadApis(); // service.template.ts에서 syncer.apis를 씁니다.
+  
     const params: {
       namesRecord: EntityNamesRecord;
       modelTsPath: AbsolutePath;
@@ -366,7 +372,7 @@ export class Syncer {
       throw new Error("not reachable");
     });
 
-    await this.actionGenerateServices(params); // 여기에 API 정보가 필요한데, 얘가 자급자족 해요
+    await this.actionGenerateServices(params);
     await this.actionGenerateHttps();
   }
 
