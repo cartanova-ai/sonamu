@@ -13,11 +13,7 @@ import { minimatch } from "minimatch";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { runWithGracefulShutdown } from "../utils/process-utils";
-import {
-  AbsolutePath,
-  toAbsolutePath,
-  toApiRelativePath,
-} from "../utils/path-utils";
+import { AbsolutePath } from "../utils/path-utils";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { Template } from "../template";
 import {
@@ -118,6 +114,7 @@ export class Syncer {
         return;
       }
 
+      // 이건 프로젝트에 .ts 소스 코드 파일을 생성하는 것이므로 src의 .ts 경로로 갑니다.
       const destPath = path.join(
         Sonamu.appRootPath,
         target,
@@ -132,7 +129,7 @@ export class Syncer {
 
       console.log(
         chalk.bold("Copied: ") +
-          chalk.blue(destPath.replace(Sonamu.appRootPath + "/", ""))
+          chalk.blue(path.relative(Sonamu.appRootPath, destPath))
       );
     }
   }
@@ -200,7 +197,7 @@ export class Syncer {
   ): Promise<void> {
     console.log(
       chalk.gray(
-        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map(toApiRelativePath).join(", ")}`
+        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
       )
     );
 
@@ -214,7 +211,9 @@ export class Syncer {
 
     if (entityId) {
       const entity = EntityManager.get(entityId);
-      const typeFilePath = toAbsolutePath(
+      // 프로젝트에 생성되어야 하는 .ts 파일의 경로입니다.
+      const typeFilePath = path.join(
+        Sonamu.apiRootPath,
         `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`
       );
       if (entity.parentId === undefined && !(await exists(typeFilePath))) {
@@ -226,7 +225,10 @@ export class Syncer {
 
     diffGroups["generated"] = _.uniq([
       ...(diffGroups["generated"] ?? []),
-      toAbsolutePath("src/application/sonamu.generated.ts"),
+      path.join(
+        Sonamu.apiRootPath,
+        "src/application/sonamu.generated.ts"
+      ) as AbsolutePath,
     ]);
     diffTypes.push("generated");
   }
@@ -242,7 +244,7 @@ export class Syncer {
 
     console.log(
       chalk.gray(
-        `[Processing] Handling types/functions/generated changes: ${tsPaths.map(toApiRelativePath).join(", ")}`
+        `[Processing] Handling types/functions/generated changes: ${tsPaths.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
       )
     );
 
@@ -261,7 +263,7 @@ export class Syncer {
 
     console.log(
       chalk.gray(
-        `[Processing] Handling model/frame changes: ${mergedGroup.map(toApiRelativePath).join(", ")}`
+        `[Processing] Handling model/frame changes: ${mergedGroup.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
       )
     );
 
@@ -310,7 +312,7 @@ export class Syncer {
 
   /**
    * *.service.ts를 생성합니다.
-   * @param paramsArray 
+   * @param paramsArray
    * @returns 생성된 파일 경로 배열.
    */
   private async actionGenerateServices(
@@ -347,7 +349,7 @@ export class Syncer {
 
   /**
    * *.types.ts, *.functions.ts, *.generated.ts를 타겟 디렉토리에 복사합니다.
-   * @param tsPaths 
+   * @param tsPaths
    * @returns 복사된 파일 경로 배열.
    */
   private async actionSyncFilesToTargets(
@@ -381,7 +383,10 @@ export class Syncer {
     ).flat();
   }
 
-  private async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
+  private async copyFileWithReplaceCoreToShared(
+    fromPath: string,
+    toPath: string
+  ) {
     if (!(await exists(fromPath))) {
       return;
     }

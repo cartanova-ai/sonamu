@@ -11,7 +11,6 @@ import { Sonamu } from "../api/sonamu";
 import {
   AbsolutePath,
   ApiRelativePath,
-  toApiRelativePath,
 } from "../utils/path-utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
@@ -127,7 +126,7 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
     checksumFilePath,
     JSON.stringify(
       checksums.map((r) => ({
-        path: toApiRelativePath(r.path), // 체크섬 파일에 저장할 때: 절대 경로 → API 상대 경로
+        path: path.relative(Sonamu.apiRootPath, r.path), // 체크섬 파일에 저장할 때: 절대 경로 → API 상대 경로
         checksum: r.checksum,
       })),
       null,
