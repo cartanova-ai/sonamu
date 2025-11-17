@@ -31,11 +31,12 @@ import { getZodObjectFromApi } from "./code-converters";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
-import { AbsolutePath, toApiRelativePath } from "../utils/path-utils";
+import { AbsolutePath } from "../utils/path-utils";
 import { centerText } from "../utils/console-util";
 import { BaseModel } from "../database/base-model";
 import assert from "assert";
 import { Template } from "../template/template";
+import { isHotReloadServer } from "../utils/esm-utils";
 export type SonamuConfig = {
   projectName?: string;
   api: {
@@ -209,7 +210,7 @@ class SonamuClass {
     // Autoload: Models / Types / APIs
     await this.syncer.loadAll();
 
-    if (isLocal() && !isTest() && enableSync) {
+    if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await Template.loadAll();
 
       await this.syncer.sync();
@@ -610,7 +611,7 @@ class SonamuClass {
     }
     this.pendingFiles.push(filePath);
 
-    const relativePath = toApiRelativePath(filePath);
+    const relativePath = path.relative(this.apiRootPath, filePath);
     console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
     await this.syncer.syncFromWatcher([filePath]);

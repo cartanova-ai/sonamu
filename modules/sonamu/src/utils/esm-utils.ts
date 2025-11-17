@@ -41,19 +41,10 @@ export function createImportUrl(
 /**
  * HMR 환경 감지
  *
- * @returns dev 환경(dynohot)인지 여부
+ * @returns hot reload 환경인지 여부
  */
-export function isHMREnabled(): boolean {
+export function isHotReloadServer(): boolean {
   return process.env.HOT === 'yes';
-}
-
-/**
- * dev 모드 감지
- *
- * @returns dev/prod 모드 구분
- */
-export function isDevMode(): boolean {
-  return isHMREnabled() || process.env.NODE_ENV === 'development';
 }
 
 /**

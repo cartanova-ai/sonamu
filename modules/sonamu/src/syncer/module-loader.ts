@@ -7,7 +7,7 @@ import { Sonamu } from "../api/sonamu";
 import { readApisFromFile } from "./api-parser";
 import { BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
-import { AbsolutePath } from "../utils/path-utils";
+import { AbsolutePath, runtimePath } from "../utils/path-utils";
 import { ApiParam, ApiParamType } from "../types/types";
 import { ApiDecoratorOptions } from "../api/decorators";
 
@@ -33,9 +33,13 @@ export type LoadedModels = {
  * 따라서 loadModels()를 먼저 호출해야 합니다.
  */
 export async function loadApis(): Promise<LoadedApis> {
+  // 얘는 특이하게도 환경에 따라 .ts나 .js를 import하는 경우가 아니고,
+  // 타입이 살아있는 .ts 소스 코드만을 읽어야 합니다.
+  // 이것은 dev서버(hot reload)가 아닌 production 환경에서도 동일합니다.
+  // 모델들의 .ts 파일이 있어야 이를 읽어서 라우트를 등록할 수 있어요!
   const modelPathsPattern = path.join(
     Sonamu.apiRootPath,
-    "src/application/**/*.{model,frame}.ts"
+    "src/application/**/*.{model,frame}.ts" // !! runtimePath 안 씀 주의 !!
   );
   const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
 
@@ -47,9 +51,7 @@ export async function loadApis(): Promise<LoadedApis> {
     count++;
   }
   console.log(
-    chalk.gray(
-      `[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`
-    )
+    chalk.gray(`[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`)
   );
 
   return apis;
@@ -61,7 +63,7 @@ export async function loadApis(): Promise<LoadedApis> {
 export async function loadModels(): Promise<LoadedModels> {
   const modelPathsPattern = path.join(
     Sonamu.apiRootPath,
-    "src/application/**/*.{model,frame}.ts"
+    runtimePath("src/application/**/*.{model,frame}.ts")
   );
   const modelPaths = await globAsync(modelPathsPattern);
 
@@ -93,8 +95,14 @@ export async function loadModels(): Promise<LoadedModels> {
  */
 export async function loadTypes(): Promise<LoadedTypes> {
   const typePathsPatterns = [
-    path.join(Sonamu.apiRootPath, "/src/application/**/*.types.ts"),
-    path.join(Sonamu.apiRootPath, "/src/application/**/*.generated.ts"),
+    path.join(
+      Sonamu.apiRootPath, 
+      runtimePath("src/application/**/*.types.ts")
+    ),
+    path.join(
+      Sonamu.apiRootPath,
+      runtimePath("src/application/**/*.generated.ts")
+    ),
   ];
   const typePaths = (
     await Promise.all(typePathsPatterns.map(globAsync))
