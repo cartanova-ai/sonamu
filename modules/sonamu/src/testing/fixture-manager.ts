@@ -404,6 +404,9 @@ export class FixtureManagerClass {
       }
     }
 
+    await targetDB.destroy();
+    await sourceDB.destroy();
+
     return _.uniqBy(fixtures, (f) => f.fixtureId);
   }
 
@@ -553,6 +556,8 @@ export class FixtureManagerClass {
         data: record,
       });
     }
+
+    await db.destroy();
 
     return _.uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
