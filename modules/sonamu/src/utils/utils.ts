@@ -17,11 +17,21 @@ export async function globAsync(pathPattern: string): Promise<string[]> {
  * @param filePath
  * @returns
  */
-export async function importFresh<ExportedMemberT>(
+export async function importFresh(filePath: string) {
+  const importUrl = createImportUrl(filePath); // ESM: file:// URL 사용
+
+  return await import(`${importUrl}?hot=${Date.now()}`);
+}
+
+/**
+ * 캐시 무시하고 새로 임포트하는데, 모듈이 export한 멤버들에 대한 배열로 가져옵니다.
+ * @param filePath
+ * @returns
+ */
+export async function importMembersFresh<ExportedMemberT>(
   filePath: string
 ): Promise<{ name: string; value: ExportedMemberT }[]> {
-  const importUrl = createImportUrl(filePath); // ESM: file:// URL 사용
-  const imported = await import(`${importUrl}?hot=${Date.now()}`);
+  const imported = await importFresh(filePath);
 
   const allExportedMembers = Object.entries<ExportedMemberT>(imported).map(
     ([name, value]) => ({ name, value })
@@ -32,7 +42,10 @@ export async function importFresh<ExportedMemberT>(
 
 export async function findAppRootPath(): Promise<AbsolutePath> {
   const apiRootPath = findApiRootPath();
-  return apiRootPath.split(path.sep).slice(0, -1).join(path.sep) as AbsolutePath;
+  return apiRootPath
+    .split(path.sep)
+    .slice(0, -1)
+    .join(path.sep) as AbsolutePath;
 }
 
 export function findApiRootPath(): AbsolutePath {

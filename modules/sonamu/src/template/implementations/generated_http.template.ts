@@ -1,11 +1,11 @@
 import qs from "qs";
 import { z } from "zod";
-import { TemplateOptions } from "../types/types";
-import { getZodObjectFromApi } from "../api/code-converters";
-import { ExtendedApi } from "../api/decorators";
-import { Template } from "./base-template";
+import { TemplateOptions } from "../../types/types";
+import { getZodObjectFromApi } from "../../api/code-converters";
+import { ExtendedApi } from "../../api/decorators";
+import { Template } from "../base-template";
 import prettier from "prettier";
-import { Sonamu } from "../api/sonamu";
+import { Sonamu } from "../../api/sonamu";
 
 export class Template__generated_http extends Template {
   constructor() {

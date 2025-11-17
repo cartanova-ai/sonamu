@@ -1,12 +1,12 @@
 import * as _ from "lodash-es";
-import { TemplateOptions } from "../types/types";
-import { EntityManager } from "../entity/entity-manager";
-import { Entity } from "../entity/entity";
-import { EntityPropNode } from "../types/types";
-import { propNodeToZodTypeDef, zodTypeToZodCode } from "../api/code-converters";
-import { Template } from "./base-template";
-import { nonNullable } from "../utils/utils";
-import { Sonamu } from "../api";
+import { TemplateOptions } from "../../types/types";
+import { EntityManager } from "../../entity/entity-manager";
+import { Entity } from "../../entity/entity";
+import { EntityPropNode } from "../../types/types";
+import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
+import { Template } from "../base-template";
+import { nonNullable } from "../../utils/utils";
+import { Sonamu } from "../../api";
 
 export type SourceCode = {
   label: string;

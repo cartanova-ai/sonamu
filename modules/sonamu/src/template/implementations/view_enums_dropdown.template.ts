@@ -1,7 +1,7 @@
-import { TemplateOptions } from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { Template } from "./base-template";
-import inflection from "inflection";
+import { TemplateOptions } from "../../types/types";
+import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
+import { Template } from "../base-template";
+import { getLabel } from "../common";
 
 export class Template__view_enums_dropdown extends Template {
   constructor() {
@@ -49,21 +49,5 @@ export function ${enumId}Dropdown(props: DropdownProps) {
       `.trim(),
       importKeys: [],
     };
-  }
-}
-
-export function getLabel(entityId: string, enumId: string): string {
-  if (enumId.endsWith("OrderBy")) {
-    return "정렬";
-  } else if (enumId.endsWith("SearchField")) {
-    return "검색";
-  } else {
-    const enumProp = EntityManager.get(entityId).props.find(
-      (prop) => `${entityId}${inflection.camelize(prop.name)}` === enumId
-    );
-    if (enumProp && enumProp.desc) {
-      return enumProp.desc;
-    }
-    return enumId;
   }
 }
