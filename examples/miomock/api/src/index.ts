@@ -1,9 +1,3 @@
-import type {} from "dynohot";
-
-import.meta.hot?.dispose(() => {
-  console.log("index dispose!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-});
-
 import { Sonamu, FSDriver, S3Driver } from "sonamu";
 import path from "path";
 import { fileURLToPath } from 'url';
@@ -16,7 +10,6 @@ const host = "localhost";
 const port = 10280;
 
 async function bootstrap() {
-
   await Sonamu.createServer({
     listen: { port, host },
     plugins: {
