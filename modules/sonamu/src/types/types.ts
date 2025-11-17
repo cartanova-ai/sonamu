@@ -847,7 +847,7 @@ export type SonamuFastifyConfig = {
       AuthContext,
     request: FastifyRequest,
     reply: FastifyReply
-  ) => Context;
+  ) => Context | Promise<Context>;
   guardHandler: (
     guard: GuardKey,
     request: FastifyRequest,
