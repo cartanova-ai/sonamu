@@ -2,7 +2,6 @@
   "private": true,
   "workspaces": [
     "examples/miomock/*",
-    "examples/testserver",
     "modules/sonamu",
     "modules/loader",
     "modules/react-sui",
