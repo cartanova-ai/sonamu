@@ -606,6 +606,8 @@ export class FixtureManagerClass {
 
       const q = db.insert(insertData).into(entity.table);
       await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
+      console.log(chalk.green(`Inserted into ${entity.table}: #${fixture.id}`));
+
       return {
         entityId: fixture.entityId,
         id: fixture.id,
