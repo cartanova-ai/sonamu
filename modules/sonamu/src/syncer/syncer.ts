@@ -1,5 +1,5 @@
 import path, { dirname } from "path";
-import { globAsync, importFresh } from "../utils/utils";
+import { globAsync, importMembersFresh } from "../utils/utils";
 import { createReadStream, PathLike } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
@@ -27,10 +27,11 @@ import {
   toAbsolutePath,
   toProjectRelativePath,
 } from "../utils/path-utils";
-import { generateTemplate, getTemplate, renderTemplate } from "./template";
-import { readApisFromFile } from "./ast-parsing";
+import { generateTemplate, renderTemplate } from "./template";
+import { readApisFromFile } from "./api-parsing";
 import { BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
+import { Template } from "../template";
 
 type FileType =
   | "model"
@@ -575,7 +576,7 @@ export class Syncer {
 
     let count = 0;
     for (const filePath of modelPaths) {
-      const importedMembers = await importFresh<
+      const importedMembers = await importMembersFresh<
         BaseModelClass | BaseFrameClass
       >(filePath);
 
@@ -606,7 +607,7 @@ export class Syncer {
 
     let count = 0;
     for (const filePath of typePaths) {
-      const importedMembers = await importFresh<z.ZodObject<any>>(filePath);
+      const importedMembers = await importMembersFresh<z.ZodObject<any>>(filePath);
       for (const { name, value } of importedMembers) {
         if (value instanceof z.ZodObject) {
           this.types[name] = value;
@@ -628,7 +629,7 @@ export class Syncer {
     templateKey: TemplateKey,
     enumId?: string
   ): Promise<{ subPath: string; fullPath: string; isExists: boolean }> {
-    const { target, path: genPath } = getTemplate(templateKey).getTargetAndPath(
+    const { target, path: genPath } = Template.find(templateKey).getTargetAndPath(
       EntityManager.getNamesFromId(entityId),
       enumId
     );
@@ -657,7 +658,7 @@ export class Syncer {
     return await reduceAsync(
       keys,
       async (result, key) => {
-        const tpl = getTemplate(key);
+        const tpl = Template.find(key);
         if (key.startsWith("view_enums")) {
           await mapAsync(enumsKeys, async (componentId) => {
             const { target, path: p } = tpl.getTargetAndPath(

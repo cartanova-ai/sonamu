@@ -1,8 +1,9 @@
-import { RenderingNode, TemplateOptions } from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { Template } from "./base-template";
+import { TemplateOptions } from "../../types/types";
+import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
+import { Template } from "../base-template";
 import { Template__view_list } from "./view_list.template";
-import { Sonamu } from "../api";
+import { Sonamu } from "../../api";
+import { getZodTypeById, zodTypeToRenderingNode } from "../template-zod";
 
 export class Template__model extends Template {
   constructor() {
@@ -18,11 +19,10 @@ export class Template__model extends Template {
     };
   }
 
-  render(
-    { entityId }: TemplateOptions["model"],
-    _columnsNode: RenderingNode,
-    listParamsNode: RenderingNode
-  ) {
+  async render({ entityId }: TemplateOptions["model"]) {
+    const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
+    const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
+
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);
 

@@ -2,15 +2,15 @@ import {
   isManyToManyRelationProp,
   SubsetQuery,
   TemplateOptions,
-} from "../types/types";
-import { EntityManager } from "../entity/entity-manager";
-import { Template } from "./base-template";
+} from "../../types/types";
+import { EntityManager } from "../../entity/entity-manager";
+import { Template } from "../base-template";
 import inflection from "inflection";
 import { SourceCode } from "./generated.template";
 import * as _ from "lodash-es";
-import { nonNullable } from "../utils/utils";
-import { Sonamu } from "../api";
-import { Entity } from "../entity/entity";
+import { nonNullable } from "../../utils/utils";
+import { Sonamu } from "../../api";
+import { Entity } from "../../entity/entity";
 
 export class Template__generated_sso extends Template {
   constructor() {

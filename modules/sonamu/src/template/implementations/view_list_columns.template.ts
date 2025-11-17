@@ -1,6 +1,6 @@
-import { TemplateOptions } from "../types/types";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { Template } from "./base-template";
+import { TemplateOptions } from "../../types/types";
+import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
+import { Template } from "../base-template";
 
 export class Template__view_list_columns extends Template {
   constructor() {

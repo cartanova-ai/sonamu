@@ -35,6 +35,7 @@ import { AbsolutePath, toProjectRelativePath } from "../utils/path-utils";
 import { centerText } from "../utils/console-util";
 import { BaseModel } from "../database/base-model";
 import assert from "assert";
+import { Template } from "../template/base-template";
 export type SonamuConfig = {
   projectName?: string;
   api: {
@@ -488,6 +489,9 @@ class SonamuClass {
         console.error(e);
       }
     });
+
+    // 이걸 여기에 두는게 맞나 싶음,,, TODO
+    Template.loadAll();
   }
 
   /*

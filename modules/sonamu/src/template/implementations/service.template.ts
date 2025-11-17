@@ -1,18 +1,18 @@
 import inflection from "inflection";
 import * as _ from "lodash-es";
-import { TemplateOptions } from "../types/types";
-import { EntityNamesRecord } from "../entity/entity-manager";
-import { ApiParamType, ApiParam } from "../types/types";
+import { TemplateOptions } from "../../types/types";
+import { EntityNamesRecord } from "../../entity/entity-manager";
+import { ApiParamType, ApiParam } from "../../types/types";
 import {
   apiParamTypeToTsType,
   apiParamToTsCode,
   unwrapPromiseOnce,
   zodTypeToTsTypeDef,
   apiParamToTsCodeAsObject,
-} from "../api/code-converters";
-import { ExtendedApi } from "../api/decorators";
-import { Template } from "./base-template";
-import { Sonamu } from "../api/sonamu";
+} from "../../api/code-converters";
+import { ExtendedApi } from "../../api/decorators";
+import { Template } from "../base-template";
+import { Sonamu } from "../../api/sonamu";
 
 export class Template__service extends Template {
   constructor() {
