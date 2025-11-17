@@ -1,90 +1,38 @@
 import path, { dirname } from "path";
-import { globAsync, importMultiple } from "../utils/utils";
-import { createReadStream } from "fs";
+import { globAsync, importFresh } from "../utils/utils";
+import { getDirname } from "../utils/esm-utils";
+import { createReadStream, PathLike } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
+
+const __dirname = getDirname(import.meta.url);
 import crypto from "crypto";
 import equal from "fast-deep-equal";
-import _, { chunk } from "lodash";
+import * as _ from "lodash-es";
 import inflection from "inflection";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import ts from "typescript";
-import {
-  ApiParam,
-  ApiParamType,
-  EntityProp,
-  EntityPropNode,
-  isBelongsToOneRelationProp,
-  isBigIntegerProp,
-  isBooleanProp,
-  isDateProp,
-  isDateTimeProp,
-  isDecimalProp,
-  isDoubleProp,
-  isEnumProp,
-  isFloatProp,
-  isIntegerProp,
-  isJsonProp,
-  isOneToOneRelationProp,
-  isRelationProp,
-  isStringProp,
-  isTextProp,
-  isTimeProp,
-  isTimestampProp,
-  isUuidProp,
-  isVirtualProp,
-} from "../types/types";
-import {
-  ApiDecoratorOptions,
-  registeredApis,
-  ExtendedApi,
-} from "../api/decorators";
+import { ApiParam, ApiParamType, GenerateOptions } from "../types/types";
+import { ApiDecoratorOptions } from "../api/decorators";
 import { z } from "zod";
 import chalk from "chalk";
-import {
-  TemplateKey,
-  PathAndCode,
-  TemplateOptions,
-  GenerateOptions,
-  RenderingNode,
-} from "../types/types";
-import {
-  AlreadyProcessedException,
-  BadRequestException,
-  ServiceUnavailableException,
-} from "../exceptions/so-exceptions";
-import { wrapIf } from "../utils/lodash-able";
-import { getTextTypeLength } from "../api/code-converters";
-import { Template } from "../templates/base-template";
-import { Template__generated } from "../templates/generated.template";
-import { Template__init_types } from "../templates/init_types.template";
-import { Template__entity } from "../templates/entity.template";
-import { Template__model } from "../templates/model.template";
-import { Template__model_test } from "../templates/model_test.template";
-import { Template__service } from "../templates/service.template";
-import { Template__view_form } from "../templates/view_form.template";
-import { Template__view_list } from "../templates/view_list.template";
-import prettier from "prettier";
-import { Template__view_id_all_select } from "../templates/view_id_all_select.template";
-import { Template__view_id_async_select } from "../templates/view_id_async_select.template";
-import { Template__view_enums_dropdown } from "../templates/view_enums_dropdown.template";
-import { Template__view_enums_select } from "../templates/view_enums_select.template";
-import { Template__view_enums_buttonset } from "../templates/view_enums_buttonset.template";
-import { Template__view_search_input } from "../templates/view_search_input.template";
-import { Template__view_list_columns } from "../templates/view_list_columns.template";
-import { Template__generated_http } from "../templates/generated_http.template";
+import { TemplateKey, TemplateOptions } from "../types/types";
+import { BadRequestException } from "../exceptions/so-exceptions";
 import { Sonamu } from "../api/sonamu";
-import { Template__generated_sso } from "../templates/generated_sso.template";
-import { setTimeout as setTimeoutPromises } from "timers/promises";
 import assert from "assert";
-import * as swc from "@swc/core";
 import { minimatch } from "minimatch";
+import { mapAsync, reduceAsync } from "../utils/async-utils";
+import { centerText } from "../utils/console-util";
+import { runWithGracefulShutdown } from "../utils/process-utils";
 import {
-  everyAsync,
-  filterAsync,
-  mapAsync,
-  reduceAsync,
-} from "../utils/async-utils";
+  AbsolutePath,
+  ProjectRelativePath,
+  toAbsolutePath,
+  toProjectRelativePath,
+} from "../utils/path-utils";
+import { generateTemplate, getTemplate, renderTemplate } from "./template";
+import { readApisFromFile } from "./ast-parsing";
+import { BaseFrameClass } from "../api/base-frame";
+import { BaseModelClass } from "../database/base-model";
 
 type FileType =
   | "model"
@@ -93,26 +41,17 @@ type FileType =
   | "generated"
   | "entity"
   | "frame";
-type GlobPattern = {
-  [key in FileType]: string;
+type GlobPattern<T extends ProjectRelativePath | AbsolutePath> = {
+  [key in FileType]: T;
 };
+
 type PathAndChecksum = {
-  path: string;
+  path: AbsolutePath;
   checksum: string;
 };
+
 type DiffGroups = {
-  [key in FileType]: string[];
-};
-export type RenderedTemplate = {
-  target: string;
-  path: string;
-  body: string;
-  importKeys: string[];
-  customHeaders?: string[];
-  preTemplates?: {
-    key: TemplateKey;
-    options: TemplateOptions[TemplateKey];
-  }[];
+  [key in FileType]: AbsolutePath[];
 };
 
 export class Syncer {
@@ -126,341 +65,156 @@ export class Syncer {
     options: ApiDecoratorOptions;
   }[] = [];
   types: { [typeName: string]: z.ZodObject<any> } = {};
-  models: { [modelName: string]: unknown } = {};
+  models: { [modelName: string]: BaseModelClass | BaseFrameClass } = {};
   isSyncing: boolean = false;
 
-  public checksumPatternGroup: GlobPattern = {
-    /* 원본 체크 */
-    entity: Sonamu.apiRootPath + "/src/application/**/*.entity.json",
-    types: Sonamu.apiRootPath + "/src/application/**/*.types.ts",
-    generated: Sonamu.apiRootPath + "/src/application/sonamu.generated.ts",
-    functions: Sonamu.apiRootPath + "/src/application/**/*.functions.ts",
-    /* compiled-JS 체크 */
-    model: Sonamu.apiRootPath + "/dist/application/**/*.model.js",
-    frame: Sonamu.apiRootPath + "/dist/application/**/*.frame.js",
+  public checksumPatternGroup: GlobPattern<ProjectRelativePath> = {
+    entity: "src/application/**/*.entity.json",
+    types: "src/application/**/*.types.ts",
+    generated: "src/application/sonamu.generated.ts",
+    model: "src/application/**/*.model.ts",
+    frame: "src/application/**/*.frame.ts",
+    functions: "src/application/**/*.functions.ts",
   };
 
   get checksumsPath(): string {
-    return path.join(Sonamu.apiRootPath, "/sonamu.lock");
+    return path.join(
+      Sonamu.apiRootPath,
+      "/sonamu.lock" /*TODO 슬래시 빼도 됨*/
+    );
   }
   public constructor() {}
 
-  async sync(): Promise<void> {
-    const { targets } = Sonamu.config.sync;
+  private checksumPatternGroupsInAbsolutePath(): GlobPattern<AbsolutePath> {
+    return Object.fromEntries(
+      Object.entries(this.checksumPatternGroup).map(([key, value]) => [
+        key,
+        path.join(Sonamu.apiRootPath, value),
+      ])
+    ) as GlobPattern<AbsolutePath>;
+  }
 
-    // 번들러 여부에 따라 현재 디렉토리가 바뀌므로
-    const currentDirname = __dirname.endsWith("/syncer")
-      ? __dirname
-      : path.join(__dirname, "./syncer");
+  /**
+   * 주어진 타겟들에 sonamu.shared.ts를 복사합니다.
+   * @param targets - 타겟들
+   * @returns
+   */
+  private async copySharedToTargets(targets: string[]): Promise<void> {
+    for (const target of targets) {
+      const srcCodePath = path
+        .join(__dirname, `../shared/${target}.shared.ts.txt`)
+        .replace("/dist/", "/src/");
+      if (!(await exists(srcCodePath))) {
+        return;
+      }
 
-    // 트리거와 무관하게 shared 분배
-    await Promise.all(
-      targets.map(async (target) => {
-        const srcCodePath = path
-          .join(currentDirname, `../shared/${target}.shared.ts.txt`)
-          .replace("/dist/", "/src/");
-        if (!(await exists(srcCodePath))) {
-          return;
+      const dstCodePath = path.join(
+        Sonamu.appRootPath,
+        target,
+        "src/services/sonamu.shared.ts"
+      );
+
+      const srcChecksum = await this.getChecksumOfFile(srcCodePath);
+      const dstChecksum = await (async () => {
+        if (!(await exists(dstCodePath))) {
+          return "";
         }
+        return this.getChecksumOfFile(dstCodePath);
+      })();
 
-        const dstCodePath = path.join(
-          Sonamu.appRootPath,
-          target,
-          "src/services/sonamu.shared.ts"
-        );
+      if (srcChecksum === dstChecksum) {
+        return;
+      }
+      await writeFile(dstCodePath, await readFile(srcCodePath));
+      console.log(chalk.blue("shared.ts is synced"));
+    }
+  }
 
-        const srcChecksum = await this.getChecksumOfFile(srcCodePath);
-        const dstChecksum = await (async () => {
-          if (!(await exists(dstCodePath))) {
-            return "";
-          }
-          return this.getChecksumOfFile(dstCodePath);
-        })();
+  /**
+   * 체크섬 파일에 저장된 내용과 현재 실제 파일의 체크섬을 비교하여 변경된 파일을 찾습니다.
+   * @returns 변경된 파일 경로 배열. 프로젝트 루트부터 슬래시로 시작합니다. 예시: "/src/application/user/user.model.ts"
+   */
+  private async findChangedFilesUsingChecksums(): Promise<AbsolutePath[]> {
+    let calculatedChecksums = await this.getCurrentChecksums();
+    const savedChecksums = await this.getPreviousChecksums();
 
-        if (srcChecksum === dstChecksum) {
-          return;
-        }
-        await writeFile(dstCodePath, await readFile(srcCodePath));
-        console.log(chalk.blue("shared.ts is synced"));
-      })
+    const isSame = equal(calculatedChecksums, savedChecksums);
+    if (isSame) {
+      return [];
+    }
+
+    const diff = _.differenceWith(
+      calculatedChecksums,
+      savedChecksums,
+      _.isEqual
     );
 
-    // 현재 checksums
-    let currentChecksums = await this.getCurrentChecksums();
-    // 이전 checksums
-    const previousChecksums = await this.getPreviousChecksums();
+    return diff.map((r) => r.path);
+  }
 
-    // 비교
-    const isSame = equal(currentChecksums, previousChecksums);
+  /**
+   * 체크섬을 갱신합니다.
+   * 현재 파일들의 체크섬을 계산해서 구한 다음, 체크섬 파일에 저장된 내용과 다르면 체크섬 파일을 갱신합니다.
+   * @returns
+   */
+  async renewChecksums(): Promise<void> {
+    let calculatedChecksums = await this.getCurrentChecksums();
+    const savedChecksums = await this.getPreviousChecksums();
+
+    const isSame = equal(calculatedChecksums, savedChecksums);
     if (isSame) {
-      const msg = "All files are synced!";
-      const margin = (process.stdout.columns - msg.length) / 2;
-      console.log(
-        chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
-      );
       return;
     }
 
-    const abc = new AbortController();
-    this.isSyncing = true;
-    const onSIGUSR2 = async () => {
-      if (this.isSyncing === false) {
-        process.exit(0);
-      }
-      console.log(chalk.magentaBright(`wait for syncing done....`));
-
-      // 싱크 완료 대기
-      try {
-        await setTimeoutPromises(20000, "waiting-sync", { signal: abc.signal });
-      } catch {}
-      console.log(chalk.magentaBright(`Syncing DONE!`));
-      process.exit(0);
-    };
-    process.on("SIGUSR2", onSIGUSR2);
-
-    // 변경된 파일 찾기
-    const diff = _.differenceWith(
-      currentChecksums,
-      previousChecksums,
-      _.isEqual
-    );
-    const diffFiles = diff.map((r) => r.path);
-    console.log("Changed Files: ", diffFiles);
-
-    const { changedChecksums } = await this.doSyncActions(
-      diffFiles,
-      currentChecksums
-    );
-    // checksum 오버라이드 (액션 실행 과정 중간에 체크섬이 바뀐 경우)
-    currentChecksums = changedChecksums ?? currentChecksums;
-
-    // 저장
-    await this.saveChecksums(currentChecksums);
-
-    // 싱크 종료
-    this.isSyncing = false;
-    abc.abort();
-    process.off("SIGUSR2", onSIGUSR2);
+    await this.saveChecksums(calculatedChecksums);
   }
 
-  async doSyncActions(
-    diffFiles: string[],
-    currentChecksums?: PathAndChecksum[]
-  ): Promise<{
-    diffTypes: string[];
-    changedChecksums?: PathAndChecksum[];
-  }> {
-    // 다른 부분 찾아 액션
-    const diffGroups = _.groupBy(diffFiles, (r) => {
-      const matched = r.match(
-        /\.(model|types|functions|entity|generated|frame)\.[tj]s/
-      );
-      return matched?.[1] ?? "unknown";
-    }) as unknown as DiffGroups;
+  /**
+   * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
+   * 다만 sonamu.shared.ts는 체크섬 비교 없이 무조건 싱크(복사)합니다.
+   * @returns
+   */
+  async sync(): Promise<void> {
+    const { targets } = Sonamu.config.sync;
 
-    // 변경된 파일들을 타입별로 분리하여 각 타입별 액션 처리
-    const diffTypes = Object.keys(diffGroups);
+    // sonamu.shared.ts는 무조건 싱크(복사)합니다.
+    await this.copySharedToTargets(targets);
 
-    // 트리거: entity, types
-    // 액션: 스키마 생성
-    if (diffTypes.includes("entity") || diffTypes.includes("types")) {
-      await EntityManager.reload();
-
-      await this.actionGenerateSchemas();
-
-      // types 생성(entity 새로 추가된 경우)
-      // parentId가 없고, types가 없는 경우에만 생성
-      const entityId = this.getEntityIdFromPath([
-        ...(diffGroups["entity"] ?? []),
-      ])[0];
-      if (entityId) {
-        const entity = EntityManager.get(entityId);
-        const typeFilePath = path.join(
-          Sonamu.apiRootPath,
-          `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`
-        );
-        if (entity.parentId === undefined && !(await exists(typeFilePath))) {
-          await this.generateTemplate("init_types", { entityId });
-        }
-      }
-
-      // generated 싱크까지 동시에 처리 후 체크섬 갱신
-      diffGroups["generated"] = _.uniq([
-        ...(diffGroups["generated"] ?? []),
-        "/src/application/sonamu.generated.ts",
-      ]);
-      diffTypes.push("generated");
-
-      // fullSync인 경우만 실행
-      if (currentChecksums) {
-        currentChecksums = await this.getCurrentChecksums();
-      }
+    // 그 다음부터는 변경된 파일을 찾아서 동기화 작업을 실행합니다.
+    const changedFiles = await this.findChangedFilesUsingChecksums();
+    if (changedFiles.length === 0) {
+      console.log(chalk.black.bgGreen(centerText("All files are synced!")));
+      return;
     }
 
-    // 트리거: types, enums, generated 변경시
-    // 액션: 파일 싱크 types, enums, generated
-    if (
-      diffTypes.includes("types") ||
-      diffTypes.includes("functions") ||
-      diffTypes.includes("generated")
-    ) {
-      const tsPaths = _.uniq(
-        [
-          ...(diffGroups["types"] ?? []),
-          ...(diffGroups["functions"] ?? []),
-          ...(diffGroups["generated"] ?? []),
-        ].map((p) => p.replace("/dist/", "/src/").replace(".js", ".ts"))
-      );
-      await this.actionSyncFilesToTargets(tsPaths);
-    }
+    // 만약 싱크 중에 프로세스가 죽으면 꼬여버리기 때문에,
+    // 시그널에도 잠시 버틸 수 있는 환경 속에서 싱크를 실행합니다.
+    await runWithGracefulShutdown(
+      async () => {
+        // 얘가 싱크 작업 수행하는 본체입니다.
+        await this.doSyncActions(changedFiles);
 
-    // 트리거: model
-    if (diffTypes.includes("model") || diffTypes.includes("frame")) {
-      const mergedGroup = [
-        ...(diffGroups["model"] ?? []),
-        ...(diffGroups["frame"] ?? []),
-      ];
-
-      // registeredApis 초기화
-      await this.autoloadModels();
-
-      // Syncer.apis 초기화
-      await this.autoloadApis();
-
-      const params: { namesRecord: EntityNamesRecord; modelTsPath: string }[] =
-        mergedGroup.map((modelPath) => {
-          if (modelPath.endsWith(".model.js")) {
-            const entityId = this.getEntityIdFromPath([modelPath])[0];
-            assert(entityId);
-            return {
-              namesRecord: EntityManager.getNamesFromId(entityId),
-              modelTsPath: path.join(
-                Sonamu.apiRootPath,
-                modelPath
-                  .replace("/dist/", "/src/")
-                  .replace(".model.js", ".model.ts")
-              ),
-            };
-          }
-          if (modelPath.endsWith("frame.js")) {
-            const [, frameName] = modelPath.match(/.+\/(.+)\.frame.js$/) ?? [];
-            assert(frameName);
-            return {
-              namesRecord: EntityManager.getNamesFromId(frameName),
-              modelTsPath: path.join(
-                Sonamu.apiRootPath,
-                modelPath
-                  .replace("/dist/", "/src/")
-                  .replace(".frame.js", ".frame.ts")
-              ),
-            };
-          }
-          throw new Error("not reachable");
-        });
-      await this.actionGenerateServices(params);
-
-      await this.actionGenerateHttps();
-    }
-
-    return {
-      diffTypes,
-      changedChecksums: currentChecksums,
-    };
+        // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
+        await this.renewChecksums();
+      },
+      { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 }
+    );
   }
 
-  async syncFromWatcher(diffFiles: string[]): Promise<void> {
-    const tsFiles = diffFiles.filter((file) => file.endsWith(".ts"));
-    const jsonFiles = diffFiles.filter((file) => file.endsWith(".json"));
+  /**
+   * 주어진 변경 파일들 중 체크섬 관리 대상인 것들만 가져다가 싱크를 진행합니다.
+   * 체크섬 파일 업데이트는 여기에서 하지 않습니다. 호출자가 합니다.
+   * @param diffFilePaths - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
+   */
+  async syncFromWatcher(diffFilePaths: AbsolutePath[]): Promise<void> {
+    // watcher가 가져온 변경 알림 중, 우리가 관심있는 것들만 뽑아옵니다.
+    const targetFilePaths = diffFilePaths.filter((filePath) =>
+      Object.values(this.checksumPatternGroupsInAbsolutePath()).some(
+        (pattern) => minimatch(filePath, pattern)
+      )
+    );
 
-    // transpile (성능 이슈를 고려하여 5개 동시 실행)
-    const chunks = chunk(tsFiles, 5);
-    let transpiledFilePaths: string[] = [];
-    for (const chunk of chunks) {
-      const _transpiledFilePaths = await Promise.all(
-        chunk.map(async (diffFile) => {
-          const { code, map } = await swc.transformFile(diffFile, {
-            module: {
-              type: "commonjs",
-            },
-            jsc: {
-              parser: {
-                syntax: "typescript",
-                decorators: true,
-              },
-              target: "es5",
-            },
-            sourceMaps: true,
-          });
-
-          const jsPath = diffFile
-            .replace("/src/", "/dist/")
-            .replace(".ts", ".js");
-          await mkdir(path.dirname(jsPath), { recursive: true }); // 파일 새로 추가된 경우 디렉토리 생성
-          await writeFile(jsPath, code);
-
-          if (map) {
-            const mapPath = jsPath + ".map";
-            await mkdir(path.dirname(mapPath), { recursive: true });
-            await writeFile(mapPath, map);
-
-            const sourceMapComment =
-              "\n//# sourceMappingURL=" + path.basename(mapPath);
-            await writeFile(jsPath, sourceMapComment, {
-              flag: "a" /*파일 끝에 붙이기만 해요*/,
-            });
-          }
-
-          console.log(
-            chalk.bold("Transpiled: ") +
-              chalk.blue(`${jsPath.replace(Sonamu.apiRootPath, "api")}`)
-          );
-          return jsPath;
-        })
-      );
-      transpiledFilePaths.push(..._transpiledFilePaths);
-    }
-
-    // module reload - doSyncActions 전에 캐시 삭제
-    function clearModuleAndDependents(filePath: string) {
-      if (!require.resolve) {
-        return; // ESM 환경에서는 캐시 삭제가 불가능합니다. ESM으로 전환중이지만 아직 CJS 기준 HMR 구현체가 남아있기 떄문에 임시로 가드를 설치해둡니다.
-      }
-
-      const resolved = require.resolve(filePath);
-      const toDelete = new Set([resolved]);
-
-      // 이 파일을 children으로 가진 모듈 찾기
-      Object.keys(require.cache).forEach((key) => {
-        const mod = require.cache[key];
-        if (mod?.children?.some((child) => child.id === resolved)) {
-          toDelete.add(key);
-        }
-      });
-
-      toDelete.forEach((key) => {
-        if (key.includes("dist/index.js")) {
-          process.kill(process.pid, "SIGUSR2");
-        }
-        delete require.cache[key];
-        // console.debug(
-        //   chalk.bold("ModuleCleared: ") +
-        //     chalk.blue(`${key.replace(Sonamu.apiRootPath, "api")}`)
-        // );
-      });
-    }
-    transpiledFilePaths.map((filePath) => {
-      clearModuleAndDependents(filePath);
-    });
-
-    // doSyncActions
-    const allFilePaths = [...tsFiles, ...transpiledFilePaths, ...jsonFiles];
-    const targetFilePaths = allFilePaths
-      .filter((filePath) => {
-        return Object.values(this.checksumPatternGroup).some((pattern) =>
-          minimatch(filePath, pattern)
-        );
-      })
-      .map((filePath) => "/" + path.relative(Sonamu.apiRootPath, filePath));
+    // 싱크 작업 수행하는 본체입니다.
     await this.doSyncActions(targetFilePaths);
 
     this.apis = [];
@@ -473,7 +227,152 @@ export class Syncer {
     this.syncUI();
   }
 
-  getEntityIdFromPath(filePaths: string[]): string[] {
+  /**
+   * 실제 싱크를 수행하는 본체입니다.
+   * @param diffFiles
+   * @returns
+   */
+  async doSyncActions(
+    diffFilePaths: AbsolutePath[]
+  ): Promise<{ diffTypes: string[] }> {
+    const diffGroups = this.calculateDiffGroups(diffFilePaths);
+    const diffTypes = Object.keys(diffGroups);
+
+    // 트리거: entity, types
+    // 액션: 스키마 생성
+    if (diffTypes.includes("entity")) {
+      await this.handleEntityChange(diffGroups, diffTypes);
+    }
+
+    // 트리거: types, enums, generated 변경시
+    // 액션: 파일 싱크 types, enums, generated
+    if (
+      diffTypes.includes("types") ||
+      diffTypes.includes("functions") ||
+      diffTypes.includes("generated")
+    ) {
+      await this.handleTypesOrFunctionsOrGeneratedChange(diffGroups);
+    }
+
+    // 트리거: model
+    if (diffTypes.includes("model") || diffTypes.includes("frame")) {
+      await this.handleModelOrFrameChange(diffGroups);
+    }
+
+    return {
+      diffTypes,
+    };
+  }
+
+  private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
+    return _.groupBy(diffFiles, (r) => {
+      const matched = r.match(
+        /\.(model|types|functions|entity|generated|frame)\.[tj]s/
+      );
+      return matched?.[1] ?? "unknown";
+    }) as unknown as DiffGroups;
+  }
+
+  private async handleEntityChange(
+    diffGroups: DiffGroups,
+    diffTypes: string[]
+  ): Promise<void> {
+    await EntityManager.reload();
+
+    console.log(
+      chalk.gray(
+        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map(toProjectRelativePath).join(", ")}`
+      )
+    );
+
+    // types 생성(entity 새로 추가된 경우)
+    // parentId가 없고, types가 없는 경우에만 생성
+    const entityId = this.getEntityIdFromPath([
+      ...(diffGroups["entity"] ?? []),
+    ])[0];
+    if (entityId) {
+      const entity = EntityManager.get(entityId);
+      const typeFilePath = toAbsolutePath(
+        `src/application/${entity.names.fs}/${entity.names.fs}.types.ts`
+      );
+      if (entity.parentId === undefined && !(await exists(typeFilePath))) {
+        await generateTemplate("init_types", { entityId });
+      }
+    }
+
+    await this.actionGenerateSchemas();
+
+    diffGroups["generated"] = _.uniq([
+      ...(diffGroups["generated"] ?? []),
+      toAbsolutePath("src/application/sonamu.generated.ts"),
+    ]);
+    diffTypes.push("generated");
+  }
+
+  private async handleTypesOrFunctionsOrGeneratedChange(
+    diffGroups: DiffGroups
+  ): Promise<FileType[]> {
+    const tsPaths = _.uniq([
+      ...(diffGroups["types"] ?? []),
+      ...(diffGroups["functions"] ?? []),
+      ...(diffGroups["generated"] ?? []),
+    ]);
+
+    console.log(
+      chalk.gray(
+        `[Processing] Handling types/functions/generated changes: ${tsPaths.map(toProjectRelativePath).join(", ")}`
+      )
+    );
+
+    await this.actionSyncFilesToTargets(tsPaths);
+
+    return [];
+  }
+
+  private async handleModelOrFrameChange(
+    diffGroups: DiffGroups
+  ): Promise<void> {
+    const mergedGroup = [
+      ...(diffGroups["model"] ?? []),
+      ...(diffGroups["frame"] ?? []),
+    ];
+
+    console.log(
+      chalk.gray(
+        `[Processing] Handling model/frame changes: ${mergedGroup.map(toProjectRelativePath).join(", ")}`
+      )
+    );
+
+    await this.autoloadTypes(); // generated_http.template.ts에서 syncer.types를 씁니다.
+
+    const params: {
+      namesRecord: EntityNamesRecord;
+      modelTsPath: AbsolutePath;
+    }[] = mergedGroup.map((modelPath) => {
+      if (modelPath.endsWith(".model.ts")) {
+        const entityId = this.getEntityIdFromPath([modelPath])[0];
+        assert(entityId);
+        return {
+          namesRecord: EntityManager.getNamesFromId(entityId),
+          modelTsPath: modelPath,
+        };
+      }
+      if (modelPath.endsWith("frame.ts")) {
+        const [, frameName] = modelPath.match(/.+\/(.+)\.frame.js$/) ?? [];
+        assert(frameName);
+        return {
+          namesRecord: EntityManager.getNamesFromId(frameName),
+          modelTsPath: modelPath,
+        };
+      }
+      throw new Error("not reachable");
+    });
+
+    await this.actionGenerateServices(params); // 여기에 API 정보가 필요한데, 얘가 자급자족 해요
+    await this.actionGenerateHttps();
+  }
+
+  getEntityIdFromPath(filePaths: AbsolutePath[]): string[] {
     return _.uniq(
       filePaths.map((p) => {
         const matched = p.match(/application\/(.+)\//);
@@ -486,8 +385,8 @@ export class Syncer {
   async actionGenerateSchemas(): Promise<string[]> {
     return (
       await Promise.all([
-        this.generateTemplate("generated_sso", {}, { overwrite: true }),
-        this.generateTemplate("generated", {}, { overwrite: true }),
+        generateTemplate("generated_sso", {}, { overwrite: true }),
+        generateTemplate("generated", {}, { overwrite: true }),
       ])
     )
       .flat()
@@ -503,7 +402,7 @@ export class Syncer {
     return (
       await Promise.all(
         paramsArray.map(async (params) =>
-          this.generateTemplate("service", params, {
+          generateTemplate("service", params, {
             overwrite: true,
           })
         )
@@ -514,7 +413,7 @@ export class Syncer {
   }
 
   async actionGenerateHttps(): Promise<string[]> {
-    const [res] = await this.generateTemplate(
+    const [res] = await generateTemplate(
       "generated_http",
       {},
       { overwrite: true }
@@ -537,7 +436,7 @@ export class Syncer {
       );
 
       if (toPath.includes("/web/")) {
-        return nfc.replace(/from "lodash";/g, `from "lodash-es";`);
+        return nfc; // .replace(/from "lodash";/g, `from "lodash-es";`); // TODO 흠? 필요없을듯.
       } else {
         return nfc;
       }
@@ -545,7 +444,9 @@ export class Syncer {
     return writeFile(toPath, newFileContent);
   }
 
-  async actionSyncFilesToTargets(tsPaths: string[]): Promise<string[]> {
+  private async actionSyncFilesToTargets(
+    tsPaths: AbsolutePath[]
+  ): Promise<string[]> {
     const { targets } = Sonamu.config.sync;
     const { dir: apiDir } = Sonamu.config.api;
 
@@ -553,8 +454,7 @@ export class Syncer {
       await Promise.all(
         targets.map(async (target) =>
           Promise.all(
-            tsPaths.map(async (src) => {
-              const realSrc = Sonamu.apiRootPath + src;
+            tsPaths.map(async (realSrc) => {
               const dst = realSrc
                 .replace(`/${apiDir}/`, `/${target}/`)
                 .replace("/application/", "/services/");
@@ -564,9 +464,7 @@ export class Syncer {
               }
               console.log(
                 chalk.bold("Copied: ") +
-                  chalk.blue(
-                    `Copied: ${dst.replace(Sonamu.appRootPath + "/", "")}`
-                  )
+                  chalk.blue(dst.replace(Sonamu.appRootPath + "/", ""))
               );
               await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
@@ -577,12 +475,12 @@ export class Syncer {
     ).flat();
   }
 
-  async getCurrentChecksums(): Promise<PathAndChecksum[]> {
+  private async getCurrentChecksums(): Promise<PathAndChecksum[]> {
     const filePaths = (
       await Promise.all(
-        Object.entries(this.checksumPatternGroup).map(
+        Object.entries(this.checksumPatternGroupsInAbsolutePath()).map(
           async ([_fileType, pattern]) => {
-            return globAsync(pattern);
+            return globAsync(pattern) as Promise<AbsolutePath[]>;
           }
         )
       )
@@ -590,17 +488,15 @@ export class Syncer {
       .flat()
       .sort();
 
-    const fileChecksums: {
-      path: string;
-      checksum: string;
-    }[] = await Promise.all(
+    const fileChecksums = await Promise.all(
       filePaths.map(async (filePath) => {
         return {
-          path: filePath.substring(Sonamu.apiRootPath.length),
+          path: filePath,
           checksum: await this.getChecksumOfFile(filePath),
         };
       })
     );
+
     return fileChecksums;
   }
 
@@ -610,21 +506,31 @@ export class Syncer {
     }
 
     const previousChecksums = JSON.parse(
-      (await readFile(this.checksumsPath, "utf-8"))
-    ) as PathAndChecksum[];
+      await readFile(this.checksumsPath, "utf-8")
+    ).map((r: { path: ProjectRelativePath; checksum: string }) => ({
+      path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에 저장할 때에는 상대 경로로 저장해요.
+      checksum: r.checksum,
+    })) as PathAndChecksum[];
     return previousChecksums;
   }
 
-  async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
+  private async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
     await writeFile(
       this.checksumsPath,
-      JSON.stringify(checksums, null, 2),
+      JSON.stringify(
+        checksums.map((r) => ({
+          path: toProjectRelativePath(r.path), // 체크섬 파일에서 꺼내올 때에는 절대 경로로 꺼내와요.
+          checksum: r.checksum,
+        })),
+        null,
+        2
+      ),
       "utf-8"
     );
     console.log("checksum saved", this.checksumsPath);
   }
 
-  async getChecksumOfFile(filePath: string): Promise<string> {
+  async getChecksumOfFile(filePath: PathLike): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const hash = crypto.createHash("sha1");
       const input = createReadStream(filePath);
@@ -638,597 +544,83 @@ export class Syncer {
     });
   }
 
-  async readApisFromFile(filePath: string) {
-    const sourceFile = ts.createSourceFile(
-      filePath,
-      (await readFile(filePath)).toString(),
-      ts.ScriptTarget.Latest
-    );
-
-    const methods: Omit<ExtendedApi, "path" | "options">[] = [];
-    let modelName: string = "UnknownModel";
-    let methodName: string = "unknownMethod";
-    const visitor = (node: ts.Node) => {
-      if (ts.isClassDeclaration(node)) {
-        if (node.name && ts.isIdentifier(node.name)) {
-          modelName = node.name.escapedText.toString().replace(/Class$/, "");
-        }
-      }
-      if (ts.isMethodDeclaration(node)) {
-        if (ts.isIdentifier(node.name)) {
-          methodName = node.name.escapedText.toString();
-        }
-
-        const typeParameters: ApiParamType.TypeParam[] = (
-          node.typeParameters ?? []
-        ).map((typeParam) => {
-          const tp = typeParam as ts.TypeParameterDeclaration;
-
-          return {
-            t: "type-param",
-            id: tp.name.escapedText.toString(),
-            constraint: tp.constraint
-              ? this.resolveTypeNode(tp.constraint)
-              : undefined,
-          };
-        });
-        const parameters: ApiParam[] = node.parameters.map(
-          (paramDec, index) => {
-            const defaultDef = this.printNode(paramDec.initializer, sourceFile);
-
-            // 기본값이 있는 경우 paramDec.type가 undefined로 나옴
-
-            return this.resolveParamDec(
-              {
-                name: paramDec.name,
-                type: paramDec.type as ts.TypeNode,
-                optional:
-                  paramDec.questionToken !== undefined ||
-                  paramDec.initializer !== undefined,
-                defaultDef,
-              },
-              index
-            );
-          }
-        );
-        if (node.type === undefined) {
-          throw new Error(
-            `리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`
-          );
-        }
-        const returnType = this.resolveTypeNode(node.type!);
-
-        methods.push({
-          modelName,
-          methodName,
-          typeParameters,
-          parameters,
-          returnType,
-        });
-      }
-      ts.forEachChild(node, visitor);
-    };
-    visitor(sourceFile);
-
-    if (methods.length === 0) {
-      return [];
-    }
-
-    // 현재 파일의 등록된 API 필터
-    const currentModelApis = registeredApis.filter((api) => {
-      return methods.find(
-        (method) =>
-          method.modelName === api.modelName &&
-          method.methodName === api.methodName
-      );
-    });
-    if (currentModelApis.length === 0) {
-      // const p = path.join(tmpdir(), "sonamu-syncer-error.json");
-      // writeFileSync(p, JSON.stringify(registeredApis, null, 2));
-      // execSync(`open ${p}`);
-      throw new Error(`현재 파일에 사전 등록된 API가 없습니다. ${filePath}`);
-    }
-
-    // 등록된 API에 현재 메소드 타입 정보 확장
-    const extendedApis = currentModelApis.map((api) => {
-      const foundMethod = methods.find(
-        (method) =>
-          method.modelName === api.modelName &&
-          method.methodName === api.methodName
-      );
-      return {
-        ...api,
-        typeParameters: foundMethod!.typeParameters,
-        parameters: foundMethod!.parameters,
-        returnType: foundMethod!.returnType,
-      };
-    });
-    return extendedApis;
-  }
-
-  resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
-    switch (typeNode?.kind) {
-      case ts.SyntaxKind.AnyKeyword:
-        return "any";
-      case ts.SyntaxKind.UnknownKeyword:
-        return "unknown";
-      case ts.SyntaxKind.StringKeyword:
-        return "string";
-      case ts.SyntaxKind.NumberKeyword:
-        return "number";
-      case ts.SyntaxKind.BooleanKeyword:
-        return "boolean";
-      case ts.SyntaxKind.UndefinedKeyword:
-        return "undefined";
-      case ts.SyntaxKind.NullKeyword:
-        return "null";
-      case ts.SyntaxKind.VoidKeyword:
-        return "void";
-      case ts.SyntaxKind.LiteralType:
-        const literal = (typeNode as ts.LiteralTypeNode).literal;
-        if (ts.isStringLiteral(literal)) {
-          return {
-            t: "string-literal",
-            value: literal.text,
-          };
-        } else if (ts.isNumericLiteral(literal)) {
-          return {
-            t: "numeric-literal",
-            value: Number(literal.text),
-          };
-        } else {
-          if (literal.kind === ts.SyntaxKind.NullKeyword) {
-            return "null";
-          } else if (literal.kind === ts.SyntaxKind.UndefinedKeyword) {
-            return "undefined";
-          } else if (literal.kind === ts.SyntaxKind.TrueKeyword) {
-            return "true";
-          } else if (literal.kind === ts.SyntaxKind.FalseKeyword) {
-            return "false";
-          }
-          throw new Error("알 수 없는 리터럴");
-        }
-      case ts.SyntaxKind.ArrayType:
-        const arrNode = typeNode as ts.ArrayTypeNode;
-        return {
-          t: "array",
-          elementsType: this.resolveTypeNode(arrNode.elementType),
-        };
-      case ts.SyntaxKind.TypeLiteral:
-        const literalNode = typeNode as ts.TypeLiteralNode;
-        return {
-          t: "object",
-          props: literalNode.members.map((member) => {
-            if (ts.isIndexSignatureDeclaration(member)) {
-              assert(member.parameters[0]);
-              const res = this.resolveParamDec({
-                name: member.parameters[0].name as ts.Identifier,
-                type: member.parameters[0].type as ts.TypeNode,
-              });
-
-              return this.resolveParamDec({
-                name: {
-                  escapedText: `[${res.name}${res.optional ? "?" : ""}: ${
-                    res.type
-                  }]`,
-                } as ts.Identifier,
-                type: member.type as ts.TypeNode,
-              });
-            } else {
-              return this.resolveParamDec({
-                name: (member as ts.PropertySignature).name as ts.Identifier,
-                type: (member as ts.PropertySignature).type as ts.TypeNode,
-                optional:
-                  (member as ts.PropertySignature).questionToken !== undefined,
-              });
-            }
-          }),
-        };
-      case ts.SyntaxKind.TypeReference:
-        return {
-          t: "ref",
-          id: (
-            (typeNode as ts.TypeReferenceNode).typeName as ts.Identifier
-          ).escapedText.toString(),
-          args: (typeNode as ts.TypeReferenceNode).typeArguments?.map(
-            (typeArg) => this.resolveTypeNode(typeArg)
-          ),
-        };
-      case ts.SyntaxKind.UnionType:
-        return {
-          t: "union",
-          types: (typeNode as ts.UnionTypeNode).types.map((type) =>
-            this.resolveTypeNode(type)
-          ),
-        };
-      case ts.SyntaxKind.IntersectionType:
-        return {
-          t: "intersection",
-          types: (typeNode as ts.IntersectionTypeNode).types.map((type) =>
-            this.resolveTypeNode(type)
-          ),
-        };
-      case ts.SyntaxKind.IndexedAccessType:
-        return {
-          t: "indexed-access",
-          object: this.resolveTypeNode(
-            (typeNode as ts.IndexedAccessTypeNode).objectType
-          ),
-          index: this.resolveTypeNode(
-            (typeNode as ts.IndexedAccessTypeNode).indexType
-          ),
-        };
-      case ts.SyntaxKind.TupleType:
-        if (ts.isTupleTypeNode(typeNode)) {
-          return {
-            t: "tuple-type",
-            elements: typeNode.elements.map((elem) =>
-              this.resolveTypeNode(elem)
-            ),
-          };
-        }
-        break;
-      case undefined:
-        throw new Error(`typeNode undefined`);
-    }
-
-    console.debug(typeNode);
-    throw new Error(`알 수 없는 SyntaxKind ${typeNode.kind}`);
-  }
-
-  resolveParamDec = (
-    paramDec: {
-      name: ts.BindingName;
-      type: ts.TypeNode;
-      optional?: boolean;
-      defaultDef?: string;
-    },
-    index: number = 0
-  ): ApiParam => {
-    const name = paramDec.name as ts.Identifier;
-    const type = this.resolveTypeNode(paramDec.type);
-
-    if (name === undefined) {
-      console.debug({ name, type, paramDec });
-    }
-
-    const result: ApiParam = {
-      name: name.escapedText ? name.escapedText.toString() : `nonameAt${index}`,
-      type,
-      optional: paramDec.optional === true,
-      defaultDef: paramDec?.defaultDef,
-    };
-
-    // 구조분해할당의 경우 타입이름 사용
-    if (
-      ts.isObjectBindingPattern(name) &&
-      ts.isTypeReferenceNode(paramDec.type) &&
-      ts.isIdentifier(paramDec.type.typeName)
-    ) {
-      result.name = inflection.camelize(paramDec.type.typeName.text, true);
-    }
-
-    return result;
-  };
-
-  printNode(
-    node: ts.Node | undefined,
-    sourceFile: ts.SourceFile
-  ): string | undefined {
-    if (node === undefined) {
-      return undefined;
-    }
-
-    const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
-    return printer.printNode(ts.EmitHint.Unspecified, node, sourceFile);
-  }
-
   async autoloadApis() {
-    const pathPattern = path.join(
+    const modelPathsPattern = path.join(
       Sonamu.apiRootPath,
-      "/src/application/**/*.{model,frame}.ts"
+      "src/application/**/*.{model,frame}.ts"
     );
-    // console.debug(chalk.yellow(`autoload:APIs @ ${pathPattern}`));
+    const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
 
-    const filePaths = await globAsync(pathPattern);
-    const result = await Promise.all(
-      filePaths.map((filePath) => this.readApisFromFile(filePath))
+    let count = 0;
+    for (const filePath of modelPaths) {
+      const apis = await readApisFromFile(filePath);
+      this.apis.push(...apis);
+      count++;
+    }
+    console.log(
+      chalk.gray(
+        `[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`
+      )
     );
-    this.apis = result.flat();
+
     return this.apis;
   }
 
-  async autoloadModels(): Promise<{ [modelName: string]: unknown }> {
-    const pathPattern = path.join(
+  async autoloadModels() {
+    const modelPathsPattern = path.join(
       Sonamu.apiRootPath,
-      "dist/application/**/*.{model,frame}.js"
+      "src/application/**/*.{model,frame}.ts"
     );
-    // console.debug(chalk.yellow(`autoload:models @ ${pathPattern}`));
+    const modelPaths = await globAsync(modelPathsPattern);
 
-    const filePaths = await filterAsync(
-      await globAsync(pathPattern),
-      async (path) => {
-        // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
-        // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
-        const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-        return await exists(srcPath);
+    let count = 0;
+    for (const filePath of modelPaths) {
+      const importedMembers = await importFresh<
+        BaseModelClass | BaseFrameClass
+      >(filePath);
+
+      for (const { name, value } of importedMembers) {
+        if (name.endsWith("Model") || name.endsWith("Frame")) {
+          this.models[name] = value;
+        }
       }
-    );
-    const modules = await importMultiple(filePaths);
-    const functions = modules
-      .map(({ imported }) => Object.entries(imported))
-      .flat();
-    this.models = Object.fromEntries(
-      functions.filter(
-        ([name]) => name.endsWith("Model") || name.endsWith("Frame")
+      count++;
+    }
+    console.log(
+      chalk.gray(
+        `[Loading] Loaded model/frame instances from "*.{model,frame}.ts" files: ${count} files.`
       )
     );
+
     return this.models;
   }
 
-  async autoloadTypes(
-    doRefresh: boolean = false
-  ): Promise<{ [typeName: string]: z.ZodObject<any> }> {
-    if (!doRefresh && Object.keys(this.types).length > 0) {
-      return this.types;
-    }
-
-    const pathPatterns = [
-      path.join(Sonamu.apiRootPath, "/dist/application/**/*.types.js"),
-      path.join(Sonamu.apiRootPath, "/dist/application/**/*.generated.js"),
+  async autoloadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+    const typePathsPatterns = [
+      path.join(Sonamu.apiRootPath, "/src/application/**/*.types.ts"),
+      path.join(Sonamu.apiRootPath, "/src/application/**/*.generated.ts"),
     ];
-    // console.debug(chalk.magenta(`autoload:types @ ${pathPatterns.join("\n")}`));
-
-    const filePaths = await filterAsync(
-      (await mapAsync(pathPatterns, globAsync)).flat(),
-      async (path) => {
-        // src 디렉터리 내에 있는 해당 파일이 존재할 경우에만 로드
-        // 삭제된 파일이지만 dist에 남아있는 경우 BaseSchema undefined 에러 방지
-        const srcPath = path.replace("/dist/", "/src/").replace(".js", ".ts");
-        return await exists(srcPath);
-      }
-    );
-    const modules = await importMultiple(filePaths, doRefresh);
-    const functions = modules
-      .map(({ imported }) => Object.entries(imported))
-      .flat();
-    this.types = Object.fromEntries(
-      functions.filter(([, f]) => f instanceof z.ZodType)
-    ) as typeof this.types;
-    return this.types;
-  }
-
-  getTemplate(key: TemplateKey): Template {
-    if (key === "entity") {
-      return new Template__entity();
-    } else if (key === "init_types") {
-      return new Template__init_types();
-    } else if (key === "generated") {
-      return new Template__generated();
-    } else if (key === "generated_sso") {
-      return new Template__generated_sso();
-    } else if (key === "generated_http") {
-      return new Template__generated_http();
-    } else if (key === "model") {
-      return new Template__model();
-    } else if (key === "model_test") {
-      return new Template__model_test();
-    } else if (key === "service") {
-      return new Template__service();
-    } else if (key === "view_list") {
-      return new Template__view_list();
-    } else if (key === "view_list_columns") {
-      return new Template__view_list_columns();
-    } else if (key === "view_search_input") {
-      return new Template__view_search_input();
-    } else if (key === "view_form") {
-      return new Template__view_form();
-    } else if (key === "view_id_all_select") {
-      return new Template__view_id_all_select();
-    } else if (key === "view_id_async_select") {
-      return new Template__view_id_async_select();
-    } else if (key === "view_enums_select") {
-      return new Template__view_enums_select();
-    } else if (key === "view_enums_dropdown") {
-      return new Template__view_enums_dropdown();
-    } else if (key === "view_enums_buttonset") {
-      return new Template__view_enums_buttonset();
-    } else {
-      throw new BadRequestException(`잘못된 템플릿 키 ${key}`);
-    }
-  }
-
-  async renderTemplate<T extends keyof TemplateOptions>(
-    key: T,
-    options: TemplateOptions[T]
-  ): Promise<PathAndCode[]> {
-    const template: Template = this.getTemplate(key);
-
-    let extra: unknown[] = [];
-    if (key === "service") {
-      // service 필요 정보 (API 리스트)
-      const { modelTsPath } = options as TemplateOptions["service"];
-      extra = [await this.readApisFromFile(modelTsPath)];
-    } else if (["model", "view_list", "view_form"].includes(key)) {
-      const entityId = (options as TemplateOptions["model"]).entityId;
-      if (key === "view_list" || key === "model") {
-        // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
-        const columnsNode = await this.getColumnsNode(entityId, "A");
-        const listParamsZodType = await this.getZodTypeById(
-          `${entityId}ListParams`
-        );
-        const listParamsNode = this.zodTypeToRenderingNode(listParamsZodType);
-        extra = [columnsNode, listParamsNode];
-      } else if (key === "view_form") {
-        // view_form 필요 정보 (세이브파라미터 노드)
-        const saveParamsZodType = await this.getZodTypeById(
-          `${entityId}SaveParams`
-        );
-        const saveParamsNode = this.zodTypeToRenderingNode(saveParamsZodType);
-        extra = [saveParamsNode];
-      }
-    }
-
-    const rendered = await template.render(options, ...extra);
-    const resolved = await this.resolveRenderedTemplate(key, rendered);
-
-    let preTemplateResolved: PathAndCode[] = [];
-    if (rendered.preTemplates) {
-      preTemplateResolved = (
-        await Promise.all(
-          rendered.preTemplates.map(({ key, options }) => {
-            return this.renderTemplate(key, options);
-          })
-        )
-      ).flat();
-    }
-
-    return [resolved, ...preTemplateResolved];
-  }
-
-  async resolveRenderedTemplate(
-    key: TemplateKey,
-    result: RenderedTemplate
-  ): Promise<PathAndCode> {
-    const { target, path: filePath, body, importKeys, customHeaders } = result;
-
-    // import 할 대상의 대상 path 추출
-    const importDefs = importKeys
-      .reduce(
-        (r, importKey) => {
-          const modulePath = EntityManager.getModulePath(importKey);
-          let importPath = modulePath;
-          if (modulePath.includes("/") || modulePath.includes(".")) {
-            importPath = wrapIf(
-              path.relative(path.dirname(filePath), modulePath),
-              (p) => [p.startsWith(".") === false, "./" + p]
-            );
-          }
-
-          // 같은 파일에서 import 하는 경우 keys 로 나열 처리
-          const existsOne = r.find(
-            (importDef) => importDef.from === importPath
-          );
-          if (existsOne) {
-            existsOne.keys = _.uniq(existsOne.keys.concat(importKey));
-          } else {
-            r.push({
-              keys: [importKey],
-              from: importPath,
-            });
-          }
-          return r;
-        },
-        [] as {
-          keys: string[];
-          from: string;
-        }[]
-      )
-      // 셀프 참조 방지
-      .filter(
-        (importDef) =>
-          filePath.endsWith(importDef.from.replace("./", "") + ".ts") === false
-      );
-
-    // 커스텀 헤더 포함하여 헤더 생성
-    const header = [
-      ...(customHeaders ?? []),
-      ...importDefs.map(
-        (importDef) =>
-          `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`
-      ),
-    ].join("\n");
-
-    const formatted = await (async () => {
-      if (key === "generated_http") {
-        return [header, body].join("\n\n");
-      } else {
-        return prettier.format([header, body].join("\n\n"), {
-          parser: key === "entity" ? "json" : "typescript",
-        });
-      }
-    })();
-
-    return {
-      path: target + "/" + filePath,
-      code: formatted,
-    };
-  }
-
-  async writeCodeToPath(pathAndCode: PathAndCode): Promise<string[]> {
-    const { targets } = Sonamu.config.sync;
-    const { appRootPath } = Sonamu;
-    const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-
-    const dstFilePaths = _.uniq(
-      targets.map((target) => filePath.replace("/:target/", `/${target}/`))
-    );
-    return await Promise.all(
-      dstFilePaths.map(async (dstFilePath) => {
-        const dir = path.dirname(dstFilePath);
-        if (!(await exists(dir))) {
-          await mkdir(dir, { recursive: true });
-        }
-        await writeFile(dstFilePath, pathAndCode.code);
-        console.log(
-          chalk.bold("Generated: ") +
-            chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`)
-        );
-        return dstFilePath;
-      })
-    );
-  }
-
-  async generateTemplate(
-    key: TemplateKey,
-    templateOptions: any,
-    _generateOptions?: GenerateOptions
-  ) {
-    const generateOptions = {
-      overwrite: false,
-      ..._generateOptions,
-    };
-
-    // 키 children
-    const keys: TemplateKey[] = [key];
-
-    // 템플릿 렌더
-    const pathAndCodes = (
-      await Promise.all(
-        keys.map(async (key) => {
-          return await this.renderTemplate(key, templateOptions);
-        })
-      )
+    const typePaths = (
+      await Promise.all(typePathsPatterns.map(globAsync))
     ).flat();
 
-    const filteredPathAndCodes: PathAndCode[] = await (async () => {
-      if (generateOptions.overwrite === true) {
-        return pathAndCodes;
-      } else {
-        return await filterAsync(pathAndCodes, async (pathAndCode) => {
-          const { targets } = Sonamu.config.sync;
-          const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-          const dstFilePaths = targets.map((target) =>
-            filePath.replace("/:target/", `/${target}/`)
-          );
-          return await everyAsync(
-            dstFilePaths,
-            async (dstPath) => !(await exists(dstPath))
-          );
-        });
+    let count = 0;
+    for (const filePath of typePaths) {
+      const importedMembers = await importFresh<z.ZodObject<any>>(filePath);
+      for (const { name, value } of importedMembers) {
+        if (value instanceof z.ZodObject) {
+          this.types[name] = value;
+        }
       }
-    })();
-    if (filteredPathAndCodes.length === 0) {
-      throw new AlreadyProcessedException(
-        "이미 경로에 모든 파일이 존재합니다."
-      );
+      count++;
     }
-
-    return Promise.all(
-      filteredPathAndCodes.map((pathAndCode) =>
-        this.writeCodeToPath(pathAndCode)
+    console.log(
+      chalk.gray(
+        `[Loading] Loaded zod types from "*.types.ts" files: ${count} files.`
       )
     );
+
+    return this.types;
   }
 
   async checkExistsGenCode(
@@ -1236,9 +628,10 @@ export class Syncer {
     templateKey: TemplateKey,
     enumId?: string
   ): Promise<{ subPath: string; fullPath: string; isExists: boolean }> {
-    const { target, path: genPath } = this.getTemplate(
-      templateKey
-    ).getTargetAndPath(EntityManager.getNamesFromId(entityId), enumId);
+    const { target, path: genPath } = getTemplate(templateKey).getTargetAndPath(
+      EntityManager.getNamesFromId(entityId),
+      enumId
+    );
 
     const fullPath = path.join(Sonamu.appRootPath, target, genPath);
     const subPath = path.join(target, genPath);
@@ -1264,7 +657,7 @@ export class Syncer {
     return await reduceAsync(
       keys,
       async (result, key) => {
-        const tpl = this.getTemplate(key);
+        const tpl = getTemplate(key);
         if (key.startsWith("view_enums")) {
           await mapAsync(enumsKeys, async (componentId) => {
             const { target, path: p } = tpl.getTargetAndPath(
@@ -1296,280 +689,6 @@ export class Syncer {
     );
   }
 
-  async getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
-    const modulePath = EntityManager.getModulePath(zodTypeId);
-    const moduleAbsPath = path.join(
-      Sonamu.apiRootPath,
-      "dist",
-      "application",
-      modulePath + ".js"
-    );
-    const importPath = "./" + path.relative(__dirname, moduleAbsPath);
-    const imported = await import(importPath);
-
-    if (!imported[zodTypeId]) {
-      throw new Error(`존재하지 않는 zodTypeId ${zodTypeId}`);
-    }
-    return imported[zodTypeId].describe(zodTypeId);
-  }
-
-  async propNodeToZodType(propNode: EntityPropNode): Promise<z.ZodTypeAny> {
-    if (propNode.nodeType === "plain") {
-      return this.propToZodType(propNode.prop);
-    } else if (propNode.nodeType === "array") {
-      if (propNode.prop === undefined) {
-        throw new Error();
-      } else if (propNode.children.length > 0) {
-        return (
-          await this.propNodeToZodType({
-            ...propNode,
-            nodeType: "object",
-          })
-        ).array();
-      } else {
-        const innerType = await this.propToZodType(propNode.prop);
-        if (propNode.prop.nullable === true) {
-          return z.array(innerType).nullable();
-        } else {
-          return z.array(innerType);
-        }
-      }
-    } else if (propNode.nodeType === "object") {
-      const obj = await propNode.children.reduce(
-        async (promise, childPropNode) => {
-          const result = await promise;
-          result[childPropNode.prop!.name] =
-            await this.propNodeToZodType(childPropNode);
-          return result;
-        },
-        {} as any
-      );
-
-      if (propNode.prop?.nullable === true) {
-        return z.object(obj).nullable();
-      } else {
-        return z.object(obj);
-      }
-    } else {
-      throw Error;
-    }
-  }
-  async propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
-    let zodType: z.ZodTypeAny = z.unknown();
-    if (isIntegerProp(prop)) {
-      zodType = z.number().int();
-    } else if (isBigIntegerProp(prop)) {
-      zodType = z.bigint();
-    } else if (isTextProp(prop)) {
-      zodType = z.string().max(getTextTypeLength(prop.textType));
-    } else if (isEnumProp(prop)) {
-      zodType = await this.getZodTypeById(prop.id);
-    } else if (isStringProp(prop)) {
-      zodType = z.string().max(prop.length);
-    } else if (isFloatProp(prop) || isDoubleProp(prop)) {
-      zodType = z.number();
-    } else if (isDecimalProp(prop)) {
-      zodType = z.string();
-    } else if (isBooleanProp(prop)) {
-      zodType = z.boolean();
-    } else if (isDateProp(prop)) {
-      zodType = z.string().length(10);
-    } else if (isTimeProp(prop)) {
-      zodType = z.string().length(8);
-    } else if (isDateTimeProp(prop)) {
-      zodType = z.date();
-    } else if (isTimestampProp(prop)) {
-      zodType = z.date();
-    } else if (isJsonProp(prop)) {
-      zodType = await this.getZodTypeById(prop.id);
-    } else if (isUuidProp(prop)) {
-      zodType = z.uuid();
-    } else if (isVirtualProp(prop)) {
-      zodType = await this.getZodTypeById(prop.id);
-    } else if (isRelationProp(prop)) {
-      if (
-        isBelongsToOneRelationProp(prop) ||
-        (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-      ) {
-        zodType = z.number().int();
-      }
-    } else {
-      throw new Error(`prop을 zodType으로 변환하는데 실패 ${prop}}`);
-    }
-
-    if ((prop as { unsigned?: boolean }).unsigned) {
-      zodType = (zodType as z.ZodNumber).nonnegative();
-    }
-    if (prop.nullable) {
-      zodType = zodType.nullable();
-    }
-
-    return zodType;
-  }
-
-  resolveRenderType(
-    key: string,
-    zodType: z.ZodTypeAny
-  ): RenderingNode["renderType"] {
-    if (zodType instanceof z.ZodDate) {
-      return "datetime";
-    } else if (zodType instanceof z.ZodString) {
-      if (key.includes("img") || key.includes("image")) {
-        return "string-image";
-      } else if (zodType.description === "SQLDateTimeString") {
-        return "string-datetime";
-      } else if (key.endsWith("date")) {
-        return "string-date";
-      } else {
-        return "string-plain";
-      }
-    } else if (zodType instanceof z.ZodNumber) {
-      if (key === "id") {
-        return "number-id";
-      } else if (key.endsWith("_id")) {
-        return "number-fk_id";
-      } else {
-        return "number-plain";
-      }
-    } else if (zodType instanceof z.ZodBoolean) {
-      return "boolean";
-    } else if (zodType instanceof z.ZodEnum) {
-      return "enums";
-    } else if (zodType instanceof z.ZodRecord) {
-      return "record";
-    } else if (zodType instanceof z.ZodAny || zodType instanceof z.ZodUnknown) {
-      return "string-plain";
-    } else if (zodType instanceof z.ZodUnion) {
-      return "string-plain";
-    } else if (zodType instanceof z.ZodLiteral) {
-      return "string-plain";
-    } else {
-      throw new Error(`타입 파싱 불가 ${key} ${zodType.def.type}`);
-    }
-  }
-
-  zodTypeToRenderingNode(
-    zodType: z.ZodType<any>,
-    baseKey: string = "root"
-  ): RenderingNode {
-    const def = {
-      name: baseKey,
-      label: inflection.camelize(baseKey, false),
-      zodType,
-    };
-    if (zodType instanceof z.ZodObject) {
-      const columnKeys = Object.keys(zodType.shape);
-      const children = columnKeys.map((key) => {
-        const innerType = zodType.shape[key];
-        return this.zodTypeToRenderingNode(innerType, key);
-      });
-      return {
-        ...def,
-        renderType: "object",
-        children,
-      };
-    } else if (zodType instanceof z.ZodArray) {
-      const innerType = (zodType as z.ZodArray<z.ZodType<any>>).def.element;
-      if (innerType instanceof z.ZodString && baseKey.includes("images")) {
-        return {
-          ...def,
-          renderType: "array-images",
-        };
-      }
-      return {
-        ...def,
-        renderType: "array",
-        element: this.zodTypeToRenderingNode(innerType, baseKey),
-      };
-    } else if (zodType instanceof z.ZodUnion) {
-      const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map((opt) =>
-        this.zodTypeToRenderingNode(opt, baseKey)
-      );
-      // TODO: ZodUnion이 들어있는 경우 핸들링
-      return optionNodes[0];
-    } else if (zodType instanceof z.ZodOptional) {
-      return {
-        ...this.zodTypeToRenderingNode((zodType as z.ZodOptional<z.ZodType>).def.innerType, baseKey),
-        optional: true,
-      };
-    } else if (zodType instanceof z.ZodNullable) {
-      return {
-        ...this.zodTypeToRenderingNode((zodType as z.ZodNullable<z.ZodType>).def.innerType, baseKey),
-        nullable: true,
-      };
-    } else {
-      return {
-        ...def,
-        renderType: this.resolveRenderType(baseKey, zodType),
-      };
-    }
-  }
-
-  async getColumnsNode(
-    entityId: string,
-    subsetKey: string
-  ): Promise<RenderingNode> {
-    const entity = EntityManager.get(entityId);
-    const subsetA = entity.subsets[subsetKey];
-    if (subsetA === undefined) {
-      throw new ServiceUnavailableException("SubsetA 가 없습니다.");
-    }
-    const propNodes = entity.fieldExprsToPropNodes(subsetA);
-    const rootPropNode: EntityPropNode = {
-      nodeType: "object",
-      children: propNodes,
-    };
-
-    const columnsZodType = (await this.propNodeToZodType(
-      rootPropNode
-    )) as z.ZodObject<any>;
-
-    const columnsNode = this.zodTypeToRenderingNode(columnsZodType);
-    columnsNode.children = columnsNode.children!.map((child) => {
-      if (child.renderType === "object") {
-        const pickedCol = child.children!.find((cc) =>
-          ["title", "name"].includes(cc.name)
-        );
-        if (pickedCol) {
-          return {
-            ...child,
-            renderType: "object-pick",
-            config: {
-              picked: pickedCol.name,
-            },
-          };
-        } else {
-          return child;
-        }
-      } else if (
-        child.renderType === "array" &&
-        child.element &&
-        child.element.renderType === "object"
-      ) {
-        const pickedCol = child.element!.children!.find((cc) =>
-          ["title", "name"].includes(cc.name)
-        );
-        if (pickedCol) {
-          return {
-            ...child,
-            element: {
-              ...child.element,
-              renderType: "object-pick",
-              config: {
-                picked: pickedCol.name,
-              },
-            },
-          };
-        } else {
-          return child;
-        }
-      }
-      return child;
-    });
-
-    return columnsNode;
-  }
-
   async createEntity(
     form: Omit<TemplateOptions["entity"], "title"> & { title?: string }
   ) {
@@ -1577,24 +696,10 @@ export class Syncer {
       throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
     }
 
-    await this.generateTemplate("entity", form);
+    await generateTemplate("entity", form);
 
     // reload entities
     await EntityManager.reload();
-
-    // syncFromWatcher에서 처리하므로 주석처리
-    // this.actionGenerateSchemas();
-
-    // // generate schemas, types
-    // await Promise.all([
-    //   ...(form.parentId === undefined
-    //     ? [
-    //         this.generateTemplate("init_types", {
-    //           entityId: form.entityId,
-    //         }),
-    //       ]
-    //     : []),
-    // ]);
   }
 
   async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
@@ -1641,5 +746,23 @@ export class Syncer {
     }).catch((e) =>
       console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`))
     );
+  }
+
+  /**
+   * 하위호환용 프록시 메소드입니다.
+   */
+  async generateTemplate(
+    key: TemplateKey,
+    templateOptions: any,
+    _generateOptions?: GenerateOptions
+  ) {
+    return await generateTemplate(key, templateOptions, _generateOptions);
+  }
+
+  /**
+   * 하위호환용 프록시 메소드입니다.
+   */
+  async renderTemplate(key: TemplateKey, templateOptions: any) {
+    return await renderTemplate(key, templateOptions);
   }
 }

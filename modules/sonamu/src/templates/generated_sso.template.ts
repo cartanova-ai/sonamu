@@ -7,7 +7,7 @@ import { EntityManager } from "../entity/entity-manager";
 import { Template } from "./base-template";
 import inflection from "inflection";
 import { SourceCode } from "./generated.template";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { nonNullable } from "../utils/utils";
 import { Sonamu } from "../api";
 import { Entity } from "../entity/entity";

@@ -2,7 +2,12 @@ import { readFileSync, writeFileSync } from "fs";
 import OpenAI from "openai";
 import { MessageListParams } from "openai/resources/beta/threads/messages";
 import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { Sonamu } from "sonamu";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 type SonamuMetadata = {
   target: string;

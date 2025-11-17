@@ -4,18 +4,16 @@ dotenv.config();
 
 import path from "path";
 import { tsicli } from "tsicli";
-import { execSync } from "child_process";
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { execSync, spawn } from "child_process";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 import process from "process";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
-import { findApiRootPath } from "../utils/utils";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
-// import { SWC_BUILD_COMMAND } from "./build-config";
-import { NodemonSettings } from "nodemon";
+import { findApiRootPath } from "../utils/utils";
 
 let migrator: Migrator;
 
@@ -88,37 +86,48 @@ bootstrap().finally(async () => {
   await FixtureManager.destroy();
 });
 
+/**
+ * Dev 서버 시작 (dynohot HMR)
+ */
 async function dev_serve() {
-  const nodemon = await import("nodemon");
+  const apiRoot = findApiRootPath();
+  const entryPoint = 'src/index.ts';  // 상대 경로 사용!
 
-  const nodemonConfig = await (async () => {
-    const projectNodemonPath = path.join(findApiRootPath(), "nodemon.json");
-    const hasProjectNodemon = await exists(projectNodemonPath);
+  console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server with HMR...\n'));
 
-    if (hasProjectNodemon) {
-      return JSON.parse(await readFile(projectNodemonPath, "utf8"));
+  const serverProcess = spawn(
+    'node',
+    [
+      '--import', '@sonamu-kit/loader',
+      "-r", "source-map-support/register",
+      entryPoint,
+    ],
+    {
+      cwd: apiRoot,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+      },
     }
+  );
 
-    return {
-      watch: ["src/index.ts"],
-      ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
-      exec: [
-        // SWC_BUILD_COMMAND,
-        "node --no-warnings -r source-map-support/register -r dotenv/config dist/index.js",
-      ].join(" && "),
-    } as NodemonSettings;
-  })();
-  nodemon.default(nodemonConfig);
-
-  // 프로세스 종료 처리
-  const cleanup = async () => {
-    await Sonamu.server?.close();
+  // 종료 처리
+  const cleanup = () => {
+    console.log(chalk.yellow('\n\n👋 Shutting down...'));
+    serverProcess.kill('SIGTERM');
     process.exit(0);
   };
 
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("SIGUSR2", cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  serverProcess.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(chalk.red(`❌ Server exited with code ${code}`));
+      process.exit(code || 1);
+    }
+  });
 }
 
 async function serve() {

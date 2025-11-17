@@ -24,8 +24,6 @@ import bcrypt from "bcrypt";
   User Model
 */
 class UserModelClass extends BaseModelClass {
-  modelName = "User";
-
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "User" })
   async findById<T extends UserSubsetKey>(
     subset: T,
@@ -143,12 +141,14 @@ class UserModelClass extends BaseModelClass {
 
     return ids.length;
   }
+  
 
   @api({ httpMethod: "GET" })
-  async getMyIP(): Promise<{ ip: string }> {
+  async getMyIP(): Promise<{ ip: string, ip2: string }> {
     const context = Sonamu.getContext();
     return {
       ip: context.ip,
+      ip2: '',
     };
   }
 

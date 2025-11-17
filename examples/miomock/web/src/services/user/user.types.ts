@@ -8,8 +8,9 @@ export type UserListParams = z.infer<typeof UserListParams>;
 // User - SaveParams
 export const UserSaveParams = UserBaseSchema.partial({
   id: true,
-  created_at: true,
+  created_at: true
 });
+
 export type UserSaveParams = z.infer<typeof UserSaveParams>;
 
 // User - LoginParams

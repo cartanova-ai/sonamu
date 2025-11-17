@@ -1,10 +1,22 @@
+import type {} from "dynohot";
+
+import.meta.hot?.dispose(() => {
+  console.log("index dispose!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+});
+
 import { Sonamu, FSDriver, S3Driver } from "sonamu";
 import path from "path";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const a_filename = fileURLToPath(import.meta.url);
+const a_dirname = dirname(a_filename);
 
 const host = "localhost";
 const port = 10280;
 
 async function bootstrap() {
+
   await Sonamu.createServer({
     listen: { port, host },
     plugins: {
@@ -12,7 +24,7 @@ async function bootstrap() {
       qs: true,
       multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
       static: {
-        root: path.join(__dirname, "/../", "public"),
+        root: path.join(a_dirname, "/../", "public"),
         prefix: "/api/public",
       },
       session: {
@@ -61,7 +73,7 @@ async function bootstrap() {
         });
       }
       return new FSDriver({
-        location: path.join(__dirname, "/../", "public", "uploaded"),
+        location: path.join(a_dirname, "/../", "public", "uploaded"),
         urlPrefix: "/api/public/uploaded",
       });
     })(),

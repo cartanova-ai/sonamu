@@ -14,6 +14,7 @@
     "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node -r source-map-support/register dist/index.js run\"",
     "dev": "DEBUG_UI=true run-p dev:node dev:client"
   },
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -53,6 +54,7 @@
     "jotai": "^2.4.2",
     "knex": "^3.1.0",
     "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
     "openai": "^4.53.0",
     "prop-types": "^15.8.1",
     "qs": "^6.11.2",
@@ -76,6 +78,7 @@
     "@swc/core": "^1.13.19",
     "@types/inflection": "^1.13.0",
     "@types/lodash": "^4.14.198",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.6.3",
     "@types/prop-types": "^15.7.15",
     "@types/qs": "^6.9.8",

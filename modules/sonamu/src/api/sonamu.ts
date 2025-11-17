@@ -4,8 +4,7 @@ import fastify from "fastify";
 import { readFile } from "fs/promises";
 import path from "path";
 import { exists } from "../utils/fs-utils";
-
-import type { FSWatcher } from "chokidar";
+import chokidar, { type FSWatcher } from "chokidar";
 import { formatInTimeZone } from "date-fns-tz";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
@@ -32,7 +31,10 @@ import { getZodObjectFromApi } from "./code-converters";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
-
+import { AbsolutePath, toProjectRelativePath } from "../utils/path-utils";
+import { centerText } from "../utils/console-util";
+import { BaseModel } from "../database/base-model";
+import assert from "assert";
 export type SonamuConfig = {
   projectName?: string;
   api: {
@@ -80,11 +82,11 @@ class SonamuClass {
     );
   }
 
-  private _apiRootPath: string | null = null;
-  set apiRootPath(apiRootPath: string) {
+  private _apiRootPath: AbsolutePath | null = null;
+  set apiRootPath(apiRootPath: AbsolutePath) {
     this._apiRootPath = apiRootPath;
   }
-  get apiRootPath(): string {
+  get apiRootPath(): AbsolutePath {
     if (this._apiRootPath === null) {
       throw new Error("Sonamu has not been initialized");
     }
@@ -157,7 +159,7 @@ class SonamuClass {
   async init(
     doSilent: boolean = false,
     enableSync: boolean = true,
-    apiRootPath?: string,
+    apiRootPath?: AbsolutePath,
     forTesting: boolean = false
   ) {
     if (this.isInitialized) {
@@ -212,6 +214,7 @@ class SonamuClass {
       await this.syncer.sync();
 
       // FIXME: hmr 설정된 경우만 워처 시작
+      // TODO 곧 적용함
       this.startWatcher();
 
       this.syncer.syncUI();
@@ -462,7 +465,6 @@ class SonamuClass {
 
   startWatcher(): void {
     const watchPath = path.join(this.apiRootPath, "src");
-    const chokidar = require("chokidar") as typeof import("chokidar");
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
         (!!stats?.isFile() &&
@@ -473,12 +475,15 @@ class SonamuClass {
       ignoreInitial: true,
     });
     this.watcher.on("all", async (event: string, filePath: string) => {
+      const absolutePath = filePath as AbsolutePath;
+      assert(absolutePath.startsWith(this.apiRootPath), "File path is not within the API root path");
+
       if (event !== "change" && event !== "add") {
         return;
       }
 
       try {
-        await this.handleFileChange(event, filePath);
+        await this.handleFileChange(event, absolutePath);
       } catch (e) {
         console.error(e);
       }
@@ -595,16 +600,15 @@ class SonamuClass {
 
   private async handleFileChange(
     event: string,
-    filePath: string
+    filePath: AbsolutePath
   ): Promise<void> {
     // 첫 번째 파일이면 HMR 시작 시간 기록
     if (this.pendingFiles.length === 0) {
       this.hmrStartTime = Date.now();
     }
-
     this.pendingFiles.push(filePath);
 
-    const relativePath = filePath.replace(this.apiRootPath, "api");
+    const relativePath = toProjectRelativePath(filePath);
     console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
     await this.syncer.syncFromWatcher([filePath]);
@@ -619,20 +623,16 @@ class SonamuClass {
   }
 
   private async finishHMR(): Promise<void> {
-    await this.syncer.saveChecksums(await this.syncer.getCurrentChecksums());
+    await this.syncer.renewChecksums();
 
     const endTime = Date.now();
     const totalTime = endTime - this.hmrStartTime;
     const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
-    const margin = Math.max(0, (process.stdout.columns - msg.length) / 2);
 
-    console.log(
-      chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
-    );
+    console.log(chalk.black.bgGreen(centerText(msg)));
   }
 
   async destroy(): Promise<void> {
-    const { BaseModel } = require("../database/base-model");
     await BaseModel.destroy();
     await this.watcher?.close();
     this.storage?.destroy();
