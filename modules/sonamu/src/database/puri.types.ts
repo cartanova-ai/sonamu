@@ -1,9 +1,5 @@
 // 메타데이터 컬럼 제외
-type ExcludeMetadataColumns<T> = T extends {
-  __fulltext__: readonly (infer _Col)[];
-}
-  ? Omit<T, "__fulltext__">
-  : T;
+type ExcludeMetadataColumns<T> = Exclude<T, "__fulltext__">;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> =
