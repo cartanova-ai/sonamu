@@ -10,8 +10,8 @@ import * as _ from "lodash-es";
 import { Sonamu } from "../api/sonamu";
 import {
   AbsolutePath,
-  ProjectRelativePath,
-  toProjectRelativePath,
+  ApiRelativePath,
+  toApiRelativePath,
 } from "../utils/path-utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
@@ -110,8 +110,8 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
 
   const previousChecksums = JSON.parse(
     await readFile(checksumFilePath, "utf-8")
-  ).map((r: { path: ProjectRelativePath; checksum: string }) => ({
-    path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에 저장할 때에는 상대 경로로 저장해요.
+  ).map((r: { path: ApiRelativePath; checksum: string }) => ({
+    path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
     checksum: r.checksum,
   })) as PathAndChecksum[];
   return previousChecksums;
@@ -127,7 +127,7 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
     checksumFilePath,
     JSON.stringify(
       checksums.map((r) => ({
-        path: toProjectRelativePath(r.path), // 체크섬 파일에서 꺼내올 때에는 절대 경로로 꺼내와요.
+        path: toApiRelativePath(r.path), // 체크섬 파일에 저장할 때: 절대 경로 → API 상대 경로
         checksum: r.checksum,
       })),
       null,

@@ -44,7 +44,7 @@ export function createImportUrl(
  * @returns dev 환경(dynohot)인지 여부
  */
 export function isHMREnabled(): boolean {
-  return typeof (import.meta as any).hot !== 'undefined';
+  return process.env.HOT === 'yes';
 }
 
 /**

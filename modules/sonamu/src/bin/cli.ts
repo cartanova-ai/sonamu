@@ -108,6 +108,7 @@ async function dev_serve() {
       env: {
         ...process.env,
         NODE_ENV: 'development',
+        HOT: 'yes',
       },
     }
   );
