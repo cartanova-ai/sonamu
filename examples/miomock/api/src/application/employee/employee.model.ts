@@ -10,9 +10,6 @@ import { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeSubsetQueries } from "../sonamu.generated.sso";
 import { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
-import.meta.hot?.dispose(() => {  
-  console.log("ㅠㅠㅠㅠ employee dispose!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-});
 /*
   Employee Model
 */

@@ -31,7 +31,9 @@ export class Template__service extends Template {
       syncer: { apis },
     } = Sonamu;
 
-    const apisForThisModel = apis.filter((api) => api.modelName === `${namesRecord.capital}Model`);
+    const apisForThisModel = apis.filter(
+      (api) => api.modelName === `${namesRecord.capital}Model`
+    );
 
     // 서비스 TypeSource
     const { lines, importKeys } = this.getTypeSource(apisForThisModel);
