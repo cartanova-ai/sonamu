@@ -10,6 +10,7 @@ import { defaultCatch } from "../../services/sonamu.shared";
 import { FixtureRecord, FixtureImportResult } from "sonamu";
 import FixtureRecordViewer from "./_fixture_record_viewer";
 import FixtureCodeViewer from "./_fixture_code_viewer";
+import FixtureGraph from "../../components/fixture/ErdGraph";
 
 const DB_NAMES = [
   "development_master",
@@ -20,10 +21,8 @@ const DB_NAMES = [
 ];
 
 export default function FixtureIndex() {
-  const {
-    data: entitiesData,
-    isLoading: entitiesLoading,
-  } = SonamuUIService.useEntities();
+  const { data: entitiesData, isLoading: entitiesLoading } =
+    SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
   const [targetDB, setTargetDB] = useState("fixture_remote");
 
@@ -32,6 +31,8 @@ export default function FixtureIndex() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [activeTab, setActiveTab] = useState(0);
+
+  const [mode, setMode] = useState<"table" | "graph">("table");
 
   const { form, register } = useTypeForm(
     z.object({
@@ -182,12 +183,21 @@ export default function FixtureIndex() {
       menuItem: "Fixture Record Viewer",
       render: () => (
         <Tab.Pane>
-          <FixtureRecordViewer
-            fixtureRecords={fixtureRecords}
-            onRelationToggle={fetchRelatedRecord}
-            selectedIds={selectedIds}
-            setFixtureRecords={setFixtureRecords}
-          />
+          {mode === "table" ? (
+            <FixtureRecordViewer
+              fixtureRecords={fixtureRecords}
+              onRelationToggle={fetchRelatedRecord}
+              selectedIds={selectedIds}
+              setFixtureRecords={setFixtureRecords}
+            />
+          ) : (
+            <FixtureGraph
+              fixtures={fixtureRecords}
+              selectedIds={selectedIds}
+              onRelationToggle={fetchRelatedRecord}
+              setFixtureRecords={setFixtureRecords}
+            />
+          )}
         </Tab.Pane>
       ),
     },
@@ -304,6 +314,10 @@ export default function FixtureIndex() {
       </Segment>
 
       <div className="fixture-viewer">
+        <Button
+          onClick={() => setMode(mode === "table" ? "graph" : "table")}
+          content={mode === "table" ? "Show Graph" : "Show Table"}
+        />
         <Tab
           panes={panes}
           activeIndex={activeTab}

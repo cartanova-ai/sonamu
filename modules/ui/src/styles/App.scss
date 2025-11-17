@@ -815,36 +815,36 @@ code {
       font-size: 0.85em;
       display: flex;
       flex-direction: column;
+    }
 
-      .entity-table {
-        display: inline-block;
-        width: fit-content;
+    .entity-table {
+      display: inline-block;
+      width: fit-content;
+      overflow-x: auto;
+      width: 100%;
+
+      td {
+        // max-width: 12em;
+        overflow: auto;
+
+        &::-webkit-scrollbar {
+          display: none;
+        }
+
+        div {
+          display: flex;
+          gap: 0.2em;
+        }
+      }
+
+      .unique-violated {
+        color: #999;
+      }
+
+      .scrollable-cell-content {
+        max-width: 10em;
         overflow-x: auto;
-        width: 100%;
-
-        td {
-          max-width: 12em;
-          overflow: auto;
-
-          &::-webkit-scrollbar {
-            display: none;
-          }
-
-          div {
-            display: flex;
-            gap: 0.2em;
-          }
-        }
-
-        .unique-violated {
-          color: #999;
-        }
-
-        .scrollable-cell-content {
-          max-width: 200px;
-          overflow-x: auto;
-          overflow-y: hidden;
-        }
+        overflow-y: hidden;
       }
     }
 
