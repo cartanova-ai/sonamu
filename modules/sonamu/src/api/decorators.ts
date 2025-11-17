@@ -35,6 +35,7 @@ export type ApiDecoratorOptions = {
   resourceName?: string;
   guards?: GuardKey[];
   description?: string;
+  timeout?: number;
 };
 export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
