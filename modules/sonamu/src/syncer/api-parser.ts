@@ -7,6 +7,12 @@ import inflection from "inflection";
 import assert from "assert";
 import { AbsolutePath } from "../utils/path-utils";
 
+/**
+ * TypeScript 파일을 파싱하여 API 메소드 정보를 추출합니다.
+ * @api 데코레이터가 붙은 메소드들의 타입 정보를 분석합니다.
+ * @param filePath - 파싱할 TypeScript 파일의 절대 경로
+ * @returns API 메소드 정보 배열 (타입 파라미터, 파라미터, 리턴 타입 등)
+ */
 export async function readApisFromFile(filePath: AbsolutePath) {
   const sourceFile = ts.createSourceFile(
     filePath,

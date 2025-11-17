@@ -1,9 +1,7 @@
 import z from "zod";
 import { EntityManager } from "../entity/entity-manager";
-import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import {
   EntityProp,
-  EntityPropNode,
   isBelongsToOneRelationProp,
   isBigIntegerProp,
   isBooleanProp,
@@ -31,71 +29,10 @@ import { Sonamu } from "../api/sonamu";
 import inflection from "inflection";
 import { getTextTypeLength } from "../api";
 
-export async function getColumnsNode(
-  entityId: string,
-  subsetKey: string
-): Promise<RenderingNode> {
-  const entity = EntityManager.get(entityId);
-  const subset = entity.subsets[subsetKey];
-  if (subset === undefined) {
-    throw new ServiceUnavailableException(`Subset ${subsetKey} 가 없습니다.`);
-  }
-  const propNodes = entity.fieldExprsToPropNodes(subset);
-  const rootPropNode: EntityPropNode = {
-    nodeType: "object",
-    children: propNodes,
-  };
-
-  const columnsZodType = (await propNodeToZodType(
-    rootPropNode
-  )) as z.ZodObject<any>;
-
-  const columnsNode = zodTypeToRenderingNode(columnsZodType);
-  columnsNode.children = columnsNode.children!.map((child) => {
-    if (child.renderType === "object") {
-      const pickedCol = child.children!.find((cc) =>
-        ["title", "name"].includes(cc.name)
-      );
-      if (pickedCol) {
-        return {
-          ...child,
-          renderType: "object-pick",
-          config: {
-            picked: pickedCol.name,
-          },
-        };
-      } else {
-        return child;
-      }
-    } else if (
-      child.renderType === "array" &&
-      child.element &&
-      child.element.renderType === "object"
-    ) {
-      const pickedCol = child.element!.children!.find((cc) =>
-        ["title", "name"].includes(cc.name)
-      );
-      if (pickedCol) {
-        return {
-          ...child,
-          element: {
-            ...child.element,
-            renderType: "object-pick",
-            config: {
-              picked: pickedCol.name,
-            },
-          },
-        };
-      } else {
-        return child;
-      }
-    }
-    return child;
-  });
-
-  return columnsNode;
-}
-
+/**
+ * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
+ * dist 디렉토리에서 ESM으로 import하여 가져옵니다.
+ */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
   const modulePath = EntityManager.getModulePath(zodTypeId);
   const moduleAbsPath = path.join(
@@ -113,6 +50,10 @@ export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
   return imported[zodTypeId].describe(zodTypeId);
 }
 
+/**
+ * Zod 타입을 UI 렌더링에 사용할 수 있는 RenderingNode로 변환합니다.
+ * 재귀적으로 중첩된 타입들을 처리합니다.
+ */
 export function zodTypeToRenderingNode(
   zodType: z.ZodType<any>,
   baseKey: string = "root"
@@ -176,6 +117,9 @@ export function zodTypeToRenderingNode(
   }
 }
 
+/**
+ * Zod 타입과 키 이름으로부터 적절한 RenderType을 결정합니다.
+ */
 function resolveRenderType(
   key: string,
   zodType: z.ZodTypeAny
@@ -217,51 +161,11 @@ function resolveRenderType(
   }
 }
 
-export async function propNodeToZodType(
-  propNode: EntityPropNode
-): Promise<z.ZodTypeAny> {
-  if (propNode.nodeType === "plain") {
-    return propToZodType(propNode.prop);
-  } else if (propNode.nodeType === "array") {
-    if (propNode.prop === undefined) {
-      throw new Error();
-    } else if (propNode.children.length > 0) {
-      return (
-        await propNodeToZodType({
-          ...propNode,
-          nodeType: "object",
-        })
-      ).array();
-    } else {
-      const innerType = await propToZodType(propNode.prop);
-      if (propNode.prop.nullable === true) {
-        return z.array(innerType).nullable();
-      } else {
-        return z.array(innerType);
-      }
-    }
-  } else if (propNode.nodeType === "object") {
-    const obj = await propNode.children.reduce(
-      async (promise, childPropNode) => {
-        const result = await promise;
-        result[childPropNode.prop!.name] =
-          await propNodeToZodType(childPropNode);
-        return result;
-      },
-      {} as any
-    );
-
-    if (propNode.prop?.nullable === true) {
-      return z.object(obj).nullable();
-    } else {
-      return z.object(obj);
-    }
-  } else {
-    throw Error;
-  }
-}
-
-async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
+/**
+ * EntityProp을 Zod 타입으로 변환합니다.
+ * 각 prop의 타입에 따라 적절한 Zod validator를 생성합니다.
+ */
+export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
   let zodType: z.ZodTypeAny = z.unknown();
   if (isIntegerProp(prop)) {
     zodType = z.number().int();

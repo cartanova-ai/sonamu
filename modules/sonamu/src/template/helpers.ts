@@ -2,6 +2,10 @@ import inflection from "inflection";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp, RelationProp } from "../types/types";
 
+/**
+ * Enum의 표시용 라벨을 가져옵니다.
+ * OrderBy, SearchField 등 특수한 경우와 일반 Enum을 구분하여 처리합니다.
+ */
 export function getLabel(entityId: string, enumId: string): string {
   if (enumId.endsWith("OrderBy")) {
     return "정렬";
@@ -18,6 +22,10 @@ export function getLabel(entityId: string, enumId: string): string {
   }
 }
 
+/**
+ * 컬럼 이름으로부터 Enum 정보를 추출합니다.
+ * Entity의 prop 중 enum 타입인 것을 찾아 관련 정보를 반환합니다.
+ */
 export function getEnumInfoFromColName(
   entityId: string,
   colName: string
@@ -54,6 +62,10 @@ export function getEnumInfoFromColName(
   }
 }
 
+/**
+ * 컬럼 이름으로부터 Relation prop 정보를 가져옵니다.
+ * 관계형 prop이 아닌 경우 에러를 발생시킵니다.
+ */
 export function getRelationPropFromColName(
   entityId: string,
   colName: string

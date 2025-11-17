@@ -1,7 +1,7 @@
 import { TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
 import { Template } from "../template";
-import { getLabel } from "../common";
+import { getLabel } from "../helpers";
 
 export class Template__view_enums_select extends Template {
   constructor() {

@@ -13,7 +13,7 @@ import {
   ProjectRelativePath,
   toProjectRelativePath,
 } from "../utils/path-utils";
-import { getChecksumPatternGroupInAbsolutePath } from "./config";
+import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
 type PathAndChecksum = {
   path: AbsolutePath;

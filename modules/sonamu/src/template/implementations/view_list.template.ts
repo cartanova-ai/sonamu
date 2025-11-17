@@ -3,12 +3,11 @@ import * as _ from "lodash-es";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { getRelationPropFromColName, getEnumInfoFromColName } from "../common";
+import { getRelationPropFromColName, getEnumInfoFromColName } from "../helpers";
 import { RenderedTemplate } from "../template";
 import { Template } from "../template";
-import { zodTypeToRenderingNode } from "../entity-zod";
-import { getZodTypeById } from "../entity-zod";
-import { getColumnsNode } from "../entity-zod";
+import { zodTypeToRenderingNode, getZodTypeById } from "../zod-converter";
+import { getColumnsNode } from "../entity-converter";
 
 export class Template__view_list extends Template {
   constructor() {
