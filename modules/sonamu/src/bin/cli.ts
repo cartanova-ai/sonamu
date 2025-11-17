@@ -54,8 +54,8 @@ async function bootstrap() {
       ["scaffold", "view_list", "#entityId"],
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
-      ["dev:serve"],
-      ["serve"],
+      ["dev"],
+      ["start"],
     ],
     runners: {
       migrate_run,
@@ -74,8 +74,8 @@ async function bootstrap() {
       ui,
       // scaffold_view_list,
       // scaffold_view_form,
-      "dev:serve": dev_serve,
-      serve,
+      dev,
+      start,
     },
   });
 }
@@ -86,14 +86,11 @@ bootstrap().finally(async () => {
   await FixtureManager.destroy();
 });
 
-/**
- * Dev 서버 시작 (dynohot HMR)
- */
-async function dev_serve() {
+async function dev() {
   const apiRoot = findApiRootPath();
-  const entryPoint = 'src/index.ts';  // 상대 경로 사용!
+  const entryPoint = 'src/index.ts';   
 
-  console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server with HMR...\n'));
+  console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server...\n'));
 
   const serverProcess = spawn(
     'node',
@@ -131,12 +128,12 @@ async function dev_serve() {
   });
 }
 
-async function serve() {
-  const distIndexPath = path.join(Sonamu.apiRootPath, "dist", "index.js");
+async function start() {
+  const entryPoint = 'dist/index.js';  
 
-  if (!(await exists(distIndexPath))) {
+  if (!(await exists(entryPoint))) {
     console.log(
-      chalk.red("dist/index.js not found. Please build your project first.")
+      chalk.red(`${entryPoint} not found. Please build your project first.`)
     );
     console.log(chalk.blue("Run: yarn sonamu build"));
     return;
@@ -145,7 +142,7 @@ async function serve() {
   const { spawn } = await import("child_process");
   const serverProcess = spawn(
     "node",
-    ["-r", "source-map-support/register", "-r", "dotenv/config", distIndexPath],
+    ["-r", "source-map-support/register", "-r", "dotenv/config", entryPoint],
     {
       cwd: Sonamu.apiRootPath,
       stdio: "inherit",

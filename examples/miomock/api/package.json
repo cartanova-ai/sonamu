@@ -5,9 +5,9 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "serve": "sonamu serve",
+    "dev": "sonamu dev",
     "build": "sonamu build",
-    "dev:serve": "sonamu dev:serve",
+    "start": "sonamu start",
     "start:all": "./start.sh",
     "test": "yarn vitest run",
     "test:watch": "yarn vitest watch --standalone",
