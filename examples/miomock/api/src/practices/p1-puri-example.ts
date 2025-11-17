@@ -214,8 +214,11 @@ async function examples() {
       userId: "id",
       userName: "username",
     })
+    .appendSelect({
+      userBio: "bio",
+    })
     .where("role", "admin")
-    .pluck("userName");
+    .pluck("username");
 
   console.log(`Found ${usernames.length} usernames:`, usernames);
   assert(Array.isArray(usernames));
