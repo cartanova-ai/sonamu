@@ -26,9 +26,15 @@ export class Template__service extends Template {
     };
   }
 
-  render({ namesRecord }: TemplateOptions["service"], apis: ExtendedApi[]) {
+  render({ namesRecord }: TemplateOptions["service"]) {
+    const {
+      syncer: { apis },
+    } = Sonamu;
+
+    const apisForThisModel = apis.filter((api) => api.modelName === `${namesRecord.capital}Model`);
+
     // 서비스 TypeSource
-    const { lines, importKeys } = this.getTypeSource(apis);
+    const { lines, importKeys } = this.getTypeSource(apisForThisModel);
 
     // AxiosProgressEvent 있는지 확인
     const hasAxiosProgressEvent = apis.find((api) =>

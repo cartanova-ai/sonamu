@@ -351,14 +351,12 @@ export class Syncer {
   
     const params: {
       namesRecord: EntityNamesRecord;
-      modelTsPath: AbsolutePath;
     }[] = mergedGroup.map((modelPath) => {
       if (modelPath.endsWith(".model.ts")) {
         const entityId = this.getEntityIdFromPath([modelPath])[0];
         assert(entityId);
         return {
           namesRecord: EntityManager.getNamesFromId(entityId),
-          modelTsPath: modelPath,
         };
       }
       if (modelPath.endsWith("frame.ts")) {
@@ -366,7 +364,6 @@ export class Syncer {
         assert(frameName);
         return {
           namesRecord: EntityManager.getNamesFromId(frameName),
-          modelTsPath: modelPath,
         };
       }
       throw new Error("not reachable");
@@ -400,7 +397,6 @@ export class Syncer {
   async actionGenerateServices(
     paramsArray: {
       namesRecord: EntityNamesRecord;
-      modelTsPath: string;
     }[]
   ): Promise<string[]> {
     return (

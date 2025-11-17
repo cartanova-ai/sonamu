@@ -44,10 +44,8 @@ import { Template__view_enums_buttonset } from "../templates/view_enums_buttonse
 import {
   getZodTypeById,
   propNodeToZodType,
-  readApisFromFile,
   zodTypeToRenderingNode,
 } from "./ast-parsing";
-import { AbsolutePath } from "../utils/path-utils";
 
 export async function generateTemplate(
   key: TemplateKey,
@@ -104,11 +102,7 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
   const template: Template = getTemplate(key);
 
   let extra: unknown[] = [];
-  if (key === "service") {
-    // service 필요 정보 (API 리스트)
-    const { modelTsPath } = options as TemplateOptions["service"];
-    extra = [await readApisFromFile(modelTsPath as AbsolutePath)];
-  } else if (["model", "view_list", "view_form"].includes(key)) {
+  if (["model", "view_list", "view_form"].includes(key)) {
     const entityId = (options as TemplateOptions["model"]).entityId;
     if (key === "view_list" || key === "model") {
       // view_list 필요 정보 (컬럼 노드, 리스트파라미터 노드)
