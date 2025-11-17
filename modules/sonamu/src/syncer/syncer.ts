@@ -1,13 +1,10 @@
 import path, { dirname } from "path";
-import { globAsync, importMembersFresh } from "../utils/utils";
-import { createReadStream, PathLike } from "fs";
+import { globAsync } from "../utils/async-utils";
+import { importMembersFresh } from "../utils/esm-utils";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 
-import crypto from "crypto";
-import equal from "fast-deep-equal";
 import * as _ from "lodash-es";
-import inflection from "inflection";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { ApiParam, ApiParamType, GenerateOptions } from "../types/types";
 import { ApiDecoratorOptions } from "../api/decorators";
@@ -23,7 +20,6 @@ import { centerText } from "../utils/console-util";
 import { runWithGracefulShutdown } from "../utils/process-utils";
 import {
   AbsolutePath,
-  ProjectRelativePath,
   toAbsolutePath,
   toProjectRelativePath,
 } from "../utils/path-utils";
@@ -32,22 +28,8 @@ import { readApisFromFile } from "./api-parsing";
 import { BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
 import { Template } from "../template";
-
-type FileType =
-  | "model"
-  | "types"
-  | "functions"
-  | "generated"
-  | "entity"
-  | "frame";
-type GlobPattern<T extends ProjectRelativePath | AbsolutePath> = {
-  [key in FileType]: T;
-};
-
-type PathAndChecksum = {
-  path: AbsolutePath;
-  checksum: string;
-};
+import { FileType, getChecksumPatternGroupInAbsolutePath } from "./config";
+import { ChecksumHelper } from "./checksum";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
@@ -67,106 +49,7 @@ export class Syncer {
   models: { [modelName: string]: BaseModelClass | BaseFrameClass } = {};
   isSyncing: boolean = false;
 
-  public checksumPatternGroup: GlobPattern<ProjectRelativePath> = {
-    entity: "src/application/**/*.entity.json",
-    types: "src/application/**/*.types.ts",
-    generated: "src/application/sonamu.generated.ts",
-    model: "src/application/**/*.model.ts",
-    frame: "src/application/**/*.frame.ts",
-    functions: "src/application/**/*.functions.ts",
-  };
-
-  get checksumsPath(): string {
-    return path.join(
-      Sonamu.apiRootPath,
-      "/sonamu.lock" /*TODO 슬래시 빼도 됨*/
-    );
-  }
-  public constructor() {}
-
-  private checksumPatternGroupsInAbsolutePath(): GlobPattern<AbsolutePath> {
-    return Object.fromEntries(
-      Object.entries(this.checksumPatternGroup).map(([key, value]) => [
-        key,
-        path.join(Sonamu.apiRootPath, value),
-      ])
-    ) as GlobPattern<AbsolutePath>;
-  }
-
-  /**
-   * 주어진 타겟들에 sonamu.shared.ts를 복사합니다.
-   * @param targets - 타겟들
-   * @returns
-   */
-  private async copySharedToTargets(targets: string[]): Promise<void> {
-    for (const target of targets) {
-      const srcCodePath = path
-        .join(import.meta.dirname, `../shared/${target}.shared.ts.txt`)
-        .replace("/dist/", "/src/");
-      if (!(await exists(srcCodePath))) {
-        return;
-      }
-
-      const dstCodePath = path.join(
-        Sonamu.appRootPath,
-        target,
-        "src/services/sonamu.shared.ts"
-      );
-
-      const srcChecksum = await this.getChecksumOfFile(srcCodePath);
-      const dstChecksum = await (async () => {
-        if (!(await exists(dstCodePath))) {
-          return "";
-        }
-        return this.getChecksumOfFile(dstCodePath);
-      })();
-
-      if (srcChecksum === dstChecksum) {
-        return;
-      }
-      await writeFile(dstCodePath, await readFile(srcCodePath));
-      console.log(chalk.blue("shared.ts is synced"));
-    }
-  }
-
-  /**
-   * 체크섬 파일에 저장된 내용과 현재 실제 파일의 체크섬을 비교하여 변경된 파일을 찾습니다.
-   * @returns 변경된 파일 경로 배열. 프로젝트 루트부터 슬래시로 시작합니다. 예시: "/src/application/user/user.model.ts"
-   */
-  private async findChangedFilesUsingChecksums(): Promise<AbsolutePath[]> {
-    let calculatedChecksums = await this.getCurrentChecksums();
-    const savedChecksums = await this.getPreviousChecksums();
-
-    const isSame = equal(calculatedChecksums, savedChecksums);
-    if (isSame) {
-      return [];
-    }
-
-    const diff = _.differenceWith(
-      calculatedChecksums,
-      savedChecksums,
-      _.isEqual
-    );
-
-    return diff.map((r) => r.path);
-  }
-
-  /**
-   * 체크섬을 갱신합니다.
-   * 현재 파일들의 체크섬을 계산해서 구한 다음, 체크섬 파일에 저장된 내용과 다르면 체크섬 파일을 갱신합니다.
-   * @returns
-   */
-  async renewChecksums(): Promise<void> {
-    let calculatedChecksums = await this.getCurrentChecksums();
-    const savedChecksums = await this.getPreviousChecksums();
-
-    const isSame = equal(calculatedChecksums, savedChecksums);
-    if (isSame) {
-      return;
-    }
-
-    await this.saveChecksums(calculatedChecksums);
-  }
+  private readonly checksumHelper = new ChecksumHelper();
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
@@ -180,7 +63,8 @@ export class Syncer {
     await this.copySharedToTargets(targets);
 
     // 그 다음부터는 변경된 파일을 찾아서 동기화 작업을 실행합니다.
-    const changedFiles = await this.findChangedFilesUsingChecksums();
+    const changedFiles =
+      await this.checksumHelper.findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
       return;
@@ -194,7 +78,7 @@ export class Syncer {
         await this.doSyncActions(changedFiles);
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
-        await this.renewChecksums();
+        await this.checksumHelper.renewChecksums();
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 }
     );
@@ -208,22 +92,50 @@ export class Syncer {
   async syncFromWatcher(diffFilePaths: AbsolutePath[]): Promise<void> {
     // watcher가 가져온 변경 알림 중, 우리가 관심있는 것들만 뽑아옵니다.
     const targetFilePaths = diffFilePaths.filter((filePath) =>
-      Object.values(this.checksumPatternGroupsInAbsolutePath()).some(
-        (pattern) => minimatch(filePath, pattern)
+      Object.values(getChecksumPatternGroupInAbsolutePath()).some((pattern) =>
+        minimatch(filePath, pattern)
       )
     );
 
     // 싱크 작업 수행하는 본체입니다.
     await this.doSyncActions(targetFilePaths);
 
-    this.apis = [];
-    this.types = {};
-    this.models = {};
-    await this.autoloadTypes();
-    await this.autoloadModels();
-    await this.autoloadApis();
+    // 싱크 작업이 끝나면 모든 모듈을 리로드합니다.
+    await this.clearAndLoadModules();
 
     this.syncUI();
+  }
+
+  private async copySharedToTargets(targets: string[]): Promise<void> {
+    for (const target of targets) {
+      // 지금 가져가려는 이 파일은 Sonamu 코드베이스의 일부입니다.
+      // 그런데 dist 속 빌드된 소스 코드 파일이 필요한 것이 아니고, src에만 있는 텍스트 파일이 필요합니다.
+      // 따라서 /src/에서 찾습니다.
+      const srcPath = path.join(
+        import.meta.dirname.replace("/dist/", "/src/"),
+        `../shared/${target}.shared.ts.txt`
+      );
+      if (!(await exists(srcPath))) {
+        return;
+      }
+
+      const destPath = path.join(
+        Sonamu.appRootPath,
+        target,
+        "src/services/sonamu.shared.ts"
+      );
+
+      if (await this.checksumHelper.areFilesSame(srcPath, destPath)) {
+        return;
+      }
+
+      await writeFile(destPath, await readFile(srcPath));
+
+      console.log(
+        chalk.bold("Copied: ") +
+          chalk.blue(destPath.replace(Sonamu.appRootPath + "/", ""))
+      );
+    }
   }
 
   /**
@@ -231,7 +143,7 @@ export class Syncer {
    * @param diffFiles
    * @returns
    */
-  async doSyncActions(
+  private async doSyncActions(
     diffFilePaths: AbsolutePath[]
   ): Promise<{ diffTypes: string[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
@@ -276,19 +188,22 @@ export class Syncer {
     diffGroups: DiffGroups,
     diffTypes: string[]
   ): Promise<void> {
-    await EntityManager.reload();
-
     console.log(
       chalk.gray(
         `[Processing] Handling entity changes: ${diffGroups["entity"]?.map(toProjectRelativePath).join(", ")}`
       )
     );
 
+    await EntityManager.reload();
+
     // types 생성(entity 새로 추가된 경우)
     // parentId가 없고, types가 없는 경우에만 생성
-    const entityId = this.getEntityIdFromPath([
-      ...(diffGroups["entity"] ?? []),
-    ])[0];
+    const entityId = EntityManager.getEntityIdFromPath(
+      diffGroups["entity"]?.[0]
+    );
+
+    console.log(chalk.cyan(`entityId: ${entityId}`));
+
     if (entityId) {
       const entity = EntityManager.get(entityId);
       const typeFilePath = toAbsolutePath(
@@ -342,19 +257,15 @@ export class Syncer {
       )
     );
 
-    // 아래 친구들은 다 쓸모가 있습니다.
-    this.types = {};
-    this.models = {};
-    this.apis = [];
-    await this.autoloadTypes(); // generated_http.template.ts에서 syncer.types를 씁니다.
-    await this.autoloadModels(); // API를 로드하기 전에 미리 로드해야 합니다.
-    await this.autoloadApis(); // service.template.ts에서 syncer.apis를 씁니다.
-  
+    // generated_http.template.ts에서 syncer.types를 씁니다.
+    // service.template.ts에서 syncer.apis를 씁니다.
+    await this.clearAndLoadModules();
+   
     const params: {
       namesRecord: EntityNamesRecord;
     }[] = mergedGroup.map((modelPath) => {
       if (modelPath.endsWith(".model.ts")) {
-        const entityId = this.getEntityIdFromPath([modelPath])[0];
+        const entityId = EntityManager.getEntityIdFromPath(modelPath);
         assert(entityId);
         return {
           namesRecord: EntityManager.getNamesFromId(entityId),
@@ -372,16 +283,6 @@ export class Syncer {
 
     await this.actionGenerateServices(params);
     await this.actionGenerateHttps();
-  }
-
-  getEntityIdFromPath(filePaths: AbsolutePath[]): string[] {
-    return _.uniq(
-      filePaths.map((p) => {
-        const matched = p.match(/application\/(.+)\//);
-        assert(matched && matched[1]);
-        return inflection.camelize(matched[1].replace(/\-/g, "_"));
-      })
-    );
   }
 
   async actionGenerateSchemas(): Promise<string[]> {
@@ -476,76 +377,16 @@ export class Syncer {
     ).flat();
   }
 
-  private async getCurrentChecksums(): Promise<PathAndChecksum[]> {
-    const filePaths = (
-      await Promise.all(
-        Object.entries(this.checksumPatternGroupsInAbsolutePath()).map(
-          async ([_fileType, pattern]) => {
-            return globAsync(pattern) as Promise<AbsolutePath[]>;
-          }
-        )
-      )
-    )
-      .flat()
-      .sort();
-
-    const fileChecksums = await Promise.all(
-      filePaths.map(async (filePath) => {
-        return {
-          path: filePath,
-          checksum: await this.getChecksumOfFile(filePath),
-        };
-      })
-    );
-
-    return fileChecksums;
+  async clearAndLoadModules() {
+    this.apis = [];
+    this.types = {};
+    this.models = {};
+    await this.loadTypes();
+    await this.loadModels();
+    await this.loadApis(); // service.template.ts에서 syncer.apis를 씁니다.
   }
 
-  async getPreviousChecksums(): Promise<PathAndChecksum[]> {
-    if (!(await exists(this.checksumsPath))) {
-      return [];
-    }
-
-    const previousChecksums = JSON.parse(
-      await readFile(this.checksumsPath, "utf-8")
-    ).map((r: { path: ProjectRelativePath; checksum: string }) => ({
-      path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에 저장할 때에는 상대 경로로 저장해요.
-      checksum: r.checksum,
-    })) as PathAndChecksum[];
-    return previousChecksums;
-  }
-
-  private async saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
-    await writeFile(
-      this.checksumsPath,
-      JSON.stringify(
-        checksums.map((r) => ({
-          path: toProjectRelativePath(r.path), // 체크섬 파일에서 꺼내올 때에는 절대 경로로 꺼내와요.
-          checksum: r.checksum,
-        })),
-        null,
-        2
-      ),
-      "utf-8"
-    );
-    console.log("checksum saved", this.checksumsPath);
-  }
-
-  async getChecksumOfFile(filePath: PathLike): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      const hash = crypto.createHash("sha1");
-      const input = createReadStream(filePath);
-      input.on("error", reject);
-      input.on("data", function (chunk: any) {
-        hash.update(chunk);
-      });
-      input.on("close", function () {
-        resolve(hash.digest("hex"));
-      });
-    });
-  }
-
-  async autoloadApis() {
+  async loadApis() {
     const modelPathsPattern = path.join(
       Sonamu.apiRootPath,
       "src/application/**/*.{model,frame}.ts"
@@ -567,7 +408,7 @@ export class Syncer {
     return this.apis;
   }
 
-  async autoloadModels() {
+  async loadModels() {
     const modelPathsPattern = path.join(
       Sonamu.apiRootPath,
       "src/application/**/*.{model,frame}.ts"
@@ -596,7 +437,7 @@ export class Syncer {
     return this.models;
   }
 
-  async autoloadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
+  async loadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
     const typePathsPatterns = [
       path.join(Sonamu.apiRootPath, "/src/application/**/*.types.ts"),
       path.join(Sonamu.apiRootPath, "/src/application/**/*.generated.ts"),
@@ -607,7 +448,8 @@ export class Syncer {
 
     let count = 0;
     for (const filePath of typePaths) {
-      const importedMembers = await importMembersFresh<z.ZodObject<any>>(filePath);
+      const importedMembers =
+        await importMembersFresh<z.ZodObject<any>>(filePath);
       for (const { name, value } of importedMembers) {
         if (value instanceof z.ZodObject) {
           this.types[name] = value;
@@ -629,10 +471,9 @@ export class Syncer {
     templateKey: TemplateKey,
     enumId?: string
   ): Promise<{ subPath: string; fullPath: string; isExists: boolean }> {
-    const { target, path: genPath } = Template.find(templateKey).getTargetAndPath(
-      EntityManager.getNamesFromId(entityId),
-      enumId
-    );
+    const { target, path: genPath } = Template.find(
+      templateKey
+    ).getTargetAndPath(EntityManager.getNamesFromId(entityId), enumId);
 
     const fullPath = path.join(Sonamu.appRootPath, target, genPath);
     const subPath = path.join(target, genPath);
@@ -765,5 +606,9 @@ export class Syncer {
    */
   async renderTemplate(key: TemplateKey, templateOptions: any) {
     return await renderTemplate(key, templateOptions);
+  }
+
+  async renewChecksums(): Promise<void> {
+    return await this.checksumHelper.renewChecksums();
   }
 }

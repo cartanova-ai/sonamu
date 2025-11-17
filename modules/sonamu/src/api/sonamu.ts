@@ -207,15 +207,13 @@ class SonamuClass {
     this.syncer = new Syncer();
 
     // Autoload: Models / Types / APIs
-    await this.syncer.autoloadModels();
-    await this.syncer.autoloadTypes();
-    await this.syncer.autoloadApis();
+    await this.syncer.clearAndLoadModules();
 
     if (isLocal() && !isTest() && enableSync) {
+      Template.loadAll();
+
       await this.syncer.sync();
 
-      // FIXME: hmr 설정된 경우만 워처 시작
-      // TODO 곧 적용함
       this.startWatcher();
 
       this.syncer.syncUI();
@@ -477,7 +475,10 @@ class SonamuClass {
     });
     this.watcher.on("all", async (event: string, filePath: string) => {
       const absolutePath = filePath as AbsolutePath;
-      assert(absolutePath.startsWith(this.apiRootPath), "File path is not within the API root path");
+      assert(
+        absolutePath.startsWith(this.apiRootPath),
+        "File path is not within the API root path"
+      );
 
       if (event !== "change" && event !== "add") {
         return;
@@ -489,9 +490,6 @@ class SonamuClass {
         console.error(e);
       }
     });
-
-    // 이걸 여기에 두는게 맞나 싶음,,, TODO
-    Template.loadAll();
   }
 
   /*

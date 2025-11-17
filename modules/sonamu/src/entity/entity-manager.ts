@@ -7,6 +7,8 @@ import { Entity } from "./entity";
 import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
 import { readFile } from "fs/promises";
+import { AbsolutePath } from "../utils/path-utils";
+import assert from "assert";
 
 export type EntityNamesRecord = Record<
   | "fs"
@@ -148,6 +150,12 @@ class EntityManagerClass {
       upper: entityId.toUpperCase(),
       constant: inflection.underscore(entityId).toUpperCase(),
     };
+  }
+
+  getEntityIdFromPath(filePath: AbsolutePath): string {
+    const matched = filePath.match(/application\/(.+)\//);
+    assert(matched?.[1]);
+    return inflection.camelize(matched[1].replace(/\-/g, "_"));
   }
 }
 
