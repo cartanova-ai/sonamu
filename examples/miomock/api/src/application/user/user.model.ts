@@ -55,7 +55,7 @@ class UserModelClass extends BaseModelClass {
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Users" })
+  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Users", timeout: 1000 })
   async findMany<T extends UserSubsetKey>(
     subset: T,
     params: UserListParams = {}
@@ -255,7 +255,7 @@ class UserModelClass extends BaseModelClass {
     const users = await rdb
       .table("users")
       .selectAll()
-      .whereMatch("bio", params.keyword) // ngram index
+      .whereMatch("users.bio", params.keyword) // ngram index
       .debug();
     return users;
   }
