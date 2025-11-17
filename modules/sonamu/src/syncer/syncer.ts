@@ -1,11 +1,9 @@
 import path, { dirname } from "path";
 import { globAsync, importFresh } from "../utils/utils";
-import { getDirname } from "../utils/esm-utils";
 import { createReadStream, PathLike } from "fs";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 
-const __dirname = getDirname(import.meta.url);
 import crypto from "crypto";
 import equal from "fast-deep-equal";
 import * as _ from "lodash-es";
@@ -102,7 +100,7 @@ export class Syncer {
   private async copySharedToTargets(targets: string[]): Promise<void> {
     for (const target of targets) {
       const srcCodePath = path
-        .join(__dirname, `../shared/${target}.shared.ts.txt`)
+        .join(import.meta.dirname, `../shared/${target}.shared.ts.txt`)
         .replace("/dist/", "/src/");
       if (!(await exists(srcCodePath))) {
         return;
