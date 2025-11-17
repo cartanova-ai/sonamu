@@ -29,7 +29,11 @@ import { BaseFrameClass } from "../api/base-frame";
 import { BaseModelClass } from "../database/base-model";
 import { Template } from "../template";
 import { FileType, getChecksumPatternGroupInAbsolutePath } from "./config";
-import { ChecksumHelper } from "./checksum";
+import {
+  findChangedFilesUsingChecksums,
+  renewChecksums,
+  areFilesSame,
+} from "./checksum";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
@@ -49,8 +53,6 @@ export class Syncer {
   models: { [modelName: string]: BaseModelClass | BaseFrameClass } = {};
   isSyncing: boolean = false;
 
-  private readonly checksumHelper = new ChecksumHelper();
-
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
    * 다만 sonamu.shared.ts는 체크섬 비교 없이 무조건 싱크(복사)합니다.
@@ -63,8 +65,7 @@ export class Syncer {
     await this.copySharedToTargets(targets);
 
     // 그 다음부터는 변경된 파일을 찾아서 동기화 작업을 실행합니다.
-    const changedFiles =
-      await this.checksumHelper.findChangedFilesUsingChecksums();
+    const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
       return;
@@ -78,7 +79,7 @@ export class Syncer {
         await this.doSyncActions(changedFiles);
 
         // 싱크 액션이 끝나면 항상 체크섬을 다시 갱신합니다.
-        await this.checksumHelper.renewChecksums();
+        await renewChecksums();
       },
       { whenThisHappens: "SIGUSR2", waitForUpTo: 20000 }
     );
@@ -125,7 +126,7 @@ export class Syncer {
         "src/services/sonamu.shared.ts"
       );
 
-      if (await this.checksumHelper.areFilesSame(srcPath, destPath)) {
+      if (await areFilesSame(srcPath, destPath)) {
         return;
       }
 
@@ -609,6 +610,6 @@ export class Syncer {
   }
 
   async renewChecksums(): Promise<void> {
-    return await this.checksumHelper.renewChecksums();
+    return await renewChecksums();
   }
 }
