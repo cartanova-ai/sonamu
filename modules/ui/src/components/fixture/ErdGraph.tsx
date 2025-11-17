@@ -62,25 +62,19 @@ function makeNodes(
 }
 
 /**
- * FixtureRecord 배열과 노드 배열을 기반으로 React Flow 엣지 배열을 생성합니다.
+ * FixtureRecord 배열을 기반으로 React Flow 엣지 배열을 생성합니다.
  * FixtureRecord의 belongsRecords를 분석하여 관계(Belongs To)를 엣지로 표현합니다.
  */
-function makeEdges(
-  fixtures: FixtureRecord[],
-  nodes: TableNodeRFNode[]
-): Edge[] {
-  const nodeIdSet = new Set(nodes.map((n) => n.id));
+function makeEdges(fixtures: FixtureRecord[]): Edge[] {
   const seen = new Set<string>();
   const edges: Edge[] = [];
 
   for (const fixture of fixtures) {
-    for (const belongs of fixture.belongsRecords) {
-      const targetEntity = belongs.split("#")[0]; // "Entity#id" 형태이므로 #을 기준으로 엔티티 ID만 추출
+    for (const targetFixtureId of fixture.belongsRecords) {
+      const targetEntity = targetFixtureId.split("#")[0]; // "Entity#id" 형태이므로 #을 기준으로 엔티티 ID만 추출
       const source = fixture.entityId;
       const target = targetEntity;
 
-      // 소스 또는 타겟 엔티티가 노드 목록에 없으면 건너뛰기
-      if (!nodeIdSet.has(source) || !nodeIdSet.has(target)) continue;
       // 소스와 타겟이 같으면 건너뛰기
       if (source === target) continue;
 
@@ -171,7 +165,7 @@ export default function FixtureGraph({
       onRelationToggle,
       setFixtureRecords
     );
-    const edges = makeEdges(fixtures, nodes);
+    const edges = makeEdges(fixtures);
 
     return getLayoutedElements(nodes, edges, "TB");
   }, [fixtures, selectedIds, onRelationToggle, setFixtureRecords]);

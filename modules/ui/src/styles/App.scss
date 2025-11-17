@@ -798,12 +798,104 @@ code {
 }
 
 .fixture-index {
-  .fixture-header {
-    display: flex;
-    flex-direction: column;
+  padding: 20px;
+  min-height: 100vh;
+  background-color: #f7f7f7; /* 배경색 */
 
-    & > * {
+  .fixture-header.ui.segment {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    margin-bottom: 25px;
+    padding: 20px;
+    border: none;
+
+    button {
+      margin-left: auto;
+      min-width: 150px;
+    }
+
+    /* Search Section Styling */
+    .search-section {
       display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 15px;
+      background-color: #fcfcfc;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .search-title {
+      min-width: 130px;
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #1b1c1d;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Save Section Styling (이전 Import Section) */
+    .save-section {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start; /* 왼쪽 정렬 */
+      gap: 10px;
+      padding: 15px;
+      background-color: #e6f7ff; /* 라이트 블루 배경 */
+      border: 1px solid #99d8ff;
+      border-radius: 8px;
+    }
+    .save-title {
+      min-width: 130px;
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #007bff;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-field-group {
+      display: flex;
+      flex-grow: 1;
+      min-width: 300px;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .db-dropdown-wrapper {
+      flex-grow: 1;
+      min-width: 150px;
+    }
+
+    /* Responsive adjustments for mobile */
+    @media (max-width: 768px) {
+      .search-title,
+      .save-title {
+        width: 100%;
+        margin-bottom: 5px;
+      }
+      .search-field-group {
+        flex-direction: column;
+        min-width: 100%;
+      }
+      .search-field-group .ui.dropdown,
+      .search-field-group .ui.input {
+        width: 100%;
+      }
+      .search-section .ui.button,
+      .save-section .ui.button {
+        width: 100%;
+        margin-left: 0;
+      }
+      .search-section .db-dropdown-wrapper,
+      .save-section .db-dropdown-wrapper {
+        width: 100%;
+      }
+      .save-section {
+        justify-content: center; /* 모바일에서 가운데 정렬 */
+      }
     }
   }
 
@@ -848,64 +940,127 @@ code {
       }
     }
 
-    .fixture-code-viewer {
-      flex: 1;
-      overflow-x: auto;
+    .fixture-code-viewer-container {
+      box-shadow: none !important;
+      border: none !important;
+
+      .ui.segment {
+        border: none !important;
+      }
+    }
+
+    .top-controls {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .theme-dropdown.ui.dropdown {
+      min-width: 150px;
+    }
+
+    .fixture-entity-group {
+      margin-bottom: 30px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+      background: #fbfbfb;
+    }
+
+    .fixture-entity-group > h3 {
       margin-top: 0;
-      display: relative;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #007bff;
+      color: #007bff;
+      font-weight: 700;
+    }
 
-      .theme-dropdown {
-        position: absolute;
-        right: 1em;
-      }
+    /* Fixture Code Item Styling */
+    .fixture-code-item {
+      padding-bottom: 15px;
+    }
 
-      .fixture-code {
-        .header {
-          display: flex;
-          align-items: baseline;
-          gap: 0.5em;
-        }
+    .fixture-code-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
 
-        .header {
-          margin: 1em;
-        }
+    .fixture-code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
 
-        .description {
-          width: 100%;
-          display: flex;
+    .fixture-code-header .ui.dropdown {
+      margin-left: 10px;
+      font-weight: 600;
+    }
 
-          & > * {
-            flex: 1;
-            margin: 1em;
-          }
+    /* CodeBlock Styling */
+    .code {
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 15px;
+      border: 1px solid #ddd;
+    }
 
-          code {
-            margin: 0;
-          }
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 15px;
+      background-color: #333; /* Dark header for code block */
+      color: white;
+      font-family: monospace;
+      font-size: 0.9em;
+      border-bottom: 1px solid #444;
+    }
 
-          .code-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.9em;
+    .code-header span:first-child {
+      font-weight: bold;
+    }
 
-            button {
-              margin: 0;
-              padding: 0.6em;
-            }
+    .code-header .ui.button {
+      padding: 6px 10px;
+      background: #555 !important;
+      color: white !important;
+      box-shadow: none !important;
+      margin-left: 5px;
+    }
 
-            div {
-              display: flex;
-              align-items: center;
-            }
-          }
+    /* Syntax Highlighter Wrapper */
+    .code pre {
+      margin: 0 !important; /* Remove default margin from <pre> */
+      padding: 15px !important;
+    }
 
-          .ui.checkbox {
-            margin-right: 0.5em;
-            vertical-align: top;
-          }
-        }
-      }
+    .code-line {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 1px 0;
+      transition: background-color 0.1s ease;
+    }
+
+    .code-line:hover {
+      background-color: rgba(100, 100, 100, 0.1);
+    }
+
+    .code-line.hovered {
+      background-color: rgba(100, 100, 100, 0.15);
+    }
+
+    .code-line .ui.checkbox {
+      margin-right: 10px;
+      opacity: 0.7;
+    }
+
+    /* Ensure line content is properly aligned */
+    .code-line > span {
+      flex-grow: 1;
     }
   }
 }
