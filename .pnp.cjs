@@ -2380,10 +2380,6 @@ const RAW_RUNTIME_STATE =
       "npm:0.1.2"\
     ],\
     [\
-      "dynohot",\
-      "npm:2.1.1"\
-    ],\
-    [\
       "eastasianwidth",\
       "npm:0.2.0"\
     ],\
@@ -10545,7 +10541,6 @@ const RAW_RUNTIME_STATE =
           ["@sonamu-kit/loader", "workspace:modules/loader"],\
           ["@swc/core", "virtual:8dcf89552ca69d765044b762a1d224bdbad2b7251b1e6f585d053f08d5d460b1d59766504f1e4ffb3fb91d2062f8a888886d6e70f4bb223c24dd21ff578e4425#npm:1.15.2"],\
           ["@types/node", "npm:24.10.1"],\
-          ["dynohot", "npm:2.1.1"],\
           ["json5", "npm:2.2.3"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
@@ -14769,21 +14764,6 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./.yarn/cache/duplexer-npm-0.1.2-952c810235-62ba61a830.zip/node_modules/duplexer/",\
         "packageDependencies": [\
           ["duplexer", "npm:0.1.2"]\
-        ],\
-        "linkType": "HARD"\
-      }]\
-    ]],\
-    ["dynohot", [\
-      ["npm:2.1.1", {\
-        "packageLocation": "./.yarn/cache/dynohot-npm-2.1.1-c93281a93b-189fbdb712.zip/node_modules/dynohot/",\
-        "packageDependencies": [\
-          ["@babel/core", "npm:7.28.5"],\
-          ["@babel/generator", "npm:7.28.5"],\
-          ["@babel/traverse", "npm:7.28.5"],\
-          ["@braidai/lang", "npm:1.1.2"],\
-          ["convert-source-map", "npm:2.0.0"],\
-          ["dynohot", "npm:2.1.1"],\
-          ["tslib", "npm:2.8.1"]\
         ],\
         "linkType": "HARD"\
       }]\
@@ -19650,7 +19630,6 @@ const RAW_RUNTIME_STATE =
           ["chokidar", "npm:4.0.3"],\
           ["date-fns", "npm:4.1.0"],\
           ["dotenv", "npm:17.2.3"],\
-          ["dynohot", "npm:2.1.1"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-file-upload", "npm:4.0.0"],\
           ["knex", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:3.1.0"],\
@@ -22796,7 +22775,6 @@ const RAW_RUNTIME_STATE =
           ["@sonamu-kit/ui", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#workspace:modules/ui"],\
           ["@swc/cli", "virtual:0761616d6b0789dcca2d1b29b78018d1bee4ae935d047b4d29036c2abc793617c942b655fe58cc69a09f1d0e58431e65424abe8fb912ee8ebab9a568274f7e6e#npm:0.7.9"],\
           ["@swc/core", "virtual:8dcf89552ca69d765044b762a1d224bdbad2b7251b1e6f585d053f08d5d460b1d59766504f1e4ffb3fb91d2062f8a888886d6e70f4bb223c24dd21ff578e4425#npm:1.15.2"],\
-          ["@types/dynohot", null],\
           ["@types/fastify", null],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/knex", null],\
@@ -22819,7 +22797,6 @@ const RAW_RUNTIME_STATE =
           ["date-fns", "npm:4.1.0"],\
           ["date-fns-tz", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:3.2.0"],\
           ["dotenv", "npm:16.6.1"],\
-          ["dynohot", "npm:2.1.1"],\
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
@@ -22849,7 +22826,6 @@ const RAW_RUNTIME_STATE =
           "@sonamu-kit/loader",\
           "@swc/cli",\
           "@swc/core",\
-          "@types/dynohot",\
           "@types/fastify",\
           "@types/knex",\
           "@types/mysql2",\
@@ -22858,7 +22834,6 @@ const RAW_RUNTIME_STATE =
           "@types/source-map-support",\
           "@types/swc__cli",\
           "@types/swc__core",\
-          "dynohot",\
           "fastify",\
           "knex",\
           "mysql2",\
@@ -22881,7 +22856,6 @@ const RAW_RUNTIME_STATE =
           ["@sonamu-kit/ui", "virtual:aa0317e6479e1508fd81700916ae8900ec8e20b424a1e9115ea5fc52ffb77e55ac73e0563ca68e206fbe6bbbaf79bc9f97a63e1a7b5a9e8fe9d8d50a0911930b#workspace:modules/ui"],\
           ["@swc/cli", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:0.7.9"],\
           ["@swc/core", "virtual:8dcf89552ca69d765044b762a1d224bdbad2b7251b1e6f585d053f08d5d460b1d59766504f1e4ffb3fb91d2062f8a888886d6e70f4bb223c24dd21ff578e4425#npm:1.15.2"],\
-          ["@types/dynohot", null],\
           ["@types/fastify", null],\
           ["@types/inflection", "npm:1.13.2"],\
           ["@types/knex", null],\
@@ -22904,7 +22878,6 @@ const RAW_RUNTIME_STATE =
           ["date-fns", "npm:4.1.0"],\
           ["date-fns-tz", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:3.2.0"],\
           ["dotenv", "npm:16.6.1"],\
-          ["dynohot", "npm:2.1.1"],\
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
@@ -22934,7 +22907,6 @@ const RAW_RUNTIME_STATE =
           "@sonamu-kit/loader",\
           "@swc/cli",\
           "@swc/core",\
-          "@types/dynohot",\
           "@types/fastify",\
           "@types/knex",\
           "@types/mysql2",\
@@ -22977,7 +22949,6 @@ const RAW_RUNTIME_STATE =
           ["date-fns", "npm:4.1.0"],\
           ["date-fns-tz", "virtual:4776934debad9db1712d7efa319ce12ef639b27ecd7336075719962daef4936a865038e7c92e3f826212212118277d2f8c31e6451c6b9c0282b592fc4c1d2700#npm:3.2.0"],\
           ["dotenv", "npm:16.6.1"],\
-          ["dynohot", "npm:2.1.1"],\
           ["fast-deep-equal", "npm:3.1.3"],\
           ["fastify", "npm:4.29.1"],\
           ["fastify-qs", "virtual:441cd562946e2319040270be449a4eb001a5d1371d211ff40b794c0c1c9a30c436e89c5a4ad95339f0d3a033efdc91ff3db0bcb7eceead8b43282afb0e26e320#npm:4.0.2"],\
