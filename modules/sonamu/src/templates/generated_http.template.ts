@@ -170,6 +170,7 @@ export class Template__generated_http extends Template {
       };
       return def;
     } catch (error) {
+      console.error(error);
       throw new Error(
         `Invalid zod type detected on ${api.modelName}:${api.methodName}`
       );

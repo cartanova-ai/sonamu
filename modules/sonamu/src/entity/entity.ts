@@ -1,4 +1,5 @@
-import _ from "lodash";
+import * as _ from "lodash-es";
+import { createImportUrl } from "../utils/esm-utils";
 import { EntityManager as EntityManager } from "./entity-manager";
 import {
   EntityProp,
@@ -553,8 +554,8 @@ export class Entity {
     );
 
     if (await exists(typesFileDistPath)) {
-      const importPath = path.relative(__dirname, typesFileDistPath);
-      const t = await import(importPath);
+      const importUrl = createImportUrl(typesFileDistPath);
+      const t = await import(importUrl);
       this.types = Object.keys(t).reduce((result, key) => {
         EntityManager.setModulePath(key, typesModulePath);
         return {

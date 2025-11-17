@@ -2,13 +2,13 @@ import inflection from "inflection";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { RenderedTemplate } from "../syncer/syncer";
+import { RenderedTemplate } from "./base-template";
 import { Template } from "./base-template";
 import {
   getEnumInfoFromColName,
   getRelationPropFromColName,
 } from "./view_list.template";
-import _ from "lodash";
+import * as _ from "lodash-es";
 
 export class Template__view_form extends Template {
   constructor() {

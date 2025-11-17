@@ -1,5 +1,5 @@
 import inflection from "inflection";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { TemplateOptions } from "../types/types";
 import { EntityNamesRecord } from "../entity/entity-manager";
 import { ApiParamType, ApiParam } from "../types/types";

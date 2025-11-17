@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
 
 export function getTableName(expr: ColumnRef) {

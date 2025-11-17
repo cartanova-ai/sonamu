@@ -56,7 +56,7 @@ if (args[0] === "build") {
 }
 
 if (args[0] === "dev:serve") {
-  build();
+  // build();
 }
 
 if (!existsSync(scriptPath)) {
@@ -66,7 +66,14 @@ if (!existsSync(scriptPath)) {
 
 const result = spawnSync(
   process.execPath,
-  ["-r", "source-map-support/register", "--no-warnings", scriptPath, ...args],
+  [
+    "--import",
+    "@sonamu-kit/loader", // Sonamu UI도 syncer를 다루므로, ts 로드 능력이 필요합니다.
+    "--enable-source-maps",
+    "--no-warnings",
+    scriptPath,
+    ...args
+  ],
   {
     stdio: "inherit",
   }

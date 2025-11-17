@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash-es";
 import equal from "fast-deep-equal";
 import { MigrationColumn, MigrationIndex } from "../types/types";
 

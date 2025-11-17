@@ -1,6 +1,7 @@
 {
   "name": "@sonamu-kit/task",
   "version": "0.0.1",
+  "type": "module",
   "description": "Sonamu Task - Simple & Distributed Task Queue",
   "main": "./dist/index.js",
   "exports": "./dist/index.js",

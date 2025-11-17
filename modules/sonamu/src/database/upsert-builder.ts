@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { nonNullable } from "../utils/utils";

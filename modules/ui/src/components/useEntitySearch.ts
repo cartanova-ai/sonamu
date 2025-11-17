@@ -1,4 +1,4 @@
-import _ from "lodash";
+import { groupBy, map } from "lodash-es";
 import { ExtendedEntity } from "../services/sonamu-ui.service";
 import { useCallback, useState } from "react";
 
@@ -256,18 +256,20 @@ export function useEntitySearch(options?: {
         .filter((result) => result.score > 0.1)
         .sort((a, b) => b.score - a.score);
 
-      return _(searchResult)
-        .groupBy((r) => r.item.id + Math.floor(r.score * 10) / 10)
-        .map((group) => {
-          const { id, title } = group[0].item;
-          const fields = group
-            .map(({ fields }) => fields)
-            .flat()
-            .filter(Boolean) as SearchResult["fields"];
-          const score = Math.max(...group.map(({ score }) => score));
-          return { item: { id, title }, fields, score };
-        })
-        .value()
+      const grouped = groupBy(
+        searchResult,
+        (r) => r.item.id + Math.floor(r.score * 10) / 10
+      );
+
+      return map(grouped, (group) => {
+        const { id, title } = group[0].item;
+        const fields = group
+          .map(({ fields }) => fields)
+          .flat()
+          .filter(Boolean) as SearchResult["fields"];
+        const score = Math.max(...group.map(({ score }) => score));
+        return { item: { id, title }, fields, score };
+      })
         .sort((a, b) => {
           if (a.item.id === currentEntity) return -1;
           if (b.item.id === currentEntity) return 1;

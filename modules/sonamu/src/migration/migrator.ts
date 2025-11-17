@@ -1,4 +1,4 @@
-import _ from "lodash";
+import * as _ from "lodash-es";
 import knex, { Knex } from "knex";
 import chalk from "chalk";
 import { DateTime } from "luxon";

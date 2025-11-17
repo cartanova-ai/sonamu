@@ -1,10 +1,10 @@
 import inflection from "inflection";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../types/types";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { isEnumProp, isRelationProp, RelationProp } from "../types/types";
-import { RenderedTemplate } from "../syncer/syncer";
+import { RenderedTemplate } from "./base-template";
 import { Template } from "./base-template";
 
 export class Template__view_list extends Template {
