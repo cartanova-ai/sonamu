@@ -207,10 +207,10 @@ class SonamuClass {
     this.syncer = new Syncer();
 
     // Autoload: Models / Types / APIs
-    await this.syncer.clearAndLoadModules();
+    await this.syncer.loadAll();
 
     if (isLocal() && !isTest() && enableSync) {
-      Template.loadAll();
+      await Template.loadAll();
 
       await this.syncer.sync();
 

@@ -4,9 +4,9 @@ import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
 import { RenderedTemplate } from "../template";
 import { Template } from "../template";
-import { getRelationPropFromColName, getEnumInfoFromColName } from "../common";
+import { getRelationPropFromColName, getEnumInfoFromColName } from "../helpers";
 import * as _ from "lodash-es";
-import { getZodTypeById, zodTypeToRenderingNode } from "../entity-zod";
+import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 
 export class Template__view_form extends Template {
   constructor() {

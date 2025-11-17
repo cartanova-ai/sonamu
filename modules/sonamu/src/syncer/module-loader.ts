@@ -1,0 +1,122 @@
+import path from "path";
+import { globAsync } from "../utils/async-utils";
+import { importMembersFresh } from "../utils/esm-utils";
+import { z } from "zod";
+import chalk from "chalk";
+import { Sonamu } from "../api/sonamu";
+import { readApisFromFile } from "./api-parser";
+import { BaseFrameClass } from "../api/base-frame";
+import { BaseModelClass } from "../database/base-model";
+import { AbsolutePath } from "../utils/path-utils";
+import { ApiParam, ApiParamType } from "../types/types";
+import { ApiDecoratorOptions } from "../api/decorators";
+
+export type LoadedApis = {
+  typeParameters: ApiParamType.TypeParam[];
+  parameters: ApiParam[];
+  returnType: ApiParamType;
+  modelName: string;
+  methodName: string;
+  path: string;
+  options: ApiDecoratorOptions;
+}[];
+
+export type LoadedTypes = { [typeName: string]: z.ZodObject<any> };
+
+export type LoadedModels = {
+  [modelName: string]: BaseModelClass | BaseFrameClass;
+};
+
+/**
+ * *.model.ts와 *.frame.ts 파일들에서 API 메소드를 파싱하여 로드합니다.
+ * registeredApis에 API가 등록되어 있어야 하기 때문에, *.model.ts 파일들을 먼저 import해야 합니다.
+ * 따라서 loadModels()를 먼저 호출해야 합니다.
+ */
+export async function loadApis(): Promise<LoadedApis> {
+  const modelPathsPattern = path.join(
+    Sonamu.apiRootPath,
+    "src/application/**/*.{model,frame}.ts"
+  );
+  const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
+
+  const apis: LoadedApis = [];
+  let count = 0;
+  for (const filePath of modelPaths) {
+    const parsedApis = await readApisFromFile(filePath);
+    apis.push(...parsedApis);
+    count++;
+  }
+  console.log(
+    chalk.gray(
+      `[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`
+    )
+  );
+
+  return apis;
+}
+
+/**
+ * *.model.ts와 *.frame.ts 파일들에서 Model/Frame 클래스 인스턴스를 로드합니다.
+ */
+export async function loadModels(): Promise<LoadedModels> {
+  const modelPathsPattern = path.join(
+    Sonamu.apiRootPath,
+    "src/application/**/*.{model,frame}.ts"
+  );
+  const modelPaths = await globAsync(modelPathsPattern);
+
+  const models: LoadedModels = {};
+  let count = 0;
+  for (const filePath of modelPaths) {
+    const importedMembers = await importMembersFresh<
+      BaseModelClass | BaseFrameClass
+    >(filePath);
+
+    for (const { name, value } of importedMembers) {
+      if (name.endsWith("Model") || name.endsWith("Frame")) {
+        models[name] = value;
+      }
+    }
+    count++;
+  }
+  console.log(
+    chalk.gray(
+      `[Loading] Loaded model/frame instances from "*.{model,frame}.ts" files: ${count} files.`
+    )
+  );
+
+  return models;
+}
+
+/**
+ * *.types.ts와 *.generated.ts 파일들에서 Zod 스키마를 로드합니다.
+ */
+export async function loadTypes(): Promise<LoadedTypes> {
+  const typePathsPatterns = [
+    path.join(Sonamu.apiRootPath, "/src/application/**/*.types.ts"),
+    path.join(Sonamu.apiRootPath, "/src/application/**/*.generated.ts"),
+  ];
+  const typePaths = (
+    await Promise.all(typePathsPatterns.map(globAsync))
+  ).flat();
+
+  const types: LoadedTypes = {};
+  let count = 0;
+  for (const filePath of typePaths) {
+    const importedMembers =
+      await importMembersFresh<z.ZodObject<any>>(filePath);
+    for (const { name, value } of importedMembers) {
+      if (value instanceof z.ZodObject) {
+        types[name] = value;
+      }
+    }
+    count++;
+  }
+  console.log(
+    chalk.gray(
+      `[Loading] Loaded zod types from "*.types.ts" files: ${count} files.`
+    )
+  );
+
+  return types;
+}

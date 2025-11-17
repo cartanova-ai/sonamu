@@ -17,12 +17,21 @@ import { RenderedTemplate } from "../template/template";
 import { EntityManager } from "../entity/entity-manager";
 import { wrapIf } from "../utils/lodash-able";
 import prettier from "prettier";
+import { AbsolutePath } from "../utils/path-utils";
 
+/**
+ * 템플릿을 렌더링하고 파일로 생성합니다.
+ * overwrite 옵션이 false인 경우, 이미 존재하는 파일은 건너뜁니다.
+ * @param key - 템플릿 키 (예: "entity", "model", "service" 등)
+ * @param templateOptions - 템플릿 렌더링에 필요한 옵션
+ * @param _generateOptions - 생성 옵션 (overwrite 여부)
+ * @returns 생성된 파일 경로 배열
+ */
 export async function generateTemplate(
   key: TemplateKey,
   templateOptions: any,
   _generateOptions?: GenerateOptions
-) {
+): Promise<AbsolutePath[]> {
   const generateOptions = {
     overwrite: false,
     ..._generateOptions,
@@ -57,15 +66,23 @@ export async function generateTemplate(
       });
     }
   })();
+  
   if (filteredPathAndCodes.length === 0) {
     throw new AlreadyProcessedException("이미 경로에 모든 파일이 존재합니다.");
   }
 
-  return Promise.all(
-    filteredPathAndCodes.map((pathAndCode) => writeCodeToPath(pathAndCode))
-  );
+  return (await Promise.all(
+    filteredPathAndCodes.map((pathAndCode) => writeCodeToPathEachTarget(pathAndCode))
+  )).flat();
 }
 
+/**
+ * 템플릿을 렌더링하여 PathAndCode 객체를 반환합니다.
+ * 파일로 쓰지 않고 메모리상에서만 렌더링합니다.
+ * @param key - 템플릿 키
+ * @param options - 템플릿 렌더링 옵션
+ * @returns 경로와 코드 쌍의 배열
+ */
 export async function renderTemplate<T extends keyof TemplateOptions>(
   key: T,
   options: TemplateOptions[T]
@@ -156,13 +173,17 @@ async function resolveRenderedTemplate(
   };
 }
 
-async function writeCodeToPath(pathAndCode: PathAndCode): Promise<string[]> {
+async function writeCodeToPathEachTarget(
+  pathAndCode: PathAndCode
+): Promise<AbsolutePath[]> {
   const { targets } = Sonamu.config.sync;
   const { appRootPath } = Sonamu;
-  const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
+  const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
   const dstFilePaths = _.uniq(
-    targets.map((target) => filePath.replace("/:target/", `/${target}/`))
+    targets.map((target) =>
+      filePath.replace("/:target/", `/${target}/`)
+    ) as AbsolutePath[]
   );
   return await Promise.all(
     dstFilePaths.map(async (dstFilePath) => {

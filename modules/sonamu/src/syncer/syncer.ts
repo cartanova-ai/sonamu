@@ -1,17 +1,12 @@
 import path, { dirname } from "path";
-import { globAsync } from "../utils/async-utils";
-import { importMembersFresh } from "../utils/esm-utils";
-import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 
 import * as _ from "lodash-es";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { ApiParam, ApiParamType, GenerateOptions } from "../types/types";
-import { ApiDecoratorOptions } from "../api/decorators";
-import { z } from "zod";
+import { GenerateOptions } from "../types/types";
 import chalk from "chalk";
 import { TemplateKey, TemplateOptions } from "../types/types";
-import { BadRequestException } from "../exceptions/so-exceptions";
 import { Sonamu } from "../api/sonamu";
 import assert from "assert";
 import { minimatch } from "minimatch";
@@ -23,34 +18,36 @@ import {
   toAbsolutePath,
   toProjectRelativePath,
 } from "../utils/path-utils";
-import { generateTemplate, renderTemplate } from "./template";
-import { readApisFromFile } from "./api-parsing";
-import { BaseFrameClass } from "../api/base-frame";
-import { BaseModelClass } from "../database/base-model";
+import { generateTemplate, renderTemplate } from "./code-generator";
 import { Template } from "../template";
-import { FileType, getChecksumPatternGroupInAbsolutePath } from "./config";
+import {
+  FileType,
+  getChecksumPatternGroupInAbsolutePath,
+} from "./file-patterns";
 import {
   findChangedFilesUsingChecksums,
   renewChecksums,
   areFilesSame,
 } from "./checksum";
+import {
+  loadApis,
+  loadModels,
+  loadTypes,
+  LoadedApis,
+  LoadedModels,
+  LoadedTypes,
+} from "./module-loader";
+import { createEntity, delEntity } from "./entity-operations";
+import { z } from "zod";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
 };
 
 export class Syncer {
-  apis: {
-    typeParameters: ApiParamType.TypeParam[];
-    parameters: ApiParam[];
-    returnType: ApiParamType;
-    modelName: string;
-    methodName: string;
-    path: string;
-    options: ApiDecoratorOptions;
-  }[] = [];
-  types: { [typeName: string]: z.ZodObject<any> } = {};
-  models: { [modelName: string]: BaseModelClass | BaseFrameClass } = {};
+  apis: LoadedApis = [];
+  types: LoadedTypes = {};
+  models: LoadedModels = {};
   isSyncing: boolean = false;
 
   /**
@@ -86,6 +83,7 @@ export class Syncer {
   }
 
   /**
+   * Watcher가 감지한 파일 변경 사항에 대해 싱크를 진행합니다.
    * 주어진 변경 파일들 중 체크섬 관리 대상인 것들만 가져다가 싱크를 진행합니다.
    * 체크섬 파일 업데이트는 여기에서 하지 않습니다. 호출자가 합니다.
    * @param diffFilePaths - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
@@ -102,7 +100,7 @@ export class Syncer {
     await this.doSyncActions(targetFilePaths);
 
     // 싱크 작업이 끝나면 모든 모듈을 리로드합니다.
-    await this.clearAndLoadModules();
+    await this.loadAll();
 
     this.syncUI();
   }
@@ -140,9 +138,20 @@ export class Syncer {
   }
 
   /**
+   * 모든 모듈(apis, types, models)을 로드합니다.
+   * 기존의 것들은 모두 버리고 새로 로드합니다.
+   */
+  async loadAll() {
+    this.types = await loadTypes();
+    this.models = await loadModels();
+    this.apis = await loadApis(); // service.template.ts에서 syncer.apis를 씁니다.
+  }
+
+  /**
    * 실제 싱크를 수행하는 본체입니다.
-   * @param diffFiles
-   * @returns
+   * 변경된 파일들을 타입별로 분류하고 각 타입에 맞는 액션을 실행합니다.
+   * @param diffFilePaths - 변경된 파일들의 절대 경로 목록
+   * @returns diffTypes - 변경된 파일의 타입 목록 (entity, types, model 등)
    */
   private async doSyncActions(
     diffFilePaths: AbsolutePath[]
@@ -203,8 +212,6 @@ export class Syncer {
       diffGroups["entity"]?.[0]
     );
 
-    console.log(chalk.cyan(`entityId: ${entityId}`));
-
     if (entityId) {
       const entity = EntityManager.get(entityId);
       const typeFilePath = toAbsolutePath(
@@ -260,8 +267,8 @@ export class Syncer {
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.
-    await this.clearAndLoadModules();
-   
+    await this.loadAll();
+
     const params: {
       namesRecord: EntityNamesRecord;
     }[] = mergedGroup.map((modelPath) => {
@@ -286,7 +293,11 @@ export class Syncer {
     await this.actionGenerateHttps();
   }
 
-  async actionGenerateSchemas(): Promise<string[]> {
+  /**
+   * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
+   * @returns 생성된 파일 경로 배열.
+   */
+  private async actionGenerateSchemas(): Promise<AbsolutePath[]> {
     return (
       await Promise.all([
         generateTemplate("generated_sso", {}, { overwrite: true }),
@@ -297,7 +308,12 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateServices(
+  /**
+   * *.service.ts를 생성합니다.
+   * @param paramsArray 
+   * @returns 생성된 파일 경로 배열.
+   */
+  private async actionGenerateServices(
     paramsArray: {
       namesRecord: EntityNamesRecord;
     }[]
@@ -315,7 +331,11 @@ export class Syncer {
       .flat();
   }
 
-  async actionGenerateHttps(): Promise<string[]> {
+  /**
+   * sonamu.generated.http를 생성합니다.
+   * @returns 생성된 파일 경로.
+   */
+  private async actionGenerateHttps(): Promise<AbsolutePath> {
     const [res] = await generateTemplate(
       "generated_http",
       {},
@@ -325,28 +345,11 @@ export class Syncer {
     return res;
   }
 
-  async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
-    if (!(await exists(fromPath))) {
-      return;
-    }
-
-    const oldFileContent = (await readFile(fromPath)).toString();
-
-    const newFileContent = (() => {
-      const nfc = oldFileContent.replace(
-        /from "sonamu"/g,
-        `from "src/services/sonamu.shared"`
-      );
-
-      if (toPath.includes("/web/")) {
-        return nfc; // .replace(/from "lodash";/g, `from "lodash-es";`); // TODO 흠? 필요없을듯.
-      } else {
-        return nfc;
-      }
-    })();
-    return writeFile(toPath, newFileContent);
-  }
-
+  /**
+   * *.types.ts, *.functions.ts, *.generated.ts를 타겟 디렉토리에 복사합니다.
+   * @param tsPaths 
+   * @returns 복사된 파일 경로 배열.
+   */
   private async actionSyncFilesToTargets(
     tsPaths: AbsolutePath[]
   ): Promise<string[]> {
@@ -378,95 +381,35 @@ export class Syncer {
     ).flat();
   }
 
-  async clearAndLoadModules() {
-    this.apis = [];
-    this.types = {};
-    this.models = {};
-    await this.loadTypes();
-    await this.loadModels();
-    await this.loadApis(); // service.template.ts에서 syncer.apis를 씁니다.
-  }
-
-  async loadApis() {
-    const modelPathsPattern = path.join(
-      Sonamu.apiRootPath,
-      "src/application/**/*.{model,frame}.ts"
-    );
-    const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
-
-    let count = 0;
-    for (const filePath of modelPaths) {
-      const apis = await readApisFromFile(filePath);
-      this.apis.push(...apis);
-      count++;
+  private async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
+    if (!(await exists(fromPath))) {
+      return;
     }
-    console.log(
-      chalk.gray(
-        `[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`
-      )
-    );
 
-    return this.apis;
-  }
+    const oldFileContent = (await readFile(fromPath)).toString();
 
-  async loadModels() {
-    const modelPathsPattern = path.join(
-      Sonamu.apiRootPath,
-      "src/application/**/*.{model,frame}.ts"
-    );
-    const modelPaths = await globAsync(modelPathsPattern);
+    const newFileContent = (() => {
+      const nfc = oldFileContent.replace(
+        /from "sonamu"/g,
+        `from "src/services/sonamu.shared"`
+      );
 
-    let count = 0;
-    for (const filePath of modelPaths) {
-      const importedMembers = await importMembersFresh<
-        BaseModelClass | BaseFrameClass
-      >(filePath);
-
-      for (const { name, value } of importedMembers) {
-        if (name.endsWith("Model") || name.endsWith("Frame")) {
-          this.models[name] = value;
-        }
+      if (toPath.includes("/web/")) {
+        return nfc; // .replace(/from "lodash";/g, `from "lodash-es";`); // TODO 흠? 필요없을듯.
+      } else {
+        return nfc;
       }
-      count++;
-    }
-    console.log(
-      chalk.gray(
-        `[Loading] Loaded model/frame instances from "*.{model,frame}.ts" files: ${count} files.`
-      )
-    );
-
-    return this.models;
+    })();
+    return writeFile(toPath, newFileContent);
   }
 
-  async loadTypes(): Promise<{ [typeName: string]: z.ZodObject<any> }> {
-    const typePathsPatterns = [
-      path.join(Sonamu.apiRootPath, "/src/application/**/*.types.ts"),
-      path.join(Sonamu.apiRootPath, "/src/application/**/*.generated.ts"),
-    ];
-    const typePaths = (
-      await Promise.all(typePathsPatterns.map(globAsync))
-    ).flat();
-
-    let count = 0;
-    for (const filePath of typePaths) {
-      const importedMembers =
-        await importMembersFresh<z.ZodObject<any>>(filePath);
-      for (const { name, value } of importedMembers) {
-        if (value instanceof z.ZodObject) {
-          this.types[name] = value;
-        }
-      }
-      count++;
-    }
-    console.log(
-      chalk.gray(
-        `[Loading] Loaded zod types from "*.types.ts" files: ${count} files.`
-      )
-    );
-
-    return this.types;
-  }
-
+  /**
+   * 주어진 엔티티와 템플릿 키에 대해, 생성된 코드가 존재하는지 확인합니다.
+   * @param entityId 엔티티 ID
+   * @param templateKey 템플릿 키
+   * @param enumId 열거형 ID
+   * @returns 생성된 코드가 존재하는지 여부
+   */
   async checkExistsGenCode(
     entityId: string,
     templateKey: TemplateKey,
@@ -485,6 +428,12 @@ export class Syncer {
     };
   }
 
+  /**
+   * 주어진 엔티티와 열거형에 대해, 생성된 코드가 존재하는지 확인합니다.
+   * @param entityId 엔티티 ID
+   * @param enums 열거형 레이블
+   * @returns 생성된 코드가 존재하는지 여부
+   */
   async checkExists(
     entityId: string,
     enums: {
@@ -532,55 +481,6 @@ export class Syncer {
     );
   }
 
-  async createEntity(
-    form: Omit<TemplateOptions["entity"], "title"> & { title?: string }
-  ) {
-    if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
-      throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
-    }
-
-    await generateTemplate("entity", form);
-
-    // reload entities
-    await EntityManager.reload();
-  }
-
-  async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
-    const entity = EntityManager.get(entityId);
-
-    const delPaths = (() => {
-      if (entity.parentId) {
-        return [
-          `${Sonamu.apiRootPath}/src/application/${entity.names.parentFs}/${entity.names.fs}.entity.json`,
-        ];
-      } else {
-        return [
-          `${Sonamu.apiRootPath}/src/application/${entity.names.fs}`,
-          `${Sonamu.apiRootPath}/dist/application/${entity.names.fs}`,
-          ...Sonamu.config.sync.targets
-            .map((target) => [
-              `${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`,
-            ])
-            .flat(),
-        ];
-      }
-    })(); // iife
-
-    for await (const delPath of delPaths) {
-      if (await exists(delPath)) {
-        console.log(chalk.red(`DELETE ${delPath}`));
-        await rm(delPath, { recursive: true, force: true });
-      } else {
-        console.log(chalk.yellow(`NOT_EXISTS ${delPath}`));
-      }
-    }
-
-    // reload entities
-    await EntityManager.reload();
-
-    return { delPaths };
-  }
-
   syncUI() {
     const uiPort = Sonamu.config.ui?.port ?? 57000;
 
@@ -589,6 +489,22 @@ export class Syncer {
     }).catch((e) =>
       console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`))
     );
+  }
+
+  /**
+   * 하위호환용 프록시 메소드입니다.
+   */
+  async createEntity(
+    form: Omit<TemplateOptions["entity"], "title"> & { title?: string }
+  ) {
+    return await createEntity(form);
+  }
+
+  /**
+   * 하위호환용 프록시 메소드입니다.
+   */
+  async delEntity(entityId: string): Promise<{ delPaths: string[] }> {
+    return await delEntity(entityId);
   }
 
   /**
@@ -609,6 +525,9 @@ export class Syncer {
     return await renderTemplate(key, templateOptions);
   }
 
+  /**
+   * 하위호환용 프록시 메소드입니다.
+   */
   async renewChecksums(): Promise<void> {
     return await renewChecksums();
   }
