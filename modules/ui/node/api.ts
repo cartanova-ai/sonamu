@@ -36,9 +36,6 @@ import { openai } from "./openai-client";
 import { range } from "lodash-es";
 import chalk from "chalk";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 export async function createServer(options: {
   projectName: string;
   listen: {
@@ -84,7 +81,7 @@ export async function createServer(options: {
 
   // 웹 빌드 데이터로 정적 데이터 서빙
   server.register(import("@fastify/static"), {
-    root: path.join(__dirname, "../build/assets"),
+    root: path.join(import.meta.dirname, "../build/assets"),
     prefix: "/assets",
   });
 
@@ -948,7 +945,7 @@ export async function createServer(options: {
       .headers({ "Content-type": "text/html" })
       .send(
         fs
-          .readFileSync(path.resolve(__dirname, "../build/index.html"))
+          .readFileSync(path.resolve(import.meta.dirname, "../build/index.html"))
           .toString()
           .replace("{{projectName}}", projectName)
       );
