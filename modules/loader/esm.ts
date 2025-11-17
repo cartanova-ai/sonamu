@@ -1,7 +1,6 @@
 import type { LoaderFileSystem, PackageJson, ResolutionConfig } from "./utility/scope.js";
 import type { FileSystemAsync } from "@loaderkit/resolve/fs";
 import type { LoadHook, ResolveHook } from "node:module";
-import type {} from "dynohot";
 import { resolve as cjsResolve } from "@loaderkit/resolve/cjs";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
 import { transpileSource } from "./utility/swc.js";
@@ -337,11 +336,6 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
 		return async function() {
 			// `tsSourceUrl` is a `.ts` file, or maybe a `.js` file with `allowJs`, or `.json` file with `allowJson`.
 			const tsSourceUrl = new URL(tsSource);
-
-			// dynohot integration
-			if (context.hot) {
-				context.hot.watch(tsSourceUrl);
-			}
 
 			// Resolve compiler options
 			const packageMeta = await resolvePackage(fileSystem, tsSourceUrl);
