@@ -16,7 +16,7 @@ import { runWithGracefulShutdown } from "../utils/process-utils";
 import {
   AbsolutePath,
   toAbsolutePath,
-  toProjectRelativePath,
+  toApiRelativePath,
 } from "../utils/path-utils";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { Template } from "../template";
@@ -200,7 +200,7 @@ export class Syncer {
   ): Promise<void> {
     console.log(
       chalk.gray(
-        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map(toProjectRelativePath).join(", ")}`
+        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map(toApiRelativePath).join(", ")}`
       )
     );
 
@@ -242,7 +242,7 @@ export class Syncer {
 
     console.log(
       chalk.gray(
-        `[Processing] Handling types/functions/generated changes: ${tsPaths.map(toProjectRelativePath).join(", ")}`
+        `[Processing] Handling types/functions/generated changes: ${tsPaths.map(toApiRelativePath).join(", ")}`
       )
     );
 
@@ -261,7 +261,7 @@ export class Syncer {
 
     console.log(
       chalk.gray(
-        `[Processing] Handling model/frame changes: ${mergedGroup.map(toProjectRelativePath).join(", ")}`
+        `[Processing] Handling model/frame changes: ${mergedGroup.map(toApiRelativePath).join(", ")}`
       )
     );
 
@@ -419,8 +419,8 @@ export class Syncer {
       templateKey
     ).getTargetAndPath(EntityManager.getNamesFromId(entityId), enumId);
 
-    const fullPath = path.join(Sonamu.appRootPath, target, genPath);
     const subPath = path.join(target, genPath);
+    const fullPath = path.join(Sonamu.appRootPath, subPath);
     return {
       subPath,
       fullPath,
