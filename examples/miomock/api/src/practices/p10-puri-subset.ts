@@ -82,31 +82,28 @@ export type UserSubsetPuriTypes = {
 };
 
 // Puri 타입에서 각 제네릭 파라미터 추출
-type PuriSchema<P> = P extends Puri<infer S, any, any, any> ? S : never;
-type PuriTables<P> =
-  P extends Puri<any, infer TTables, any, any> ? TTables : never;
-type PuriResult<P> = P extends Puri<any, any, infer R, any> ? R : never;
-type PuriResolved<P> = P extends Puri<any, any, any, infer R> ? R : never;
+type PuriSchema<P> = P extends Puri<infer S, any, any> ? S : never;
+type PuriTables<P> = P extends Puri<any, infer TTables, any> ? TTables : never;
+type PuriResult<P> = P extends Puri<any, any, infer R> ? R : never;
 
 // 두 테이블 타입의 교집합 (공통 키만 추출)
 type IntersectTables<A, B> = Pick<A, Extract<keyof A, keyof B>>;
 
 // 두 Puri의 교집합
 type IntersectPuri<
-  A extends Puri<any, any, any, any>,
-  B extends Puri<any, any, any, any>,
+  A extends Puri<any, any, any>,
+  B extends Puri<any, any, any>,
 > = Puri<
   PuriSchema<A>, // TSchema (같다고 가정)
   IntersectTables<PuriTables<A>, PuriTables<B>>, // TTables key 교집합
-  PuriResult<A>, // TResult (동일하다는 가정)
-  PuriResolved<A> // TResolved (동일하다는 가정)
+  PuriResult<A> // TResult (동일하다는 가정)
 >;
 
 // 여러 Puri의 교집합 (재귀적으로 처리)
-type IntersectPuriMany<Arr extends readonly Puri<any, any, any, any>[]> =
+type IntersectPuriMany<Arr extends readonly Puri<any, any, any>[]> =
   Arr extends [
-    infer Head extends Puri<any, any, any, any>,
-    ...infer Tail extends readonly Puri<any, any, any, any>[],
+    infer Head extends Puri<any, any, any>,
+    ...infer Tail extends readonly Puri<any, any, any>[],
   ]
     ? Tail extends []
       ? Head // 배열이 1개면 그대로 반환
