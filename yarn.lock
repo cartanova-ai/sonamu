@@ -5619,6 +5619,7 @@ __metadata:
   resolution: "@sonamu-kit/task@workspace:modules/tasks"
   dependencies:
     "@swc/cli": "npm:^0.7.8"
+    "@swc/core": "npm:^1.13.5"
     "@types/node": "npm:^24.9.2"
     date-fns: "npm:^4.1.0"
     date-fns-tz: "npm:^3.2.0"
@@ -5628,7 +5629,6 @@ __metadata:
     nodemon: "npm:^3.1.10"
     prettier: "npm:^3.2.5"
     rou3: "npm:^0.7.9"
-    source-map-support: "npm:^0.5.21"
     typescript: "npm:^5.9.3"
     uuid: "npm:^13.0.0"
     vitest: "npm:^4.0.6"
@@ -5637,7 +5637,6 @@ __metadata:
     knex: ^3.1.0
     mysql2: ^3.6.1
     nodemon: 3.1.10
-    source-map-support: ^0.5.21
   languageName: unknown
   linkType: soft
 
@@ -5737,7 +5736,6 @@ __metadata:
     semantic-ui-css: "npm:^2.5.0"
     semantic-ui-react: "npm:^2.1.4"
     sonamu: "workspace:^"
-    source-map-support: "npm:^0.5.21"
     supports-color: "npm:^9.4.0"
     swr: "npm:^2.2.2"
     tsc-watch: "npm:^6.0.4"
@@ -6562,15 +6560,6 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10/7ece5fbb5d9c8fc76ab0de2f99d705edf92f18e701d4f9d9b0647275e32eb65e656c1badf9dfaa12f4e1ff3e250561c8c9cfe79e8b5f33dd1417ac0f1804f6cc
-  languageName: node
-  linkType: hard
-
-"@types/source-map-support@npm:^0":
-  version: 0.5.10
-  resolution: "@types/source-map-support@npm:0.5.10"
-  dependencies:
-    source-map: "npm:^0.6.0"
-  checksum: 10/72486b93c3340ed89537bc4f75cfcaa7ed8d4384c916b5fea919a1e39592696ab868ff73aae9e4a7d0099921aa1c35941be1ec02cd5fc7e045110a9f4707d4c8
   languageName: node
   linkType: hard
 
@@ -7888,7 +7877,6 @@ __metadata:
     mysql2: "npm:^3.14.5"
     prettier: "npm:^3.6.2"
     sonamu: "npm:latest"
-    source-map-support: "npm:^0.5.21"
     typescript: "npm:^5.9.2"
     vite: "npm:^7.1.5"
     vitest: "npm:^3.2.4"
@@ -15806,7 +15794,6 @@ __metadata:
     "@types/bcrypt": "npm:^6"
     "@types/lodash-es": "npm:^4"
     "@types/node": "npm:^24.5.0"
-    "@types/source-map-support": "npm:^0"
     "@typescript/native-preview": "npm:^7.0.0-dev.20250923.1"
     "@vitest/coverage-v8": "npm:^3.2.4"
     bcrypt: "npm:^6.0.0"
@@ -15821,7 +15808,6 @@ __metadata:
     mysql2: "npm:^3.14.5"
     prettier: "npm:^3.6.2"
     sonamu: "workspace:^"
-    source-map-support: "npm:^0.5.21"
     tsc-watch: "npm:^7.1.1"
     typescript: "npm:^5.9.2"
     vite: "npm:^7.1.5"
@@ -19380,7 +19366,6 @@ __metadata:
     prettier: "npm:^3.2.5"
     prompts: "npm:^2.4.2"
     qs: "npm:^6.11.0"
-    source-map-support: "npm:^0.5.21"
     tsicli: "npm:^1.0.5"
     tsup: "npm:^8.1.0"
     typescript: "npm:^5.2.2"
@@ -19395,7 +19380,6 @@ __metadata:
     knex: ^3.1.0
     mysql2: ^3.6.1
     nodemon: 3.1.10
-    source-map-support: ^0.5.21
   bin:
     sonamu: ./dist/bin/cli-wrapper.js
   languageName: unknown
