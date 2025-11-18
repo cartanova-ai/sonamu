@@ -522,7 +522,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // INSERT
   insert(
     data: InsertData<SingleTableValue<TTables>>
-  ): ResolvedPuri<number, never> {
+  ): ResolvedPuri<[number], never> {
     this.knexQuery.insert(data);
     return new ResolvedPuri(this.knexQuery);
   }
