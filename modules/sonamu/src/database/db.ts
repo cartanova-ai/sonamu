@@ -1,6 +1,5 @@
 export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
-import path from "path";
 import * as _ from "lodash-es";
 import { Sonamu } from "../api";
 import { AsyncLocalStorage } from "async_hooks";
