@@ -33,7 +33,7 @@ async function examples() {
       // ✅ OK: companies table available
       qb.where("companies.name", "=", "test");
       // ❌ Type Error: employee table NOT available (only in P, not in A)
-      qb.where("employee.salary", ">", "50000");
+      // qb.where("employee.salary", ">", "50000");
       return qb;
     }),
 
@@ -41,7 +41,7 @@ async function examples() {
       // qb type: Puri<..., { users }, ...> (intersection = { users })
       qb.where("users.is_verified", true);
       // ❌ Type Error: employee table NOT available (only in P, not in A or SS)
-      qb.where("employee.salary", ">", "50000");
+      // qb.where("employee.salary", ">", "50000");
       return qb;
     }),
   ];
