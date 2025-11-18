@@ -1,6 +1,6 @@
 import path from "path";
 import { globAsync } from "../utils/async-utils";
-import { importMembersFresh } from "../utils/esm-utils";
+import { importMembers } from "../utils/esm-utils";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { readApisFromFile } from "./api-parser";
@@ -69,7 +69,7 @@ export async function loadModels(): Promise<LoadedModels> {
   const models: LoadedModels = {};
   let count = 0;
   for (const filePath of modelPaths) {
-    const importedMembers = await importMembersFresh<
+    const importedMembers = await importMembers<
       BaseModelClass | BaseFrameClass
     >(filePath);
 
@@ -107,8 +107,7 @@ export async function loadTypes(): Promise<LoadedTypes> {
   const types: LoadedTypes = {};
   let count = 0;
   for (const filePath of typePaths) {
-    const importedMembers =
-      await importMembersFresh<z.ZodObject<any>>(filePath);
+    const importedMembers = await importMembers<z.ZodObject<any>>(filePath);
     for (const { name, value } of importedMembers) {
       if (value instanceof z.ZodObject) {
         types[name] = value;

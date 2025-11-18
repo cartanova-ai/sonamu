@@ -1,7 +1,7 @@
 import { TemplateKey, TemplateOptions } from "../types/types";
 import { EntityNamesRecord } from "../entity/entity-manager";
 import { globAsync } from "../utils/async-utils";
-import { importMembersFresh } from "../utils/esm-utils";
+import { importMembers } from "../utils/esm-utils";
 import path from "path";
 
 export type RenderedTemplate = {
@@ -36,7 +36,7 @@ export abstract class Template {
     );
 
     for (const templateFile of templateFiles) {
-      const templates = await importMembersFresh<any>(templateFile);
+      const templates = await importMembers<any>(templateFile);
       if (
         templates.length === 1 &&
         typeof templates[0].value === "function" &&
