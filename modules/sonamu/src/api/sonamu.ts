@@ -28,7 +28,7 @@ import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
 import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
-import {AbsolutePath} from "../utils/path-utils";
+import { AbsolutePath } from "../utils/path-utils";
 import { isHotReloadServer } from "../utils/esm-utils";
 import { Template } from "../template";
 import assert from "assert";
@@ -205,7 +205,7 @@ class SonamuClass {
     doSilent?: boolean;
   }) {
     if (this.isInitialized === false) {
-        await this.init(initOptions?.doSilent, initOptions?.enableSync);
+      await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
 
     const options = this.config.server;
@@ -468,13 +468,11 @@ class SonamuClass {
       }
 
       try {
-        // src/index.ts 또는 sonamu.config.ts 변경 시 재시작
-        const isIndexTs =
-          filePath === path.join(this.apiRootPath, "src", "index.ts");
+        // sonamu.config.ts 변경 시 재시작
         const isConfigTs =
           filePath === path.join(this.apiRootPath, "sonamu.config.ts");
 
-        if (isIndexTs || isConfigTs) {
+        if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
           console.log(
             chalk.bold(

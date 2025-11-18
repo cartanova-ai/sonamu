@@ -69,8 +69,14 @@ export class Serve extends BaseCommand {
       .then(() => {
         this.#log(`${this.script} exited.`)
       })
-      .catch(() => {
-        this.#log(`${this.colors.red(this.script + ' crashed.')}`)
+      .catch(({signal}) => {
+        if (signal === 'SIGUSR2') {
+          // 프로세스가 죽은 이유가 SIGUSR2 때문이라면, 이는 서버 프로세스 재시작을 기대하고 보낸 것일 겁니다.
+          // 따라서 재시작해줍니다.
+          this.#startHTTPServer();
+        } else {
+          this.#log(`${this.colors.red(this.script + ' crashed.')}`)
+        }
       })
   }
 
