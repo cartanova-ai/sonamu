@@ -2,7 +2,8 @@
   "private": true,
   "workspaces": [
     "examples/**/*",
-    "modules/**/*"
+    "modules/**/*",
+    "!modules/dump-viewer"
   ],
   "scripts": {
     "build:react-sui": "cowsay 'react-sui 빌드합니다.' && yarn workspace @sonamu-kit/react-sui build",
