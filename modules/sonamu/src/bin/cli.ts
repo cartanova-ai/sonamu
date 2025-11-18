@@ -98,6 +98,7 @@ async function dev() {
       "--clear-screen=false",
       "--node-args=--import=@sonamu-kit/loader",
       "--node-args=--import=@sonamu-kit/hot-hook/register",
+      "--node-args=--enable-source-maps",
       entryPoint,
     ],
     {
