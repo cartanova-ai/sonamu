@@ -8,7 +8,8 @@ export type FileType =
   | "functions"
   | "generated"
   | "entity"
-  | "frame";
+  | "frame"
+  | "config";
 
 export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
   [key in FileType]: T;
@@ -29,6 +30,7 @@ export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
   model: "src/application/**/*.model.ts",
   frame: "src/application/**/*.frame.ts",
   functions: "src/application/**/*.functions.ts",
+  config: "sonamu.config.ts",
 };
 
 /**
@@ -45,10 +47,10 @@ export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
  * // 출력: { entity: "/Users/.../api/src/application/**\/*.entity.json" }
  */
 export function getChecksumPatternGroupInAbsolutePath(): GlobPattern<AbsolutePath> {
-    return Object.fromEntries(
-      Object.entries(checksumPatternGroup).map(([key, value]) => [
-        key,
-        path.join(Sonamu.apiRootPath, value), // API 상대 경로 → 절대 경로
-      ])
-    ) as GlobPattern<AbsolutePath>;
-  }
+  return Object.fromEntries(
+    Object.entries(checksumPatternGroup).map(([key, value]) => [
+      key,
+      path.join(Sonamu.apiRootPath, value), // API 상대 경로 → 절대 경로
+    ])
+  ) as GlobPattern<AbsolutePath>;
+}
