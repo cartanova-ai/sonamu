@@ -30,7 +30,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@sonamu-kit/dump-viewer": "workspace:^",
     "@sonamu-kit/hot-hook": "workspace:^",
     "@sonamu-kit/hot-runner": "workspace:^",
     "@sonamu-kit/loader": "workspace:^",
