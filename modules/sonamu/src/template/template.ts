@@ -28,7 +28,7 @@ export abstract class Template {
    * 템플릿 구현체가 있는 디렉토리의 모든 템플릿을 로드합니다.
    * 템플릿이 필요(Template.find)해지기 전에 최소 한 번 호출해주셔야 합니다.
    */
-  public static async loadAll() {
+  public static async autoload() {
     const templateFiles = await globAsync(
       // Sonamu의 코드베이스는 항상 빌드된 채로 dist 속에 머무르므로,
       // 현재 파일을 기준으로 마찬가지로 dist 속에 있는 템플릿 구현체 js 파일들을 찾습니다.
