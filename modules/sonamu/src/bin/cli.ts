@@ -93,10 +93,11 @@ async function dev() {
   console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server...\n'));
 
   const serverProcess = spawn(
-    'node',
+    "hot-runner",
     [
-      '--import', '@sonamu-kit/loader',
-      "-r", "source-map-support/register",
+      "--clear-screen=false",
+      "--node-args=--import=@sonamu-kit/loader",
+      "--node-args=--import=@sonamu-kit/hot-hook/register",
       entryPoint,
     ],
     {

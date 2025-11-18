@@ -70,7 +70,6 @@ async function bootstrap() {
         urlPrefix: "/api/public/uploaded",
       });
     })(),
-
     lifecycle: {
       onStart: () => {
         console.log(`🌲 Server listening on http://${host}:${port}`);

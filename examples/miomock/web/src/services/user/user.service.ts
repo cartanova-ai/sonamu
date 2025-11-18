@@ -12,6 +12,7 @@ import {
   SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
+import { AxiosProgressEvent } from "axios";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import {
   UserListParams,
@@ -82,7 +83,7 @@ export namespace UserService {
     });
   }
 
-  export async function getMyIP(): Promise<{ ip: string; ip2: string }> {
+  export async function getMyIP(): Promise<{ ip: string; random: string }> {
     return fetch({
       method: "GET",
       url: `/api/user/getMyIP?${qs.stringify({})}`,

@@ -1,14 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "examples/miomock/*",
-    "modules/sonamu",
-    "modules/loader",
-    "modules/react-sui",
-    "modules/create-sonamu",
-    "modules/docs",
-    "modules/tasks",
-    "modules/ui"
+    "examples/**/*",
+    "modules/**/*"
   ],
   "scripts": {
     "build:react-sui": "cowsay 'react-sui 빌드합니다.' && yarn workspace @sonamu-kit/react-sui build",

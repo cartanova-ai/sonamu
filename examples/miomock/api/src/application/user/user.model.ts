@@ -19,6 +19,7 @@ import {
   UserSearchParams,
 } from "./user.types";
 import bcrypt from "bcrypt";
+import randomGenerator from "./random-generator";
 
 /*
   User Model
@@ -141,14 +142,13 @@ class UserModelClass extends BaseModelClass {
 
     return ids.length;
   }
-  
 
   @api({ httpMethod: "GET" })
-  async getMyIP(): Promise<{ ip: string, ip2: string }> {
+  async getMyIP(): Promise<{ ip: string, random: string }> {
     const context = Sonamu.getContext();
     return {
       ip: context.ip,
-      ip2: '',
+      random: randomGenerator(),
     };
   }
 
