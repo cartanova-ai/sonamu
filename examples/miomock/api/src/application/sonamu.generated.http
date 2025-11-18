@@ -9,13 +9,6 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/user/findMany
 	?subset=A
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
 Content-Type: application/json
 
 ###
