@@ -1,7 +1,7 @@
 import { describe, test, expect, assert } from "vitest";
 import { bootstrap } from "../../testing/bootstrap";
 import { UserModel } from "./user.model";
-import { range } from "lodash";
+import { range } from "lodash-es";
 import { BaseModel } from "sonamu";
 
 bootstrap();
