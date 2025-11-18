@@ -122,7 +122,7 @@ export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
 
   const { code: configCode } = await transformFile(configPath, {
     module: {
-      type: "commonjs",
+      type: "es6",
     },
     jsc: {
       parser: {
