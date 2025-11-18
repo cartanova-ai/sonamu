@@ -115,7 +115,9 @@ export class Syncer {
 
     // 싱크 작업이 끝나면 모든 모듈을 로드합니다.
     // hot-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
-    await this.loadAll();
+    await this.autoloadTypes();
+    await this.autoloadModels();
+    await this.autoloadApis();
 
     this.syncUI();
   }
@@ -153,14 +155,16 @@ export class Syncer {
     }
   }
 
-  /**
-   * 모든 모듈(apis, types, models)을 로드합니다.
-   * 기존의 것들은 모두 버리고 새로 로드합니다.
-   */
-  async loadAll() {
+  async autoloadTypes() {
     this.types = await loadTypes();
+  }
+
+  async autoloadModels() {
     this.models = await loadModels();
-    this.apis = await loadApis(); // service.template.ts에서 syncer.apis를 씁니다.
+  }
+
+  async autoloadApis() {
+    this.apis = await loadApis();
   }
 
   /**
@@ -293,7 +297,9 @@ export class Syncer {
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.
-    await this.loadAll();
+    await this.autoloadModels();
+    await this.autoloadTypes();
+    await this.autoloadApis();
 
     const params: {
       namesRecord: EntityNamesRecord;
