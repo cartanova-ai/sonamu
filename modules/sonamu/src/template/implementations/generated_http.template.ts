@@ -25,7 +25,9 @@ export class Template__generated_http extends Template {
     const {
       syncer: { types, apis },
       config: {
-        route: { prefix },
+        api: {
+          route: { prefix },
+        },
       },
     } = Sonamu;
 
