@@ -10,7 +10,7 @@ import { isHotReloadServer } from "./esm-utils.js";
  *
  * **기준점**: `Sonamu.apiRootPath` (일반적으로 프로젝트의 `/api` 디렉토리)
  */
-export type ApiRelativePath = `${"src" | "dist"}/${string}`;
+export type ApiRelativePath = `${"src" | "dist"}/${string}` | 'sonamu.config.ts';
 
 /**
  * 앱 루트 기준 상대 경로 (api/, web/ 등 타겟 디렉토리로 시작)

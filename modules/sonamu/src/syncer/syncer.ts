@@ -196,6 +196,11 @@ export class Syncer {
       await this.handleModelOrFrameChange(diffGroups);
     }
 
+    // 트리거: config
+    if (diffTypes.includes("config")) {
+      await this.actionSyncConfig();
+    }
+
     return {
       diffTypes,
     };
@@ -204,7 +209,7 @@ export class Syncer {
   private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
     return _.groupBy(diffFiles, (r) => {
       const matched = r.match(
-        /\.(model|types|functions|entity|generated|frame)\.[tj]s/
+        /\.(model|types|functions|entity|generated|frame|config)\.[tj]s/
       );
       return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
@@ -312,6 +317,21 @@ export class Syncer {
 
     await this.actionGenerateServices(params);
     await this.actionGenerateHttps();
+  }
+
+  // web/.sonamu.env 에 현재 설정값 저장
+  async actionSyncConfig() {
+    const { host, port } = Sonamu.config.server.listen ?? {};
+    const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
+
+    await Promise.all(
+      Sonamu.config.sync.targets.map(async (target) => {
+        await writeFile(
+          path.join(Sonamu.appRootPath, target, ".sonamu.env"),
+          content
+        );
+      })
+    );
   }
 
   /**

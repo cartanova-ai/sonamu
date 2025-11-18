@@ -29,6 +29,11 @@ import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
 import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
 import {AbsolutePath} from "../utils/path-utils";
+import { isHotReloadServer } from "../utils/esm-utils";
+import { Template } from "../template";
+import assert from "assert";
+import { centerText } from "../utils/console-util";
+import { BaseModel } from "../database/base-model";
 
 export type SonamuSecrets = {
   [key: string]: string;
@@ -200,7 +205,7 @@ class SonamuClass {
     doSilent?: boolean;
   }) {
     if (this.isInitialized === false) {
-      await this.init(initOptions?.doSilent, initOptions?.enableSync);
+        await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
 
     const options = this.config.server;
@@ -480,7 +485,7 @@ class SonamuClass {
           return;
         }
 
-        await this.handleFileChange(event, filePath);
+        await this.handleFileChange(event, absolutePath);
       } catch (e) {
         console.error(e);
       }
