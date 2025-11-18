@@ -223,15 +223,12 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        if (lazyForm.form.url) {
-                          const urls = await upload();
-                          mutate();
-                        }
+                        const urls = await upload();
+                        mutate();
                       } finally {
                         setUploading(false);
                       }
                     }}
-                    disabled={lazyForm.form.url === ""}
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)
@@ -268,15 +265,12 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        if (lazyMultipleForm.form.urls.length > 0) {
-                          const urls = await upload();
-                          mutate();
-                        }
+                        const urls = await upload();
+                        mutate();
                       } finally {
                         setUploading(false);
                       }
                     }}
-                    disabled={lazyMultipleForm.form.urls.length === 0}
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)

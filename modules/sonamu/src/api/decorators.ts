@@ -35,6 +35,7 @@ export type ApiDecoratorOptions = {
   resourceName?: string;
   guards?: GuardKey[];
   description?: string;
+  timeout?: number;
 };
 export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
@@ -224,6 +225,7 @@ export function upload(options: UploadDecoratorOptions = {}) {
         const rawFilesIterator = request.files();
         for await (const rawFile of rawFilesIterator) {
           if (rawFile) {
+            await rawFile.toBuffer();
             uploadContext.files.push(new FileStorage(rawFile, storage));
           }
         }

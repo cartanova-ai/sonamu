@@ -118,7 +118,7 @@ export class Template__service extends Template {
               .join(", ")} }`;
 
             // 기본 URL
-            const apiBaseUrl = `${Sonamu.config.route.prefix}${api.path}`;
+            const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
             return [
               // 클라이언트별로 생성
@@ -203,6 +203,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
     return fetch({
       method: "GET",
       url: \`${apiBaseUrl}?\${qs.stringify(${payloadDef})}\`,
+      ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
     });
 }
     `.trim();
@@ -213,6 +214,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
       method: '${api.options.httpMethod}',
       url: \`${apiBaseUrl}\`,
       data: ${payloadDef},
+      ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
     });
 }
       `.trim();
@@ -264,6 +266,7 @@ export async function ${api.methodName}${typeParamsDef}(
       },
       onUploadProgress,
       data: formData,
+      ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
     });
   }
   `.trim();
@@ -291,6 +294,8 @@ export async function ${api.methodName}${typeParamsDef}(
       ${payloadDef},
     ], swrOptions?.conditional)${
       api.options.httpMethod === "POST" ? ", swrPostFetcher" : ""
+    }${
+      api.options.timeout ? `, { loadingTimeout: ${api.options.timeout} }` : ""
     });
   }`;
   }
@@ -304,7 +309,11 @@ export async function ${api.methodName}${typeParamsDef}(
   ) {
     return `
 export async function ${api.methodName}${typeParamsDef}(${paramsDef}): Promise<Response> {
-    return window.fetch(\`${apiBaseUrl}?\${qs.stringify(${payloadDef})}\`);
+    return window.fetch(\`${apiBaseUrl}?\${qs.stringify(${payloadDef})}\`${
+      api.options.timeout
+        ? `, { signal: AbortSignal.timeout(${api.options.timeout}) }`
+        : ""
+    });
 }
     `.trim();
   }

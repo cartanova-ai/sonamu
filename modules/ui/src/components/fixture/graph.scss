@@ -1,0 +1,35 @@
+.fixture-graph-wrapper {
+  width: 100%;
+  height: 700px;
+}
+
+.table-node-header {
+  margin: 0;
+  position: absolute;
+  top: 0;
+  transform: translateY(-110%);
+}
+
+.table-node {
+  display: inline-block;
+  overflow-x: auto;
+  overflow-x: scroll;
+  margin-bottom: -4px !important;
+
+  .table {
+    margin: 0;
+  }
+
+  /* 기본적으로 숨김 */
+  .resize-control {
+    opacity: 0;
+    pointer-events: none; /* 안 보일 때는 마우스 이벤트도 막기 */
+    transition: opacity 0.15s ease;
+  }
+
+  /* 노드에 마우스 올라가면 보이게 */
+  &:hover .resize-control {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

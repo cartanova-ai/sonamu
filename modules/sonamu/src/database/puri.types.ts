@@ -1,130 +1,41 @@
-export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
-export type Expand<T> = T extends any[]
-  ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
-  : T extends object
-    ? { [K in keyof T]: T[K] }
-    : T;
+// 메타데이터 컬럼 제외
+type ExcludeMetadataColumns<T> = T extends {
+  __fulltext__: readonly (infer _Col)[];
+}
+  ? Omit<T, "__fulltext__">
+  : T;
 
-// EmptyRecord가 남아있으면 AvailableColumns 추론이 제대로 되지 않음 (EmptyRecord를 {}로 변경하면 정상 동작함)
-export type MergeJoined<TExisting, TNew> = TExisting extends EmptyRecord
-  ? TNew // 첫 join: EmptyRecord 제거하고 대체
-  : TExisting & TNew; // 이후 join: 누적
-
-type DeepEqual<T, U> = [T] extends [U]
-  ? [U] extends [T]
-    ? true
-    : false
-  : false;
-type Extends<T, U> =
-  DeepEqual<T, Record<string, never>> extends true
-    ? false
-    : T extends U
-      ? true
-      : false;
-type NullableToOptional<T> = {
-  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<
-    T[K],
-    null | undefined
-  >;
-} & Partial<{
-  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
-}>;
-
-// Join 등이 Empty 상태일 떄 {}가 아니라 EmptyRecord를 써서
-export type EmptyRecord = Record<string, never>;
-
+// TTables의 모든 테이블에서 사용 가능한 컬럼 경로
+export type AvailableColumns<TTables extends Record<string, any>> =
+  | {
+      [TAlias in keyof TTables]: `${TAlias & string}.${ExcludeMetadataColumns<keyof TTables[TAlias]> & string}`;
+    }[keyof TTables]
+  | (IsSingleKey<TTables> extends true
+      ? ExcludeMetadataColumns<keyof TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
+      : never);
 // Group By, Order By, Having 등에서 선택 가능한 컬럼
 export type ResultAvailableColumns<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
+  TTables extends Record<string, any>,
   TResult = any,
-  TJoined = EmptyRecord,
-> = Exclude<
-  | AvailableColumns<TSchema, T, TOriginal, TJoined>
-  | `${keyof TResult & string}`,
-  "__fulltext__" | `${T & string}.__fulltext__`
+> = AvailableColumns<TTables> | `${keyof TResult & string}`;
+
+// Select 값 타입 확장
+export type SelectValue<TTables extends Record<string, any>> =
+  | AvailableColumns<TTables>
+  | SqlExpression<"string" | "number" | "boolean" | "date">;
+
+// Select 객체 타입 (현재는 컬럼 경로만 지원)
+export type SelectObject<TTables extends Record<string, any>> = Record<
+  string,
+  SelectValue<TTables> // AvailableColumns 대신
 >;
 
-// 사용 가능한 컬럼 경로 타입 (메인 테이블 + 조인된 테이블들)
-export type AvailableColumns<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = T extends keyof TSchema
-  ? // 기존 테이블 케이스
-    | (Extends<TJoined, Record<string, any>> extends false
-          ? // 이게 TSchema[T]에 존재하면
-            keyof TSchema[T]
-          : {
-              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
-                ? `${string & K}.${keyof TJoined[K] & string}`
-                : never;
-            }[keyof TJoined])
-      | `${T & string}.${keyof TSchema[T] & string}`
-  : // 서브쿼리 케이스 (T는 alias string)
-    | keyof TOriginal
-      | `${T & string}.${keyof TOriginal & string}`
-      | (Extends<TJoined, Record<string, any>> extends true
-          ? {
-              [K in keyof TJoined]: TJoined[K] extends Record<string, any>
-                ? `${string & K}.${keyof TJoined[K] & string}`
-                : never;
-            }[keyof TJoined]
-          : never);
-
-// 컬럼 경로에서 타입 추출
-export type ExtractColumnType<
-  TSchema,
-  T extends keyof TSchema | string,
-  Path extends string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = T extends keyof TSchema
-  ? // 기존 테이블 케이스
-    Path extends keyof TSchema[T]
-    ? TSchema[T][Path] // 메인 테이블 컬럼
-    : Path extends `${T & string}.${infer Column}`
-      ? Column extends keyof TSchema[T]
-        ? TSchema[T][Column]
-        : never
-      : Path extends `${infer Table}.${infer Column}`
-        ? Table extends keyof TJoined
-          ? TJoined[Table] extends Record<string, any>
-            ? Column extends keyof TJoined[Table]
-              ? TJoined[Table][Column]
-              : never
-            : never
-          : never
-        : never
-  : // 서브쿼리 케이스 (T는 alias)
-    Path extends `${T & string}.${infer Column}`
-    ? Column extends keyof TOriginal
-      ? TOriginal[Column] // 서브쿼리 alias.컬럼
-      : never
-    : Path extends `${infer Table}.${infer Column}`
-      ? Table extends keyof TJoined
-        ? TJoined[Table] extends Record<string, any>
-          ? Column extends keyof TJoined[Table]
-            ? TJoined[Table][Column]
-            : never
-          : never
-        : never
-      : Path extends keyof TOriginal
-        ? TOriginal[Path] // 서브쿼리 컬럼 직접 접근 (가장 마지막에)
-        : never;
-
-// SQL 함수 타입 정의
-export type SqlFunction<T extends "string" | "number" | "boolean" | "date"> = {
-  _type: "sql_function";
-  _return: T;
-  _sql: string;
-};
-
-// SQL 함수 결과에서 타입 추출
-type ExtractSqlType<T> =
-  T extends SqlFunction<infer R>
+// Select 결과 타입 추론
+export type ParseSelectObject<
+  TTables extends Record<string, any>,
+  TSelect extends SelectObject<TTables>,
+> = {
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
     ? R extends "string"
       ? string
       : R extends "number"
@@ -134,94 +45,80 @@ type ExtractSqlType<T> =
           : R extends "date"
             ? Date
             : never
+    : ExtractColumnType<TTables, TSelect[K] & string>;
+};
+
+// 컬럼 경로에서 타입 추출
+export type ExtractColumnType<
+  TTables extends Record<string, any>,
+  Path extends string,
+> = Path extends `${infer TAlias}.${infer TColumn}`
+  ? TAlias extends keyof TTables
+    ? TColumn extends keyof TTables[TAlias]
+      ? TTables[TAlias][TColumn]
+      : never
+    : never
+  : IsSingleKey<TTables> extends true // 추가
+    ? Path extends keyof TTables[keyof TTables]
+      ? TTables[keyof TTables][Path]
+      : never
     : never;
-
-// Select 값 타입 확장
-export type SelectValue<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> =
-  | AvailableColumns<TSchema, T, TOriginal, TJoined> // 기존 컬럼
-  | SqlFunction<"string" | "number" | "boolean" | "date">; // SQL 함수
-
-// Select 객체 타입 정의
-export type SelectObject<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = Record<string, SelectValue<TSchema, T, TOriginal, TJoined>>;
-
-// Select 결과 타입 추론
-export type ParseSelectObject<
-  TSchema,
-  T extends keyof TSchema | string,
-  S extends SelectObject<TSchema, T, TOriginal, TJoined>,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = {
-  [K in keyof S]: S[K] extends SqlFunction<any>
-    ? ExtractSqlType<S[K]> // SQL 함수면 타입 추출
-    : ExtractColumnType<TSchema, T, S[K] & string, TOriginal, TJoined>;
+// Where 조건 객체 타입
+// 예: { "u.id": 1, "u.status": "active" }
+export type WhereCondition<TTables extends Record<string, any>> = {
+  [key in AvailableColumns<TTables>]?: ExtractColumnType<TTables, key & string>;
 };
 
-// Where 조건 타입 (조인된 테이블 컬럼도 포함)
-export type WhereCondition<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = {
-  [key in AvailableColumns<TSchema, T, TOriginal, TJoined>]?: ExtractColumnType<
-    TSchema,
-    T,
-    key & string,
-    TOriginal,
-    TJoined
+// Fulltext index 컬럼 추출 타입
+export type FulltextColumns<TTables extends Record<string, any>> = {
+  [TAlias in keyof TTables]: TTables[TAlias] extends {
+    __fulltext__: readonly (infer Col)[];
+  }
+    ? Col extends string
+      ? `${TAlias & string}.${Col}`
+      : never
+    : never;
+}[keyof TTables];
+
+// 비교 연산자
+export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
+
+// SQL Expression 타입 정의
+export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> =
+  {
+    _type: "sql_expression"; // 또는 "computed_value"
+    _return: T;
+    _sql: string;
+  };
+
+// 결과 타입 가독성을 위한 타입 확장
+export type Expand<T> = T extends any[]
+  ? { [K in keyof T[0]]: T[0][K] }[] // 배열이면 첫 번째 요소를 Expand하고 배열로 감쌈
+  : T extends object
+    ? { [K in keyof T]: T[K] }
+    : T;
+
+type IsSingleKey<TTables extends Record<string, any>> =
+  keyof TTables extends infer K
+    ? K extends keyof TTables
+      ? keyof TTables extends K // 역방향 체크로 단일 키 확인
+        ? true
+        : false
+      : false
+    : false;
+
+export type SingleTableValue<TTables extends Record<string, any>> =
+  IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
+
+// Nullable을 Optional로 변환
+type NullableToOptional<T> = {
+  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<
+    T[K],
+    null | undefined
   >;
-};
-
-// Fulltext index 컬럼 추출 타입 (메인 테이블 + 조인된 테이블)
-export type FulltextColumns<
-  TSchema,
-  T extends keyof TSchema | string,
-  TOriginal = any,
-  TJoined = EmptyRecord,
-> = T extends keyof TSchema
-  ? // 기존 테이블 케이스
-    | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
-          ? Col & string
-          : never)
-      | (TSchema[T] extends { __fulltext__: readonly (infer Col)[] }
-          ? `${T & string}.${Col & string}`
-          : never)
-      | (TJoined extends Record<string, any>
-          ? {
-              [K in keyof TJoined]: TJoined[K] extends {
-                __fulltext__: readonly (infer Col)[];
-              }
-                ? (Col & string) | `${string & K}.${Col & string}`
-                : never;
-            }[keyof TJoined]
-          : never)
-  : // 서브쿼리 케이스 (T는 alias)
-    | (TOriginal extends { __fulltext__: readonly (infer Col)[] }
-          ? Col & string
-          : never)
-      | (TOriginal extends { __fulltext__: readonly (infer Col)[] }
-          ? `${T & string}.${Col & string}`
-          : never)
-      | (TJoined extends Record<string, any>
-          ? {
-              [K in keyof TJoined]: TJoined[K] extends {
-                __fulltext__: readonly (infer Col)[];
-              }
-                ? (Col & string) | `${string & K}.${Col & string}`
-                : never;
-            }[keyof TJoined]
-          : never);
+} & Partial<{
+  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
+}>;
 
 // Insert 타입: id, created_at 제외
 export type InsertData<T> = NullableToOptional<

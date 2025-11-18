@@ -404,6 +404,9 @@ export class FixtureManagerClass {
       }
     }
 
+    await targetDB.destroy();
+    await sourceDB.destroy();
+
     return _.uniqBy(fixtures, (f) => f.fixtureId);
   }
 
@@ -554,6 +557,8 @@ export class FixtureManagerClass {
       });
     }
 
+    await db.destroy();
+
     return _.uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
@@ -606,6 +611,8 @@ export class FixtureManagerClass {
 
       const q = db.insert(insertData).into(entity.table);
       await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
+      console.log(chalk.green(`Inserted into ${entity.table}: #${fixture.id}`));
+
       return {
         entityId: fixture.entityId,
         id: fixture.id,

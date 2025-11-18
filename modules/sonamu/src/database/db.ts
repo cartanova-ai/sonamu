@@ -3,32 +3,9 @@ import knex, { Knex } from "knex";
 import path from "path";
 import * as _ from "lodash-es";
 import { Sonamu } from "../api";
-import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
-import { runtimePath } from "../utils/path-utils";
-import { importFresh } from "../utils/esm-utils";
-
-type MySQLConfig = Omit<Knex.Config, "connection"> & {
-  connection?: Knex.MySql2ConnectionConfig;
-};
-
-export type SonamuDBBaseConfig = {
-  // 기본 데이터베이스 이름
-  database: string;
-
-  // 모든 환경에 적용될 기본 Knex 옵션
-  defaultOptions?: MySQLConfig;
-
-  // 환경별 설정
-  environments?: {
-    development?: MySQLConfig;
-    development_slave?: MySQLConfig;
-    production?: MySQLConfig;
-    production_slave?: MySQLConfig;
-    remote_fixture?: MySQLConfig;
-  };
-};
+import { DatabaseConfig, SonamuConfig } from "../api/config";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
@@ -54,27 +31,27 @@ class DBClass {
     return this.transactionStorage.getStore() ?? new TransactionContext();
   }
 
-  async readKnexfile(): Promise<SonamuDBConfig> {
-    const dbConfigPath: string = path.join(
-      Sonamu.apiRootPath,
-      runtimePath("/src/configs/db.ts")
-    );
-    try {
-      const knexfileModule = await importFresh(dbConfigPath); // 절대경로는 그냥은 못 들어가요. 그래서 importFresh로 wrapping해주었습니다.
-      const config =
-        knexfileModule.default?.default ??
-        knexfileModule.default ??
-        knexfileModule;
-      return this.generateDBConfig(config);
-    } catch (error) {
-      throw new ServiceUnavailableException(
-        `다음 경로에서 DB설정 파일을 읽으려는데 문제가 발생하였습니다: ${dbConfigPath}. 오류: ${error}`
-      );
-    }
-  }
-
   getDB(which: DBPreset): Knex {
     const dbConfig = Sonamu.dbConfig;
+
+    // 테스트 트랜잭션 격리
+    if (process.env.NODE_ENV === "test") {
+      if (this.testTransaction) {
+        return this.testTransaction;
+      } else if (this.wdb) {
+        return this.wdb;
+      } else {
+        this["wdb"] = knex({
+          ...dbConfig["test"],
+          // 단일 풀
+          pool: {
+            min: 1,
+            max: 1,
+          },
+        });
+        return this["wdb"];
+      }
+    }
 
     const instanceName = which === "w" ? "wdb" : "rdb";
 
@@ -94,9 +71,6 @@ class DBClass {
             which === "w"
               ? dbConfig["production_master"]
               : (dbConfig["production_slave"] ?? dbConfig["production_master"]);
-          break;
-        case "test":
-          config = dbConfig["test"];
           break;
         default:
           throw new Error(
@@ -120,8 +94,8 @@ class DBClass {
     }
   }
 
-  private generateDBConfig(config: SonamuDBBaseConfig): SonamuDBConfig {
-    const defaultKnexConfig: Partial<MySQLConfig> = _.merge(
+  public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
+    const defaultKnexConfig: Partial<DatabaseConfig> = _.merge(
       {
         client: "mysql2",
         pool: {
@@ -133,7 +107,7 @@ class DBClass {
           directory: "./dist/migrations",
         },
         connection: {
-          database: config.database,
+          database: config.name,
           ...config.defaultOptions?.connection,
         },
       },
@@ -141,16 +115,16 @@ class DBClass {
     );
 
     // 로컬 환경 설정
-    const test: MySQLConfig = _.merge({}, defaultKnexConfig, {
+    const test: DatabaseConfig = _.merge({}, defaultKnexConfig, {
       connection: {
-        database: `${config.database}_test`,
+        database: `${config.name}_test`,
         ...config.defaultOptions?.connection,
       },
     });
 
     const fixture_local = _.merge({}, defaultKnexConfig, {
       connection: {
-        database: `${config.database}_fixture_local`,
+        database: `${config.name}_fixture_local`,
         ...config.defaultOptions?.connection,
       },
     });
@@ -172,7 +146,7 @@ class DBClass {
       devMasterOptions,
       {
         connection: {
-          database: `${config.database}_fixture_remote`,
+          database: `${config.name}_fixture_remote`,
         },
       },
       config.environments?.remote_fixture
@@ -198,6 +172,18 @@ class DBClass {
       production_master,
       production_slave,
     };
+  }
+
+  // Test 환경에서 트랜잭션 사용
+  public testTransaction: Knex.Transaction | null = null;
+  async createTestTransaction(): Promise<Knex.Transaction> {
+    const db = this.getDB("w");
+    this.testTransaction = await db.transaction();
+    return this.testTransaction;
+  }
+  async clearTestTransaction(): Promise<void> {
+    await this.testTransaction?.rollback();
+    this.testTransaction = null;
   }
 }
 export const DB = new DBClass();

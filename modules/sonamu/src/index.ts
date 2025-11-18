@@ -1,4 +1,5 @@
 export type * from "./api/context";
+export * from "./api/config";
 export * from "./api/decorators";
 export * from "./api/sonamu";
 export * from "./database/base-model";

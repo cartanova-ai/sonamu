@@ -18,11 +18,7 @@ import {
 import type { Driver } from "../file-storage/driver";
 import { createSSEFactory } from "../stream/sse";
 import type { Syncer } from "../syncer/syncer";
-import {
-  ApiParamType,
-  SonamuFastifyConfig,
-  SonamuServerOptions,
-} from "../types/types";
+import { ApiParamType, SonamuFastifyConfig } from "../types/types";
 import { isLocal, isTest } from "../utils/controller";
 import { findApiRootPath } from "../utils/utils";
 import { humanizeZodError } from "../utils/zod-error";
@@ -31,28 +27,9 @@ import { getZodObjectFromApi } from "./code-converters";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
-import { AbsolutePath } from "../utils/path-utils";
-import { centerText } from "../utils/console-util";
-import { BaseModel } from "../database/base-model";
-import assert from "assert";
-import { Template } from "../template/template";
-import { isHotReloadServer } from "../utils/esm-utils";
-export type SonamuConfig = {
-  projectName?: string;
-  api: {
-    dir: string;
-  };
-  sync: {
-    targets: string[];
-  };
-  route: {
-    prefix: string;
-  };
-  timezone?: string;
-  ui?: {
-    port: number;
-  };
-};
+import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
+import {AbsolutePath} from "../utils/path-utils";
+
 export type SonamuSecrets = {
   [key: string]: string;
 };
@@ -174,14 +151,8 @@ class SonamuClass {
 
     // API 루트 패스
     this.apiRootPath = apiRootPath ?? findApiRootPath();
-    const configPath = path.join(this.apiRootPath, "sonamu.config.json");
+    this.config = await loadConfig(this.apiRootPath);
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
-    if (!(await exists(configPath))) {
-      throw new Error(`Cannot find sonamu.config.json in ${configPath}`);
-    }
-    this.config = JSON.parse(
-      (await readFile(configPath)).toString()
-    ) as SonamuConfig;
     if (await exists(secretsPath)) {
       this.secrets = JSON.parse(
         (await readFile(secretsPath)).toString()
@@ -189,7 +160,7 @@ class SonamuClass {
     }
 
     // DB 로드
-    this.dbConfig = await DB.readKnexfile();
+    this.dbConfig = DB.generateDBConfig(this.config.database);
     !doSilent && console.log(chalk.green("DB Config Loaded!"));
     attachOnDuplicateUpdate();
 
@@ -224,13 +195,15 @@ class SonamuClass {
     !doSilent && console.timeEnd(chalk.cyan("Sonamu.init"));
   }
 
-  async createServer(
-    options: SonamuServerOptions,
-    initOptions?: {
-      enableSync?: boolean;
-      doSilent?: boolean;
+  async createServer(initOptions?: {
+    enableSync?: boolean;
+    doSilent?: boolean;
+  }) {
+    if (this.isInitialized === false) {
+      await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
-  ) {
+
+    const options = this.config.server;
     const server = fastify(options.fastify);
     this.server = server;
 
@@ -281,7 +254,7 @@ class SonamuClass {
     this.server = server;
 
     // timezone 설정
-    const timezone = this.config.timezone;
+    const timezone = this.config.api.timezone;
     if (timezone) {
       const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
@@ -301,7 +274,7 @@ class SonamuClass {
 
     // 전체 라우팅 리스트
     server.get(
-      `${this.config.route.prefix}/routes`,
+      `${this.config.api.route.prefix}/routes`,
       async (_request, _reply): Promise<any> => {
         return this.syncer.apis;
       }
@@ -309,7 +282,7 @@ class SonamuClass {
 
     // Healthcheck API
     server.get(
-      `${this.config.route.prefix}/healthcheck`,
+      `${this.config.api.route.prefix}/healthcheck`,
       async (_request, _reply): Promise<string> => {
         return "ok";
       }
@@ -320,7 +293,8 @@ class SonamuClass {
       server.all("*", (request, reply) => {
         const found = this.syncer.apis.find(
           (api) =>
-            this.config.route.prefix + api.path === request.url.split("?")[0] &&
+            this.config.api.route.prefix + api.path ===
+              request.url.split("?")[0] &&
             (api.options.httpMethod ?? "GET") === request.method.toUpperCase()
         );
         if (found) {
@@ -338,7 +312,7 @@ class SonamuClass {
         // route
         server.route({
           method: api.options.httpMethod!,
-          url: this.config.route.prefix + api.path,
+          url: this.config.api.route.prefix + api.path,
           handler: this.getApiHandler(api, config),
         }); // END server.route
       });
@@ -416,27 +390,28 @@ class SonamuClass {
       );
 
       const context: Context = {
-        ...config.contextProvider(
-          {
-            request,
-            reply,
-            headers: request.headers,
-            createSSE,
-
-            // auth
-            user: request.user ?? null,
-            passport: {
-              login: request.login.bind(
-                request
-              ) as AuthContext["passport"]["login"],
-              logout: request.logout.bind(
-                request
-              ) as AuthContext["passport"]["logout"],
+        ...(await Promise.resolve(
+          config.contextProvider(
+            {
+              request,
+              reply,
+              headers: request.headers,
+              createSSE,
+              // auth
+              user: request.user ?? null,
+              passport: {
+                login: request.login.bind(
+                  request
+                ) as AuthContext["passport"]["login"],
+                logout: request.logout.bind(
+                  request
+                ) as AuthContext["passport"]["logout"],
+              },
             },
-          },
-          request,
-          reply
-        ),
+            request,
+            reply
+          )
+        )),
       };
 
       const model = this.syncer.models[api.modelName];
@@ -464,15 +439,18 @@ class SonamuClass {
   }
 
   startWatcher(): void {
-    const watchPath = path.join(this.apiRootPath, "src");
+    const watchPath = [
+      path.join(this.apiRootPath, "src"),
+      path.join(this.apiRootPath, "sonamu.config.ts"),
+    ];
+
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
-        (!!stats?.isFile() &&
-          !path.endsWith(".ts") &&
-          !path.endsWith(".json")),
+        !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
       ignoreInitial: true,
     });
+
     this.watcher.on("all", async (event: string, filePath: string) => {
       const absolutePath = filePath as AbsolutePath;
       assert(
@@ -485,7 +463,24 @@ class SonamuClass {
       }
 
       try {
-        await this.handleFileChange(event, absolutePath);
+        // src/index.ts 또는 sonamu.config.ts 변경 시 재시작
+        const isIndexTs =
+          filePath === path.join(this.apiRootPath, "src", "index.ts");
+        const isConfigTs =
+          filePath === path.join(this.apiRootPath, "sonamu.config.ts");
+
+        if (isIndexTs || isConfigTs) {
+          const relativePath = filePath.replace(this.apiRootPath, "api");
+          console.log(
+            chalk.bold(
+              `Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`
+            )
+          );
+          process.kill(process.pid, "SIGUSR2");
+          return;
+        }
+
+        await this.handleFileChange(event, filePath);
       } catch (e) {
         console.error(e);
       }
