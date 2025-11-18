@@ -496,58 +496,40 @@ export class Puri<
   }
   catch<TResult2 = never>(
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<Expand<TResult> | TResult2> {
+  ): Promise<TResult | TResult2> {
     return this.knexQuery.catch(onrejected);
   }
-  finally(onfinally?: (() => void) | null): Promise<Expand<TResult>> {
+  finally(onfinally?: (() => void) | null): Promise<TResult> {
     return this.knexQuery.finally(onfinally);
   }
 
   // 하나만 쿼리
-  async first(): Promise<Expand<TResult> | undefined> {
-    return this.knexQuery.first();
-  }
-  // 하나만 쿼리 실패 시 에러
-  async firstOrFail(): Promise<TResult> {
-    const result = await this.knexQuery.first();
-    if (!result) {
-      throw new Error("No results found");
-    }
-    return result;
-  }
-
-  // 쿼리 후 인덱스 리턴
-  async at(index: number): Promise<Expand<TResult> | undefined> {
-    const results = (await this) as any[];
-    return results[index];
-  }
-  // 쿼리 후 인덱스 리턴 실패 시 에러
-  async assertAt(index: number): Promise<Expand<TResult>> {
-    const results = (await this) as any[];
-    const result = results[index];
-    if (result === undefined) {
-      throw new Error(`No result found at index ${index}`);
-    }
-    return result;
+  first(): Puri<TSchema, {}, TResult, Expand<TResult>> {
+    this.knexQuery.first();
+    return this as any;
   }
 
   // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
-  async pluck<
+  pluck<
     TColumn extends keyof TResult | ResultAvailableColumns<TTables, TResult>,
   >(
     column: TColumn
-  ): Promise<
+  ): Puri<
+    TSchema,
+    {},
+    TResult,
     TColumn extends keyof TResult
       ? TResult[TColumn][]
       : ExtractColumnType<TTables, TColumn & string>[]
   > {
-    return this.knexQuery.pluck(column as string) as any;
+    this.knexQuery.pluck(column as string);
+    return this as any;
   }
 
   // INSERT
   insert(
     data: InsertData<SingleTableValue<TTables>>
-  ): Puri<TSchema, {}, number, number[]> {
+  ): Puri<TSchema, {}, number, number> {
     this.knexQuery.insert(data);
     return this as any;
   }
