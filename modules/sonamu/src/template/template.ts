@@ -3,7 +3,6 @@ import { EntityNamesRecord } from "../entity/entity-manager";
 import { globAsync } from "../utils/async-utils";
 import { importMembersFresh } from "../utils/esm-utils";
 import path from "path";
-import chalk from "chalk";
 
 export type RenderedTemplate = {
   target: string;
@@ -53,9 +52,9 @@ export abstract class Template {
       }
     }
 
-    console.log(
-      chalk.gray(`[Loading] Loaded ${this.templates.size} templates.`)
-    );
+    // console.log(
+    //   chalk.gray(`[Loading] Loaded ${this.templates.size} templates.`)
+    // );
   }
 
   /**
