@@ -1,5 +1,9 @@
 [
   {
+    "path": "sonamu.config.ts",
+    "checksum": "284253e5eefea6624a0f53624629f8fb09e1443a"
+  },
+  {
     "path": "src/application/company/company.entity.json",
     "checksum": "35ef8760e1bacb3ac295203f7b7371e998bc2dc3"
   },
@@ -81,7 +85,7 @@
   },
   {
     "path": "src/application/user/user.model.ts",
-    "checksum": "82bd5b49a60068304a76992a314016d05387e4f6"
+    "checksum": "f3391c8305d83537d2ebf5330044459a2825b5bd"
   },
   {
     "path": "src/application/user/user.types.ts",
