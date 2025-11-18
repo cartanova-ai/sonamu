@@ -1,7 +1,6 @@
 import path, { dirname } from "path";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
-
 import * as _ from "lodash-es";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { GenerateOptions } from "../types/types";
@@ -35,6 +34,7 @@ import {
 } from "./module-loader";
 import { createEntity, delEntity } from "./entity-operations";
 import { z } from "zod";
+import { hot } from "@sonamu-kit/hot-hook";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
@@ -82,20 +82,39 @@ export class Syncer {
    * Watcher가 감지한 파일 변경 사항에 대해 싱크를 진행합니다.
    * 주어진 변경 파일들 중 체크섬 관리 대상인 것들만 가져다가 싱크를 진행합니다.
    * 체크섬 파일 업데이트는 여기에서 하지 않습니다. 호출자가 합니다.
-   * @param diffFilePaths - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
+   * @param diffFilePath - 변경 파일들. 프로젝트 루트부터 "src/" 또는 "dist/"로 시작하는 상대 경로입니다. 예시: "src/application/user/user.model.ts"
    */
-  async syncFromWatcher(diffFilePaths: AbsolutePath[]): Promise<void> {
-    // watcher가 가져온 변경 알림 중, 우리가 관심있는 것들만 뽑아옵니다.
-    const targetFilePaths = diffFilePaths.filter((filePath) =>
-      Object.values(getChecksumPatternGroupInAbsolutePath()).some((pattern) =>
-        minimatch(filePath, pattern)
-      )
-    );
+  async syncFromWatcher(
+    event: string,
+    diffFilePath: AbsolutePath
+  ): Promise<void> {
+    if (event !== "change" && event !== "add" && event !== "unlink") {
+      return;
+    }
 
-    // 싱크 작업 수행하는 본체입니다.
-    await this.doSyncActions(targetFilePaths);
+    // 일단 변경된 파일과 dependent 파일들을 invalidate 합니다.
+    // 한 번 이상 import된 친구들에 대해서만 실제 작업이 일어납니다.
+    // 그러니 안심하고 invalidate 해도 됩니다.
+    const invalidatedPaths = await hot.invalidateFile(diffFilePath, event);
+    if (invalidatedPaths.length > 0) {
+      console.log(
+        chalk.bold(
+          `Invalidated:\n${chalk.blue(invalidatedPaths.map((p) => `- ${path.relative(Sonamu.apiRootPath, p)}`).join("\n"))}`
+        )
+      );
+    }
 
-    // 싱크 작업이 끝나면 모든 모듈을 리로드합니다.
+    const isInCheckPatternGroup = Object.values(
+      getChecksumPatternGroupInAbsolutePath()
+    ).some((pattern) => minimatch(diffFilePath, pattern));
+
+    // 할 일(sync)이 있으면 합니다.
+    if (isInCheckPatternGroup) {
+      await this.doSyncActions([diffFilePath]);
+    }
+
+    // 싱크 작업이 끝나면 모든 모듈을 로드합니다.
+    // hot-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
     await this.loadAll();
 
     this.syncUI();
@@ -195,11 +214,11 @@ export class Syncer {
     diffGroups: DiffGroups,
     diffTypes: string[]
   ): Promise<void> {
-    console.log(
-      chalk.gray(
-        `[Processing] Handling entity changes: ${diffGroups["entity"]?.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-      )
-    );
+    // console.log(
+    //   chalk.gray(
+    //     `[Processing] Handling entity changes: ${diffGroups["entity"]?.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
+    //   )
+    // );
 
     await EntityManager.reload();
 
@@ -242,11 +261,11 @@ export class Syncer {
       ...(diffGroups["generated"] ?? []),
     ]);
 
-    console.log(
-      chalk.gray(
-        `[Processing] Handling types/functions/generated changes: ${tsPaths.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-      )
-    );
+    // console.log(
+    //   chalk.gray(
+    //     `[Processing] Handling types/functions/generated changes: ${tsPaths.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
+    //   )
+    // );
 
     await this.actionSyncFilesToTargets(tsPaths);
 
@@ -261,11 +280,11 @@ export class Syncer {
       ...(diffGroups["frame"] ?? []),
     ];
 
-    console.log(
-      chalk.gray(
-        `[Processing] Handling model/frame changes: ${mergedGroup.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-      )
-    );
+    // console.log(
+    //   chalk.gray(
+    //     `[Processing] Handling model/frame changes: ${mergedGroup.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
+    //   )
+    // );
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.

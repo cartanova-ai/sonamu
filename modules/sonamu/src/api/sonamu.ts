@@ -469,8 +469,7 @@ class SonamuClass {
       ignored: (path, stats) =>
         (!!stats?.isFile() &&
           !path.endsWith(".ts") &&
-          !path.endsWith(".json")) ||
-        path.endsWith("src/index.ts"),
+          !path.endsWith(".json")),
       persistent: true,
       ignoreInitial: true,
     });
@@ -614,7 +613,7 @@ class SonamuClass {
     const relativePath = path.relative(this.apiRootPath, filePath);
     console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
-    await this.syncer.syncFromWatcher([filePath]);
+    await this.syncer.syncFromWatcher(event, filePath);
 
     // 처리 완료된 파일을 대기 목록에서 제거
     this.pendingFiles = this.pendingFiles.slice(1);

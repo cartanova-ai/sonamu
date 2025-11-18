@@ -1,4 +1,3 @@
-import chalk from "chalk";
 import { glob } from "fs/promises";
 import inflection from "inflection";
 import * as _ from "lodash-es";
@@ -32,7 +31,7 @@ class EntityManagerClass {
   public isAutoloaded: boolean = false;
 
   // 경로 전달받아 모든 entity.json 파일 로드
-  async autoload(doSilent: boolean = false) {
+  async autoload(_: boolean = false) {
     if (this.isAutoloaded) {
       return;
     }
@@ -46,12 +45,12 @@ class EntityManagerClass {
       await this.register(JSON.parse((await readFile(file)).toString()));
       count++;
     }
-    !doSilent &&
-      console.log(
-        chalk.gray(
-          `[Loading] Loaded entity definitions from "*.entity.json" files: ${count} files.`
-        )
-      );
+    // !doSilent &&
+    //   console.log(
+    //     chalk.gray(
+    //       `[Loading] Loaded entity definitions from "*.entity.json" files: ${count} files.`
+    //     )
+    //   );
 
     this.isAutoloaded = true;
   }

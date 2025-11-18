@@ -2,7 +2,6 @@ import path from "path";
 import { globAsync } from "../utils/async-utils";
 import { importMembersFresh } from "../utils/esm-utils";
 import { z } from "zod";
-import chalk from "chalk";
 import { Sonamu } from "../api/sonamu";
 import { readApisFromFile } from "./api-parser";
 import { BaseFrameClass } from "../api/base-frame";
@@ -50,9 +49,9 @@ export async function loadApis(): Promise<LoadedApis> {
     apis.push(...parsedApis);
     count++;
   }
-  console.log(
-    chalk.gray(`[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`)
-  );
+  // console.log(
+  //   chalk.gray(`[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`)
+  // );
 
   return apis;
 }
@@ -81,11 +80,11 @@ export async function loadModels(): Promise<LoadedModels> {
     }
     count++;
   }
-  console.log(
-    chalk.gray(
-      `[Loading] Loaded model/frame instances from ${runtimePath("*.{model,frame}.ts")} files: ${count} files.`
-    )
-  );
+  // console.log(
+  //   chalk.gray(
+  //     `[Loading] Loaded model/frame instances from ${runtimePath("*.{model,frame}.ts")} files: ${count} files.`
+  //   )
+  // );
 
   return models;
 }
@@ -117,11 +116,11 @@ export async function loadTypes(): Promise<LoadedTypes> {
     }
     count++;
   }
-  console.log(
-    chalk.gray(
-      `[Loading] Loaded zod types from ${runtimePath("*.types.ts")} and ${runtimePath("*.generated.ts")} files: ${count} files.`
-    )
-  );
+  // console.log(
+  //   chalk.gray(
+  //     `[Loading] Loaded zod types from ${runtimePath("*.types.ts")} and ${runtimePath("*.generated.ts")} files: ${count} files.`
+  //   )
+  // );
 
   return types;
 }
