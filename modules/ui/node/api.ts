@@ -389,7 +389,7 @@ export async function createServer(options: {
     const { filter, reload } = request.query;
 
     if (reload === "1") {
-      await Sonamu.syncer.autoloadTypes(/* was once doRefresh: true*/);
+      await Sonamu.syncer.autoloadTypes();
     }
 
     const typeIds = (() => {
