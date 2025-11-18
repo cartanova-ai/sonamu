@@ -144,7 +144,7 @@ async function start() {
   const { spawn } = await import("child_process");
   const serverProcess = spawn(
     "node",
-    ["-r", "source-map-support/register", "-r", "dotenv/config", entryPoint],
+    ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
     {
       cwd: Sonamu.apiRootPath,
       stdio: "inherit",
