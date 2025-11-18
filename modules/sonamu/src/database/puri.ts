@@ -16,12 +16,7 @@ import type {
 import chalk from "chalk";
 import assert from "assert";
 
-export class Puri<
-  TSchema,
-  TTables extends Record<string, any>,
-  TResult,
-  TResolved = Expand<TResult>[],
-> {
+export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
 
   // 생성자 시그니처들
@@ -486,9 +481,9 @@ export class Puri<
   }
 
   // 실행 메서드들 - thenable 구현
-  then<TResult1 = TResolved, TResult2 = never>(
+  then<TResult1 = Expand<TResult>[], TResult2 = never>(
     onfulfilled?:
-      | ((value: TResolved) => TResult1 | PromiseLike<TResult1>)
+      | ((value: Expand<TResult>[]) => TResult1 | PromiseLike<TResult1>)
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
@@ -504,9 +499,9 @@ export class Puri<
   }
 
   // 하나만 쿼리
-  first(): Puri<TSchema, {}, TResult, Expand<TResult>> {
+  first(): ResolvedPuri<Expand<TResult>, never> {
     this.knexQuery.first();
-    return this as any;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
@@ -514,59 +509,57 @@ export class Puri<
     TColumn extends keyof TResult | ResultAvailableColumns<TTables, TResult>,
   >(
     column: TColumn
-  ): Puri<
-    TSchema,
-    {},
-    TResult,
+  ): ResolvedPuri<
     TColumn extends keyof TResult
       ? TResult[TColumn][]
-      : ExtractColumnType<TTables, TColumn & string>[]
+      : ExtractColumnType<TTables, TColumn & string>[],
+    never
   > {
     this.knexQuery.pluck(column as string);
-    return this as any;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // INSERT
   insert(
     data: InsertData<SingleTableValue<TTables>>
-  ): Puri<TSchema, {}, number, number> {
+  ): ResolvedPuri<number, never> {
     this.knexQuery.insert(data);
-    return this as any;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // UPDATE
-  update(data: WhereCondition<TTables>): Puri<TSchema, {}, number, number> {
+  update(data: WhereCondition<TTables>): ResolvedPuri<TResult, number> {
     this.knexQuery.update(data);
-    return this as any;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // Increment
   increment<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number
-  ): this {
+  ): ResolvedPuri<number, never> {
     if (value <= 0) {
       throw new Error("Increment value must be greater than 0");
     }
     this.knexQuery.increment(column, value);
-    return this;
+    return new ResolvedPuri(this.knexQuery);
   }
   // Decrement
   decrement<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number
-  ): this {
+  ): ResolvedPuri<number, never> {
     if (value <= 0) {
       throw new Error("Decrement value must be greater than 0");
     }
     this.knexQuery.decrement(column, value);
-    return this;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // DELETE
-  delete(): Puri<TSchema, {}, number, number> {
+  delete(): ResolvedPuri<number, never> {
     this.knexQuery.delete();
-    return this as any;
+    return new ResolvedPuri(this.knexQuery);
   }
 
   // 확인 쿼리 리턴
@@ -791,5 +784,41 @@ export class JoinClauseGroup<
   orOn(...args: any[]): this {
     this.callback.orOn(...(args as [string, string]));
     return this;
+  }
+}
+
+/*
+  TResolved: 쿼리 실행 후 반환될 결과 타입
+  _TReturning: 추후 RETURNING 절에 사용될 타입
+*/
+export class ResolvedPuri<TResolved, _TReturning> {
+  constructor(public knexQuery: Knex.QueryBuilder) {}
+
+  toQuery(): string {
+    return this.knexQuery.toQuery();
+  }
+
+  debug(): this {
+    console.log(
+      `${chalk.cyan("[Puri Debug]")} ${chalk.yellow(this.toQuery())}`
+    );
+    return this;
+  }
+
+  then<TResult1 = TResolved, TResult2 = never>(
+    onfulfilled?:
+      | ((value: TResolved) => TResult1 | PromiseLike<TResult1>)
+      | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2> {
+    return this.knexQuery.then(onfulfilled as any, onrejected);
+  }
+  catch<TResult2 = never>(
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResolved | TResult2> {
+    return this.knexQuery.catch(onrejected);
+  }
+  finally(onfinally?: (() => void) | null): Promise<TResolved> {
+    return this.knexQuery.finally(onfinally);
   }
 }
