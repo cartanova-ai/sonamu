@@ -216,12 +216,13 @@ export default class DependencyTree {
 
   dump() {
     const rootDirname = dirname(this.#tree.path)
-    const isNodeModule = (path: string) => path.includes('node_modules')
+    const isNodeModule = (path: string) => path.includes('node_modules') || path.includes('/.yarn/__virtual__/');
 
     return Array.from(this.#pathMap.values()).map((node) => ({
       version: node.version,
       boundary: node.reloadable,
       path: relative(rootDirname, node.path),
+      nodePath: node.path,
       dependents: Array.from(node.dependents).map((n) => relative(rootDirname, n.path)),
       dependencies: Array.from(node.dependencies).map((n) => relative(rootDirname, n.path)),
       reloadable: isNodeModule(node.path) ? false : this.isReloadable(node.path).reloadable,

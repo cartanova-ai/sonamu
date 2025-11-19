@@ -181,6 +181,28 @@ class Hot {
 
     return result.invalidatedPaths || [];
   }
+
+  /**
+   * 특정 디렉토리 아래의 모든 캐시를 무효화합니다.
+   * UI 서버에서 사용자 프로젝트의 모든 모듈을 리로드해야 할 때 사용합니다.
+   */
+  async invalidateAll(): Promise<string[]> {
+    this.#messageChannel.port1.postMessage({
+      type: "hot-hook:invalidate-all",
+    });
+    const result: any = await new Promise((resolve) => {
+      const listener = (message: MessageChannelMessage) => {
+        if (message.type === "hot-hook:invalidate-all-done") {
+          resolve(message);
+          this.#messageChannel.port1.off("message", listener);
+        }
+      };
+
+      this.#messageChannel.port1.on("message", listener);
+    });
+
+    return result.invalidatedPaths || [];
+  }
 }
 
 // @ts-expect-error ignore

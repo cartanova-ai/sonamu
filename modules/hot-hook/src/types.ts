@@ -7,6 +7,8 @@ export type MessageChannelMessage =
   | { type: 'hot-hook:file-changed'; path: string; action: FileChangeAction }
   | { type: 'hot-hook:manual-invalidate'; path: string; action: FileChangeAction }
   | { type: 'hot-hook:manual-invalidate-done'; path: string; invalidatedPaths: string[] }
+  | { type: 'hot-hook:invalidate-all'; }
+  | { type: 'hot-hook:invalidate-all-done' }
 
 export type MessageChannelPerType = {
   [K in MessageChannelMessage['type']]: Omit<Extract<MessageChannelMessage, { type: K }>, 'type'>
