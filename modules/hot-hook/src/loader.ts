@@ -435,9 +435,15 @@ export class HotHookLoader {
 
     // 워쳐는 이제 밖에 있기 때문에 주석 처리 하였습니다.
     // this.#watcher.add(actualSourcePath)
-    const version = this.#dependencyTree
-      .getVersion(actualSourcePath)
-      .toString();
+
+    // 파일이 tree에 없는 경우 version 0으로 처리합니다.
+    // 이런 경우는 parent가 tree에 없어서(예: node_modules의 knex)
+    // addDependency()가 skip되어 이 파일도 tree에 추가되지 않았을 때 발생합니다.
+    let version = "0";
+    if (this.#dependencyTree.isInside(actualSourcePath)) {
+      version = this.#dependencyTree.getVersion(actualSourcePath).toString();
+    }
+
     resultUrl.searchParams.set("hot-hook", version);
 
     debug("Resolving %s with version %s", resultPath, version);
