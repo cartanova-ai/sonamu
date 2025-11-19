@@ -30,7 +30,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@sonamu-kit/hot-hook": "workspace:^",
     "@sonamu-kit/hot-runner": "workspace:^",
     "@sonamu-kit/loader": "workspace:^",
     "@sonamu-kit/react-sui": "workspace:^",
@@ -46,10 +45,5 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
     "vitest": "^3.2.4"
-  },
-  "hotHook": {
-    "boundaries": [
-      "./src/**/*.ts"
-    ]
   }
 }
