@@ -402,10 +402,8 @@ async function ui() {
     const uiProcess = spawn(
       process.execPath,
       [
-        "--import",
-        "@sonamu-kit/loader",
-        "--import",
-        "sonamu/hot-hook-register",
+        "--import", "@sonamu-kit/loader",
+        "--import", "sonamu/hot-hook-register",
         "--enable-source-maps",
         "--no-warnings",
         uiNodePath,
