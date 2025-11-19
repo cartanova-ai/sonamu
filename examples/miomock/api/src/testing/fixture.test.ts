@@ -2,7 +2,7 @@ import { bootstrap } from "../testing/bootstrap";
 import { describe, expect, test } from "vitest";
 import { loadFixtures } from "./fixture";
 
-bootstrap();
+bootstrap("fm", ["companies"]);
 describe("픽스쳐", () => {
   test("전체 픽스쳐 테스트", async () => {
     const f = await loadFixtures(["company01"]);
