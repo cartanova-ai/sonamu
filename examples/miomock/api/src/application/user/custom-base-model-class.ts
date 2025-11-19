@@ -37,8 +37,8 @@ export abstract class CustomBaseModelClass<
       >,
       onSubset: <S extends TSubsetKey>(
         _specificSubset: S
-      ): ReturnType<(typeof this.subsetQueries)[S]> => {
-        return qb as unknown as ReturnType<(typeof this.subsetQueries)[S]>;
+      ): ReturnType<TSubsetQueries[S]> => {
+        return qb as unknown as ReturnType<TSubsetQueries[S]>;
       },
     };
   }
