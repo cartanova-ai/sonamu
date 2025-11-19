@@ -1,4 +1,4 @@
-import { DB, FixtureManager, Sonamu } from "sonamu";
+import { Context, DB, FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
 /**
@@ -30,4 +30,27 @@ export function bootstrap(mode: "trx" | "fm" = "trx", tableNames?: string[]) {
   afterAll(() => {
     vi.restoreAllMocks();
   });
+}
+
+const mockContext: Context = {
+  ip: "127.0.0.1",
+  session: {},
+  user: null,
+  passport: {
+    login: async () => {},
+    logout: () => {},
+  },
+  naiteStore: new Map<string, any>(),
+} as unknown as Context;
+
+export async function runWithContext(
+  context: Context | null,
+  fn: () => Promise<void>
+) {
+  // Sonamu.asyncLocalStorage.run으로 context 설정
+  await Sonamu.asyncLocalStorage.run({ context: context ?? mockContext }, fn);
+}
+
+export async function runWithMockedContext(fn: () => Promise<void>) {
+  await runWithContext(mockContext, fn);
 }
