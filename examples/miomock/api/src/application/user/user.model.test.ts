@@ -1,5 +1,5 @@
 import { describe, test, expect, assert } from "vitest";
-import { bootstrap, runWithMockedContext } from "../../testing/bootstrap";
+import { bootstrap, runWithMockContext } from "../../testing/bootstrap";
 import { UserModel } from "./user.model";
 import { range } from "lodash-es";
 import { BaseModel, Naite } from "sonamu";
@@ -8,7 +8,7 @@ bootstrap();
 describe("UserModel", () => {
   const func1 = (no: number) => {
     return async () => {
-      await runWithMockedContext(async () => {
+      await runWithMockContext(async () => {
         const db = BaseModel.getPuri("w");
         await db.transaction(async (trx) => {
           const user = await UserModel.findById("A", 1);
@@ -60,7 +60,7 @@ describe("UserModel", () => {
   });
 
   test("testNaite", async () => {
-    await runWithMockedContext(async () => {
+    await runWithMockContext(async () => {
       // 메서드 자체는 의도된 에러 상황
       await notImpl(UserModel.testNaite);
 
