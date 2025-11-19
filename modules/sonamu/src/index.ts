@@ -22,6 +22,7 @@ export * from "./entity/entity";
 export * from "./migration/migrator";
 export * from "./migration/types";
 export * from "./file-storage/driver";
+export * from "./naite/naite";
 
 // export * from "./api/code-converters";
 // export * from "./entity/entity-utils";

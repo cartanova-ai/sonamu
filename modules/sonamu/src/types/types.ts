@@ -825,7 +825,7 @@ export type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<
       Context,
-      "request" | "reply" | "headers" | "createSSE"
+      "request" | "reply" | "headers" | "createSSE" | "naiteStore"
     > &
       AuthContext,
     request: FastifyRequest,
