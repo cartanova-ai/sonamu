@@ -171,14 +171,12 @@ async function setupFixtureManager() {
 async function migrate_run() {
   await setupMigrator();
 
-  await migrator.cleanUpDist();
   await migrator.run();
 }
 
 async function migrate_check() {
   await setupMigrator();
 
-  await migrator.cleanUpDist();
   await migrator.check();
 }
 

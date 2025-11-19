@@ -102,8 +102,7 @@ class DBClass {
           max: 5,
         },
         migrations: {
-          extension: "js",
-          directory: "./dist/migrations",
+          directory: "./src/migrations",
         },
         connection: {
           database: config.name,

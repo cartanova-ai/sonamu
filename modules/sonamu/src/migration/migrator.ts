@@ -73,63 +73,24 @@ export class Migrator {
     }
   }
 
-  private async getMigrationCodes(): Promise<{
-    normal: MigrationCode[];
-    onlyTs: MigrationCode[];
-    onlyJs: MigrationCode[];
-  }> {
-    const srcMigrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-    const distMigrationsDir = `${Sonamu.apiRootPath}/dist/migrations`;
+  private async getMigrationCodes(): Promise<MigrationCode[]> {
+    const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
     if (!(await exists(srcMigrationsDir))) {
       await mkdir(srcMigrationsDir, {
         recursive: true,
       });
     }
-    if (!(await exists(distMigrationsDir))) {
-      await mkdir(distMigrationsDir, {
-        recursive: true,
-      });
-    }
-    const srcMigrations = (await readdir(srcMigrationsDir))
+
+    const codes = (await readdir(srcMigrationsDir))
       .filter((f) => f.endsWith(".ts"))
-      .map((f) => f.split(".")[0]);
-    const distMigrations = (await readdir(distMigrationsDir))
-      .filter((f) => f.endsWith(".js"))
-      .map((f) => f.split(".")[0]);
+      .map((f) => ({
+        name: f.replace(".ts", ""),
+        path: path.join(srcMigrationsDir, f),
+      }))
+      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
 
-    const normal = _.intersection(srcMigrations, distMigrations)
-      .map((filename) => {
-        return {
-          name: filename,
-          path: path.join(srcMigrationsDir, filename) + ".ts",
-        };
-      })
-      .sort((a, b) => (a > b ? 1 : -1));
-
-    const onlyTs = _.difference(srcMigrations, distMigrations).map(
-      (filename) => {
-        return {
-          name: filename,
-          path: path.join(srcMigrationsDir, filename) + ".ts",
-        };
-      }
-    );
-
-    const onlyJs = _.difference(distMigrations, srcMigrations).map(
-      (filename) => {
-        return {
-          name: filename,
-          path: path.join(distMigrationsDir, filename) + ".js",
-        };
-      }
-    );
-
-    return {
-      normal,
-      onlyTs,
-      onlyJs,
-    };
+    return codes;
   }
 
   /**
@@ -142,25 +103,7 @@ export class Migrator {
    * @returns
    */
   async getStatus(): Promise<MigrationStatus> {
-    const { normal, onlyTs, onlyJs } = await this.getMigrationCodes();
-    if (onlyTs.length > 0) {
-      console.debug({ onlyTs });
-      throw new ServiceUnavailableException(
-        `There are un-compiled TS migration files.\nPlease compile them first. You might want to run a development server with HMR.\n\n${onlyTs
-          .map((f) => f.name)
-          .join("\n")}`
-      );
-    }
-    if (onlyJs.length > 0) {
-      console.debug({ onlyJs });
-      await Promise.all(
-        onlyJs.map(async (f) => {
-          execSync(
-            `rm -f ${f.path.replace("/src/", "/dist/").replace(".ts", ".js")}`
-          );
-        })
-      );
-    }
+    const codes = await this.getMigrationCodes();
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
       (key) => key.endsWith("_slave") === false
@@ -187,7 +130,7 @@ export class Migrator {
           try {
             const [, fdList] = await tConn.migrate.list();
             return fdList.map((fd: { file: string }) =>
-              fd.file.replace(".js", "")
+              fd.file.replace(".ts", "")
             );
           } catch (err) {
             return [];
@@ -222,6 +165,11 @@ export class Migrator {
     const preparedCodes: GenMigrationCode[] = await (async () => {
       const status0conn = statuses.find((status) => status.status === 0);
       if (status0conn === undefined) {
+        console.warn(
+          chalk.yellow(
+            `While trying to prepare migration codes, we found that there is no database to compare migrations. We need at least one database where every migration is applied(status === 0). You might want to apply your existing migrations to one of the databases.`
+          )
+        );
         return [];
       }
 
@@ -235,14 +183,10 @@ export class Migrator {
 
     return {
       conns: statuses,
-      codes: normal,
+      codes,
       preparedCodes,
     };
     /*
-    TS/JS 코드 컴파일 상태 확인
-    1. 원본 파일 없는 JS파일이 존재하는 경우: 삭제
-    2. 컴파일 되지 않은 TS파일이 존재하는 경우: throw 쳐서 데브 서버 오픈 요청
-    
     DB 마이그레이션 상태 확인
     1. 전체 DB설정에 대해서 현재 마이그레이션 상태 확인
     - connKey: string
@@ -355,12 +299,9 @@ export class Migrator {
       );
     }
 
-    const delFiles = codeNames
-      .map((codeName) => [
-        `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`,
-        `${Sonamu.apiRootPath}/dist/migrations/${codeName}.js`,
-      ])
-      .flat();
+    const delFiles = codeNames.map(
+      (codeName) => `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`
+    );
 
     const res = await Promise.all(
       delFiles.map(async (delFile) => {
@@ -421,14 +362,13 @@ export class Migrator {
     ];
     const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
     const delList = pendingList.map((df) => {
-      return path.join(migrationsDir, df.file).replace(".js", ".ts");
+      return path.join(migrationsDir, df.file);
     });
     for (let p of delList) {
       if (await exists(p)) {
         await unlink(p);
       }
     }
-    await this.cleanUpDist(true);
   }
 
   /**
@@ -553,75 +493,6 @@ export class Migrator {
     console.dir({ rollbackAllResult }, { depth: null });
     console.timeEnd(chalk.red("rollback:"));
   }
-
-  /**
-   * 빌드된 마이그레이션 파일을 삭제합니다.
-   *
-   * CLI에서 사용됩니다.
-   *
-   * @param force 강제 삭제 여부
-   * @returns
-   */
-  async cleanUpDist(force: boolean = false): Promise<void> {
-    async function getFilesUnder(dir: string): Promise<string[]> {
-      const migrationPath = path.join(Sonamu.apiRootPath, dir, "migrations");
-      if (!(await exists(migrationPath))) {
-        await mkdir(migrationPath, {
-          recursive: true,
-        });
-      }
-      return (await readdir(migrationPath)).filter(
-        (filename) => filename.startsWith(".") === false
-      );
-    }
-
-    const files = {
-      src: await getFilesUnder("src"),
-      dist: await getFilesUnder("dist"),
-    };
-
-    const diffOnSrc = _.differenceBy(
-      files.src,
-      files.dist,
-      (filename) => filename.split(".")[0]
-    );
-    if (diffOnSrc.length > 0) {
-      throw new Error(
-        "컴파일 되지 않은 파일이 있습니다.\n" + diffOnSrc.join("\n")
-      );
-    }
-
-    const diffOnDist = _.differenceBy(
-      files.dist,
-      files.src,
-      (filename) => filename.split(".")[0]
-    );
-    if (diffOnDist.length > 0) {
-      console.log(chalk.red("원본 ts파일을 찾을 수 없는 js파일이 있습니다."));
-      console.log(diffOnDist);
-
-      if (!force) {
-        const answer = await prompts({
-          type: "confirm",
-          name: "value",
-          message: "삭제를 진행하시겠습니까?",
-          initial: true,
-        });
-        if (answer.value === false) {
-          return;
-        }
-      }
-
-      const filesToRm = diffOnDist.map((filename) => {
-        return path.join(Sonamu.apiRootPath, "dist", "migrations", filename);
-      });
-      for (const filePath of filesToRm) {
-        await unlink(filePath);
-      }
-      console.log(chalk.green(`${filesToRm.length}건 삭제되었습니다!`));
-    }
-  }
-
   /**
    * Shadow DB 테스트를 진행합니다.
    *
