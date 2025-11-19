@@ -10,6 +10,7 @@ import {
   DatabaseSchemaExtend,
   PuriWrapper,
   exhaustive,
+  Naite,
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
@@ -107,6 +108,7 @@ class UserModelClass extends CustomBaseModelClass<
       }
     }
 
+    Naite.t("executeSubsetQuery직전QB", qb.toQuery());
     const { rows, total } = await this.executeSubsetQuery({
       subset,
       qb,
@@ -284,6 +286,20 @@ class UserModelClass extends CustomBaseModelClass<
     `);
 
     console.log(trxStates);
+  }
+
+  async testNaite(): Promise<void> {
+    // 동일한 이름으로 여러번 로깅시 (number)
+    Naite.t("testArray", 1);
+    Naite.t("testArray", 2);
+    Naite.t("testArray", 3);
+
+    // 동일한 이름으로 여러번 로깅시 (object)
+    Naite.t("testObjectArray", { a: 1, b: 2 });
+    Naite.t("testObjectArray", { a: 3, b: 4 });
+
+    // 메소드 자체는 에러 상황
+    throw new Error("Not implemented yet.");
   }
 }
 
