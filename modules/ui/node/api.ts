@@ -953,7 +953,7 @@ export async function createServer(options: {
       .headers({ "Content-type": "text/html" })
       .send(
         fs
-          .readFileSync(path.resolve(__dirname, "../build/index.html"))
+          .readFileSync(path.resolve(import.meta.dirname, "../build/index.html"))
           .toString()
           .replace("{{projectName}}", projectName)
       );
