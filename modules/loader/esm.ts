@@ -278,20 +278,23 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
 				return nextResolve(specifier, context);
 			}
 
-			// Return successful resolutions which did not resolve to a TypeScript source
-			const { format, sourceUrl, url } = result;
-			if (
-				!sourceUrl ||
-				url.protocol !== "file:" ||
-				url.pathname.includes("/node_modules/") ||
-				(format !== undefined && format !== "module" && format !== "commonjs" && format !== "json")
-			) {
-				return {
-					format: format === "addon" ? undefined : format,
-					shortCircuit: true,
-					url: url.href,
-				};
-			}
+		// Return successful resolutions which did not resolve to a TypeScript source
+		const { format, sourceUrl, url } = result;
+		if (
+			!sourceUrl ||
+			url.protocol !== "file:" ||
+			url.pathname.includes("/node_modules/") ||
+			// yarn PnP의 virtual 경로는 이미 빌드된 파일이므로 transpile하지 않습니다.
+			// 예: /.yarn/__virtual__/@sonamu-kit-ui-virtual-xxx/modules/ui/dist/run-ui.js
+			url.pathname.includes("/.yarn/__virtual__/") ||
+			(format !== undefined && format !== "module" && format !== "commonjs" && format !== "json")
+		) {
+			return {
+				format: format === "addon" ? undefined : format,
+				shortCircuit: true,
+				url: url.href,
+			};
+		}
 
 			// Check for .ts import from non-bundler projects
 			if (testAnyTypeScript.test(specifier.replace(/[#?].+/, "")) && tsConfig?.locations.outputBase) {
