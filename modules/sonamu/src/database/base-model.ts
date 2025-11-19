@@ -2,18 +2,34 @@ import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
 import { group, isObject, omit, set, unique } from "radashi";
-import type { SubsetQuery } from "../types/types";
-import { isCustomJoinClause } from "../types/types";
+import { DBPreset, DB } from "./db";
+import {
+  DatabaseSchemaExtend,
+  isCustomJoinClause,
+  type SubsetQuery,
+} from "../types/types";
 import type { BaseListParams } from "../utils/model";
 import { chunk } from "../utils/utils";
-import { DB, type DBPreset } from "./db";
-import { PuriWrapper } from "./puri-wrapper";
 import { UpsertBuilder } from "./upsert-builder";
+import { PuriWrapper } from "./puri-wrapper";
+import { Puri } from "./puri";
+import { UnionExtractedTTables } from "./puri.types";
 
 type UnknownDBRecord = Record<string, unknown>;
 
-export class BaseModelClass {
+export class BaseModelClass<
+  TSubsetKey extends string = "",
+  TSubsetMapping extends Record<TSubsetKey, any> = Record<TSubsetKey, any>,
+> {
   public modelName: string = "Unknown";
+
+  constructor(
+    protected subsetQueries?: Record<
+      TSubsetKey,
+      (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
+    >,
+    protected subsetLoaders?: Record<TSubsetKey, any>
+  ) {}
 
   /* DB 인스턴스 get, destroy */
   getDB(which: DBPreset): Knex {
@@ -71,6 +87,65 @@ export class BaseModelClass {
 
     return resultIds;
   }
+  
+  
+  getSubsetQueries<T extends TSubsetKey>(subset: T) {
+    if (!this.subsetQueries) {
+      throw new Error("subsetQueries is not defined");
+    }
+
+    const qb = this.subsetQueries[subset]?.(this.getPuri("r"));
+
+    return {
+      qb: qb as unknown as Puri<
+        DatabaseSchemaExtend,
+        UnionExtractedTTables<TSubsetKey, typeof this.subsetQueries> & {
+          NonAllowedAsSingleTable: { __fulltext__: true };
+        },
+        {}
+      >,
+      onSubset: <S extends TSubsetKey>(
+        _specificSubset: S
+      ): ReturnType<(typeof this.subsetQueries)[S]> => {
+        return qb as unknown as ReturnType<(typeof this.subsetQueries)[S]>;
+      },
+    };
+  }
+
+  async executeSubsetQuery<T extends TSubsetKey>({
+    subset,
+    qb,
+    params,
+  }: {
+    subset: T;
+    qb: Puri<any, any, any>;
+    params: {
+      num?: number;
+      page?: number;
+    };
+  }): Promise<{ rows: TSubsetMapping[T][]; total: number }> {
+    if (!this.subsetLoaders) {
+      throw new Error("subsetLoaders is not defined");
+    }
+    if (!params.num || !params.page) {
+      throw new Error("num and page are required");
+    }
+
+    const { num, page } = params;
+    const unloadedRows = (await qb
+      .limit(num)
+      .offset(num * (page - 1))) as TSubsetMapping[T][];
+
+    const total = 0;
+
+    const loaders = this.subsetLoaders[subset];
+    const loadedRows = await this.useLoaders(qb.knex, unloadedRows, loaders);
+
+    const rows = this.hydrate(loadedRows) as TSubsetMapping[T][];
+
+    return { rows, total };
+  }
+
 
   async useLoaders(db: Knex, rows: UnknownDBRecord[], loaders: SubsetQuery["loaders"]) {
     if (loaders.length === 0) {
