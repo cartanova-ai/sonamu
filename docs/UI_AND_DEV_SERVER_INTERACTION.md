@@ -51,7 +51,7 @@ Syncer가 변경 처리
         HTTP GET http://127.0.0.1:57000/api/reload
             ↓
             UI 서버 수신
-                ├─ hot.invalidateAll(apiRootPath) - 모든 캐시 무효화
+                ├─ hot.invalidateAll() - 모든 캐시 무효화
                 └─ EntityManager.reload() - 엔티티 재로드
 ```
 
@@ -167,7 +167,7 @@ syncUI() {
 await hot.invalidateFile(filePath, "change");
 
 // 디렉토리 전체 무효화 (UI용)
-await hot.invalidateAll(rootPath);
+await hot.invalidateAll();
 ```
 
 ### UI 서버
@@ -176,7 +176,7 @@ await hot.invalidateAll(rootPath);
 // /api/reload 엔드포인트
 server.get("/api/reload", async () => {
   // 1. 모든 캐시 무효화
-  await hot.invalidateAll(Sonamu.apiRootPath);
+  await hot.invalidateAll();
   
   // 2. EntityManager 리로드
   await EntityManager.reload();
