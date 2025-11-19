@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import path from "path";
+import { fileURLToPath } from "url";
 import { tsicli } from "tsicli";
 import { execSync, spawn } from "child_process";
 import { mkdir, readdir, writeFile } from "fs/promises";
@@ -97,17 +98,18 @@ async function dev() {
     [
       "--clear-screen=false",
       "--node-args=--import=@sonamu-kit/loader",
-      "--node-args=--import=@sonamu-kit/hot-hook/register",
+      "--node-args=--import=sonamu/hot-hook-register",
       "--node-args=--enable-source-maps",
       entryPoint,
     ],
     {
       cwd: apiRoot,
-      stdio: 'inherit',
+      stdio: "inherit",
       env: {
         ...process.env,
-        NODE_ENV: 'development',
-        HOT: 'yes',
+        NODE_ENV: "development",
+        HOT: "yes",
+        API_ROOT_PATH: apiRoot,
       },
     }
   );
@@ -380,23 +382,68 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
-    type StartServersOptions = {
-      projectName: string;
-      apiRootPath: string;
-      port: number;
+    // @sonamu-kit/ui의 run-ui.ts 스크립트 경로 찾기
+    const uiModulePath = await import.meta.resolve("@sonamu-kit/ui");
+    const uiNodePath = path.join(
+      path.dirname(fileURLToPath(uiModulePath)),
+      "run-ui.js"
+    );
+
+    if (!(await exists(uiNodePath))) {
+      console.log(
+        chalk.red(
+          `UI runner script not found at ${uiNodePath}. Please rebuild @sonamu-kit/ui.`
+        )
+      );
+      return;
+    }
+
+    // UI를 별도 프로세스로 실행 (hot-hook 활성화)
+    const uiProcess = spawn(
+      process.execPath,
+      [
+        "--import",
+        "@sonamu-kit/loader",
+        "--import",
+        "sonamu/hot-hook-register",
+        "--enable-source-maps",
+        "--no-warnings",
+        uiNodePath,
+      ],
+      {
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          HOT: "yes",
+          PROJECT_NAME:
+            Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
+          API_ROOT_PATH: Sonamu.apiRootPath,
+          UI_PORT: (Sonamu.config.ui?.port ?? 57000).toString(),
+        },
+      }
+    );
+
+    // 종료 처리
+    const cleanup = () => {
+      console.log(chalk.yellow("\n\n👋 Shutting down UI server..."));
+      uiProcess.kill("SIGTERM");
+      process.exit(0);
     };
-    const sonamuUI: {
-      startServers: (options: StartServersOptions) => void;
-    } = await import("@sonamu-kit/ui" as string);
-    sonamuUI.startServers({
-      projectName:
-        Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
-      apiRootPath: Sonamu.apiRootPath,
-      port: Sonamu.config.ui?.port ?? 57000,
+
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+
+    uiProcess.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(chalk.red(`❌ UI server exited with code ${code}`));
+        process.exit(code || 1);
+      }
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {
-      console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
+      console.log(
+        `You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`
+      );
       return;
     }
     throw e;
