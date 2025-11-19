@@ -1,8 +1,6 @@
 # Sonamu ESM & HMR 마이그레이션 보고서
 
 작성일: 2025년 11월 19일
-대상 브랜치: v0.6 → master
-총 변경 커밋: 108개
 
 ## 개요
 
@@ -19,15 +17,10 @@ Sonamu 프로젝트를 CommonJS에서 ESM으로 전환하고 HMR 기능을 추�
 
 ### 사용자 프로젝트 변경사항
 
-package.json에 `"type": "module"` 추가 필수.
-tsconfig.json의 module을 ES2022로, moduleResolution을 Bundler로 변경.
-
-### 코드 레벨 변경
-
-- `require()` → `import` 전환
-- `module.exports` → `export` 전환
-- `__dirname`, `__filename` → `import.meta.dirname`, `import.meta.filename`
-- `lodash` → `lodash-es` 변경
+- package.json에 `"type": "module"` 추가해야 합니다.
+- tsconfig.json의 `module`을 `ESNext`로, `moduleResolution`을 `bundler`로 변경해야 합니다.
+- `__dirname`, `__filename`을 각각 `import.meta.dirname`, `import.meta.filename`로 변경해야 합니다.
+- `lodash`를 `lodash-es`로 변경해야 합니다.
 
 ---
 
@@ -144,18 +137,18 @@ UI도 사용자 프로젝트 코드를 import하므로 HMR이 필요합니다.
 이를 위해 UI를 별도 프로세스로 실행하도록 변경했습니다.
 
 CLI에서 spawn으로 새 Node 프로세스를 생성하며,
---import 플래그로 loader와 hot-hook을 미리 로드합니다.
-환경 변수로 HOT=yes와 API_ROOT_PATH를 전달합니다.
+`--import` 플래그로 loader와 hot-hook을 미리 로드합니다.
+환경 변수로 `HOT=yes`와 `API_ROOT_PATH`를 전달합니다.
 
 ---
 
 ## 7. Template 시스템 정리
 
-template/implementations/ 디렉토리 아래의 모든 템플릿을 자동으로 로드합니다.
-Sonamu.init()에서 Template.autoload()를 호출하여 처리합니다.
+기존에는 템플릿을 모두 임포트해서 템플릿의 key에 따라 적절한 템플릿 인스턴스를 반환하여 주는 로직이 필요하였는데, 이를 변경하였습니다. 이제 `template/implementations/` 디렉토리 아래의 모든 템플릿을 자동으로 로드합니다.
+`Sonamu.init()`에서 `Template.autoload()`를 호출하여 처리합니다.
 
 템플릿 렌더링에 필요한 데이터는 이전에 외부 주입(extra)과 내부 조회가 혼용되었으나,
-이제 모두 템플릿 내부에서 EntityManager나 Sonamu 등 퍼블릭 인스턴스 통해 직접 조회하는 방식으로 통일했습니다.
+이제 모두 템플릿 내부에서 `EntityManager`나 `Sonamu` 등 퍼블릭 인스턴스 통해 직접 조회하는 방식으로 통일했습니다.
 
 ---
 
@@ -170,5 +163,10 @@ migrator.ts 변경사항:
 - delCodes(): .js 삭제 로직 제거
 - cleanUpDist(): 함수 자체 삭제
 
-> 이로 인해 knex의 migration 테이블에 수정이 필요합니다. 마이그레이션 파일의 확장자를 .js에서 .ts로 변경해주어야 합니다.
+이로 인해 `knex_migrations` 테이블의 `name` 컬럼 값에 수정이 필요합니다. 마이그레이션 파일의 확장자를 `.js`에서 `.ts`로 변경해주어야 합니다.
 
+---
+
+## 9. 이외
+
+여기에 명시되지 않은 자잘한 다수의 변경을 포함합니다.
