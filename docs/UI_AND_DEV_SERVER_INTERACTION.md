@@ -110,12 +110,29 @@ UI에서 Entity JSON 수정
 
 ```typescript
 // dev 명령어 실행 시 자동으로 활성화
+// hot-hook-register.ts에서 초기화됨
 await hot.init({
-  root: Sonamu.apiRootPath,
-  boundaries: ["**/*.model.ts", "**/*.entity.json"],
-  disableAutoWatch: false, // Watcher 자동 활성화
+  rootDirectory: process.env.API_ROOT_PATH,
+  boundaries: ['./src/**/*.ts'],
+  // disableAutoWatch는 설정하지 않음 (기본값으로 watcher OFF)
+  // Syncer의 chokidar watcher가 파일 변경을 감지하고
+  // hot.invalidateFile()로 수동으로 알려줌
 });
 ```
+
+### Hot-Hook Watcher 아키텍처
+
+**Dev 서버:**
+- hot-hook의 **내장 watcher는 비활성화** (기본 동작)
+- Sonamu의 **Syncer(chokidar)**가 파일 변경 감지
+- Syncer가 `hot.invalidateFile(path, action)`을 호출하여 hot-hook에 알림
+- hot-hook은 의존성 트리를 기반으로 영향받은 모듈만 무효화
+
+**UI 서버:**
+- hot-hook의 **내장 watcher는 비활성화**
+- Dev 서버로부터 HTTP 요청으로 알림 받음 (`GET /api/reload`)
+- `hot.invalidateAll()`로 모든 캐시 무효화
+- `EntityManager.reload()`로 엔티티 재로드
 
 ### UI 서버
 
@@ -124,7 +141,7 @@ UI 서버는 **별도 프로세스**로 실행되며, `--import` 플래그로 ho
 ```bash
 node \
   --import @sonamu-kit/loader \
-  --import @sonamu-kit/ui/node/hot-hook-register \
+  --import sonamu/hot-hook-register \
   --enable-source-maps \
   run-ui.js
 ```
@@ -134,11 +151,13 @@ node \
 // 프로세스 시작 시 최상위 레벨에서 초기화
 if (process.env.HOT === 'yes' && process.env.API_ROOT_PATH) {
   const { hot } = await import('@sonamu-kit/hot-hook');
-  
+
   await hot.init({
-    root: process.env.API_ROOT_PATH,
+    rootDirectory: process.env.API_ROOT_PATH,
     boundaries: ['./src/**/*.ts'],
-    disableAutoWatch: true, // Dev 서버의 Watcher가 알려줌
+    // disableAutoWatch는 설정하지 않음 (기본값으로 watcher OFF)
+    // UI는 파일 시스템 이벤트에 의존하지 않고
+    // Dev 서버로부터 HTTP 알림을 받음
   });
 }
 ```
