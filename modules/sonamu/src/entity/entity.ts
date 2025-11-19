@@ -117,6 +117,56 @@ export class Entity {
   }
 
   /*
+    subset을 Puri 코드로 변환
+  */
+  getPuriSubsetQuery(subsetKey: string): string {
+    const subset = this.subsets[subsetKey];
+    const subsetQuery = this.resolveSubsetQuery("", subset);
+
+    const lines: string[] = [];
+
+    // from
+    lines.push(`return qbWrapper`);
+    lines.push(`.from("${this.table}")`);
+
+    // join
+    for (const join of subsetQuery.joins) {
+      const joinMethod = join.join === "inner" ? "join" : "leftJoin";
+
+      if ("custom" in join) {
+        // custom join clause는 raw 사용
+        lines.push(
+          `.${joinMethod}({ ${join.as}: "${join.table}" }, qbWrapper.knex.raw(\`${join.custom}\`))`
+        );
+      } else {
+        lines.push(
+          `.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
+        );
+      }
+    }
+
+    // select
+    const selectObj: Record<string, string> = {};
+    for (const selectItem of subsetQuery.select) {
+      // "users.id" 또는 "users.id as user__id" 형태
+      const match = selectItem.match(/^(.+?)(?: as (.+))?$/);
+      if (match) {
+        const [, column, alias] = match;
+        const key = alias || column.split(".").pop()!;
+        selectObj[key] = `"${column.trim()}"`;
+      }
+    }
+
+    lines.push(`.select({`);
+    Object.entries(selectObj).forEach(([key, value]) => {
+      lines.push(`${key}: ${value},`);
+    });
+    lines.push(`});`);
+
+    return lines.join("\n");
+  }
+
+  /*
     subset SELECT/JOIN/LOADER 결과 리턴
   */
   getSubsetQuery(subsetKey: string): SubsetQuery {

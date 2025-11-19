@@ -5,7 +5,6 @@ import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { isManyToManyRelationProp, type SubsetQuery } from "../../types/types";
-import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import type { SourceCode } from "./generated.template";
 
@@ -27,39 +26,61 @@ export class Template__generated_sso extends Template {
     const entityIds = EntityManager.getAllIds();
     const entities = entityIds.map((id) => EntityManager.get(id));
 
-    const sourceCodes: SourceCode[] = entities
-      .map((entity) => {
-        if (entity.parentId !== undefined || Object.keys(entity.subsets).length === 0) {
-          return null;
-        }
-        const subsetKeys = Object.keys(entity.subsets);
-        const subsetQueryObject = subsetKeys.reduce(
-          (r, subsetKey) => {
-            const subsetQuery = entity.getSubsetQuery(subsetKey);
-            r[subsetKey] = subsetQuery;
-            return r;
-          },
-          {} as {
-            [key: string]: SubsetQuery;
-          },
-        );
+    // SubsetQueries 생성 대상: 부모 엔티티가 없고 서브셋이 존재
+    const targetEntities = entities.filter(
+      (entity) =>
+        entity.parentId === undefined && Object.keys(entity.subsets).length > 0
+    );
 
-        const subsetKeyTypeName = `${entity.names.module}SubsetKey`;
-        return {
-          label: `SubsetQuery: ${entity.id}`,
-          lines: [
-            `export const ${inflection.camelize(
-              entity.id,
-              true,
-            )}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
-              subsetQueryObject,
-            )};`,
-            "",
-          ],
-          importKeys: [subsetKeyTypeName],
-        };
-      })
-      .filter(nonNullable);
+    // SubsetQueries 생성
+    const sourceCodes: SourceCode[] = targetEntities.flatMap((entity) => {
+      const subsetKeys = Object.keys(entity.subsets);
+      const subsetQueryObject = subsetKeys.reduce(
+        (r, subsetKey) => {
+          const subsetQuery = entity.getSubsetQuery(subsetKey);
+          r[subsetKey] = subsetQuery;
+          return r;
+        },
+        {} as {
+          [key: string]: SubsetQuery;
+        }
+      );
+
+      const subsetKeyTypeName = `${entity.names.module}SubsetKey`;
+      const entityCamelName = inflection.camelize(entity.id, true);
+
+      // JSON 기반 SubsetQuery
+      const jsonSubsetQuery: SourceCode = {
+        label: `SubsetQuery: ${entity.id}`,
+        lines: [
+          `export const ${entityCamelName}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
+            subsetQueryObject
+          )};`,
+          "",
+        ],
+        importKeys: [subsetKeyTypeName],
+      };
+
+      // Puri 기반 SubsetQuery
+      const puriSubsetQuery: SourceCode = {
+        label: `Puri SubsetQuery: ${entity.id}`,
+        lines: [
+          `export const ${entityCamelName}PuriSubsetQueries = {`,
+          ...subsetKeys.map(
+            (
+              subsetKey
+            ) => `${subsetKey}: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+            ${entity.getPuriSubsetQuery(subsetKey)};
+          },`
+          ),
+          `};`,
+          "",
+        ],
+        importKeys: [],
+      };
+
+      return [jsonSubsetQuery, puriSubsetQuery];
+    });
 
     // DatabaseSchema 생성
     const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
@@ -86,13 +107,21 @@ export class Template__generated_sso extends Template {
 
     const body = sourceCode.lines.join("\n");
     const isUsingManyToManyBaseSchema = body.includes("ManyToManyBaseSchema");
+
+    const sonamuImports = [
+      "SubsetQuery",
+      "PuriWrapper",
+      "DatabaseSchemaExtend",
+      isUsingManyToManyBaseSchema ? "ManyToManyBaseSchema" : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+
     return {
       ...this.getTargetAndPath(),
       body: sourceCode.lines.join("\n"),
       importKeys: sourceCode.importKeys,
-      customHeaders: [
-        `import { SubsetQuery, ${isUsingManyToManyBaseSchema ? "ManyToManyBaseSchema" : ""} } from "sonamu";`,
-      ],
+      customHeaders: [`import { ${sonamuImports} } from "sonamu";`],
     };
   }
 
