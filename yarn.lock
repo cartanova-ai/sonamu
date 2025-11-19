@@ -5693,6 +5693,7 @@ __metadata:
     "@fastify/formbody": "npm:^8.0.1"
     "@fastify/multipart": "npm:^9.0.1"
     "@fastify/static": "npm:^6.10.2"
+    "@sonamu-kit/hot-hook": "workspace:^"
     "@sonamu-kit/react-sui": "workspace:^"
     "@swc/cli": "npm:^0.7.8"
     "@swc/core": "npm:^1.13.19"
@@ -15784,7 +15785,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "miomock-api@workspace:examples/miomock/api"
   dependencies:
-    "@sonamu-kit/hot-hook": "workspace:^"
     "@sonamu-kit/hot-runner": "workspace:^"
     "@sonamu-kit/loader": "workspace:^"
     "@sonamu-kit/react-sui": "workspace:^"
@@ -19371,7 +19371,6 @@ __metadata:
     typescript: "npm:^5.2.2"
     zod: "npm:^4.1.12"
   peerDependencies:
-    "@sonamu-kit/hot-hook": ^0.4.0
     "@sonamu-kit/hot-runner": ^0.1.0
     "@sonamu-kit/loader": ^2.1.1
     "@swc/cli": ^0.7.8
