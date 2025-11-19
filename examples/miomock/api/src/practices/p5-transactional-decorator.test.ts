@@ -4,7 +4,7 @@ import { BaseModelClass, transactional } from "sonamu";
 import { UserSaveParams } from "../application/user/user.types";
 import assert from "assert";
 
-bootstrap();
+bootstrap("fm"); // 실제 데코레이터 동작을 테스트 해야 하므로 fm 모드로 설정
 
 /**
  * @transactional 데코레이터 테스트
@@ -81,7 +81,7 @@ class TransactionalTestModelClass extends BaseModelClass {
     await wdb.table("users").where("id", userId).update({
       last_login_at: new Date(),
     });
-    await wdb.debugTransaction();
+    // await wdb.debugTransaction();
 
     await this.nestedTransactionInner(userId);
   }
@@ -90,7 +90,7 @@ class TransactionalTestModelClass extends BaseModelClass {
   async nestedTransactionInner(userId: number): Promise<void> {
     const wdb = this.getPuri("w");
     await wdb.table("users").where("id", userId).update({ is_verified: true });
-    await wdb.debugTransaction();
+    // await wdb.debugTransaction();
 
     throw new Error("Intentional error");
   }
@@ -267,7 +267,7 @@ describe("@transactional decorator", () => {
     test("should handle nested @transactional methods", async () => {
       // 테스트 사용자 생성
       const wdb = TestModel.getPuri("w");
-      await wdb.debugTransaction();
+      // await wdb.debugTransaction();
       const [userId] = await wdb.table("users").insert({
         email: "nested@example.com",
         username: "nested_user",

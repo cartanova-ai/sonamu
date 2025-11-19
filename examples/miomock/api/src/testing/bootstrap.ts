@@ -1,9 +1,11 @@
 import { DB, FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-let mode: "trx" | "fm" = "trx";
-
-export function bootstrap() {
+/**
+ * @param mode - "trx" for transactional mode, "fm" for fixture mode
+ * @param tableNames - optional array of table names to seed in fixture mode
+ */
+export function bootstrap(mode: "trx" | "fm" = "trx", tableNames?: string[]) {
   beforeAll(async () => {
     await Sonamu.initForTesting();
     if (mode === "fm") {
@@ -16,7 +18,7 @@ export function bootstrap() {
       await DB.createTestTransaction();
     }
     if (mode === "fm") {
-      await FixtureManager.cleanAndSeed();
+      await FixtureManager.cleanAndSeed(tableNames);
     }
   });
   afterEach(async () => {
