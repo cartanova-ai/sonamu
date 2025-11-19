@@ -22,7 +22,9 @@ import {
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import path from "path";
+import fs from "fs";
 
+// 얘 모듈 이름은 왜 ./openai가 아니고 ./openai-client인가?
 // esm을 지원하기 위해 빌드 타임에 import 경로의 확장자를 resolve 해주는 resolveFully 옵션을 사용중입니다.
 // 얘는 "./openai" 같은 이름으로 import하면 그걸 알아서 "./openai.js" 같은 확장자가 붙은 경로로 변환해줍니다.
 // 아니 근데 여기서 문제상황: "openai"라는 이름의 패키지를 import했는데,
@@ -944,6 +946,17 @@ export async function createServer(options: {
       // apis: Sonamu.syncer.apis,
       models: Sonamu.syncer.models,
     };
+  });
+
+  server.get("*", async (_request, reply) => {
+    reply
+      .headers({ "Content-type": "text/html" })
+      .send(
+        fs
+          .readFileSync(path.resolve(__dirname, "../build/index.html"))
+          .toString()
+          .replace("{{projectName}}", projectName)
+      );
   });
 
   server
