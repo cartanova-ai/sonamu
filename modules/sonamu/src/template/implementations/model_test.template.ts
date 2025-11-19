@@ -26,7 +26,7 @@ export class Template__model_test extends Template {
 import { describe, test, expect } from "vitest";
 import { bootstrap } from '../../testing/bootstrap';
 
-bootstrap([]);
+bootstrap();
 describe.skip("${entityId}ModelTest", () => {
   test("Query", async () => {
     expect(true).toBe(true);
