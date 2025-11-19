@@ -34,3 +34,7 @@ export function findApiRootPath(): AbsolutePath {
 export function nonNullable<T>(value: T): value is NonNullable<T> {
   return value !== null && value !== undefined;
 }
+
+export function exhaustive(_param: never) {
+  throw new Error(`exhaustive`);
+}

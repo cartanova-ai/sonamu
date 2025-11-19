@@ -1,21 +1,14 @@
 
 
 GET {{baseUrl}}/api/user/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/user/findMany
-	?subset=SUBSET
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	?subset=A
 Content-Type: application/json
 
 ###
@@ -105,14 +98,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/tag/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/tag/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -141,14 +134,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/project/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/project/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -190,14 +183,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/file/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/file/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -252,14 +245,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/employee/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/employee/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -299,14 +292,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/department/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/department/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -345,14 +338,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/company/findById
-	?subset=SUBSET
+	?subset=A
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/company/findMany
-	?subset=SUBSET
+	?subset=A
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id

@@ -26,7 +26,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     tableSpec: Record<string, string | Puri<TSchema, any, any>>
   );
   constructor(
-    private knex: Knex,
+    public knex: Knex,
     tableNameOrSpec: any
   ) {
     if (typeof tableNameOrSpec === "string") {

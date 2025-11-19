@@ -15,7 +15,6 @@ import {
 import { AxiosProgressEvent } from "axios";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import {
-  UserListParams,
   UserSaveParams,
   UserLoginParams,
   UserRegisterParams,
@@ -47,12 +46,11 @@ export namespace UserService {
 
   export function useUsers<T extends UserSubsetKey>(
     subset: T,
-    params: UserListParams = {},
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<UserSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional(
-        [`/api/user/findMany`, { subset, params }],
+        [`/api/user/findMany`, { subset }],
         swrOptions?.conditional,
       ),
       { loadingTimeout: 1000 },
@@ -60,11 +58,10 @@ export namespace UserService {
   }
   export async function getUsers<T extends UserSubsetKey>(
     subset: T,
-    params: UserListParams = {},
   ): Promise<ListResult<UserSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/user/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/user/findMany?${qs.stringify({ subset })}`,
       signal: AbortSignal.timeout(1000),
     });
   }
