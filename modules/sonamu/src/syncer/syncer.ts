@@ -99,7 +99,7 @@ export class Syncer {
     if (invalidatedPaths.length > 0) {
       console.log(
         chalk.bold(
-          `Invalidated:\n${chalk.blue(invalidatedPaths.map((p) => `- ${path.relative(Sonamu.apiRootPath, p)}`).join("\n"))}`
+          `🔄 Invalidated:\n${chalk.blue(invalidatedPaths.map((p) => `- ${path.relative(Sonamu.apiRootPath, p)}`).join("\n"))}`
         )
       );
     }

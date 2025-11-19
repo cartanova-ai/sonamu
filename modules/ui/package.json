@@ -11,7 +11,7 @@
     "build:node": "swc node -d dist --config-file node/.swcrc --strip-leading-paths && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
     "dev:client": "DEBUG_UI=true vite",
-    "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node --enable-source-maps dist/index.js run\"",
+    "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node --enable-source-maps --import @sonamu-kit/loader --import @sonamu-kit/hot-hook dist/run-ui.js\"",
     "dev": "DEBUG_UI=true run-p dev:node dev:client"
   },
   "type": "module",
@@ -43,6 +43,7 @@
     "@fastify/formbody": "^8.0.1",
     "@fastify/multipart": "^9.0.1",
     "@fastify/static": "^6.10.2",
+    "@sonamu-kit/hot-hook": "workspace:^",
     "@sonamu-kit/react-sui": "workspace:^",
     "@vitejs/plugin-react": "^4.0.3",
     "@xyflow/react": "^12.9.3",

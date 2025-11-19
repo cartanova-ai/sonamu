@@ -12,6 +12,9 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./hot-hook-register": {
+      "default": "./dist/bin/hot-hook-register.js"
     }
   },
   "scripts": {
@@ -87,7 +90,6 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@sonamu-kit/hot-hook": "^0.4.0",
     "@sonamu-kit/hot-runner": "^0.1.0",
     "@sonamu-kit/loader": "^2.1.1",
     "@swc/cli": "^0.7.8",
