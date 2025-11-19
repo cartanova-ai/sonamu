@@ -62,6 +62,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
   const { form, setForm, register } = useTypeForm(UserSaveParams, {
     email: "",
     username: "",
+    password: "",
     birth_date: null,
     role: "normal",
     last_login_at: null,
@@ -75,6 +76,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
       UserService.getUser("A", id).then((row) => {
         setRow(row);
         setForm({
+          password: "", // 비밀번호는 수정이 아니라 새걸 입력하는 것으로!
           ...row,
         });
       });
@@ -140,6 +142,12 @@ export function UsersForm({ id, mode }: UsersFormProps) {
               <Form.Field>
                 <label>이름</label>
                 <Input placeholder="이름" {...register(`username`)} />
+              </Form.Field>
+            </Form.Group>
+            <Form.Group widths="equal">
+              <Form.Field>
+                <label>비밀번호</label>
+                <Input placeholder="비밀번호" {...register(`password`)} type="password" />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
