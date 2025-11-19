@@ -53,7 +53,19 @@ class SonamuClass {
     if (store?.context) {
       return store.context;
     }
-    throw new Error("Sonamu cannot find context");
+
+    if (process.env.NODE_ENV === "test") {
+      // 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
+      return {
+        request: null,
+        reply: null,
+        headers: {},
+        createSSE: () => {},
+        naiteStore: new Map<string, any>(),
+      } as unknown as Context;
+    } else {
+      throw new Error("Sonamu cannot find context");
+    }
   }
 
   public getUploadContext(): UploadContext {
@@ -404,6 +416,7 @@ class SonamuClass {
               reply,
               headers: request.headers,
               createSSE,
+              naiteStore: new Map<string, any>(),
               // auth
               user: request.user ?? null,
               passport: {
