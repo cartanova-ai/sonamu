@@ -1,14 +1,14 @@
 
 
 GET {{baseUrl}}/api/user/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/user/findMany
-	?subset=A
+	?subset=SUBSET
 Content-Type: application/json
 
 ###
@@ -98,14 +98,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/tag/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/tag/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -134,14 +134,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/project/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/project/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -183,14 +183,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/file/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/file/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -245,14 +245,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/employee/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/employee/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -292,14 +292,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/department/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/department/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -338,14 +338,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/company/findById
-	?subset=A
+	?subset=SUBSET
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/company/findMany
-	?subset=A
+	?subset=SUBSET
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id

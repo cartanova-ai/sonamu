@@ -82,7 +82,7 @@ export namespace UserService {
     });
   }
 
-  export async function getMyIP(): Promise<{ ip: string; random: string }> {
+  export async function getMyIP(): Promise<{ ip: string }> {
     return fetch({
       method: "GET",
       url: `/api/user/getMyIP?${qs.stringify({})}`,
