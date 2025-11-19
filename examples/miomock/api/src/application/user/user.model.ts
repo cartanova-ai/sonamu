@@ -28,7 +28,8 @@ import { CustomBaseModelClass } from "./custom-base-model-class";
 */
 class UserModelClass extends CustomBaseModelClass<
   UserSubsetKey,
-  UserSubsetMapping
+  UserSubsetMapping,
+  typeof puriBasedUserSubsetQueries
 > {
   modelName = "User";
 
