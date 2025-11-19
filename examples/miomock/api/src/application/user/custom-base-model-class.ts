@@ -9,6 +9,10 @@ import {
 export abstract class CustomBaseModelClass<
   TSubsetKey extends string,
   TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<
+    TSubsetKey,
+    (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
+  >,
 > extends BaseModelClass {
   constructor(
     protected subsetQueries: Record<
@@ -26,7 +30,7 @@ export abstract class CustomBaseModelClass<
     return {
       qb: qb as unknown as Puri<
         DatabaseSchemaExtend,
-        UnionExtractedTTables<TSubsetKey, typeof this.subsetQueries> & {
+        UnionExtractedTTables<TSubsetKey, TSubsetQueries> & {
           NonAllowedAsSingleTable: { __fulltext__: true };
         },
         {}
