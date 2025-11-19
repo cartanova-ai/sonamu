@@ -5,9 +5,11 @@ import {
   BadRequestException,
   UnauthorizedException,
   api,
-  BaseModelClass,
   Sonamu,
   transactional,
+  DatabaseSchemaExtend,
+  PuriWrapper,
+  exhaustive,
 } from "sonamu";
 import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
@@ -19,12 +21,18 @@ import {
   UserSearchParams,
 } from "./user.types";
 import bcrypt from "bcrypt";
-import randomGenerator from "./random-generator";
+import { CustomBaseModelClass } from "./custom-base-model-class";
 
 /*
   User Model
 */
-class UserModelClass extends BaseModelClass {
+class UserModelClass extends CustomBaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof puriBasedUserSubsetQueries
+> {
+  modelName = "User";
+
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "User" })
   async findById<T extends UserSubsetKey>(
     subset: T,
@@ -54,56 +62,55 @@ class UserModelClass extends BaseModelClass {
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Users", timeout: 1000 })
+  @api({
+    httpMethod: "GET",
+    clients: ["axios", "swr"],
+    resourceName: "Users",
+    timeout: 1000,
+  })
   async findMany<T extends UserSubsetKey>(
     subset: T,
-    params: UserListParams = {}
+    _params: UserListParams = {}
   ): Promise<ListResult<UserSubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ..._params,
     };
 
-    // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+
+    // id
+    if (params.id) {
+      qb.whereIn("users.id", asArray(params.id));
+    }
+
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("users.id", Number(params.keyword));
+      } else {
+        exhaustive(params.search);
+      }
+    }
+
+    // orderBy
+    if (params.orderBy) {
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("users.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: userSubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("users.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("users.id", params.keyword);
-          }
-          // } else if (params.search === "field") {
-          //   qb.where("users.field", "like", `%${params.keyword}%`);
-          // }
-          else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("users." + orderByField, orderByDirec);
-        }
-
-        return qb;
-      },
-      debug: false,
     });
 
     return {
@@ -115,8 +122,6 @@ class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "POST" })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
-
-    console.log(spa);
 
     // register
     spa.map((sp) => {
@@ -144,11 +149,10 @@ class UserModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "GET" })
-  async getMyIP(): Promise<{ ip: string, random: string }> {
+  async getMyIP(): Promise<{ ip: string }> {
     const context = Sonamu.getContext();
     return {
       ip: context.ip,
-      random: randomGenerator(),
     };
   }
 
@@ -283,4 +287,60 @@ class UserModelClass extends BaseModelClass {
   }
 }
 
-export const UserModel = new UserModelClass();
+const puriBasedUserSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper
+      .from("users")
+      .join({ employee: "employees" }, "users.id", "employee.user_id")
+      .join(
+        { employee__department: "departments" },
+        "employee.department_id",
+        "employee__department.id"
+      )
+      .select({
+        id: "users.id",
+        username: "users.username",
+        role: "users.role",
+        bio: "users.bio",
+        is_verified: "users.is_verified",
+        employee__department__name: "employee__department.name",
+        employee__salary: "employee.salary",
+      });
+  },
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("users").select({
+      id: "users.id",
+      created_at: "users.created_at",
+      email: "users.email",
+      username: "users.username",
+      birth_date: "users.birth_date",
+      role: "users.role",
+      last_login_at: "users.last_login_at",
+      bio: "users.bio",
+      is_verified: "users.is_verified",
+    });
+  },
+  SS: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("users").select({
+      id: "users.id",
+      created_at: "users.created_at",
+      email: "users.email",
+      username: "users.username",
+      birth_date: "users.birth_date",
+      role: "users.role",
+      last_login_at: "users.last_login_at",
+      bio: "users.bio",
+      is_verified: "users.is_verified",
+    });
+  },
+};
+const puriBasedUserSubsetLoaders = {
+  A: userSubsetQueries["P"].loaders,
+  P: userSubsetQueries["A"].loaders,
+  SS: userSubsetQueries["SS"].loaders,
+};
+
+export const UserModel = new UserModelClass(
+  puriBasedUserSubsetQueries,
+  puriBasedUserSubsetLoaders
+);

@@ -1,9 +1,9 @@
+import { DatabaseSchemaExtend } from "../types/types";
+import { Puri } from "./puri";
+import { PuriWrapper } from "./puri-wrapper";
+
 // 메타데이터 컬럼 제외
-type ExcludeMetadataColumns<T> = T extends {
-  __fulltext__: readonly (infer _Col)[];
-}
-  ? Omit<T, "__fulltext__">
-  : T;
+type ExcludeMetadataColumns<T> = Exclude<T, "__fulltext__">;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> =
@@ -124,3 +124,16 @@ type NullableToOptional<T> = {
 export type InsertData<T> = NullableToOptional<
   Omit<T, "id" | "created_at" | "__fulltext__">
 >;
+
+// SubsetQuery를 위한 타입 유틸리티
+type ExtractTTables<T extends Puri<any, any, any>> =
+  T extends Puri<any, infer TTables, any> ? TTables : never;
+export type UnionExtractedTTables<
+  SubsetKey extends string,
+  SubsetQueries extends Record<
+    SubsetKey,
+    (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
+  >,
+> = {
+  [K in SubsetKey]: ExtractTTables<ReturnType<SubsetQueries[K]>>;
+}[SubsetKey];
