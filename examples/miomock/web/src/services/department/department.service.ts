@@ -12,6 +12,7 @@ import {
   SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
+import { AxiosProgressEvent } from "axios";
 import {
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
