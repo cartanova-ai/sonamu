@@ -2,10 +2,38 @@
 
 @sonamu-kit/loader는 [`@loaderkit/ts`](https://www.npmjs.com/package/@loaderkit/ts)를 기반으로 하여 Sonamu 프레임워크에서 사용할 목적으로 약간의 수정을 가한 TypeScript 로더입니다.
 
-- esbuild 대신 swc를 사용하여 트랜스파일하도록 바꾸었습니다.
-- `.ts` 확장자를 가진 fully resolved path(`file:///...`)도 처리할 수 있도록 버그(?)를 고쳤습니다.
-
 Credit: [laverdet](https://github.com/laverdet) for [`@loaderkit/ts`](https://www.npmjs.com/package/@loaderkit/ts). Thank you for your great work!
+
+## 원본 패키지로부터의 주요 변경사항
+
+### 1. 트랜스파일러 변경 (esbuild → swc)
+
+**위치**: [`utility/swc.ts`](utility/swc.ts) - `transpileSource()` 함수
+
+esbuild 대신 swc를 사용하여 트랜스파일하도록 변경했습니다. swc가 더 빠르며 Sonamu 프로젝트 전반에서 사용 중입니다.
+
+### 2. Yarn PnP Virtual 경로 지원
+
+**위치**: [`utility/swc.ts:14-16`](utility/swc.ts#L14-L16), [`utility/swc.ts:35-36`](utility/swc.ts#L35-L36)
+
+Yarn PnP의 virtual 경로(`.yarn/__virtual__/`)에서 소스맵 파일을 찾을 수 없어 발생하는 오류를 방지하기 위해 `inputSourceMap: false` 옵션을 조건부로 적용합니다.
+
+### 3. `.ts` 확장자 Fully Resolved Path 처리
+
+**위치**: [`esm.ts:179-224`](esm.ts#L179-L224) - `resolve` 훅
+
+`file:///.../specifier.ts` 형식의 TypeScript 파일을 직접 import할 수 있도록 처리합니다. 원본은 `file:///` 경로를 무조건 "트랜스파일된 js 파일"로 간주했으나, TypeScript 파일이면 그대로 반환하도록 수정했습니다.
+
+### 4. Yarn PnP Virtual 경로 트랜스파일 제외
+
+**위치**: [`esm.ts:287-289`](esm.ts#L287-L289)
+
+Virtual 경로의 파일은 이미 빌드된 파일이므로 트랜스파일을 건너뜁니다.
+
+## 관련 커밋
+
+- [`1037683`](https://github.com/cartanova-ai/sonamu/commit/1037683): loader가 swc 트랜스파일 할 때 virtual 경로라면 입력 소스 맵 비활성화
+- [`10f1b7a`](https://github.com/cartanova-ai/sonamu/commit/10f1b7a): 더이상 안 쓰는 dynohot의 흔적을 loader에서 제거
 
 ---
 
