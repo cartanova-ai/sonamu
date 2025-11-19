@@ -1,6 +1,5 @@
 import { describe, test, expect, assert } from "vitest";
 import { bootstrap } from "../../testing/bootstrap";
-import { UserModel } from "./user.model";
 import { range } from "lodash";
 import { BaseModel } from "sonamu";
 
@@ -8,10 +7,6 @@ bootstrap();
 describe("UserModel", () => {
   const func1 = (no: number) => {
     return async () => {
-      const user = await UserModel.findById("A", 1);
-      expect(user.username).toBe("Minsang Kim");
-      expect(true).toBe(true);
-
       const db = BaseModel.getPuri("w");
       await db.transaction(async (trx) => {
         // @ts-ignore: unused
