@@ -24,6 +24,7 @@ export type Context = {
   createSSE: <T extends ZodObject>(
     events: T
   ) => ReturnType<typeof createSSEFactory<T>>;
+  naiteStore: Map<string, any>;
 } & AuthContext &
   ContextExtend;
 
