@@ -11,6 +11,10 @@ export async function transpileSource(
   const filename = sourceLocation.pathname;
   const baseUrl = packageDirectory?.pathname ?? process.cwd();
 
+  // yarn PnP virtual 경로는 입력 source map 읽기를 비활성화합니다.
+  // virtual 경로에서는 실제 .map 파일을 찾을 수 없어서 에러가 발생하기 때문입니다.
+  const isYarnVirtual = filename.includes("/.yarn/__virtual__/");
+
   const result = await transform(sourceText, {
     // 이하 .swcrc 내용과 동일합니다.
     filename, // resolveFully가 제대로 작동하도록 파일 경로 전달
@@ -28,6 +32,8 @@ export async function transpileSource(
     },
     minify: false, // 어차피 용량 10%정도 차이밖에 안 남. minify를 끄면 혹시 혹시 정말 혹시나 나중에 소스맵 없이 코드를 봐야 하는 끔찍한 상황에 조금이나마 도움이 될 수 있지 않을까 해서 끔.
     sourceMaps: true, // 소스맵 생성. 선언맵은 밖에서 tsc로 따로 만들거예요.
+    // yarn virtual 경로는 입력 source map 읽기 비활성화
+    ...(isYarnVirtual ? { inputSourceMap: false } : {}),
   });
 
   if (!result.code || !result.map) {
