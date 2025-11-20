@@ -17,18 +17,39 @@ import { UnionExtractedTTables } from "./puri.types";
 
 type UnknownDBRecord = Record<string, unknown>;
 
+// Puri에서 Tables 추출
+type GetTables<T> = T extends Puri<any, infer TTables, any> ? TTables : never;
+
+// 두 Puri의 테이블 교집합을 가진 새로운 Puri 생성
+type MergePuri<A, B> = Puri<
+  DatabaseSchemaExtend,
+  Pick<GetTables<A>, Extract<keyof GetTables<A>, keyof GetTables<B>>>,
+  any
+>;
+
+// 서브셋 키 배열을 순회하며 교집합 Puri 계산
+type ResolveIntersection<
+  Keys extends readonly string[],
+  Queries extends Record<string, (...args: any) => any>,
+> = Keys extends [infer Head extends string, ...infer Tail extends string[]]
+  ? Tail extends []
+    ? ReturnType<Queries[Head]>
+    : MergePuri<ReturnType<Queries[Head]>, ResolveIntersection<Tail, Queries>>
+  : never;
+
 export class BaseModelClass<
-  TSubsetKey extends string = "",
-  TSubsetMapping extends Record<TSubsetKey, any> = Record<TSubsetKey, any>,
+  TSubsetKey extends string,
+  TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<
+    TSubsetKey,
+    (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
+  >,
 > {
   public modelName: string = "Unknown";
 
   constructor(
-    protected subsetQueries?: Record<
-      TSubsetKey,
-      (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
-    >,
-    protected subsetLoaders?: Record<TSubsetKey, any>
+    protected puriSubsetQueries: TSubsetQueries,
+    protected subsetLoaders: Record<TSubsetKey, SubsetQuery["loaders"]>
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -90,24 +111,24 @@ export class BaseModelClass<
   
   
   getSubsetQueries<T extends TSubsetKey>(subset: T) {
-    if (!this.subsetQueries) {
-      throw new Error("subsetQueries is not defined");
-    }
-
-    const qb = this.subsetQueries[subset]?.(this.getPuri("r"));
+    const qb = this.puriSubsetQueries[subset]?.(this.getPuri("r"));
 
     return {
       qb: qb as unknown as Puri<
         DatabaseSchemaExtend,
-        UnionExtractedTTables<TSubsetKey, typeof this.subsetQueries> & {
+        UnionExtractedTTables<TSubsetKey, TSubsetQueries> & {
           NonAllowedAsSingleTable: { __fulltext__: true };
         },
         {}
       >,
-      onSubset: <S extends TSubsetKey>(
-        _specificSubset: S
-      ): ReturnType<(typeof this.subsetQueries)[S]> => {
-        return qb as unknown as ReturnType<(typeof this.subsetQueries)[S]>;
+      onSubset: ((_subset: TSubsetKey | readonly TSubsetKey[]) => qb) as {
+        // 단일 키
+        <S extends TSubsetKey>(subset: S): ReturnType<TSubsetQueries[S]>;
+
+        // 키 배열 -> 교집합 반환
+        <Arr extends readonly TSubsetKey[]>(
+          subsets: [...Arr]
+        ): ResolveIntersection<Arr, TSubsetQueries>;
       },
     };
   }
@@ -116,6 +137,7 @@ export class BaseModelClass<
     subset,
     qb,
     params,
+    debug = false,
   }: {
     subset: T;
     qb: Puri<any, any, any>;
@@ -123,10 +145,8 @@ export class BaseModelClass<
       num?: number;
       page?: number;
     };
+    debug?: boolean;
   }): Promise<{ rows: TSubsetMapping[T][]; total: number }> {
-    if (!this.subsetLoaders) {
-      throw new Error("subsetLoaders is not defined");
-    }
     if (!params.num || !params.page) {
       throw new Error("num and page are required");
     }
@@ -135,6 +155,10 @@ export class BaseModelClass<
     const unloadedRows = (await qb
       .limit(num)
       .offset(num * (page - 1))) as TSubsetMapping[T][];
+
+    if (debug) {
+      qb.debug();
+    }
 
     const total = 0;
 
@@ -451,4 +475,4 @@ export class BaseModelClass<
     return new UpsertBuilder();
   }
 }
-export const BaseModel = new BaseModelClass();
+export const BaseModel = new BaseModelClass({}, {});
