@@ -41,7 +41,6 @@
     "@typescript/native-preview": "^7.0.0-dev.20250923.1",
     "@vitest/coverage-v8": "^3.2.4",
     "prettier": "^3.6.2",
-    "tsc-watch": "^7.1.1",
     "typescript": "^5.9.2",
     "vite": "^7.2.4",
     "vitest": "^4.0.10"

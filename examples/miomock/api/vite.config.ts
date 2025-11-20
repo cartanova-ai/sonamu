@@ -4,14 +4,16 @@ export default defineConfig({
   plugins: [],
   test: {
     include: ["src/**/*.test.ts"],
+    exclude: [
+      "src/**/*.test-hold.ts",
+      "**/node_modules/**",
+      "**/.yarn/**",
+      "**/dist/**",
+    ],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     pool: "forks",
     maxWorkers: 1,
     isolate: false,
-    environment: "node",
-  },
-  optimizeDeps: {
-    include: ["lodash-es", "axios", "uuid"],
   },
 });
