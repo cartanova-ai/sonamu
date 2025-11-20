@@ -1,7 +1,7 @@
 {
   "name": "@sonamu-kit/loader",
   "type": "module",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "exports": {
     ".": "./dist/register.js",
     "./loader": "./dist/loader.js"
@@ -28,5 +28,8 @@
   },
   "author": "https://github.com/laverdet/",
   "license": "ISC",
-  "homepage": "https://github.com/braidnetworks/loaderkit/packages/ts#readme"
+  "homepage": "https://github.com/braidnetworks/loaderkit/packages/ts#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
