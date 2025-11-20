@@ -33,6 +33,15 @@ export class Naite {
     return context?.naiteStore?.get(name);
   }
 
+  // 전체 리스트 가져오기
+  static getAll(): { [key: string]: any } {
+    const context = Sonamu.getContext();
+    if (!context?.naiteStore) {
+      return {};
+    }
+    return Object.fromEntries(context.naiteStore.entries());
+  }
+
   // expect 래퍼 (CJS-ESM 이슈로 현재 사용불가)
   // static expect(name: string) {
   //   if (!this.vitestExpect) {
