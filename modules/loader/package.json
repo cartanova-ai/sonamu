@@ -1,7 +1,7 @@
 {
   "name": "@sonamu-kit/loader",
   "type": "module",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "exports": {
     ".": "./dist/register.js",
     "./loader": "./dist/loader.js"
@@ -9,6 +9,9 @@
   "imports": {
     "#ts/*": "./dist/*.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "rm -rf dist && tsc -b",
     "test": "node --no-warnings --experimental-vm-modules --enable-source-maps --test-reporter=spec --test 'dist/__tests__/**/*.js'"
@@ -30,6 +33,7 @@
   "license": "ISC",
   "homepage": "https://github.com/braidnetworks/loaderkit/packages/ts#readme",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "latest"
   }
 }
