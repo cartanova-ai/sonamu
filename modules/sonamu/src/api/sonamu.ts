@@ -1,39 +1,19 @@
 import { AsyncLocalStorage } from "async_hooks";
-import chalk from "chalk";
-import fastify from "fastify";
 import { readFile } from "fs/promises";
 import path from "path";
-import { exists } from "../utils/fs-utils";
-import chokidar, { type FSWatcher } from "chokidar";
-import { formatInTimeZone } from "date-fns-tz";
+import assert from "assert";
+import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
-import { ZodError, ZodObject } from "zod";
-import { DB, SonamuDBConfig } from "../database/db";
-import { attachOnDuplicateUpdate } from "../database/knex-plugins/knex-on-duplicate-update";
-import {
-  BadRequestException,
-  NotFoundException,
-} from "../exceptions/so-exceptions";
+import type { ZodObject } from "zod";
+import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
-import { createSSEFactory } from "../stream/sse";
 import type { Syncer } from "../syncer/syncer";
-import { ApiParamType, SonamuFastifyConfig } from "../types/types";
-import { isLocal, isTest } from "../utils/controller";
-import { findApiRootPath } from "../utils/utils";
-import { humanizeZodError } from "../utils/zod-error";
-import { fastifyCaster } from "./caster";
-import { getZodObjectFromApi } from "./code-converters";
+import type { SonamuFastifyConfig } from "../types/types";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
-import fastifyPassport from "@fastify/passport";
-import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
-import { AbsolutePath } from "../utils/path-utils";
-import { isHotReloadServer } from "../utils/esm-utils";
-import { Template } from "../template";
-import assert from "assert";
-import { centerText } from "../utils/console-util";
-import { BaseModel } from "../database/base-model";
+import type { SonamuConfig, SonamuServerOptions } from "./config";
+import type { AbsolutePath } from "../utils/path-utils";
 
 export type SonamuSecrets = {
   [key: string]: string;
@@ -161,15 +141,21 @@ class SonamuClass {
     if (this.isInitialized) {
       return;
     }
-    !doSilent &&
+
+    if (!doSilent) {
+      const chalk = await import("chalk");
       console.time(
-        chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
+        chalk.default.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
       );
+    }
 
     // API 루트 패스
+    const { findApiRootPath } = await import("../utils/utils");
     this.apiRootPath = apiRootPath ?? findApiRootPath();
+    const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
+    const { exists } = await import("../utils/fs-utils");
     if (await exists(secretsPath)) {
       this.secrets = JSON.parse(
         (await readFile(secretsPath)).toString()
@@ -177,8 +163,13 @@ class SonamuClass {
     }
 
     // DB 로드
+    const { DB } = await import("../database/db");
     this.dbConfig = DB.generateDBConfig(this.config.database);
-    !doSilent && console.log(chalk.green("DB Config Loaded!"));
+    if (!doSilent) {
+      const chalk = await import("chalk");
+      console.log(chalk.default.green("DB Config Loaded!"));
+    }
+    const { attachOnDuplicateUpdate } = await import("../database/knex-plugins/knex-on-duplicate-update");
     attachOnDuplicateUpdate();
 
     // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
@@ -200,18 +191,24 @@ class SonamuClass {
     await this.syncer.autoloadModels();
     await this.syncer.autoloadApis();
 
+    const { Template } = await import("../template");
     await Template.autoload();
 
+    const { isLocal, isTest } = await import("../utils/controller");
+    const { isHotReloadServer } = await import("../utils/esm-utils");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
 
-      this.startWatcher();
+      await this.startWatcher();
 
       this.syncer.syncUI();
     }
 
     this.isInitialized = true;
-    !doSilent && console.timeEnd(chalk.cyan("Sonamu.init"));
+    if (!doSilent) {
+      const chalk = await import("chalk");
+      console.timeEnd(chalk.default.cyan("Sonamu.init"));
+    }
   }
 
   async createServer(initOptions?: {
@@ -223,7 +220,8 @@ class SonamuClass {
     }
 
     const options = this.config.server;
-    const server = fastify(options.fastify);
+    const fastify = await import("fastify");
+    const server = fastify.default(options.fastify);
     this.server = server;
 
     // Storage 설정 저장
@@ -278,6 +276,7 @@ class SonamuClass {
       const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
       const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+      const { formatInTimeZone } = await import("date-fns-tz");
 
       server.setReplySerializer((payload) => {
         return JSON.stringify(payload, (_key, value) => {
@@ -287,8 +286,10 @@ class SonamuClass {
           return value;
         });
       });
-      !options?.doSilent &&
-        console.log(chalk.green(`Timezone set to ${timezone}`));
+      if (!options?.doSilent) {
+        const chalk = await import("chalk");
+        console.log(chalk.default.green(`Timezone set to ${timezone}`));
+      }
     }
 
     // 전체 라우팅 리스트
@@ -308,8 +309,9 @@ class SonamuClass {
     );
 
     // API 라우팅 (로컬HMR 상태와 구분)
+    const { isLocal } = await import("../utils/controller");
     if (isLocal()) {
-      server.all("*", (request, reply) => {
+      server.all("*", async (request, reply) => {
         const found = this.syncer.apis.find(
           (api) =>
             this.config.api.route.prefix + api.path ===
@@ -319,6 +321,7 @@ class SonamuClass {
         if (found) {
           return this.getApiHandler(found, config)(request, reply);
         }
+        const { NotFoundException } = await import("../exceptions/so-exceptions");
         throw new NotFoundException("존재하지 않는 API 접근입니다.");
       });
     } else {
@@ -348,6 +351,7 @@ class SonamuClass {
       );
 
       // 파라미터 정보로 zod 스키마 빌드
+      const { getZodObjectFromApi } = await import("./code-converters");
       const ReqType = getZodObjectFromApi(api, this.syncer.types);
 
       // request 파싱
@@ -356,12 +360,16 @@ class SonamuClass {
         [key: string]: unknown;
       };
       try {
+        const { fastifyCaster } = await import("./caster");
         reqBody = fastifyCaster(ReqType).parse(request[which] ?? {});
       } catch (e) {
+        const { ZodError } = await import("zod");
         if (e instanceof ZodError) {
+          const { humanizeZodError } = await import("../utils/zod-error");
           const messages = humanizeZodError(e)
             .map((issue) => issue.message)
             .join(" ");
+          const { BadRequestException } = await import("../exceptions/so-exceptions");
           throw new BadRequestException(messages, {
             zodError: e,
           });
@@ -398,6 +406,7 @@ class SonamuClass {
       }
 
       // createSSEFactory 함수에 미리 request의 socket과 reply를 바인딩.
+      const { createSSEFactory } = await import("../stream/sse");
       const createSSE = (<T extends ZodObject>(
         _request: FastifyRequest,
         _reply: FastifyReply,
@@ -436,6 +445,7 @@ class SonamuClass {
 
       const model = this.syncer.models[api.modelName];
       return this.asyncLocalStorage.run({ context }, async () => {
+        const { ApiParamType } = await import("../types/types");
         const result = await (model as any)[api.methodName].apply(
           model,
           api.parameters.map((param) => {
@@ -458,13 +468,14 @@ class SonamuClass {
     };
   }
 
-  startWatcher(): void {
+  async startWatcher(): Promise<void> {
     const watchPath = [
       path.join(this.apiRootPath, "src"),
       path.join(this.apiRootPath, "sonamu.config.ts"),
     ];
 
-    this.watcher = chokidar.watch(watchPath, {
+    const chokidar = await import("chokidar");
+    this.watcher = chokidar.default.watch(watchPath, {
       ignored: (path, stats) =>
         !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
@@ -489,9 +500,10 @@ class SonamuClass {
 
         if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
+          const chalk = await import("chalk");
           console.log(
-            chalk.bold(
-              `Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`
+            chalk.default.bold(
+              `Detected(${event}): ${chalk.default.blue(relativePath)} - Restarting...`
             )
           );
           process.kill(process.pid, "SIGUSR2");
@@ -562,17 +574,18 @@ class SonamuClass {
     server: FastifyInstance,
     options: NonNullable<SonamuServerOptions["auth"]>
   ) {
-    server.register(fastifyPassport.initialize());
-    server.register(fastifyPassport.secureSession());
+    const fastifyPassport = await import("@fastify/passport");
+    server.register(fastifyPassport.default.initialize());
+    server.register(fastifyPassport.default.secureSession());
 
     if (typeof options === "boolean") {
-      fastifyPassport.registerUserSerializer(async (user, _request) => user);
-      fastifyPassport.registerUserDeserializer(
+      fastifyPassport.default.registerUserSerializer(async (user, _request) => user);
+      fastifyPassport.default.registerUserDeserializer(
         async (serialized, _request) => serialized
       );
     } else {
-      fastifyPassport.registerUserSerializer(options.userSerializer);
-      fastifyPassport.registerUserDeserializer(options.userDeserializer);
+      fastifyPassport.default.registerUserSerializer(options.userSerializer);
+      fastifyPassport.default.registerUserDeserializer(options.userDeserializer);
     }
   }
 
@@ -608,7 +621,8 @@ class SonamuClass {
         await options.lifecycle?.onStart?.(server);
       })
       .catch(async (err) => {
-        console.error(chalk.red("Failed to start server:", err));
+        const chalk = await import("chalk");
+        console.error(chalk.default.red("Failed to start server:", err));
         await shutdown();
       });
   }
@@ -624,7 +638,8 @@ class SonamuClass {
     this.pendingFiles.push(filePath);
 
     const relativePath = path.relative(this.apiRootPath, filePath);
-    console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
+    const chalk = await import("chalk");
+    console.log(chalk.default.bold(`Detected(${event}): ${chalk.default.blue(relativePath)}`));
 
     await this.syncer.syncFromWatcher(event, filePath);
 
@@ -642,12 +657,17 @@ class SonamuClass {
 
     const endTime = Date.now();
     const totalTime = endTime - this.hmrStartTime;
-    const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
+    const [chalk, { centerText }] = await Promise.all([
+      import("chalk"),
+      import("../utils/console-util")
+    ]);
+    const msg = `HMR Done! ${chalk.default.bold.white(`${totalTime}ms`)}`;
 
-    console.log(chalk.black.bgGreen(centerText(msg)));
+    console.log(chalk.default.black.bgGreen(centerText(msg)));
   }
 
   async destroy(): Promise<void> {
+    const { BaseModel } = await import("../database/base-model");
     await BaseModel.destroy();
     await this.watcher?.close();
     this.storage?.destroy();
