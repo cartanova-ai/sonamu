@@ -1,6 +1,6 @@
 {
   "name": "@sonamu-kit/ui",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "SonamuUI — Interactive UI Server Toolkit for Sonamu",
   "publishConfig": {
     "access": "public"
@@ -99,6 +99,6 @@
   },
   "peerDependencies": {
     "@sonamu-kit/react-sui": "^0.1.17",
-    "sonamu": "^0.5.6"
+    "sonamu": "^0.6.0"
   }
 }
