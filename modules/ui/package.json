@@ -73,7 +73,7 @@
     "sonamu": "workspace:^",
     "supports-color": "^9.4.0",
     "swr": "^2.2.2",
-    "vite": "^4.4.5",
+    "vite": "^7.2.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {

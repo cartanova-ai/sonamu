@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "sass": "^1.92.1",
     "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "vite": "^7.2.4"
   },
   "packageManager": "yarn@4.10.3"
 }
