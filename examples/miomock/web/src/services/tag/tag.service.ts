@@ -12,6 +12,7 @@ import {
   SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
+import { AxiosProgressEvent } from "axios";
 import { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { TagListParams, TagSaveParams } from "./tag.types";
 

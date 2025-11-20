@@ -239,6 +239,22 @@ export type SMDInput<T extends string> = {
   PropNode
 */
 
+/**
+ * 엔티티의 필드 구조를 트리 형태로 표현하는 중간 노드입니다.
+ *
+ * **목적**: Entity의 subset 필드 표현식(예: "id", "user.name", "tags[]")을
+ * 재귀적인 트리 구조로 파싱하여 Zod 스키마 생성의 중간 단계로 사용합니다.
+ *
+ * **변환 흐름**:
+ * Entity subset → EntityPropNode (트리 구조) → Zod 스키마 → RenderingNode (UI용)
+ *
+ * **nodeType**:
+ * - "plain": 단일 필드 (예: "id", "name")
+ * - "object": 중첩 객체 (예: "user.name" → user 객체)
+ * - "array": 배열 (예: "tags[]" → tags 배열)
+ *
+ * **사용 위치**: entity-converter.ts의 propNodeToZodType()
+ */
 export type EntityPropNode =
   | {
       nodeType: "plain";
@@ -622,6 +638,26 @@ export type ApiParamType =
   | ApiParamType.TupleType;
 
 /* Template */
+/**
+ * UI 컴포넌트 렌더링을 위한 메타데이터 노드입니다.
+ *
+ * **목적**: Zod 스키마로부터 프론트엔드 UI 컴포넌트를 자동 생성하기 위한
+ * 렌더링 정보를 담은 트리 구조입니다. 각 필드가 어떤 UI 컴포넌트로
+ * 표현되어야 하는지(텍스트, 이미지, 날짜, Enum 선택 등)를 명시합니다.
+ *
+ * **변환 흐름**:
+ * Entity subset → EntityPropNode → Zod 스키마 → RenderingNode (UI용) → React 컴포넌트 코드 생성
+ *
+ * **주요 필드**:
+ * - `renderType`: UI 컴포넌트 유형 (string-plain, number-fk_id, enums, array 등)
+ * - `zodType`: 원본 Zod 스키마 (validation 용)
+ * - `children`: 중첩된 객체 필드들 (object일 때)
+ * - `element`: 배열 요소 타입 (array일 때)
+ *
+ * **사용 위치**:
+ * - zod-converter.ts의 zodTypeToRenderingNode()에서 생성
+ * - view_form.template.ts, view_list.template.ts 등에서 React 컴포넌트 코드 생성에 사용
+ */
 // 셀프 참조 타입이므로 Zod 생략하고 직접 정의
 export const RenderingNode = z.any();
 export type RenderingNode = {

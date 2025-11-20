@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { Knex } from "knex";
-import { chunk, groupBy, isObject, omit, set, uniq } from "lodash";
+import { chunk, groupBy, isObject, omit, set, uniq } from "lodash-es";
 import { DBPreset, DB } from "./db";
 import { isCustomJoinClause, type SubsetQuery } from "../types/types";
 import type { BaseListParams } from "../utils/model";

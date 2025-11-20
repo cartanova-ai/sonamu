@@ -1,3 +1,5 @@
+> 이 README.md는 outdated입니다. 최신 정보는 [README.md](../../../README.md)를 참고하세요.
+
 # Welcome To Sonamu
 
 1. `yarn dev:serve`

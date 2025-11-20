@@ -49,7 +49,7 @@ export default defineConfig({
       qs: true,
       multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
       static: {
-        root: path.join(__dirname, "/../", "public"),
+        root: path.join(import.meta.dirname, "/../", "public"),
         prefix: "/api/public",
       },
       session: {
@@ -98,7 +98,7 @@ export default defineConfig({
         });
       }
       return new FSDriver({
-        location: path.join(__dirname, "/../", "public", "uploaded"),
+        location: path.join(import.meta.dirname, "/../", "public", "uploaded"),
         urlPrefix: "/api/public/uploaded",
       });
     })(),

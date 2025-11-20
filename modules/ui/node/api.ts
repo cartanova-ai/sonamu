@@ -1,5 +1,4 @@
 import fastify from "fastify";
-import fs from "fs";
 import {
   Sonamu,
   SonamuDBConfig,
@@ -23,8 +22,17 @@ import {
 import { execSync } from "child_process";
 import { pluralize, underscore } from "inflection";
 import path from "path";
-import { openai } from "./openai";
-import { range } from "lodash";
+import fs from "fs";
+
+// 얘 모듈 이름은 왜 ./openai가 아니고 ./openai-client인가?
+// esm을 지원하기 위해 빌드 타임에 import 경로의 확장자를 resolve 해주는 resolveFully 옵션을 사용중입니다.
+// 얘는 "./openai" 같은 이름으로 import하면 그걸 알아서 "./openai.js" 같은 확장자가 붙은 경로로 변환해줍니다.
+// 아니 근데 여기서 문제상황: "openai"라는 이름의 패키지를 import했는데,
+// swc는 같은 디렉토리에 "openai.ts" 파일이 있다는 이유만으로 이걸 "./openai.js"로 만들어버립니다.
+// 즉 "같은 디렉토리 내에 패키지 이름과 같은 이름의 모듈 파일이 있으면 안 되는 문제"입니다.
+// 이를 피하기 위해 "openai"를 사용하는 쪽 모듈 이름은 openai-client.ts로 변경하였습니다.
+import { openai } from "./openai-client";
+import { range } from "lodash-es";
 import chalk from "chalk";
 
 export async function createServer(options: {
@@ -45,17 +53,19 @@ export async function createServer(options: {
     originalErrorHandler(error, request, reply);
 
     const statusCode = reply.statusCode || 500;
-    
+
     const lines: string[] = [];
-    
+
     // 시간, 메소드, 경로, 상태코드를 타이틀에
-    const timestamp = new Date().toLocaleString('ko-KR');
-    lines.push(`╭─[${timestamp}] ${request.method} ${request.url} [${statusCode}]`);
-    
+    const timestamp = new Date().toLocaleString("ko-KR");
+    lines.push(
+      `╭─[${timestamp}] ${request.method} ${request.url} [${statusCode}]`
+    );
+
     // 에러 메시지
     const errorMsg = error.message || "Unknown error";
     lines.push(`│ ❌ ${errorMsg}`);
-    
+
     // 스택 트레이스
     if (error.stack) {
       const stackLines = error.stack.split("\n").slice(1);
@@ -63,16 +73,16 @@ export async function createServer(options: {
         lines.push(`│   ${line.trim()}`);
       });
     }
-    
+
     lines.push(`╰─`);
-    
+
     const errorLog = lines.map((line) => chalk.red(line)).join("\n");
     console.error("\n" + errorLog + "\n");
   });
 
   // 웹 빌드 데이터로 정적 데이터 서빙
   server.register(import("@fastify/static"), {
-    root: path.join(__dirname, "../build/assets"),
+    root: path.join(import.meta.dirname, "../build/assets"),
     prefix: "/assets",
   });
 
@@ -85,15 +95,23 @@ export async function createServer(options: {
 
   if (watch) {
     server.get("/api/reload", async () => {
-      // Sonamu.apiRootPath 내의 모든 require.cache 삭제
-      const apiRootPath = path.resolve(Sonamu.apiRootPath);
-      Object.keys(require.cache).forEach((key) => {
-        if (key.startsWith(apiRootPath)) {
-          delete require.cache[key];
-        }
-      });
+      console.log(chalk.blue("🔄 Reloading UI - invalidating all caches."));
 
+      // hot-hook이 활성화되어 있으면 캐시 무효화
+      if (process.env.HOT === "yes") {
+        const { hot } = await import("@sonamu-kit/hot-hook");
+        const invalidatedPaths = await hot.invalidateAll();
+        if (invalidatedPaths.length > 0) {
+          console.log(
+            `🔄 Invalidated ${invalidatedPaths.length} files from cache.`
+          );
+        }
+      }
+
+      // EntityManager도 리로드
       await EntityManager.reload();
+
+      console.log(chalk.green("✅ UI reload complete"));
       return true;
     });
   }
@@ -378,14 +396,12 @@ export async function createServer(options: {
     const { filter, reload } = request.query;
 
     if (reload === "1") {
-      await Sonamu.syncer.autoloadTypes(true);
+      await Sonamu.syncer.autoloadTypes();
     }
 
     const typeIds = (() => {
       const typeIds = Object.entries(Sonamu.syncer.types)
-        .filter(
-          ([_typeId, zodType]) => (zodType.def.type as string) !== "enum"
-        )
+        .filter(([_typeId, zodType]) => (zodType.def.type as string) !== "enum")
         .map(([typeId, _zodType]) => typeId);
 
       if (filter === "types") {
@@ -773,22 +789,25 @@ export async function createServer(options: {
       })
       .flat();
 
-    const statuses = await Promise.all(combinations.map(async ([entityId, templateKey, enumId]) => {
-      const { subPath, fullPath, isExists } = await Sonamu.syncer.checkExistsGenCode(
-        entityId,
-        templateKey as TemplateKey,
-        enumId
-      );
-      return {
-        entityId,
-        templateGroupName,
-        templateKey,
-        enumId,
-        subPath,
-        fullPath,
-        isExists,
-      };
-    }));
+    const statuses = await Promise.all(
+      combinations.map(async ([entityId, templateKey, enumId]) => {
+        const { subPath, fullPath, isExists } =
+          await Sonamu.syncer.checkExistsGenCode(
+            entityId,
+            templateKey as TemplateKey,
+            enumId
+          );
+        return {
+          entityId,
+          templateGroupName,
+          templateKey,
+          enumId,
+          subPath,
+          fullPath,
+          isExists,
+        };
+      })
+    );
     return { statuses };
   });
 
@@ -934,7 +953,7 @@ export async function createServer(options: {
       .headers({ "Content-type": "text/html" })
       .send(
         fs
-          .readFileSync(path.resolve(__dirname, "../build/index.html"))
+          .readFileSync(path.resolve(import.meta.dirname, "../build/index.html"))
           .toString()
           .replace("{{projectName}}", projectName)
       );

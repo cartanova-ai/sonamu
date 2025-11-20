@@ -8,12 +8,13 @@
   "scripts": {
     "build": "rm -rf dist build && yarn build:client && yarn build:node",
     "build:client": "tsc --noEmit && vite build",
-    "build:node": "tsup --config ./tsup.config.js && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly",
+    "build:node": "swc node -d dist --config-file node/.swcrc --strip-leading-paths && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",
     "dev:client": "DEBUG_UI=true vite",
-    "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node -r source-map-support/register dist/index.js run\"",
+    "dev:node": "tsc-watch -p ./node/tsconfig.node.json --onSuccess \"node --enable-source-maps --import @sonamu-kit/loader --import @sonamu-kit/hot-hook dist/run-ui.js\"",
     "dev": "DEBUG_UI=true run-p dev:node dev:client"
   },
+  "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -42,6 +43,7 @@
     "@fastify/formbody": "^8.0.1",
     "@fastify/multipart": "^9.0.1",
     "@fastify/static": "^6.10.2",
+    "@sonamu-kit/hot-hook": "workspace:^",
     "@sonamu-kit/react-sui": "workspace:^",
     "@vitejs/plugin-react": "^4.0.3",
     "@xyflow/react": "^12.9.3",
@@ -55,6 +57,7 @@
     "jotai": "^2.4.2",
     "knex": "^3.1.0",
     "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
     "openai": "^4.53.0",
     "prop-types": "^15.8.1",
     "qs": "^6.11.2",
@@ -74,12 +77,11 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@rollup/plugin-alias": "^5.0.0",
-    "@rollup/plugin-commonjs": "^25.0.4",
-    "@rollup/plugin-json": "^6.0.0",
-    "@rollup/plugin-node-resolve": "^15.1.0",
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.13.19",
     "@types/inflection": "^1.13.0",
     "@types/lodash": "^4.14.198",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^20.6.3",
     "@types/prop-types": "^15.7.15",
     "@types/qs": "^6.9.8",
@@ -91,10 +93,6 @@
     "esbuild": "^0.19.2",
     "npm-run-all": "^4.1.5",
     "prettier": "2.7.1",
-    "rollup": "^3.28.0",
-    "rollup-plugin-dts": "^5.3.1",
-    "rollup-plugin-esbuild": "^5.0.0",
-    "source-map-support": "^0.5.21",
     "tsc-watch": "^6.0.4",
     "tsup": "^8.1.0",
     "typescript": "^5.2.2"

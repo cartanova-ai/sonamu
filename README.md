@@ -23,29 +23,49 @@ git clone https://github.com/cartanova-ai/sonamu.git
 cd sonamu
 ```
 
-### 2. 의존성 설치
+### 2. 의존성과 패키지들 준비
 
 ```bash
-corepack enable
-yarn install
+corepack enable # Yarn PnP 활성화
+yarn install # 의존성 패키지 설치
+yarn build # 모노레포 내 패키지들 빌드
 ```
 워크스페이스 내 모든 package들의 의존성이 최상단 `.yarn/cache` 디렉토리에 설치됩니다.
 
+프로젝트 실행에 필요한 도구들(`@sonamu-kit/loader`, `@sonamu-kit/hot-hook`, `@sonamu-kit/hot-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `yarn build`를 실행해주어야 합니다.
+
 ### 3. 예제 프로젝트 실행
 
+데이터베이스를 docker로 올려줍니다;
 ```bash
-./examples/miomock/api/database/setup-db.sh
+# 클론받은 sonamu 저장소 루트 기준입니다.
+cd examples/miomock/api/database
+docker compose up -d
 ```
-최초 한 번 데이터베이스를 설정해주어야 합니다.
 
+API 서버를 실행합니다;
 ```bash
-yarn build
-yarn miomock
+# 클론받은 sonamu 저장소 루트 기준입니다.
+cd examples/miomock/api
+yarn dev
 ```
-Miomock 프로젝트가 의존하는 모든 프레임워크 패키지를 빌드하고, Miomock API, Web와 Sonamu UI를 실행합니다.
+
+Sonamu UI를 실행합니다;
+```bash
+# 클론받은 sonamu 저장소 루트 기준입니다.
+cd examples/miomock/api
+yarn sonamu ui
+```
+
+Web 서버를 실행합니다;
+```bash
+# 클론받은 sonamu 저장소 루트 기준입니다.
+cd examples/miomock/web
+yarn dev
+```
 
 ## 기타
 
-### CJS 미지원 때문에 업데이트를 포기한 모듈들
+### 변동이 잦음
 
-- `chalk`: v5로 가지 못하고 v4로 유지합니다.
+큰 breaking change가 진행중입니다. 프로젝트가 불안정할 수 있습니다.

@@ -12,6 +12,7 @@ import {
   SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
+import { AxiosProgressEvent } from "axios";
 import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { ProjectListParams, ProjectSaveParams } from "./project.types";
 

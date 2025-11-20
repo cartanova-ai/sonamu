@@ -3,6 +3,7 @@
     /* Basic Options */
     "target": "esnext",
     "module": "esnext",
+    "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
     "lib": ["esnext", "dom"],

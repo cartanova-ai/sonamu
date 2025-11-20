@@ -1,6 +1,6 @@
 export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import { Sonamu } from "../api";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
@@ -102,8 +102,7 @@ class DBClass {
           max: 5,
         },
         migrations: {
-          extension: "js",
-          directory: "./dist/migrations",
+          directory: "./src/migrations",
         },
         connection: {
           database: config.name,

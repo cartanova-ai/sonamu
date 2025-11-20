@@ -1,12 +1,13 @@
-import chalk from "chalk";
 import { glob } from "fs/promises";
 import inflection from "inflection";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import path from "path";
 import { Entity } from "./entity";
 import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
 import { readFile } from "fs/promises";
+import { AbsolutePath } from "../utils/path-utils";
+import assert from "assert";
 
 export type EntityNamesRecord = Record<
   | "fs"
@@ -30,7 +31,7 @@ class EntityManagerClass {
   public isAutoloaded: boolean = false;
 
   // 경로 전달받아 모든 entity.json 파일 로드
-  async autoload(doSilent: boolean = false) {
+  async autoload(_: boolean = false) {
     if (this.isAutoloaded) {
       return;
     }
@@ -38,29 +39,27 @@ class EntityManagerClass {
       Sonamu.apiRootPath,
       "/src/application/**/*.entity.json"
     );
-    !doSilent && console.log(chalk.yellow(`autoload ${pathPattern}`));
 
+    let count = 0;
     for await (const file of glob(path.resolve(pathPattern!))) {
       await this.register(JSON.parse((await readFile(file)).toString()));
+      count++;
     }
+    // !doSilent &&
+    //   console.log(
+    //     chalk.gray(
+    //       `[Loading] Loaded entity definitions from "*.entity.json" files: ${count} files.`
+    //     )
+    //   );
+
     this.isAutoloaded = true;
   }
 
   async reload(doSilent: boolean = false) {
-    console.log("reload");
     this.entities.clear();
     this.modulePaths.clear();
     this.tableSpecs.clear();
     this.isAutoloaded = false;
-
-    const sonamuPath = path.join(
-      Sonamu.apiRootPath,
-      `dist/application/sonamu.generated.js`
-    );
-    // CJS
-    if (require?.cache && require.cache[sonamuPath]) {
-      delete require.cache[sonamuPath];
-    }
 
     return await this.autoload(doSilent);
   }
@@ -70,7 +69,6 @@ class EntityManagerClass {
     await entity.registerModulePaths();
     entity.registerTableSpecs();
     this.entities.set(json.id, entity);
-    // console.debug(chalk.cyan(`register :: ${entity.id}`));
   }
 
   get(entityId: string): Entity {
@@ -151,6 +149,12 @@ class EntityManagerClass {
       upper: entityId.toUpperCase(),
       constant: inflection.underscore(entityId).toUpperCase(),
     };
+  }
+
+  getEntityIdFromPath(filePath: AbsolutePath): string {
+    const matched = filePath.match(/application\/(.+)\//);
+    assert(matched?.[1]);
+    return inflection.camelize(matched[1].replace(/\-/g, "_"));
   }
 }
 

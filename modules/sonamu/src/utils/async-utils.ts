@@ -1,3 +1,6 @@
+import { glob } from "fs/promises";
+import path from "path";
+
 /**
  * 비동기 조건으로 배열을 필터링합니다
  * @example
@@ -61,4 +64,18 @@ export async function reduceAsync<T, U>(
     accumulator = await reducer(accumulator, arr[i], i, arr);
   }
   return accumulator;
+}
+
+/**
+ * 비동기 glob 함수입니다.
+ * AsyncIterableIterator로 날아오는 glob의 반환을 받아 끝까지 돌아서 배열로 반환합니다.
+ * @param pathPattern 
+ * @returns 
+ */
+export async function globAsync(pathPattern: string): Promise<string[]> {
+  const files: string[] = [];
+  for await (const file of glob(path.resolve(pathPattern))) {
+    files.push(file);
+  }
+  return files;
 }

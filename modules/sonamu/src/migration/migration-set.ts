@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 import { DBColumn, DBForeign, DBIndex } from "./types";
-import _ from "lodash";
+import * as _ from "lodash-es";
 import inflection from "inflection";
 import { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";

@@ -32,7 +32,7 @@
     // "noUncheckedIndexedAccess": true, // FIXME
 
     /* Module Resolution Options */
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
 
     /* Experimental Options */

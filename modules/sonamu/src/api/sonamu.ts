@@ -4,8 +4,7 @@ import fastify from "fastify";
 import { readFile } from "fs/promises";
 import path from "path";
 import { exists } from "../utils/fs-utils";
-
-import type { FSWatcher } from "chokidar";
+import chokidar, { type FSWatcher } from "chokidar";
 import { formatInTimeZone } from "date-fns-tz";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
@@ -29,6 +28,12 @@ import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import fastifyPassport from "@fastify/passport";
 import { loadConfig, SonamuConfig, SonamuServerOptions } from "./config";
+import { AbsolutePath } from "../utils/path-utils";
+import { isHotReloadServer } from "../utils/esm-utils";
+import { Template } from "../template";
+import assert from "assert";
+import { centerText } from "../utils/console-util";
+import { BaseModel } from "../database/base-model";
 
 export type SonamuSecrets = {
   [key: string]: string;
@@ -73,11 +78,11 @@ class SonamuClass {
     );
   }
 
-  private _apiRootPath: string | null = null;
-  set apiRootPath(apiRootPath: string) {
+  private _apiRootPath: AbsolutePath | null = null;
+  set apiRootPath(apiRootPath: AbsolutePath) {
     this._apiRootPath = apiRootPath;
   }
-  get apiRootPath(): string {
+  get apiRootPath(): AbsolutePath {
     if (this._apiRootPath === null) {
       throw new Error("Sonamu has not been initialized");
     }
@@ -150,7 +155,7 @@ class SonamuClass {
   async init(
     doSilent: boolean = false,
     enableSync: boolean = true,
-    apiRootPath?: string,
+    apiRootPath?: AbsolutePath,
     forTesting: boolean = false
   ) {
     if (this.isInitialized) {
@@ -191,14 +196,15 @@ class SonamuClass {
     this.syncer = new Syncer();
 
     // Autoload: Models / Types / APIs
-    await this.syncer.autoloadModels();
     await this.syncer.autoloadTypes();
+    await this.syncer.autoloadModels();
     await this.syncer.autoloadApis();
 
-    if (isLocal() && !isTest() && enableSync) {
+    await Template.autoload();
+
+    if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
 
-      // FIXME: hmr 설정된 경우만 워처 시작
       this.startWatcher();
 
       this.syncer.syncUI();
@@ -457,7 +463,6 @@ class SonamuClass {
       path.join(this.apiRootPath, "src"),
       path.join(this.apiRootPath, "sonamu.config.ts"),
     ];
-    const chokidar = require("chokidar") as typeof import("chokidar");
 
     this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
@@ -467,18 +472,22 @@ class SonamuClass {
     });
 
     this.watcher.on("all", async (event: string, filePath: string) => {
+      const absolutePath = filePath as AbsolutePath;
+      assert(
+        absolutePath.startsWith(this.apiRootPath),
+        "File path is not within the API root path"
+      );
+
       if (event !== "change" && event !== "add") {
         return;
       }
 
       try {
-        // src/index.ts 또는 sonamu.config.ts 변경 시 재시작
-        const isIndexTs =
-          filePath === path.join(this.apiRootPath, "src", "index.ts");
+        // sonamu.config.ts 변경 시 재시작
         const isConfigTs =
           filePath === path.join(this.apiRootPath, "sonamu.config.ts");
 
-        if (isIndexTs || isConfigTs) {
+        if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
           console.log(
             chalk.bold(
@@ -489,7 +498,7 @@ class SonamuClass {
           return;
         }
 
-        await this.handleFileChange(event, filePath);
+        await this.handleFileChange(event, absolutePath);
       } catch (e) {
         console.error(e);
       }
@@ -606,19 +615,18 @@ class SonamuClass {
 
   private async handleFileChange(
     event: string,
-    filePath: string
+    filePath: AbsolutePath
   ): Promise<void> {
     // 첫 번째 파일이면 HMR 시작 시간 기록
     if (this.pendingFiles.length === 0) {
       this.hmrStartTime = Date.now();
     }
-
     this.pendingFiles.push(filePath);
 
-    const relativePath = filePath.replace(this.apiRootPath, "api");
+    const relativePath = path.relative(this.apiRootPath, filePath);
     console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
-    await this.syncer.syncFromWatcher([filePath]);
+    await this.syncer.syncFromWatcher(event, filePath);
 
     // 처리 완료된 파일을 대기 목록에서 제거
     this.pendingFiles = this.pendingFiles.slice(1);
@@ -630,20 +638,16 @@ class SonamuClass {
   }
 
   private async finishHMR(): Promise<void> {
-    await this.syncer.saveChecksums(await this.syncer.getCurrentChecksums());
+    await this.syncer.renewChecksums();
 
     const endTime = Date.now();
     const totalTime = endTime - this.hmrStartTime;
     const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
-    const margin = Math.max(0, (process.stdout.columns - msg.length) / 2);
 
-    console.log(
-      chalk.black.bgGreen(" ".repeat(margin) + msg + " ".repeat(margin))
-    );
+    console.log(chalk.black.bgGreen(centerText(msg)));
   }
 
   async destroy(): Promise<void> {
-    const { BaseModel } = require("../database/base-model");
     await BaseModel.destroy();
     await this.watcher?.close();
     this.storage?.destroy();

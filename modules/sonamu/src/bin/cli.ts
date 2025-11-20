@@ -3,25 +3,24 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import path from "path";
+import { fileURLToPath } from "url";
 import { tsicli } from "tsicli";
-import { execSync } from "child_process";
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { execSync, spawn } from "child_process";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 import process from "process";
 import { Sonamu } from "../api";
 import knex, { Knex } from "knex";
-import { findApiRootPath } from "../utils/utils";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
-// import { SWC_BUILD_COMMAND } from "./build-config";
-import { NodemonSettings } from "nodemon";
+import { findApiRootPath } from "../utils/utils";
 
 let migrator: Migrator;
 
 async function bootstrap() {
-  // dev:serve 명령어가 아닌 경우에만 Sonamu 초기화
-  if (process.argv[2] !== "dev:serve") {
+  // dev 명령어가 아닌 경우에만 Sonamu 초기화
+  if (process.argv[2] !== "dev") {
     await Sonamu.init(false, false);
   }
 
@@ -56,8 +55,8 @@ async function bootstrap() {
       ["scaffold", "view_list", "#entityId"],
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
-      ["dev:serve"],
-      ["serve"],
+      ["dev"],
+      ["start"],
     ],
     runners: {
       migrate_run,
@@ -76,8 +75,8 @@ async function bootstrap() {
       ui,
       // scaffold_view_list,
       // scaffold_view_form,
-      "dev:serve": dev_serve,
-      serve,
+      dev,
+      start,
     },
   });
 }
@@ -88,45 +87,57 @@ bootstrap().finally(async () => {
   await FixtureManager.destroy();
 });
 
-async function dev_serve() {
-  const nodemon = await import("nodemon");
+async function dev() {
+  const apiRoot = findApiRootPath();
+  const entryPoint = 'src/index.ts';   
 
-  const nodemonConfig = await (async () => {
-    const projectNodemonPath = path.join(findApiRootPath(), "nodemon.json");
-    const hasProjectNodemon = await exists(projectNodemonPath);
+  console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server...\n'));
 
-    if (hasProjectNodemon) {
-      return JSON.parse(await readFile(projectNodemonPath, "utf8"));
+  const serverProcess = spawn(
+    "hot-runner",
+    [
+      "--clear-screen=false",
+      "--node-args=--import=@sonamu-kit/loader",
+      "--node-args=--import=sonamu/hot-hook-register",
+      "--node-args=--enable-source-maps",
+      entryPoint,
+    ],
+    {
+      cwd: apiRoot,
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        NODE_ENV: "development",
+        HOT: "yes",
+        API_ROOT_PATH: apiRoot,
+      },
     }
+  );
 
-    return {
-      watch: ["src/index.ts"],
-      ignore: ["dist/**", "**/*.js", "**/*.d.ts"],
-      exec: [
-        // SWC_BUILD_COMMAND,
-        "node --no-warnings -r source-map-support/register -r dotenv/config dist/index.js",
-      ].join(" && "),
-    } as NodemonSettings;
-  })();
-  nodemon.default(nodemonConfig);
-
-  // 프로세스 종료 처리
-  const cleanup = async () => {
-    await Sonamu.server?.close();
+  // 종료 처리
+  const cleanup = () => {
+    console.log(chalk.yellow('\n\n👋 Shutting down...'));
+    serverProcess.kill('SIGTERM');
     process.exit(0);
   };
 
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("SIGUSR2", cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
+  serverProcess.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(chalk.red(`❌ Server exited with code ${code}`));
+      process.exit(code || 1);
+    }
+  });
 }
 
-async function serve() {
-  const distIndexPath = path.join(Sonamu.apiRootPath, "dist", "index.js");
+async function start() {
+  const entryPoint = 'dist/index.js';  
 
-  if (!(await exists(distIndexPath))) {
+  if (!(await exists(entryPoint))) {
     console.log(
-      chalk.red("dist/index.js not found. Please build your project first.")
+      chalk.red(`${entryPoint} not found. Please build your project first.`)
     );
     console.log(chalk.blue("Run: yarn sonamu build"));
     return;
@@ -135,7 +146,7 @@ async function serve() {
   const { spawn } = await import("child_process");
   const serverProcess = spawn(
     "node",
-    ["-r", "source-map-support/register", "-r", "dotenv/config", distIndexPath],
+    ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
     {
       cwd: Sonamu.apiRootPath,
       stdio: "inherit",
@@ -162,14 +173,12 @@ async function setupFixtureManager() {
 async function migrate_run() {
   await setupMigrator();
 
-  await migrator.cleanUpDist();
   await migrator.run();
 }
 
 async function migrate_check() {
   await setupMigrator();
 
-  await migrator.cleanUpDist();
   await migrator.check();
 }
 
@@ -347,7 +356,7 @@ async function stub_practice(name: string) {
 
   execSync(`code ${dstPath}`);
 
-  const runCode = `yarn node -r dotenv/config -r source-map-support/register dist/practices/${fileName.replace(
+  const runCode = `yarn node -r dotenv/config --enable-source-maps dist/practices/${fileName.replace(
     ".ts",
     ".js"
   )}`;
@@ -373,23 +382,66 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
-    type StartServersOptions = {
-      projectName: string;
-      apiRootPath: string;
-      port: number;
+    // @sonamu-kit/ui의 run-ui.ts 스크립트 경로 찾기
+    const uiModulePath = await import.meta.resolve("@sonamu-kit/ui");
+    const uiNodePath = path.join(
+      path.dirname(fileURLToPath(uiModulePath)),
+      "run-ui.js"
+    );
+
+    if (!(await exists(uiNodePath))) {
+      console.log(
+        chalk.red(
+          `UI runner script not found at ${uiNodePath}. Please rebuild @sonamu-kit/ui.`
+        )
+      );
+      return;
+    }
+
+    // UI를 별도 프로세스로 실행 (hot-hook 활성화)
+    const uiProcess = spawn(
+      process.execPath,
+      [
+        "--import", "@sonamu-kit/loader",
+        "--import", "sonamu/hot-hook-register",
+        "--enable-source-maps",
+        "--no-warnings",
+        uiNodePath,
+      ],
+      {
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          HOT: "yes",
+          PROJECT_NAME:
+            Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
+          API_ROOT_PATH: Sonamu.apiRootPath,
+          UI_PORT: (Sonamu.config.ui?.port ?? 57000).toString(),
+        },
+      }
+    );
+
+    // 종료 처리
+    const cleanup = () => {
+      console.log(chalk.yellow("\n\n👋 Shutting down UI server..."));
+      uiProcess.kill("SIGTERM");
+      process.exit(0);
     };
-    const sonamuUI: {
-      startServers: (options: StartServersOptions) => void;
-    } = await import("@sonamu-kit/ui" as string);
-    sonamuUI.startServers({
-      projectName:
-        Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
-      apiRootPath: Sonamu.apiRootPath,
-      port: Sonamu.config.ui?.port ?? 57000,
+
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+
+    uiProcess.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(chalk.red(`❌ UI server exited with code ${code}`));
+        process.exit(code || 1);
+      }
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {
-      console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
+      console.log(
+        `You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`
+      );
       return;
     }
     throw e;

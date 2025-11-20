@@ -12,6 +12,7 @@ import {
   SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
+import { AxiosProgressEvent } from "axios";
 import { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
 import { CompanyListParams, CompanySaveParams } from "./company.types";
 

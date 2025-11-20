@@ -27,7 +27,7 @@ import {
   isVirtualProp,
 } from "../types/types";
 import { ExtendedApi } from "./decorators";
-import type { Literal } from "zod/v4/core/util";
+import type { core } from "zod/v4";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
@@ -36,7 +36,7 @@ type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodNullable = z.ZodNullable<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
 type AnyZodDefault = z.ZodDefault<z.ZodType>;
-type AnyZodLiteral = z.ZodLiteral<Literal>;
+type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 
 /*

@@ -1,0 +1,202 @@
+import path from "path";
+import { Sonamu } from "../api/sonamu";
+import { AlreadyProcessedException } from "../exceptions/so-exceptions";
+import {
+  GenerateOptions,
+  PathAndCode,
+  TemplateKey,
+  TemplateOptions,
+} from "../types/types";
+import { everyAsync, filterAsync } from "../utils/async-utils";
+import { exists } from "../utils/fs-utils";
+import chalk from "chalk";
+import { mkdir, writeFile } from "fs/promises";
+import * as _ from "lodash-es";
+import { Template } from "../template/template";
+import { RenderedTemplate } from "../template/template";
+import { EntityManager } from "../entity/entity-manager";
+import { wrapIf } from "../utils/lodash-able";
+import prettier from "prettier";
+import { AbsolutePath } from "../utils/path-utils";
+
+/**
+ * 템플릿을 렌더링하고 파일로 생성합니다.
+ * overwrite 옵션이 false인 경우, 이미 존재하는 파일은 건너뜁니다.
+ * @param key - 템플릿 키 (예: "entity", "model", "service" 등)
+ * @param templateOptions - 템플릿 렌더링에 필요한 옵션
+ * @param _generateOptions - 생성 옵션 (overwrite 여부)
+ * @returns 생성된 파일 경로 배열
+ */
+export async function generateTemplate(
+  key: TemplateKey,
+  templateOptions: any,
+  _generateOptions?: GenerateOptions
+): Promise<AbsolutePath[]> {
+  const generateOptions = {
+    overwrite: false,
+    ..._generateOptions,
+  };
+
+  // 키 children
+  const keys: TemplateKey[] = [key];
+
+  // 템플릿 렌더
+  const pathAndCodes = (
+    await Promise.all(
+      keys.map(async (key) => {
+        return await renderTemplate(key, templateOptions);
+      })
+    )
+  ).flat();
+
+  const filteredPathAndCodes: PathAndCode[] = await (async () => {
+    if (generateOptions.overwrite === true) {
+      return pathAndCodes;
+    } else {
+      return await filterAsync(pathAndCodes, async (pathAndCode) => {
+        const { targets } = Sonamu.config.sync;
+        const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
+        const dstFilePaths = targets.map((target) =>
+          filePath.replace("/:target/", `/${target}/`)
+        );
+        return await everyAsync(
+          dstFilePaths,
+          async (dstPath) => !(await exists(dstPath))
+        );
+      });
+    }
+  })();
+  
+  if (filteredPathAndCodes.length === 0) {
+    throw new AlreadyProcessedException("이미 경로에 모든 파일이 존재합니다.");
+  }
+
+  return (await Promise.all(
+    filteredPathAndCodes.map((pathAndCode) => writeCodeToPathEachTarget(pathAndCode))
+  )).flat();
+}
+
+/**
+ * 템플릿을 렌더링하여 PathAndCode 객체를 반환합니다.
+ * 파일로 쓰지 않고 메모리상에서만 렌더링합니다.
+ * @param key - 템플릿 키
+ * @param options - 템플릿 렌더링 옵션
+ * @returns 경로와 코드 쌍의 배열
+ */
+export async function renderTemplate<T extends keyof TemplateOptions>(
+  key: T,
+  options: TemplateOptions[T]
+): Promise<PathAndCode[]> {
+  const template = Template.find(key);
+
+  const rendered = await template.render(options);
+  const resolved = await resolveRenderedTemplate(key, rendered);
+
+  let preTemplateResolved: PathAndCode[] = [];
+  if (rendered.preTemplates) {
+    preTemplateResolved = (
+      await Promise.all(
+        rendered.preTemplates.map(({ key, options }) => {
+          return renderTemplate(key, options);
+        })
+      )
+    ).flat();
+  }
+
+  return [resolved, ...preTemplateResolved];
+}
+
+async function resolveRenderedTemplate(
+  key: TemplateKey,
+  result: RenderedTemplate
+): Promise<PathAndCode> {
+  const { target, path: filePath, body, importKeys, customHeaders } = result;
+
+  // import 할 대상의 대상 path 추출
+  const importDefs = importKeys
+    .reduce(
+      (r, importKey) => {
+        const modulePath = EntityManager.getModulePath(importKey);
+        let importPath = modulePath;
+        if (modulePath.includes("/") || modulePath.includes(".")) {
+          importPath = wrapIf(
+            path.relative(path.dirname(filePath), modulePath),
+            (p) => [p.startsWith(".") === false, "./" + p]
+          );
+        }
+
+        // 같은 파일에서 import 하는 경우 keys 로 나열 처리
+        const existsOne = r.find((importDef) => importDef.from === importPath);
+        if (existsOne) {
+          existsOne.keys = _.uniq(existsOne.keys.concat(importKey));
+        } else {
+          r.push({
+            keys: [importKey],
+            from: importPath,
+          });
+        }
+        return r;
+      },
+      [] as {
+        keys: string[];
+        from: string;
+      }[]
+    )
+    // 셀프 참조 방지
+    .filter(
+      (importDef) =>
+        filePath.endsWith(importDef.from.replace("./", "") + ".ts") === false
+    );
+
+  // 커스텀 헤더 포함하여 헤더 생성
+  const header = [
+    ...(customHeaders ?? []),
+    ...importDefs.map(
+      (importDef) =>
+        `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`
+    ),
+  ].join("\n");
+
+  const formatted = await (async () => {
+    if (key === "generated_http") {
+      return [header, body].join("\n\n");
+    } else {
+      return prettier.format([header, body].join("\n\n"), {
+        parser: key === "entity" ? "json" : "typescript",
+      });
+    }
+  })();
+
+  return {
+    path: target + "/" + filePath,
+    code: formatted,
+  };
+}
+
+async function writeCodeToPathEachTarget(
+  pathAndCode: PathAndCode
+): Promise<AbsolutePath[]> {
+  const { targets } = Sonamu.config.sync;
+  const { appRootPath } = Sonamu;
+  const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
+
+  const dstFilePaths = _.uniq(
+    targets.map((target) =>
+      filePath.replace("/:target/", `/${target}/`)
+    ) as AbsolutePath[]
+  );
+  return await Promise.all(
+    dstFilePaths.map(async (dstFilePath) => {
+      const dir = path.dirname(dstFilePath);
+      if (!(await exists(dir))) {
+        await mkdir(dir, { recursive: true });
+      }
+      await writeFile(dstFilePath, pathAndCode.code);
+      console.log(
+        chalk.bold("Generated: ") +
+          chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`)
+      );
+      return dstFilePath;
+    })
+  );
+}
