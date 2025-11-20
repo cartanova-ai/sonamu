@@ -38,18 +38,18 @@ type ResolveIntersection<
   : never;
 
 export class BaseModelClass<
-  TSubsetKey extends string,
-  TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetKey extends string = never,
+  TSubsetMapping extends Record<TSubsetKey, any> = never,
   TSubsetQueries extends Record<
     TSubsetKey,
     (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
-  >,
+  > = never,
 > {
   public modelName: string = "Unknown";
 
   constructor(
-    protected puriSubsetQueries: TSubsetQueries,
-    protected subsetLoaders: Record<TSubsetKey, SubsetQuery["loaders"]>
+    protected puriSubsetQueries?: TSubsetQueries,
+    protected subsetLoaders?: Record<TSubsetKey, SubsetQuery["loaders"]>
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -111,6 +111,10 @@ export class BaseModelClass<
   
   
   getSubsetQueries<T extends TSubsetKey>(subset: T) {
+    if (!this.puriSubsetQueries) {
+      throw new Error("puriSubsetQueries is not defined");
+    }
+
     const qb = this.puriSubsetQueries[subset]?.(this.getPuri("r"));
 
     return {
@@ -147,6 +151,10 @@ export class BaseModelClass<
     };
     debug?: boolean;
   }): Promise<{ rows: TSubsetMapping[T][]; total: number }> {
+    if (!this.subsetLoaders) {
+      throw new Error("subsetLoaders is not defined");
+    }
+
     if (!params.num || !params.page) {
       throw new Error("num and page are required");
     }
