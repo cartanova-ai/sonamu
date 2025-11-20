@@ -105,7 +105,9 @@ export const DepartmentBaseSchema = z.object({
   // employees: HasMany Employee
   employee_count: Number,
 });
-export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema>;
+export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
+  readonly __virtual__: readonly ["employee_count"];
+};
 
 // BaseSchema: Employee
 export const EmployeeBaseSchema = z.object({

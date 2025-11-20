@@ -95,11 +95,11 @@ export namespace FileService {
   }
 
   export async function uploadMultiple(
-    file: File,
+    files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
   ): Promise<{ files: { name: string; url: string; mime_type: string }[] }> {
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((f) => formData.append("files", f));
     return fetch({
       method: "POST",
       url: `/api/file/uploadMultiple`,
