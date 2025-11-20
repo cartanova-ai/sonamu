@@ -1,9 +1,4 @@
-import {
-  SubsetQuery,
-  PuriWrapper,
-  DatabaseSchemaExtend,
-  ManyToManyBaseSchema,
-} from "sonamu";
+import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";
 import {
   CompanySubsetKey,
   DepartmentSubsetKey,
@@ -31,17 +26,6 @@ export const companySubsetQueries: { [key in CompanySubsetKey]: SubsetQuery } =
       loaders: [],
     },
   };
-
-// Puri SubsetQuery: Company
-export const companyPuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("companies").select({
-      id: "companies.id",
-      created_at: "companies.created_at",
-      name: "companies.name",
-    });
-  },
-};
 
 // SubsetQuery: Department
 export const departmentSubsetQueries: {
@@ -75,25 +59,6 @@ export const departmentSubsetQueries: {
       },
     ],
     loaders: [],
-  },
-};
-
-// Puri SubsetQuery: Department
-export const departmentPuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper
-      .from("departments")
-      .join({ company: "companies" }, "departments.company_id", "company.id")
-      .leftJoin({ parent: "departments" }, "departments.parent_id", "parent.id")
-      .select({
-        id: "departments.id",
-        created_at: "departments.created_at",
-        name: "departments.name",
-        company__id: "company.id",
-        company__name: "company.name",
-        parent__id: "parent.id",
-        parent__name: "parent.name",
-      });
   },
 };
 
@@ -141,36 +106,6 @@ export const employeeSubsetQueries: {
   },
 };
 
-// Puri SubsetQuery: Employee
-export const employeePuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper
-      .from("employees")
-      .join({ user: "users" }, "employees.user_id", "user.id")
-      .leftJoin(
-        { department: "departments" },
-        "employees.department_id",
-        "department.id",
-      )
-      .leftJoin(
-        { department__company: "companies" },
-        "department.company_id",
-        "department__company.id",
-      )
-      .select({
-        id: "employees.id",
-        created_at: "employees.created_at",
-        employee_number: "employees.employee_number",
-        salary: "employees.salary",
-        user__id: "user.id",
-        user__username: "user.username",
-        department__id: "department.id",
-        department__name: "department.name",
-        department__company__name: "department__company.name",
-      });
-  },
-};
-
 // SubsetQuery: File
 export const fileSubsetQueries: { [key in FileSubsetKey]: SubsetQuery } = {
   A: {
@@ -184,19 +119,6 @@ export const fileSubsetQueries: { [key in FileSubsetKey]: SubsetQuery } = {
     virtual: [],
     joins: [],
     loaders: [],
-  },
-};
-
-// Puri SubsetQuery: File
-export const filePuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("files").select({
-      id: "files.id",
-      created_at: "files.created_at",
-      mime_type: "files.mime_type",
-      name: "files.name",
-      url: "files.url",
-    });
   },
 };
 
@@ -278,20 +200,6 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
     },
   };
 
-// Puri SubsetQuery: Project
-export const projectPuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("projects").select({
-      id: "projects.id",
-      created_at: "projects.created_at",
-      name: "projects.name",
-      status: "projects.status",
-      description: "projects.description",
-      image_urls: "projects.image_urls",
-    });
-  },
-};
-
 // SubsetQuery: Tag
 export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {
   A: {
@@ -299,17 +207,6 @@ export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {
     virtual: [],
     joins: [],
     loaders: [],
-  },
-};
-
-// Puri SubsetQuery: Tag
-export const tagPuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("tags").select({
-      id: "tags.id",
-      created_at: "tags.created_at",
-      name: "tags.name",
-    });
   },
 };
 
@@ -365,50 +262,6 @@ export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
     virtual: [],
     joins: [],
     loaders: [],
-  },
-};
-
-// Puri SubsetQuery: User
-export const userPuriSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("users").select({
-      id: "users.id",
-      created_at: "users.created_at",
-      email: "users.email",
-      username: "users.username",
-      birth_date: "users.birth_date",
-      role: "users.role",
-      last_login_at: "users.last_login_at",
-      bio: "users.bio",
-      is_verified: "users.is_verified",
-    });
-  },
-  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper
-      .from("users")
-      .leftJoin({ employee: "employees" }, "users.id", "employee.user_id")
-      .leftJoin(
-        { employee__department: "departments" },
-        "employee.department_id",
-        "employee__department.id",
-      )
-      .select({
-        id: "users.id",
-        username: "users.username",
-        role: "users.role",
-        bio: "users.bio",
-        is_verified: "users.is_verified",
-        employee__department__name: "employee__department.name",
-        employee__salary: "employee.salary",
-      });
-  },
-  SS: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("users").select({
-      id: "users.id",
-      email: "users.email",
-      password: "users.password",
-      role: "users.role",
-    });
   },
 };
 
