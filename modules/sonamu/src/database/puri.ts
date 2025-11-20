@@ -15,6 +15,7 @@ import type {
 } from "./puri.types";
 import chalk from "chalk";
 import assert from "assert";
+import { Naite } from "../naite/naite";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
@@ -356,7 +357,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE: 컬럼 - 사용: .where("u.id", ">", 10)
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator,
+    operator: ComparisonOperator | "like" | "not like",
     value: ExtractColumnType<TTables, TColumn & string>
   ): this;
   // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
@@ -487,6 +488,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
+    Naite.t("puri-query", this.toQuery());
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
@@ -811,6 +813,7 @@ export class ResolvedPuri<TResolved, _TReturning> {
       | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
+    Naite.t("puri-query", this.toQuery());
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
