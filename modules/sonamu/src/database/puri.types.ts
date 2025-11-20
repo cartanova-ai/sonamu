@@ -3,7 +3,9 @@ import { Puri } from "./puri";
 import { PuriWrapper } from "./puri-wrapper";
 
 // 메타데이터 컬럼 제외
-type ExcludeMetadataColumns<T> = Exclude<T, "__fulltext__">;
+type MetadataColumns = "__fulltext__" | "__virtual__";
+export type ExcludeMetadataColumns<T> = Exclude<T, MetadataColumns>;
+export type OmitMetadataColumns<T> = Omit<T, MetadataColumns>;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> =
