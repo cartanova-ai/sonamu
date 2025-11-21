@@ -81,14 +81,14 @@ export async function createServer(options: {
   });
 
   // 웹 빌드 데이터로 정적 데이터 서빙
-  server.register(import("@fastify/static"), {
+  server.register((await import("@fastify/static")).default, {
     root: path.join(import.meta.dirname, "../build/assets"),
     prefix: "/assets",
   });
 
   // 여기부터 API서버
-  server.register(import("fastify-qs"));
-  server.register(import("@fastify/cors"), {
+  server.register((await import("fastify-qs")).default);
+  server.register((await import("@fastify/cors")).default, {
     origin: true,
     credentials: true,
   });
