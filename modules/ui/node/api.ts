@@ -32,7 +32,7 @@ import fs from "fs";
 // 즉 "같은 디렉토리 내에 패키지 이름과 같은 이름의 모듈 파일이 있으면 안 되는 문제"입니다.
 // 이를 피하기 위해 "openai"를 사용하는 쪽 모듈 이름은 openai-client.ts로 변경하였습니다.
 import { openai } from "./openai-client";
-import { range } from "lodash-es";
+import range from "lodash-es/range.js";
 import chalk from "chalk";
 
 export async function createServer(options: {

@@ -1,4 +1,4 @@
-import { uniq } from "lodash-es";
+import uniq from "lodash-es/uniq.js";
 import { Sonamu } from "../../api";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
 import { Entity } from "../../entity/entity";

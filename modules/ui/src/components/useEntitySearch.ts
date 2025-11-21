@@ -1,4 +1,5 @@
-import { groupBy, map } from "lodash-es";
+import groupBy from "lodash-es/groupBy.js";
+import map from "lodash-es/map.js";
 import { ExtendedEntity } from "../services/sonamu-ui.service";
 import { useCallback, useState } from "react";
 
