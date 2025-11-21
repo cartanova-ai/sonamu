@@ -16,6 +16,10 @@ import type { ExtendedApi } from "./decorators";
 import type { SonamuConfig, SonamuServerOptions } from "./config";
 import type { AbsolutePath } from "../utils/path-utils";
 
+// 눈물을 머금고 fastify 정적 import..
+// fastify, @fastify/passport가 둘다 동적으로 import되면 문제가 생김..
+import fastify from "fastify";
+
 export type SonamuSecrets = {
   [key: string]: string;
 };
@@ -223,7 +227,6 @@ class SonamuClass {
     }
 
     const options = this.config.server;
-    const fastify = (await import("fastify")).default;
     const server = fastify(options.fastify);
     this.server = server;
 
