@@ -7,13 +7,11 @@ declare module "knex" {
         ...columns: string[]
       ): Knex.QueryBuilder<TRecord, TResult>;
 
-      columnInfo<TRecord>(
-        column?: keyof TRecord
-      ): Promise<Knex.ColumnInfo | ColumnInfosObj>;
+      columnInfo<TRecord>(column?: keyof TRecord): Promise<Knex.ColumnInfo | ColumnInfosObj>;
 
       whereBetween<TRecord, TResult>(
         columnName: string,
-        range: readonly [any, any]
+        range: readonly [any, any],
       ): Knex.QueryBuilder;
     }
 

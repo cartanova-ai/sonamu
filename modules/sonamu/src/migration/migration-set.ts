@@ -36,7 +36,7 @@ import {
  */
 export async function getMigrationSetFromDB(
   compareDB: Knex,
-  table: string
+  table: string,
 ): Promise<MigrationSet | null> {
   let dbColumns: DBColumn[], dbIndexes: DBIndex[], dbForeigns: DBForeign[];
   try {
@@ -70,9 +70,9 @@ export async function getMigrationSetFromDB(
     dbIndexes.filter(
       (dbIndex) =>
         dbIndex.Key_name !== "PRIMARY" &&
-        !dbForeigns.find((dbForeign) => dbForeign.keyName === dbIndex.Key_name)
+        !dbForeigns.find((dbForeign) => dbForeign.keyName === dbIndex.Key_name),
     ),
-    (dbIndex) => dbIndex.Key_name
+    (dbIndex) => dbIndex.Key_name,
   );
 
   const parseIndexType = (index: DBIndex) => {
@@ -83,15 +83,13 @@ export async function getMigrationSetFromDB(
   };
 
   // indexes 처리
-  const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map(
-    (keyName) => {
-      const currentIndexes = dbIndexesGroup[keyName];
-      return {
-        type: parseIndexType(currentIndexes[0]),
-        columns: currentIndexes.map((currentIndex) => currentIndex.Column_name),
-      };
-    }
-  );
+  const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map((keyName) => {
+    const currentIndexes = dbIndexesGroup[keyName];
+    return {
+      type: parseIndexType(currentIndexes[0]),
+      columns: currentIndexes.map((currentIndex) => currentIndex.Column_name),
+    };
+  });
   // console.log(table);
   // console.table(dbIndexes);
   // console.table(dbForeigns);
@@ -119,20 +117,17 @@ export async function getMigrationSetFromDB(
  */
 async function readTable(
   compareDB: Knex,
-  tableName: string
+  tableName: string,
 ): Promise<[DBColumn[], DBIndex[], DBForeign[]]> {
   // 테이블 정보
   try {
-    const [_cols] = (await compareDB.raw(`SHOW FIELDS FROM ${tableName}`)) as [
-      DBColumn[],
-    ];
+    const [_cols] = (await compareDB.raw(`SHOW FIELDS FROM ${tableName}`)) as [DBColumn[]];
     const cols = _cols.map((col) => ({
       ...col,
       // Default 값은 숫자나 MySQL Expression이 아닌 경우 ""로 감싸줌
       ...(col.Default !== null && {
         Default:
-          col.Default.replace(/[0-9]+/g, "").length > 0 &&
-          col.Extra !== "DEFAULT_GENERATED"
+          col.Default.replace(/[0-9]+/g, "").length > 0 && col.Extra !== "DEFAULT_GENERATED"
             ? `"${col.Default}"`
             : col.Default,
       }),
@@ -145,17 +140,15 @@ async function readTable(
     const foreignKeys = (matched ?? []).map((line: string) => {
       // 해당 라인을 정규식으로 파싱
       const matched = line.match(
-        /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON [A-Z ]+)*/
+        /CONSTRAINT `(.+)` FOREIGN KEY \(`(.+)`\) REFERENCES `(.+)` \(`(.+)`\)( ON [A-Z ]+)*/,
       );
       if (!matched) {
         throw new Error(`인식할 수 없는 FOREIGN KEY CONSTRAINT ${line}`);
       }
-      const [, keyName, from, referencesTable, referencesField, onClause] =
-        matched;
+      const [, keyName, from, referencesTable, referencesField, onClause] = matched;
       // console.debug({ tableName, line, onClause });
 
-      const [onUpdateFull, _onUpdate] =
-        (onClause ?? "").match(/ON UPDATE ([A-Z ]+)$/) ?? [];
+      const [onUpdateFull, _onUpdate] = (onClause ?? "").match(/ON UPDATE ([A-Z ]+)$/) ?? [];
       const onUpdate = _onUpdate ?? "NO ACTION";
 
       const onDelete =
@@ -181,11 +174,8 @@ async function readTable(
 
 function resolveDBColType(
   colType: string,
-  colField: string
-): Pick<
-  MigrationColumn,
-  "type" | "unsigned" | "length" | "precision" | "scale"
-> {
+  colField: string,
+): Pick<MigrationColumn, "type" | "unsigned" | "length" | "precision" | "scale"> {
   let [rawType, unsigned] = colType.split(" ");
   const matched = rawType.match(/\(([0-9]+)\)/);
   let length;
@@ -235,8 +225,7 @@ function resolveDBColType(
     default:
       // decimal 처리
       if (rawType.startsWith("decimal")) {
-        const [, precision, scale] =
-          rawType.match(/decimal\(([0-9]+),([0-9]+)\)/) ?? [];
+        const [, precision, scale] = rawType.match(/decimal\(([0-9]+),([0-9]+)\)/) ?? [];
         return {
           type: "decimal",
           precision: parseInt(precision),
@@ -246,8 +235,7 @@ function resolveDBColType(
           }),
         };
       } else if (rawType.startsWith("float")) {
-        const [, precision, scale] =
-          rawType.match(/float\(([0-9]+),([0-9]+)\)/) ?? [];
+        const [, precision, scale] = rawType.match(/float\(([0-9]+),([0-9]+)\)/) ?? [];
         return {
           type: "float",
           precision: parseInt(precision),
@@ -266,9 +254,7 @@ function resolveDBColType(
  * @param entity Entity 객체
  * @returns MigrationSetAndJoinTable 객체
  */
-export function getMigrationSetFromEntity(
-  entity: Entity
-): MigrationSetAndJoinTable {
+export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTable {
   const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
     (r, prop) => {
       // virtual 필드 제외
@@ -345,14 +331,10 @@ export function getMigrationSetFromEntity(
             },
             // 조인 테이블에 걸린 인덱스 찾아와서 연결
             ...entity.indexes
-              .filter((index) =>
-                index.columns.find((col) => col.includes(prop.joinTable + "."))
-              )
+              .filter((index) => index.columns.find((col) => col.includes(prop.joinTable + ".")))
               .map((index) => ({
                 ...index,
-                columns: index.columns.map((col) =>
-                  col.replace(prop.joinTable + ".", "")
-                ),
+                columns: index.columns.map((col) => col.replace(prop.joinTable + ".", "")),
               })),
           ],
           columns: [
@@ -380,10 +362,7 @@ export function getMigrationSetFromEntity(
             // 현재 필드가 어떤 테이블에 속하는지 판단
             const col = field.split(".")[1];
             const to = (() => {
-              if (
-                inflection.singularize(join.to.split(".")[0]) + "_id" ===
-                col
-              ) {
+              if (inflection.singularize(join.to.split(".")[0]) + "_id" === col) {
                 return join.to;
               } else {
                 return join.from;
@@ -413,9 +392,7 @@ export function getMigrationSetFromEntity(
         if ((prop.useConstraint ?? true) === true) {
           r.foreigns.push({
             columns: [idColumnName],
-            to: `${inflection
-              .underscore(inflection.pluralize(prop.with))
-              .toLowerCase()}.id`,
+            to: `${inflection.underscore(inflection.pluralize(prop.with)).toLowerCase()}.id`,
             onUpdate: prop.onUpdate ?? "RESTRICT",
             onDelete: prop.onDelete ?? "RESTRICT",
           });
@@ -430,12 +407,12 @@ export function getMigrationSetFromEntity(
       indexes: [] as MigrationIndex[],
       foreigns: [] as MigrationForeign[],
       joinTables: [] as MigrationJoinTable[],
-    }
+    },
   );
 
   // indexes
   migrationSet.indexes = entity.indexes.filter((index) =>
-    index.columns.find((col) => col.includes(".") === false)
+    index.columns.find((col) => col.includes(".") === false),
   );
 
   // uuid

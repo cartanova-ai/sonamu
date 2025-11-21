@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { $ZodLooseShape } from "zod/v4/core"
+import type { $ZodLooseShape } from "zod/v4/core";
 import {
   ApiParam,
   ApiParamType,
@@ -46,15 +46,12 @@ export function getZodObjectFromApi(
   api: ExtendedApi,
   references: {
     [id: string]: AnyZodObject;
-  } = {}
+  } = {},
 ) {
   if (api.typeParameters?.length > 0) {
     api.typeParameters.map((typeParam) => {
       if (typeParam.constraint) {
-        let zodType = getZodTypeFromApiParamType(
-          typeParam.constraint,
-          references
-        );
+        let zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
         (references[typeParam.id] as any) = zodType;
       }
     });
@@ -65,9 +62,9 @@ export function getZodObjectFromApi(
       (param) =>
         !ApiParamType.isContext(param.type) &&
         !ApiParamType.isRefKnex(param.type) &&
-        !(param.optional === true && param.name.startsWith("_")) // _로 시작하는 파라미터는 제외
+        !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
     ),
-    references
+    references,
   );
   return ReqType;
 }
@@ -79,7 +76,7 @@ export function getZodObjectFromApiParams(
   apiParams: ApiParam[],
   references: {
     [id: string]: AnyZodObject;
-  } = {}
+  } = {},
 ): z.ZodObject {
   return z.object(
     apiParams.reduce((r, param) => {
@@ -91,7 +88,7 @@ export function getZodObjectFromApiParams(
         ...r,
         [param.name]: zodType,
       };
-    }, {})
+    }, {}),
   );
 }
 
@@ -102,7 +99,7 @@ export function getZodTypeFromApiParamType(
   paramType: ApiParamType,
   references: {
     [id: string]: AnyZodObject;
-  }
+  },
 ): z.ZodType<unknown> {
   switch (paramType) {
     case "string":
@@ -125,9 +122,7 @@ export function getZodTypeFromApiParamType(
             t: string;
             elementsType: ApiParamType;
           };
-          return z.array(
-            getZodTypeFromApiParamType(arrType.elementsType, references)
-          );
+          return z.array(getZodTypeFromApiParamType(arrType.elementsType, references));
         case "ref":
           const refType = paramType as {
             t: string;
@@ -146,12 +141,12 @@ export function getZodTypeFromApiParamType(
               throw new Error(`잘못된 ${refType.id}`);
             }
             const [obj, literalOrUnion] = refType.args!.map((arg) =>
-              getZodTypeFromApiParamType(arg, references)
+              getZodTypeFromApiParamType(arg, references),
             ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
               keys = literalOrUnion.def.options.map(
-                (option: { def: { value: string } }) => option.def.value
+                (option: { def: { value: string } }) => option.def.value,
               );
             } else {
               keys = (literalOrUnion as z.ZodLiteral<string>).def.values;
@@ -193,28 +188,17 @@ export function getZodTypeFromApiParamType(
             types: ApiParamType[];
           };
           // nullable 유니온
-          if (
-            unionType.types.length === 2 &&
-            unionType.types.some((type) => type === "null")
-          ) {
+          if (unionType.types.length === 2 && unionType.types.some((type) => type === "null")) {
             if (unionType.types[0] === "null") {
-              return getZodTypeFromApiParamType(
-                unionType.types[1],
-                references
-              ).nullable();
+              return getZodTypeFromApiParamType(unionType.types[1], references).nullable();
             } else {
-              return getZodTypeFromApiParamType(
-                unionType.types[0],
-                references
-              ).nullable();
+              return getZodTypeFromApiParamType(unionType.types[0], references).nullable();
             }
           }
 
           // 일반 유니온
           return z.union(
-            unionType.types.map((type) =>
-              getZodTypeFromApiParamType(type, references)
-            ) as any
+            unionType.types.map((type) => getZodTypeFromApiParamType(type, references)) as any,
           );
         case "intersection":
           const intersectionType = paramType as {
@@ -232,19 +216,14 @@ export function getZodTypeFromApiParamType(
         case "tuple-type":
           const tupleType = paramType as ApiParamType.TupleType;
           return z.tuple(
-            tupleType.elements.map((elem) =>
-              getZodTypeFromApiParamType(elem, references)
-            ) as any
+            tupleType.elements.map((elem) => getZodTypeFromApiParamType(elem, references)) as any,
           );
       }
       return z.unknown();
   }
 }
 
-export function propNodeToZodTypeDef(
-  propNode: EntityPropNode,
-  injectImportKeys: string[]
-): string {
+export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys: string[]): string {
   if (propNode.nodeType === "plain") {
     return propToZodTypeDef(propNode.prop, injectImportKeys);
   } else if (propNode.nodeType === "array") {
@@ -252,9 +231,7 @@ export function propNodeToZodTypeDef(
       propNode.prop ? `${propNode.prop.name}: ` : "",
       "z.array(z.object({",
       propNode.children
-        .map((childPropNode) =>
-          propNodeToZodTypeDef(childPropNode, injectImportKeys)
-        )
+        .map((childPropNode) => propNodeToZodTypeDef(childPropNode, injectImportKeys))
         .join("\n"),
       "",
       "})),",
@@ -264,9 +241,7 @@ export function propNodeToZodTypeDef(
       propNode.prop ? `${propNode.prop.name}: ` : "",
       "z.object({",
       propNode.children
-        .map((childPropNode) =>
-          propNodeToZodTypeDef(childPropNode, injectImportKeys)
-        )
+        .map((childPropNode) => propNodeToZodTypeDef(childPropNode, injectImportKeys))
         .join("\n"),
       "",
       `})${propNode.prop && propNode.prop.nullable ? ".nullable()" : ""},`,
@@ -287,10 +262,7 @@ export function getTextTypeLength(textType: TextProp["textType"]): number {
   }
 }
 
-export function propToZodTypeDef(
-  prop: EntityProp,
-  injectImportKeys: string[]
-): string {
+export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): string {
   let stmt: string;
   if (isIntegerProp(prop)) {
     stmt = `${prop.name}: z.int()`;
@@ -326,10 +298,7 @@ export function propToZodTypeDef(
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
   } else if (isRelationProp(prop)) {
-    if (
-      isBelongsToOneRelationProp(prop) ||
-      (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-    ) {
+    if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
       stmt = `${prop.name}_id: z.int()`;
     } else {
       // 그외 relation 케이스 제외
@@ -376,17 +345,14 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
       return zodTypeToZodCode((zt as AnyZodNullable).def.innerType) + ".nullable()";
     case "default":
       const zDefaultDef = (zt as AnyZodDefault).def;
-      return (
-        zodTypeToZodCode(zDefaultDef.innerType) +
-        `.default(${zDefaultDef.defaultValue})`
-      );
+      return zodTypeToZodCode(zDefaultDef.innerType) + `.default(${zDefaultDef.defaultValue})`;
     case "record":
       const zRecordDef = (zt as AnyZodRecord).def;
       return `z.record(${zodTypeToZodCode(zRecordDef.keyType)}, ${zodTypeToZodCode(
-        zRecordDef.valueType
+        zRecordDef.valueType,
       )})`;
     case "literal":
-      const items = Array.from((zt as z.ZodLiteral<any>).values).map(value => {
+      const items = Array.from((zt as z.ZodLiteral<any>).values).map((value) => {
         if (typeof value === "string") {
           return `"${value}"`;
         }
@@ -413,8 +379,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
     case "enum":
       // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
       return `z.enum({${Object.entries((zt as z.ZodEnum).def.entries)
-        .map(([key, val]) =>
-          typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`)
+        .map(([key, val]) => (typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`))
         .join(", ")}})`;
     case "array":
       return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element)})`;
@@ -422,9 +387,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
       const shape = (zt as any).shape;
       return [
         "z.object({",
-        ...Object.keys(shape).map(
-          (key) => `${key}: ${zodTypeToZodCode(shape[key])},`
-        ),
+        ...Object.keys(shape).map((key) => `${key}: ${zodTypeToZodCode(shape[key])},`),
         "})",
       ].join("\n");
     case "optional":
@@ -441,10 +404,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
   }
 }
 
-export function apiParamToTsCode(
-  params: ApiParam[],
-  injectImportKeys: string[]
-): string {
+export function apiParamToTsCode(params: ApiParam[], injectImportKeys: string[]): string {
   return params
     .map((param) => {
       return `${param.name}${
@@ -456,25 +416,19 @@ export function apiParamToTsCode(
     .join(", ");
 }
 
-export function apiParamToTsCodeAsObject(
-  params: ApiParam[],
-  injectImportKeys: string[]
-): string {
+export function apiParamToTsCodeAsObject(params: ApiParam[], injectImportKeys: string[]): string {
   return `{ ${params
     .map(
       (param) =>
         `${param.name}${param.optional ? "?" : ""}: ${apiParamTypeToTsType(
           param.type,
-          injectImportKeys
-        )}${param.defaultDef ? `= ${param.defaultDef}` : ""}`
+          injectImportKeys,
+        )}${param.defaultDef ? `= ${param.defaultDef}` : ""}`,
     )
     .join(", ")} }`;
 }
 
-export function apiParamTypeToTsType(
-  paramType: ApiParamType,
-  injectImportKeys: string[]
-): string {
+export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: string[]): string {
   if (
     [
       "string",
@@ -497,22 +451,13 @@ export function apiParamTypeToTsType(
   } else if (ApiParamType.isNumericLiteral(paramType)) {
     return String(paramType.value);
   } else if (ApiParamType.isUnion(paramType)) {
-    return paramType.types
-      .map((type) => apiParamTypeToTsType(type, injectImportKeys))
-      .join(" | ");
+    return paramType.types.map((type) => apiParamTypeToTsType(type, injectImportKeys)).join(" | ");
   } else if (ApiParamType.isIntersection(paramType)) {
-    return paramType.types
-      .map((type) => apiParamTypeToTsType(type, injectImportKeys))
-      .join(" & ");
+    return paramType.types.map((type) => apiParamTypeToTsType(type, injectImportKeys)).join(" & ");
   } else if (ApiParamType.isArray(paramType)) {
-    return (
-      apiParamTypeToTsType(paramType.elementsType, injectImportKeys) + "[]"
-    );
+    return apiParamTypeToTsType(paramType.elementsType, injectImportKeys) + "[]";
   } else if (ApiParamType.isRef(paramType)) {
-    if (
-      ["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) ===
-      false
-    ) {
+    if (["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) === false) {
       // importKeys 인젝션
       injectImportKeys.push(paramType.id);
     }
@@ -526,19 +471,14 @@ export function apiParamTypeToTsType(
   } else if (ApiParamType.isIndexedAccess(paramType)) {
     return `${apiParamTypeToTsType(
       paramType.object,
-      injectImportKeys
+      injectImportKeys,
     )}[${apiParamTypeToTsType(paramType.index, injectImportKeys)}]`;
   } else if (ApiParamType.isTupleType(paramType)) {
-    return `[ ${paramType.elements.map((elem) =>
-      apiParamTypeToTsType(elem, injectImportKeys)
-    )} ]`;
+    return `[ ${paramType.elements.map((elem) => apiParamTypeToTsType(elem, injectImportKeys))} ]`;
   } else if (ApiParamType.isTypeParam(paramType)) {
     return `<${paramType.id}${
       paramType.constraint
-        ? ` extends ${apiParamTypeToTsType(
-            paramType.constraint,
-            injectImportKeys
-          )}`
+        ? ` extends ${apiParamTypeToTsType(paramType.constraint, injectImportKeys)}`
         : ""
     }>`;
   } else {
@@ -560,15 +500,12 @@ export function serializeZodType(zt: z.ZodType): any {
     case "object":
       return {
         type: "object",
-        shape: Object.keys((zt as AnyZodObject).shape).reduce(
-          (result, key) => {
-            return {
-              ...result,
-              [key]: serializeZodType((zt as AnyZodObject).shape[key]),
-            };
-          },
-          {}
-        ),
+        shape: Object.keys((zt as AnyZodObject).shape).reduce((result, key) => {
+          return {
+            ...result,
+            [key]: serializeZodType((zt as AnyZodObject).shape[key]),
+          };
+        }, {}),
       };
     case "array":
       return {
@@ -617,14 +554,10 @@ export function serializeZodType(zt: z.ZodType): any {
     case "union":
       return {
         type: "union",
-        options: (zt.def as AnyZodUnion).options.map((option) =>
-          serializeZodType(option)
-        ),
+        options: (zt.def as AnyZodUnion).options.map((option) => serializeZodType(option)),
       };
     default:
-      throw new Error(
-        `Serialize 로직이 정의되지 않은 ZodType: ${zt.def.type}`
-      );
+      throw new Error(`Serialize 로직이 정의되지 않은 ZodType: ${zt.def.type}`);
   }
 }
 
@@ -650,21 +583,23 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
       const recordType = zt as AnyZodRecord;
       return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
     case "literal":
-      return Array.from((zt as z.ZodLiteral).values).map(value => {
-        if (typeof value === "string") {
-          return `"${value}"`;
-        }
+      return Array.from((zt as z.ZodLiteral).values)
+        .map((value) => {
+          if (typeof value === "string") {
+            return `"${value}"`;
+          }
 
-        if (value === null) {
-          return `null`;
-        }
+          if (value === null) {
+            return `null`;
+          }
 
-        if (value === undefined) {
-          return `undefined`;
-        }
+          if (value === undefined) {
+            return `undefined`;
+          }
 
-        return `${value}`;
-      }).join(" | ")
+          return `${value}`;
+        })
+        .join(" | ");
     case "union":
       return `${(zt as AnyZodUnion).options
         .map((option) => zodTypeToTsTypeDef(option))

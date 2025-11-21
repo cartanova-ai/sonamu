@@ -28,10 +28,7 @@ export namespace UserService {
     swrOptions?: SwrOptions,
   ): SWRResponse<UserSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/user/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/user/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getUser<T extends UserSubsetKey>(
@@ -48,13 +45,9 @@ export namespace UserService {
     subset: T,
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<UserSubsetMapping[T]>, SWRError> {
-    return useSWR(
-      handleConditional(
-        [`/api/user/findMany`, { subset }],
-        swrOptions?.conditional,
-      ),
-      { loadingTimeout: 1000 },
-    );
+    return useSWR(handleConditional([`/api/user/findMany`, { subset }], swrOptions?.conditional), {
+      loadingTimeout: 1000,
+    });
   }
   export async function getUsers<T extends UserSubsetKey>(
     subset: T,
@@ -92,9 +85,7 @@ export namespace UserService {
   export function useMe(
     swrOptions?: SwrOptions,
   ): SWRResponse<UserSubsetMapping["SS"] | null, SWRError> {
-    return useSWR(
-      handleConditional([`/api/user/me`, {}], swrOptions?.conditional),
-    );
+    return useSWR(handleConditional([`/api/user/me`, {}], swrOptions?.conditional));
   }
   export async function me(): Promise<UserSubsetMapping["SS"] | null> {
     return fetch({
@@ -103,9 +94,7 @@ export namespace UserService {
     });
   }
 
-  export async function login(
-    params: UserLoginParams,
-  ): Promise<{ user: UserSubsetMapping["SS"] }> {
+  export async function login(params: UserLoginParams): Promise<{ user: UserSubsetMapping["SS"] }> {
     return fetch({
       method: "POST",
       url: `/api/user/login`,
@@ -130,9 +119,7 @@ export namespace UserService {
     });
   }
 
-  export async function search(
-    params: UserSearchParams,
-  ): Promise<UserSubsetMapping["A"][]> {
+  export async function search(params: UserSearchParams): Promise<UserSubsetMapping["A"][]> {
     return fetch({
       method: "GET",
       url: `/api/user/search?${qs.stringify({ params })}`,

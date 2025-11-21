@@ -48,9 +48,7 @@ export class SonamuScheduler {
     return this.dispose();
   }
 
-  addRoute(
-    ...routes: (Omit<TaskRouterContext, "retry"> & { retry?: RetryConfig })[]
-  ) {
+  addRoute(...routes: (Omit<TaskRouterContext, "retry"> & { retry?: RetryConfig })[]) {
     for (const route of routes) {
       addRoute(this.#router, "", route.path, {
         ...route,
@@ -58,8 +56,7 @@ export class SonamuScheduler {
         // route의 기본 설정 -> 글로벌 설정 -> 없을 경우 재시도는 안 함.
         retry: {
           delay: route.retry?.delay ?? this.#retry?.delay,
-          maxAttempts:
-            route.retry?.maxAttempts ?? this.#retry?.maxAttempts ?? 1,
+          maxAttempts: route.retry?.maxAttempts ?? this.#retry?.maxAttempts ?? 1,
         },
       });
     }
@@ -71,13 +68,7 @@ export class SonamuScheduler {
       // remote냐 local이냐에 따라서 인자가 달라짐.
       const func =
         task.type === "remote"
-          ? wrapRemoteTask.bind(
-              this,
-              this.#router,
-              this.info,
-              onEvent,
-              this.#knex,
-            )
+          ? wrapRemoteTask.bind(this, this.#router, this.info, onEvent, this.#knex)
           : wrapLocalTask.bind(this, this.#router, this.info, onEvent, {
               id: v7(),
               createdAt: new Date(),

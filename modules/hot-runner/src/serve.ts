@@ -1,38 +1,38 @@
-import { relative } from 'node:path'
-import { type ExecaChildProcess } from 'execa'
-import { BaseCommand, args, flags } from '@adonisjs/ace'
+import { relative } from "node:path";
+import { type ExecaChildProcess } from "execa";
+import { BaseCommand, args, flags } from "@adonisjs/ace";
 
-import { runNode } from './helpers.js'
+import { runNode } from "./helpers.js";
 
 export class Serve extends BaseCommand {
-  static commandName = 'serve'
-  static description = 'Start the HTTP server'
+  static commandName = "serve";
+  static description = "Start the HTTP server";
 
-  @args.string({ description: 'Path to the script file to execute' })
-  declare script: string
+  @args.string({ description: "Path to the script file to execute" })
+  declare script: string;
 
   @flags.boolean({
-    description: 'Clear the terminal screen before starting the server',
+    description: "Clear the terminal screen before starting the server",
     default: true,
   })
-  declare clearScreen: boolean
+  declare clearScreen: boolean;
 
-  @flags.array({ description: 'Node.js arguments to pass to the script' })
-  declare nodeArgs: string[]
+  @flags.array({ description: "Node.js arguments to pass to the script" })
+  declare nodeArgs: string[];
 
-  @flags.array({ description: 'Script arguments to pass to the script' })
-  declare scriptArgs: string[]
+  @flags.array({ description: "Script arguments to pass to the script" })
+  declare scriptArgs: string[];
 
-  #httpServer?: ExecaChildProcess<string>
-  #onReloadAsked?: (updatedFile: string, shouldBeReloadable: boolean) => void
-  #onFileInvalidated?: (invalidatedFiles: string[]) => void
+  #httpServer?: ExecaChildProcess<string>;
+  #onReloadAsked?: (updatedFile: string, shouldBeReloadable: boolean) => void;
+  #onFileInvalidated?: (invalidatedFiles: string[]) => void;
 
   /**
    * Conditionally clear the terminal screen
    */
   #clearScreen() {
     if (this.clearScreen) {
-      process.stdout.write('\u001Bc')
+      process.stdout.write("\u001Bc");
     }
   }
 
@@ -40,7 +40,7 @@ export class Serve extends BaseCommand {
    * Log messages with hot-runner prefix
    */
   #log(message: string) {
-    this.logger.log(`${this.colors.blue('[hot-runner]')} ${message}`)
+    this.logger.log(`${this.colors.blue("[hot-runner]")} ${message}`);
   }
 
   /**
@@ -51,68 +51,68 @@ export class Serve extends BaseCommand {
       script: this.script,
       nodeArgs: this.nodeArgs,
       scriptArgs: this.scriptArgs,
-    })
+    });
 
-    this.#httpServer.on('message', async (message: any) => {
-      if (typeof message !== 'object') return
+    this.#httpServer.on("message", async (message: any) => {
+      if (typeof message !== "object") return;
 
-      if ('type' in message && message.type === 'hot-hook:full-reload') {
-        this.#onReloadAsked?.(message.path, message.shouldBeReloadable)
+      if ("type" in message && message.type === "hot-hook:full-reload") {
+        this.#onReloadAsked?.(message.path, message.shouldBeReloadable);
       }
 
-      if ('type' in message && message.type === 'hot-hook:invalidated') {
-        this.#onFileInvalidated?.(message.paths)
+      if ("type" in message && message.type === "hot-hook:invalidated") {
+        this.#onFileInvalidated?.(message.paths);
       }
-    })
+    });
 
     this.#httpServer
       .then(() => {
-        this.#log(`${this.script} exited.`)
+        this.#log(`${this.script} exited.`);
       })
-      .catch(({signal}) => {
-        if (signal === 'SIGUSR2') {
+      .catch(({ signal }) => {
+        if (signal === "SIGUSR2") {
           // 프로세스가 죽은 이유가 SIGUSR2 때문이라면, 이는 서버 프로세스 재시작을 기대하고 보낸 것일 겁니다.
           // 따라서 재시작해줍니다.
           this.#startHTTPServer();
         } else {
-          this.#log(`${this.colors.red(this.script + ' crashed.')}`)
+          this.#log(`${this.colors.red(this.script + " crashed.")}`);
         }
-      })
+      });
   }
 
   /**
    * Start the HTTP server and watch for full reload requests
    */
   async run() {
-    this.#clearScreen()
-    this.#log(`Starting ${this.colors.green(this.script)}`)
-    this.#startHTTPServer()
+    this.#clearScreen();
+    this.#log(`Starting ${this.colors.green(this.script)}`);
+    this.#startHTTPServer();
 
     this.#onReloadAsked = (path, shouldBeReloadable) => {
-      this.#clearScreen()
+      this.#clearScreen();
 
-      const relativePath = relative(process.cwd(), path)
-      const message = `${this.colors.green(relativePath)} changed. Restarting.`
+      const relativePath = relative(process.cwd(), path);
+      const message = `${this.colors.green(relativePath)} changed. Restarting.`;
       if (!shouldBeReloadable) {
-        this.#log(message)
+        this.#log(message);
       } else {
-        const warning = `${this.colors.yellow('This file should be reloadable, but a parent boundary was not dynamically imported.')}`
-        this.#log(`${message}\n${warning}`)
+        const warning = `${this.colors.yellow("This file should be reloadable, but a parent boundary was not dynamically imported.")}`;
+        this.#log(`${message}\n${warning}`);
       }
 
-      this.#httpServer?.removeAllListeners()
-      this.#httpServer?.kill('SIGKILL')
-      this.#startHTTPServer()
-    }
+      this.#httpServer?.removeAllListeners();
+      this.#httpServer?.kill("SIGKILL");
+      this.#startHTTPServer();
+    };
 
     this.#onFileInvalidated = (paths) => {
-      this.#clearScreen()
+      this.#clearScreen();
 
-      const updatedFile = paths[0]
-      const relativePath = relative(process.cwd(), updatedFile)
+      const updatedFile = paths[0];
+      const relativePath = relative(process.cwd(), updatedFile);
 
-      this.#log(`Invalidating ${this.colors.green(relativePath)} and its dependents`)
-    }
+      this.#log(`Invalidating ${this.colors.green(relativePath)} and its dependents`);
+    };
   }
 
   /**
@@ -120,8 +120,8 @@ export class Serve extends BaseCommand {
    */
   async close() {
     if (this.#httpServer) {
-      this.#httpServer.removeAllListeners()
-      this.#httpServer.kill('SIGKILL')
+      this.#httpServer.removeAllListeners();
+      this.#httpServer.kill("SIGKILL");
     }
   }
 }

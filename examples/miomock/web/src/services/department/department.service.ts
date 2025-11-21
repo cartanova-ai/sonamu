@@ -13,10 +13,7 @@ import {
   useSSEStream,
 } from "../sonamu.shared";
 import { AxiosProgressEvent } from "axios";
-import {
-  DepartmentSubsetKey,
-  DepartmentSubsetMapping,
-} from "../sonamu.generated";
+import { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
 import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 export namespace DepartmentService {
@@ -26,10 +23,7 @@ export namespace DepartmentService {
     swrOptions?: SwrOptions,
   ): SWRResponse<DepartmentSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/department/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/department/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getDepartment<T extends DepartmentSubsetKey>(
@@ -48,10 +42,7 @@ export namespace DepartmentService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<DepartmentSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/department/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/department/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getDepartments<T extends DepartmentSubsetKey>(

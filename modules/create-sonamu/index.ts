@@ -47,7 +47,7 @@ async function init() {
       ],
       {
         onCancel: createCancelHandler(),
-      }
+      },
     );
   } catch (e) {
     cleanup();
@@ -80,7 +80,7 @@ async function init() {
       },
       {
         onCancel: createCancelHandler(),
-      }
+      },
     );
 
     if (!overwrite) {
@@ -94,11 +94,7 @@ async function init() {
   }
 
   createdTargetRoot = targetRoot; // 생성된 디렉토리 추적 시작
-  const templateRoot = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "template",
-    "src"
-  );
+  const templateRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "template", "src");
 
   const copy = (src: string, dest: string) => {
     const stat = fs.statSync(src);
@@ -136,16 +132,14 @@ async function init() {
   // create-sonamu의 위치에서 한 뎁스 위로 가서 modules 디렉토리 찾기
   const createSonamuDir = path.dirname(fileURLToPath(import.meta.url));
   const modulesDir = path.resolve(createSonamuDir, "..");
-  
+
   // 각 모듈의 절대 경로
   const sonamuModulePath = path.join(modulesDir, "sonamu");
   const reactSuiModulePath = path.join(modulesDir, "react-sui");
   const uiModulePath = path.join(modulesDir, "ui");
 
   ["api", "web"].forEach((dir) => {
-    const pkg = JSON.parse(
-      fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8")
-    );
+    const pkg = JSON.parse(fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"));
     pkg.name = `${targetDir}-${dir}`;
     // package.json의 resolutions 필드 추가
     if (!pkg.resolutions) {
@@ -162,7 +156,7 @@ async function init() {
       pkg.resolutions["@sonamu-kit/react-sui"] = `portal:${absoluteReactSuiPath}`;
       pkg.resolutions["@sonamu-kit/ui"] = `portal:${absoluteUiPath}`;
     }
-    
+
     // web 디렉토리에 resolutions 추가
     if (dir === "web") {
       const absoluteReactSuiPath = path.resolve(reactSuiModulePath);
@@ -171,7 +165,7 @@ async function init() {
 
     fs.writeFileSync(
       path.join(targetRoot, dir, "package.json"),
-      JSON.stringify(pkg, null, 2) + "\n"
+      JSON.stringify(pkg, null, 2) + "\n",
     );
   });
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
@@ -186,7 +180,7 @@ async function init() {
     },
     {
       onCancel: createCancelHandler(),
-    }
+    },
   );
 
   if (isPnpm) {
@@ -214,7 +208,7 @@ async function init() {
     },
     {
       onCancel: createCancelHandler(),
-    }
+    },
   );
 
   if (isDatabase) {
@@ -238,9 +232,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 `;
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
   } else {
-    console.log(
-      `\nTo set up a database using Docker, run the following commands:\n`
-    );
+    console.log(`\nTo set up a database using Docker, run the following commands:\n`);
     console.log(chalk.gray(`  $ cd ${targetRoot}/api/database`));
     console.log(chalk.gray(`  $ docker compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
@@ -256,7 +248,7 @@ async function executeCommand(
   command: string,
   args: string[],
   cwd: string,
-  options: { showOutput?: boolean } = {}
+  options: { showOutput?: boolean } = {},
 ) {
   const { showOutput = false } = options;
   const child = spawn(command, args, {
@@ -299,11 +291,7 @@ async function executeCommand(
         if (code !== 0) {
           spinner.fail(`${command} ${args.join(" ")}`);
           console.error(
-            chalk.red(
-              `Command failed with exit code ${code}: ${command} ${args.join(
-                " "
-              )}`
-            )
+            chalk.red(`Command failed with exit code ${code}: ${command} ${args.join(" ")}`),
           );
           // 에러가 있으면 stderr 출력
           if (errorOutput) {
@@ -317,14 +305,10 @@ async function executeCommand(
 
       // 출력 표시 옵션이 활성화된 경우 결과 출력
       if (showOutput && output.trim()) {
-        spinner.succeed(
-          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`
-        );
+        spinner.succeed(`${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`);
         console.log(chalk.cyan(output.trim()));
       } else {
-        spinner.succeed(
-          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`
-        );
+        spinner.succeed(`${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`);
       }
 
       resolve("");
@@ -389,7 +373,7 @@ async function promptDatabase(projectName: string): Promise<PromptDatabaseAnswer
     ],
     {
       onCancel: createCancelHandler(),
-    }
+    },
   );
 
   return answers;
@@ -401,7 +385,7 @@ function createCancelHandler() {
     cleanup();
     throw new Error("Operation cancelled.");
   };
-};
+}
 
 // 재귀적으로 디렉토리 삭제 함수
 function removeDirectory(dirPath: string): void {

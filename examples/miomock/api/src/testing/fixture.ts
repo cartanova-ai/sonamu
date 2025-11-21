@@ -5,7 +5,7 @@ const fixtureLoader = {
 };
 
 export async function loadFixtures<K extends keyof typeof fixtureLoader>(
-  names: K[]
+  names: K[],
 ): Promise<{
   [P in K]: Awaited<ReturnType<(typeof fixtureLoader)[P]>>;
 }> {
@@ -13,7 +13,7 @@ export async function loadFixtures<K extends keyof typeof fixtureLoader>(
     await Promise.all(
       names.map(async (name) => {
         return [name, await fixtureLoader[name]()];
-      })
-    )
+      }),
+    ),
   );
 }

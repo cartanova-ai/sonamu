@@ -17,15 +17,14 @@ import {
 } from "./sonamu.generated";
 
 // SubsetQuery: Company
-export const companySubsetQueries: { [key in CompanySubsetKey]: SubsetQuery } =
-  {
-    A: {
-      select: ["companies.id", "companies.created_at", "companies.name"],
-      virtual: [],
-      joins: [],
-      loaders: [],
-    },
-  };
+export const companySubsetQueries: { [key in CompanySubsetKey]: SubsetQuery } = {
+  A: {
+    select: ["companies.id", "companies.created_at", "companies.name"],
+    virtual: [],
+    joins: [],
+    loaders: [],
+  },
+};
 
 // SubsetQuery: Department
 export const departmentSubsetQueries: {
@@ -109,13 +108,7 @@ export const employeeSubsetQueries: {
 // SubsetQuery: File
 export const fileSubsetQueries: { [key in FileSubsetKey]: SubsetQuery } = {
   A: {
-    select: [
-      "files.id",
-      "files.created_at",
-      "files.mime_type",
-      "files.name",
-      "files.url",
-    ],
+    select: ["files.id", "files.created_at", "files.mime_type", "files.name", "files.url"],
     virtual: [],
     joins: [],
     loaders: [],
@@ -123,82 +116,81 @@ export const fileSubsetQueries: { [key in FileSubsetKey]: SubsetQuery } = {
 };
 
 // SubsetQuery: Project
-export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } =
-  {
-    A: {
-      select: [
-        "projects.id",
-        "projects.created_at",
-        "projects.name",
-        "projects.status",
-        "projects.description",
-        "projects.image_urls",
-      ],
-      virtual: [],
-      joins: [],
-      loaders: [
-        {
-          as: "employee",
-          table: "employees",
-          manyJoin: {
-            fromTable: "projects",
-            fromCol: "id",
-            idField: "id",
-            through: {
-              table: "projects__employees",
-              fromCol: "project_id",
-              toCol: "employee_id",
-            },
-            toTable: "employees",
-            toCol: "id",
+export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } = {
+  A: {
+    select: [
+      "projects.id",
+      "projects.created_at",
+      "projects.name",
+      "projects.status",
+      "projects.description",
+      "projects.image_urls",
+    ],
+    virtual: [],
+    joins: [],
+    loaders: [
+      {
+        as: "employee",
+        table: "employees",
+        manyJoin: {
+          fromTable: "projects",
+          fromCol: "id",
+          idField: "id",
+          through: {
+            table: "projects__employees",
+            fromCol: "project_id",
+            toCol: "employee_id",
           },
-          oneJoins: [
-            {
-              as: "user",
-              join: "inner",
-              table: "users",
-              from: "employees.user_id",
-              to: "user.id",
-            },
-            {
-              as: "department",
-              join: "outer",
-              table: "departments",
-              from: "employees.department_id",
-              to: "department.id",
-            },
-          ],
-          select: [
-            "employees.id",
-            "employees.employee_number",
-            "user.email as user__email",
-            "user.username as user__username",
-            "department.name as department__name",
-          ],
-          loaders: [],
+          toTable: "employees",
+          toCol: "id",
         },
-        {
-          as: "tags",
-          table: "tags",
-          manyJoin: {
-            fromTable: "projects",
-            fromCol: "id",
-            idField: "id",
-            through: {
-              table: "project_tags",
-              fromCol: "project_id",
-              toCol: "tag_id",
-            },
-            toTable: "tags",
-            toCol: "id",
+        oneJoins: [
+          {
+            as: "user",
+            join: "inner",
+            table: "users",
+            from: "employees.user_id",
+            to: "user.id",
           },
-          oneJoins: [],
-          select: ["tags.id", "tags.name"],
-          loaders: [],
+          {
+            as: "department",
+            join: "outer",
+            table: "departments",
+            from: "employees.department_id",
+            to: "department.id",
+          },
+        ],
+        select: [
+          "employees.id",
+          "employees.employee_number",
+          "user.email as user__email",
+          "user.username as user__username",
+          "department.name as department__name",
+        ],
+        loaders: [],
+      },
+      {
+        as: "tags",
+        table: "tags",
+        manyJoin: {
+          fromTable: "projects",
+          fromCol: "id",
+          idField: "id",
+          through: {
+            table: "project_tags",
+            fromCol: "project_id",
+            toCol: "tag_id",
+          },
+          toTable: "tags",
+          toCol: "id",
         },
-      ],
-    },
-  };
+        oneJoins: [],
+        select: ["tags.id", "tags.name"],
+        loaders: [],
+      },
+    ],
+  },
+};
 
 // SubsetQuery: Tag
 export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {

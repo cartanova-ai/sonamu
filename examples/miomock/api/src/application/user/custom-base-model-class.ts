@@ -19,7 +19,7 @@ export abstract class CustomBaseModelClass<
       TSubsetKey,
       (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
     >,
-    protected subsetLoaders: Record<TSubsetKey, any>
+    protected subsetLoaders: Record<TSubsetKey, any>,
   ) {
     super();
   }
@@ -35,9 +35,7 @@ export abstract class CustomBaseModelClass<
         },
         {}
       >,
-      onSubset: <S extends TSubsetKey>(
-        _specificSubset: S
-      ): ReturnType<TSubsetQueries[S]> => {
+      onSubset: <S extends TSubsetKey>(_specificSubset: S): ReturnType<TSubsetQueries[S]> => {
         return qb as unknown as ReturnType<TSubsetQueries[S]>;
       },
     };
@@ -56,9 +54,7 @@ export abstract class CustomBaseModelClass<
     };
   }): Promise<{ rows: TSubsetMapping[T][]; total: number }> {
     const { num, page } = params;
-    const unloadedRows = (await qb
-      .limit(num)
-      .offset(num * (page - 1))) as TSubsetMapping[T][];
+    const unloadedRows = (await qb.limit(num).offset(num * (page - 1))) as TSubsetMapping[T][];
 
     const total = 0;
 

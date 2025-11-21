@@ -35,10 +35,7 @@ class TransactionalTestModelClass extends BaseModelClass {
       throw new Error("User not found");
     }
 
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({ last_login_at: loginTime });
+    await wdb.table("users").where("id", userId).update({ last_login_at: loginTime });
   }
 
   @transactional()
@@ -67,10 +64,7 @@ class TransactionalTestModelClass extends BaseModelClass {
 
     assert(userId);
 
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({ bio: "New user bio" });
+    await wdb.table("users").where("id", userId).update({ bio: "New user bio" });
 
     return userId;
   }
@@ -233,10 +227,7 @@ describe("@transactional decorator", () => {
       });
 
       // insert와 update가 커밋되었는지 확인
-      const user = await TestModel.getPuri("r")
-        .table("users")
-        .where("id", userId)
-        .first();
+      const user = await TestModel.getPuri("r").table("users").where("id", userId).first();
       expect(user).toBeDefined();
       expect(user?.bio).toBe("New user bio");
 
@@ -251,7 +242,7 @@ describe("@transactional decorator", () => {
           username: "rollback_fail",
           password: "pass123",
           shouldFail: true,
-        })
+        }),
       ).rejects.toThrow("Intentional error");
 
       // 롤백 확인 - 사용자가 존재하지 않아야 함
@@ -281,9 +272,7 @@ describe("@transactional decorator", () => {
 
       assert(userId);
 
-      await expect(TestModel.nestedTransaction(userId)).rejects.toThrow(
-        "Intentional error"
-      );
+      await expect(TestModel.nestedTransaction(userId)).rejects.toThrow("Intentional error");
 
       // 트랜잭션 상태 롤백인지 확인
       const [trxStates] = await wdb.knex.raw(`
@@ -299,10 +288,7 @@ describe("@transactional decorator", () => {
       expect(trxStates[0].STATE).toBe("ROLLED BACK");
 
       // 두 업데이트가 모두 롤백되었는지 확인
-      const user = await TestModel.getPuri("r")
-        .table("users")
-        .where("id", userId)
-        .first();
+      const user = await TestModel.getPuri("r").table("users").where("id", userId).first();
       expect(user?.is_verified).toBe(false);
       expect(user?.last_login_at).toBeNull();
 
@@ -348,22 +334,13 @@ describe("@transactional decorator", () => {
       });
 
       // 정리 (외래 키 순서)
-      await TestModel.getPuri("w")
-        .table("employees")
-        .whereIn("id", result.employeeIds)
-        .delete();
-      await TestModel.getPuri("w")
-        .table("users")
-        .whereIn("id", result.userIds)
-        .delete();
+      await TestModel.getPuri("w").table("employees").whereIn("id", result.employeeIds).delete();
+      await TestModel.getPuri("w").table("users").whereIn("id", result.userIds).delete();
       await TestModel.getPuri("w")
         .table("departments")
         .where("company_id", result.companyId)
         .delete();
-      await TestModel.getPuri("w")
-        .table("companies")
-        .where("id", result.companyId)
-        .delete();
+      await TestModel.getPuri("w").table("companies").where("id", result.companyId).delete();
     });
   });
 
@@ -391,7 +368,7 @@ describe("@transactional decorator", () => {
   describe("Example 7: Read Only Transaction (throw error)", () => {
     test("should throw error when insert in read only transaction", async () => {
       await expect(TestModel.readOnly_throwError()).rejects.toThrow(
-        "Cannot execute statement in a READ ONLY transaction"
+        "Cannot execute statement in a READ ONLY transaction",
       );
     });
   });

@@ -6,10 +6,7 @@ import {
   BadRequestException,
   api,
 } from "sonamu";
-import {
-  DepartmentSubsetKey,
-  DepartmentSubsetMapping,
-} from "../sonamu.generated";
+import { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
 import { departmentSubsetQueries } from "../sonamu.generated.sso";
 import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
@@ -26,7 +23,7 @@ class DepartmentModelClass extends BaseModelClass {
   })
   async findById<T extends DepartmentSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<DepartmentSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -42,7 +39,7 @@ class DepartmentModelClass extends BaseModelClass {
 
   async findOne<T extends DepartmentSubsetKey>(
     subset: T,
-    listParams: DepartmentListParams
+    listParams: DepartmentListParams,
   ): Promise<DepartmentSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -60,7 +57,7 @@ class DepartmentModelClass extends BaseModelClass {
   })
   async findMany<T extends DepartmentSubsetKey>(
     subset: T,
-    params: DepartmentListParams = {}
+    params: DepartmentListParams = {},
   ): Promise<ListResult<DepartmentSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -89,9 +86,7 @@ class DepartmentModelClass extends BaseModelClass {
             // } else if (params.search === "field") {
             //   qb.where("departments.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
+            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
           }
         }
 

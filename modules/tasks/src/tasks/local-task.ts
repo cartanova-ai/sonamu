@@ -111,10 +111,7 @@ export async function wrapLocalTask(
 
       if (item.attempt < matched.data.retry.maxAttempts) {
         await new Promise((resolve) =>
-          setTimeout(
-            resolve,
-            calculateToMs(getDuration(item.attempt, matched.data.retry.delay)),
-          ),
+          setTimeout(resolve, calculateToMs(getDuration(item.attempt, matched.data.retry.delay))),
         );
       }
 

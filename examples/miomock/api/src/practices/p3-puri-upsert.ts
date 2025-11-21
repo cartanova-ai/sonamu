@@ -8,7 +8,7 @@ async function examples() {
   const puri = EmployeeModel.getPuri("w");
 
   console.log(
-    "\n=== Example 1: Basic UBRef Relations (Company → Department → User → Employee) ==="
+    "\n=== Example 1: Basic UBRef Relations (Company → Department → User → Employee) ===",
   );
   await puri.transaction(async (trx) => {
     // 1. Company 등록
@@ -59,11 +59,7 @@ async function examples() {
     });
 
     // 실제로 생성된 Employee 조회
-    const employee = await trx
-      .table("employees")
-      .selectAll()
-      .where("id", employeeId!)
-      .first();
+    const employee = await trx.table("employees").selectAll().where("id", employeeId!).first();
 
     assert(employee);
     assert(employee.employee_number === "E001");
@@ -86,9 +82,7 @@ async function examples() {
     console.log("✅ Cleanup completed");
   });
 
-  console.log(
-    "\n=== Example 2: ManyToMany Relations (Project ↔ Employee) ==="
-  );
+  console.log("\n=== Example 2: ManyToMany Relations (Project ↔ Employee) ===");
   await puri.transaction(async (trx) => {
     // 1. Project 등록
     const projectRef = trx.ubRegister("projects", {
@@ -158,17 +152,14 @@ async function examples() {
     assert(joinRecords.length === 2);
     assert(
       JSON.stringify(joinRecords.map((r) => r.employee_id).sort()) ===
-        JSON.stringify(employeeIds.sort())
+        JSON.stringify(employeeIds.sort()),
     );
 
     console.log("✅ ManyToMany relations created successfully");
     console.log("Join records:", joinRecords);
 
     // 7. 정리 (외래 키 역순으로 삭제)
-    await trx
-      .table("projects__employees")
-      .where("project_id", projectId!)
-      .delete();
+    await trx.table("projects__employees").where("project_id", projectId!).delete();
     await trx.table("employees").whereIn("id", employeeIds).delete();
     await trx.table("users").whereIn("id", userIds).delete();
     await trx.table("projects").where("id", projectId!).delete();
@@ -188,7 +179,7 @@ async function examples() {
       trx.ubRegister("departments", {
         name,
         company_id: companyRef,
-      })
+      }),
     );
 
     // 3. 여러 User 등록
@@ -199,7 +190,7 @@ async function examples() {
         password: "password",
         role: "normal",
         is_verified: true,
-      })
+      }),
     );
 
     // 4. 각 User마다 Employee 등록 (다른 부서에 배치)

@@ -4,10 +4,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("tags", (table) => {
     // columns
     table.increments().primary();
-    table
-      .timestamp("created_at")
-      .notNullable()
-      .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 30).notNullable();
     table.uuid("uuid").nullable();
 

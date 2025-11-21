@@ -23,10 +23,7 @@ export namespace TagService {
     swrOptions?: SwrOptions,
   ): SWRResponse<TagSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/tag/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/tag/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getTag<T extends TagSubsetKey>(
@@ -45,10 +42,7 @@ export namespace TagService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<TagSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/tag/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/tag/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getTags<T extends TagSubsetKey>(

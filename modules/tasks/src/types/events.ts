@@ -13,10 +13,7 @@ export type EventType =
 //  - app_shutdown: 애플리케이션의 정상적인 종료
 //  - process_signal: 외부에서의 프로세스 시그널로 인한 중단
 //  - unknown: 모름, 그래서 call stack을 남겨야함.
-export type TerminationReasonEnum =
-  | "app_shutdown"
-  | "process_signal"
-  | "unknown";
+export type TerminationReasonEnum = "app_shutdown" | "process_signal" | "unknown";
 
 // Process Error 사유
 //  - no_route: Task가 이 namespace를 지원하지 않음
@@ -83,9 +80,6 @@ export interface ProcessErrorEvent extends BaseNodeEvent {
   error?: Error;
 }
 
-export type RoutedTaskEvent =
-  | ProcessStartEvent
-  | ProcessCompleteEvent
-  | ProcessErrorEvent;
+export type RoutedTaskEvent = ProcessStartEvent | ProcessCompleteEvent | ProcessErrorEvent;
 export type UnroutedTaskEvent = StartEvent | StopEvent | FetchEvent;
 export type TaskEvent = UnroutedTaskEvent | RoutedTaskEvent;

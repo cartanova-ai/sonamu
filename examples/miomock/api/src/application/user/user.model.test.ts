@@ -28,10 +28,7 @@ describe("UserModel", () => {
           await trx.table("companies").insert({
             name: "testcompany",
           });
-          const company = await trx
-            .table("companies")
-            .select({ id: "id" })
-            .first();
+          const company = await trx.table("companies").select({ id: "id" }).first();
           assert(company);
           await trx.table("departments").insert({
             name: `testdepartment${no}`,
@@ -47,7 +44,7 @@ describe("UserModel", () => {
 
         // 쿼리 확인
         Naite.expect("esq-query").toBe(
-          "select `users`.`id` as `id`, `users`.`username` as `username`, `users`.`role` as `role`, `users`.`bio` as `bio`, `users`.`is_verified` as `is_verified`, `employee__department`.`name` as `employee__department__name`, `employee`.`salary` as `employee__salary` from `users` inner join `employees` as `employee` on `users`.`id` = `employee`.`user_id` inner join `departments` as `employee__department` on `employee`.`department_id` = `employee__department`.`id` where `users`.`id` in (1) order by `users`.`id` desc"
+          "select `users`.`id` as `id`, `users`.`username` as `username`, `users`.`role` as `role`, `users`.`bio` as `bio`, `users`.`is_verified` as `is_verified`, `employee__department`.`name` as `employee__department__name`, `employee`.`salary` as `employee__salary` from `users` inner join `employees` as `employee` on `users`.`id` = `employee`.`user_id` inner join `departments` as `employee__department` on `employee`.`department_id` = `employee__department`.`id` where `users`.`id` in (1) order by `users`.`id` desc",
         );
         Naite.expect("esq-query").toContain("where `users`.`id` in (1)");
       });

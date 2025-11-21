@@ -23,10 +23,7 @@ export namespace FileService {
     swrOptions?: SwrOptions,
   ): SWRResponse<FileSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/file/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/file/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getFile<T extends FileSubsetKey>(
@@ -45,10 +42,7 @@ export namespace FileService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<FileSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/file/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/file/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getFiles<T extends FileSubsetKey>(

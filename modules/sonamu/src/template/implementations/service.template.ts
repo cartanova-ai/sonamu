@@ -31,32 +31,26 @@ export class Template__service extends Template {
       syncer: { apis },
     } = Sonamu;
 
-    const apisForThisModel = apis.filter(
-      (api) => api.modelName === `${namesRecord.capital}Model`
-    );
+    const apisForThisModel = apis.filter((api) => api.modelName === `${namesRecord.capital}Model`);
 
     // 서비스 TypeSource
     const { lines, importKeys } = this.getTypeSource(apisForThisModel);
 
     // AxiosProgressEvent 있는지 확인
     const hasAxiosProgressEvent = apis.find((api) =>
-      (api.options.clients ?? []).includes("axios-multipart")
+      (api.options.clients ?? []).includes("axios-multipart"),
     );
 
     return {
       ...this.getTargetAndPath(namesRecord),
       body: lines.join("\n"),
-      importKeys: importKeys.filter(
-        (key) => ["ListResult"].includes(key) === false
-      ),
+      importKeys: importKeys.filter((key) => ["ListResult"].includes(key) === false),
       customHeaders: [
         `import { z } from 'zod';`,
         `import qs from "qs";`,
         `import useSWR, { SWRResponse } from "swr";`,
         `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher, EventHandlers, SSEStreamOptions, useSSEStream } from '../sonamu.shared';`,
-        ...(hasAxiosProgressEvent
-          ? [`import { AxiosProgressEvent } from 'axios';`]
-          : []),
+        ...(hasAxiosProgressEvent ? [`import { AxiosProgressEvent } from 'axios';`] : []),
       ],
     };
   }
@@ -81,7 +75,7 @@ export class Template__service extends Template {
               (param) =>
                 !ApiParamType.isContext(param.type) &&
                 !ApiParamType.isRefKnex(param.type) &&
-                !(param.optional === true && param.name.startsWith("_")) // _로 시작하는 파라미터는 제외
+                !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
             );
 
             // 파라미터 타입 정의
@@ -91,84 +85,74 @@ export class Template__service extends Template {
               })
               .join(", ");
             typeParamNames = typeParamNames.concat(
-              api.typeParameters.map((typeParam) => typeParam.id)
+              api.typeParameters.map((typeParam) => typeParam.id),
             );
 
             // 파라미터 정의
-            const paramsDef = apiParamToTsCode(
-              paramsWithoutContext,
-              importKeys
-            );
+            const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
 
             // 파라미터 정의 (객체 형태)
-            const paramsDefAsObject = apiParamToTsCodeAsObject(
-              paramsWithoutContext,
-              importKeys
-            );
+            const paramsDefAsObject = apiParamToTsCodeAsObject(paramsWithoutContext, importKeys);
 
             // 리턴 타입 정의
             const returnTypeDef = apiParamTypeToTsType(
               unwrapPromiseOnce(api.returnType),
-              importKeys
+              importKeys,
             );
 
             // 페이로드 데이터 정의
-            const payloadDef = `{ ${paramsWithoutContext
-              .map((param) => param.name)
-              .join(", ")} }`;
+            const payloadDef = `{ ${paramsWithoutContext.map((param) => param.name).join(", ")} }`;
 
             // 기본 URL
             const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
             return [
               // 클라이언트별로 생성
-              ..._.sortBy(api.options.clients, (client) =>
-                client === "swr" ? 0 : 1
-              ).map((client) => {
-                switch (client) {
-                  case "axios":
-                    return this.renderAxios(
-                      api,
-                      apiBaseUrl,
-                      typeParamsDef,
-                      paramsDef,
-                      returnTypeDef,
-                      payloadDef
-                    );
-                  case "axios-multipart":
-                    return this.renderAxiosMultipart(
-                      api,
-                      apiBaseUrl,
-                      typeParamsDef,
-                      paramsDef,
-                      returnTypeDef,
-                      paramsWithoutContext
-                    );
-                  case "swr":
-                    return this.renderSwr(
-                      api,
-                      apiBaseUrl,
-                      typeParamsDef,
-                      paramsDef,
-                      returnTypeDef,
-                      payloadDef
-                    );
-                  case "window-fetch":
-                    return this.renderWindowFetch(
-                      api,
-                      apiBaseUrl,
-                      typeParamsDef,
-                      paramsDef,
-                      payloadDef
-                    );
-                  default:
-                    return `// Not supported ${inflection.camelize(client, true)} yet.`;
-                }
-              }),
+              ..._.sortBy(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map(
+                (client) => {
+                  switch (client) {
+                    case "axios":
+                      return this.renderAxios(
+                        api,
+                        apiBaseUrl,
+                        typeParamsDef,
+                        paramsDef,
+                        returnTypeDef,
+                        payloadDef,
+                      );
+                    case "axios-multipart":
+                      return this.renderAxiosMultipart(
+                        api,
+                        apiBaseUrl,
+                        typeParamsDef,
+                        paramsDef,
+                        returnTypeDef,
+                        paramsWithoutContext,
+                      );
+                    case "swr":
+                      return this.renderSwr(
+                        api,
+                        apiBaseUrl,
+                        typeParamsDef,
+                        paramsDef,
+                        returnTypeDef,
+                        payloadDef,
+                      );
+                    case "window-fetch":
+                      return this.renderWindowFetch(
+                        api,
+                        apiBaseUrl,
+                        typeParamsDef,
+                        paramsDef,
+                        payloadDef,
+                      );
+                    default:
+                      return `// Not supported ${inflection.camelize(client, true)} yet.`;
+                  }
+                },
+              ),
               // 스트리밍인 경우
-              ...(api.streamOptions
-                ? [this.renderStream(api, apiBaseUrl, paramsDefAsObject)]
-                : []),
+              ...(api.streamOptions ? [this.renderStream(api, apiBaseUrl, paramsDefAsObject)] : []),
             ].join("\n");
           })
           .join("\n\n");
@@ -191,7 +175,7 @@ ${methodCodes}
     typeParamsDef: string,
     paramsDef: string,
     returnTypeDef: string,
-    payloadDef: string
+    payloadDef: string,
   ) {
     const methodNameAxios = api.options.resourceName
       ? "get" + inflection.camelize(api.options.resourceName)
@@ -227,7 +211,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
     typeParamsDef: string,
     paramsDef: string,
     returnTypeDef: string,
-    paramsWithoutContext: ApiParam[]
+    paramsWithoutContext: ApiParam[],
   ) {
     const isMultiple = api.uploadOptions?.mode === "multiple";
     const fileParamName = isMultiple ? "files" : "file";
@@ -237,15 +221,13 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
       ? [
           `${fileParamName}.forEach(f => formData.append("${fileParamName}", f));`,
           ...paramsWithoutContext.map(
-            (param) =>
-              `formData.append('${param.name}', String(${param.name}));`
+            (param) => `formData.append('${param.name}', String(${param.name}));`,
           ),
         ].join("\n")
       : [
           `formData.append("${fileParamName}", ${fileParamName});`,
           ...paramsWithoutContext.map(
-            (param) =>
-              `formData.append('${param.name}', String(${param.name}));`
+            (param) => `formData.append('${param.name}', String(${param.name}));`,
           ),
         ].join("\n");
 
@@ -278,23 +260,21 @@ export async function ${api.methodName}${typeParamsDef}(
     typeParamsDef: string,
     paramsDef: string,
     returnTypeDef: string,
-    payloadDef: string
+    payloadDef: string,
   ) {
     const methodNameSwr = api.options.resourceName
       ? "use" + inflection.camelize(api.options.resourceName)
       : "use" + inflection.camelize(api.methodName);
-    return `  export function ${inflection.camelize(
-      methodNameSwr,
-      true
-    )}${typeParamsDef}(${[paramsDef, "swrOptions?: SwrOptions"]
+    return `  export function ${inflection.camelize(methodNameSwr, true)}${typeParamsDef}(${[
+      paramsDef,
+      "swrOptions?: SwrOptions",
+    ]
       .filter((p) => p !== "")
       .join(",")}, ): SWRResponse<${returnTypeDef}, SWRError> {
     return useSWR(handleConditional([
       \`${apiBaseUrl}\`,
       ${payloadDef},
-    ], swrOptions?.conditional)${
-      api.options.httpMethod === "POST" ? ", swrPostFetcher" : ""
-    }${
+    ], swrOptions?.conditional)${api.options.httpMethod === "POST" ? ", swrPostFetcher" : ""}${
       api.options.timeout ? `, { loadingTimeout: ${api.options.timeout} }` : ""
     });
   }`;
@@ -305,24 +285,18 @@ export async function ${api.methodName}${typeParamsDef}(
     apiBaseUrl: string,
     typeParamsDef: string,
     paramsDef: string,
-    payloadDef: string
+    payloadDef: string,
   ) {
     return `
 export async function ${api.methodName}${typeParamsDef}(${paramsDef}): Promise<Response> {
     return window.fetch(\`${apiBaseUrl}?\${qs.stringify(${payloadDef})}\`${
-      api.options.timeout
-        ? `, { signal: AbortSignal.timeout(${api.options.timeout}) }`
-        : ""
+      api.options.timeout ? `, { signal: AbortSignal.timeout(${api.options.timeout}) }` : ""
     });
 }
     `.trim();
   }
 
-  renderStream(
-    api: ExtendedApi,
-    apiBaseUrl: string,
-    paramsDefAsObject: string
-  ) {
+  renderStream(api: ExtendedApi, apiBaseUrl: string, paramsDefAsObject: string) {
     if (!api.streamOptions) {
       return "// streamOptions not found";
     }
@@ -330,10 +304,7 @@ export async function ${api.methodName}${typeParamsDef}(${paramsDef}): Promise<R
     const methodNameStream = api.options.resourceName
       ? "use" + inflection.camelize(api.options.resourceName)
       : "use" + inflection.camelize(api.methodName);
-    const methodNameStreamCamelized = inflection.camelize(
-      methodNameStream,
-      true
-    );
+    const methodNameStreamCamelized = inflection.camelize(methodNameStream, true);
 
     const eventsTypeDef = zodTypeToTsTypeDef(api.streamOptions.events);
 

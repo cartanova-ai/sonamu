@@ -4,8 +4,8 @@ import { defaultAsyncFileSystem } from "@loaderkit/resolve/fs";
 import { makeResolveAndLoad } from "./esm.js";
 
 const fileSystem: LoaderFileSystem = {
-	...defaultAsyncFileSystem,
-	readFileString: async path => fs.readFile(path, "utf8"),
+  ...defaultAsyncFileSystem,
+  readFileString: async (path) => fs.readFile(path, "utf8"),
 };
 
 /** @internal */

@@ -7,9 +7,12 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 65000,
-    proxy: process.env.DEBUG_UI === "true" ? {
-      "/api": "http://0.0.0.0:60000",
-    } : undefined,
+    proxy:
+      process.env.DEBUG_UI === "true"
+        ? {
+            "/api": "http://0.0.0.0:60000",
+          }
+        : undefined,
   },
   build: {
     outDir: "build",

@@ -12,7 +12,7 @@ import { generateTemplate } from "./code-generator";
  * entityId는 반드시 CamelCase 형식이어야 합니다.
  */
 export async function createEntity(
-  form: Omit<TemplateOptions["entity"], "title"> & { title?: string }
+  form: Omit<TemplateOptions["entity"], "title"> & { title?: string },
 ) {
   if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
     throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
@@ -29,9 +29,7 @@ export async function createEntity(
  * parentId가 있는 서브 엔티티의 경우 entity.json만 삭제하고,
  * 루트 엔티티의 경우 디렉토리 전체와 타겟 디렉토리를 삭제합니다.
  */
-export async function delEntity(
-  entityId: string
-): Promise<{ delPaths: string[] }> {
+export async function delEntity(entityId: string): Promise<{ delPaths: string[] }> {
   const entity = EntityManager.get(entityId);
 
   const delPaths = (() => {
@@ -44,9 +42,7 @@ export async function delEntity(
         `${Sonamu.apiRootPath}/src/application/${entity.names.fs}`,
         `${Sonamu.apiRootPath}/dist/application/${entity.names.fs}`,
         ...Sonamu.config.sync.targets
-          .map((target) => [
-            `${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`,
-          ])
+          .map((target) => [`${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`])
           .flat(),
       ];
     }

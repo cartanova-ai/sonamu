@@ -38,7 +38,7 @@ export async function loadApis(): Promise<LoadedApis> {
   // 모델들의 .ts 파일이 있어야 이를 읽어서 라우트를 등록할 수 있어요!
   const modelPathsPattern = path.join(
     Sonamu.apiRootPath,
-    "src/application/**/*.{model,frame}.ts" // !! runtimePath 안 씀 주의 !!
+    "src/application/**/*.{model,frame}.ts", // !! runtimePath 안 씀 주의 !!
   );
   const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
 
@@ -62,16 +62,14 @@ export async function loadApis(): Promise<LoadedApis> {
 export async function loadModels(): Promise<LoadedModels> {
   const modelPathsPattern = path.join(
     Sonamu.apiRootPath,
-    runtimePath("src/application/**/*.{model,frame}.ts")
+    runtimePath("src/application/**/*.{model,frame}.ts"),
   );
   const modelPaths = await globAsync(modelPathsPattern);
 
   const models: LoadedModels = {};
   let count = 0;
   for (const filePath of modelPaths) {
-    const importedMembers = await importMembers<
-      BaseModelClass | BaseFrameClass
-    >(filePath);
+    const importedMembers = await importMembers<BaseModelClass | BaseFrameClass>(filePath);
 
     for (const { name, value } of importedMembers) {
       if (name.endsWith("Model") || name.endsWith("Frame")) {
@@ -95,14 +93,9 @@ export async function loadModels(): Promise<LoadedModels> {
 export async function loadTypes(): Promise<LoadedTypes> {
   const typePathsPatterns = [
     path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.types.ts")),
-    path.join(
-      Sonamu.apiRootPath,
-      runtimePath("src/application/**/*.generated.ts")
-    ),
+    path.join(Sonamu.apiRootPath, runtimePath("src/application/**/*.generated.ts")),
   ];
-  const typePaths = (
-    await Promise.all(typePathsPatterns.map(globAsync))
-  ).flat();
+  const typePaths = (await Promise.all(typePathsPatterns.map(globAsync))).flat();
 
   const types: LoadedTypes = {};
   let count = 0;

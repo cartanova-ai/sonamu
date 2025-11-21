@@ -1,5 +1,4 @@
 import * as _ from "lodash-es";
-import prettier from "prettier";
 import equal from "fast-deep-equal";
 import {
   GenMigrationCode,
@@ -8,6 +7,7 @@ import {
   MigrationIndex,
   MigrationSet,
 } from "../types/types";
+import { formatCode } from "../utils/formatter";
 
 /**
  * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
@@ -15,12 +15,12 @@ import {
 async function generateCreateCode_ColumnAndIndexes(
   table: string,
   columns: MigrationColumn[],
-  indexes: MigrationIndex[]
+  indexes: MigrationIndex[],
 ): Promise<GenMigrationCode> {
   // fulltext index 분리
   const [ngramIndexes, standardIndexes] = _.partition(
     indexes,
-    (i) => i.type === "fulltext" && i.parser === "ngram"
+    (i) => i.type === "fulltext" && i.parser === "ngram",
   );
 
   // 컬럼, 인덱스 처리
@@ -47,9 +47,7 @@ async function generateCreateCode_ColumnAndIndexes(
     table,
     type: "normal",
     title: `create__${table}`,
-    formatted: await prettier.format(lines.join("\n"), {
-      parser: "typescript",
-    }),
+    formatted: formatCode(lines.join("\n"), "typescript"),
   };
 }
 
@@ -65,9 +63,7 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
 
     // FIXME: float(M,D) deprecated -> decimal(M,D) 이용하도록 하고, float/double 처리 추가
     if (column.type === "float" || column.type === "decimal") {
-      chains.push(
-        `${column.type}('${column.name}', ${column.precision}, ${column.scale})`
-      );
+      chains.push(`${column.type}('${column.name}', ${column.precision}, ${column.scale})`);
     } else {
       // type, length
       let columnType = column.type;
@@ -79,7 +75,7 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
       chains.push(
         `${columnType}('${column.name}'${
           column.length ? `, ${column.length}` : ""
-        }${extraType ? `, '${extraType}'` : ""})`
+        }${extraType ? `, '${extraType}'` : ""})`,
       );
     }
     if (column.unsigned) {
@@ -91,10 +87,7 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
 
     // defaultTo
     if (column.defaultTo !== undefined) {
-      if (
-        typeof column.defaultTo === "string" &&
-        column.defaultTo.startsWith(`"`)
-      ) {
+      if (typeof column.defaultTo === "string" && column.defaultTo.startsWith(`"`)) {
         chains.push(`defaultTo(${column.defaultTo})`);
       } else {
         chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
@@ -118,7 +111,7 @@ function genIndexDefinition(index: MigrationIndex, table: string) {
   if (index.type === "fulltext" && index.parser === "ngram") {
     const indexName = `${table}_${index.columns.join("_")}_index`;
     return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${indexName} (${index.columns.join(
-      ", "
+      ", ",
     )}) WITH PARSER ngram\`);`;
   }
 
@@ -132,7 +125,7 @@ function genIndexDefinition(index: MigrationIndex, table: string) {
  */
 async function generateCreateCode_Foreign(
   table: string,
-  foreigns: MigrationForeign[]
+  foreigns: MigrationForeign[],
 ): Promise<GenMigrationCode[]> {
   if (foreigns.length === 0) {
     return [];
@@ -162,17 +155,13 @@ async function generateCreateCode_Foreign(
     "}",
   ];
 
-  const foreignKeysString = foreigns
-    .map((foreign) => foreign.columns.join("_"))
-    .join("_");
+  const foreignKeysString = foreigns.map((foreign) => foreign.columns.join("_")).join("_");
   return [
     {
       table,
       type: "foreign",
       title: `foreign__${table}__${foreignKeysString}`,
-      formatted: await prettier.format(lines.join("\n"), {
-        parser: "typescript",
-      }),
+      formatted: formatCode(lines.join("\n"), "typescript"),
     },
   ];
 }
@@ -182,7 +171,7 @@ async function generateCreateCode_Foreign(
  */
 function genForeignDefinitions(
   table: string,
-  foreigns: MigrationForeign[]
+  foreigns: MigrationForeign[],
 ): { up: string[]; down: string[] } {
   return foreigns.reduce(
     (r, foreign) => {
@@ -193,7 +182,7 @@ function genForeignDefinitions(
         `table.foreign('${foreign.columns.join(",")}')
             .references('${foreign.to}')
             .onUpdate('${foreign.onUpdate}')
-            .onDelete('${foreign.onDelete}')`
+            .onDelete('${foreign.onDelete}')`,
       );
       r.down.push(`table.dropForeign([${columnsStringQuote}])`);
       return r;
@@ -201,7 +190,7 @@ function genForeignDefinitions(
     {
       up: [] as string[],
       down: [] as string[],
-    }
+    },
   );
 }
 
@@ -214,7 +203,7 @@ async function generateAlterCode_ColumnAndIndexes(
   entityIndexes: MigrationIndex[],
   dbColumns: MigrationColumn[],
   dbIndexes: MigrationIndex[],
-  dbForeigns: MigrationForeign[]
+  dbForeigns: MigrationForeign[],
 ): Promise<GenMigrationCode[]> {
   /*
     세부 비교 후 다른점 찾아서 코드 생성
@@ -236,7 +225,7 @@ async function generateAlterCode_ColumnAndIndexes(
     alterColumnsTo,
     entityColumns,
     table,
-    dbForeigns
+    dbForeigns,
   );
 
   // 인덱스의 add, drop 여부 확인
@@ -245,15 +234,15 @@ async function generateAlterCode_ColumnAndIndexes(
   // fulltext index 분리
   const [ngramIndexes, standardIndexes] = _.partition(
     alterIndexesTo.add,
-    (i) => i.type === "fulltext" && i.parser === "ngram"
+    (i) => i.type === "fulltext" && i.parser === "ngram",
   );
 
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
     (index) =>
       index.columns.every((colName) =>
-        alterColumnsTo.drop.map((col) => col.name).includes(colName)
-      ) === false
+        alterColumnsTo.drop.map((col) => col.name).includes(colName),
+      ) === false,
   );
 
   const lines: string[] = [
@@ -285,8 +274,8 @@ async function generateAlterCode_ColumnAndIndexes(
       .filter(
         (index) =>
           index.columns.every((colName) =>
-            alterColumnsTo.add.map((col) => col.name).includes(colName)
-          ) === false
+            alterColumnsTo.add.map((col) => col.name).includes(colName),
+          ) === false,
       )
       .map(genIndexDropDefinition),
     ...indexNeedsToDrop.map((index) => genIndexDefinition(index, table)),
@@ -294,10 +283,7 @@ async function generateAlterCode_ColumnAndIndexes(
     "}",
   ];
 
-  const formatted = await prettier.format(lines.join("\n"), {
-    parser: "typescript",
-  });
-
+  const formatted = formatCode(lines.join("\n"), "typescript");
   const title = [
     "alter",
     table,
@@ -325,10 +311,7 @@ async function generateAlterCode_ColumnAndIndexes(
 /**
  * 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
  */
-function getAlterColumnsTo(
-  entityColumns: MigrationColumn[],
-  dbColumns: MigrationColumn[]
-) {
+function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
   const columnsTo = {
     add: [] as MigrationColumn[],
     drop: [] as MigrationColumn[],
@@ -348,19 +331,9 @@ function getAlterColumnsTo(
   }
 
   // 동일 컬럼명의 세부 필드 비교
-  const sameDbColumns = _.intersectionBy(
-    dbColumns,
-    entityColumns,
-    (col) => col.name
-  );
-  const sameMdColumns = _.intersectionBy(
-    entityColumns,
-    dbColumns,
-    (col) => col.name
-  );
-  columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
-    equal(a, b)
-  );
+  const sameDbColumns = _.intersectionBy(dbColumns, entityColumns, (col) => col.name);
+  const sameMdColumns = _.intersectionBy(entityColumns, dbColumns, (col) => col.name);
+  columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
 
   return columnsTo;
 }
@@ -372,7 +345,7 @@ function getAlterColumnLinesTo(
   columnsTo: ReturnType<typeof getAlterColumnsTo>,
   entityColumns: MigrationColumn[],
   table: string,
-  dbForeigns: MigrationForeign[]
+  dbForeigns: MigrationForeign[],
 ) {
   let linesTo = {
     add: {
@@ -393,16 +366,14 @@ function getAlterColumnLinesTo(
     up: ["// add", ...genColumnDefinitions(columnsTo.add)],
     down: [
       "// rollback - add",
-      `table.dropColumns(${columnsTo.add
-        .map((col) => `'${col.name}'`)
-        .join(", ")})`,
+      `table.dropColumns(${columnsTo.add.map((col) => `'${col.name}'`).join(", ")})`,
     ],
   };
 
   // drop할 컬럼에 걸린 FK 찾기
   const dropColumnNames = columnsTo.drop.map((col) => col.name);
   const fkToDropBeforeColumn = dbForeigns.filter((fk) =>
-    fk.columns.some((col) => dropColumnNames.includes(col))
+    fk.columns.some((col) => dropColumnNames.includes(col)),
   );
 
   const dropFkLines = fkToDropBeforeColumn.map((fk) => {
@@ -418,23 +389,17 @@ function getAlterColumnLinesTo(
         ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
         : []),
       "// drop columns",
-      `table.dropColumns(${columnsTo.drop
-        .map((col) => `'${col.name}'`)
-        .join(", ")})`,
+      `table.dropColumns(${columnsTo.drop.map((col) => `'${col.name}'`).join(", ")})`,
     ],
     down: [
       "// rollback - drop columns",
       ...genColumnDefinitions(columnsTo.drop),
-      ...(restoreFkLines.length > 0
-        ? ["// restore foreign keys", ...restoreFkLines]
-        : []),
+      ...(restoreFkLines.length > 0 ? ["// restore foreign keys", ...restoreFkLines] : []),
     ],
   };
   linesTo.alter = columnsTo.alter.reduce(
     (r, dbColumn) => {
-      const entityColumn = entityColumns.find(
-        (col) => col.name == dbColumn.name
-      );
+      const entityColumn = entityColumns.find((col) => col.name == dbColumn.name);
       if (entityColumn === undefined) {
         return r;
       }
@@ -442,11 +407,11 @@ function getAlterColumnLinesTo(
       // 컬럼 변경사항
       const columnDiffUp = _.difference(
         genColumnDefinitions([entityColumn]),
-        genColumnDefinitions([dbColumn])
+        genColumnDefinitions([dbColumn]),
       );
       const columnDiffDown = _.difference(
         genColumnDefinitions([dbColumn]),
-        genColumnDefinitions([entityColumn])
+        genColumnDefinitions([entityColumn]),
       );
       if (columnDiffUp.length > 0) {
         r.up = [
@@ -466,7 +431,7 @@ function getAlterColumnLinesTo(
     {
       up: [] as string[],
       down: [] as string[],
-    }
+    },
   );
 
   return linesTo;
@@ -475,10 +440,7 @@ function getAlterColumnLinesTo(
 /**
  * 인덱스의 add, drop 여부 확인
  */
-function getAlterIndexesTo(
-  entityIndexes: MigrationIndex[],
-  dbIndexes: MigrationIndex[]
-) {
+function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
   // 인덱스 비교
   let indexesTo = {
     add: [] as MigrationIndex[],
@@ -486,10 +448,10 @@ function getAlterIndexesTo(
   };
   const extraIndexes = {
     db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
-      [col.type, col.columns.join("-")].join("//")
+      [col.type, col.columns.join("-")].join("//"),
     ),
     entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
-      [col.type, col.columns.join("-")].join("//")
+      [col.type, col.columns.join("-")].join("//"),
     ),
   };
   if (extraIndexes.entity.length > 0) {
@@ -524,7 +486,7 @@ async function generateAlterCode_Foreigns(
   table: string,
   entityForeigns: MigrationForeign[],
   dbForeigns: MigrationForeign[],
-  droppingColumns: MigrationColumn[] = []
+  droppingColumns: MigrationColumn[] = [],
 ): Promise<GenMigrationCode[]> {
   // console.log({ entityForeigns, dbForeigns });
 
@@ -537,9 +499,7 @@ async function generateAlterCode_Foreigns(
 
   const fkTo = entityForeigns.reduce(
     (result, entityF) => {
-      const matchingDbF = dbForeigns.find(
-        (dbF) => getKey(entityF) === getKey(dbF)
-      );
+      const matchingDbF = dbForeigns.find((dbF) => getKey(entityF) === getKey(dbF));
       if (!matchingDbF) {
         result.add.push(entityF);
         return result;
@@ -557,20 +517,16 @@ async function generateAlterCode_Foreigns(
       drop: [] as MigrationForeign[],
       alterSrc: [] as MigrationForeign[],
       alterDst: [] as MigrationForeign[],
-    }
+    },
   );
 
   // dbForeigns에는 있지만 entityForeigns에는 없는 경우 (삭제된 FK)
   // 단, 삭제될 컬럼의 FK는 제외 (generateAlterCode_ColumnAndIndexes에서 처리)
   dbForeigns.forEach((dbF) => {
-    const matchingEntityF = entityForeigns.find(
-      (entityF) => getKey(entityF) === getKey(dbF)
-    );
+    const matchingEntityF = entityForeigns.find((entityF) => getKey(entityF) === getKey(dbF));
     if (!matchingEntityF) {
       // 이 FK의 컬럼이 삭제될 컬럼 목록에 있는지 확인
-      const isColumnDropping = dbF.columns.some((col) =>
-        droppingColumnNames.includes(col)
-      );
+      const isColumnDropping = dbF.columns.some((col) => droppingColumnNames.includes(col));
       // 컬럼이 삭제되지 않는 경우에만 FK drop 목록에 추가
       if (!isColumnDropping) {
         fkTo.drop.push(dbF);
@@ -586,9 +542,7 @@ async function generateAlterCode_Foreigns(
   };
 
   // drop fk columns인 경우(생성될 코드 없는 경우) 패스
-  const hasLines = Object.values(linesTo).some(
-    (l) => l.up.length > 0 || l.down.length > 0
-  );
+  const hasLines = Object.values(linesTo).some((l) => l.up.length > 0 || l.down.length > 0);
   if (!hasLines) {
     return [];
   }
@@ -615,10 +569,7 @@ async function generateAlterCode_Foreigns(
     "}",
   ];
 
-  const formatted = await prettier.format(lines.join("\n"), {
-    parser: "typescript",
-  });
-
+  const formatted = formatCode(lines.join("\n"), "typescript");
   const title = [
     "alter",
     table,
@@ -641,14 +592,12 @@ async function generateAlterCode_Foreigns(
  * @param entitySet
  * @returns CREATE 마이그레이션 코드
  */
-export async function generateCreateCode(
-  entitySet: MigrationSet
-): Promise<GenMigrationCode[]> {
+export async function generateCreateCode(entitySet: MigrationSet): Promise<GenMigrationCode[]> {
   return [
     await generateCreateCode_ColumnAndIndexes(
       entitySet.table,
       entitySet.columns,
-      entitySet.indexes
+      entitySet.indexes,
     ),
     ...(await generateCreateCode_Foreign(entitySet.table, entitySet.foreigns)),
   ];
@@ -662,15 +611,11 @@ export async function generateCreateCode(
  */
 export async function generateAlterCode(
   entitySet: MigrationSet,
-  dbSet: MigrationSet
+  dbSet: MigrationSet,
 ): Promise<GenMigrationCode[]> {
   const replaceColumnDefaultTo = (col: MigrationColumn) => {
     // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
-    if (
-      col.type === "float" &&
-      col.defaultTo &&
-      String(col.defaultTo).includes('"') === false
-    ) {
+    if (col.type === "float" && col.defaultTo && String(col.defaultTo).includes('"') === false) {
       col.defaultTo = `"${Number(col.defaultTo).toFixed(col.scale ?? 2)}"`;
     }
     // string인 경우 기본값이 빈 스트링인 경우 대응
@@ -688,12 +633,8 @@ export async function generateAlterCode(
     }
     return col;
   };
-  const entityColumns = _.sortBy(entitySet.columns, (a) => a.name).map(
-    replaceColumnDefaultTo
-  );
-  const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(
-    replaceColumnDefaultTo
-  );
+  const entityColumns = _.sortBy(entitySet.columns, (a) => a.name).map(replaceColumnDefaultTo);
+  const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(replaceColumnDefaultTo);
 
   /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
         const entityColumn = entitySet.columns.find(
@@ -706,10 +647,10 @@ export async function generateAlterCode(
          */
 
   const entityIndexes = _.sortBy(entitySet.indexes, (a) =>
-    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-")
+    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
   );
   const dbIndexes = _.sortBy(dbSet.indexes, (a) =>
-    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-")
+    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
   );
 
   const replaceNoActionOnMySQL = (f: MigrationForeign) => {
@@ -722,19 +663,15 @@ export async function generateAlterCode(
     };
   };
 
-  const entityForeigns = _.sortBy(entitySet.foreigns, (a) =>
-    [a.to, ...a.columns].join("-")
-  ).map((f) => replaceNoActionOnMySQL(f));
-  const dbForeigns = _.sortBy(dbSet.foreigns, (a) =>
-    [a.to, ...a.columns].join("-")
-  ).map((f) => replaceNoActionOnMySQL(f));
+  const entityForeigns = _.sortBy(entitySet.foreigns, (a) => [a.to, ...a.columns].join("-")).map(
+    (f) => replaceNoActionOnMySQL(f),
+  );
+  const dbForeigns = _.sortBy(dbSet.foreigns, (a) => [a.to, ...a.columns].join("-")).map((f) =>
+    replaceNoActionOnMySQL(f),
+  );
 
   // 삭제될 컬럼 목록 계산
-  const droppingColumns = _.differenceBy(
-    dbColumns,
-    entityColumns,
-    (col) => col.name
-  );
+  const droppingColumns = _.differenceBy(dbColumns, entityColumns, (col) => col.name);
 
   const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = [];
 
@@ -742,7 +679,7 @@ export async function generateAlterCode(
   const isEqualColumns = equal(entityColumns, dbColumns);
   const isEqualIndexes = equal(
     entityIndexes.map((index) => _.omit(index, ["parser"])),
-    dbIndexes
+    dbIndexes,
   );
   if (!isEqualColumns || !isEqualIndexes) {
     alterCodes.push(
@@ -752,8 +689,8 @@ export async function generateAlterCode(
         entityIndexes,
         dbColumns,
         dbIndexes,
-        dbSet.foreigns
-      )
+        dbSet.foreigns,
+      ),
     );
   }
 
@@ -764,8 +701,8 @@ export async function generateAlterCode(
         entitySet.table,
         entityForeigns,
         dbForeigns,
-        droppingColumns
-      )
+        droppingColumns,
+      ),
     );
   }
 

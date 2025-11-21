@@ -4,11 +4,7 @@ import { spawnSync, execSync } from "child_process";
 import { resolve } from "path";
 import { existsSync, rmSync } from "fs";
 import chalk from "chalk";
-import {
-  BUILD_DIR,
-  SWC_BUILD_COMMAND,
-  TSC_TYPE_CHECK_COMMAND,
-} from "./build-config";
+import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-config";
 
 const scriptPath = resolve(import.meta.dirname, "cli.js");
 const args = process.argv.slice(2);
@@ -91,7 +87,7 @@ const result = spawnSync(
   ],
   {
     stdio: "inherit",
-  }
+  },
 );
 
 process.exit(result.status ?? 1);

@@ -17,10 +17,7 @@ class TagModelClass extends BaseModelClass {
   modelName = "Tag";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tag" })
-  async findById<T extends TagSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<TagSubsetMapping[T]> {
+  async findById<T extends TagSubsetKey>(subset: T, id: number): Promise<TagSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -78,9 +75,7 @@ class TagModelClass extends BaseModelClass {
             // } else if (params.search === "field") {
             //   qb.where("tags.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`,
-            );
+            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
           }
         }
 

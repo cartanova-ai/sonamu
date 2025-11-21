@@ -28,27 +28,17 @@ export class Template__view_form extends Template {
     ].join("\n");
   }
   wrapFG(body: string, label?: string): string {
-    return [
-      `<Form.Group widths="equal">`,
-      this.wrapFC(body, label),
-      `</Form.Group>`,
-    ].join("\n");
+    return [`<Form.Group widths="equal">`, this.wrapFC(body, label), `</Form.Group>`].join("\n");
   }
 
   renderColumnImport(entityId: string, col: RenderingNode) {
     if (col.renderType === "enums") {
-      const { id, targetEntityNames } = getEnumInfoFromColName(
-        entityId,
-        col.name
-      );
+      const { id, targetEntityNames } = getEnumInfoFromColName(entityId, col.name);
       const componentId = `${id}Select`;
       return `import { ${componentId} } from "src/components/${targetEntityNames.fs}/${componentId}";`;
     } else if (col.renderType === "number-fk_id") {
       try {
-        const relProp = getRelationPropFromColName(
-          entityId,
-          col.name.replace("_id", "")
-        );
+        const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         const targetNames = EntityManager.getNamesFromId(relProp.with);
         const componentId = `${relProp.with}IdAsyncSelect`;
         return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
@@ -64,17 +54,14 @@ export class Template__view_form extends Template {
     entityId: string,
     col: RenderingNode,
     names: EntityNamesRecord,
-    parent: string = ""
+    parent: string = "",
   ): string {
     let regExpr: string = "";
     regExpr = `{...register(\`${parent}${col.name}\`)}`;
 
     switch (col.renderType) {
       case "string-plain":
-        if (
-          col.zodType instanceof z.ZodString &&
-          (col.zodType.maxLength ?? 0) <= 512
-        ) {
+        if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 512) {
           return `<Input placeholder="${col.label}" ${regExpr} />`;
         } else {
           return `<TextArea rows={8} placeholder="${col.label}" ${regExpr} />`;
@@ -112,10 +99,7 @@ export class Template__view_form extends Template {
         }
       case "number-fk_id":
         try {
-          const relProp = getRelationPropFromColName(
-            entityId,
-            col.name.replace("_id", "")
-          );
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           const fkId = `${relProp.with}IdAsyncSelect`;
           return `<${fkId} {...register('${col.name}')} ${
             col.optional || col.nullable ? "clearable" : ""
@@ -128,9 +112,7 @@ export class Template__view_form extends Template {
       case "object":
         return `<>${col.name} object</>`;
       default:
-        throw new Error(
-          `대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`
-        );
+        throw new Error(`대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`);
     }
   }
 
@@ -167,7 +149,7 @@ export class Template__view_form extends Template {
         result[col.name] = value;
         return result;
       },
-      {} as { [key: string]: unknown }
+      {} as { [key: string]: unknown },
     );
   }
 
@@ -180,9 +162,7 @@ export class Template__view_form extends Template {
     const columns = (saveParamsNode.children as RenderingNode[])
       .filter((col) => col.name !== "id")
       .map((col) => {
-        const propCandidate = entity.props.find(
-          (prop) => prop.name === col.name
-        );
+        const propCandidate = entity.props.find((prop) => prop.name === col.name);
         col.label = propCandidate?.desc ?? col.label;
         return col;
       });
@@ -190,9 +170,7 @@ export class Template__view_form extends Template {
     const defaultValue = this.resolveDefaultValue(columns);
 
     // 프리 템플릿
-    const preTemplates: RenderedTemplate["preTemplates"] = (
-      columns as RenderingNode[]
-    )
+    const preTemplates: RenderedTemplate["preTemplates"] = (columns as RenderingNode[])
       .filter((col) => {
         if (col.name === "id") {
           return false;
@@ -219,16 +197,15 @@ export class Template__view_form extends Template {
         let enumId: string | undefined;
         if (col.renderType === "enums") {
           key = "view_enums_select";
-          const { targetEntityNames: targetMDNames, id } =
-            getEnumInfoFromColName(entityId, col.name);
+          const { targetEntityNames: targetMDNames, id } = getEnumInfoFromColName(
+            entityId,
+            col.name,
+          );
           targetMdId = targetMDNames.capital;
           enumId = id;
         } else {
           key = "view_id_async_select";
-          const relProp = getRelationPropFromColName(
-            entityId,
-            col.name.replace("_id", "")
-          );
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           targetMdId = relProp.with;
         }
 
@@ -275,19 +252,15 @@ import { defaultCatch } from 'src/services/sonamu.shared';
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${
-        names.fs
-      }.types';
-import { ${names.capital}Service } from 'src/services/${names.fs}/${
-        names.fs
-      }.service';
+import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${names.fs}.types';
+import { ${names.capital}Service } from 'src/services/${names.fs}/${names.fs}.service';
 import { ${names.capital}SubsetA } from 'src/services/sonamu.generated';
 ${_.uniq(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
     .map((col) => {
       return this.renderColumnImport(entityId, col);
-    })
+    }),
 ).join("\n")}
 
 export default function ${names.capitalPlural}FormPage() {
@@ -297,27 +270,20 @@ export default function ${names.capitalPlural}FormPage() {
     id: searchParams.get('id') ?? undefined,
   };
 
-  return <${
-    names.capitalPlural
-  }Form id={query?.id ? Number(query.id) : undefined} />;
+  return <${names.capitalPlural}Form id={query?.id ? Number(query.id) : undefined} />;
 }
 type ${names.capitalPlural}FormProps = {
   id?: number;
   mode?: 'page' | 'modal';
 };
-export function ${names.capitalPlural}Form({ id, mode }: ${
-        names.capitalPlural
-      }FormProps) {
+export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}FormProps) {
   // 편집시 기존 row
   const [row, setRow] = useState<${names.capital}SubsetA | undefined>();
 
   // ${names.capital}SaveParams 폼
-  const { form, setForm, register } = useTypeForm(${
-    names.capital
-  }SaveParams, ${JSON.stringify(defaultValue).replace(
-    /"now\(\)"/g,
-    "DateTime.local().toSQL()!.slice(0, 19)"
-  )});
+  const { form, setForm, register } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(
+    defaultValue,
+  ).replace(/"now\(\)"/g, "DateTime.local().toSQL()!.slice(0, 19)")});
 
   // 수정일 때 기존 row 콜
   useEffect(() => {
@@ -330,10 +296,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
             .filter((col) => col.renderType === "number-fk_id")
             .map((col) => {
               if (col.nullable) {
-                return `${col.name}: row.${col.name.replace(
-                  "_id",
-                  "?.id"
-                )} ?? null`;
+                return `${col.name}: row.${col.name.replace("_id", "?.id")} ?? null`;
               } else {
                 return `${col.name}: row.${col.name.replace("_id", ".id")}`;
               }
@@ -361,9 +324,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
 
   // 페이지
   const PAGE = {
-    title: \`${
-      entity.title ?? names.capital
-    }\${id ? \`#\${id} 수정\` : ' 등록'}\`,
+    title: \`${entity.title ?? names.capital}\${id ? \`#\${id} 수정\` : ' 등록'}\`,
   }
 
   return (
@@ -386,7 +347,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
                 if (col.name === "created_at") {
                   return `{form.id && (${this.wrapFG(
                     `<div className="p-8px">{formatDateTime(form.${col.name})}</div>`,
-                    "등록일시"
+                    "등록일시",
                   )})}`;
                 } else {
                   return this.wrapFG(
@@ -394,16 +355,14 @@ export function ${names.capitalPlural}Form({ id, mode }: ${
                     (() => {
                       if (col.label.endsWith("Id")) {
                         try {
-                          const entity = EntityManager.get(
-                            col.label.replace("Id", "")
-                          );
+                          const entity = EntityManager.get(col.label.replace("Id", ""));
                           return entity.title ?? col.label;
                         } catch {
                           return col.label;
                         }
                       }
                       return col.label;
-                    })()
+                    })(),
                   );
                 }
               })

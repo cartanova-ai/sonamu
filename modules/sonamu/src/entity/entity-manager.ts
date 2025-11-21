@@ -10,14 +10,7 @@ import { AbsolutePath } from "../utils/path-utils";
 import assert from "assert";
 
 export type EntityNamesRecord = Record<
-  | "fs"
-  | "fsPlural"
-  | "camel"
-  | "camelPlural"
-  | "capital"
-  | "capitalPlural"
-  | "upper"
-  | "constant",
+  "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
   string
 >;
 type TableSpec = {
@@ -35,10 +28,7 @@ class EntityManagerClass {
     if (this.isAutoloaded) {
       return;
     }
-    const pathPattern = path.join(
-      Sonamu.apiRootPath,
-      "/src/application/**/*.entity.json"
-    );
+    const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
 
     let count = 0;
     for await (const file of glob(path.resolve(pathPattern!))) {
@@ -139,9 +129,7 @@ class EntityManagerClass {
 
     return {
       fs: inflection.dasherize(inflection.underscore(entityId)).toLowerCase(),
-      fsPlural: inflection
-        .dasherize(inflection.underscore(pluralized))
-        .toLowerCase(),
+      fsPlural: inflection.dasherize(inflection.underscore(pluralized)).toLowerCase(),
       camel: inflection.camelize(entityId, true),
       camelPlural: inflection.camelize(pluralized, true),
       capital: entityId,

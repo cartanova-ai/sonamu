@@ -35,12 +35,7 @@ import { getTextTypeLength } from "../api";
  */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
   const modulePath = EntityManager.getModulePath(zodTypeId);
-  const moduleAbsPath = path.join(
-    Sonamu.apiRootPath,
-    "dist",
-    "application",
-    modulePath + ".js"
-  );
+  const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", modulePath + ".js");
   const importUrl = createImportUrl(moduleAbsPath);
   const imported = await import(importUrl);
 
@@ -56,7 +51,7 @@ export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
  */
 export function zodTypeToRenderingNode(
   zodType: z.ZodType<any>,
-  baseKey: string = "root"
+  baseKey: string = "root",
 ): RenderingNode {
   const def = {
     name: baseKey,
@@ -88,25 +83,19 @@ export function zodTypeToRenderingNode(
       element: zodTypeToRenderingNode(innerType, baseKey),
     };
   } else if (zodType instanceof z.ZodUnion) {
-    const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map(
-      (opt) => zodTypeToRenderingNode(opt, baseKey)
+    const optionNodes = (zodType as z.ZodUnion<z.ZodType[]>).def.options.map((opt) =>
+      zodTypeToRenderingNode(opt, baseKey),
     );
     // TODO: ZodUnion이 들어있는 경우 핸들링
     return optionNodes[0];
   } else if (zodType instanceof z.ZodOptional) {
     return {
-      ...zodTypeToRenderingNode(
-        (zodType as z.ZodOptional<z.ZodType>).def.innerType,
-        baseKey
-      ),
+      ...zodTypeToRenderingNode((zodType as z.ZodOptional<z.ZodType>).def.innerType, baseKey),
       optional: true,
     };
   } else if (zodType instanceof z.ZodNullable) {
     return {
-      ...zodTypeToRenderingNode(
-        (zodType as z.ZodNullable<z.ZodType>).def.innerType,
-        baseKey
-      ),
+      ...zodTypeToRenderingNode((zodType as z.ZodNullable<z.ZodType>).def.innerType, baseKey),
       nullable: true,
     };
   } else {
@@ -120,10 +109,7 @@ export function zodTypeToRenderingNode(
 /**
  * Zod 타입과 키 이름으로부터 적절한 RenderType을 결정합니다.
  */
-function resolveRenderType(
-  key: string,
-  zodType: z.ZodTypeAny
-): RenderingNode["renderType"] {
+function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["renderType"] {
   if (zodType instanceof z.ZodDate) {
     return "datetime";
   } else if (zodType instanceof z.ZodString) {
@@ -198,10 +184,7 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
   } else if (isVirtualProp(prop)) {
     zodType = await getZodTypeById(prop.id);
   } else if (isRelationProp(prop)) {
-    if (
-      isBelongsToOneRelationProp(prop) ||
-      (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-    ) {
+    if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
       zodType = z.number().int();
     }
   } else {

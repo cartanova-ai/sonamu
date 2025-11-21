@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 type ValidationError = {
   path: string[];
@@ -6,8 +6,8 @@ type ValidationError = {
 };
 
 export function humanizeZodError(error: z.ZodError): ValidationError[] {
-  return error.issues.map(({  path: originPath, message }) => {
-    const path = originPath.map(item => {
+  return error.issues.map(({ path: originPath, message }) => {
+    const path = originPath.map((item) => {
       if (typeof item === "symbol") {
         return item.description ?? item.toString();
       }

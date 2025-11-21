@@ -3,11 +3,7 @@ import { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // alter column
-    table
-      .boolean("is_verified")
-      .notNullable()
-      .defaultTo(knex.raw("false"))
-      .alter();
+    table.boolean("is_verified").notNullable().defaultTo(knex.raw("false")).alter();
   });
 }
 

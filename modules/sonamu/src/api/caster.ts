@@ -35,30 +35,19 @@ export function caster(zodType: $ZodType, raw: any): any {
   ) {
     // zArrayable Number 케이스 처리
     if (Array.isArray(raw)) {
-      const numType = zodType.options.find(opt => isNumberType(opt));
+      const numType = zodType.options.find((opt) => isNumberType(opt));
       assert(numType !== undefined);
       return raw.map((elem: any) => caster(numType, elem));
     } else {
       return Number(raw);
     }
-  } else if (
-    zodType instanceof z.ZodBoolean &&
-    (raw === "true" || raw === "false")
-  ) {
+  } else if (zodType instanceof z.ZodBoolean && (raw === "true" || raw === "false")) {
     // boolean
     return raw === "true";
-  } else if (
-    raw !== null &&
-    Array.isArray(raw) &&
-    zodType instanceof z.ZodArray
-  ) {
+  } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (
-    zodType instanceof z.ZodObject &&
-    typeof raw === "object" &&
-    raw !== null
-  ) {
+  } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {
       r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
@@ -70,10 +59,7 @@ export function caster(zodType: $ZodType, raw: any): any {
   } else if (zodType instanceof z.ZodNullable) {
     // nullable
     return caster(zodType.def.innerType, raw);
-  } else if (
-    zodType instanceof z.ZodDate &&
-    new Date(raw).toString() !== "Invalid Date"
-  ) {
+  } else if (zodType instanceof z.ZodDate && new Date(raw).toString() !== "Invalid Date") {
     // date
     return new Date(raw);
   } else {

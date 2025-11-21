@@ -37,7 +37,7 @@ export class BaseModelClass {
     rows: any[],
     tableName: string,
     unqKeyFields: string[],
-    chunkSize: number = 500
+    chunkSize: number = 500,
   ) {
     if (!wdb) {
       wdb = this.getDB("w");
@@ -48,9 +48,7 @@ export class BaseModelClass {
     if (unqKeyFields.length > 1) {
       whereInField = wdb.raw(`CONCAT_WS('_', '${unqKeyFields.join(",")}')`);
       selectField = `${whereInField} as tmpUid`;
-      unqKeys = rows.map((row) =>
-        unqKeyFields.map((field) => row[field]).join("_")
-      );
+      unqKeys = rows.map((row) => unqKeyFields.map((field) => row[field]).join("_"));
     } else {
       whereInField = unqKeyFields[0];
       selectField = unqKeyFields[0];
@@ -63,9 +61,7 @@ export class BaseModelClass {
       const dbRows = await wdb(tableName)
         .select("id", wdb.raw(selectField))
         .whereIn(whereInField, chunk);
-      resultIds = resultIds.concat(
-        dbRows.map((dbRow: any) => parseInt(dbRow.id))
-      );
+      resultIds = resultIds.concat(dbRows.map((dbRow: any) => parseInt(dbRow.id)));
     }
 
     return resultIds;
@@ -93,15 +89,9 @@ export class BaseModelClass {
         // HasMany에서 OneJoin이 있는 경우
         loader.oneJoins.map((join) => {
           if (join.join == "inner") {
-            subQ.innerJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
+            subQ.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           } else if (join.join == "outer") {
-            subQ.leftOuterJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
+            subQ.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           }
         });
         toCol = loader.manyJoin.toCol;
@@ -112,7 +102,7 @@ export class BaseModelClass {
           .join(
             loader.manyJoin.toTable,
             `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
-            `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`
+            `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`,
           )
           .whereIn(idColumn, fromIds)
           .select(uniq([...loader.select, idColumn]));
@@ -120,15 +110,9 @@ export class BaseModelClass {
         // ManyToMany에서 OneJoin이 있는 경우
         loader.oneJoins.map((join) => {
           if (join.join == "inner") {
-            subQ.innerJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
+            subQ.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           } else if (join.join == "outer") {
-            subQ.leftOuterJoin(
-              `${join.table} as ${join.as}`,
-              this.getJoinClause(db, join)
-            );
+            subQ.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           }
         });
         toCol = loader.manyJoin.through.fromCol;
@@ -143,8 +127,8 @@ export class BaseModelClass {
       // 불러온 row들을 참조ID 기준으로 분류 배치
       const subRowGroups = groupBy(subRows, toCol);
       rows = rows.map((row) => {
-        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map(
-          (r) => omit(r, toCol)
+        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map((r) =>
+          omit(r, toCol),
         );
         return row;
       });
@@ -162,9 +146,8 @@ export class BaseModelClass {
           groups[key].length > 1 &&
           groups[key].every(
             (field) =>
-              row[field] === null ||
-              (Array.isArray(row[field]) && row[field].length === 0)
-          )
+              row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
+          ),
       );
 
       const hydrated = Object.keys(row).reduce((r, field) => {
@@ -190,7 +173,7 @@ export class BaseModelClass {
           objPath,
           row[field] && Array.isArray(row[field]) && isObject(row[field][0])
             ? this.hydrate(row[field])
-            : row[field]
+            : row[field],
         );
 
         return r;
@@ -241,15 +224,11 @@ export class BaseModelClass {
   }> {
     const chalk = (await import("chalk")).default;
     const SqlParser = (await import("node-sql-parser")).default;
-    const { getTableName, getTableNamesFromWhere } = await import(
-      "../utils/sql-parser"
-    );
+    const { getTableName, getTableNamesFromWhere } = await import("../utils/sql-parser");
 
     const db = _db ?? this.getDB(subset.startsWith("A") ? "w" : "r");
-    baseTable =
-      baseTable ?? inflection.pluralize(inflection.underscore(this.modelName));
-    const queryMode =
-      params.queryMode ?? (params.id !== undefined ? "list" : "both");
+    baseTable = baseTable ?? inflection.pluralize(inflection.underscore(this.modelName));
+    const queryMode = params.queryMode ?? (params.id !== undefined ? "list" : "both");
 
     const { select, virtual, joins, loaders } = subsetQuery;
     const qb = build({
@@ -260,21 +239,12 @@ export class BaseModelClass {
       virtual,
     });
 
-    const applyJoinClause = (
-      qb: Knex.QueryBuilder,
-      joins: SubsetQuery["joins"]
-    ) => {
+    const applyJoinClause = (qb: Knex.QueryBuilder, joins: SubsetQuery["joins"]) => {
       joins.map((join) => {
         if (join.join == "inner") {
-          qb.innerJoin(
-            `${join.table} as ${join.as}`,
-            this.getJoinClause(db, join)
-          );
+          qb.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
         } else if (join.join == "outer") {
-          qb.leftOuterJoin(
-            `${join.table} as ${join.as}`,
-            this.getJoinClause(db, join)
-          );
+          qb.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
         }
       });
     };
@@ -294,13 +264,11 @@ export class BaseModelClass {
         const tables = getTableNamesFromWhere(parsedQuery);
         // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
         const needToJoin = uniq(
-          tables.flatMap((table) =>
-            table.split("__").map((t) => inflection.pluralize(t))
-          )
+          tables.flatMap((table) => table.split("__").map((t) => inflection.pluralize(t))),
         );
         applyJoinClause(
           clonedQb,
-          joins.filter((j) => needToJoin.includes(j.table))
+          joins.filter((j) => needToJoin.includes(j.table)),
         );
       } else {
         applyJoinClause(clonedQb, joins);
@@ -327,8 +295,8 @@ export class BaseModelClass {
               .clear("select")
               .select(
                 db.raw(
-                  `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`
-                )
+                  `COUNT(DISTINCT \`${getTableName(q.columns[0].expr)}\`.\`${q.columns[0].expr.column}\`) as total`,
+                ),
               )
               .first()
           : clonedQb.clear("select").count("*", { as: "total" }).first();
@@ -336,10 +304,7 @@ export class BaseModelClass {
 
       // debug: countQuery
       if (debug === true || debug === "count") {
-        console.debug(
-          "DEBUG: count query",
-          chalk.blue(countQuery.toQuery().toString())
-        );
+        console.debug("DEBUG: count query", chalk.blue(countQuery.toQuery().toString()));
       }
 
       return countRow?.total ?? 0;
@@ -375,10 +340,7 @@ export class BaseModelClass {
       let rows = await listQuery;
       // debug: listQuery
       if (debug === true || debug === "list") {
-        console.debug(
-          "DEBUG: list query",
-          chalk.blue(listQuery.toQuery().toString())
-        );
+        console.debug("DEBUG: list query", chalk.blue(listQuery.toQuery().toString()));
       }
 
       rows = await this.useLoaders(db, rows, loaders);
@@ -389,10 +351,7 @@ export class BaseModelClass {
     return { rows, total, subsetQuery, qb };
   }
 
-  getJoinClause(
-    db: Knex<any, unknown>,
-    join: SubsetQuery["joins"][number]
-  ): Knex.Raw<any> {
+  getJoinClause(db: Knex<any, unknown>, join: SubsetQuery["joins"][number]): Knex.Raw<any> {
     if (!isCustomJoinClause(join)) {
       return db.raw(`${join.from} = ${join.to}`);
     } else {

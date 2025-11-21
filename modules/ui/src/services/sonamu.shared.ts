@@ -29,9 +29,7 @@ export async function swrFetcher(args: [string, object]): Promise<any> {
     const res = await axios.get(`${baseURL}${url}?${qs.stringify(params)}`);
     return res.data;
   } catch (e: any) {
-    const error: any = new Error(
-      e.response.data.message ?? e.response.message ?? "Unknown"
-    );
+    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
     error.statusCode = e.response?.data.statusCode ?? e.response.status;
     throw error;
   }
@@ -43,9 +41,7 @@ export async function swrPostFetcher(args: [string, object]): Promise<any> {
     const res = await axios.post(`${baseURL}${url}`, params);
     return res.data;
   } catch (e: any) {
-    const error: any = new Error(
-      e.response.data.message ?? e.response.message ?? "Unknown"
-    );
+    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
     error.statusCode = e.response?.data.statusCode ?? e.response.status;
     throw error;
   }
@@ -57,7 +53,7 @@ export class SonamuError extends Error {
   constructor(
     public code: number,
     public message: string,
-    public issues: ZodIssue[]
+    public issues: ZodIssue[],
   ) {
     super(message);
     this.isSonamuError = true;

@@ -2,11 +2,7 @@ import { register } from "node:module";
 import { MessageChannel } from "node:worker_threads";
 
 import debug from "./debug.js";
-import type {
-  InitOptions,
-  InitializeHookOptions,
-  MessageChannelMessage,
-} from "./types.js";
+import type { InitOptions, InitializeHookOptions, MessageChannelMessage } from "./types.js";
 
 class Hot {
   #options!: InitOptions;
@@ -56,18 +52,10 @@ class Hot {
    * Register the hot reload hooks
    */
   async init(options: InitOptions) {
-    const envIgnore = process.env.HOT_HOOK_IGNORE?.split(",").map((p) =>
-      p.trim()
-    );
-    const envRestart = process.env.HOT_HOOK_RESTART?.split(",").map((p) =>
-      p.trim()
-    );
-    const envBoundaries = process.env.HOT_HOOK_BOUNDARIES?.split(",").map((p) =>
-      p.trim()
-    );
-    const envInclude = process.env.HOT_HOOK_INCLUDE?.split(",").map((p) =>
-      p.trim()
-    );
+    const envIgnore = process.env.HOT_HOOK_IGNORE?.split(",").map((p) => p.trim());
+    const envRestart = process.env.HOT_HOOK_RESTART?.split(",").map((p) => p.trim());
+    const envBoundaries = process.env.HOT_HOOK_BOUNDARIES?.split(",").map((p) => p.trim());
+    const envInclude = process.env.HOT_HOOK_INCLUDE?.split(",").map((p) => p.trim());
 
     this.#options = Object.assign(
       {
@@ -86,7 +74,7 @@ class Hot {
           "**/vite.config.ts.timestamp*",
         ],
       },
-      options
+      options,
     );
 
     debug("Hot hook options %o", this.#options);
@@ -143,7 +131,7 @@ class Hot {
   async dump() {
     this.#messageChannel.port1.postMessage({ type: "hot-hook:dump" });
     const result: any = await new Promise((resolve) =>
-      this.#messageChannel.port1.once("message", (message) => resolve(message))
+      this.#messageChannel.port1.once("message", (message) => resolve(message)),
     );
 
     return result.dump;
@@ -159,7 +147,7 @@ class Hot {
    */
   async invalidateFile(
     path: string,
-    action: "change" | "add" | "unlink" = "change"
+    action: "change" | "add" | "unlink" = "change",
   ): Promise<string[]> {
     this.#messageChannel.port1.postMessage({
       type: "hot-hook:manual-invalidate",

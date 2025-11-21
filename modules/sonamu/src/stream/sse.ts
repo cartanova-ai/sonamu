@@ -5,7 +5,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 export function createSSEFactory<T extends z.ZodObject>(
   socket: FastifyRequest["socket"],
   reply: FastifyReply,
-  _events: T
+  _events: T,
 ) {
   return new SSEConnection<T>(socket, reply);
 }
@@ -15,7 +15,7 @@ class SSEConnection<T extends z.ZodObject> {
 
   constructor(
     private readonly socket: FastifyRequest["socket"],
-    private readonly reply: FastifyReply
+    private readonly reply: FastifyReply,
   ) {
     this.socket.on("close", () => {
       this._closed = true;
@@ -42,7 +42,7 @@ class SSEConnection<T extends z.ZodObject> {
       event: "end",
       data: "END",
     });
-    
+
     await new Promise((resolve) => setTimeout(resolve, 200));
     this.reply.raw.end();
   }

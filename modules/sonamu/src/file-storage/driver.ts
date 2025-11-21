@@ -16,7 +16,7 @@ export interface Driver {
   put(
     key: string,
     contents: Buffer,
-    options?: { contentType?: string; visibility?: "public" | "private" }
+    options?: { contentType?: string; visibility?: "public" | "private" },
   ): Promise<void>;
 
   del(key: string): Promise<void>;
@@ -80,7 +80,7 @@ export class S3Driver implements Driver {
   async put(
     key: string,
     contents: Buffer,
-    options?: { contentType?: string; visibility?: "public" | "private" }
+    options?: { contentType?: string; visibility?: "public" | "private" },
   ): Promise<void> {
     await this.s3.send(
       new PutObjectCommand({
@@ -89,7 +89,7 @@ export class S3Driver implements Driver {
         Body: contents,
         ContentType: options?.contentType,
         ACL: this.getAcl(options?.visibility),
-      })
+      }),
     );
   }
 
@@ -98,7 +98,7 @@ export class S3Driver implements Driver {
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: key,
-      })
+      }),
     );
   }
 

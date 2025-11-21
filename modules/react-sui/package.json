@@ -58,7 +58,7 @@
     "corepack": "^0.34.1",
     "debug": "^4.3.7",
     "lodash": "^4.17.21",
-    "prettier": "^3.1.1",
+    "@biomejs/biome": "^2.3.7",
     "scss": "^0.2.4",
     "semantic-ui-css": "^2.5.0",
     "supports-color": "^10.2.2",

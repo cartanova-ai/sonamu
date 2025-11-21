@@ -24,17 +24,14 @@ export async function batchUpdate<Id extends string>(
   ids: Id[],
   rows: RowWithId<Id>[],
   chunkSize = 50,
-  trx: Knex.Transaction | null = null
+  trx: Knex.Transaction | null = null,
 ) {
   const chunks: RowWithId<Id>[][] = [];
   for (let i = 0; i < rows.length; i += chunkSize) {
     chunks.push(rows.slice(i, i + chunkSize));
   }
 
-  const executeUpdate = async (
-    chunk: RowWithId<Id>[],
-    transaction: Knex.Transaction
-  ) => {
+  const executeUpdate = async (chunk: RowWithId<Id>[], transaction: Knex.Transaction) => {
     const sql = generateBatchUpdateSQL(knex, tableName, chunk, ids);
     return knex.raw(sql).transacting(transaction);
   };
@@ -73,7 +70,7 @@ function generateBatchUpdateSQL<Id extends string>(
   db: Knex,
   tableName: string,
   data: Record<string, any>[],
-  identifiers: Id[]
+  identifiers: Id[],
 ) {
   const keySet = generateKeySetFromData(data);
   const bindings = [];
@@ -81,7 +78,7 @@ function generateBatchUpdateSQL<Id extends string>(
   const invalidIdentifiers = identifiers.filter((id) => !keySet.has(id));
   if (invalidIdentifiers.length > 0) {
     throw new Error(
-      `Invalid identifiers: ${invalidIdentifiers.join(", ")}. Identifiers must exist in the data`
+      `Invalid identifiers: ${invalidIdentifiers.join(", ")}. Identifiers must exist in the data`,
     );
   }
 
@@ -92,9 +89,7 @@ function generateBatchUpdateSQL<Id extends string>(
     const rows = [];
     for (const row of data) {
       if (Object.hasOwnProperty.call(row, key)) {
-        const whereClause = identifiers
-          .map((id) => `\`${id}\` = ?`)
-          .join(" AND ");
+        const whereClause = identifiers.map((id) => `\`${id}\` = ?`).join(" AND ");
         rows.push(`WHEN (${whereClause}) THEN ?`);
         bindings.push(...identifiers.map((i) => row[i]), row[key]);
       }
@@ -108,14 +103,12 @@ function generateBatchUpdateSQL<Id extends string>(
     .map((col) => `${col} IN (${data.map(() => "?").join(", ")})`)
     .join(" AND ");
 
-  const whereInBindings = identifiers.flatMap((col) =>
-    data.map((row) => row[col])
-  );
+  const whereInBindings = identifiers.flatMap((col) => data.map((row) => row[col]));
 
-  const sql = db.raw(
-    `UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`,
-    [...bindings, ...whereInBindings]
-  );
+  const sql = db.raw(`UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`, [
+    ...bindings,
+    ...whereInBindings,
+  ]);
 
   return sql.toQuery();
 }

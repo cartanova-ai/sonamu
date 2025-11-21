@@ -23,7 +23,7 @@ class CompanyModelClass extends BaseModelClass {
   })
   async findById<T extends CompanySubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<CompanySubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -39,7 +39,7 @@ class CompanyModelClass extends BaseModelClass {
 
   async findOne<T extends CompanySubsetKey>(
     subset: T,
-    listParams: CompanyListParams
+    listParams: CompanyListParams,
   ): Promise<CompanySubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -57,7 +57,7 @@ class CompanyModelClass extends BaseModelClass {
   })
   async findMany<T extends CompanySubsetKey>(
     subset: T,
-    params: CompanyListParams = {}
+    params: CompanyListParams = {},
   ): Promise<ListResult<CompanySubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -86,9 +86,7 @@ class CompanyModelClass extends BaseModelClass {
             // } else if (params.search === "field") {
             //   qb.where("companies.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
+            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
           }
         }
 

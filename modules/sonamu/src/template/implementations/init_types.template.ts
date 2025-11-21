@@ -21,9 +21,7 @@ export class Template__init_types extends Template {
     const names = EntityManager.getNamesFromId(entityId);
 
     const hasCreatedAt =
-      EntityManager.get(entityId).props.find(
-        (prop) => prop.name === "created_at"
-      ) !== undefined;
+      EntityManager.get(entityId).props.find((prop) => prop.name === "created_at") !== undefined;
 
     return {
       ...this.getTargetAndPath(names),

@@ -8,12 +8,10 @@ import path from "path";
  */
 export async function filterAsync<T>(
   arr: T[],
-  predicate: (item: T, index: number, array: T[]) => Promise<boolean>
+  predicate: (item: T, index: number, array: T[]) => Promise<boolean>,
 ): Promise<T[]> {
   const results = await Promise.all(
-    arr.map((item, index) =>
-      predicate(item, index, arr).then((keep) => ({ item, keep }))
-    )
+    arr.map((item, index) => predicate(item, index, arr).then((keep) => ({ item, keep }))),
   );
   return results.filter((r) => r.keep).map((r) => r.item);
 }
@@ -25,7 +23,7 @@ export async function filterAsync<T>(
  */
 export async function everyAsync<T>(
   arr: T[],
-  predicate: (item: T, index: number, array: T[]) => Promise<boolean>
+  predicate: (item: T, index: number, array: T[]) => Promise<boolean>,
 ): Promise<boolean> {
   for (let i = 0; i < arr.length; i++) {
     if (!(await predicate(arr[i], i, arr))) {
@@ -42,11 +40,9 @@ export async function everyAsync<T>(
  */
 export async function mapAsync<T, U>(
   arr: T[],
-  mapper: (item: T, index: number, array: T[]) => Promise<U>
+  mapper: (item: T, index: number, array: T[]) => Promise<U>,
 ): Promise<U[]> {
-  return Promise.all(
-    arr.map((item, index) => mapper(item, index, arr))
-  );
+  return Promise.all(arr.map((item, index) => mapper(item, index, arr)));
 }
 
 /**
@@ -57,7 +53,7 @@ export async function mapAsync<T, U>(
 export async function reduceAsync<T, U>(
   arr: T[],
   reducer: (accumulator: U, currentValue: T, index: number, array: T[]) => Promise<U>,
-  initialValue: U
+  initialValue: U,
 ): Promise<U> {
   let accumulator = initialValue;
   for (let i = 0; i < arr.length; i++) {
@@ -69,8 +65,8 @@ export async function reduceAsync<T, U>(
 /**
  * 비동기 glob 함수입니다.
  * AsyncIterableIterator로 날아오는 glob의 반환을 받아 끝까지 돌아서 배열로 반환합니다.
- * @param pathPattern 
- * @returns 
+ * @param pathPattern
+ * @returns
  */
 export async function globAsync(pathPattern: string): Promise<string[]> {
   const files: string[] = [];

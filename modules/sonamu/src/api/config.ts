@@ -1,11 +1,6 @@
 import type { Knex } from "knex";
 import type { Driver } from "../file-storage/driver";
-import type {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  FastifyServerOptions,
-} from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import type { SonamuFastifyConfig } from "../types/types";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyFormbodyOptions } from "@fastify/formbody";
@@ -14,10 +9,7 @@ import type { SecureSessionPluginOptions } from "@fastify/secure-session";
 import type { FastifyStaticOptions } from "@fastify/static";
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
-import type {
-  DeserializeFunction,
-  SerializeFunction,
-} from "@fastify/passport/dist/Authenticator";
+import type { DeserializeFunction, SerializeFunction } from "@fastify/passport/dist/Authenticator";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;
@@ -92,20 +84,14 @@ export type SonamuServerOptions = {
   lifecycle?: {
     onStart?: (server: FastifyInstance) => Promise<void> | void;
     onShutdown?: (server: FastifyInstance) => Promise<void> | void;
-    onError?: (
-      error: Error,
-      request: FastifyRequest,
-      reply: FastifyReply
-    ) => Promise<void> | void;
+    onError?: (error: Error, request: FastifyRequest, reply: FastifyReply) => Promise<void> | void;
   };
 };
 
 export type SonamuConfigExport = SonamuConfig | Promise<SonamuConfig>;
 
 export function defineConfig(config: SonamuConfig): SonamuConfig;
-export function defineConfig(
-  config: Promise<SonamuConfig>
-): Promise<SonamuConfig>;
+export function defineConfig(config: Promise<SonamuConfig>): Promise<SonamuConfig>;
 export function defineConfig(config: SonamuConfigExport): SonamuConfigExport {
   return config;
 }

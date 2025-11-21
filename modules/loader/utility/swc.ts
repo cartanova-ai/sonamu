@@ -4,7 +4,7 @@ import { transform } from "@swc/core";
 export async function transpileSource(
   sourceText: string,
   sourceLocation: URL,
-  packageDirectory?: URL
+  packageDirectory?: URL,
 ): Promise<string> {
   // export declare function transform(src: string | Program, options?: Options): Promise<Output>;
 

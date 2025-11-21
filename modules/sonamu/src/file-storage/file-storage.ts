@@ -82,7 +82,7 @@ export class FileStorage {
    */
   async saveToDisk(
     key: string,
-    options?: { contentType?: string; visibility?: "public" | "private" }
+    options?: { contentType?: string; visibility?: "public" | "private" },
   ): Promise<string> {
     const buffer = await this.toBuffer();
 

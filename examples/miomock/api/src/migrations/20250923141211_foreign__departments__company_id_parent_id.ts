@@ -3,16 +3,8 @@ import { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.alterTable("departments", (table) => {
     // create fk
-    table
-      .foreign("company_id")
-      .references("companies.id")
-      .onUpdate("CASCADE")
-      .onDelete("CASCADE");
-    table
-      .foreign("parent_id")
-      .references("departments.id")
-      .onUpdate("CASCADE")
-      .onDelete("CASCADE");
+    table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE");
+    table.foreign("parent_id").references("departments.id").onUpdate("CASCADE").onDelete("CASCADE");
   });
 }
 

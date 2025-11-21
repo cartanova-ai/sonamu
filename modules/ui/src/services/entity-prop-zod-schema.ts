@@ -79,13 +79,7 @@ export namespace EntityPropZodSchema {
     type: z.literal("virtual"),
     id: z.string(),
   });
-  export const RelationOn = z.enum([
-    "CASCADE",
-    "SET NULL",
-    "NO ACTION",
-    "SET DEFAULT",
-    "RESTRICT",
-  ]);
+  export const RelationOn = z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]);
   export const _RelationProp = z.object({
     type: z.literal("relation"),
     name: z.string(),
@@ -173,12 +167,7 @@ export namespace EntityPropZodSchema {
             case undefined:
               return z.object({
                 name: z.string().nonempty(),
-                relationType: z.enum([
-                  "OneToOne",
-                  "BelongsToOne",
-                  "HasMany",
-                  "ManyToMany",
-                ]),
+                relationType: z.enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"]),
               });
           }
           break;

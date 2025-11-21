@@ -13,7 +13,7 @@ export function getLabel(entityId: string, enumId: string): string {
     return "검색";
   } else {
     const enumProp = EntityManager.get(entityId).props.find(
-      (prop) => `${entityId}${inflection.camelize(prop.name)}` === enumId
+      (prop) => `${entityId}${inflection.camelize(prop.name)}` === enumId,
     );
     if (enumProp && enumProp.desc) {
       return enumProp.desc;
@@ -28,7 +28,7 @@ export function getLabel(entityId: string, enumId: string): string {
  */
 export function getEnumInfoFromColName(
   entityId: string,
-  colName: string
+  colName: string,
 ): {
   id: string;
   targetEntityNames: EntityNamesRecord;
@@ -47,7 +47,7 @@ export function getEnumInfoFromColName(
   } else {
     const idCandidate = inflection.camelize(
       inflection.underscore(entityId) + "_" + inflection.underscore(colName),
-      false
+      false,
     );
     try {
       const targetEntityNames = EntityManager.getNamesFromId(entityId);
@@ -66,10 +66,7 @@ export function getEnumInfoFromColName(
  * 컬럼 이름으로부터 Relation prop 정보를 가져옵니다.
  * 관계형 prop이 아닌 경우 에러를 발생시킵니다.
  */
-export function getRelationPropFromColName(
-  entityId: string,
-  colName: string
-): RelationProp {
+export function getRelationPropFromColName(entityId: string, colName: string): RelationProp {
   const baseEntity = EntityManager.get(entityId);
   const relProp = baseEntity.props.find((prop) => prop.name === colName);
   if (isRelationProp(relProp)) {

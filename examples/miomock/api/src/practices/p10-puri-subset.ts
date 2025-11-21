@@ -63,11 +63,7 @@ examples().finally(async () => {
 
 // Puri Types for User Subsets
 export type UserSubsetPuriTypes = {
-  A: Puri<
-    DatabaseSchemaExtend,
-    { users: UserBaseSchema; companies: CompanyBaseSchema },
-    any
-  >;
+  A: Puri<DatabaseSchemaExtend, { users: UserBaseSchema; companies: CompanyBaseSchema }, any>;
   P: Puri<
     DatabaseSchemaExtend,
     {
@@ -90,25 +86,21 @@ type PuriResult<P> = P extends Puri<any, any, infer R> ? R : never;
 type IntersectTables<A, B> = Pick<A, Extract<keyof A, keyof B>>;
 
 // 두 Puri의 교집합
-type IntersectPuri<
-  A extends Puri<any, any, any>,
-  B extends Puri<any, any, any>,
-> = Puri<
+type IntersectPuri<A extends Puri<any, any, any>, B extends Puri<any, any, any>> = Puri<
   PuriSchema<A>, // TSchema (같다고 가정)
   IntersectTables<PuriTables<A>, PuriTables<B>>, // TTables key 교집합
   PuriResult<A> // TResult (동일하다는 가정)
 >;
 
 // 여러 Puri의 교집합 (재귀적으로 처리)
-type IntersectPuriMany<Arr extends readonly Puri<any, any, any>[]> =
-  Arr extends [
-    infer Head extends Puri<any, any, any>,
-    ...infer Tail extends readonly Puri<any, any, any>[],
-  ]
-    ? Tail extends []
-      ? Head // 배열이 1개면 그대로 반환
-      : IntersectPuri<Head, IntersectPuriMany<Tail>> // 재귀: Head ∩ (나머지의 교집합)
-    : never;
+type IntersectPuriMany<Arr extends readonly Puri<any, any, any>[]> = Arr extends [
+  infer Head extends Puri<any, any, any>,
+  ...infer Tail extends readonly Puri<any, any, any>[],
+]
+  ? Tail extends []
+    ? Head // 배열이 1개면 그대로 반환
+    : IntersectPuri<Head, IntersectPuriMany<Tail>> // 재귀: Head ∩ (나머지의 교집합)
+  : never;
 
 // 서브셋 키 배열을 Puri 타입 배열로 변환
 type MapSubsetKeysToPuris<
@@ -119,14 +111,13 @@ type MapSubsetKeysToPuris<
 };
 
 // 서브셋 키 배열에서 교집합 Puri 타입 추론
-export type InferIntersectionPuriType<
-  TSubsets extends readonly UserSubsetKey[],
-> = IntersectPuriMany<MapSubsetKeysToPuris<TSubsets>>;
+export type InferIntersectionPuriType<TSubsets extends readonly UserSubsetKey[]> =
+  IntersectPuriMany<MapSubsetKeysToPuris<TSubsets>>;
 
 // Helper to infer Puri type from subset array (computes actual intersection)
 function builder<T extends readonly UserSubsetKey[]>(
   subsets: [...T],
-  callback: (qb: InferIntersectionPuriType<T>) => any
+  callback: (qb: InferIntersectionPuriType<T>) => any,
 ): { applyTo: UserSubsetKey[]; builder: (qb: any) => any } {
   return {
     applyTo: [...subsets] as UserSubsetKey[],

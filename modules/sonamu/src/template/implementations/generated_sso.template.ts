@@ -1,8 +1,4 @@
-import {
-  isManyToManyRelationProp,
-  SubsetQuery,
-  TemplateOptions,
-} from "../../types/types";
+import { isManyToManyRelationProp, SubsetQuery, TemplateOptions } from "../../types/types";
 import { EntityManager } from "../../entity/entity-manager";
 import { Template } from "../template";
 import inflection from "inflection";
@@ -32,10 +28,7 @@ export class Template__generated_sso extends Template {
 
     const sourceCodes: SourceCode[] = entities
       .map((entity) => {
-        if (
-          entity.parentId !== undefined ||
-          Object.keys(entity.subsets).length === 0
-        ) {
+        if (entity.parentId !== undefined || Object.keys(entity.subsets).length === 0) {
           return null;
         }
         const subsetKeys = Object.keys(entity.subsets);
@@ -47,7 +40,7 @@ export class Template__generated_sso extends Template {
           },
           {} as {
             [key: string]: SubsetQuery;
-          }
+          },
         );
 
         const subsetKeyTypeName = `${entity.names.module}SubsetKey`;
@@ -56,9 +49,9 @@ export class Template__generated_sso extends Template {
           lines: [
             `export const ${inflection.camelize(
               entity.id,
-              true
+              true,
             )}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
-              subsetQueryObject
+              subsetQueryObject,
             )};`,
             "",
           ],
@@ -86,7 +79,7 @@ export class Template__generated_sso extends Template {
       {
         lines: [],
         importKeys: [],
-      } as Omit<SourceCode, "label">
+      } as Omit<SourceCode, "label">,
     );
 
     const body = sourceCode.lines.join("\n");
@@ -106,20 +99,16 @@ export class Template__generated_sso extends Template {
       return null;
     }
 
-    const entitySchemaLines = entities.map(
-      (entity) => `${entity.table}: ${entity.id}BaseSchema;`
-    );
+    const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
     const joinTableSchemaLines = _.uniq(
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const fromTableKey = inflection.singularize(entity.table);
-          const toTableKey = inflection.singularize(
-            EntityManager.get(prop.with).table
-          );
+          const toTableKey = inflection.singularize(EntityManager.get(prop.with).table);
           return `${prop.joinTable}: ManyToManyBaseSchema<"${fromTableKey}", "${toTableKey}">;`;
-        })
-      )
+        }),
+      ),
     );
 
     return {

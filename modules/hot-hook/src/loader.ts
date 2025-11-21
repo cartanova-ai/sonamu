@@ -47,22 +47,10 @@ export class HotHookLoader {
    */
   #initialize(root: string) {
     this.#projectRoot = this.#projectRoot ?? dirname(root);
-    this.#reloadMatcher = new Matcher(
-      this.#projectRoot,
-      this.#options.restart || []
-    );
-    this.#pathIgnoredMatcher = new Matcher(
-      this.#projectRoot,
-      this.#options.ignore
-    );
-    this.#pathIncludedMatcher = new Matcher(
-      this.#projectRoot,
-      this.#options.include || []
-    );
-    this.#hardcodedBoundaryMatcher = new Matcher(
-      this.#projectRoot,
-      this.#options.boundaries
-    );
+    this.#reloadMatcher = new Matcher(this.#projectRoot, this.#options.restart || []);
+    this.#pathIgnoredMatcher = new Matcher(this.#projectRoot, this.#options.ignore);
+    this.#pathIncludedMatcher = new Matcher(this.#projectRoot, this.#options.include || []);
+    this.#hardcodedBoundaryMatcher = new Matcher(this.#projectRoot, this.#options.boundaries);
 
     // 기본적으로 watcher를 생성하지 않음
     // disableAutoWatch가 명시적으로 false인 경우에만 watcher 생성
@@ -83,10 +71,7 @@ export class HotHookLoader {
     }
   }
 
-  #postMessage<T extends MessageChannelMessage["type"]>(
-    type: T,
-    data: MessageChannelPerType[T]
-  ) {
+  #postMessage<T extends MessageChannelMessage["type"]>(type: T, data: MessageChannelPerType[T]) {
     this.#messagePort?.postMessage({ type, ...data });
   }
 
@@ -104,10 +89,7 @@ export class HotHookLoader {
     if (message.type === "hot-hook:manual-invalidate") {
       // 파일이 변경되었다고 직접 알려주는 메시지입니다. 처리하면 됩니다.
       // 이 호출이 이 hot-hook의 핵심 tick입니다.
-      const invalidatedPaths = await this.#onFileChange(
-        message.path,
-        message.action
-      );
+      const invalidatedPaths = await this.#onFileChange(message.path, message.action);
 
       // 처리 완료 알림을 보내줍니다.
       return this.#messagePort?.postMessage({
@@ -125,15 +107,11 @@ export class HotHookLoader {
       const invalidatedPaths = new Set<string>();
       for (const { nodePath } of pathsToInvalidate) {
         this.#dynamicImportChecker.invalidateCache(nodePath);
-        const dependentPaths =
-          this.#dependencyTree.invalidateFileAndDependents(nodePath);
+        const dependentPaths = this.#dependencyTree.invalidateFileAndDependents(nodePath);
         dependentPaths.forEach((p) => invalidatedPaths.add(p));
       }
 
-      debug(
-        "Invalidated all reloadable files (%d files).",
-        pathsToInvalidate.length
-      );
+      debug("Invalidated all reloadable files (%d files).", pathsToInvalidate.length);
 
       // 처리 완료 알림을 보내줍니다.
       return this.#messagePort?.postMessage({
@@ -147,10 +125,7 @@ export class HotHookLoader {
    * When a file changes, invalidate it and its dependents.
    * @returns Array of invalidated file paths (empty if full reload needed)
    */
-  async #onFileChange(
-    relativeFilePath: string,
-    action: FileChangeAction
-  ): Promise<string[]> {
+  async #onFileChange(relativeFilePath: string, action: FileChangeAction): Promise<string[]> {
     debug("File change %s", { relativeFilePath, action });
     const filePath = pathResolve(relativeFilePath);
 
@@ -203,10 +178,7 @@ export class HotHookLoader {
      * not loaded, so we just send a "file-changed" message
      */
     if (!this.#dependencyTree.isInside(realFilePath)) {
-      debug(
-        "File not in dependency tree, sending file-changed message %s",
-        realFilePath
-      );
+      debug("File not in dependency tree, sending file-changed message %s", realFilePath);
       this.#postMessage("hot-hook:file-changed", {
         path: realFilePath,
         action,
@@ -218,8 +190,7 @@ export class HotHookLoader {
      * If the file is not reloadable according to the dependency tree,
      * we trigger a full reload.
      */
-    const { reloadable, shouldBeReloadable } =
-      this.#dependencyTree.isReloadable(realFilePath);
+    const { reloadable, shouldBeReloadable } = this.#dependencyTree.isReloadable(realFilePath);
     if (!reloadable) {
       debug("Full reload (not-reloadable file) %s", realFilePath);
       this.#postMessage("hot-hook:full-reload", {
@@ -232,8 +203,7 @@ export class HotHookLoader {
     /**
      * Otherwise, we invalidate the file and its dependents
      */
-    const invalidatedFiles =
-      this.#dependencyTree.invalidateFileAndDependents(realFilePath);
+    const invalidatedFiles = this.#dependencyTree.invalidateFileAndDependents(realFilePath);
     debug("Invalidating %s", Array.from(invalidatedFiles).join(", "));
     const invalidatedPaths = [...invalidatedFiles];
     this.#postMessage("hot-hook:invalidated", { paths: invalidatedPaths });
@@ -374,13 +344,10 @@ export class HotHookLoader {
     const parentPath = fileURLToPath(parentUrl);
 
     // Parent의 실제 소스 경로를 Map에서 조회
-    const actualParentPath =
-      this.#resolvedSourcePaths.get(parentPath) || parentPath;
+    const actualParentPath = this.#resolvedSourcePaths.get(parentPath) || parentPath;
 
-    const isHardcodedBoundary =
-      this.#hardcodedBoundaryMatcher.match(actualSourcePath);
-    const reloadable =
-      result.importAttributes?.hot === "true" ? true : isHardcodedBoundary;
+    const isHardcodedBoundary = this.#hardcodedBoundaryMatcher.match(actualSourcePath);
+    const reloadable = result.importAttributes?.hot === "true" ? true : isHardcodedBoundary;
 
     if (reloadable) {
       /**
@@ -388,13 +355,12 @@ export class HotHookLoader {
        * 그렇지 않으면 hot-hook이 파일을 invalidate할 수 없습니다.
        */
       // 부모도 boundary인지 확인
-      const isParentBoundary =
-        this.#hardcodedBoundaryMatcher.match(actualParentPath);
+      const isParentBoundary = this.#hardcodedBoundaryMatcher.match(actualParentPath);
 
       const isImportedDynamically =
         await this.#dynamicImportChecker.ensureFileIsImportedDynamicallyFromParent(
           actualParentPath,
-          specifier
+          specifier,
         );
 
       // 부모도 boundary면 정적 import 허용
@@ -404,14 +370,11 @@ export class HotHookLoader {
       /**
        * 동적으로 import되지 않았고 옵션이 설정되어 있으면 에러 발생
        */
-      if (
-        !effectivelyReloadable &&
-        this.#options.throwWhenBoundariesAreNotDynamicallyImported
-      )
+      if (!effectivelyReloadable && this.#options.throwWhenBoundariesAreNotDynamicallyImported)
         throw new FileNotImportedDynamicallyException(
           actualParentPath,
           specifier,
-          this.#projectRoot
+          this.#projectRoot,
         );
 
       /**
@@ -452,9 +415,7 @@ export class HotHookLoader {
 }
 
 let loader!: HotHookLoader;
-export const initialize: InitializeHook = async (
-  data: InitializeHookOptions
-) => {
+export const initialize: InitializeHook = async (data: InitializeHookOptions) => {
   loader = new HotHookLoader(data);
 };
 export const load: LoadHook = (...args) => loader?.load(...args);

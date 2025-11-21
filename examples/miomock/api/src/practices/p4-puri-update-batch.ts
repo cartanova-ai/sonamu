@@ -17,7 +17,7 @@ async function examples() {
         password: "password",
         role: "normal",
         is_verified: false,
-      })
+      }),
     );
 
     const userIds = await trx.ubUpsert("users");
@@ -90,9 +90,7 @@ async function examples() {
 
     const employeeIds = await trx.ubUpsert("employees");
 
-    console.log(
-      `Created ${userIds.length} users and ${employeeIds.length} employees`
-    );
+    console.log(`Created ${userIds.length} users and ${employeeIds.length} employees`);
 
     // 3. Employee 급여 업데이트 (user_id + employee_number 복합 키로 매칭)
     // 주의: id로 매칭하지 않고 user_id + employee_number로 매칭
@@ -128,10 +126,7 @@ async function examples() {
     // 검증 - 급여가 올라갔는지 확인
     updatedEmployees.forEach((emp, i) => {
       const expectedSalary = 60000 + i * 1000;
-      assert(
-        Number(emp.salary) === expectedSalary,
-        `Employee ${i} salary mismatch`
-      );
+      assert(Number(emp.salary) === expectedSalary, `Employee ${i} salary mismatch`);
     });
 
     // 정리
@@ -165,11 +160,7 @@ async function examples() {
     await trx.ubUpdateBatch("users");
 
     // 3. 결과 확인
-    const updatedUser = await trx
-      .table("users")
-      .selectAll()
-      .where("id", userIds[0]!)
-      .first();
+    const updatedUser = await trx.table("users").selectAll().where("id", userIds[0]!).first();
 
     console.log("Updated user:", updatedUser);
 

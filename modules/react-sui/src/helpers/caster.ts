@@ -34,7 +34,7 @@ export function caster(zodType: $ZodType, raw: any): any {
   ) {
     // zArrayable Number 케이스 처리
     if (Array.isArray(raw)) {
-      const numType = zodType.options.find(opt => isNumberType(opt));
+      const numType = zodType.options.find((opt) => isNumberType(opt));
       // 브라우저 환경이므로 Node.js의 assert 대신 Error throw 사용
       if (!numType) {
         throw new Error("Expected to find a number type in union");
@@ -43,24 +43,13 @@ export function caster(zodType: $ZodType, raw: any): any {
     } else {
       return Number(raw);
     }
-  } else if (
-    zodType instanceof z.ZodBoolean &&
-    (raw === "true" || raw === "false")
-  ) {
+  } else if (zodType instanceof z.ZodBoolean && (raw === "true" || raw === "false")) {
     // boolean
     return raw === "true";
-  } else if (
-    raw !== null &&
-    Array.isArray(raw) &&
-    zodType instanceof z.ZodArray
-  ) {
+  } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
     return raw.map((elem: any) => caster(zodType.element, elem));
-  } else if (
-    zodType instanceof z.ZodObject &&
-    typeof raw === "object" &&
-    raw !== null
-  ) {
+  } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {
       r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);

@@ -3,7 +3,7 @@ import { Knex } from "knex";
 export function createKnexProxy(
   knexInstance: Knex,
   signal: AbortSignal,
-  originalKnex: Knex | null = null
+  originalKnex: Knex | null = null,
 ): Knex {
   const DEBUG = true;
 

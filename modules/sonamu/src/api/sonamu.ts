@@ -53,9 +53,7 @@ class SonamuClass {
     if (store?.uploadContext) {
       return store.uploadContext;
     }
-    throw new Error(
-      "Sonamu cannot find upload context. Did you use @upload decorator?"
-    );
+    throw new Error("Sonamu cannot find upload context. Did you use @upload decorator?");
   }
 
   private _apiRootPath: AbsolutePath | null = null;
@@ -136,7 +134,7 @@ class SonamuClass {
     doSilent: boolean = false,
     enableSync: boolean = true,
     apiRootPath?: AbsolutePath,
-    forTesting: boolean = false
+    forTesting: boolean = false,
   ) {
     if (this.isInitialized) {
       return;
@@ -144,9 +142,7 @@ class SonamuClass {
 
     if (!doSilent) {
       const chalk = (await import("chalk")).default;
-      console.time(
-        chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
-      );
+      console.time(chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`));
     }
 
     // API 루트 패스
@@ -157,9 +153,7 @@ class SonamuClass {
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     const { exists } = await import("../utils/fs-utils");
     if (await exists(secretsPath)) {
-      this.secrets = JSON.parse(
-        (await readFile(secretsPath)).toString()
-      ) as SonamuSecrets;
+      this.secrets = JSON.parse((await readFile(secretsPath)).toString()) as SonamuSecrets;
     }
 
     // DB 로드
@@ -213,10 +207,7 @@ class SonamuClass {
     }
   }
 
-  async createServer(initOptions?: {
-    enableSync?: boolean;
-    doSilent?: boolean;
-  }) {
+  async createServer(initOptions?: { enableSync?: boolean; doSilent?: boolean }) {
     if (this.isInitialized === false) {
       await this.init(initOptions?.doSilent, initOptions?.enableSync);
     }
@@ -238,9 +229,7 @@ class SonamuClass {
 
     if (options.auth) {
       if (!options.plugins?.session) {
-        throw new Error(
-          "Auth requires session plugin. Please add plugins.session configuration."
-        );
+        throw new Error("Auth requires session plugin. Please add plugins.session configuration.");
       }
 
       await this.registerAuth(server, options.auth);
@@ -264,7 +253,7 @@ class SonamuClass {
     options?: {
       enableSync?: boolean;
       doSilent?: boolean;
-    }
+    },
   ) {
     if (this.isInitialized === false) {
       await this.init(options?.doSilent, options?.enableSync);
@@ -294,7 +283,7 @@ class SonamuClass {
             return formatInTimeZone(
               new Date(value),
               timezone as `${string}/${string}`,
-              DATE_FORMAT
+              DATE_FORMAT,
             );
           }
           return value;
@@ -307,19 +296,16 @@ class SonamuClass {
     }
 
     // 전체 라우팅 리스트
-    server.get(
-      `${this.config.api.route.prefix}/routes`,
-      async (_request, _reply): Promise<any> => {
-        return this.syncer.apis;
-      }
-    );
+    server.get(`${this.config.api.route.prefix}/routes`, async (_request, _reply): Promise<any> => {
+      return this.syncer.apis;
+    });
 
     // Healthcheck API
     server.get(
       `${this.config.api.route.prefix}/healthcheck`,
       async (_request, _reply): Promise<string> => {
         return "ok";
-      }
+      },
     );
 
     // API 라우팅 (로컬HMR 상태와 구분)
@@ -328,16 +314,13 @@ class SonamuClass {
       server.all("*", async (request, reply) => {
         const found = this.syncer.apis.find(
           (api) =>
-            this.config.api.route.prefix + api.path ===
-              request.url.split("?")[0] &&
-            (api.options.httpMethod ?? "GET") === request.method.toUpperCase()
+            this.config.api.route.prefix + api.path === request.url.split("?")[0] &&
+            (api.options.httpMethod ?? "GET") === request.method.toUpperCase(),
         );
         if (found) {
           return this.getApiHandler(found, config)(request, reply);
         }
-        const { NotFoundException } = await import(
-          "../exceptions/so-exceptions"
-        );
+        const { NotFoundException } = await import("../exceptions/so-exceptions");
         throw new NotFoundException("존재하지 않는 API 접근입니다.");
       });
     } else {
@@ -358,13 +341,8 @@ class SonamuClass {
   }
 
   getApiHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
-    return async (
-      request: FastifyRequest,
-      reply: FastifyReply
-    ): Promise<unknown> => {
-      (api.options.guards ?? []).every((guard) =>
-        config.guardHandler(guard, request, api)
-      );
+    return async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
+      (api.options.guards ?? []).every((guard) => config.guardHandler(guard, request, api));
 
       // 파라미터 정보로 zod 스키마 빌드
       const { getZodObjectFromApi } = await import("./code-converters");
@@ -385,9 +363,7 @@ class SonamuClass {
           const messages = humanizeZodError(e)
             .map((issue) => issue.message)
             .join(" ");
-          const { BadRequestException } = await import(
-            "../exceptions/so-exceptions"
-          );
+          const { BadRequestException } = await import("../exceptions/so-exceptions");
           throw new BadRequestException(messages, {
             zodError: e,
           });
@@ -428,12 +404,8 @@ class SonamuClass {
       const createSSE = (<T extends ZodObject>(
         _request: FastifyRequest,
         _reply: FastifyReply,
-        _events: T
-      ) => createSSEFactory(_request.socket, _reply, _events)).bind(
-        null,
-        request,
-        reply
-      );
+        _events: T,
+      ) => createSSEFactory(_request.socket, _reply, _events)).bind(null, request, reply);
 
       const context: Context = {
         ...(await Promise.resolve(
@@ -447,17 +419,13 @@ class SonamuClass {
               // auth
               user: request.user ?? null,
               passport: {
-                login: request.login.bind(
-                  request
-                ) as AuthContext["passport"]["login"],
-                logout: request.logout.bind(
-                  request
-                ) as AuthContext["passport"]["logout"],
+                login: request.login.bind(request) as AuthContext["passport"]["login"],
+                logout: request.logout.bind(request) as AuthContext["passport"]["logout"],
               },
             },
             request,
-            reply
-          )
+            reply,
+          ),
         )),
       };
 
@@ -473,7 +441,7 @@ class SonamuClass {
             } else {
               return reqBody[param.name];
             }
-          })
+          }),
         );
         reply.type(api.options.contentType ?? "application/json");
 
@@ -504,7 +472,7 @@ class SonamuClass {
       const absolutePath = filePath as AbsolutePath;
       assert(
         absolutePath.startsWith(this.apiRootPath),
-        "File path is not within the API root path"
+        "File path is not within the API root path",
       );
 
       if (event !== "change" && event !== "add") {
@@ -513,16 +481,13 @@ class SonamuClass {
 
       try {
         // sonamu.config.ts 변경 시 재시작
-        const isConfigTs =
-          filePath === path.join(this.apiRootPath, "sonamu.config.ts");
+        const isConfigTs = filePath === path.join(this.apiRootPath, "sonamu.config.ts");
 
         if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
           const chalk = (await import("chalk")).default;
           console.log(
-            chalk.bold(
-              `Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`
-            )
+            chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`),
           );
           process.kill(process.pid, "SIGUSR2");
           return;
@@ -547,10 +512,7 @@ class SonamuClass {
     }
   }
 
-  private async registerPlugins(
-    server: FastifyInstance,
-    plugins: SonamuServerOptions["plugins"]
-  ) {
+  private async registerPlugins(server: FastifyInstance, plugins: SonamuServerOptions["plugins"]) {
     if (!plugins) {
       return;
     }
@@ -567,7 +529,7 @@ class SonamuClass {
 
     const registerPlugin = async <K extends keyof NonNullable<typeof plugins>>(
       key: K,
-      pluginName: string
+      pluginName: string,
     ) => {
       const option = plugins[key];
       if (!option) return;
@@ -590,7 +552,7 @@ class SonamuClass {
 
   private async registerAuth(
     server: FastifyInstance,
-    options: NonNullable<SonamuServerOptions["auth"]>
+    options: NonNullable<SonamuServerOptions["auth"]>,
   ) {
     // await import("fastify");
     const fastifyPassport = (await import("@fastify/passport")).default;
@@ -599,9 +561,7 @@ class SonamuClass {
 
     if (typeof options === "boolean") {
       fastifyPassport.registerUserSerializer(async (user, _request) => user);
-      fastifyPassport.registerUserDeserializer(
-        async (serialized, _request) => serialized
-      );
+      fastifyPassport.registerUserDeserializer(async (serialized, _request) => serialized);
     } else {
       fastifyPassport.registerUserSerializer(options.userSerializer);
       fastifyPassport.registerUserDeserializer(options.userDeserializer);
@@ -646,10 +606,7 @@ class SonamuClass {
       });
   }
 
-  private async handleFileChange(
-    event: string,
-    filePath: AbsolutePath
-  ): Promise<void> {
+  private async handleFileChange(event: string, filePath: AbsolutePath): Promise<void> {
     // 첫 번째 파일이면 HMR 시작 시간 기록
     if (this.pendingFiles.length === 0) {
       this.hmrStartTime = Date.now();

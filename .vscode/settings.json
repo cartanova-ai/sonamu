@@ -1,16 +1,22 @@
 {
-  "search.exclude": {
-    "**/.yarn": true,
-    "**/.pnp.*": true
-  },
-  "typescript.tsdk": ".yarn/sdks/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "rest-client.environmentVariables": {
     "$shared": {
       "baseUrl": "http://localhost:10280"
     }
   },
-  "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs",
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
   "files.readonlyInclude": {
     "examples/**/web/src/services/**/*": true,
     "examples/**/web/public/sitemap.xml": true

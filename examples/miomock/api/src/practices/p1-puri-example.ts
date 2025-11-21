@@ -118,9 +118,7 @@ async function examples() {
       department_name: "departments.name",
     })
     // WHERE (users.role = 'admin' OR users.is_verified = true)
-    .whereGroup((g) =>
-      g.where("users.role", "admin").orWhere("users.is_verified", true)
-    )
+    .whereGroup((g) => g.where("users.role", "admin").orWhere("users.is_verified", true))
     // AND (employees.salary IS NOT NULL)
     .where("employees.salary", "!=", null)
     .orderBy("users.created_at", "desc")
@@ -135,11 +133,7 @@ async function examples() {
   console.log("\n=== Example 6: Multiple Joins - Projects with Employees ===");
   const projectsQuery = await db
     .table("projects")
-    .join(
-      "projects__employees",
-      "projects.id",
-      "projects__employees.project_id"
-    )
+    .join("projects__employees", "projects.id", "projects__employees.project_id")
     .join("employees", "projects__employees.employee_id", "employees.id")
     .join("users", "employees.user_id", "users.id")
     .leftJoin("departments", "employees.department_id", "departments.id")
@@ -198,10 +192,7 @@ async function examples() {
     .where("users.role", "admin")
     .pluck("departments.name");
 
-  console.log(
-    `Found ${departmentNames.length} department names:`,
-    departmentNames
-  );
+  console.log(`Found ${departmentNames.length} department names:`, departmentNames);
   assert(Array.isArray(departmentNames));
   if (departmentNames.length > 0 && departmentNames[0] !== null) {
     assert(typeof departmentNames[0] === "string");
@@ -242,11 +233,7 @@ async function examples() {
   console.log("\n=== Example 9: Department Hierarchy ===");
   const departments = await db
     .table("departments")
-    .leftJoin(
-      { parent_dept: "departments" },
-      "departments.parent_id",
-      "parent_dept.id"
-    )
+    .leftJoin({ parent_dept: "departments" }, "departments.parent_id", "parent_dept.id")
     .join("companies", "departments.company_id", "companies.id")
     .select({
       dept_id: "departments.id",

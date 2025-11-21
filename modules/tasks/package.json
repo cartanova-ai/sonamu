@@ -13,9 +13,9 @@
   "scripts": {
     "dev": "nodemon exec",
     "build": "swc src --config-file .swcrc -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
-    "check": "tsc --noEmit && prettier -c --ignore-path ./src/**/*.ts",
+    "check": "tsc --noEmit && biome format --write ./src/**/*.ts",
     "check:type": "tsc --noEmit",
-    "check:format": "prettier -c -w ./src/**/*.ts"
+    "check:format": "biome format --write ./src/**/*.ts"
   },
   "repository": {
     "type": "git",
@@ -36,7 +36,7 @@
     "@swc/core": "^1.13.5",
     "@types/node": "^24.9.2",
     "nodemon": "^3.1.10",
-    "prettier": "^3.2.5",
+    "@biomejs/biome": "^2.3.7",
     "typescript": "^5.9.3",
     "vitest": "^4.0.10"
   },

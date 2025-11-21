@@ -23,10 +23,7 @@ export namespace EmployeeService {
     swrOptions?: SwrOptions,
   ): SWRResponse<EmployeeSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/employee/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/employee/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getEmployee<T extends EmployeeSubsetKey>(
@@ -45,10 +42,7 @@ export namespace EmployeeService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<EmployeeSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/employee/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/employee/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getEmployees<T extends EmployeeSubsetKey>(

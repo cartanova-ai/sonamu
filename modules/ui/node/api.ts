@@ -58,9 +58,7 @@ export async function createServer(options: {
 
     // 시간, 메소드, 경로, 상태코드를 타이틀에
     const timestamp = new Date().toLocaleString("ko-KR");
-    lines.push(
-      `╭─[${timestamp}] ${request.method} ${request.url} [${statusCode}]`
-    );
+    lines.push(`╭─[${timestamp}] ${request.method} ${request.url} [${statusCode}]`);
 
     // 에러 메시지
     const errorMsg = error.message || "Unknown error";
@@ -102,9 +100,7 @@ export async function createServer(options: {
         const { hot } = await import("@sonamu-kit/hot-hook");
         const invalidatedPaths = await hot.invalidateAll();
         if (invalidatedPaths.length > 0) {
-          console.log(
-            `🔄 Invalidated ${invalidatedPaths.length} files from cache.`
-          );
+          console.log(`🔄 Invalidated ${invalidatedPaths.length} files from cache.`);
         }
       }
 
@@ -148,10 +144,7 @@ export async function createServer(options: {
       });
 
       for await (const message of runner) {
-        if (
-          message.event === "thread.message.delta" &&
-          message.data.delta.content?.length
-        ) {
+        if (message.event === "thread.message.delta" && message.data.delta.content?.length) {
           const data =
             (message.data.delta.content[0].type === "text"
               ? message.data.delta.content[0].text?.value
@@ -295,10 +288,7 @@ export async function createServer(options: {
           return;
         }
         if (prop.desc) {
-          glossary.set(
-            prop.name,
-            prop.desc.replace(entity.title ?? "", "{EntityID}")
-          );
+          glossary.set(prop.name, prop.desc.replace(entity.title ?? "", "{EntityID}"));
         }
       });
     }
@@ -323,9 +313,7 @@ export async function createServer(options: {
       for (const comb of combinations) {
         const remainStr = remainArr.join("_");
         if (remainStr.includes(comb.w) && glossary.has(comb.w)) {
-          remainArr = remainStr
-            .replace(comb.w, REPLACED_PREFIX + glossary.get(comb.w)!)
-            .split("_");
+          remainArr = remainStr.replace(comb.w, REPLACED_PREFIX + glossary.get(comb.w)!).split("_");
         }
       }
 
@@ -338,10 +326,7 @@ export async function createServer(options: {
           }
         })
         .join("")
-        .replace(
-          /{EntityID}/g,
-          entityId ? EntityManager.get(entityId).title : ""
-        );
+        .replace(/{EntityID}/g, entityId ? EntityManager.get(entityId).title : "");
     })();
 
     console.log({ entityId, origin, suggested });
@@ -369,7 +354,7 @@ export async function createServer(options: {
           ...entity,
           flattenSubsetRows: flattenSubsetRows(subsetRows),
         };
-      })
+      }),
     );
 
     entities.sort((a, b) => {
@@ -703,7 +688,7 @@ export async function createServer(options: {
   }>(
     "/api/migrations/runAction",
     async (
-      request
+      request,
     ): Promise<
       {
         connKey: string;
@@ -718,7 +703,7 @@ export async function createServer(options: {
       } else {
         return migrator.runAction(action, targets);
       }
-    }
+    },
   );
 
   server.post<{
@@ -744,12 +729,7 @@ export async function createServer(options: {
       enumIds: string[];
     };
   }>("/api/scaffolding/getStatus", async (request) => {
-    const {
-      templateGroupName,
-      entityIds,
-      templateKeys: _templateKeys,
-      enumIds,
-    } = request.body;
+    const { templateGroupName, entityIds, templateKeys: _templateKeys, enumIds } = request.body;
     if ((entityIds ?? []).length === 0) {
       throw new BadRequestException("entityIds must be provided");
     } else if ((_templateKeys ?? []).length === 0) {
@@ -760,27 +740,20 @@ export async function createServer(options: {
 
     // sorting
     entityIds.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    const templateKeys = TemplateKey.options.filter((tk) =>
-      _templateKeys.includes(tk)
-    );
+    const templateKeys = TemplateKey.options.filter((tk) => _templateKeys.includes(tk));
 
     const combinations = entityIds
       .map((entityId) => {
         if (templateGroupName === "Enums") {
-          const entityIds = [
-            entityId,
-            ...EntityManager.getChildrenIds(entityId),
-          ];
+          const entityIds = [entityId, ...EntityManager.getChildrenIds(entityId)];
           const allEnumIds = entityIds
-            .map((entityId) =>
-              Object.keys(EntityManager.get(entityId).enumLabels)
-            )
+            .map((entityId) => Object.keys(EntityManager.get(entityId).enumLabels))
             .flat();
           return templateKeys
             .map((templateKey) =>
               allEnumIds
                 .filter((enumId) => enumIds.includes(enumId))
-                .map((enumId) => [entityId, templateKey, enumId])
+                .map((enumId) => [entityId, templateKey, enumId]),
             )
             .flat();
         } else {
@@ -791,12 +764,11 @@ export async function createServer(options: {
 
     const statuses = await Promise.all(
       combinations.map(async ([entityId, templateKey, enumId]) => {
-        const { subPath, fullPath, isExists } =
-          await Sonamu.syncer.checkExistsGenCode(
-            entityId,
-            templateKey as TemplateKey,
-            enumId
-          );
+        const { subPath, fullPath, isExists } = await Sonamu.syncer.checkExistsGenCode(
+          entityId,
+          templateKey as TemplateKey,
+          enumId,
+        );
         return {
           entityId,
           templateGroupName,
@@ -806,7 +778,7 @@ export async function createServer(options: {
           fullPath,
           isExists,
         };
-      })
+      }),
     );
     return { statuses };
   });
@@ -840,7 +812,7 @@ export async function createServer(options: {
             },
             {
               overwrite,
-            }
+            },
           );
         } catch (e) {
           if (isSoException(e) && e.statusCode === 541) {
@@ -850,14 +822,12 @@ export async function createServer(options: {
             throw e;
           }
         }
-      })
+      }),
     );
     console.log(result);
 
     if (result.filter(nonNullable).length === 0) {
-      throw new ServiceUnavailableException(
-        "이미 모든 파일이 생성된 상태입니다."
-      );
+      throw new ServiceUnavailableException("이미 모든 파일이 생성된 상태입니다.");
     }
     return result;
   });
@@ -870,25 +840,22 @@ export async function createServer(options: {
         enumId?: string;
       };
     };
-  }>(
-    "/api/scaffolding/preview",
-    async (request): Promise<{ pathAndCodes: PathAndCode[] }> => {
-      const { option } = request.body;
+  }>("/api/scaffolding/preview", async (request): Promise<{ pathAndCodes: PathAndCode[] }> => {
+    const { option } = request.body;
 
-      try {
-        const { templateKey, ...templateOptions } = option;
-        const pathAndCodes = await Sonamu.syncer.renderTemplate(
-          templateKey as TemplateKey,
-          templateOptions
-        );
+    try {
+      const { templateKey, ...templateOptions } = option;
+      const pathAndCodes = await Sonamu.syncer.renderTemplate(
+        templateKey as TemplateKey,
+        templateOptions,
+      );
 
-        return { pathAndCodes };
-      } catch (e) {
-        console.error(e);
-        throw e;
-      }
+      return { pathAndCodes };
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
-  );
+  });
 
   server.post("/api/fixture", async (request) => {
     const { sourceDB, targetDB, search } = request.body as {
@@ -949,21 +916,19 @@ export async function createServer(options: {
   });
 
   server.get("*", async (_request, reply) => {
-    reply
-      .headers({ "Content-type": "text/html" })
-      .send(
-        fs
-          .readFileSync(path.resolve(import.meta.dirname, "../build/index.html"))
-          .toString()
-          .replace("{{projectName}}", projectName)
-      );
+    reply.headers({ "Content-type": "text/html" }).send(
+      fs
+        .readFileSync(path.resolve(import.meta.dirname, "../build/index.html"))
+        .toString()
+        .replace("{{projectName}}", projectName),
+    );
   });
 
   server
     .listen(listen)
     .then(() => {
       console.log(
-        `${projectName}: Sonamu UI API Server is listening on http://${listen.host}:${listen.port}`
+        `${projectName}: Sonamu UI API Server is listening on http://${listen.host}:${listen.port}`,
       );
     })
     .catch((err) => {

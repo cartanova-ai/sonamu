@@ -46,9 +46,7 @@ export class RelationGraph {
               const relatedFixtureId = `${prop.with}#${relatedId}`;
               if (this.graph.has(relatedFixtureId)) {
                 node.related.add(relatedFixtureId);
-                this.graph
-                  .get(relatedFixtureId)!
-                  .related.add(fixture.fixtureId);
+                this.graph.get(relatedFixtureId)!.related.add(fixture.fixtureId);
               }
             }
           }
@@ -83,7 +81,7 @@ export class RelationGraph {
             isRelationProp(prop) &&
             (isBelongsToOneRelationProp(prop) ||
               (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) &&
-            prop.with === depNode.entityId
+            prop.with === depNode.entityId,
         );
         if (relationProp && !relationProp.nullable) {
           visit(depId);

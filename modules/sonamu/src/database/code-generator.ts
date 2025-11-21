@@ -3,10 +3,7 @@ import equal from "fast-deep-equal";
 import { MigrationColumn, MigrationIndex } from "../types/types";
 
 export class CodeGenerator {
-  getAlterColumnsTo(
-    entityColumns: MigrationColumn[],
-    dbColumns: MigrationColumn[]
-  ) {
+  getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
     const columnsTo = {
       add: [] as MigrationColumn[],
       drop: [] as MigrationColumn[],
@@ -26,27 +23,14 @@ export class CodeGenerator {
     }
 
     // 동일 컬럼명의 세부 필드 비교
-    const sameDbColumns = _.intersectionBy(
-      dbColumns,
-      entityColumns,
-      (col) => col.name
-    );
-    const sameMdColumns = _.intersectionBy(
-      entityColumns,
-      dbColumns,
-      (col) => col.name
-    );
-    columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
-      equal(a, b)
-    );
+    const sameDbColumns = _.intersectionBy(dbColumns, entityColumns, (col) => col.name);
+    const sameMdColumns = _.intersectionBy(entityColumns, dbColumns, (col) => col.name);
+    columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
 
     return columnsTo;
   }
 
-  getAlterIndexesTo(
-    entityIndexes: MigrationIndex[],
-    dbIndexes: MigrationIndex[]
-  ) {
+  getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
     // 인덱스 비교
     let indexesTo = {
       add: [] as MigrationIndex[],
@@ -54,10 +38,10 @@ export class CodeGenerator {
     };
     const extraIndexes = {
       db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//")
+        [col.type, col.columns.join("-")].join("//"),
       ),
       entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//")
+        [col.type, col.columns.join("-")].join("//"),
       ),
     };
     if (extraIndexes.entity.length > 0) {

@@ -32,7 +32,7 @@
     "@types/node": "^20.11.30",
     "@types/prompts": "^2",
     "esbuild": "^0.20.2",
-    "prettier": "^3.2.5",
+    "@biomejs/biome": "^2.3.7",
     "typescript": "^5.4.3",
     "zx": "^7.2.3",
     "ts-node": "^10.9.2"

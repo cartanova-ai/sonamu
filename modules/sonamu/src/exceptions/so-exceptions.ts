@@ -2,7 +2,7 @@ export abstract class SoException extends Error {
   constructor(
     public readonly statusCode: number,
     public message: string,
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(message);
   }
@@ -18,7 +18,7 @@ export function isSoException(err: any): err is SoException {
 export class BadRequestException extends SoException {
   constructor(
     public message = "Bad Request",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(400, message, payload);
   }
@@ -30,7 +30,7 @@ export class BadRequestException extends SoException {
 export class UnauthorizedException extends SoException {
   constructor(
     public message = "Unauthorized",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(401, message, payload);
   }
@@ -42,7 +42,7 @@ export class UnauthorizedException extends SoException {
 export class NotFoundException extends SoException {
   constructor(
     public message = "Not Found",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(404, message, payload);
   }
@@ -54,7 +54,7 @@ export class NotFoundException extends SoException {
 export class ServiceUnavailableException extends SoException {
   constructor(
     public message = "Service Unavailable",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(503, message, payload);
   }
@@ -66,7 +66,7 @@ export class ServiceUnavailableException extends SoException {
 export class InternalServerErrorException extends SoException {
   constructor(
     public message = "Internal Server Error",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(500, message, payload);
   }
@@ -78,7 +78,7 @@ export class InternalServerErrorException extends SoException {
 export class AlreadyProcessedException extends SoException {
   constructor(
     public message = "Already Processed",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(541, message, payload);
   }
@@ -90,7 +90,7 @@ export class AlreadyProcessedException extends SoException {
 export class DuplicateRowException extends SoException {
   constructor(
     public message = "Duplicate Row",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(542, message, payload);
   }
@@ -102,7 +102,7 @@ export class DuplicateRowException extends SoException {
 export class TargetNotFoundException extends SoException {
   constructor(
     public message = "Target Not Found",
-    public payload?: unknown
+    public payload?: unknown,
   ) {
     super(520, message, payload);
   }

@@ -40,7 +40,7 @@ class OpenAIClass {
 
     this.isInit = true;
     console.log(
-      `Assistant instructions can be edited at: \x1b]8;;https://platform.openai.com/assistants/${this.assistantId}\x07https://platform.openai.com/assistants/${this.assistantId}\x1b]8;;\x07`
+      `Assistant instructions can be edited at: \x1b]8;;https://platform.openai.com/assistants/${this.assistantId}\x07https://platform.openai.com/assistants/${this.assistantId}\x1b]8;;\x07`,
     );
   }
 
@@ -61,22 +61,15 @@ class OpenAIClass {
   }
 
   async getMessage(id: string) {
-    const message = await this.openai.beta.threads.messages.retrieve(
-      this.threadId,
-      id
-    );
+    const message = await this.openai.beta.threads.messages.retrieve(this.threadId, id);
     return {
       id: message.id,
-      content:
-        message.content[0].type === "text" ? message.content[0].text.value : "",
+      content: message.content[0].type === "text" ? message.content[0].text.value : "",
     };
   }
 
   async getMessages(query?: MessageListParams) {
-    const res = await this.openai.beta.threads.messages.list(
-      this.threadId,
-      query
-    );
+    const res = await this.openai.beta.threads.messages.list(this.threadId, query);
     return res.data.map((m) => ({
       id: m.id,
       content: m.content[0].type === "text" ? m.content[0].text.value : "",
@@ -100,7 +93,7 @@ class OpenAIClass {
     return this.openai.beta.threads.runs.createAndPoll(
       this.threadId,
       { assistant_id: this.assistantId },
-      { pollIntervalMs: 100 }
+      { pollIntervalMs: 100 },
     );
   }
 
@@ -131,11 +124,7 @@ class OpenAIClass {
     const assistant = await this.findSonamuAssistant();
     if (assistant) return assistant.id;
 
-    const instructionsPath = path.join(
-      import.meta.dirname,
-      "..",
-      "openai.instructions.md"
-    );
+    const instructionsPath = path.join(import.meta.dirname, "..", "openai.instructions.md");
     const instructions = readFileSync(instructionsPath, "utf-8");
     return this.createAssistant(instructions);
   }
@@ -153,9 +142,7 @@ class OpenAIClass {
     let page = await this.openai.beta.assistants.list();
 
     while (true) {
-      const assistant = page.data.find((a) =>
-        this.isSonamuMetadata(a.metadata)
-      );
+      const assistant = page.data.find((a) => this.isSonamuMetadata(a.metadata));
       if (assistant) return assistant;
       if (!page.hasNextPage()) break;
       page = await page.getNextPage();

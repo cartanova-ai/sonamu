@@ -27,14 +27,10 @@ export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
 /*
   Utility Types
 */
-export function zArrayable<T extends z.ZodTypeAny>(
-  shape: T
-): z.ZodUnion<[T, z.ZodArray<T>]> {
+export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
-export type DistributiveOmit<T, K extends keyof any> = T extends any
-  ? Omit<T, K>
-  : never;
+export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 /*
   Model-Defintion
@@ -112,17 +108,8 @@ export type VirtualProp = CommonProp & {
   id: string;
 };
 
-export type RelationType =
-  | "HasMany"
-  | "BelongsToOne"
-  | "ManyToMany"
-  | "OneToOne";
-export type RelationOn =
-  | "CASCADE"
-  | "SET NULL"
-  | "NO ACTION"
-  | "SET DEFAULT"
-  | "RESTRICT";
+export type RelationType = "HasMany" | "BelongsToOne" | "ManyToMany" | "OneToOne";
+export type RelationOn = "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT" | "RESTRICT";
 type _RelationProp = {
   type: "relation";
   name: string;
@@ -323,9 +310,7 @@ export function isRelationProp(p: any): p is RelationProp {
 export function isOneToOneRelationProp(p: any): p is OneToOneRelationProp {
   return p?.relationType === "OneToOne";
 }
-export function isBelongsToOneRelationProp(
-  p: any
-): p is BelongsToOneRelationProp {
+export function isBelongsToOneRelationProp(p: any): p is BelongsToOneRelationProp {
   return p?.relationType === "BelongsToOne";
 }
 export function isHasManyRelationProp(p: any): p is HasManyRelationProp {
@@ -846,10 +831,7 @@ export type RelationNode = {
 };
 
 export interface DatabaseSchemaExtend {}
-export type ManyToManyBaseSchema<
-  FromIdKey extends string,
-  ToIdKey extends string,
-> = {
+export type ManyToManyBaseSchema<FromIdKey extends string, ToIdKey extends string> = {
   id: number;
 } & {
   [K in `${FromIdKey}_id`]: number;
@@ -859,13 +841,10 @@ export type ManyToManyBaseSchema<
 
 export type SonamuFastifyConfig = {
   contextProvider: (
-    defaultContext: Pick<
-      Context,
-      "request" | "reply" | "headers" | "createSSE" | "naiteStore"
-    > &
+    defaultContext: Pick<Context, "request" | "reply" | "headers" | "createSSE" | "naiteStore"> &
       AuthContext,
     request: FastifyRequest,
-    reply: FastifyReply
+    reply: FastifyReply,
   ) => Context | Promise<Context>;
   guardHandler: (
     guard: GuardKey,
@@ -878,7 +857,7 @@ export type SonamuFastifyConfig = {
       methodName: string;
       path: string;
       options: ApiDecoratorOptions;
-    }
+    },
   ) => void;
   cache?: {
     get: (key: string) => Promise<unknown | null>;
@@ -887,7 +866,7 @@ export type SonamuFastifyConfig = {
       path: string,
       reqBody: {
         [key: string]: unknown;
-      }
+      },
     ) =>
       | {
           cache: false;

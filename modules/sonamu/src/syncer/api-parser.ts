@@ -14,14 +14,16 @@ import { AbsolutePath } from "../utils/path-utils";
  * @returns API 메소드 정보 배열 (타입 파라미터, 파라미터, 리턴 타입 등)
  */
 export async function readApisFromFile(filePath: AbsolutePath) {
-  if (!filePath.endsWith(".ts")) { 
-    throw new Error(`${filePath} does not seem to be a TypeScript file. Please check the file path. We only support parsing TypeScript files.`);
+  if (!filePath.endsWith(".ts")) {
+    throw new Error(
+      `${filePath} does not seem to be a TypeScript file. Please check the file path. We only support parsing TypeScript files.`,
+    );
   }
-  
+
   const sourceFile = ts.createSourceFile(
     filePath,
     (await readFile(filePath)).toString(),
-    ts.ScriptTarget.Latest
+    ts.ScriptTarget.Latest,
   );
 
   const methods: Omit<ExtendedApi, "path" | "options">[] = [];
@@ -38,19 +40,17 @@ export async function readApisFromFile(filePath: AbsolutePath) {
         methodName = node.name.escapedText.toString();
       }
 
-      const typeParameters: ApiParamType.TypeParam[] = (
-        node.typeParameters ?? []
-      ).map((typeParam) => {
-        const tp = typeParam as ts.TypeParameterDeclaration;
+      const typeParameters: ApiParamType.TypeParam[] = (node.typeParameters ?? []).map(
+        (typeParam) => {
+          const tp = typeParam as ts.TypeParameterDeclaration;
 
-        return {
-          t: "type-param",
-          id: tp.name.escapedText.toString(),
-          constraint: tp.constraint
-            ? resolveTypeNode(tp.constraint)
-            : undefined,
-        };
-      });
+          return {
+            t: "type-param",
+            id: tp.name.escapedText.toString(),
+            constraint: tp.constraint ? resolveTypeNode(tp.constraint) : undefined,
+          };
+        },
+      );
       const parameters: ApiParam[] = node.parameters.map((paramDec, index) => {
         const defaultDef = printNode(paramDec.initializer, sourceFile);
 
@@ -60,18 +60,14 @@ export async function readApisFromFile(filePath: AbsolutePath) {
           {
             name: paramDec.name,
             type: paramDec.type as ts.TypeNode,
-            optional:
-              paramDec.questionToken !== undefined ||
-              paramDec.initializer !== undefined,
+            optional: paramDec.questionToken !== undefined || paramDec.initializer !== undefined,
             defaultDef,
           },
-          index
+          index,
         );
       });
       if (node.type === undefined) {
-        throw new Error(
-          `리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`
-        );
+        throw new Error(`리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`);
       }
       const returnType = resolveTypeNode(node.type!);
 
@@ -94,9 +90,7 @@ export async function readApisFromFile(filePath: AbsolutePath) {
   // 현재 파일의 등록된 API 필터
   const currentModelApis = registeredApis.filter((api) => {
     return methods.find(
-      (method) =>
-        method.modelName === api.modelName &&
-        method.methodName === api.methodName
+      (method) => method.modelName === api.modelName && method.methodName === api.methodName,
     );
   });
   if (currentModelApis.length === 0) {
@@ -109,9 +103,7 @@ export async function readApisFromFile(filePath: AbsolutePath) {
   // 등록된 API에 현재 메소드 타입 정보 확장
   const extendedApis = currentModelApis.map((api) => {
     const foundMethod = methods.find(
-      (method) =>
-        method.modelName === api.modelName &&
-        method.methodName === api.methodName
+      (method) => method.modelName === api.modelName && method.methodName === api.methodName,
     );
     return {
       ...api,
@@ -185,9 +177,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
 
             return resolveParamDec({
               name: {
-                escapedText: `[${res.name}${res.optional ? "?" : ""}: ${
-                  res.type
-                }]`,
+                escapedText: `[${res.name}${res.optional ? "?" : ""}: ${res.type}]`,
               } as ts.Identifier,
               type: member.type as ts.TypeNode,
             });
@@ -195,8 +185,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
             return resolveParamDec({
               name: (member as ts.PropertySignature).name as ts.Identifier,
               type: (member as ts.PropertySignature).type as ts.TypeNode,
-              optional:
-                (member as ts.PropertySignature).questionToken !== undefined,
+              optional: (member as ts.PropertySignature).questionToken !== undefined,
             });
           }
         }),
@@ -204,36 +193,26 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
     case ts.SyntaxKind.TypeReference:
       return {
         t: "ref",
-        id: (
-          (typeNode as ts.TypeReferenceNode).typeName as ts.Identifier
-        ).escapedText.toString(),
+        id: ((typeNode as ts.TypeReferenceNode).typeName as ts.Identifier).escapedText.toString(),
         args: (typeNode as ts.TypeReferenceNode).typeArguments?.map((typeArg) =>
-          resolveTypeNode(typeArg)
+          resolveTypeNode(typeArg),
         ),
       };
     case ts.SyntaxKind.UnionType:
       return {
         t: "union",
-        types: (typeNode as ts.UnionTypeNode).types.map((type) =>
-          resolveTypeNode(type)
-        ),
+        types: (typeNode as ts.UnionTypeNode).types.map((type) => resolveTypeNode(type)),
       };
     case ts.SyntaxKind.IntersectionType:
       return {
         t: "intersection",
-        types: (typeNode as ts.IntersectionTypeNode).types.map((type) =>
-          resolveTypeNode(type)
-        ),
+        types: (typeNode as ts.IntersectionTypeNode).types.map((type) => resolveTypeNode(type)),
       };
     case ts.SyntaxKind.IndexedAccessType:
       return {
         t: "indexed-access",
-        object: resolveTypeNode(
-          (typeNode as ts.IndexedAccessTypeNode).objectType
-        ),
-        index: resolveTypeNode(
-          (typeNode as ts.IndexedAccessTypeNode).indexType
-        ),
+        object: resolveTypeNode((typeNode as ts.IndexedAccessTypeNode).objectType),
+        index: resolveTypeNode((typeNode as ts.IndexedAccessTypeNode).indexType),
       };
     case ts.SyntaxKind.TupleType:
       if (ts.isTupleTypeNode(typeNode)) {
@@ -258,7 +237,7 @@ function resolveParamDec(
     optional?: boolean;
     defaultDef?: string;
   },
-  index: number = 0
+  index: number = 0,
 ): ApiParam {
   const name = paramDec.name as ts.Identifier;
   const type = resolveTypeNode(paramDec.type);
@@ -286,10 +265,7 @@ function resolveParamDec(
   return result;
 }
 
-function printNode(
-  node: ts.Node | undefined,
-  sourceFile: ts.SourceFile
-): string | undefined {
+function printNode(node: ts.Node | undefined, sourceFile: ts.SourceFile): string | undefined {
   if (node === undefined) {
     return undefined;
   }

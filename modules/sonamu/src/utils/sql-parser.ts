@@ -34,7 +34,7 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
     (Array.isArray(ast) ? ast : [ast]).flatMap((a) =>
       a.type === "select" || a.type === "update" || a.type === "delete"
         ? extractTableNames(a.where)
-        : []
-    )
+        : [],
+    ),
   );
 }

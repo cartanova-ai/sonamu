@@ -4,10 +4,7 @@ import { AbsolutePath } from "./path-utils";
 
 export async function findAppRootPath(): Promise<AbsolutePath> {
   const apiRootPath = findApiRootPath();
-  return apiRootPath
-    .split(path.sep)
-    .slice(0, -1)
-    .join(path.sep) as AbsolutePath;
+  return apiRootPath.split(path.sep).slice(0, -1).join(path.sep) as AbsolutePath;
 }
 
 export function findApiRootPath(): AbsolutePath {

@@ -39,14 +39,10 @@ export class Migrator {
 
       const applyDBs = [devDB, testDB, fixtureLocalDB];
       if (
-        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
-          .host !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
-            .host ||
-        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig)
-          .database !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig)
-            .database
+        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig).host !==
+          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host ||
+        (dbConfig.fixture_local.connection as Knex.MySql2ConnectionConfig).database !==
+          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).database
       ) {
         const fixtureRemoteDB = knex(dbConfig.fixture_remote);
         applyDBs.push(fixtureRemoteDB);
@@ -105,7 +101,7 @@ export class Migrator {
     const codes = await this.getMigrationCodes();
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
-      (key) => key.endsWith("_slave") === false
+      (key) => key.endsWith("_slave") === false,
     ) as (keyof typeof Sonamu.dbConfig)[];
 
     const statuses = await Promise.all(
@@ -119,18 +115,16 @@ export class Migrator {
           } catch (err) {
             console.warn(
               chalk.yellow(
-                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`
-              )
+                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
+              ),
             );
-            return "error" /*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/;
+            return "error"; /*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/
           }
         })();
         const pending = await (async () => {
           try {
             const [, fdList] = await tConn.migrate.list();
-            return fdList.map((fd: { file: string }) =>
-              fd.file.replace(".ts", "")
-            );
+            return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
           } catch (err) {
             return [];
           }
@@ -143,8 +137,7 @@ export class Migrator {
           }
         })();
 
-        const connection =
-          knexOptions.connection as Knex.MySql2ConnectionConfig;
+        const connection = knexOptions.connection as Knex.MySql2ConnectionConfig;
 
         await tConn.destroy();
 
@@ -158,7 +151,7 @@ export class Migrator {
           status,
           pending,
         };
-      })
+      }),
     );
 
     const preparedCodes: GenMigrationCode[] = await (async () => {
@@ -166,8 +159,8 @@ export class Migrator {
       if (status0conn === undefined) {
         console.warn(
           chalk.yellow(
-            `While trying to prepare migration codes, we found that there is no database to compare migrations. We need at least one database where every migration is applied(status === 0). You might want to apply your existing migrations to one of the databases.`
-          )
+            `While trying to prepare migration codes, we found that there is no database to compare migrations. We need at least one database where every migration is applied(status === 0). You might want to apply your existing migrations to one of the databases.`,
+          ),
         );
         return [];
       }
@@ -208,7 +201,7 @@ export class Migrator {
    */
   async runAction(
     action: "apply" | "rollback",
-    targets: (keyof SonamuDBConfig)[]
+    targets: (keyof SonamuDBConfig)[],
   ): Promise<
     {
       connKey: string;
@@ -227,7 +220,7 @@ export class Migrator {
       ({ options }) =>
         `${(options.connection as Knex.MySql2ConnectionConfig).host}:${
           (options.connection as Knex.MySql2ConnectionConfig).port ?? 3306
-        }/${(options.connection as Knex.MySql2ConnectionConfig).database}`
+        }/${(options.connection as Knex.MySql2ConnectionConfig).database}`,
     );
 
     // get connections
@@ -235,7 +228,7 @@ export class Migrator {
       configs.map(async (config) => ({
         connKey: config.connKey,
         knex: knex(config.options),
-      }))
+      })),
     );
 
     // action
@@ -250,7 +243,7 @@ export class Migrator {
                 batchNo,
                 applied,
               };
-            })
+            }),
           );
         case "rollback":
           return Promise.all(
@@ -261,7 +254,7 @@ export class Migrator {
                 batchNo,
                 applied,
               };
-            })
+            }),
           );
       }
     })();
@@ -270,7 +263,7 @@ export class Migrator {
     await Promise.all(
       conns.map(({ knex }) => {
         return knex.destroy();
-      })
+      }),
     );
 
     return result;
@@ -288,18 +281,14 @@ export class Migrator {
     const { conns } = await this.getStatus();
     if (
       conns.some((conn) => {
-        return codeNames.some(
-          (codeName) => conn.pending.includes(codeName) === false
-        );
+        return codeNames.some((codeName) => conn.pending.includes(codeName) === false);
       })
     ) {
-      throw new Error(
-        "You cannot delete a migration file if there is already applied."
-      );
+      throw new Error("You cannot delete a migration file if there is already applied.");
     }
 
     const delFiles = codeNames.map(
-      (codeName) => `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`
+      (codeName) => `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`,
     );
 
     const res = await Promise.all(
@@ -310,15 +299,14 @@ export class Migrator {
           return delFiles.includes(".ts") ? 1 : 0;
         }
         return 0;
-      })
+      }),
     );
     return _.sum(res);
   }
 
   private genDateTag(index: number, baseDate: Date = new Date()): string {
     const date = new Date(baseDate.getTime() + index * 1000);
-    const pad = (num: number, size: number = 2) =>
-      num.toString().padStart(size, "0");
+    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
     return (
       date.getFullYear().toString() +
       pad(date.getMonth() + 1) +
@@ -413,7 +401,7 @@ export class Migrator {
     if (pendingList.length > 0) {
       console.log(
         chalk.red("pending 된 마이그레이션이 존재합니다."),
-        pendingList.map((pending: any) => pending.file)
+        pendingList.map((pending: any) => pending.file),
       );
 
       // pending이 있는 경우 Shadow DB 테스트 진행 여부 컨펌
@@ -433,14 +421,12 @@ export class Migrator {
       await Promise.all(
         this.targets.apply.map(async (applyDb) => {
           const label = chalk.green(
-            `APPLIED ${
-              applyDb.client.connectionSettings.host
-            } ${applyDb.client.database()}`
+            `APPLIED ${applyDb.client.connectionSettings.host} ${applyDb.client.database()}`,
           );
           console.time(label);
           const [,] = await applyDb.migrate.latest();
           console.timeEnd(label);
-        })
+        }),
       );
     }
 
@@ -497,7 +483,7 @@ export class Migrator {
       this.targets.apply.map(async (db) => {
         await db.migrate.forceFreeMigrationsLock();
         return db.migrate.rollback(undefined, false);
-      })
+      }),
     );
     console.dir({ rollbackAllResult }, { depth: null });
     console.timeEnd(chalk.red("rollback:"));
@@ -518,21 +504,16 @@ export class Migrator {
   > {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
-    const tdbConn = Sonamu.dbConfig.test
-      .connection as Knex.MySql2ConnectionConfig;
+    const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
     const shadowDatabase = tdbConn.database + "__migration_shadow";
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
     // 테스트DB 덤프 후 Database명 치환
-    console.log(
-      chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`)
-    );
+    console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
     execSync(
-      `mysqldump -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`
+      `mysqldump -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`,
     );
-    execSync(
-      `sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`
-    );
+    execSync(`sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`);
 
     // 기존 ShadowDB 리셋
     console.log(chalk.magenta(`${shadowDatabase} 리셋`));
@@ -542,7 +523,7 @@ export class Migrator {
     // ShadowDB 테이블 + 데이터 생성
     console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
     execSync(
-      `mysql -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`
+      `mysql -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`,
     );
 
     // shadow db 테스트 진행
@@ -605,7 +586,7 @@ export class Migrator {
       this.targets.apply.map(async (db) => {
         await db.migrate.forceFreeMigrationsLock();
         return db.migrate.rollback(undefined, true);
-      })
+      }),
     );
     console.log({ rollbackAllResult });
     console.timeEnd(chalk.red("rollback-all:"));
@@ -617,44 +598,37 @@ export class Migrator {
     console.timeEnd(chalk.red("delete migration files"));
   }
 
-  private async compareMigrations(
-    compareDB: Knex
-  ): Promise<GenMigrationCode[]> {
+  private async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
     // Entity 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
     // 조인테이블 포함하여 Entity에서 MigrationSet 추출
     const entitySetsWithJoinTable = entityIds
       .filter((entityId) => EntityManager.get(entityId).props.length > 0)
-      .map((entityId) =>
-        getMigrationSetFromEntity(EntityManager.get(entityId))
-      );
+      .map((entityId) => getMigrationSetFromEntity(EntityManager.get(entityId)));
 
     // 조인테이블만 추출
     const joinTablesWithDup = entitySetsWithJoinTable
       .map((entitySet) => entitySet.joinTables)
       .flat();
     // 중복 제거 (중복인 경우 indexes를 병합)
-    const joinTables = Object.values(
-      _.groupBy(joinTablesWithDup, (jt) => jt.table)
-    ).map((tables) => {
-      if (tables.length === 1) {
-        return tables[0];
-      }
-      return {
-        ...tables[0],
-        indexes: _.uniqBy(
-          tables.flatMap((t) => t.indexes),
-          (index) => [index.type, ...index.columns.sort()].join("-")
-        ),
-      };
-    });
+    const joinTables = Object.values(_.groupBy(joinTablesWithDup, (jt) => jt.table)).map(
+      (tables) => {
+        if (tables.length === 1) {
+          return tables[0];
+        }
+        return {
+          ...tables[0],
+          indexes: _.uniqBy(
+            tables.flatMap((t) => t.indexes),
+            (index) => [index.type, ...index.columns.sort()].join("-"),
+          ),
+        };
+      },
+    );
 
     // 조인테이블 포함하여 MigrationSet 배열
-    const entitySets: MigrationSet[] = [
-      ...entitySetsWithJoinTable,
-      ...joinTables,
-    ];
+    const entitySets: MigrationSet[] = [...entitySetsWithJoinTable, ...joinTables];
 
     const codes: GenMigrationCode[] = (
       await Promise.all(
@@ -668,7 +642,7 @@ export class Migrator {
             // 기존 테이블 존재하는 케이스
             return await generateAlterCode(entitySet, dbSet);
           }
-        })
+        }),
       )
     ).flat();
 
@@ -697,7 +671,7 @@ export class Migrator {
     await Promise.all(
       this.targets.apply.map((db) => {
         return db.destroy();
-      })
+      }),
     );
   }
 }

@@ -62,8 +62,7 @@ class DBClass {
           config =
             which === "w"
               ? dbConfig["development_master"]
-              : (dbConfig["development_slave"] ??
-                dbConfig["development_master"]);
+              : (dbConfig["development_slave"] ?? dbConfig["development_master"]);
           break;
         case "production":
           config =
@@ -72,9 +71,7 @@ class DBClass {
               : (dbConfig["production_slave"] ?? dbConfig["production_master"]);
           break;
         default:
-          throw new Error(
-            `현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`
-          );
+          throw new Error(`현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`);
       }
       this[instanceName] = knex(config);
     }
@@ -109,7 +106,7 @@ class DBClass {
           ...config.defaultOptions?.connection,
         },
       },
-      config.defaultOptions
+      config.defaultOptions,
     );
 
     // 로컬 환경 설정
@@ -131,12 +128,7 @@ class DBClass {
     const devMasterOptions = config.environments?.development;
     const devSlaveOptions = config.environments?.development_slave;
     const development_master = _.merge({}, defaultKnexConfig, devMasterOptions);
-    const development_slave = _.merge(
-      {},
-      defaultKnexConfig,
-      devMasterOptions,
-      devSlaveOptions
-    );
+    const development_slave = _.merge({}, defaultKnexConfig, devMasterOptions, devSlaveOptions);
     // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
     const fixture_remote = _.merge(
       {},
@@ -147,19 +139,14 @@ class DBClass {
           database: `${config.name}_fixture_remote`,
         },
       },
-      config.environments?.remote_fixture
+      config.environments?.remote_fixture,
     );
 
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};
     const prodSlaveOptions = config.environments?.production_slave ?? {};
     const production_master = _.merge({}, defaultKnexConfig, prodMasterOptions);
-    const production_slave = _.merge(
-      {},
-      defaultKnexConfig,
-      prodMasterOptions,
-      prodSlaveOptions
-    );
+    const production_slave = _.merge({}, defaultKnexConfig, prodMasterOptions, prodSlaveOptions);
 
     return {
       test,

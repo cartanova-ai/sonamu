@@ -51,6 +51,6 @@ export function getChecksumPatternGroupInAbsolutePath(): GlobPattern<AbsolutePat
     Object.entries(checksumPatternGroup).map(([key, value]) => [
       key,
       path.join(Sonamu.apiRootPath, value), // API 상대 경로 → 절대 경로
-    ])
+    ]),
   ) as GlobPattern<AbsolutePath>;
 }

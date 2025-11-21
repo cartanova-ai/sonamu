@@ -6,10 +6,7 @@ import chalk from "chalk";
 import { DBPreset } from "./db";
 import { OmitMetadataColumns } from "./puri.types";
 
-type TableName<TSchema extends DatabaseSchemaExtend> = Extract<
-  keyof TSchema,
-  string
->;
+type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
 
 export type TransactionalOptions = {
   isolation?: Exclude<Knex.IsolationLevels, "snapshot">; // snapshot: mssql only
@@ -17,12 +14,10 @@ export type TransactionalOptions = {
   readOnly?: boolean;
 };
 
-export class PuriWrapper<
-  TSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend,
-> {
+export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaExtend> {
   constructor(
     public knex: Knex,
-    public upsertBuilder: UpsertBuilder
+    public upsertBuilder: UpsertBuilder,
   ) {}
 
   raw(sql: string): Knex.Raw {
@@ -31,63 +26,47 @@ export class PuriWrapper<
 
   // 테이블명으로 시작
   from<TTable extends keyof TSchema>(
-    tableName: TTable
-  ): Puri<
-    TSchema,
-    Record<TTable, TSchema[TTable]>,
-    OmitMetadataColumns<TSchema[TTable]>
-  >;
+    tableName: TTable,
+  ): Puri<TSchema, Record<TTable, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
   // 테이블명 + Alias로 시작
-  from<TTable extends keyof TSchema, TAlias extends string>(spec: {
-    [K in TAlias]: TTable;
-  }): Puri<
-    TSchema,
-    Record<TAlias, TSchema[TTable]>,
-    OmitMetadataColumns<TSchema[TTable]>
-  >;
+  from<TTable extends keyof TSchema, TAlias extends string>(
+    spec: {
+      [K in TAlias]: TTable;
+    },
+  ): Puri<TSchema, Record<TAlias, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
   // 서브쿼리로 시작
-  from<TAlias extends string, TSubResult>(spec: {
-    [K in TAlias]: Puri<TSchema, any, TSubResult>;
-  }): Puri<
-    TSchema,
-    Record<TAlias, TSubResult>,
-    OmitMetadataColumns<TSubResult>
-  >;
+  from<TAlias extends string, TSubResult>(
+    spec: {
+      [K in TAlias]: Puri<TSchema, any, TSubResult>;
+    },
+  ): Puri<TSchema, Record<TAlias, TSubResult>, OmitMetadataColumns<TSubResult>>;
   from(spec: any): any {
     return new Puri(this.knex, spec);
   }
 
   // 테이블명으로 시작
   table<TTable extends keyof TSchema>(
-    tableName: TTable
-  ): Puri<
-    TSchema,
-    Record<TTable, TSchema[TTable]>,
-    OmitMetadataColumns<TSchema[TTable]>
-  >;
+    tableName: TTable,
+  ): Puri<TSchema, Record<TTable, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
   // 테이블명 + Alias로 시작
-  table<TTable extends keyof TSchema, TAlias extends string>(spec: {
-    [K in TAlias]: TTable;
-  }): Puri<
-    TSchema,
-    Record<TAlias, TSchema[TTable]>,
-    OmitMetadataColumns<TSchema[TTable]>
-  >;
+  table<TTable extends keyof TSchema, TAlias extends string>(
+    spec: {
+      [K in TAlias]: TTable;
+    },
+  ): Puri<TSchema, Record<TAlias, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
   // 서브쿼리로 시작
-  table<TAlias extends string, TSubResult>(spec: {
-    [K in TAlias]: Puri<TSchema, any, TSubResult>;
-  }): Puri<
-    TSchema,
-    Record<TAlias, TSubResult>,
-    OmitMetadataColumns<TSubResult>
-  >;
+  table<TAlias extends string, TSubResult>(
+    spec: {
+      [K in TAlias]: Puri<TSchema, any, TSubResult>;
+    },
+  ): Puri<TSchema, Record<TAlias, TSubResult>, OmitMetadataColumns<TSubResult>>;
   table(spec: any): any {
     return new Puri(this.knex, spec);
   }
 
   async transaction<T>(
     callback: (trx: PuriTransactionWrapper) => Promise<T>,
-    options: TransactionalOptions = {}
+    options: TransactionalOptions = {},
   ): Promise<T> {
     const { isolation, readOnly, dbPreset = "w" } = options;
 
@@ -98,7 +77,7 @@ export class PuriWrapper<
     // AsyncLocalStorage 컨텍스트가 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
     const startTransaction = async (
       knex: Knex | Knex.Transaction,
-      upsertBuilder: UpsertBuilder
+      upsertBuilder: UpsertBuilder,
     ) => {
       return knex.transaction(
         async (trx) => {
@@ -114,15 +93,13 @@ export class PuriWrapper<
             DB.getTransactionContext().deleteTransaction(dbPreset);
           }
         },
-        { isolationLevel: isolation, readOnly }
+        { isolationLevel: isolation, readOnly },
       );
     };
 
     // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
     if (!existingContext) {
-      return DB.runWithTransaction(() =>
-        startTransaction(this.knex, this.upsertBuilder)
-      );
+      return DB.runWithTransaction(() => startTransaction(this.knex, this.upsertBuilder));
     }
 
     // 해당 preset의 트랜잭션이 이미 있으면 SAVEPOINT로 중첩 트랜잭션 생성
@@ -139,41 +116,30 @@ export class PuriWrapper<
     tableName: TTable,
     row: Partial<{
       [K in keyof TSchema[TTable]]: TSchema[TTable][K] | UBRef;
-    }>
+    }>,
   ): UBRef {
     return this.upsertBuilder.register(tableName, row);
   }
 
-  ubUpsert(
-    tableName: TableName<TSchema>,
-    chunkSize?: number
-  ): Promise<number[]> {
+  ubUpsert(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
     return this.upsertBuilder.upsert(this.knex, tableName, chunkSize);
   }
 
-  ubInsertOnly(
-    tableName: TableName<TSchema>,
-    chunkSize?: number
-  ): Promise<number[]> {
+  ubInsertOnly(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
     return this.upsertBuilder.insertOnly(this.knex, tableName, chunkSize);
   }
 
   ubUpsertOrInsert(
     tableName: TableName<TSchema>,
     mode: "upsert" | "insert",
-    chunkSize?: number
+    chunkSize?: number,
   ): Promise<number[]> {
-    return this.upsertBuilder.upsertOrInsert(
-      this.knex,
-      tableName,
-      mode,
-      chunkSize
-    );
+    return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, chunkSize);
   }
 
   ubUpdateBatch(
     tableName: TableName<TSchema>,
-    options?: { chunkSize?: number; where?: string | string[] }
+    options?: { chunkSize?: number; where?: string | string[] },
   ): Promise<void> {
     return this.upsertBuilder.updateBatch(this.knex, tableName, options);
   }
@@ -186,9 +152,7 @@ export class PuriWrapper<
 
   private async getTransactionInfo(): Promise<string> {
     // 연결 ID 조회
-    const [connectionIdRows] = await this.knex.raw(
-      `SELECT CONNECTION_ID() as connection_id`
-    );
+    const [connectionIdRows] = await this.knex.raw(`SELECT CONNECTION_ID() as connection_id`);
     const connectionId = connectionIdRows[0].connection_id;
 
     // 트랜잭션 정보 조회
@@ -213,7 +177,7 @@ export class PuriWrapper<
 export class PuriTransactionWrapper extends PuriWrapper {
   constructor(
     public trx: Knex.Transaction,
-    public upsertBuilder: UpsertBuilder
+    public upsertBuilder: UpsertBuilder,
   ) {
     super(trx, upsertBuilder);
   }

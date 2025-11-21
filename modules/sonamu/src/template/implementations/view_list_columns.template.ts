@@ -15,11 +15,7 @@ export class Template__view_list_columns extends Template {
   }
 
   // 컬럼
-  render({
-    entityId,
-    columns,
-    columnImports,
-  }: TemplateOptions["view_list_columns"]) {
+  render({ entityId, columns, columnImports }: TemplateOptions["view_list_columns"]) {
     const names = EntityManager.getNamesFromId(entityId);
 
     return {
@@ -35,9 +31,7 @@ import {
 } from 'semantic-ui-react';
 import { DateTime } from "luxon";
 import { TFColumn } from "src/typeframe/iso-types";
-import { ${names.capital}SubsetA } from "src/services/${names.fs}/${
-        names.fs
-      }.generated";
+import { ${names.capital}SubsetA } from "src/services/${names.fs}/${names.fs}.generated";
 ${columnImports}
 
 const columns: { [key in Exclude<keyof ${

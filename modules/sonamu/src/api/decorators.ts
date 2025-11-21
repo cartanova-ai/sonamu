@@ -17,11 +17,7 @@ export interface GuardKeys {
   user: true;
 }
 export type GuardKey = keyof GuardKeys;
-export type ServiceClient =
-  | "axios"
-  | "axios-multipart"
-  | "swr"
-  | "window-fetch";
+export type ServiceClient = "axios" | "axios-multipart" | "swr" | "window-fetch";
 export type ApiDecoratorOptions = {
   httpMethod?: HTTPMethods;
   contentType?:
@@ -82,12 +78,12 @@ export function api(options: ApiDecoratorOptions = {}) {
 
     const defaultPath = `/${inflection.camelize(
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
-      true
+      true,
     )}/${inflection.camelize(propertyKey, true)}`;
 
     // 기존 동일한 메서드가 있는지 확인 후 있는 경우 override
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName
+      (api) => api.modelName === modelName && api.methodName === methodName,
     );
     if (existingApi) {
       existingApi.options = options;
@@ -109,11 +105,11 @@ export function stream(options: StreamDecoratorOptions) {
 
     const defaultPath = `/${inflection.camelize(
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
-      true
+      true,
     )}/${inflection.camelize(propertyKey, true)}`;
 
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName
+      (api) => api.modelName === modelName && api.methodName === methodName,
     );
     if (existingApi) {
       existingApi.options = options;
@@ -135,11 +131,7 @@ export function stream(options: StreamDecoratorOptions) {
 export function transactional(options: TransactionalOptions = {}) {
   const { isolation, readOnly, dbPreset = "w" } = options;
 
-  return function (
-    _target: Object,
-    _propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  return function (_target: Object, _propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (this: any, ...args: any[]) {
@@ -159,10 +151,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
         return puri.knex.transaction(
           async (trx) => {
-            const trxWrapper = new PuriTransactionWrapper(
-              trx,
-              this.getUpsertBuilder()
-            );
+            const trxWrapper = new PuriTransactionWrapper(trx, this.getUpsertBuilder());
             // TransactionContext에 트랜잭션 저장
             DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
 
@@ -173,7 +162,7 @@ export function transactional(options: TransactionalOptions = {}) {
               DB.getTransactionContext().deleteTransaction(dbPreset);
             }
           },
-          { isolationLevel: isolation, readOnly }
+          { isolationLevel: isolation, readOnly },
         );
       };
 
@@ -191,18 +180,14 @@ export function transactional(options: TransactionalOptions = {}) {
 }
 
 export function upload(options: UploadDecoratorOptions = {}) {
-  return function (
-    _target: Object,
-    _propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+  return function (_target: Object, _propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     const modelName = _target.constructor.name.match(/(.+)Class$/)![1];
     const methodName = _propertyKey;
 
     // registeredApis에서 해당 API 찾아서 uploadOptions 추가
     const existingApi = registeredApis.find(
-      (api) => api.modelName === modelName && api.methodName === methodName
+      (api) => api.modelName === modelName && api.methodName === methodName,
     );
     if (existingApi) {
       existingApi.uploadOptions = options;

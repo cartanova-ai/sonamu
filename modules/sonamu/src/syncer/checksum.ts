@@ -8,10 +8,7 @@ import crypto from "crypto";
 import equal from "fast-deep-equal";
 import * as _ from "lodash-es";
 import { Sonamu } from "../api/sonamu";
-import {
-  AbsolutePath,
-  ApiRelativePath,
-} from "../utils/path-utils";
+import { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
 type PathAndChecksum = {
@@ -23,9 +20,7 @@ type PathAndChecksum = {
  * 체크섬 파일에 저장된 내용과 현재 실제 파일의 체크섬을 비교하여 변경된 파일을 찾습니다.
  * @returns 변경된 파일 경로 배열. 프로젝트 루트부터 슬래시로 시작합니다. 예시: "/src/application/user/user.model.ts"
  */
-export async function findChangedFilesUsingChecksums(): Promise<
-  AbsolutePath[]
-> {
+export async function findChangedFilesUsingChecksums(): Promise<AbsolutePath[]> {
   const calculatedChecksums = await getCurrentChecksums();
   const savedChecksums = await getPreviousChecksums();
 
@@ -62,10 +57,7 @@ export async function renewChecksums(): Promise<void> {
  * @param two 파일 경로
  * @returns boolean
  */
-export async function areFilesSame(
-  one: PathLike,
-  two: PathLike
-): Promise<boolean> {
+export async function areFilesSame(one: PathLike, two: PathLike): Promise<boolean> {
   if (!(await exists(one)) || !(await exists(two))) {
     return false;
   }
@@ -79,11 +71,9 @@ export async function areFilesSame(
 async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
   const filePaths = (
     await Promise.all(
-      Object.entries(getChecksumPatternGroupInAbsolutePath()).map(
-        async ([_fileType, pattern]) => {
-          return globAsync(pattern) as Promise<AbsolutePath[]>;
-        }
-      )
+      Object.entries(getChecksumPatternGroupInAbsolutePath()).map(async ([_fileType, pattern]) => {
+        return globAsync(pattern) as Promise<AbsolutePath[]>;
+      }),
     )
   )
     .flat()
@@ -95,7 +85,7 @@ async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
         path: filePath,
         checksum: await getChecksumOfFile(filePath),
       };
-    })
+    }),
   );
 
   return fileChecksums;
@@ -107,12 +97,12 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
     return [];
   }
 
-  const previousChecksums = JSON.parse(
-    await readFile(checksumFilePath, "utf-8")
-  ).map((r: { path: ApiRelativePath; checksum: string }) => ({
-    path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
-    checksum: r.checksum,
-  })) as PathAndChecksum[];
+  const previousChecksums = JSON.parse(await readFile(checksumFilePath, "utf-8")).map(
+    (r: { path: ApiRelativePath; checksum: string }) => ({
+      path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
+      checksum: r.checksum,
+    }),
+  ) as PathAndChecksum[];
   return previousChecksums;
 }
 
@@ -130,9 +120,9 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
         checksum: r.checksum,
       })),
       null,
-      2
+      2,
     ),
-    "utf-8"
+    "utf-8",
   );
   console.log("checksum saved", checksumFilePath);
 }

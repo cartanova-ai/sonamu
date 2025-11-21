@@ -76,14 +76,9 @@ async function examples() {
     .limit(10)
     .debug();
 
-  console.log(
-    `Found ${departmentsWithAvgSalary.length} departments with avg salary`
-  );
+  console.log(`Found ${departmentsWithAvgSalary.length} departments with avg salary`);
   if (departmentsWithAvgSalary[0]) {
-    console.log(
-      "Department with highest avg salary:",
-      departmentsWithAvgSalary[0]
-    );
+    console.log("Department with highest avg salary:", departmentsWithAvgSalary[0]);
   }
 
   // 고급 예제: 여러 서브쿼리를 조인

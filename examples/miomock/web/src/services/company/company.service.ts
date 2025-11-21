@@ -23,10 +23,7 @@ export namespace CompanyService {
     swrOptions?: SwrOptions,
   ): SWRResponse<CompanySubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/company/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/company/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getCompany<T extends CompanySubsetKey>(
@@ -45,10 +42,7 @@ export namespace CompanyService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<CompanySubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/company/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/company/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getCompanies<T extends CompanySubsetKey>(

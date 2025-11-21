@@ -23,10 +23,7 @@ export namespace ProjectService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ProjectSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/project/findById`, { subset, id }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/project/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getProject<T extends ProjectSubsetKey>(
@@ -45,10 +42,7 @@ export namespace ProjectService {
     swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<ProjectSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/project/findMany`, { subset, params }],
-        swrOptions?.conditional,
-      ),
+      handleConditional([`/api/project/findMany`, { subset, params }], swrOptions?.conditional),
     );
   }
   export async function getProjects<T extends ProjectSubsetKey>(

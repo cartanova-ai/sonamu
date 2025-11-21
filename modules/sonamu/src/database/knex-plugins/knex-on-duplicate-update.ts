@@ -21,13 +21,13 @@ export function attachOnDuplicateUpdate() {
             });
           } else {
             throw new Error(
-              "onDuplicateUpdate error: expected column name to be string or object."
+              "onDuplicateUpdate error: expected column name to be string or object.",
             );
           }
 
           return result;
         },
-        { placeholders: [], bindings: [] }
+        { placeholders: [], bindings: [] },
       );
 
       const { sql: originalSQL, bindings: originalBindings } = this.toSQL();
@@ -36,7 +36,7 @@ export function attachOnDuplicateUpdate() {
 
       return this.client.raw(
         `${originalSQL} ON DUPLICATE KEY UPDATE ${placeholders.join(", ")}`,
-        newBindings
+        newBindings,
       );
     });
   } catch {

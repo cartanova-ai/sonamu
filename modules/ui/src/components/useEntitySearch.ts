@@ -21,10 +21,7 @@ class InvertedIndex {
   }
 }
 
-type Item = Pick<
-  ExtendedEntity,
-  "id" | "title" | "props" | "subsets" | "enums" | "enumLabels"
->;
+type Item = Pick<ExtendedEntity, "id" | "title" | "props" | "subsets" | "enums" | "enumLabels">;
 export type SearchResult = {
   item: Pick<Item, "id" | "title">;
   fields: {
@@ -43,10 +40,7 @@ const fieldTypeOrder = {
   enums: 3,
 } as const;
 
-export function useEntitySearch(options?: {
-  items?: Item[];
-  ngramSize?: number;
-}) {
+export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }) {
   const [n, setN] = useState(options?.ngramSize ?? 2);
   const [items, setItems] = useState(options?.items ?? []);
   const [invertedIndex, setInvertedIndex] = useState(new InvertedIndex());
@@ -59,7 +53,7 @@ export function useEntitySearch(options?: {
       }
       return ngrams;
     },
-    [n]
+    [n],
   );
 
   const addToIndex = useCallback(
@@ -69,7 +63,7 @@ export function useEntitySearch(options?: {
         invertedIndex.addToIndex(ngram, index);
       });
     },
-    [generateNgrams, invertedIndex]
+    [generateNgrams, invertedIndex],
   );
 
   const buildIndex = useCallback(() => {
@@ -98,7 +92,7 @@ export function useEntitySearch(options?: {
       setItems(newItems);
       buildIndex();
     },
-    [buildIndex]
+    [buildIndex],
   );
 
   const setNgramSize = useCallback(
@@ -106,7 +100,7 @@ export function useEntitySearch(options?: {
       setN(n);
       buildIndex();
     },
-    [buildIndex]
+    [buildIndex],
   );
 
   const calculateFieldScore = useCallback(
@@ -127,16 +121,13 @@ export function useEntitySearch(options?: {
 
       const queryNgrams = generateNgrams(lowercaseQuery);
       const fieldNgrams = generateNgrams(lowercaseField);
-      const commonNgrams = queryNgrams.filter((ngram) =>
-        fieldNgrams.includes(ngram)
-      );
+      const commonNgrams = queryNgrams.filter((ngram) => fieldNgrams.includes(ngram));
 
-      score +=
-        commonNgrams.length / Math.max(queryNgrams.length, fieldNgrams.length);
+      score += commonNgrams.length / Math.max(queryNgrams.length, fieldNgrams.length);
 
       return score;
     },
-    [generateNgrams]
+    [generateNgrams],
   );
 
   const calculateItemScore = useCallback(
@@ -187,12 +178,10 @@ export function useEntitySearch(options?: {
 
       // Subsets 검사
       Object.entries(item.subsets).forEach(([key, values]) => {
-        const matchedValues = values.filter(
-          (value) => calculateFieldScore(query, value) > 0.2
-        );
+        const matchedValues = values.filter((value) => calculateFieldScore(query, value) > 0.2);
         if (matchedValues.length > 0) {
           const maxSubsetScore = Math.max(
-            ...matchedValues.map((value) => calculateFieldScore(query, value))
+            ...matchedValues.map((value) => calculateFieldScore(query, value)),
           );
           if (maxScore < maxSubsetScore) {
             maxScore = maxSubsetScore;
@@ -238,7 +227,7 @@ export function useEntitySearch(options?: {
 
       return searchResult;
     },
-    [calculateFieldScore]
+    [calculateFieldScore],
   );
 
   const search = useCallback(
@@ -256,10 +245,7 @@ export function useEntitySearch(options?: {
         .filter((result) => result.score > 0.1)
         .sort((a, b) => b.score - a.score);
 
-      const grouped = groupBy(
-        searchResult,
-        (r) => r.item.id + Math.floor(r.score * 10) / 10
-      );
+      const grouped = groupBy(searchResult, (r) => r.item.id + Math.floor(r.score * 10) / 10);
 
       return map(grouped, (group) => {
         const { id, title } = group[0].item;
@@ -295,7 +281,7 @@ export function useEntitySearch(options?: {
           return acc;
         }, [] as SearchResult[]);
     },
-    [generateNgrams, invertedIndex, calculateItemScore, items]
+    [generateNgrams, invertedIndex, calculateItemScore, items],
   );
 
   return {

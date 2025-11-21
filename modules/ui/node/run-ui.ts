@@ -17,9 +17,7 @@ const apiRootPath = process.env.API_ROOT_PATH!;
 const port = parseInt(process.env.UI_PORT || "57000");
 
 if (!projectName || !apiRootPath) {
-  console.error(
-    "❌ PROJECT_NAME and API_ROOT_PATH environment variables are required"
-  );
+  console.error("❌ PROJECT_NAME and API_ROOT_PATH environment variables are required");
   process.exit(1);
 }
 

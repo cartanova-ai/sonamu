@@ -44,6 +44,5 @@ export default defineConfig({
     "vitest",
     "zod",
     "typescript", // ← 추가!
-    "prettier", // ← 혹시 이것도
   ],
 });

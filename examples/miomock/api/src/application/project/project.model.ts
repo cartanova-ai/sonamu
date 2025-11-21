@@ -23,7 +23,7 @@ class ProjectModelClass extends BaseModelClass {
   })
   async findById<T extends ProjectSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<ProjectSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -39,7 +39,7 @@ class ProjectModelClass extends BaseModelClass {
 
   async findOne<T extends ProjectSubsetKey>(
     subset: T,
-    listParams: ProjectListParams
+    listParams: ProjectListParams,
   ): Promise<ProjectSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -57,7 +57,7 @@ class ProjectModelClass extends BaseModelClass {
   })
   async findMany<T extends ProjectSubsetKey>(
     subset: T,
-    params: ProjectListParams = {}
+    params: ProjectListParams = {},
   ): Promise<ListResult<ProjectSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -86,9 +86,7 @@ class ProjectModelClass extends BaseModelClass {
             // } else if (params.search === "field") {
             //   qb.where("projects.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
+            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
           }
         }
 
@@ -144,11 +142,7 @@ class ProjectModelClass extends BaseModelClass {
         .whereNotIn("id", peIds)
         .delete();
 
-      await trx
-        .table("project_tags")
-        .whereIn("project_id", ids)
-        .whereNotIn("id", ptIds)
-        .delete();
+      await trx.table("project_tags").whereIn("project_id", ids).whereNotIn("id", ptIds).delete();
 
       return ids;
     });

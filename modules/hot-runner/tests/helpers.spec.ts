@@ -1,127 +1,127 @@
-import { pEvent } from 'p-event'
-import { test } from '@japa/runner'
+import { pEvent } from "p-event";
+import { test } from "@japa/runner";
 
-import { runNode } from '../src/helpers.js'
+import { runNode } from "../src/helpers.js";
 
-test.group('Child process', () => {
-  test('run typescript file as a child process', async ({ fs, assert }) => {
+test.group("Child process", () => {
+  test("run typescript file as a child process", async ({ fs, assert }) => {
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       process.send('ready')
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
+      script: "foo.ts",
       scriptArgs: [],
-      nodeArgs: ['--import=../tsnode.esm.js'],
-    })
-    const payload = await pEvent(childProcess, 'message', { rejectionEvents: ['error'] })
+      nodeArgs: ["--import=../tsnode.esm.js"],
+    });
+    const payload = await pEvent(childProcess, "message", { rejectionEvents: ["error"] });
 
-    await pEvent(childProcess, 'close', { rejectionEvents: ['error'] })
+    await pEvent(childProcess, "close", { rejectionEvents: ["error"] });
 
-    assert.equal(childProcess.exitCode, 0)
-    assert.equal(payload, 'ready')
-  })
+    assert.equal(childProcess.exitCode, 0);
+    assert.equal(payload, "ready");
+  });
 
-  test('pass arguments to the script', async ({ fs, assert }) => {
+  test("pass arguments to the script", async ({ fs, assert }) => {
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       process.send({ args: process.argv.splice(2) })
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
-      scriptArgs: ['--watch', '--foo=bar'],
-      nodeArgs: ['--import=../tsnode.esm.js'],
-    })
-    const payload = await pEvent(childProcess, 'message', { rejectionEvents: ['error'] })
-    await pEvent(childProcess, 'close', { rejectionEvents: ['error'] })
+      script: "foo.ts",
+      scriptArgs: ["--watch", "--foo=bar"],
+      nodeArgs: ["--import=../tsnode.esm.js"],
+    });
+    const payload = await pEvent(childProcess, "message", { rejectionEvents: ["error"] });
+    await pEvent(childProcess, "close", { rejectionEvents: ["error"] });
 
-    assert.equal(childProcess.exitCode, 0)
-    assert.deepEqual(payload, { args: ['--watch', '--foo=bar'] })
-  })
+    assert.equal(childProcess.exitCode, 0);
+    assert.deepEqual(payload, { args: ["--watch", "--foo=bar"] });
+  });
 
-  test('pass arguments to node', async ({ assert, fs }) => {
+  test("pass arguments to node", async ({ assert, fs }) => {
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       process.send({ args: process.execArgv })
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
-      scriptArgs: ['--watch', '--foo=bar'],
-      nodeArgs: ['--conditions=dev', '--import=tsx'],
-    })
+      script: "foo.ts",
+      scriptArgs: ["--watch", "--foo=bar"],
+      nodeArgs: ["--conditions=dev", "--import=tsx"],
+    });
 
-    const payload = await pEvent(childProcess, 'message', { rejectionEvents: ['error'] })
-    await pEvent(childProcess, 'close', { rejectionEvents: ['error'] })
+    const payload = await pEvent(childProcess, "message", { rejectionEvents: ["error"] });
+    await pEvent(childProcess, "close", { rejectionEvents: ["error"] });
 
-    assert.equal(childProcess.exitCode, 0)
+    assert.equal(childProcess.exitCode, 0);
     assert.deepEqual(payload, {
-      args: ['--enable-source-maps', '--conditions=dev', '--import=tsx'],
-    })
-  })
+      args: ["--enable-source-maps", "--conditions=dev", "--import=tsx"],
+    });
+  });
 
-  test('wait for child process to finish', async ({ fs, assert }) => {
+  test("wait for child process to finish", async ({ fs, assert }) => {
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       setTimeout(() => {}, 1000)
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
+      script: "foo.ts",
       scriptArgs: [],
-      nodeArgs: ['--import=../tsnode.esm.js'],
-    })
-    await pEvent(childProcess, 'close', { rejectionEvents: ['error'] })
-    assert.equal(childProcess.exitCode, 0)
-  })
+      nodeArgs: ["--import=../tsnode.esm.js"],
+    });
+    await pEvent(childProcess, "close", { rejectionEvents: ["error"] });
+    assert.equal(childProcess.exitCode, 0);
+  });
 
-  test('get child process exit code', async ({ fs, assert }) => {
+  test("get child process exit code", async ({ fs, assert }) => {
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       throw new Error('Something went wrong')
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
+      script: "foo.ts",
       scriptArgs: [],
-      nodeArgs: ['--import=../tsnode.esm.js'],
-    })
+      nodeArgs: ["--import=../tsnode.esm.js"],
+    });
 
-    await pEvent(childProcess, 'close', { rejectionEvents: ['error'] })
-    assert.equal(childProcess.exitCode, 1)
-  })
+    await pEvent(childProcess, "close", { rejectionEvents: ["error"] });
+    assert.equal(childProcess.exitCode, 1);
+  });
 
-  test('await and get child process exit code', async ({ fs, assert }) => {
-    assert.plan(1)
+  test("await and get child process exit code", async ({ fs, assert }) => {
+    assert.plan(1);
 
     await fs.create(
-      'foo.ts',
+      "foo.ts",
       `
       throw new Error('Something went wrong')
     `,
-    )
+    );
 
     const childProcess = runNode(fs.basePath, {
-      script: 'foo.ts',
+      script: "foo.ts",
       scriptArgs: [],
-      nodeArgs: ['--import=../tsnode.esm.js'],
-    })
+      nodeArgs: ["--import=../tsnode.esm.js"],
+    });
     try {
-      await childProcess
+      await childProcess;
     } catch {
-      assert.equal(childProcess.exitCode, 1)
+      assert.equal(childProcess.exitCode, 1);
     }
-  })
-})
+  });
+});

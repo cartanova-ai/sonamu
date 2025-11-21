@@ -9,10 +9,7 @@ import { zodTypeToRenderingNode, propToZodType } from "./zod-converter";
  * subset의 필드들을 Zod 타입으로 변환한 후 UI 렌더링용 노드로 만듭니다.
  * object와 array의 경우 적절한 pick 필드를 자동으로 선택합니다.
  */
-export async function getColumnsNode(
-  entityId: string,
-  subsetKey: string
-): Promise<RenderingNode> {
+export async function getColumnsNode(entityId: string, subsetKey: string): Promise<RenderingNode> {
   const entity = EntityManager.get(entityId);
   const subset = entity.subsets[subsetKey];
   if (subset === undefined) {
@@ -24,16 +21,12 @@ export async function getColumnsNode(
     children: propNodes,
   };
 
-  const columnsZodType = (await propNodeToZodType(
-    rootPropNode
-  )) as z.ZodObject<any>;
+  const columnsZodType = (await propNodeToZodType(rootPropNode)) as z.ZodObject<any>;
 
   const columnsNode = zodTypeToRenderingNode(columnsZodType);
   columnsNode.children = columnsNode.children!.map((child) => {
     if (child.renderType === "object") {
-      const pickedCol = child.children!.find((cc) =>
-        ["title", "name"].includes(cc.name)
-      );
+      const pickedCol = child.children!.find((cc) => ["title", "name"].includes(cc.name));
       if (pickedCol) {
         return {
           ...child,
@@ -50,9 +43,7 @@ export async function getColumnsNode(
       child.element &&
       child.element.renderType === "object"
     ) {
-      const pickedCol = child.element!.children!.find((cc) =>
-        ["title", "name"].includes(cc.name)
-      );
+      const pickedCol = child.element!.children!.find((cc) => ["title", "name"].includes(cc.name));
       if (pickedCol) {
         return {
           ...child,
@@ -78,9 +69,7 @@ export async function getColumnsNode(
  * EntityPropNode를 Zod 타입으로 변환합니다.
  * plain, array, object 세 가지 nodeType을 재귀적으로 처리합니다.
  */
-export async function propNodeToZodType(
-  propNode: EntityPropNode
-): Promise<z.ZodTypeAny> {
+export async function propNodeToZodType(propNode: EntityPropNode): Promise<z.ZodTypeAny> {
   if (propNode.nodeType === "plain") {
     return propToZodType(propNode.prop);
   } else if (propNode.nodeType === "array") {
@@ -102,15 +91,11 @@ export async function propNodeToZodType(
       }
     }
   } else if (propNode.nodeType === "object") {
-    const obj = await propNode.children.reduce(
-      async (promise, childPropNode) => {
-        const result = await promise;
-        result[childPropNode.prop!.name] =
-          await propNodeToZodType(childPropNode);
-        return result;
-      },
-      {} as any
-    );
+    const obj = await propNode.children.reduce(async (promise, childPropNode) => {
+      const result = await promise;
+      result[childPropNode.prop!.name] = await propNodeToZodType(childPropNode);
+      return result;
+    }, {} as any);
 
     if (propNode.prop?.nullable === true) {
       return z.object(obj).nullable();

@@ -17,7 +17,7 @@ export async function runWithGracefulShutdown(
   }: { whenThisHappens: NodeJS.Signals; waitForUpTo: number } = {
     whenThisHappens: "SIGUSR2",
     waitForUpTo: 20000,
-  }
+  },
 ): Promise<void> {
   let isRunning = true as boolean;
 

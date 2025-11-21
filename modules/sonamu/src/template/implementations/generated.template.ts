@@ -3,10 +3,7 @@ import { isVirtualProp, TemplateOptions } from "../../types/types";
 import { EntityManager } from "../../entity/entity-manager";
 import { Entity } from "../../entity/entity";
 import { EntityPropNode } from "../../types/types";
-import {
-  propNodeToZodTypeDef,
-  zodTypeToZodCode,
-} from "../../api/code-converters";
+import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
 import { Template } from "../template";
 import { nonNullable } from "../../utils/utils";
 import { Sonamu } from "../../api";
@@ -47,13 +44,7 @@ export class Template__generated extends Template {
       .flat();
 
     // Sort
-    const LABEL_KEY_ORDER = [
-      "Enums",
-      "BaseSchema",
-      "BaseListParams",
-      "Subsets",
-      "SubsetQueries",
-    ];
+    const LABEL_KEY_ORDER = ["Enums", "BaseSchema", "BaseListParams", "Subsets", "SubsetQueries"];
     sourceCodes.sort((a, b) => {
       const [aKey] = a.label.split(":");
       const [bKey] = b.label.split(":");
@@ -81,15 +72,13 @@ export class Template__generated extends Template {
       {
         lines: [],
         importKeys: [],
-      } as Omit<SourceCode, "label">
+      } as Omit<SourceCode, "label">,
     );
 
     // .types.ts의 타입을 참조하는 경우 순환참조(상호참조)가 발생하므로 타입을 가져와 인라인 처리
-    const allTypeKeys = entities
-      .map((entity) => Object.keys(entity.types))
-      .flat();
+    const allTypeKeys = entities.map((entity) => Object.keys(entity.types)).flat();
     const cdImportKeys = sourceCode.importKeys.filter((importKey) =>
-      allTypeKeys.includes(importKey)
+      allTypeKeys.includes(importKey),
     );
     if (cdImportKeys.length > 0) {
       const customScalarLines = cdImportKeys
@@ -110,7 +99,7 @@ export class Template__generated extends Template {
         .flat();
       sourceCode.lines = [...customScalarLines, ...sourceCode.lines];
       sourceCode.importKeys = sourceCode.importKeys.filter(
-        (importKey) => !cdImportKeys.includes(importKey)
+        (importKey) => !cdImportKeys.includes(importKey),
       );
     }
 
@@ -146,7 +135,7 @@ export class Template__generated extends Template {
           .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
           .map(([enumId, enumLabel]) => [
             `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
-              (el) => `"${el}"`
+              (el) => `"${el}"`,
             )}]).describe("${enumId}");`,
             `export type ${enumId} = z.infer<typeof ${enumId}>`,
             `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
@@ -157,10 +146,7 @@ export class Template__generated extends Template {
     };
   }
 
-  getBaseSchemaSourceCode(
-    entity: Entity,
-    importKeys: string[] = []
-  ): SourceCode {
+  getBaseSchemaSourceCode(entity: Entity, importKeys: string[] = []): SourceCode {
     const schemaName = `${entity.names.module}BaseSchema`;
     const propNode: EntityPropNode = {
       nodeType: "object",
@@ -176,9 +162,7 @@ export class Template__generated extends Template {
 
     // fulltext index에 포함된 컬럼들 추출
     const fulltextColumns = _.uniq(
-      entity.indexes
-        .filter((index) => index.type === "fulltext")
-        .flatMap((index) => index.columns)
+      entity.indexes.filter((index) => index.type === "fulltext").flatMap((index) => index.columns),
     );
 
     // virtual props
@@ -290,10 +274,7 @@ z.object({
         })
         .flat(),
       `export type ${entity.names.module}SubsetMapping = {`,
-      ...subsetKeys.map(
-        (subsetKey) =>
-          `  ${subsetKey}: ${entity.names.module}Subset${subsetKey};`
-      ),
+      ...subsetKeys.map((subsetKey) => `  ${subsetKey}: ${entity.names.module}Subset${subsetKey};`),
       "}",
       `export const ${entity.names.module}SubsetKey = z.enum([${subsetKeys
         .map((k) => `"${k}"`)

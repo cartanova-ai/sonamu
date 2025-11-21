@@ -23,9 +23,9 @@ import path from "path";
 import { writeFile } from "fs/promises";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
-import prettier from "prettier";
 import { nonNullable } from "../utils/utils";
 import { exists } from "../utils/fs-utils";
+import { formatCode } from "../utils/formatter";
 
 export class Entity {
   id: string;
@@ -60,16 +60,7 @@ export class Entity {
     };
   } = {};
 
-  constructor({
-    id,
-    parentId,
-    table,
-    title,
-    props,
-    indexes,
-    subsets,
-    enums,
-  }: EntityJson) {
+  constructor({ id, parentId, table, title, props, indexes, subsets, enums }: EntityJson) {
     // id
     this.id = id;
     this.parentId = parentId;
@@ -118,20 +109,13 @@ export class Entity {
     this.enumLabels = enums ?? {};
     this.enums = Object.fromEntries(
       Object.entries(this.enumLabels).map(([key, enumLabel]) => {
-        return [
-          key,
-          z.enum(
-            Object.keys(enumLabel) as unknown as readonly [string, ...string[]]
-          ),
-        ];
-      })
+        return [key, z.enum(Object.keys(enumLabel) as unknown as readonly [string, ...string[]])];
+      }),
     );
 
     // names
     this.names = {
-      parentFs: inflection
-        .dasherize(inflection.underscore(parentId ?? id))
-        .toLowerCase(),
+      parentFs: inflection.dasherize(inflection.underscore(parentId ?? id)).toLowerCase(),
       fs: inflection.dasherize(inflection.underscore(id)).toLowerCase(),
       module: id,
     };
@@ -152,7 +136,7 @@ export class Entity {
   resolveSubsetQuery(
     prefix: string,
     fields: string[],
-    isAlreadyOuterJoined: boolean = false
+    isAlreadyOuterJoined: boolean = false,
   ): SubsetQuery {
     // prefix 치환 (prefix는 ToOneRelation이 복수로 붙은 경우 모두 __로 변경됨)
     prefix = prefix.replace(/\./g, "__");
@@ -172,25 +156,17 @@ export class Entity {
         const fields = subsetGroup[groupKey];
         // 현재 테이블 필드셋은 select, virtual에 추가하고 리턴
         if (groupKey === "") {
-          const realFields = fields.filter(
-            (field) => !isVirtualProp(this.propsDict[field])
-          );
-          const virtualFields = fields.filter((field) =>
-            isVirtualProp(this.propsDict[field])
-          );
+          const realFields = fields.filter((field) => !isVirtualProp(this.propsDict[field]));
+          const virtualFields = fields.filter((field) => isVirtualProp(this.propsDict[field]));
 
           if (prefix === "") {
             // 현재 테이블인 경우
-            r.select = r.select.concat(
-              realFields.map((field) => `${this.table}.${field}`)
-            );
+            r.select = r.select.concat(realFields.map((field) => `${this.table}.${field}`));
             r.virtual = r.virtual.concat(virtualFields);
           } else {
             // 넘어온 테이블인 경우
             r.select = r.select.concat(
-              realFields.map(
-                (field) => `${prefix}.${field} as ${prefix}__${field}`
-              )
+              realFields.map((field) => `${prefix}.${field} as ${prefix}__${field}`),
             );
           }
 
@@ -203,23 +179,16 @@ export class Entity {
         }
         const relEntity = EntityManager.get(relation.with);
 
-        if (
-          isOneToOneRelationProp(relation) ||
-          isBelongsToOneRelationProp(relation)
-        ) {
+        if (isOneToOneRelationProp(relation) || isBelongsToOneRelationProp(relation)) {
           // -One Relation: JOIN 으로 처리
-          const relFields = fields.map((field) =>
-            field.split(".").slice(1).join(".")
-          );
+          const relFields = fields.map((field) => field.split(".").slice(1).join("."));
 
           // -One Relation에서 id 필드만 참조하는 경우 릴레이션 넘기지 않고 리턴
           if (relFields.length === 1 && relFields[0] === "id") {
             if (prefix === "") {
               r.select = r.select.concat(`${this.table}.${groupKey}_id`);
             } else {
-              r.select = r.select.concat(
-                `${prefix}.${groupKey}_id as ${prefix}__${groupKey}_id`
-              );
+              r.select = r.select.concat(`${prefix}.${groupKey}_id as ${prefix}__${groupKey}_id`);
             }
             return r;
           }
@@ -231,10 +200,7 @@ export class Entity {
             }
 
             if (isOneToOneRelationProp(relation)) {
-              if (
-                relation.hasJoinColumn === true &&
-                (relation.nullable ?? false) === false
-              ) {
+              if (relation.hasJoinColumn === true && (relation.nullable ?? false) === false) {
                 return "inner";
               } else {
                 return "outer";
@@ -250,7 +216,7 @@ export class Entity {
           const relSubsetQuery = relEntity.resolveSubsetQuery(
             `${prefix !== "" ? prefix + "." : ""}${groupKey}`,
             relFields,
-            innerOrOuter === "outer"
+            innerOrOuter === "outer",
           );
           r.select = r.select.concat(relSubsetQuery.select);
           r.virtual = r.virtual.concat(relSubsetQuery.virtual);
@@ -271,9 +237,7 @@ export class Entity {
                 to = `${joinAs}.id`;
               } else {
                 from = `${fromTable}.id`;
-                to = `${joinAs}.${inflection.underscore(
-                  this.names.fs.replace(/\-/g, "_")
-                )}_id`;
+                to = `${joinAs}.${inflection.underscore(this.names.fs.replace(/\-/g, "_"))}_id`;
               }
             } else {
               from = `${fromTable}.${relation.name}_id`;
@@ -310,14 +274,9 @@ export class Entity {
           }
 
           r.joins = r.joins.concat(relSubsetQuery.joins);
-        } else if (
-          isHasManyRelationProp(relation) ||
-          isManyToManyRelationProp(relation)
-        ) {
+        } else if (isHasManyRelationProp(relation) || isManyToManyRelationProp(relation)) {
           // -Many Relation: Loader 로 처리
-          const relFields = fields.map((field) =>
-            field.split(".").slice(1).join(".")
-          );
+          const relFields = fields.map((field) => field.split(".").slice(1).join("."));
           const relSubsetQuery = relEntity.resolveSubsetQuery("", relFields);
 
           let manyJoin: SubsetQuery["loaders"][number]["manyJoin"];
@@ -364,7 +323,7 @@ export class Entity {
         virtual: [],
         joins: [],
         loaders: [],
-      } as SubsetQuery
+      } as SubsetQuery,
     );
     return result;
   }
@@ -372,10 +331,7 @@ export class Entity {
   /*
     FieldExpr[] 을 EntityPropNode[] 로 변환
   */
-  fieldExprsToPropNodes(
-    fieldExprs: string[],
-    entity: Entity = this
-  ): EntityPropNode[] {
+  fieldExprsToPropNodes(fieldExprs: string[], entity: Entity = this): EntityPropNode[] {
     const groups = fieldExprs.reduce(
       (result, fieldExpr) => {
         let key, value, elseExpr;
@@ -392,7 +348,7 @@ export class Entity {
       },
       {} as {
         [k: string]: string[];
-      }
+      },
     );
 
     return Object.keys(groups)
@@ -470,11 +426,7 @@ export class Entity {
       .flat();
   }
 
-  getFieldExprs(
-    prefix = "",
-    maxDepth: number = 3,
-    froms: string[] = []
-  ): string[] {
+  getFieldExprs(prefix = "", maxDepth: number = 3, froms: string[] = []): string[] {
     return this.props
       .map((prop) => {
         const propName = [prefix, prop.name].filter((v) => v !== "").join(".");
@@ -491,10 +443,7 @@ export class Entity {
           }
           // 정방향 relation인 경우 recursive 콜
           const relMd = EntityManager.get(prop.with);
-          return relMd.getFieldExprs(propName, maxDepth - 1, [
-            ...froms,
-            this.id,
-          ]);
+          return relMd.getFieldExprs(propName, maxDepth - 1, [...froms, this.id]);
         }
         return propName;
       })
@@ -529,14 +478,11 @@ export class Entity {
     // subset
     if (Object.keys(this.subsets).length > 0) {
       EntityManager.setModulePath(`${this.id}SubsetKey`, `sonamu.generated`);
-      EntityManager.setModulePath(
-        `${this.id}SubsetMapping`,
-        `sonamu.generated`
-      );
+      EntityManager.setModulePath(`${this.id}SubsetMapping`, `sonamu.generated`);
       Object.keys(this.subsets).map((subsetKey) => {
         EntityManager.setModulePath(
           `${this.id}Subset${subsetKey.toUpperCase()}`,
-          `sonamu.generated`
+          `sonamu.generated`,
         );
       });
     }
@@ -550,7 +496,7 @@ export class Entity {
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
     const typesFileDistPath = path.join(
       Sonamu.apiRootPath,
-      `dist/application/${typesModulePath}.js`
+      `dist/application/${typesModulePath}.js`,
     );
 
     if (await exists(typesFileDistPath)) {
@@ -593,25 +539,17 @@ export class Entity {
     const subsetRows = this.getSubsetRows();
     this.subsets = Object.fromEntries(
       Object.entries(this.subsets).map(([subsetKey]) => {
-        return [
-          subsetKey,
-          this.subsetRowsToSubsetFields(subsetRows, subsetKey),
-        ];
-      })
+        return [subsetKey, this.subsetRowsToSubsetFields(subsetRows, subsetKey)];
+      }),
     );
 
     // save
     const jsonPath = path.join(
       Sonamu.apiRootPath,
-      `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`
+      `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
     );
     const json = this.toJson();
-    await writeFile(
-      jsonPath,
-      await prettier.format(JSON.stringify(json), {
-        parser: "json",
-      })
-    );
+    await writeFile(jsonPath, formatCode(JSON.stringify(json), "json"));
 
     // reload
     await EntityManager.register(json);
@@ -619,7 +557,7 @@ export class Entity {
 
   getSubsetRows(
     _subsets?: { [key: string]: string[] },
-    prefixes: string[] = []
+    prefixes: string[] = [],
   ): EntitySubsetRow[] {
     if (prefixes.length > 10) {
       return [];
@@ -632,15 +570,10 @@ export class Entity {
     return this.props.map((prop) => {
       if (
         prop.type === "relation" &&
-        allFields.find((f) =>
-          f.startsWith([...prefixes, prop.name].join(".") + ".")
-        )
+        allFields.find((f) => f.startsWith([...prefixes, prop.name].join(".") + "."))
       ) {
         const relEntity = EntityManager.get(prop.with);
-        const children = relEntity.getSubsetRows(subsets, [
-          ...prefixes,
-          `${prop.name}`,
-        ]);
+        const children = relEntity.getSubsetRows(subsets, [...prefixes, `${prop.name}`]);
 
         return {
           field: prop.name,
@@ -650,11 +583,8 @@ export class Entity {
           isOpen: children.length > 0,
           has: Object.fromEntries(
             subsetKeys.map((subsetKey) => {
-              return [
-                subsetKey,
-                children.every((child) => child.has[subsetKey] === true),
-              ];
-            })
+              return [subsetKey, children.every((child) => child.has[subsetKey] === true)];
+            }),
           ),
         };
       }
@@ -672,16 +602,13 @@ export class Entity {
               return f === field || f.startsWith(field + ".");
             });
             return [subsetKey, has];
-          })
+          }),
         ),
       };
     });
   }
 
-  subsetRowsToSubsetFields(
-    subsetRows: EntitySubsetRow[],
-    subsetKey: string
-  ): string[] {
+  subsetRowsToSubsetFields(subsetRows: EntitySubsetRow[], subsetKey: string): string[] {
     return subsetRows
       .map((subsetRow) => {
         if (subsetRow.children.length > 0) {
@@ -723,9 +650,7 @@ export class Entity {
         propName,
       });
 
-      const prop = EntityManager.get(entityId).props.find(
-        (p) => p.name === propName
-      );
+      const prop = EntityManager.get(entityId).props.find((p) => p.name === propName);
       if (!prop) {
         throw new Error(`${entityId}의 잘못된 서브셋키 ${subsetField}`);
       }
@@ -762,7 +687,7 @@ export class Entity {
                     ...a,
                     propName: newProp.name,
                   }
-                : a
+                : a,
             );
             // 분석한 필드를 다시 서브셋 필드로 복구
             return modified.map((a) => a.propName).join(".");
@@ -800,11 +725,7 @@ export class Entity {
         const modifiedSubsetFields = subset
           .map((subsetField) => {
             const analyzed = relEntity.analyzeSubsetField(subsetField);
-            if (
-              analyzed.find(
-                (a) => a.propName === oldName && a.entityId === this.id
-              )
-            ) {
+            if (analyzed.find((a) => a.propName === oldName && a.entityId === this.id)) {
               return null;
             } else {
               return subsetField;
@@ -840,9 +761,7 @@ export class Entity {
 
     // 서브셋 필드를 내려가면서 마지막으로 relation된 엔티티를 찾음
     const lastEntityId = arr.reduce((entityId, field) => {
-      const relProp = EntityManager.get(entityId).props.find(
-        (p) => p.name === field
-      );
+      const relProp = EntityManager.get(entityId).props.find((p) => p.name === field);
       if (!relProp || relProp.type !== "relation") {
         console.debug({ arr, thisId: this.id, entityId, field });
         throw new Error(`잘못된 서브셋키 ${subsetField}`);

@@ -1,8 +1,5 @@
 import { z } from "zod";
-import {
-  DepartmentBaseSchema,
-  DepartmentBaseListParams,
-} from "../sonamu.generated";
+import { DepartmentBaseSchema, DepartmentBaseListParams } from "../sonamu.generated";
 
 // Department - ListParams
 export const DepartmentListParams = DepartmentBaseListParams;

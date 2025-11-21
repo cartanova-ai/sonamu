@@ -1,20 +1,20 @@
-import type { MessagePort } from 'node:worker_threads'
+import type { MessagePort } from "node:worker_threads";
 
-export type FileChangeAction = 'change' | 'add' | 'unlink'
+export type FileChangeAction = "change" | "add" | "unlink";
 export type MessageChannelMessage =
-  | { type: 'hot-hook:full-reload'; path: string; shouldBeReloadable?: boolean }
-  | { type: 'hot-hook:invalidated'; paths: string[] }
-  | { type: 'hot-hook:file-changed'; path: string; action: FileChangeAction }
-  | { type: 'hot-hook:manual-invalidate'; path: string; action: FileChangeAction }
-  | { type: 'hot-hook:manual-invalidate-done'; path: string; invalidatedPaths: string[] }
-  | { type: 'hot-hook:invalidate-all'; }
-  | { type: 'hot-hook:invalidate-all-done' }
+  | { type: "hot-hook:full-reload"; path: string; shouldBeReloadable?: boolean }
+  | { type: "hot-hook:invalidated"; paths: string[] }
+  | { type: "hot-hook:file-changed"; path: string; action: FileChangeAction }
+  | { type: "hot-hook:manual-invalidate"; path: string; action: FileChangeAction }
+  | { type: "hot-hook:manual-invalidate-done"; path: string; invalidatedPaths: string[] }
+  | { type: "hot-hook:invalidate-all" }
+  | { type: "hot-hook:invalidate-all-done" };
 
 export type MessageChannelPerType = {
-  [K in MessageChannelMessage['type']]: Omit<Extract<MessageChannelMessage, { type: K }>, 'type'>
-}
+  [K in MessageChannelMessage["type"]]: Omit<Extract<MessageChannelMessage, { type: K }>, "type">;
+};
 
-type PathOrGlobPattern = string
+type PathOrGlobPattern = string;
 
 export interface InitOptions {
   /**
@@ -22,37 +22,37 @@ export interface InitOptions {
    * by the hook. You should use this to kill the current process and
    * restart it.
    */
-  onFullReloadAsked?: () => void
+  onFullReloadAsked?: () => void;
 
   /**
    * Path to the root file of the application.
    */
-  root?: string
+  root?: string;
 
   /**
    * Root Directory will be used to resolve relative paths.
    * If not provided, it will be the directory of the root file.
    */
-  rootDirectory?: string
+  rootDirectory?: string;
 
   /**
    * Paths/glob patterns that will be watched by the hook.
    *
    * @default ['**\/*']
    */
-  include?: PathOrGlobPattern[]
+  include?: PathOrGlobPattern[];
 
   /**
    * Paths/glob patterns that will not be watched by the hook.
    * @default ['/node_modules/']
    */
-  ignore?: PathOrGlobPattern[]
+  ignore?: PathOrGlobPattern[];
 
   /**
    * Files that will create an HMR boundary. This is equivalent of importing
    * the module with `import.meta.hot.boundary` in the module.
    */
-  boundaries?: PathOrGlobPattern[]
+  boundaries?: PathOrGlobPattern[];
 
   /**
    * List of files that should trigger a full reload when change.
@@ -66,36 +66,36 @@ export interface InitOptions {
    *
    * @default ['.env']
    */
-  restart?: PathOrGlobPattern[]
+  restart?: PathOrGlobPattern[];
 
   /**
    * If true, the hook will throw an error if a boundary is not dynamically
    * imported.
    */
-  throwWhenBoundariesAreNotDynamicallyImported?: boolean
+  throwWhenBoundariesAreNotDynamicallyImported?: boolean;
 
   /**
    * If false, hot-hook will create its own file watcher.
    * By default, you must manually notify file changes using hot.invalidateFile().
-   * 
+   *
    * @default undefined (watcher disabled)
    */
-  disableAutoWatch?: boolean
+  disableAutoWatch?: boolean;
 }
 
 export type InitializeHookOptions = Pick<
   InitOptions,
-  | 'ignore'
-  | 'root'
-  | 'rootDirectory'
-  | 'boundaries'
-  | 'include'
-  | 'restart'
-  | 'throwWhenBoundariesAreNotDynamicallyImported'
-  | 'disableAutoWatch'
+  | "ignore"
+  | "root"
+  | "rootDirectory"
+  | "boundaries"
+  | "include"
+  | "restart"
+  | "throwWhenBoundariesAreNotDynamicallyImported"
+  | "disableAutoWatch"
 > & {
   /**
    * The message port to communicate with the parent thread.
    */
-  messagePort?: MessagePort
-}
+  messagePort?: MessagePort;
+};

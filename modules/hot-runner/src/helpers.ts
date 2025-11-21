@@ -1,8 +1,8 @@
-import { execaNode } from 'execa'
+import { execaNode } from "execa";
 
-import type { RunOptions } from './types.js'
+import type { RunOptions } from "./types.js";
 
-const DEFAULT_NODE_ARGS = ['--enable-source-maps']
+const DEFAULT_NODE_ARGS = ["--enable-source-maps"];
 
 /**
  * Runs a Node.js script as a child process and inherits the stdio streams
@@ -15,12 +15,12 @@ export function runNode(cwd: string | URL, options: RunOptions) {
     localDir: cwd,
     cwd,
     buffer: false,
-    stdio: options.stdio || 'inherit',
+    stdio: options.stdio || "inherit",
     env: {
-      ...(options.stdio === 'pipe' ? { FORCE_COLOR: 'true' } : {}),
+      ...(options.stdio === "pipe" ? { FORCE_COLOR: "true" } : {}),
       ...options.env,
     },
-  })
+  });
 
-  return childProcess
+  return childProcess;
 }

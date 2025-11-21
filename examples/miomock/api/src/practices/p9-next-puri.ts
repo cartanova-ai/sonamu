@@ -17,7 +17,7 @@ Sonamu.runScript(async () => {
   const t3Result = await test3;
   expectAndLog(
     "select `u`.`id` as `id`, `u`.`name` as `name` from `users` as `u`",
-    test3.toQuery()
+    test3.toQuery(),
   );
   // @ts-ignore - unused
   type Test3Result = Awaited<typeof test3>[0];
@@ -37,7 +37,7 @@ Sonamu.runScript(async () => {
   const test5 = puri.from({ users: "users" }).where({ "users.role": "normal" });
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where `users`.`bio` = 'abcddd'",
-    test5.toQuery()
+    test5.toQuery(),
   );
 
   // Test: where with group
@@ -50,16 +50,14 @@ Sonamu.runScript(async () => {
   });
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where `users`.`id` > 10 or `users`.`id` < 20",
-    test6.toQuery()
+    test6.toQuery(),
   );
 
   // Test: join
-  const test7 = puri
-    .from({ users: "users" })
-    .join("employees", "users.id", "employees.user_id");
+  const test7 = puri.from({ users: "users" }).join("employees", "users.id", "employees.user_id");
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` join `employees` on `users`.`id` = `employees`.`user_id`",
-    test7.toQuery()
+    test7.toQuery(),
   );
 
   // test: join with callback
@@ -74,7 +72,7 @@ Sonamu.runScript(async () => {
     });
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` join `employees` on `users`.`id` = `employees`.`user_id`",
-    test8.toQuery()
+    test8.toQuery(),
   );
 
   // test: join with subquery
@@ -111,7 +109,7 @@ Sonamu.runScript(async () => {
   const test12 = puri.from({ users: "users" }).whereMatch("users.bio", "test");
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where MATCH (`users`.`bio`) AGAINST ('test')",
-    test12.toQuery()
+    test12.toQuery(),
   );
 
   // test: order by (ResultAvailableColumns)
@@ -123,7 +121,7 @@ Sonamu.runScript(async () => {
     .orderBy("aa", "desc");
   expectAndLog(
     "select `users`.`id` as `id`, `users`.`name` as `name` from `users` order by `users`.`id` asc",
-    test13.toQuery()
+    test13.toQuery(),
   );
 
   // test: pluck
@@ -148,21 +146,16 @@ Sonamu.runScript(async () => {
 
   // test: JOIN 후 업데이트
   // @ts-ignore - unused
-  const test17 = puri
-    .from({ u: "users" })
-    .join({ e: "employees" }, "u.id", "e.user_id")
-    .update({
-      "u.bio": "aa",
-      "e.id": 1,
-      "e.salary": "10000",
-    });
+  const test17 = puri.from({ u: "users" }).join({ e: "employees" }, "u.id", "e.user_id").update({
+    "u.bio": "aa",
+    "e.id": 1,
+    "e.salary": "10000",
+  });
 });
 
 function expectAndLog(expected: string, actual: string) {
   if (expected !== actual) {
-    console.error(
-      `Expected: ${chalk.yellow(expected)}\nbut got [${chalk.red(actual)}]`
-    );
+    console.error(`Expected: ${chalk.yellow(expected)}\nbut got [${chalk.red(actual)}]`);
   } else {
     console.log(chalk.green(`TEST PASSED: ${chalk.yellow(expected)}`));
   }

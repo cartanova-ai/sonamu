@@ -31,7 +31,7 @@
     "clean": "rm -rf build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext=.ts",
-    "format": "prettier --write .",
+    "format": "biome format --write",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
@@ -66,12 +66,12 @@
     "fs-extra": "^11.3.0",
     "p-event": "^6.0.1",
     "p-timeout": "^6.1.4",
-    "prettier": "^3.5.3",
     "supertest": "^7.1.1",
     "ts-node": "^10.9.2",
     "tsdown": "^0.12.5",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "@biomejs/biome": "^2.3.7"
   },
   "publishConfig": {
     "access": "public",

@@ -38,10 +38,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    * - READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE
    */
   @transactional({ isolation: "repeatable read" })
-  async example2_isolationLevel(
-    userId: number,
-    loginTime: Date
-  ): Promise<void> {
+  async example2_isolationLevel(userId: number, loginTime: Date): Promise<void> {
     const wdb = this.getPuri("w");
 
     // 동시성 제어가 중요한 경우 isolation level 설정
@@ -56,10 +53,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
     }
 
     // last_login_at 업데이트
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({ last_login_at: loginTime });
+    await wdb.table("users").where("id", userId).update({ last_login_at: loginTime });
   }
 
   /**
@@ -94,10 +88,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
     assert(userId);
 
     // 추가 작업: bio 업데이트
-    await wdb
-      .table("users")
-      .where("id", userId)
-      .update({ bio: "New user bio" });
+    await wdb.table("users").where("id", userId).update({ bio: "New user bio" });
 
     // 에러 발생 시 insert와 update 모두 롤백됨
     return userId;
@@ -136,9 +127,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
    */
   @api({ httpMethod: "POST" })
   @transactional()
-  async example5_withApiDecorator(
-    spa: UserSaveParams[]
-  ): Promise<{ ids: number[] }> {
+  async example5_withApiDecorator(spa: UserSaveParams[]): Promise<{ ids: number[] }> {
     const wdb = this.getPuri("w");
 
     spa.map((sp) => {
@@ -284,10 +273,7 @@ async function runExamples() {
     console.log("✅ Created user IDs:", ids);
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .whereIn("id", ids)
-      .delete();
+    await TransactionalExampleModel.getPuri("w").table("users").whereIn("id", ids).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }
@@ -295,15 +281,13 @@ async function runExamples() {
   console.log("\n=== Example 2: Isolation Level ===");
   try {
     // 테스트용 유저 생성
-    const [userId] = await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .insert({
-        email: "isolation@example.com",
-        username: "isolation_user",
-        password: "pass123",
-        role: "normal",
-        is_verified: false,
-      });
+    const [userId] = await TransactionalExampleModel.getPuri("w").table("users").insert({
+      email: "isolation@example.com",
+      username: "isolation_user",
+      password: "pass123",
+      role: "normal",
+      is_verified: false,
+    });
 
     assert(userId);
 
@@ -320,10 +304,7 @@ async function runExamples() {
     console.log("✅ Isolation level transaction completed successfully");
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .where("id", userId)
-      .delete();
+    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }
@@ -349,10 +330,7 @@ async function runExamples() {
     console.log("✅ Bio updated successfully");
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .where("id", userId)
-      .delete();
+    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }
@@ -366,10 +344,7 @@ async function runExamples() {
       shouldFail: true,
     });
   } catch (error) {
-    console.log(
-      "✅ Transaction rolled back as expected:",
-      (error as Error).message
-    );
+    console.log("✅ Transaction rolled back as expected:", (error as Error).message);
 
     // 롤백 확인
     const user = await TransactionalExampleModel.getPuri("r")
@@ -383,15 +358,13 @@ async function runExamples() {
   console.log("\n=== Example 4: Nested Transaction ===");
   try {
     // 테스트용 유저 생성
-    const [userId] = await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .insert({
-        email: "nested@example.com",
-        username: "nested_user",
-        password: "pass123",
-        role: "normal",
-        is_verified: false,
-      });
+    const [userId] = await TransactionalExampleModel.getPuri("w").table("users").insert({
+      email: "nested@example.com",
+      username: "nested_user",
+      password: "pass123",
+      role: "normal",
+      is_verified: false,
+    });
 
     assert(userId);
 
@@ -409,10 +382,7 @@ async function runExamples() {
     console.log("✅ Nested transaction completed successfully");
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .where("id", userId)
-      .delete();
+    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }
@@ -434,10 +404,7 @@ async function runExamples() {
     console.log("✅ @api + @transactional works! IDs:", result.ids);
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w")
-      .table("users")
-      .whereIn("id", result.ids)
-      .delete();
+    await TransactionalExampleModel.getPuri("w").table("users").whereIn("id", result.ids).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }

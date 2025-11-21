@@ -12,10 +12,7 @@ import { isSonamuTaskError } from "../errors";
 import { routedAction } from "./shared";
 
 // start, stop, fetch 이벤트는 router를 잡기 전에 일어나서 별도로 분리
-export async function saveUnroutedTaskEvent(
-  knex: Knex,
-  data: UnroutedTaskEvent,
-) {
+export async function saveUnroutedTaskEvent(knex: Knex, data: UnroutedTaskEvent) {
   switch (data.type) {
     case "start":
       return knex
@@ -92,11 +89,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
           })
           .into("sonamu_task_events"),
       );
-      queries.push(
-        knex("sonamu_task_items")
-          .where("id", knex.fn.uuidToBin(data.task.id))
-          .delete(),
-      );
+      queries.push(knex("sonamu_task_items").where("id", knex.fn.uuidToBin(data.task.id)).delete());
       queries.push(
         knex
           .insert({
@@ -132,9 +125,7 @@ export async function saveRoutedTaskEvent<T extends RoutedTaskEvent>(
       if (data.task.attempt >= (matched?.data.retry.maxAttempts ?? 1)) {
         // 최대 실행 횟수를 넘겼을 경우, 에러로 sonamu_archived_task_items로 옮김
         queries.push(
-          knex("sonamu_task_items")
-            .where("id", knex.fn.uuidToBin(data.task.id))
-            .delete(),
+          knex("sonamu_task_items").where("id", knex.fn.uuidToBin(data.task.id)).delete(),
         );
 
         queries.push(
@@ -193,15 +184,7 @@ export async function wrapRemoteTask(
 
   // NOTE: 대기 처리를 Queue를 별도로 분리한다면 where status = "pending_for_retry"를 추가하면 됨.
   const rawTask = await trx
-    .select(
-      "id",
-      "created_at",
-      "updated_at",
-      "namespace",
-      "status",
-      "attempt",
-      "payload",
-    )
+    .select("id", "created_at", "updated_at", "namespace", "status", "attempt", "payload")
     .from("sonamu_task_items")
     .forUpdate()
     .skipLocked()

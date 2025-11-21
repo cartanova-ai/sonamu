@@ -16,10 +16,9 @@ export type AvailableColumns<TTables extends Record<string, any>> =
       ? ExcludeMetadataColumns<keyof TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
       : never);
 // Group By, Order By, Having 등에서 선택 가능한 컬럼
-export type ResultAvailableColumns<
-  TTables extends Record<string, any>,
-  TResult = any,
-> = AvailableColumns<TTables> | `${keyof TResult & string}`;
+export type ResultAvailableColumns<TTables extends Record<string, any>, TResult = any> =
+  | AvailableColumns<TTables>
+  | `${keyof TResult & string}`;
 
 // Select 값 타입 확장
 export type SelectValue<TTables extends Record<string, any>> =
@@ -86,12 +85,11 @@ export type FulltextColumns<TTables extends Record<string, any>> = {
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
 
 // SQL Expression 타입 정의
-export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> =
-  {
-    _type: "sql_expression"; // 또는 "computed_value"
-    _return: T;
-    _sql: string;
-  };
+export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> = {
+  _type: "sql_expression"; // 또는 "computed_value"
+  _return: T;
+  _sql: string;
+};
 
 // 결과 타입 가독성을 위한 타입 확장
 export type Expand<T> = T extends any[]
@@ -100,36 +98,31 @@ export type Expand<T> = T extends any[]
     ? { [K in keyof T]: T[K] }
     : T;
 
-type IsSingleKey<TTables extends Record<string, any>> =
-  keyof TTables extends infer K
-    ? K extends keyof TTables
-      ? keyof TTables extends K // 역방향 체크로 단일 키 확인
-        ? true
-        : false
+type IsSingleKey<TTables extends Record<string, any>> = keyof TTables extends infer K
+  ? K extends keyof TTables
+    ? keyof TTables extends K // 역방향 체크로 단일 키 확인
+      ? true
       : false
-    : false;
+    : false
+  : false;
 
 export type SingleTableValue<TTables extends Record<string, any>> =
   IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
 
 // Nullable을 Optional로 변환
 type NullableToOptional<T> = {
-  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<
-    T[K],
-    null | undefined
-  >;
+  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<T[K], null | undefined>;
 } & Partial<{
   [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
 }>;
 
 // Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<
-  Omit<T, "id" | "created_at" | "__fulltext__">
->;
+export type InsertData<T> = NullableToOptional<Omit<T, "id" | "created_at" | "__fulltext__">>;
 
 // SubsetQuery를 위한 타입 유틸리티
-type ExtractTTables<T extends Puri<any, any, any>> =
-  T extends Puri<any, infer TTables, any> ? TTables : never;
+type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>
+  ? TTables
+  : never;
 export type UnionExtractedTTables<
   SubsetKey extends string,
   SubsetQueries extends Record<

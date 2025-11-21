@@ -35,10 +35,7 @@ class UserModelClass extends CustomBaseModelClass<
   modelName = "User";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "User" })
-  async findById<T extends UserSubsetKey>(
-    subset: T,
-    id: number
-  ): Promise<UserSubsetMapping[T]> {
+  async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -52,7 +49,7 @@ class UserModelClass extends CustomBaseModelClass<
 
   async findOne<T extends UserSubsetKey>(
     subset: T,
-    listParams: UserListParams
+    listParams: UserListParams,
   ): Promise<UserSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -71,7 +68,7 @@ class UserModelClass extends CustomBaseModelClass<
   })
   async findMany<T extends UserSubsetKey>(
     subset: T,
-    _params: UserListParams = {}
+    _params: UserListParams = {},
   ): Promise<ListResult<UserSubsetMapping[T]>> {
     // params with defaults
     const params = {
@@ -172,33 +169,21 @@ class UserModelClass extends CustomBaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  async login(
-    params: UserLoginParams
-  ): Promise<{ user: UserSubsetMapping["SS"] }> {
+  async login(params: UserLoginParams): Promise<{ user: UserSubsetMapping["SS"] }> {
     const rdb = this.getDB("r");
     const context = Sonamu.getContext();
 
     // 이메일로 사용자 조회
-    const user = await rdb("users")
-      .select("*")
-      .where("email", params.email)
-      .first();
+    const user = await rdb("users").select("*").where("email", params.email).first();
 
     if (!user) {
-      throw new UnauthorizedException(
-        "이메일 또는 비밀번호가 일치하지 않습니다"
-      );
+      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
     }
 
     // 비밀번호 확인
-    const isPasswordValid = await bcrypt.compare(
-      params.password,
-      user.password
-    );
+    const isPasswordValid = await bcrypt.compare(params.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException(
-        "이메일 또는 비밀번호가 일치하지 않습니다"
-      );
+      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
     }
 
     // 세션에 사용자 ID 저장
@@ -206,9 +191,7 @@ class UserModelClass extends CustomBaseModelClass<
 
     // 마지막 로그인 시간 업데이트
     const wdb = this.getDB("w");
-    await wdb("users")
-      .where("id", user.id)
-      .update({ last_login_at: new Date() });
+    await wdb("users").where("id", user.id).update({ last_login_at: new Date() });
 
     return { user: await this.findById("SS", user.id) };
   }
@@ -221,16 +204,12 @@ class UserModelClass extends CustomBaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  async register(
-    params: UserRegisterParams
-  ): Promise<{ user: UserSubsetMapping["SS"] }> {
+  async register(params: UserRegisterParams): Promise<{ user: UserSubsetMapping["SS"] }> {
     const rdb = this.getDB("r");
     const wdb = this.getDB("w");
 
     // 이메일 중복 확인
-    const existingUser = await rdb("users")
-      .where("email", params.email)
-      .first();
+    const existingUser = await rdb("users").where("email", params.email).first();
 
     if (existingUser) {
       throw new BadRequestException("이미 사용중인 이메일입니다");
@@ -311,7 +290,7 @@ const puriBasedUserSubsetQueries = {
       .join(
         { employee__department: "departments" },
         "employee.department_id",
-        "employee__department.id"
+        "employee__department.id",
       )
       .select({
         id: "users.id",
@@ -356,7 +335,4 @@ const puriBasedUserSubsetLoaders = {
   SS: userSubsetQueries["SS"].loaders,
 };
 
-export const UserModel = new UserModelClass(
-  puriBasedUserSubsetQueries,
-  puriBasedUserSubsetLoaders
-);
+export const UserModel = new UserModelClass(puriBasedUserSubsetQueries, puriBasedUserSubsetLoaders);

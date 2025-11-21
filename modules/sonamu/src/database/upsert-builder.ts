@@ -18,10 +18,7 @@ export type UBRef = {
 };
 export function isRefField(field: any): field is UBRef {
   return (
-    field !== undefined &&
-    field !== null &&
-    field.of !== undefined &&
-    field.uuid !== undefined
+    field !== undefined && field !== null && field.of !== undefined && field.uuid !== undefined
   );
 }
 
@@ -60,16 +57,8 @@ export class UpsertBuilder {
   register<T extends string>(
     tableName: string,
     row: {
-      [key in T]?:
-        | UBRef
-        | string
-        | number
-        | boolean
-        | bigint
-        | null
-        | object
-        | unknown;
-    }
+      [key in T]?: UBRef | string | number | boolean | bigint | null | object | unknown;
+    },
   ): UBRef {
     const table = this.getTable(tableName);
 
@@ -144,18 +133,10 @@ export class UpsertBuilder {
     };
   }
 
-  async upsert(
-    wdb: Knex,
-    tableName: string,
-    chunkSize?: number
-  ): Promise<number[]> {
+  async upsert(wdb: Knex, tableName: string, chunkSize?: number): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
   }
-  async insertOnly(
-    wdb: Knex,
-    tableName: string,
-    chunkSize?: number
-  ): Promise<number[]> {
+  async insertOnly(wdb: Knex, tableName: string, chunkSize?: number): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
   }
 
@@ -163,7 +144,7 @@ export class UpsertBuilder {
     wdb: Knex,
     tableName: string,
     mode: "upsert" | "insert",
-    chunkSize?: number
+    chunkSize?: number,
   ): Promise<number[]> {
     if (this.hasTable(tableName) === false) {
       return [];
@@ -178,9 +159,7 @@ export class UpsertBuilder {
 
     if (
       table.rows.some((row) =>
-        Object.entries(row).some(
-          ([, value]) => isRefField(value) && value.of !== tableName
-        )
+        Object.entries(row).some(([, value]) => isRefField(value) && value.of !== tableName),
       )
     ) {
       throw new Error(`${tableName} 해결되지 않은 참조가 있습니다.`);
@@ -190,7 +169,7 @@ export class UpsertBuilder {
     const { references, refTables } = Array.from(this.tables).reduce(
       (r, [, table]) => {
         const reference = Array.from(table.references.values()).find((ref) =>
-          ref.includes(tableName + ".")
+          ref.includes(tableName + "."),
         );
         if (reference) {
           r.references.push(reference);
@@ -202,17 +181,13 @@ export class UpsertBuilder {
       {
         references: [] as string[],
         refTables: [] as TableData[],
-      }
+      },
     );
-    const extractFields = _.uniq(references).map(
-      (reference) => reference.split(".")[1]
-    );
+    const extractFields = _.uniq(references).map((reference) => reference.split(".")[1]);
 
     // 내부 참조 있는 경우 필터하여 분리
     const groups = _.groupBy(table.rows, (row) =>
-      Object.entries(row).some(([, value]) => isRefField(value))
-        ? "selfRef"
-        : "normal"
+      Object.entries(row).some(([, value]) => isRefField(value)) ? "selfRef" : "normal",
     );
     const normalRows = groups.normal ?? [];
     const selfRefRows = groups.selfRef ?? [];
@@ -247,9 +222,7 @@ export class UpsertBuilder {
             const parent = uuidMap.get(prop.uuid);
             if (parent === undefined) {
               console.error(prop);
-              throw new Error(
-                `존재하지 않는 uuid ${prop.uuid} -- in ${tableName}`
-              );
+              throw new Error(`존재하지 않는 uuid ${prop.uuid} -- in ${tableName}`);
             }
             row[key] = parent[prop.use ?? "id"];
           }
@@ -282,7 +255,7 @@ export class UpsertBuilder {
     options?: {
       chunkSize?: number;
       where?: string | string[];
-    }
+    },
   ): Promise<void> {
     options = _.defaults(options, {
       chunkSize: 500,
@@ -297,9 +270,7 @@ export class UpsertBuilder {
       return;
     }
 
-    const whereColumns = Array.isArray(options.where)
-      ? options.where
-      : [options.where ?? "id"];
+    const whereColumns = Array.isArray(options.where) ? options.where : [options.where ?? "id"];
     const rows = table.rows.map((_row) => {
       const { uuid, ...row } = _row;
       return row as RowWithId<string>;

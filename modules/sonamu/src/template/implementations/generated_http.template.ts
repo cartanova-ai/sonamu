@@ -1,11 +1,11 @@
 import qs from "qs";
 import { z } from "zod";
-import { TemplateOptions } from "../../types/types";
 import { getZodObjectFromApi } from "../../api/code-converters";
 import { ExtendedApi } from "../../api/decorators";
-import { Template } from "../template";
-import prettier from "prettier";
 import { Sonamu } from "../../api/sonamu";
+import { TemplateOptions } from "../../types/types";
+import { formatCode } from "../../utils/formatter";
+import { Template } from "../template";
 
 export class Template__generated_http extends Template {
   constructor() {
@@ -38,23 +38,13 @@ export class Template__generated_http extends Template {
         const dataLines = await (async () => {
           if ((api.options.httpMethod ?? "GET") === "GET") {
             return {
-              querystring: [
-                qs
-                  .stringify(reqObject, { encode: false })
-                  .split("&")
-                  .join("\n\t&"),
-              ],
+              querystring: [qs.stringify(reqObject, { encode: false }).split("&").join("\n\t&")],
               body: [],
             };
           } else {
             return {
               querystring: [],
-              body: [
-                "",
-                await prettier.format(JSON.stringify(reqObject), {
-                  parser: "json",
-                }),
-              ],
+              body: ["", formatCode(JSON.stringify(reqObject), "json")],
             };
           }
         })();
@@ -67,7 +57,7 @@ export class Template__generated_http extends Template {
           `Content-Type: ${api.options.contentType ?? "application/json"}`,
           ...dataLines.body,
         ].join("\n");
-      })
+      }),
     );
 
     return {
@@ -83,15 +73,10 @@ export class Template__generated_http extends Template {
         Object.keys(zodType.shape).map((key) => [
           key,
           this.zodTypeToReqDefault(zodType.shape[key], key),
-        ])
+        ]),
       );
     } else if (zodType instanceof z.ZodArray) {
-      return [
-        this.zodTypeToReqDefault(
-          (zodType as z.ZodArray<z.ZodType>).element,
-          name
-        ),
-      ];
+      return [this.zodTypeToReqDefault((zodType as z.ZodArray<z.ZodType>).element, name)];
     } else if (zodType instanceof z.ZodString) {
       if (name.endsWith("_at") || name.endsWith("_date") || name === "range") {
         return "2000-01-01";
@@ -110,51 +95,33 @@ export class Template__generated_http extends Template {
     } else if (zodType instanceof z.ZodEnum) {
       return zodType.options[0];
     } else if (zodType instanceof z.ZodOptional) {
-      return this.zodTypeToReqDefault(
-        (zodType as z.ZodOptional<z.ZodType>).def.innerType,
-        name
-      );
+      return this.zodTypeToReqDefault((zodType as z.ZodOptional<z.ZodType>).def.innerType, name);
     } else if (zodType instanceof z.ZodNullable) {
       return null;
     } else if (zodType instanceof z.ZodUnion) {
-      return this.zodTypeToReqDefault(
-        (zodType as z.ZodUnion<z.ZodType[]>).def.options[0],
-        name
-      );
+      return this.zodTypeToReqDefault((zodType as z.ZodUnion<z.ZodType[]>).def.options[0], name);
     } else if (zodType instanceof z.ZodUnknown) {
       return "unknown";
     } else if (zodType instanceof z.ZodTuple) {
-      return zodType.def.items.map((item: any) =>
-        this.zodTypeToReqDefault(item, name)
-      );
+      return zodType.def.items.map((item: any) => this.zodTypeToReqDefault(item, name));
     } else if (zodType instanceof z.ZodDate) {
       return "2000-01-01";
     } else if (zodType instanceof z.ZodLiteral) {
       return zodType.value;
     } else if (zodType instanceof z.ZodRecord || zodType instanceof z.ZodMap) {
-      const kvDef = (
-        zodType as z.ZodRecord<any, z.ZodType> | z.ZodMap<z.ZodType, z.ZodType>
-      ).def;
+      const kvDef = (zodType as z.ZodRecord<any, z.ZodType> | z.ZodMap<z.ZodType, z.ZodType>).def;
       const key = this.zodTypeToReqDefault(kvDef.keyType, name) as any;
       const value = this.zodTypeToReqDefault(kvDef.valueType, name);
       return { [key]: value };
     } else if (zodType instanceof z.ZodSet) {
-      return [
-        this.zodTypeToReqDefault(
-          (zodType as z.ZodSet<z.ZodType>).def.valueType,
-          name
-        ),
-      ];
+      return [this.zodTypeToReqDefault((zodType as z.ZodSet<z.ZodType>).def.valueType, name)];
     } else if (zodType instanceof z.ZodIntersection) {
       return this.zodTypeToReqDefault(
         (zodType as z.ZodIntersection<z.ZodType, z.ZodType>).def.right,
-        name
+        name,
       );
     } else if (zodType instanceof z.ZodDefault) {
-      return this.zodTypeToReqDefault(
-        (zodType as z.ZodDefault<z.ZodType>).def.innerType,
-        name
-      );
+      return this.zodTypeToReqDefault((zodType as z.ZodDefault<z.ZodType>).def.innerType, name);
     } else {
       // console.log(zodType);
       return `unknown-${zodType.type}`;
@@ -163,7 +130,7 @@ export class Template__generated_http extends Template {
 
   resolveApiParams(
     api: ExtendedApi,
-    references: { [typeName: string]: z.ZodObject<any> }
+    references: { [typeName: string]: z.ZodObject<any> },
   ): { [key: string]: unknown } {
     const reqType = getZodObjectFromApi(api, references);
     try {
@@ -173,9 +140,7 @@ export class Template__generated_http extends Template {
       return def;
     } catch (error) {
       console.error(error);
-      throw new Error(
-        `Invalid zod type detected on ${api.modelName}:${api.methodName}`
-      );
+      throw new Error(`Invalid zod type detected on ${api.modelName}:${api.methodName}`);
     }
   }
 }

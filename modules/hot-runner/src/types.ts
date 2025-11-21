@@ -5,32 +5,32 @@ export type RunOptions = {
   /**
    * Script to run
    */
-  script: string
+  script: string;
 
   /**
    * Arguments to pass to the script
    */
-  scriptArgs: string[]
+  scriptArgs: string[];
 
   /**
    * Arguments to pass to NodeJS CLI
    */
-  nodeArgs: string[]
+  nodeArgs: string[];
 
   /**
    * Standard input ouput stream options
    */
-  stdio?: 'pipe' | 'inherit'
+  stdio?: "pipe" | "inherit";
 
   /**
    * Environment variables to pass to the child process
    */
-  env?: NodeJS.ProcessEnv
-}
+  env?: NodeJS.ProcessEnv;
+};
 
 export interface DevServerOptions {
   /**
    * Clear the terminal screen before starting the server
    */
-  clearScreen: boolean
+  clearScreen: boolean;
 }

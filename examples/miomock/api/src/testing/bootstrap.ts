@@ -31,15 +31,9 @@ function getMockContext(): Context {
   } as unknown as Context;
 }
 
-export async function runWithContext(
-  context: Context | null,
-  fn: () => Promise<void>
-) {
+export async function runWithContext(context: Context | null, fn: () => Promise<void>) {
   // Sonamu.asyncLocalStorage.run으로 context 설정
-  await Sonamu.asyncLocalStorage.run(
-    { context: context ?? getMockContext() },
-    fn
-  );
+  await Sonamu.asyncLocalStorage.run({ context: context ?? getMockContext() }, fn);
 }
 
 export async function runWithMockContext(fn: () => Promise<void>) {

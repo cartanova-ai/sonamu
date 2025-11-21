@@ -1,5 +1,5 @@
-type HotHookDump = typeof import('./fixtures/dump.json')
+type HotHookDump = typeof import("./fixtures/dump.json");
 
 interface Window {
-  __HOT_HOOK_DUMP__: HokHookDump
+  __HOT_HOOK_DUMP__: HokHookDump;
 }

@@ -10,7 +10,7 @@ import { isHotReloadServer } from "./esm-utils.js";
  *
  * **기준점**: `Sonamu.apiRootPath` (일반적으로 프로젝트의 `/api` 디렉토리)
  */
-export type ApiRelativePath = `${"src" | "dist"}/${string}` | 'sonamu.config.ts';
+export type ApiRelativePath = `${"src" | "dist"}/${string}` | "sonamu.config.ts";
 
 /**
  * 앱 루트 기준 상대 경로 (api/, web/ 등 타겟 디렉토리로 시작)
@@ -90,10 +90,7 @@ export type AbsolutePath = `/${string}`;
  * @param anyPath
  * @returns
  */
-export function runtimePath(
-  anyPath: string,
-  isDev: boolean = isHotReloadServer()
-): string {
+export function runtimePath(anyPath: string, isDev: boolean = isHotReloadServer()): string {
   if (isDev) {
     return anyPath.replace(/dist\//, "src/").replace(/\.js/, ".ts");
   } else {

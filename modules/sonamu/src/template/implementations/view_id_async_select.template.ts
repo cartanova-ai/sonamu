@@ -19,15 +19,11 @@ export class Template__view_id_async_select extends Template {
 
     const entity = EntityManager.get(entityId);
     if (!textField) {
-      const pickedProp = entity.props.find((prop) =>
-        ["name", "title"].includes(prop.name)
-      );
+      const pickedProp = entity.props.find((prop) => ["name", "title"].includes(prop.name));
       if (pickedProp) {
         textField = pickedProp.name;
       } else {
-        const candidateProp = entity.props.find(
-          (prop) => prop.type === "string"
-        );
+        const candidateProp = entity.props.find((prop) => prop.type === "string");
         if (candidateProp) {
           textField = candidateProp.name;
         } else {
@@ -44,16 +40,10 @@ import { DropdownProps, DropdownItemProps, DropdownOnSearchChangeData, Dropdown 
 import { ${names.capital}SubsetKey, ${
         names.capital
       }SubsetMapping } from "src/services/sonamu.generated";
-import { ${names.capital}Service } from "src/services/${names.fs}/${
-        names.fs
-      }.service";
-import { ${names.capital}ListParams } from "src/services/${names.fs}/${
-        names.fs
-      }.types";
+import { ${names.capital}Service } from "src/services/${names.fs}/${names.fs}.service";
+import { ${names.capital}ListParams } from "src/services/${names.fs}/${names.fs}.types";
 
-export function ${names.capital}IdAsyncSelect<T extends ${
-        names.capital
-      }SubsetKey>(
+export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>(
   { subset, baseListParams, textField, valueField, ...props }: DropdownProps & {
     subset: T;
     baseListParams?: ${names.capital}ListParams;
@@ -66,9 +56,7 @@ export function ${names.capital}IdAsyncSelect<T extends ${
     baseListParams ?? {},
   );
 
-  const { data, error } = ${names.capital}Service.use${
-    names.capitalPlural
-  }(subset, listParams);
+  const { data, error } = ${names.capital}Service.use${names.capitalPlural}(subset, listParams);
   const { rows: ${names.camelPlural}, total } = data ?? {};
 
   useEffect(() => {
@@ -77,9 +65,7 @@ export function ${names.capital}IdAsyncSelect<T extends ${
         return {
           key: ${names.camel}.id,
           value: ${names.camel}[valueField ?? 'id'] as string | number,
-          text: String(${names.camel}[textField${
-            textField ? ` ?? '${textField}'` : ""
-          }]),
+          text: String(${names.camel}[textField${textField ? ` ?? '${textField}'` : ""}]),
         };
       }),
     );

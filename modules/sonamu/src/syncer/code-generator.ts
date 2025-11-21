@@ -1,12 +1,7 @@
 import path from "path";
 import { Sonamu } from "../api/sonamu";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
-import {
-  GenerateOptions,
-  PathAndCode,
-  TemplateKey,
-  TemplateOptions,
-} from "../types/types";
+import { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
 import chalk from "chalk";
@@ -16,8 +11,8 @@ import { Template } from "../template/template";
 import { RenderedTemplate } from "../template/template";
 import { EntityManager } from "../entity/entity-manager";
 import { wrapIf } from "../utils/lodash-able";
-import prettier from "prettier";
 import { AbsolutePath } from "../utils/path-utils";
+import { formatCode } from "../utils/formatter";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -30,7 +25,7 @@ import { AbsolutePath } from "../utils/path-utils";
 export async function generateTemplate(
   key: TemplateKey,
   templateOptions: any,
-  _generateOptions?: GenerateOptions
+  _generateOptions?: GenerateOptions,
 ): Promise<AbsolutePath[]> {
   const generateOptions = {
     overwrite: false,
@@ -45,7 +40,7 @@ export async function generateTemplate(
     await Promise.all(
       keys.map(async (key) => {
         return await renderTemplate(key, templateOptions);
-      })
+      }),
     )
   ).flat();
 
@@ -56,24 +51,21 @@ export async function generateTemplate(
       return await filterAsync(pathAndCodes, async (pathAndCode) => {
         const { targets } = Sonamu.config.sync;
         const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}`;
-        const dstFilePaths = targets.map((target) =>
-          filePath.replace("/:target/", `/${target}/`)
-        );
-        return await everyAsync(
-          dstFilePaths,
-          async (dstPath) => !(await exists(dstPath))
-        );
+        const dstFilePaths = targets.map((target) => filePath.replace("/:target/", `/${target}/`));
+        return await everyAsync(dstFilePaths, async (dstPath) => !(await exists(dstPath)));
       });
     }
   })();
-  
+
   if (filteredPathAndCodes.length === 0) {
     throw new AlreadyProcessedException("이미 경로에 모든 파일이 존재합니다.");
   }
 
-  return (await Promise.all(
-    filteredPathAndCodes.map((pathAndCode) => writeCodeToPathEachTarget(pathAndCode))
-  )).flat();
+  return (
+    await Promise.all(
+      filteredPathAndCodes.map((pathAndCode) => writeCodeToPathEachTarget(pathAndCode)),
+    )
+  ).flat();
 }
 
 /**
@@ -85,7 +77,7 @@ export async function generateTemplate(
  */
 export async function renderTemplate<T extends keyof TemplateOptions>(
   key: T,
-  options: TemplateOptions[T]
+  options: TemplateOptions[T],
 ): Promise<PathAndCode[]> {
   const template = Template.find(key);
 
@@ -98,7 +90,7 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
       await Promise.all(
         rendered.preTemplates.map(({ key, options }) => {
           return renderTemplate(key, options);
-        })
+        }),
       )
     ).flat();
   }
@@ -108,7 +100,7 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
 
 async function resolveRenderedTemplate(
   key: TemplateKey,
-  result: RenderedTemplate
+  result: RenderedTemplate,
 ): Promise<PathAndCode> {
   const { target, path: filePath, body, importKeys, customHeaders } = result;
 
@@ -119,10 +111,10 @@ async function resolveRenderedTemplate(
         const modulePath = EntityManager.getModulePath(importKey);
         let importPath = modulePath;
         if (modulePath.includes("/") || modulePath.includes(".")) {
-          importPath = wrapIf(
-            path.relative(path.dirname(filePath), modulePath),
-            (p) => [p.startsWith(".") === false, "./" + p]
-          );
+          importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [
+            p.startsWith(".") === false,
+            "./" + p,
+          ]);
         }
 
         // 같은 파일에서 import 하는 경우 keys 로 나열 처리
@@ -140,20 +132,16 @@ async function resolveRenderedTemplate(
       [] as {
         keys: string[];
         from: string;
-      }[]
+      }[],
     )
     // 셀프 참조 방지
-    .filter(
-      (importDef) =>
-        filePath.endsWith(importDef.from.replace("./", "") + ".ts") === false
-    );
+    .filter((importDef) => filePath.endsWith(importDef.from.replace("./", "") + ".ts") === false);
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [
     ...(customHeaders ?? []),
     ...importDefs.map(
-      (importDef) =>
-        `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`
+      (importDef) => `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`,
     ),
   ].join("\n");
 
@@ -161,9 +149,7 @@ async function resolveRenderedTemplate(
     if (key === "generated_http") {
       return [header, body].join("\n\n");
     } else {
-      return prettier.format([header, body].join("\n\n"), {
-        parser: key === "entity" ? "json" : "typescript",
-      });
+      return formatCode([header, body].join("\n\n"), key === "entity" ? "json" : "typescript");
     }
   })();
 
@@ -173,17 +159,13 @@ async function resolveRenderedTemplate(
   };
 }
 
-async function writeCodeToPathEachTarget(
-  pathAndCode: PathAndCode
-): Promise<AbsolutePath[]> {
+async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<AbsolutePath[]> {
   const { targets } = Sonamu.config.sync;
   const { appRootPath } = Sonamu;
   const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
   const dstFilePaths = _.uniq(
-    targets.map((target) =>
-      filePath.replace("/:target/", `/${target}/`)
-    ) as AbsolutePath[]
+    targets.map((target) => filePath.replace("/:target/", `/${target}/`)) as AbsolutePath[],
   );
   return await Promise.all(
     dstFilePaths.map(async (dstFilePath) => {
@@ -193,10 +175,9 @@ async function writeCodeToPathEachTarget(
       }
       await writeFile(dstFilePath, pathAndCode.code);
       console.log(
-        chalk.bold("Generated: ") +
-          chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`)
+        chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`),
       );
       return dstFilePath;
-    })
+    }),
   );
 }

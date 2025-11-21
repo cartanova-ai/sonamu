@@ -21,12 +21,7 @@ export class Template__view_list extends Template {
     };
   }
 
-  wrapTc(
-    body: string,
-    key: string,
-    collapsing: boolean = true,
-    className: string = ""
-  ) {
+  wrapTc(body: string, key: string, collapsing: boolean = true, className: string = "") {
     return `<Table.Cell key="${key}"${collapsing ? " collapsing" : ""}${
       className ? ` className={\`${className}\`}` : ""
     }>${body}</Table.Cell>`;
@@ -37,7 +32,7 @@ export class Template__view_list extends Template {
     col: RenderingNode,
     names: EntityNamesRecord,
     parentObj: string = "row",
-    withoutName: boolean = false
+    withoutName: boolean = false,
   ): string {
     const colName = withoutName ? `${parentObj}` : `${parentObj}.${col.name}`;
 
@@ -47,15 +42,10 @@ export class Template__view_list extends Template {
       case "number-id":
         return `<>{${colName}}</>`;
       case "number-fk_id":
-        const relPropFk = getRelationPropFromColName(
-          entityId,
-          col.name.replace("_id", "")
-        );
+        const relPropFk = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         return `<>${relPropFk.with}#{${colName}}</>`;
       case "string-image":
-        return `<>{${
-          col.nullable ? `${colName} && ` : ""
-        }<img src={${colName}} />}</>`;
+        return `<>{${col.nullable ? `${colName} && ` : ""}<img src={${colName}} />}</>`;
       case "datetime":
         if (col.nullable) {
           return `<span className="text-tiny">{${colName} === null ? '-' : formatDateTime(${colName})}</span>`;
@@ -72,21 +62,15 @@ export class Template__view_list extends Template {
         return `<>{${colName} ? <Label color='green' circular>O</Label> : <Label color='grey' circular>X</Label> }</>`;
       case "enums":
         const { id: enumId } = getEnumInfoFromColName(entityId, col.name);
-        return `<>{${
-          col.nullable ? `${colName} && ` : ""
-        }${enumId}Label[${colName}]}</>`;
+        return `<>{${col.nullable ? `${colName} && ` : ""}${enumId}Label[${colName}]}</>`;
       case "array-images":
-        return `<>{ ${colName}.map(r => ${
-          col.nullable ? `r && ` : ""
-        }<img src={r} />) }</>`;
+        return `<>{ ${colName}.map(r => ${col.nullable ? `r && ` : ""}<img src={r} />) }</>`;
       case "number-plain":
         return `<>{${col.nullable ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
         return `<>{/* object ${colName} */}</>`;
       case "object-pick":
-        const pickedChild = col.children!.find(
-          (child) => child.name === col.config?.picked
-        );
+        const pickedChild = col.children!.find((child) => child.name === col.config?.picked);
         if (!pickedChild) {
           throw new Error(`object-pick 선택 실패 (오브젝트: ${col.name})`);
         }
@@ -94,7 +78,7 @@ export class Template__view_list extends Template {
           entityId,
           pickedChild,
           names,
-          `${colName}${col.nullable ? "?" : ""}`
+          `${colName}${col.nullable ? "?" : ""}`,
         );
       case "array":
         return `<>{ /* array ${colName} */ }</>`;
@@ -106,13 +90,11 @@ export class Template__view_list extends Template {
   renderColumnImport(
     entityId: string,
     col: RenderingNode,
-    names: EntityNamesRecord
+    names: EntityNamesRecord,
   ): (string | null)[] {
     if (col.renderType === "enums") {
       const { id: enumId } = getEnumInfoFromColName(names.capital, col.name);
-      return [
-        `import { ${enumId}Label } from 'src/services/sonamu.generated';`,
-      ];
+      return [`import { ${enumId}Label } from 'src/services/sonamu.generated';`];
     } else if (col.renderType === "object") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name);
@@ -132,23 +114,19 @@ export class Template__view_list extends Template {
     return [null];
   }
 
-  renderFilterImport(
-    entityId: string,
-    col: RenderingNode,
-    names: EntityNamesRecord
-  ) {
+  renderFilterImport(entityId: string, col: RenderingNode, names: EntityNamesRecord) {
     if (col.name === "search") {
       return `import { ${names.capital}SearchInput } from "src/components/${names.fs}/${names.capital}SearchInput";`;
     } else if (col.renderType === "enums") {
       if (col.name === "orderBy") {
-        const componentId = `${names.capital}${inflection.camelize(
-          col.name
-        )}Select`;
+        const componentId = `${names.capital}${inflection.camelize(col.name)}Select`;
         return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
       } else {
         try {
-          const { id, targetEntityNames: targetMDNames } =
-            getEnumInfoFromColName(entityId, col.name);
+          const { id, targetEntityNames: targetMDNames } = getEnumInfoFromColName(
+            entityId,
+            col.name,
+          );
           const componentId = `${id}Select`;
           return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
         } catch {
@@ -157,10 +135,7 @@ export class Template__view_list extends Template {
       }
     } else if (col.renderType === "number-fk_id") {
       try {
-        const relProp = getRelationPropFromColName(
-          entityId,
-          col.name.replace("_id", "")
-        );
+        const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         const targetNames = EntityManager.getNamesFromId(relProp.with);
         const componentId = `${relProp.with}IdAsyncSelect`;
         return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
@@ -168,9 +143,7 @@ export class Template__view_list extends Template {
         return "";
       }
     } else {
-      throw new Error(
-        `렌더 불가능한 필터 임포트 ${col.name} ${col.renderType}`
-      );
+      throw new Error(`렌더 불가능한 필터 임포트 ${col.name} ${col.renderType}`);
     }
   }
 
@@ -192,15 +165,10 @@ export class Template__view_list extends Template {
           return "";
         }
       }
-      return `<${componentId} {...register('${col.name}')} ${
-        isClearable ? "clearable" : ""
-      } />`;
+      return `<${componentId} {...register('${col.name}')} ${isClearable ? "clearable" : ""} />`;
     } else if (col.renderType === "number-fk_id") {
       try {
-        const relProp = getRelationPropFromColName(
-          entityId,
-          col.name.replace("_id", "")
-        );
+        const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         componentId = `${relProp.with}IdAsyncSelect`;
         return `<${componentId} {...register('${col.name}')} ${
           isClearable ? "clearable" : ""
@@ -209,9 +177,7 @@ export class Template__view_list extends Template {
         return "";
       }
     } else {
-      throw new Error(
-        `렌더 불가능한 필터 임포트 ${col.name} ${col.renderType}`
-      );
+      throw new Error(`렌더 불가능한 필터 임포트 ${col.name} ${col.renderType}`);
     }
   }
 
@@ -223,9 +189,7 @@ export class Template__view_list extends Template {
       orderBy: "id-desc",
       search: "title",
     };
-    const orderByZodType = columns.find(
-      (col) => col.name === "orderBy"
-    )?.zodType;
+    const orderByZodType = columns.find((col) => col.name === "orderBy")?.zodType;
     if (orderByZodType && orderByZodType instanceof z.ZodEnum) {
       def.orderBy = orderByZodType.options[0].toString();
     }
@@ -262,8 +226,7 @@ export class Template__view_list extends Template {
         (col) =>
           col.name !== "id" &&
           col.name !== "queryMode" &&
-          (["enums", "number-id"].includes(col.renderType) ||
-            col.name.endsWith("_id"))
+          (["enums", "number-id"].includes(col.renderType) || col.name.endsWith("_id")),
       )
       // orderBy가 가장 뒤로 오게 순서 조정
       .sort((a) => {
@@ -285,10 +248,7 @@ export class Template__view_list extends Template {
         } else {
           key = "view_enums_select";
           try {
-            const { targetEntityNames, id } = getEnumInfoFromColName(
-              entityId,
-              col.name
-            );
+            const { targetEntityNames, id } = getEnumInfoFromColName(entityId, col.name);
             targetEntityId = targetEntityNames.capital;
             enumId = id;
           } catch {
@@ -298,10 +258,7 @@ export class Template__view_list extends Template {
       } else {
         key = "view_id_async_select";
         try {
-          const relProp = getRelationPropFromColName(
-            entityId,
-            col.name.replace("_id", "")
-          );
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
           targetEntityId = relProp.with;
         } catch {
           continue;
@@ -324,7 +281,7 @@ export class Template__view_list extends Template {
           return this.renderColumnImport(entityId, col, names);
         })
         .flat()
-        .filter((col) => col !== null)
+        .filter((col) => col !== null),
     ).join("\n");
 
     // SearchInput
@@ -360,12 +317,8 @@ import { DateTime } from "luxon";
 import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, formatDate, formatDateTime } from '@sonamu-kit/react-sui';
 
 import { ${names.capital}SubsetA } from "src/services/sonamu.generated";
-import { ${names.capital}Service } from 'src/services/${names.fs}/${
-        names.fs
-      }.service';
-import { ${names.capital}ListParams } from 'src/services/${names.fs}/${
-        names.fs
-      }.types';
+import { ${names.capital}Service } from 'src/services/${names.fs}/${names.fs}.service';
+import { ${names.capital}ListParams } from 'src/services/${names.fs}/${names.fs}.types';
 ${columnImports}
 ${filterColumns
   .map((col) => {

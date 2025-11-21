@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
@@ -20,9 +23,6 @@ importers:
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
-      prettier:
-        specifier: ^3.6.2
-        version: 3.6.2
       tsx:
         specifier: ^4.20.6
         version: 4.20.6
@@ -72,6 +72,9 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@sonamu-kit/hot-runner':
         specifier: workspace:^
         version: link:../../../modules/hot-runner
@@ -102,9 +105,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@4.0.12(@types/debug@4.1.12)(@types/node@24.10.1)(jiti@2.6.1)(sass@1.94.2)(tsx@4.20.6)(yaml@2.8.1))
-      prettier:
-        specifier: ^3.6.2
-        version: 3.6.2
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@swc/core@1.15.3)(@types/node@24.10.1)(typescript@5.9.3)
@@ -218,6 +218,9 @@ importers:
         specifier: ^2.4.2
         version: 2.4.2
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@tsconfig/node18':
         specifier: ^18.2.3
         version: 18.2.6
@@ -230,9 +233,6 @@ importers:
       esbuild:
         specifier: ^0.20.2
         version: 0.20.2
-      prettier:
-        specifier: ^3.2.5
-        version: 3.6.2
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@swc/core@1.15.3)(@types/node@20.19.25)(typescript@5.9.3)
@@ -264,9 +264,9 @@ importers:
         specifier: ^5.4.3
         version: 5.9.3
     devDependencies:
-      prettier:
-        specifier: ^3.2.5
-        version: 3.6.2
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
 
   modules/hot-hook:
     dependencies:
@@ -289,6 +289,9 @@ importers:
       '@adonisjs/tsconfig':
         specifier: ^1.4.1
         version: 1.4.1
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@changesets/cli':
         specifier: ^2.29.4
         version: 2.29.7(@types/node@22.19.1)
@@ -346,9 +349,6 @@ importers:
       p-timeout:
         specifier: ^6.1.4
         version: 6.1.4
-      prettier:
-        specifier: ^3.5.3
-        version: 3.6.2
       supertest:
         specifier: ^7.1.1
         version: 7.1.4
@@ -377,6 +377,9 @@ importers:
       '@adonisjs/tsconfig':
         specifier: ^1.4.1
         version: 1.4.1
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@changesets/cli':
         specifier: ^2.29.4
         version: 2.29.7(@types/node@22.19.1)
@@ -428,9 +431,6 @@ importers:
       p-timeout:
         specifier: ^6.1.4
         version: 6.1.4
-      prettier:
-        specifier: ^3.5.3
-        version: 3.6.2
       supertest:
         specifier: ^7.1.1
         version: 7.1.4
@@ -526,6 +526,9 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@types/inflection':
         specifier: ^1.13.0
         version: 1.13.2
@@ -565,9 +568,6 @@ importers:
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
-      prettier:
-        specifier: ^3.1.1
-        version: 3.6.2
       scss:
         specifier: ^0.2.4
         version: 0.2.4
@@ -598,6 +598,12 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.921.0
         version: 3.937.0
+      '@biomejs/js-api':
+        specifier: ^4.0.0
+        version: 4.0.0(@biomejs/wasm-nodejs@2.3.7)
+      '@biomejs/wasm-nodejs':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@fastify/cors':
         specifier: ^8.1.0
         version: 8.5.0
@@ -689,12 +695,12 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@sonamu-kit/hot-hook':
         specifier: workspace:^
         version: link:../hot-hook
-      '@sonamu-kit/ui':
-        specifier: workspace:^
-        version: link:../ui
       '@swc/cli':
         specifier: ^0.7.8
         version: 0.7.9(@swc/core@1.15.3)(chokidar@4.0.3)(supports-color@9.4.0)
@@ -710,18 +716,12 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.19.1
-      '@types/prettier':
-        specifier: ^3.0.0
-        version: 3.0.0
       '@types/prompts':
         specifier: ^2.0.14
         version: 2.4.9
       '@types/qs':
         specifier: ^6.9.7
         version: 6.14.0
-      prettier:
-        specifier: ^3.2.5
-        version: 3.6.2
       tsup:
         specifier: ^8.1.0
         version: 8.5.1(@microsoft/api-extractor@7.43.0(@types/node@22.19.1))(@swc/core@1.15.3)(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
@@ -756,6 +756,9 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@swc/cli':
         specifier: ^0.7.8
         version: 0.7.9(@swc/core@1.15.3)(chokidar@4.0.3)(supports-color@9.4.0)
@@ -768,9 +771,6 @@ importers:
       nodemon:
         specifier: ^3.1.10
         version: 3.1.11
-      prettier:
-        specifier: ^3.2.5
-        version: 3.6.2
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -892,6 +892,9 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.3.7
+        version: 2.3.7
       '@swc/cli':
         specifier: ^0.7.8
         version: 0.7.9(@swc/core@1.15.3)(chokidar@4.0.3)(supports-color@9.4.0)
@@ -937,9 +940,6 @@ importers:
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
-      prettier:
-        specifier: 2.7.1
-        version: 2.7.1
       tsc-watch:
         specifier: ^6.0.4
         version: 6.3.1(typescript@5.9.3)
@@ -1319,6 +1319,76 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
+
+  '@biomejs/biome@2.3.7':
+    resolution: {integrity: sha512-CTbAS/jNAiUc6rcq94BrTB8z83O9+BsgWj2sBCQg9rD6Wkh2gjfR87usjx0Ncx0zGXP1NKgT7JNglay5Zfs9jw==}
+    engines: {node: '>=14.21.3'}
+    hasBin: true
+
+  '@biomejs/cli-darwin-arm64@2.3.7':
+    resolution: {integrity: sha512-LirkamEwzIUULhXcf2D5b+NatXKeqhOwilM+5eRkbrnr6daKz9rsBL0kNZ16Hcy4b8RFq22SG4tcLwM+yx/wFA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@biomejs/cli-darwin-x64@2.3.7':
+    resolution: {integrity: sha512-Q4TO633kvrMQkKIV7wmf8HXwF0dhdTD9S458LGE24TYgBjSRbuhvio4D5eOQzirEYg6eqxfs53ga/rbdd8nBKg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@biomejs/cli-linux-arm64-musl@2.3.7':
+    resolution: {integrity: sha512-/afy8lto4CB8scWfMdt+NoCZtatBUF62Tk3ilWH2w8ENd5spLhM77zKlFZEvsKJv9AFNHknMl03zO67CiklL2Q==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@biomejs/cli-linux-arm64@2.3.7':
+    resolution: {integrity: sha512-inHOTdlstUBzgjDcx0ge71U4SVTbwAljmkfi3MC5WzsYCRhancqfeL+sa4Ke6v2ND53WIwCFD5hGsYExoI3EZQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@biomejs/cli-linux-x64-musl@2.3.7':
+    resolution: {integrity: sha512-CQUtgH1tIN6e5wiYSJqzSwJumHYolNtaj1dwZGCnZXm2PZU1jOJof9TsyiP3bXNDb+VOR7oo7ZvY01If0W3iFQ==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+
+  '@biomejs/cli-linux-x64@2.3.7':
+    resolution: {integrity: sha512-fJMc3ZEuo/NaMYo5rvoWjdSS5/uVSW+HPRQujucpZqm2ZCq71b8MKJ9U4th9yrv2L5+5NjPF0nqqILCl8HY/fg==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [linux]
+
+  '@biomejs/cli-win32-arm64@2.3.7':
+    resolution: {integrity: sha512-aJAE8eCNyRpcfx2JJAtsPtISnELJ0H4xVVSwnxm13bzI8RwbXMyVtxy2r5DV1xT3WiSP+7LxORcApWw0LM8HiA==}
+    engines: {node: '>=14.21.3'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@biomejs/cli-win32-x64@2.3.7':
+    resolution: {integrity: sha512-pulzUshqv9Ed//MiE8MOUeeEkbkSHVDVY5Cz5wVAnH1DUqliCQG3j6s1POaITTFqFfo7AVIx2sWdKpx/GS+Nqw==}
+    engines: {node: '>=14.21.3'}
+    cpu: [x64]
+    os: [win32]
+
+  '@biomejs/js-api@4.0.0':
+    resolution: {integrity: sha512-EOArR/6drRzM1/hwOIz1pZw90FL31Ud4Y7hEHGWVtMNmAwS9SrwZ8hMENGlLVXCeGW/kL46p8kX7eO6x9Nmezg==}
+    peerDependencies:
+      '@biomejs/wasm-bundler': ^2.3.0
+      '@biomejs/wasm-nodejs': ^2.3.0
+      '@biomejs/wasm-web': ^2.3.0
+    peerDependenciesMeta:
+      '@biomejs/wasm-bundler':
+        optional: true
+      '@biomejs/wasm-nodejs':
+        optional: true
+      '@biomejs/wasm-web':
+        optional: true
+
+  '@biomejs/wasm-nodejs@2.3.7':
+    resolution: {integrity: sha512-63TN+Xw0OA4CNPWu4bghWXpSPpyEElZsNwiK0Hqr2Y+r21tj2KOP23DqQs7Gd6Fvc6nyr3I3lTneGGfgmpq3DQ==}
 
   '@borewit/text-codec@0.1.1':
     resolution: {integrity: sha512-5L/uBxmjaCIX5h8Z+uu+kA9BQLkc/Wl06UGR5ajNRxu+/XjonB5i8JpgFMrPj3LXTCPA0pv8yxUvbUi+QthGGA==}
@@ -3672,10 +3742,6 @@ packages:
 
   '@types/pluralize@0.0.33':
     resolution: {integrity: sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg==}
-
-  '@types/prettier@3.0.0':
-    resolution: {integrity: sha512-mFMBfMOz8QxhYVbuINtswBp9VL2b4Y0QqYHwqLz3YbgtfAcat2Dl6Y1o4e22S/OVE6Ebl9m7wWiMT2lSbAs1wA==}
-    deprecated: This is a stub types definition. prettier provides its own type definitions, so you do not need this installed.
 
   '@types/prompts@2.4.9':
     resolution: {integrity: sha512-qTxFi6Buiu8+50/+3DGIWLHM6QuWsEKugJnnP6iv2Mc4ncxE4A/OJkjuVOA+5X0X1S/nq5VJRa8Lu+nwcvbrKA==}
@@ -10287,6 +10353,47 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
+  '@biomejs/biome@2.3.7':
+    optionalDependencies:
+      '@biomejs/cli-darwin-arm64': 2.3.7
+      '@biomejs/cli-darwin-x64': 2.3.7
+      '@biomejs/cli-linux-arm64': 2.3.7
+      '@biomejs/cli-linux-arm64-musl': 2.3.7
+      '@biomejs/cli-linux-x64': 2.3.7
+      '@biomejs/cli-linux-x64-musl': 2.3.7
+      '@biomejs/cli-win32-arm64': 2.3.7
+      '@biomejs/cli-win32-x64': 2.3.7
+
+  '@biomejs/cli-darwin-arm64@2.3.7':
+    optional: true
+
+  '@biomejs/cli-darwin-x64@2.3.7':
+    optional: true
+
+  '@biomejs/cli-linux-arm64-musl@2.3.7':
+    optional: true
+
+  '@biomejs/cli-linux-arm64@2.3.7':
+    optional: true
+
+  '@biomejs/cli-linux-x64-musl@2.3.7':
+    optional: true
+
+  '@biomejs/cli-linux-x64@2.3.7':
+    optional: true
+
+  '@biomejs/cli-win32-arm64@2.3.7':
+    optional: true
+
+  '@biomejs/cli-win32-x64@2.3.7':
+    optional: true
+
+  '@biomejs/js-api@4.0.0(@biomejs/wasm-nodejs@2.3.7)':
+    optionalDependencies:
+      '@biomejs/wasm-nodejs': 2.3.7
+
+  '@biomejs/wasm-nodejs@2.3.7': {}
+
   '@borewit/text-codec@0.1.1': {}
 
   '@braidai/lang@1.1.2': {}
@@ -12602,10 +12709,6 @@ snapshots:
   '@types/picomatch@4.0.2': {}
 
   '@types/pluralize@0.0.33': {}
-
-  '@types/prettier@3.0.0':
-    dependencies:
-      prettier: 3.6.2
 
   '@types/prompts@2.4.9':
     dependencies:

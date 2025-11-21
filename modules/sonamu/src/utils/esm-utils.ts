@@ -1,5 +1,5 @@
-import { fileURLToPath, pathToFileURL } from 'url';
-import { dirname } from 'path';
+import { fileURLToPath, pathToFileURL } from "url";
+import { dirname } from "path";
 
 /**
  * import.meta.url로부터 __filename 생성
@@ -31,9 +31,7 @@ export function getDirname(metaUrl: string): string {
  * const url = createImportUrl('/path/to/file.js');
  * await import(url);
  */
-export function createImportUrl(
-  absolutePath: string
-): string {
+export function createImportUrl(absolutePath: string): string {
   const fileUrl = pathToFileURL(absolutePath).href;
   return fileUrl;
 }
@@ -44,7 +42,7 @@ export function createImportUrl(
  * @returns hot reload 환경인지 여부
  */
 export function isHotReloadServer(): boolean {
-  return process.env.HOT === 'yes';
+  return process.env.HOT === "yes";
 }
 
 /**
@@ -57,13 +55,14 @@ export function isHotReloadServer(): boolean {
  * @returns { name: string; value: ExportedMemberT }[]
  */
 export async function importMembers<ExportedMemberT>(
-  filePath: string
+  filePath: string,
 ): Promise<{ name: string; value: ExportedMemberT }[]> {
   const imported = await import(createImportUrl(filePath));
 
-  const allExportedMembers = Object.entries<ExportedMemberT>(imported).map(
-    ([name, value]) => ({ name, value })
-  );
+  const allExportedMembers = Object.entries<ExportedMemberT>(imported).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   return allExportedMembers;
 }

@@ -89,9 +89,9 @@ bootstrap().finally(async () => {
 
 async function dev() {
   const apiRoot = findApiRootPath();
-  const entryPoint = 'src/index.ts';   
+  const entryPoint = "src/index.ts";
 
-  console.log(chalk.yellow.bold('🚀 Starting Sonamu dev server...\n'));
+  console.log(chalk.yellow.bold("🚀 Starting Sonamu dev server...\n"));
 
   const serverProcess = spawn(
     "hot-runner",
@@ -111,20 +111,20 @@ async function dev() {
         HOT: "yes",
         API_ROOT_PATH: apiRoot,
       },
-    }
+    },
   );
 
   // 종료 처리
   const cleanup = () => {
-    console.log(chalk.yellow('\n\n👋 Shutting down...'));
-    serverProcess.kill('SIGTERM');
+    console.log(chalk.yellow("\n\n👋 Shutting down..."));
+    serverProcess.kill("SIGTERM");
     process.exit(0);
   };
 
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
 
-  serverProcess.on('exit', (code) => {
+  serverProcess.on("exit", (code) => {
     if (code !== 0) {
       console.error(chalk.red(`❌ Server exited with code ${code}`));
       process.exit(code || 1);
@@ -133,25 +133,19 @@ async function dev() {
 }
 
 async function start() {
-  const entryPoint = 'dist/index.js';  
+  const entryPoint = "dist/index.js";
 
   if (!(await exists(entryPoint))) {
-    console.log(
-      chalk.red(`${entryPoint} not found. Please build your project first.`)
-    );
+    console.log(chalk.red(`${entryPoint} not found. Please build your project first.`));
     console.log(chalk.blue("Run: yarn sonamu build"));
     return;
   }
 
   const { spawn } = await import("child_process");
-  const serverProcess = spawn(
-    "node",
-    ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
-    {
-      cwd: Sonamu.apiRootPath,
-      stdio: "inherit",
-    }
-  );
+  const serverProcess = spawn("node", ["--enable-source-maps", "-r", "dotenv/config", entryPoint], {
+    cwd: Sonamu.apiRootPath,
+    stdio: "inherit",
+  });
 
   process.on("SIGINT", () => {
     serverProcess.kill("SIGTERM");
@@ -219,14 +213,9 @@ async function fixture_init() {
       label: "(LOCAL) Fixture DB",
       config: Sonamu.dbConfig.fixture_local,
       toSkip: (() => {
-        const remoteConn = Sonamu.dbConfig.fixture_remote
-          .connection as Knex.ConnectionConfig;
-        const localConn = Sonamu.dbConfig.fixture_local
-          .connection as Knex.ConnectionConfig;
-        return (
-          remoteConn.host === localConn.host &&
-          remoteConn.database === localConn.database
-        );
+        const remoteConn = Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig;
+        const localConn = Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig;
+        return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
       })(),
     },
     {
@@ -245,16 +234,16 @@ async function fixture_init() {
   const srcConn = srcConfig.connection as Knex.ConnectionConfig;
   const migrationsDump = `/tmp/sonamu-fixture-init-migrations-${Date.now()}.sql`;
   execSync(
-    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`
+    `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction -d --no-create-db --triggers ${srcConn.database} > ${dumpFilename}`,
   );
   const _db = knex(srcConfig);
   const [[migrations]] = await _db.raw(
     "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = 'knex_migrations'",
-    [srcConn.database]
+    [srcConn.database],
   );
   if (migrations.count > 0) {
     execSync(
-      `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`
+      `mysqldump -h${srcConn.host} -u${srcConn.user} -p${srcConn.password} --single-transaction --no-create-db --triggers ${srcConn.database} knex_migrations knex_migrations_lock > ${migrationsDump}`,
     );
   }
 
@@ -276,9 +265,7 @@ async function fixture_init() {
     });
     const [[row]] = await db.raw(`SHOW DATABASES LIKE "${conn.database}"`);
     if (row) {
-      console.log(
-        chalk.yellow(`${label}: Database "${conn.database}" Already exists`)
-      );
+      console.log(chalk.yellow(`${label}: Database "${conn.database}" Already exists`));
       await db.destroy();
       continue;
     }
@@ -321,9 +308,7 @@ async function stub_practice(name: string) {
     }
 
     const filteredSeqs = fileNames
-      .filter(
-        (fileName) => fileName.startsWith("p") && fileName.endsWith(".ts")
-      )
+      .filter((fileName) => fileName.startsWith("p") && fileName.endsWith(".ts"))
       .map((fileName) => {
         const [, seqNo] = fileName.match(/^p([0-9]+)\-/) ?? ["0", "0"];
         return parseInt(seqNo);
@@ -358,7 +343,7 @@ async function stub_practice(name: string) {
 
   const runCode = `yarn node -r dotenv/config --enable-source-maps dist/practices/${fileName.replace(
     ".ts",
-    ".js"
+    ".js",
   )}`;
   console.log(`${chalk.blue(runCode)} copied to clipboard.`);
   execSync(`echo "${runCode}" | pbcopy`);
@@ -384,17 +369,13 @@ async function ui() {
   try {
     // 사용자 프로젝트의 패키지들 중에서 @sonamu-kit/ui를 찾습니다.
     // 이를 위해서 createRequire를 사용하여 프로젝트 경로 기준으로 resolve합니다.
-    const projectRequire = createRequire(
-      path.join(Sonamu.apiRootPath, "package.json")
-    );
+    const projectRequire = createRequire(path.join(Sonamu.apiRootPath, "package.json"));
     const uiPackagePath = projectRequire.resolve("@sonamu-kit/ui"); // 없으면 여기서 터져요(MODULE_NOT_FOUND)
     const uiNodePath = path.join(path.dirname(uiPackagePath), "run-ui.js");
 
     if (!(await exists(uiNodePath))) {
       console.log(
-        chalk.red(
-          `UI runner script not found at ${uiNodePath}. Please rebuild @sonamu-kit/ui.`
-        )
+        chalk.red(`UI runner script not found at ${uiNodePath}. Please rebuild @sonamu-kit/ui.`),
       );
       return;
     }
@@ -403,8 +384,10 @@ async function ui() {
     const uiProcess = spawn(
       process.execPath,
       [
-        "--import", "@sonamu-kit/loader",
-        "--import", "sonamu/hot-hook-register",
+        "--import",
+        "@sonamu-kit/loader",
+        "--import",
+        "sonamu/hot-hook-register",
         "--enable-source-maps",
         "--no-warnings",
         uiNodePath,
@@ -414,12 +397,11 @@ async function ui() {
         env: {
           ...process.env,
           HOT: "yes",
-          PROJECT_NAME:
-            Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
+          PROJECT_NAME: Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
           API_ROOT_PATH: Sonamu.apiRootPath,
           UI_PORT: (Sonamu.config.ui?.port ?? 57000).toString(),
         },
-      }
+      },
     );
 
     // 종료 처리
@@ -440,9 +422,7 @@ async function ui() {
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes("isn't declared")) {
-      console.log(
-        `You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`
-      );
+      console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
       return;
     }
     throw e;

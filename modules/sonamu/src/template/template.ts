@@ -32,7 +32,7 @@ export abstract class Template {
     const templateFiles = await globAsync(
       // Sonamu의 코드베이스는 항상 빌드된 채로 dist 속에 머무르므로,
       // 현재 파일을 기준으로 마찬가지로 dist 속에 있는 템플릿 구현체 js 파일들을 찾습니다.
-      path.join(import.meta.dirname, "implementations/*.template.js")
+      path.join(import.meta.dirname, "implementations/*.template.js"),
     );
 
     for (const templateFile of templateFiles) {
@@ -47,7 +47,7 @@ export abstract class Template {
         this.templates.set(instance.key, instance);
       } else {
         throw new Error(
-          `Template ${templateFile} should export only one class that extends Template`
+          `Template ${templateFile} should export only one class that extends Template`,
         );
       }
     }
@@ -60,13 +60,15 @@ export abstract class Template {
   /**
    * 템플릿 **인스턴스**를 key로 찾아옵니다.
    * 만약 템플릿이 로드(loadAll)되지 않았거나 찾는 템플릿이 없다면 에러를 던집니다.
-   * @param key 
-   * @returns 
+   * @param key
+   * @returns
    */
   public static find(key: TemplateKey): Template {
     const instance = this.templates.get(key);
     if (!instance) {
-      throw new Error(`Template ${key} not found. It might be becasuse you tried to find a template before loading all templates. Did you call Template.loadAll()?`);
+      throw new Error(
+        `Template ${key} not found. It might be becasuse you tried to find a template before loading all templates. Did you call Template.loadAll()?`,
+      );
     }
     return instance;
   }

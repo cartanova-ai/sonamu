@@ -19,10 +19,7 @@ class FileModelClass extends BaseModelClass {
   modelName = "File";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "File" })
-  async findById<T extends FileSubsetKey>(
-    subset: T,
-    id: number
-  ): Promise<FileSubsetMapping[T]> {
+  async findById<T extends FileSubsetKey>(subset: T, id: number): Promise<FileSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -37,7 +34,7 @@ class FileModelClass extends BaseModelClass {
 
   async findOne<T extends FileSubsetKey>(
     subset: T,
-    listParams: FileListParams
+    listParams: FileListParams,
   ): Promise<FileSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -51,7 +48,7 @@ class FileModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Files" })
   async findMany<T extends FileSubsetKey>(
     subset: T,
-    params: FileListParams = {}
+    params: FileListParams = {},
   ): Promise<ListResult<FileSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -80,9 +77,7 @@ class FileModelClass extends BaseModelClass {
             // } else if (params.search === "field") {
             //   qb.where("files.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
+            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
           }
         }
 
@@ -179,7 +174,7 @@ class FileModelClass extends BaseModelClass {
           url: await file.saveToDisk(key),
           mime_type: file.mimetype,
         };
-      })
+      }),
     );
 
     return {

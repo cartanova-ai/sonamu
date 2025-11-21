@@ -57,17 +57,14 @@ export class FixtureManagerClass {
       const tConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig & {
         port?: number;
       };
-      const pConn = Sonamu.dbConfig.production_master
-        .connection as Knex.ConnectionConfig & { port?: number };
+      const pConn = Sonamu.dbConfig.production_master.connection as Knex.ConnectionConfig & {
+        port?: number;
+      };
       if (
-        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${
-          tConn.database
-        }` ===
+        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${tConn.database}` ===
         `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}/${pConn.database}`
       ) {
-        throw new Error(
-          `테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.`
-        );
+        throw new Error(`테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.`);
       }
     }
 
@@ -85,11 +82,9 @@ export class FixtureManagerClass {
       }
 
       const [tables] = await this.tdb.raw(
-        `SHOW TABLE STATUS WHERE Engine IS NOT NULL AND Name != 'migrations'`
+        `SHOW TABLE STATUS WHERE Engine IS NOT NULL AND Name != 'migrations'`,
       );
-      const tableNames = tables.map(
-        (tableInfo: { Name: string }) => tableInfo["Name"]
-      );
+      const tableNames = tables.map((tableInfo: { Name: string }) => tableInfo["Name"]);
       this.cachedTableNames = tableNames;
       return tableNames;
     })();
@@ -98,24 +93,24 @@ export class FixtureManagerClass {
     const tableListStr = tableNames.join(", ");
 
     // 한 번에 모든 테이블 체크섬 확인
-    const [fdbChecksumRows] = await this.fdb.raw<
-      [{ Table: string; Checksum: number }[]]
-    >(`CHECKSUM TABLE ${tableListStr}`);
-    const [tdbChecksumRows] = await this.tdb.raw<
-      [{ Table: string; Checksum: number }[]]
-    >(`CHECKSUM TABLE ${tableListStr}`);
+    const [fdbChecksumRows] = await this.fdb.raw<[{ Table: string; Checksum: number }[]]>(
+      `CHECKSUM TABLE ${tableListStr}`,
+    );
+    const [tdbChecksumRows] = await this.tdb.raw<[{ Table: string; Checksum: number }[]]>(
+      `CHECKSUM TABLE ${tableListStr}`,
+    );
 
     // 체크섬 맵 생성
     const fdbChecksums = new Map(
-      fdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum])
+      fdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum]),
     );
     const tdbChecksums = new Map(
-      tdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum])
+      tdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum]),
     );
 
     // 변경된 테이블들만 처리
     const changedTables = tableNames.filter(
-      (tableName) => fdbChecksums.get(tableName) !== tdbChecksums.get(tableName)
+      (tableName) => fdbChecksums.get(tableName) !== tdbChecksums.get(tableName),
     );
 
     // 병렬로 truncate + insert 실행
@@ -130,11 +125,10 @@ export class FixtureManagerClass {
             (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
           }.${tableName}
         SELECT * FROM ${
-          (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig)
-            .database
+          (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig).database
         }.${tableName}`;
           await trx.raw(rawQuery);
-        })
+        }),
       );
       await trx.raw(`SET FOREIGN_KEY_CHECKS = 1`);
     });
@@ -150,12 +144,8 @@ export class FixtureManagerClass {
   async sync() {
     const frdb = knex(Sonamu.dbConfig.fixture_remote);
 
-    const [tables] = await this.fdb.raw(
-      "SHOW TABLE STATUS WHERE Engine IS NOT NULL"
-    );
-    const tableNames: string[] = tables.map(
-      (table: any) => table.Name as string
-    );
+    const [tables] = await this.fdb.raw("SHOW TABLE STATUS WHERE Engine IS NOT NULL");
+    const tableNames: string[] = tables.map((table: any) => table.Name as string);
 
     console.log(chalk.magenta("SYNC..."));
     await Promise.all(
@@ -187,24 +177,21 @@ export class FixtureManagerClass {
                         return [key, null];
                       } else if (typeof value === "boolean") {
                         return [key, value ? 1 : 0];
-                      } else if (
-                        typeof value === "object" &&
-                        !(value instanceof Date)
-                      ) {
+                      } else if (typeof value === "object" && !(value instanceof Date)) {
                         return [key, JSON.stringify(value)];
                       } else {
                         return [key, value];
                       }
-                    })
+                    }),
                   );
-                })
+                }),
               )
               .into(tableName);
             console.log("OK");
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 1`);
           });
         }
-      })
+      }),
     );
     console.log(chalk.magenta("DONE!"));
 
@@ -221,9 +208,9 @@ export class FixtureManagerClass {
         await Promise.all(
           ids.map(async (id) => {
             return await this.getImportQueries(entityId, "id", id);
-          })
+          }),
         )
-      ).flat()
+      ).flat(),
     );
 
     const wdb = BaseModel.getDB("w");
@@ -236,11 +223,7 @@ export class FixtureManagerClass {
     }
   }
 
-  async getImportQueries(
-    entityId: string,
-    field: string,
-    id: number
-  ): Promise<string[]> {
+  async getImportQueries(entityId: string, field: string, id: number): Promise<string[]> {
     const recordKey = `${entityId}#${field}#${id}`;
 
     // 순환 참조 방지: 이미 방문한 레코드는 스킵
@@ -260,10 +243,8 @@ export class FixtureManagerClass {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as any)
-      .database;
-    const realDatabase = (Sonamu.dbConfig.production_master.connection as any)
-      .database;
+    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as any).database;
+    const realDatabase = (Sonamu.dbConfig.production_master.connection as any).database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 
@@ -271,8 +252,7 @@ export class FixtureManagerClass {
       .filter(
         ([, relation]) =>
           isBelongsToOneRelationProp(relation) ||
-          (isOneToOneRelationProp(relation) &&
-            relation.customJoinClause === undefined)
+          (isOneToOneRelationProp(relation) && relation.customJoinClause === undefined),
       )
       .map(([, relation]) => {
         /*
@@ -288,12 +268,10 @@ export class FixtureManagerClass {
         if (isOneToOneRelationProp(relation) && !relation.hasJoinColumn) {
           const relatedEntity = EntityManager.get(relation.with);
           const relatedIdColumnName = relatedEntity.props.find(
-            (p) => isRelationProp(p) && p.with === entity.id
+            (p) => isRelationProp(p) && p.with === entity.id,
           )?.name;
           if (!relatedIdColumnName) {
-            throw new Error(
-              `${relatedEntity.id}의 ${entity.id} 관계 프롭을 찾을 수 없습니다.`
-            );
+            throw new Error(`${relatedEntity.id}의 ${entity.id} 관계 프롭을 찾을 수 없습니다.`);
           }
           field = `${relatedIdColumnName}_id`;
           id = row["id"];
@@ -312,7 +290,7 @@ export class FixtureManagerClass {
     const relQueries = await Promise.all(
       args.map(async (args) => {
         return this.getImportQueries(args.entityId, args.field, args.id);
-      })
+      }),
     );
 
     return [..._.uniq(relQueries.reverse().flat()), selfQuery];
@@ -333,7 +311,7 @@ export class FixtureManagerClass {
   async getFixtures(
     sourceDBName: keyof SonamuDBConfig,
     targetDBName: keyof SonamuDBConfig,
-    searchOptions: FixtureSearchOptions
+    searchOptions: FixtureSearchOptions,
   ) {
     const sourceDB = knex(Sonamu.dbConfig[sourceDBName]);
     const targetDB = knex(Sonamu.dbConfig[targetDBName]);
@@ -341,9 +319,7 @@ export class FixtureManagerClass {
 
     const entity = EntityManager.get(entityId);
     const column =
-      entity.props.find((prop) => prop.name === field)?.type === "relation"
-        ? `${field}_id`
-        : field;
+      entity.props.find((prop) => prop.name === field)?.type === "relation" ? `${field}_id` : field;
 
     let query = sourceDB(entity.table);
     if (searchType === "equals") {
@@ -362,9 +338,7 @@ export class FixtureManagerClass {
       const initialRecordsLength = fixtures.length;
       const newRecords = await this.createFixtureRecord(entity, row);
       fixtures.push(...newRecords);
-      const currentFixtureRecord = fixtures.find(
-        (r) => r.fixtureId === `${entityId}#${row.id}`
-      );
+      const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
 
       if (currentFixtureRecord) {
         // 현재 fixture로부터 생성된 fetchedRecords 설정
@@ -390,11 +364,7 @@ export class FixtureManagerClass {
       }
 
       // ID를 이용하여 targetDB에서 조회되지 않는 경우, unique 제약을 위반하는지 확인
-      const uniqueRow = await this.checkUniqueViolation(
-        targetDB,
-        entity,
-        fixture
-      );
+      const uniqueRow = await this.checkUniqueViolation(targetDB, entity, fixture);
       if (uniqueRow) {
         const [record] = await this.createFixtureRecord(entity, uniqueRow, {
           singleRecord: true,
@@ -416,7 +386,7 @@ export class FixtureManagerClass {
     options?: {
       singleRecord?: boolean;
       _db?: Knex;
-    }
+    },
   ): Promise<FixtureRecord[]> {
     const records: FixtureRecord[] = [];
     const visitedEntities = new Set<string>();
@@ -454,9 +424,7 @@ export class FixtureManagerClass {
           const fromColumn = `${inflection.singularize(entity.table)}_id`;
           const toColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const relatedIds = await db(throughTable)
-            .where(fromColumn, row.id)
-            .pluck(toColumn);
+          const relatedIds = await db(throughTable).where(fromColumn, row.id).pluck(toColumn);
           record.columns[prop.name].value = relatedIds;
         } else if (isHasManyRelationProp(prop)) {
           const relatedEntity = EntityManager.get(prop.with);
@@ -467,12 +435,10 @@ export class FixtureManagerClass {
         } else if (isOneToOneRelationProp(prop) && !prop.hasJoinColumn) {
           const relatedEntity = EntityManager.get(prop.with);
           const relatedProp = relatedEntity.props.find(
-            (p) => isRelationProp(p) && p.with === entity.id
+            (p) => isRelationProp(p) && p.with === entity.id,
           );
           if (relatedProp) {
-            const relatedRow = await db(relatedEntity.table)
-              .where("id", row.id)
-              .first();
+            const relatedRow = await db(relatedEntity.table).where("id", row.id).first();
             record.columns[prop.name].value = relatedRow?.id;
           }
         } else if (isRelationProp(prop)) {
@@ -483,9 +449,7 @@ export class FixtureManagerClass {
           }
           if (!options?.singleRecord && relatedId) {
             const relatedEntity = EntityManager.get(prop.with);
-            const relatedRow = await db(relatedEntity.table)
-              .where("id", relatedId)
-              .first();
+            const relatedRow = await db(relatedEntity.table).where("id", relatedId).first();
             if (relatedRow) {
               await create(relatedEntity, relatedRow);
             }
@@ -501,10 +465,7 @@ export class FixtureManagerClass {
     return records;
   }
 
-  async insertFixtures(
-    dbName: keyof SonamuDBConfig,
-    _fixtures: FixtureRecord[]
-  ) {
+  async insertFixtures(dbName: keyof SonamuDBConfig, _fixtures: FixtureRecord[]) {
     const fixtures = _.uniqBy(_fixtures, (f) => f.fixtureId);
 
     this.relationGraph.buildGraph(fixtures);
@@ -521,8 +482,8 @@ export class FixtureManagerClass {
           // ID가 변경된 경우, 다른 fixture에서 참조하는 경우가 찾아서 수정
           console.log(
             chalk.yellow(
-              `Unique constraint violation: ${fixture.entityId}#${fixture.id} -> ${fixture.entityId}#${result.id}`
-            )
+              `Unique constraint violation: ${fixture.entityId}#${fixture.id} -> ${fixture.entityId}#${result.id}`,
+            ),
           );
           fixtures.forEach((f) => {
             Object.values(f.columns).forEach((column) => {
@@ -626,7 +587,7 @@ export class FixtureManagerClass {
   private async handleManyToManyRelations(
     db: Knex,
     fixture: FixtureRecord,
-    fixtures: FixtureRecord[]
+    fixtures: FixtureRecord[],
   ) {
     for (const [, column] of Object.entries(fixture.columns)) {
       const prop = column.prop as EntityProp;
@@ -635,18 +596,14 @@ export class FixtureManagerClass {
         const relatedIds = column.value as number[];
 
         for (const relatedId of relatedIds) {
-          if (
-            !fixtures.find((f) => f.fixtureId === `${prop.with}#${relatedId}`)
-          ) {
+          if (!fixtures.find((f) => f.fixtureId === `${prop.with}#${relatedId}`)) {
             continue;
           }
 
           const entity = EntityManager.get(fixture.entityId);
           const relatedEntity = EntityManager.get(prop.with);
           if (!entity || !relatedEntity) {
-            throw new Error(
-              `Entity not found: ${fixture.entityId}, ${prop.with}`
-            );
+            throw new Error(`Entity not found: ${fixture.entityId}, ${prop.with}`);
           }
 
           const [found] = await db(joinTable)
@@ -665,8 +622,8 @@ export class FixtureManagerClass {
           });
           console.log(
             chalk.green(
-              `Inserted into ${joinTable}: ${entity.table}(${fixture.id}) - ${relatedEntity.table}(${relatedId}) ID: ${newIds}`
-            )
+              `Inserted into ${joinTable}: ${entity.table}(${fixture.id}) - ${relatedEntity.table}(${relatedId}) ID: ${newIds}`,
+            ),
           );
         }
       }
@@ -682,11 +639,7 @@ export class FixtureManagerClass {
 
     if (fixtureLoaderStart !== -1 && fixtureLoaderEnd !== -1) {
       const newContent =
-        content.slice(0, fixtureLoaderEnd) +
-        "  " +
-        code +
-        "\n" +
-        content.slice(fixtureLoaderEnd);
+        content.slice(0, fixtureLoaderEnd) + "  " + code + "\n" + content.slice(fixtureLoaderEnd);
 
       writeFileSync(path, newContent);
     } else {
@@ -695,16 +648,12 @@ export class FixtureManagerClass {
   }
 
   // 해당 픽스쳐의 값으로 유니크 제약에 위배되는 레코드가 있는지 확인
-  private async checkUniqueViolation(
-    db: Knex,
-    entity: Entity,
-    fixture: FixtureRecord
-  ) {
+  private async checkUniqueViolation(db: Knex, entity: Entity, fixture: FixtureRecord) {
     const _uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
 
     // ManyToMany 관계 테이블의 유니크 제약은 제외
     const uniqueIndexes = _uniqueIndexes.filter((index) =>
-      index.columns.every((column) => !column.startsWith(`${entity.table}__`))
+      index.columns.every((column) => !column.startsWith(`${entity.table}__`)),
     );
     if (uniqueIndexes.length === 0) {
       return null;

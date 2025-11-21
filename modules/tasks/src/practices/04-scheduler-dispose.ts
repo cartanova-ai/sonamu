@@ -55,7 +55,6 @@ function getConfig(): SchedulerConfig {
     ],
   };
 }
-
 // scheduler를 dispose하면 대기 중인 Promise가 없기 때문에 프로그램은 1분 뒤에 바로 종료된다.
 (async () => {
   const scheduler = await createScheduler(getConfig());
