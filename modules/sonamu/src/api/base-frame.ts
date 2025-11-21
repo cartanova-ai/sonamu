@@ -1,5 +1,7 @@
-import { Knex } from "knex";
-import { DB, DBPreset } from "../database/db";
+import type { Knex } from "knex";
+import type { DBPreset } from "../database/db";
+// Static imports kept for non-async functions (getDB, getUpsertBuilder)
+import { DB } from "../database/db";
 import { UpsertBuilder } from "../database/upsert-builder";
 
 export abstract class BaseFrameClass {

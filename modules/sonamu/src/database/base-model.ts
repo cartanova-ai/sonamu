@@ -1,14 +1,13 @@
+import type { Knex } from "knex";
+import type { SubsetQuery } from "../types/types";
+import type { BaseListParams } from "../utils/model";
+// Static imports kept for non-async functions (getDB, getPuri, myNow, hydrate, getJoinClause, getUpsertBuilder)
 import { DateTime } from "luxon";
-import { Knex } from "knex";
 import { chunk, groupBy, isObject, omit, set, uniq } from "lodash-es";
 import { DBPreset, DB } from "./db";
-import { isCustomJoinClause, type SubsetQuery } from "../types/types";
-import type { BaseListParams } from "../utils/model";
+import { isCustomJoinClause } from "../types/types";
 import inflection from "inflection";
-import chalk from "chalk";
 import { UpsertBuilder } from "./upsert-builder";
-import SqlParser from "node-sql-parser";
-import { getTableName, getTableNamesFromWhere } from "../utils/sql-parser";
 import { PuriWrapper } from "./puri-wrapper";
 
 export class BaseModelClass {
@@ -250,6 +249,10 @@ export class BaseModelClass {
     subsetQuery: SubsetQuery;
     qb: Knex.QueryBuilder;
   }> {
+    const chalk = await import("chalk");
+    const SqlParser = await import("node-sql-parser");
+    const { getTableName, getTableNamesFromWhere } = await import("../utils/sql-parser");
+
     const db = _db ?? this.getDB(subset.startsWith("A") ? "w" : "r");
     baseTable =
       baseTable ?? inflection.pluralize(inflection.underscore(this.modelName));
@@ -343,7 +346,7 @@ export class BaseModelClass {
       if (debug === true || debug === "count") {
         console.debug(
           "DEBUG: count query",
-          chalk.blue(countQuery.toQuery().toString())
+          chalk.default.blue(countQuery.toQuery().toString())
         );
       }
 
@@ -382,7 +385,7 @@ export class BaseModelClass {
       if (debug === true || debug === "list") {
         console.debug(
           "DEBUG: list query",
-          chalk.blue(listQuery.toQuery().toString())
+          chalk.default.blue(listQuery.toQuery().toString())
         );
       }
 

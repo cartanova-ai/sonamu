@@ -32,6 +32,21 @@ function build() {
     console.error(chalk.red("Build failed."), error);
     process.exit(1);
   }
+
+  // sonamu.config.ts 빌드
+  try {
+    const configPath = resolve(process.cwd(), "sonamu.config.ts");
+    if (existsSync(configPath)) {
+      console.log(chalk.blue("Building sonamu.config.ts..."));
+      execSync(`swc ${configPath} -o ${BUILD_DIR}/sonamu.config.js`, {
+        cwd: process.cwd(),
+        stdio: "inherit",
+      });
+    }
+  } catch (error) {
+    console.error(chalk.red("Building sonamu.config.ts failed."), error);
+    process.exit(1);
+  }
 }
 
 function checkTypes() {
@@ -72,7 +87,7 @@ const result = spawnSync(
     "--enable-source-maps",
     "--no-warnings",
     scriptPath,
-    ...args
+    ...args,
   ],
   {
     stdio: "inherit",

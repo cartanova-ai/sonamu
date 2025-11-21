@@ -1,24 +1,20 @@
-import { transformFile } from "@swc/core";
-import { Knex } from "knex";
-import path from "path";
-import { exists } from "../utils/fs-utils";
-import { unlink, writeFile } from "fs/promises";
-import { Driver } from "../file-storage/driver";
-import {
+import type { Knex } from "knex";
+import type { Driver } from "../file-storage/driver";
+import type {
   FastifyInstance,
   FastifyReply,
   FastifyRequest,
   FastifyServerOptions,
 } from "fastify";
-import { SonamuFastifyConfig } from "../types/types";
-import { FastifyCorsOptions } from "@fastify/cors";
-import { FastifyFormbodyOptions } from "@fastify/formbody";
-import { FastifyMultipartOptions } from "@fastify/multipart";
-import { SecureSessionPluginOptions } from "@fastify/secure-session";
-import { FastifyStaticOptions } from "@fastify/static";
-import { QsPluginOptions } from "fastify-qs";
-import { SsePluginOptions } from "fastify-sse-v2/lib/types";
-import {
+import type { SonamuFastifyConfig } from "../types/types";
+import type { FastifyCorsOptions } from "@fastify/cors";
+import type { FastifyFormbodyOptions } from "@fastify/formbody";
+import type { FastifyMultipartOptions } from "@fastify/multipart";
+import type { SecureSessionPluginOptions } from "@fastify/secure-session";
+import type { FastifyStaticOptions } from "@fastify/static";
+import type { QsPluginOptions } from "fastify-qs";
+import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
+import type {
   DeserializeFunction,
   SerializeFunction,
 } from "@fastify/passport/dist/Authenticator";
@@ -115,28 +111,13 @@ export function defineConfig(config: SonamuConfigExport): SonamuConfigExport {
 }
 
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
-  const configPath = path.join(rootPath, "sonamu.config.ts");
-  if (!(await exists(configPath))) {
-    throw new Error(`Cannot find sonamu.config.ts in ${configPath}`);
-  }
-
-  const { code: configCode } = await transformFile(configPath, {
-    module: {
-      type: "es6",
-    },
-    jsc: {
-      parser: {
-        syntax: "typescript",
-        decorators: true,
-      },
-    },
-  });
-
-  const tempDir = path.join(rootPath, "dist");
-  const outputPath = path.join(tempDir, "sonamu.config.js");
-  await writeFile(outputPath, configCode);
-  const { default: config } = await import(outputPath);
-  await unlink(outputPath);
-
+  const start = performance.now();
+  const configPath =
+    process.env.HOT === "yes" || process.env.VITEST === "true"
+      ? `${rootPath}/sonamu.config.ts`
+      : `${rootPath}/dist/sonamu.config.js`;
+  const { default: config } = await import(`file://${configPath}`);
+  const importTime = performance.now() - start;
+  console.log(`[TIMING] loadConfig took ${importTime.toFixed(2)}ms`);
   return config;
 }
