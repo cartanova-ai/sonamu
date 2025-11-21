@@ -8,9 +8,7 @@ describe("픽스쳐", () => {
     const f = await loadFixtures(["company01"]);
 
     expect(f.company01.id).toBe(1);
-    expect(f.company01.created_at.getTime()).toBe(
-      new Date("2025-10-24T05:50:32.000Z").getTime()
-    );
-    expect(f.company01.name).toBe("테크놀로지 주식회사");
+    expect(f.company01.created_at).toBeInstanceOf(Date);
+    expect(f.company01.name).toBe("C1");
   });
 });

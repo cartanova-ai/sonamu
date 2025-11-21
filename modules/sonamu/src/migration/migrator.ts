@@ -1,7 +1,6 @@
 import * as _ from "lodash-es";
 import knex, { Knex } from "knex";
 import chalk from "chalk";
-import { DateTime } from "luxon";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
 import prompts from "prompts";
@@ -316,6 +315,20 @@ export class Migrator {
     return _.sum(res);
   }
 
+  private genDateTag(index: number, baseDate: Date = new Date()): string {
+    const date = new Date(baseDate.getTime() + index * 1000);
+    const pad = (num: number, size: number = 2) =>
+      num.toString().padStart(size, "0");
+    return (
+      date.getFullYear().toString() +
+      pad(date.getMonth() + 1) +
+      pad(date.getDate()) +
+      pad(date.getHours()) +
+      pad(date.getMinutes()) +
+      pad(date.getSeconds())
+    );
+  }
+
   /**
    * 마이그레이션 코드 파일을 생성합니다.
    *
@@ -335,9 +348,7 @@ export class Migrator {
 
     for (const [index, pcode] of preparedCodes.entries()) {
       if (pcode.formatted) {
-        const dateTag = DateTime.local()
-          .plus({ seconds: index })
-          .toFormat("yyyyMMddHHmmss");
+        const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
         await writeFile(filePath, pcode.formatted!);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
@@ -464,9 +475,7 @@ export class Migrator {
 
     for (const [index, code] of codes.entries()) {
       if (code.formatted) {
-        const dateTag = DateTime.local()
-          .plus({ seconds: index })
-          .toFormat("yyyyMMddHHmmss");
+        const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
         await writeFile(filePath, code.formatted!);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));

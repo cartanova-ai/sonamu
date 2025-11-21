@@ -1,14 +1,12 @@
-import type { Knex } from "knex";
-import type { SubsetQuery } from "../types/types";
-import type { BaseListParams } from "../utils/model";
-// Static imports kept for non-async functions (getDB, getPuri, myNow, hydrate, getJoinClause, getUpsertBuilder)
-import { DateTime } from "luxon";
+import { Knex } from "knex";
 import { chunk, groupBy, isObject, omit, set, uniq } from "lodash-es";
 import { DBPreset, DB } from "./db";
 import { isCustomJoinClause } from "../types/types";
 import inflection from "inflection";
 import { UpsertBuilder } from "./upsert-builder";
 import { PuriWrapper } from "./puri-wrapper";
+import type { SubsetQuery } from "../types/types";
+import type { BaseListParams } from "../utils/model";
 
 export class BaseModelClass {
   public modelName: string = "Unknown";
@@ -32,14 +30,6 @@ export class BaseModelClass {
 
   async destroy() {
     return DB.destroy();
-  }
-
-  myNow(timestamp?: number): string {
-    const dt: DateTime =
-      timestamp === undefined
-        ? DateTime.local()
-        : DateTime.fromSeconds(timestamp);
-    return dt.toFormat("yyyy-MM-dd HH:mm:ss");
   }
 
   async getInsertedIds(
@@ -251,7 +241,9 @@ export class BaseModelClass {
   }> {
     const chalk = await import("chalk");
     const SqlParser = await import("node-sql-parser");
-    const { getTableName, getTableNamesFromWhere } = await import("../utils/sql-parser");
+    const { getTableName, getTableNamesFromWhere } = await import(
+      "../utils/sql-parser"
+    );
 
     const db = _db ?? this.getDB(subset.startsWith("A") ? "w" : "r");
     baseTable =

@@ -10,6 +10,7 @@ import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
 import type { Syncer } from "../syncer/syncer";
 import type { SonamuFastifyConfig } from "../types/types";
+import { formatInTimeZone } from "../utils/utils";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import type { SonamuConfig, SonamuServerOptions } from "./config";
@@ -169,7 +170,9 @@ class SonamuClass {
       const chalk = await import("chalk");
       console.log(chalk.default.green("DB Config Loaded!"));
     }
-    const { attachOnDuplicateUpdate } = await import("../database/knex-plugins/knex-on-duplicate-update");
+    const { attachOnDuplicateUpdate } = await import(
+      "../database/knex-plugins/knex-on-duplicate-update"
+    );
     attachOnDuplicateUpdate();
 
     // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
@@ -276,8 +279,6 @@ class SonamuClass {
       const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
       const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
-      const { formatInTimeZone } = await import("date-fns-tz");
-
       server.setReplySerializer((payload) => {
         return JSON.stringify(payload, (_key, value) => {
           if (typeof value === "string" && ISO_DATE_REGEX.test(value)) {
@@ -321,7 +322,9 @@ class SonamuClass {
         if (found) {
           return this.getApiHandler(found, config)(request, reply);
         }
-        const { NotFoundException } = await import("../exceptions/so-exceptions");
+        const { NotFoundException } = await import(
+          "../exceptions/so-exceptions"
+        );
         throw new NotFoundException("존재하지 않는 API 접근입니다.");
       });
     } else {
@@ -369,7 +372,9 @@ class SonamuClass {
           const messages = humanizeZodError(e)
             .map((issue) => issue.message)
             .join(" ");
-          const { BadRequestException } = await import("../exceptions/so-exceptions");
+          const { BadRequestException } = await import(
+            "../exceptions/so-exceptions"
+          );
           throw new BadRequestException(messages, {
             zodError: e,
           });
@@ -579,13 +584,17 @@ class SonamuClass {
     server.register(fastifyPassport.default.secureSession());
 
     if (typeof options === "boolean") {
-      fastifyPassport.default.registerUserSerializer(async (user, _request) => user);
+      fastifyPassport.default.registerUserSerializer(
+        async (user, _request) => user
+      );
       fastifyPassport.default.registerUserDeserializer(
         async (serialized, _request) => serialized
       );
     } else {
       fastifyPassport.default.registerUserSerializer(options.userSerializer);
-      fastifyPassport.default.registerUserDeserializer(options.userDeserializer);
+      fastifyPassport.default.registerUserDeserializer(
+        options.userDeserializer
+      );
     }
   }
 
@@ -639,7 +648,11 @@ class SonamuClass {
 
     const relativePath = path.relative(this.apiRootPath, filePath);
     const chalk = await import("chalk");
-    console.log(chalk.default.bold(`Detected(${event}): ${chalk.default.blue(relativePath)}`));
+    console.log(
+      chalk.default.bold(
+        `Detected(${event}): ${chalk.default.blue(relativePath)}`
+      )
+    );
 
     await this.syncer.syncFromWatcher(event, filePath);
 
@@ -659,7 +672,7 @@ class SonamuClass {
     const totalTime = endTime - this.hmrStartTime;
     const [chalk, { centerText }] = await Promise.all([
       import("chalk"),
-      import("../utils/console-util")
+      import("../utils/console-util"),
     ]);
     const msg = `HMR Done! ${chalk.default.bold.white(`${totalTime}ms`)}`;
 
