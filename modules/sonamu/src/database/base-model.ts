@@ -1,5 +1,10 @@
 import { Knex } from "knex";
-import { chunk, groupBy, isObject, omit, set, uniq } from "lodash-es";
+import chunk from "lodash-es/chunk.js";
+import groupBy from "lodash-es/groupBy.js";
+import isObject from "lodash-es/isObject.js";
+import omit from "lodash-es/omit.js";
+import set from "lodash-es/set.js";
+import uniq from "lodash-es/uniq.js";
 import { DBPreset, DB } from "./db";
 import { isCustomJoinClause } from "../types/types";
 import inflection from "inflection";

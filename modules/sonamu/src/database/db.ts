@@ -1,6 +1,6 @@
 export type DBPreset = "w" | "r";
 import knex, { Knex } from "knex";
-import * as _ from "lodash-es";
+import merge from "lodash-es/merge.js";
 import { Sonamu } from "../api";
 import { AsyncLocalStorage } from "async_hooks";
 import { TransactionContext } from "./transaction-context";
@@ -91,7 +91,7 @@ class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<DatabaseConfig> = _.merge(
+    const defaultKnexConfig: Partial<DatabaseConfig> = merge(
       {
         client: "mysql2",
         pool: {
@@ -110,14 +110,14 @@ class DBClass {
     );
 
     // 로컬 환경 설정
-    const test: DatabaseConfig = _.merge({}, defaultKnexConfig, {
+    const test: DatabaseConfig = merge({}, defaultKnexConfig, {
       connection: {
         database: `${config.name}_test`,
         ...config.defaultOptions?.connection,
       },
     });
 
-    const fixture_local = _.merge({}, defaultKnexConfig, {
+    const fixture_local = merge({}, defaultKnexConfig, {
       connection: {
         database: `${config.name}_fixture_local`,
         ...config.defaultOptions?.connection,
@@ -127,10 +127,10 @@ class DBClass {
     // 개발 환경 설정
     const devMasterOptions = config.environments?.development;
     const devSlaveOptions = config.environments?.development_slave;
-    const development_master = _.merge({}, defaultKnexConfig, devMasterOptions);
-    const development_slave = _.merge({}, defaultKnexConfig, devMasterOptions, devSlaveOptions);
+    const development_master = merge({}, defaultKnexConfig, devMasterOptions);
+    const development_slave = merge({}, defaultKnexConfig, devMasterOptions, devSlaveOptions);
     // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
-    const fixture_remote = _.merge(
+    const fixture_remote = merge(
       {},
       defaultKnexConfig,
       devMasterOptions,
@@ -145,8 +145,8 @@ class DBClass {
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};
     const prodSlaveOptions = config.environments?.production_slave ?? {};
-    const production_master = _.merge({}, defaultKnexConfig, prodMasterOptions);
-    const production_slave = _.merge({}, defaultKnexConfig, prodMasterOptions, prodSlaveOptions);
+    const production_master = merge({}, defaultKnexConfig, prodMasterOptions);
+    const production_slave = merge({}, defaultKnexConfig, prodMasterOptions, prodSlaveOptions);
 
     return {
       test,

@@ -1,5 +1,6 @@
 import chalk from "chalk";
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
+import uniqBy from "lodash-es/uniqBy.js";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
 import {
@@ -203,7 +204,7 @@ export class FixtureManagerClass {
     // 방문 기록 초기화 (새로운 import 작업 시작)
     this.visitedRecords.clear();
 
-    const queries = _.uniq(
+    const queries = uniq(
       (
         await Promise.all(
           ids.map(async (id) => {
@@ -293,7 +294,7 @@ export class FixtureManagerClass {
       }),
     );
 
-    return [..._.uniq(relQueries.reverse().flat()), selfQuery];
+    return [...uniq(relQueries.reverse().flat()), selfQuery];
   }
 
   async destroy() {
@@ -377,7 +378,7 @@ export class FixtureManagerClass {
     await targetDB.destroy();
     await sourceDB.destroy();
 
-    return _.uniqBy(fixtures, (f) => f.fixtureId);
+    return uniqBy(fixtures, (f) => f.fixtureId);
   }
 
   async createFixtureRecord(
@@ -466,7 +467,7 @@ export class FixtureManagerClass {
   }
 
   async insertFixtures(dbName: keyof SonamuDBConfig, _fixtures: FixtureRecord[]) {
-    const fixtures = _.uniqBy(_fixtures, (f) => f.fixtureId);
+    const fixtures = uniqBy(_fixtures, (f) => f.fixtureId);
 
     this.relationGraph.buildGraph(fixtures);
     const insertionOrder = this.relationGraph.getInsertionOrder();
@@ -520,7 +521,7 @@ export class FixtureManagerClass {
 
     await db.destroy();
 
-    return _.uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
+    return uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
   private prepareInsertData(fixture: FixtureRecord) {

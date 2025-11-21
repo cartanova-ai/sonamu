@@ -1,7 +1,8 @@
 import path, { dirname } from "path";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { exists } from "../utils/fs-utils";
-import * as _ from "lodash-es";
+import groupBy from "lodash-es/groupBy.js";
+import uniq from "lodash-es/uniq.js";
 import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
 import { GenerateOptions } from "../types/types";
 import chalk from "chalk";
@@ -192,7 +193,7 @@ export class Syncer {
   }
 
   private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
-    return _.groupBy(diffFiles, (r) => {
+    return groupBy(diffFiles, (r) => {
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
       return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
@@ -225,7 +226,7 @@ export class Syncer {
 
     await this.actionGenerateSchemas();
 
-    diffGroups["generated"] = _.uniq([
+    diffGroups["generated"] = uniq([
       ...(diffGroups["generated"] ?? []),
       path.join(Sonamu.apiRootPath, "src/application/sonamu.generated.ts") as AbsolutePath,
     ]);
@@ -235,7 +236,7 @@ export class Syncer {
   private async handleTypesOrFunctionsOrGeneratedChange(
     diffGroups: DiffGroups,
   ): Promise<FileType[]> {
-    const tsPaths = _.uniq([
+    const tsPaths = uniq([
       ...(diffGroups["types"] ?? []),
       ...(diffGroups["functions"] ?? []),
       ...(diffGroups["generated"] ?? []),

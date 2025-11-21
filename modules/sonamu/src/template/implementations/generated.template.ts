@@ -1,4 +1,4 @@
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
 import { isVirtualProp, TemplateOptions } from "../../types/types";
 import { EntityManager } from "../../entity/entity-manager";
 import { Entity } from "../../entity/entity";
@@ -66,7 +66,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys].sort()),
+          importKeys: uniq([...result!.importKeys, ...ts.importKeys].sort()),
         };
       },
       {
@@ -161,7 +161,7 @@ export class Template__generated extends Template {
     const schemaBody = propNodeToZodTypeDef(propNode, importKeys);
 
     // fulltext index에 포함된 컬럼들 추출
-    const fulltextColumns = _.uniq(
+    const fulltextColumns = uniq(
       entity.indexes.filter((index) => index.type === "fulltext").flatMap((index) => index.columns),
     );
 
@@ -286,7 +286,7 @@ z.object({
     return {
       label: `Subsets: ${entity.id}`,
       lines,
-      importKeys: _.uniq(importKeys),
+      importKeys: uniq(importKeys),
     };
   }
 }

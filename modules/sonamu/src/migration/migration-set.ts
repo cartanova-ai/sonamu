@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 import { DBColumn, DBForeign, DBIndex } from "./types";
-import * as _ from "lodash-es";
+import groupBy from "lodash-es/groupBy.js";
 import inflection from "inflection";
 import { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
@@ -66,7 +66,7 @@ export async function getMigrationSetFromDB(
     };
   });
 
-  const dbIndexesGroup = _.groupBy(
+  const dbIndexesGroup = groupBy(
     dbIndexes.filter(
       (dbIndex) =>
         dbIndex.Key_name !== "PRIMARY" &&

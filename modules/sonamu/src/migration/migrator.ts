@@ -1,4 +1,6 @@
-import * as _ from "lodash-es";
+import uniqBy from "lodash-es/uniqBy.js";
+import sum from "lodash-es/sum.js";
+import groupBy from "lodash-es/groupBy.js";
 import knex, { Knex } from "knex";
 import chalk from "chalk";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
@@ -210,7 +212,7 @@ export class Migrator {
     }[]
   > {
     // get uniq knex configs
-    const configs = _.uniqBy(
+    const configs = uniqBy(
       targets
         .map((target) => ({
           connKey: target,
@@ -301,7 +303,7 @@ export class Migrator {
         return 0;
       }),
     );
-    return _.sum(res);
+    return sum(res);
   }
 
   private genDateTag(index: number, baseDate: Date = new Date()): string {
@@ -612,14 +614,14 @@ export class Migrator {
       .map((entitySet) => entitySet.joinTables)
       .flat();
     // 중복 제거 (중복인 경우 indexes를 병합)
-    const joinTables = Object.values(_.groupBy(joinTablesWithDup, (jt) => jt.table)).map(
+    const joinTables = Object.values(groupBy(joinTablesWithDup, (jt) => jt.table)).map(
       (tables) => {
         if (tables.length === 1) {
           return tables[0];
         }
         return {
           ...tables[0],
-          indexes: _.uniqBy(
+          indexes: uniqBy(
             tables.flatMap((t) => t.indexes),
             (index) => [index.type, ...index.columns.sort()].join("-"),
           ),

@@ -1,4 +1,10 @@
-import * as _ from "lodash-es";
+import partition from "lodash-es/partition.js";
+import differenceBy from "lodash-es/differenceBy.js";
+import intersectionBy from "lodash-es/intersectionBy.js";
+import differenceWith from "lodash-es/differenceWith.js";
+import difference from "lodash-es/difference.js";
+import sortBy from "lodash-es/sortBy.js";
+import omit from "lodash-es/omit.js";
 import equal from "fast-deep-equal";
 import {
   GenMigrationCode,
@@ -18,7 +24,7 @@ async function generateCreateCode_ColumnAndIndexes(
   indexes: MigrationIndex[],
 ): Promise<GenMigrationCode> {
   // fulltext index 분리
-  const [ngramIndexes, standardIndexes] = _.partition(
+  const [ngramIndexes, standardIndexes] = partition(
     indexes,
     (i) => i.type === "fulltext" && i.parser === "ngram",
   );
@@ -232,7 +238,7 @@ async function generateAlterCode_ColumnAndIndexes(
   const alterIndexesTo = getAlterIndexesTo(entityIndexes, dbIndexes);
 
   // fulltext index 분리
-  const [ngramIndexes, standardIndexes] = _.partition(
+  const [ngramIndexes, standardIndexes] = partition(
     alterIndexesTo.add,
     (i) => i.type === "fulltext" && i.parser === "ngram",
   );
@@ -320,8 +326,8 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
 
   // 컬럼명 기준 비교
   const extraColumns = {
-    db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
-    entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
+    db: differenceBy(dbColumns, entityColumns, (col) => col.name),
+    entity: differenceBy(entityColumns, dbColumns, (col) => col.name),
   };
   if (extraColumns.entity.length > 0) {
     columnsTo.add = columnsTo.add.concat(extraColumns.entity);
@@ -331,9 +337,9 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
   }
 
   // 동일 컬럼명의 세부 필드 비교
-  const sameDbColumns = _.intersectionBy(dbColumns, entityColumns, (col) => col.name);
-  const sameMdColumns = _.intersectionBy(entityColumns, dbColumns, (col) => col.name);
-  columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
+  const sameDbColumns = intersectionBy(dbColumns, entityColumns, (col) => col.name);
+  const sameMdColumns = intersectionBy(entityColumns, dbColumns, (col) => col.name);
+  columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
 
   return columnsTo;
 }
@@ -405,11 +411,11 @@ function getAlterColumnLinesTo(
       }
 
       // 컬럼 변경사항
-      const columnDiffUp = _.difference(
+      const columnDiffUp = difference(
         genColumnDefinitions([entityColumn]),
         genColumnDefinitions([dbColumn]),
       );
-      const columnDiffDown = _.difference(
+      const columnDiffDown = difference(
         genColumnDefinitions([dbColumn]),
         genColumnDefinitions([entityColumn]),
       );
@@ -447,10 +453,10 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
     drop: [] as MigrationIndex[],
   };
   const extraIndexes = {
-    db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
+    db: differenceBy(dbIndexes, entityIndexes, (col) =>
       [col.type, col.columns.join("-")].join("//"),
     ),
-    entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
+    entity: differenceBy(entityIndexes, dbIndexes, (col) =>
       [col.type, col.columns.join("-")].join("//"),
     ),
   };
@@ -633,8 +639,8 @@ export async function generateAlterCode(
     }
     return col;
   };
-  const entityColumns = _.sortBy(entitySet.columns, (a) => a.name).map(replaceColumnDefaultTo);
-  const dbColumns = _.sortBy(dbSet.columns, (a) => a.name).map(replaceColumnDefaultTo);
+  const entityColumns = sortBy(entitySet.columns, (a) => a.name).map(replaceColumnDefaultTo);
+  const dbColumns = sortBy(dbSet.columns, (a) => a.name).map(replaceColumnDefaultTo);
 
   /* 디버깅용 코드, 특정 컬럼에서 불일치 발생할 때 확인
         const entityColumn = entitySet.columns.find(
@@ -646,10 +652,10 @@ export async function generateAlterCode(
         console.debug({ entityColumn, dbColumn });
          */
 
-  const entityIndexes = _.sortBy(entitySet.indexes, (a) =>
+  const entityIndexes = sortBy(entitySet.indexes, (a) =>
     [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
   );
-  const dbIndexes = _.sortBy(dbSet.indexes, (a) =>
+  const dbIndexes = sortBy(dbSet.indexes, (a) =>
     [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
   );
 
@@ -663,22 +669,22 @@ export async function generateAlterCode(
     };
   };
 
-  const entityForeigns = _.sortBy(entitySet.foreigns, (a) => [a.to, ...a.columns].join("-")).map(
+  const entityForeigns = sortBy(entitySet.foreigns, (a) => [a.to, ...a.columns].join("-")).map(
     (f) => replaceNoActionOnMySQL(f),
   );
-  const dbForeigns = _.sortBy(dbSet.foreigns, (a) => [a.to, ...a.columns].join("-")).map((f) =>
+  const dbForeigns = sortBy(dbSet.foreigns, (a) => [a.to, ...a.columns].join("-")).map((f) =>
     replaceNoActionOnMySQL(f),
   );
 
   // 삭제될 컬럼 목록 계산
-  const droppingColumns = _.differenceBy(dbColumns, entityColumns, (col) => col.name);
+  const droppingColumns = differenceBy(dbColumns, entityColumns, (col) => col.name);
 
   const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = [];
 
   // 1. columnsAndIndexes 처리
   const isEqualColumns = equal(entityColumns, dbColumns);
   const isEqualIndexes = equal(
-    entityIndexes.map((index) => _.omit(index, ["parser"])),
+    entityIndexes.map((index) => omit(index, ["parser"])),
     dbIndexes,
   );
   if (!isEqualColumns || !isEqualIndexes) {

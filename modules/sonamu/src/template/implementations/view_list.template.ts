@@ -1,5 +1,6 @@
 import inflection from "inflection";
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
+import flattenDeep from "lodash-es/flattenDeep.js";
 import { z } from "zod";
 import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
@@ -103,7 +104,7 @@ export class Template__view_list extends Template {
           names = EntityManager.getNamesFromId(relProp.with);
           return this.renderColumnImport(entityId, child, names);
         });
-        return _.flattenDeep(result);
+        return flattenDeep(result);
       } catch {
         return [null];
       }
@@ -275,7 +276,7 @@ export class Template__view_list extends Template {
     }
 
     // 리스트 컬럼
-    const columnImports = _.uniq(
+    const columnImports = uniq(
       columnsNode
         .children!.map((col) => {
           return this.renderColumnImport(entityId, col, names);

@@ -1,4 +1,6 @@
-import * as _ from "lodash-es";
+import differenceBy from "lodash-es/differenceBy.js";
+import intersectionBy from "lodash-es/intersectionBy.js";
+import differenceWith from "lodash-es/differenceWith.js";
 import equal from "fast-deep-equal";
 import { MigrationColumn, MigrationIndex } from "../types/types";
 
@@ -12,8 +14,8 @@ export class CodeGenerator {
 
     // 컬럼명 기준 비교
     const extraColumns = {
-      db: _.differenceBy(dbColumns, entityColumns, (col) => col.name),
-      entity: _.differenceBy(entityColumns, dbColumns, (col) => col.name),
+      db: differenceBy(dbColumns, entityColumns, (col) => col.name),
+      entity: differenceBy(entityColumns, dbColumns, (col) => col.name),
     };
     if (extraColumns.entity.length > 0) {
       columnsTo.add = columnsTo.add.concat(extraColumns.entity);
@@ -23,9 +25,9 @@ export class CodeGenerator {
     }
 
     // 동일 컬럼명의 세부 필드 비교
-    const sameDbColumns = _.intersectionBy(dbColumns, entityColumns, (col) => col.name);
-    const sameMdColumns = _.intersectionBy(entityColumns, dbColumns, (col) => col.name);
-    columnsTo.alter = _.differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
+    const sameDbColumns = intersectionBy(dbColumns, entityColumns, (col) => col.name);
+    const sameMdColumns = intersectionBy(entityColumns, dbColumns, (col) => col.name);
+    columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
 
     return columnsTo;
   }
@@ -37,10 +39,10 @@ export class CodeGenerator {
       drop: [] as MigrationIndex[],
     };
     const extraIndexes = {
-      db: _.differenceBy(dbIndexes, entityIndexes, (col) =>
+      db: differenceBy(dbIndexes, entityIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//"),
       ),
-      entity: _.differenceBy(entityIndexes, dbIndexes, (col) =>
+      entity: differenceBy(entityIndexes, dbIndexes, (col) =>
         [col.type, col.columns.join("-")].join("//"),
       ),
     };

@@ -5,7 +5,7 @@ import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
 import { RenderedTemplate } from "../template";
 import { Template } from "../template";
 import { getRelationPropFromColName, getEnumInfoFromColName } from "../helpers";
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 
 export class Template__view_form extends Template {
@@ -255,7 +255,7 @@ import { defaultCatch } from 'src/services/sonamu.shared';
 import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${names.fs}.types';
 import { ${names.capital}Service } from 'src/services/${names.fs}/${names.fs}.service';
 import { ${names.capital}SubsetA } from 'src/services/sonamu.generated';
-${_.uniq(
+${uniq(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
     .map((col) => {

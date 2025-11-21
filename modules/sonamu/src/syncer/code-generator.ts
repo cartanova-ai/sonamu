@@ -6,7 +6,7 @@ import { everyAsync, filterAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
 import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
 import { Template } from "../template/template";
 import { RenderedTemplate } from "../template/template";
 import { EntityManager } from "../entity/entity-manager";
@@ -120,7 +120,7 @@ async function resolveRenderedTemplate(
         // 같은 파일에서 import 하는 경우 keys 로 나열 처리
         const existsOne = r.find((importDef) => importDef.from === importPath);
         if (existsOne) {
-          existsOne.keys = _.uniq(existsOne.keys.concat(importKey));
+          existsOne.keys = uniq(existsOne.keys.concat(importKey));
         } else {
           r.push({
             keys: [importKey],
@@ -164,7 +164,7 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
   const { appRootPath } = Sonamu;
   const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
-  const dstFilePaths = _.uniq(
+  const dstFilePaths = uniq(
     targets.map((target) => filePath.replace("/:target/", `/${target}/`)) as AbsolutePath[],
   );
   return await Promise.all(

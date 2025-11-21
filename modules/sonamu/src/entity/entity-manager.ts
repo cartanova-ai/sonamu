@@ -1,6 +1,5 @@
 import { glob } from "fs/promises";
 import inflection from "inflection";
-import * as _ from "lodash-es";
 import path from "path";
 import { Entity } from "./entity";
 import { EntityJson } from "../types/types";

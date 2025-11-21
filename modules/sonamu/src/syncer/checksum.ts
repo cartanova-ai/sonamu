@@ -6,7 +6,8 @@ import { exists } from "../utils/fs-utils";
 
 import crypto from "crypto";
 import equal from "fast-deep-equal";
-import * as _ from "lodash-es";
+import differenceWith from "lodash-es/differenceWith.js";
+import isEqual from "lodash-es/isEqual.js";
 import { Sonamu } from "../api/sonamu";
 import { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
@@ -29,7 +30,7 @@ export async function findChangedFilesUsingChecksums(): Promise<AbsolutePath[]> 
     return [];
   }
 
-  const diff = _.differenceWith(calculatedChecksums, savedChecksums, _.isEqual);
+  const diff = differenceWith(calculatedChecksums, savedChecksums, isEqual);
 
   return diff.map((r) => r.path);
 }

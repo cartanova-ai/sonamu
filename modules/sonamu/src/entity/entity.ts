@@ -1,4 +1,5 @@
-import * as _ from "lodash-es";
+import groupBy from "lodash-es/groupBy.js";
+import uniq from "lodash-es/uniq.js";
 import { createImportUrl } from "../utils/esm-utils";
 import { EntityManager as EntityManager } from "./entity-manager";
 import {
@@ -142,7 +143,7 @@ export class Entity {
     prefix = prefix.replace(/\./g, "__");
 
     // 서브셋을 1뎁스만 분리하여 그룹핑
-    const subsetGroup = _.groupBy(fields, (field) => {
+    const subsetGroup = groupBy(fields, (field) => {
       if (field.includes(".")) {
         const [rel] = field.split(".");
         return rel;
@@ -565,7 +566,7 @@ export class Entity {
 
     const subsets = _subsets ?? this.subsets;
     const subsetKeys = Object.keys(subsets);
-    const allFields = _.uniq(subsetKeys.map((key) => subsets[key]).flat());
+    const allFields = uniq(subsetKeys.map((key) => subsets[key]).flat());
 
     return this.props.map((prop) => {
       if (

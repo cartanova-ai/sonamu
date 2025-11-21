@@ -1,6 +1,5 @@
 import { ApiParam, ApiParamType } from "../types/types";
 import { readFile } from "fs/promises";
-import * as _ from "lodash-es";
 import ts from "typescript";
 import { ExtendedApi, registeredApis } from "../api/decorators";
 import inflection from "inflection";

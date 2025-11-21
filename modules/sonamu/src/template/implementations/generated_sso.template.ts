@@ -3,7 +3,7 @@ import { EntityManager } from "../../entity/entity-manager";
 import { Template } from "../template";
 import inflection from "inflection";
 import { SourceCode } from "./generated.template";
-import * as _ from "lodash-es";
+import uniq from "lodash-es/uniq.js";
 import { nonNullable } from "../../utils/utils";
 import { Sonamu } from "../../api";
 import { Entity } from "../../entity/entity";
@@ -73,7 +73,7 @@ export class Template__generated_sso extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys]),
+          importKeys: uniq([...result!.importKeys, ...ts.importKeys]),
         };
       },
       {
@@ -101,7 +101,7 @@ export class Template__generated_sso extends Template {
 
     const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
-    const joinTableSchemaLines = _.uniq(
+    const joinTableSchemaLines = uniq(
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const fromTableKey = inflection.singularize(entity.table);

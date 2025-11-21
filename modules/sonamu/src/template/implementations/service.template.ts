@@ -1,5 +1,8 @@
 import inflection from "inflection";
-import * as _ from "lodash-es";
+import groupBy from "lodash-es/groupBy.js";
+import sortBy from "lodash-es/sortBy.js";
+import difference from "lodash-es/difference.js";
+import uniq from "lodash-es/uniq.js";
 import { TemplateOptions } from "../../types/types";
 import { EntityNamesRecord } from "../../entity/entity-manager";
 import { ApiParamType, ApiParam } from "../../types/types";
@@ -64,7 +67,7 @@ export class Template__service extends Template {
     // 제네릭에서 선언한 타입, importKeys에서 제외 필요
     let typeParamNames: string[] = [];
 
-    const groups = _.groupBy(apis, (api) => api.modelName);
+    const groups = groupBy(apis, (api) => api.modelName);
     const body = Object.keys(groups)
       .map((modelName) => {
         const methods = groups[modelName];
@@ -108,7 +111,7 @@ export class Template__service extends Template {
 
             return [
               // 클라이언트별로 생성
-              ..._.sortBy(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map(
+              ...sortBy(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map(
                 (client) => {
                   switch (client) {
                     case "axios":
@@ -165,7 +168,7 @@ ${methodCodes}
 
     return {
       lines: [body],
-      importKeys: _.difference(_.uniq(importKeys), typeParamNames),
+      importKeys: difference(uniq(importKeys), typeParamNames),
     };
   }
 
