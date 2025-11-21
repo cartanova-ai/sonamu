@@ -115,13 +115,13 @@ export function defineConfig(config: SonamuConfigExport): SonamuConfigExport {
  * 이 설정 파일은 환경에 따라 다른 경로에 있을 수 있습니다.
  * dist를 빌드하는 환경이라면 dist 바로 아래에 있을 것이고(cli-wrapper.ts에서 빌드),
  * 그렇지 않은 환경이라면 프로젝트 루트에 있을 것입니다.
- * 
+ *
  * 이 함수는 의도적으로 다른 의존성의 사용을 최대한 배제하였습니다.
  * 이는 실행 초기에 최대한 빠르게 설정을 읽어올 수 있도록 하기 위함입니다.
  * 따라서 경로 concat과 URL scheme 추가도 단순한 문자열 조작으로 처리하였습니다.
- * 
- * @param rootPath 
- * @returns 
+ *
+ * @param rootPath
+ * @returns
  */
 export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
   const start = performance.now();
@@ -131,6 +131,7 @@ export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
       : `${rootPath}/dist/sonamu.config.js`;
   const { default: config } = await import(`file://${configPath}`);
   const importTime = performance.now() - start;
-  console.log(`[TIMING] loadConfig took ${importTime.toFixed(2)}ms`);
+  process.env.NODE_ENV !== "test" &&
+    console.log(`[TIMING] loadConfig took ${importTime.toFixed(2)}ms`);
   return config;
 }
