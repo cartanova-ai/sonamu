@@ -50,7 +50,8 @@ class OpenAIClass {
   }
 
   async deleteThread() {
-    const { deleted } = await this.openai.beta.threads.del(this.threadId);
+    // TODO: deprecated되었기 때문에 수정 필요
+    const { deleted } = await this.openai.beta.threads.delete(this.threadId);
     return deleted;
   }
 
@@ -61,7 +62,7 @@ class OpenAIClass {
   }
 
   async getMessage(id: string) {
-    const message = await this.openai.beta.threads.messages.retrieve(this.threadId, id);
+    const message = await this.openai.beta.threads.messages.retrieve(id, { thread_id: this.threadId });
     return {
       id: message.id,
       content: message.content[0].type === "text" ? message.content[0].text.value : "",
