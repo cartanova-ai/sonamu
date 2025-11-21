@@ -15,11 +15,6 @@ import type { ExtendedApi } from "./decorators";
 import type { SonamuConfig, SonamuServerOptions } from "./config";
 import type { AbsolutePath } from "../utils/path-utils";
 
-// 눈물을 머금고 fastify 정적 import..
-// fastify, @fastify/passport가 둘다 동적으로 import되면 문제가 생김..
-import fastify from "fastify";
-import fastifyPassport from "@fastify/passport";
-
 export type SonamuSecrets = {
   [key: string]: string;
 };
@@ -227,6 +222,7 @@ class SonamuClass {
     }
 
     const options = this.config.server;
+    const fastify = (await import("fastify")).default;
     const server = fastify(options.fastify);
     this.server = server;
 
@@ -237,7 +233,7 @@ class SonamuClass {
 
     // 플러그인 등록
     if (options.plugins) {
-      this.registerPlugins(server, options.plugins);
+      await this.registerPlugins(server, options.plugins);
     }
 
     if (options.auth) {
@@ -247,7 +243,7 @@ class SonamuClass {
         );
       }
 
-      this.registerAuth(server, options.auth);
+      await this.registerAuth(server, options.auth);
     }
 
     // API 라우팅 설정
@@ -286,7 +282,7 @@ class SonamuClass {
 
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
       const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
-      
+
       // T를 둘러싼 작은따옴표가 없다면 "2025-11-19176354618900018:56:29+09:00"와 같은 결과가 나옵니다.
       // 이는 date-fns 특입니다.
       // 이렇게 해도 괜찮습니다. "2025-11-19T18:56:29+09:00" 모양으로 잘 나옵니다.
@@ -551,7 +547,7 @@ class SonamuClass {
     }
   }
 
-  private registerPlugins(
+  private async registerPlugins(
     server: FastifyInstance,
     plugins: SonamuServerOptions["plugins"]
   ) {
@@ -569,7 +565,7 @@ class SonamuClass {
       session: "@fastify/secure-session",
     } as const;
 
-    const registerPlugin = <K extends keyof NonNullable<typeof plugins>>(
+    const registerPlugin = async <K extends keyof NonNullable<typeof plugins>>(
       key: K,
       pluginName: string
     ) => {
@@ -577,15 +573,15 @@ class SonamuClass {
       if (!option) return;
 
       if (option === true) {
-        server.register(import(pluginName));
+        server.register(await import(pluginName));
       } else {
-        server.register(import(pluginName), option);
+        server.register(await import(pluginName), option);
       }
     };
 
-    Object.entries(pluginsModules).forEach(([key, pluginName]) => {
-      registerPlugin(key as keyof typeof plugins, pluginName);
-    });
+    for (const [key, pluginName] of Object.entries(pluginsModules)) {
+      await registerPlugin(key as keyof typeof plugins, pluginName);
+    }
 
     if (plugins.custom) {
       plugins.custom(server);
@@ -596,6 +592,8 @@ class SonamuClass {
     server: FastifyInstance,
     options: NonNullable<SonamuServerOptions["auth"]>
   ) {
+    // await import("fastify");
+    const fastifyPassport = (await import("@fastify/passport")).default;
     server.register(fastifyPassport.initialize());
     server.register(fastifyPassport.secureSession());
 
