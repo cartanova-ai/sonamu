@@ -10,7 +10,6 @@ import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
 import type { Syncer } from "../syncer/syncer";
 import type { SonamuFastifyConfig } from "../types/types";
-import { formatInTimeZone } from "../utils/utils";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import type { SonamuConfig, SonamuServerOptions } from "./config";
@@ -280,13 +279,27 @@ class SonamuClass {
     // timezone 설정
     const timezone = this.config.api.timezone;
     if (timezone) {
-      const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
+      // 타임존에 맞게 응답 날짜 스트링을 변환해주어야 합니다.
+      // 가령 timezone이 "Asia/Seoul" 이면
+      // "2025-11-21T00:00:00.000Z" 를 "2025-11-21T09:00:00+09:00" 으로 변환해주어야 합니다.
+      const { formatInTimeZone } = await import("date-fns-tz");
+
       // ISO 8601 날짜 형식 정규식 (예: 2024-01-15T09:30:00.000Z)
       const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+      
+      // T를 둘러싼 작은따옴표가 없다면 "2025-11-19176354618900018:56:29+09:00"와 같은 결과가 나옵니다.
+      // 이는 date-fns 특입니다.
+      // 이렇게 해도 괜찮습니다. "2025-11-19T18:56:29+09:00" 모양으로 잘 나옵니다.
+      const DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssXXX";
+
       server.setReplySerializer((payload) => {
         return JSON.stringify(payload, (_key, value) => {
           if (typeof value === "string" && ISO_DATE_REGEX.test(value)) {
-            return formatInTimeZone(new Date(value), timezone, DATE_FORMAT);
+            return formatInTimeZone(
+              new Date(value),
+              timezone as `${string}/${string}`,
+              DATE_FORMAT
+            );
           }
           return value;
         });
@@ -587,17 +600,13 @@ class SonamuClass {
     server.register(fastifyPassport.secureSession());
 
     if (typeof options === "boolean") {
-      fastifyPassport.registerUserSerializer(
-        async (user, _request) => user
-      );
+      fastifyPassport.registerUserSerializer(async (user, _request) => user);
       fastifyPassport.registerUserDeserializer(
         async (serialized, _request) => serialized
       );
     } else {
       fastifyPassport.registerUserSerializer(options.userSerializer);
-      fastifyPassport.registerUserDeserializer(
-        options.userDeserializer
-      );
+      fastifyPassport.registerUserDeserializer(options.userDeserializer);
     }
   }
 
@@ -651,11 +660,7 @@ class SonamuClass {
 
     const relativePath = path.relative(this.apiRootPath, filePath);
     const chalk = (await import("chalk")).default;
-    console.log(
-      chalk.bold(
-        `Detected(${event}): ${chalk.blue(relativePath)}`
-      )
-    );
+    console.log(chalk.bold(`Detected(${event}): ${chalk.blue(relativePath)}`));
 
     await this.syncer.syncFromWatcher(event, filePath);
 
