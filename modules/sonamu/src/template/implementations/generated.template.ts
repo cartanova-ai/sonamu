@@ -1,9 +1,12 @@
 import * as _ from "lodash-es";
-import { TemplateOptions } from "../../types/types";
+import { isVirtualProp, TemplateOptions } from "../../types/types";
 import { EntityManager } from "../../entity/entity-manager";
 import { Entity } from "../../entity/entity";
 import { EntityPropNode } from "../../types/types";
-import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
+import {
+  propNodeToZodTypeDef,
+  zodTypeToZodCode,
+} from "../../api/code-converters";
 import { Template } from "../template";
 import { nonNullable } from "../../utils/utils";
 import { Sonamu } from "../../api";
@@ -178,12 +181,22 @@ export class Template__generated extends Template {
         .flatMap((index) => index.columns)
     );
 
+    // virtual props
+    const virtualProps = entity.props
+      .filter((prop) => isVirtualProp(prop))
+      .map((prop) => prop.name);
+
     const lines = [
       `export const ${schemaName} = ${schemaBody}`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
         (fulltextColumns.length > 0
           ? ` & { readonly __fulltext__: readonly [${fulltextColumns
               .map((col) => `"${col}"`)
+              .join(", ")}] }`
+          : "") +
+        (virtualProps.length > 0
+          ? ` & { readonly __virtual__: readonly [${virtualProps
+              .map((prop) => `"${prop}"`)
               .join(", ")}] }`
           : ""),
     ];

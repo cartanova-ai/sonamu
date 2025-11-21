@@ -1,4 +1,5 @@
 import { Sonamu } from "../api/sonamu";
+import { expect } from "vitest";
 
 export class Naite {
   // 테스트 로그 기록
@@ -42,13 +43,10 @@ export class Naite {
     return Object.fromEntries(context.naiteStore.entries());
   }
 
-  // expect 래퍼 (CJS-ESM 이슈로 현재 사용불가)
-  // static expect(name: string) {
-  //   if (!this.vitestExpect) {
-  //     throw new Error("Vitest is not initialized");
-  //   }
-  //   return this.vitestExpect(this.get(name));
-  // }
+  // expect 래퍼
+  static expect(name: string) {
+    return expect(this.get(name));
+  }
 
   // 일반 로그 레벨
   static d(_message: string) {

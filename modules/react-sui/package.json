@@ -63,7 +63,7 @@
     "semantic-ui-css": "^2.5.0",
     "supports-color": "^10.2.2",
     "typescript": "^5.2.2",
-    "vite": "^5.0.8",
+    "vite": "^7.2.4",
     "vite-plugin-dts": "^3.6.4",
     "vite-tsconfig-paths": "^4.2.2"
   },

@@ -46,10 +46,10 @@ describe("UserModel", () => {
         expect(usernames).toHaveLength(1);
 
         // 쿼리 확인
-        naiteExpect("executeSubsetQuery직전QB").toBe(
+        Naite.expect("executeSubsetQuery직전QB").toBe(
           "select `users`.`id` as `id`, `users`.`username` as `username`, `users`.`role` as `role`, `users`.`bio` as `bio`, `users`.`is_verified` as `is_verified`, `employee__department`.`name` as `employee__department__name`, `employee`.`salary` as `employee__salary` from `users` inner join `employees` as `employee` on `users`.`id` = `employee`.`user_id` inner join `departments` as `employee__department` on `employee`.`department_id` = `employee__department`.`id` where `users`.`id` in (1) order by `users`.`id` desc"
         );
-        naiteExpect("executeSubsetQuery직전QB").toContain(
+        Naite.expect("executeSubsetQuery직전QB").toContain(
           "where `users`.`id` in (1)"
         );
       });
@@ -65,22 +65,18 @@ describe("UserModel", () => {
       await notImpl(UserModel.testNaite);
 
       // 하지만 에러 발생 전에 기록된 로깅은 유지됨
-      naiteExpect("testArray").toEqual([1, 2, 3]);
-      naiteExpect("testObjectArray").toEqual([
+      Naite.expect("testArray").toEqual([1, 2, 3]);
+      Naite.expect("testObjectArray").toEqual([
         { a: 1, b: 2 },
         { a: 3, b: 4 },
       ]);
     });
   });
 
-  test("should get my IP", async () => {
+  test.only("should get my IP", async () => {
     expect(false).toBe(false);
   });
 });
-
-export function naiteExpect(name: string) {
-  return expect(Naite.get(name));
-}
 
 export async function notImpl(fn: () => Promise<void>) {
   return await expect(fn).rejects.toThrow("Not implemented");

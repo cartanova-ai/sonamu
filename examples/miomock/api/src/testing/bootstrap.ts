@@ -1,32 +1,17 @@
-import { cloneDeep } from "lodash-es";
-import { Context, DB, FixtureManager, Sonamu } from "sonamu";
+import { Context, DB, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
-/**
- * @param mode - "trx" for transactional mode, "fm" for fixture mode
- * @param tableNames - optional array of table names to seed in fixture mode
- */
-export function bootstrap(mode: "trx" | "fm" = "trx", tableNames?: string[]) {
+export function bootstrap() {
   beforeAll(async () => {
     await Sonamu.initForTesting();
-    if (mode === "fm") {
-      await FixtureManager.init();
-    }
   });
   beforeEach(async () => {
     vi.clearAllMocks();
-    if (mode === "trx") {
-      await DB.createTestTransaction();
-    }
-    if (mode === "fm") {
-      await FixtureManager.cleanAndSeed(tableNames);
-    }
+    await DB.createTestTransaction();
   });
   afterEach(async () => {
     vi.useRealTimers();
-    if (mode === "trx") {
-      await DB.clearTestTransaction();
-    }
+    await DB.clearTestTransaction();
   });
   afterAll(() => {
     vi.restoreAllMocks();
@@ -58,5 +43,5 @@ export async function runWithContext(
 }
 
 export async function runWithMockContext(fn: () => Promise<void>) {
-  await runWithContext(cloneDeep(getMockContext()), fn);
+  await runWithContext(getMockContext(), fn);
 }

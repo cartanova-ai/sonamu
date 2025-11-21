@@ -4,6 +4,7 @@ import { UBRef, UpsertBuilder } from "./upsert-builder";
 import { DatabaseSchemaExtend } from "../types/types";
 import chalk from "chalk";
 import { DBPreset } from "./db";
+import { OmitMetadataColumns } from "./puri.types";
 
 type TableName<TSchema extends DatabaseSchemaExtend> = Extract<
   keyof TSchema,
@@ -34,7 +35,7 @@ export class PuriWrapper<
   ): Puri<
     TSchema,
     Record<TTable, TSchema[TTable]>,
-    Omit<TSchema[TTable], "__fulltext__">
+    OmitMetadataColumns<TSchema[TTable]>
   >;
   // 테이블명 + Alias로 시작
   from<TTable extends keyof TSchema, TAlias extends string>(spec: {
@@ -42,7 +43,7 @@ export class PuriWrapper<
   }): Puri<
     TSchema,
     Record<TAlias, TSchema[TTable]>,
-    Omit<TSchema[TTable], "__fulltext__">
+    OmitMetadataColumns<TSchema[TTable]>
   >;
   // 서브쿼리로 시작
   from<TAlias extends string, TSubResult>(spec: {
@@ -50,7 +51,7 @@ export class PuriWrapper<
   }): Puri<
     TSchema,
     Record<TAlias, TSubResult>,
-    Omit<TSubResult, "__fulltext__">
+    OmitMetadataColumns<TSubResult>
   >;
   from(spec: any): any {
     return new Puri(this.knex, spec);
@@ -62,7 +63,7 @@ export class PuriWrapper<
   ): Puri<
     TSchema,
     Record<TTable, TSchema[TTable]>,
-    Omit<TSchema[TTable], "__fulltext__">
+    OmitMetadataColumns<TSchema[TTable]>
   >;
   // 테이블명 + Alias로 시작
   table<TTable extends keyof TSchema, TAlias extends string>(spec: {
@@ -70,7 +71,7 @@ export class PuriWrapper<
   }): Puri<
     TSchema,
     Record<TAlias, TSchema[TTable]>,
-    Omit<TSchema[TTable], "__fulltext__">
+    OmitMetadataColumns<TSchema[TTable]>
   >;
   // 서브쿼리로 시작
   table<TAlias extends string, TSubResult>(spec: {
@@ -78,7 +79,7 @@ export class PuriWrapper<
   }): Puri<
     TSchema,
     Record<TAlias, TSubResult>,
-    Omit<TSubResult, "__fulltext__">
+    OmitMetadataColumns<TSubResult>
   >;
   table(spec: any): any {
     return new Puri(this.knex, spec);
