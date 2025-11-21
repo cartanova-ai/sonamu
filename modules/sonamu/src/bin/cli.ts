@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import path from "path";
-import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { tsicli } from "tsicli";
 import { execSync, spawn } from "child_process";
 import { mkdir, readdir, writeFile } from "fs/promises";
@@ -382,12 +382,13 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
-    // @sonamu-kit/ui의 run-ui.ts 스크립트 경로 찾기
-    const uiModulePath = await import.meta.resolve("@sonamu-kit/ui");
-    const uiNodePath = path.join(
-      path.dirname(fileURLToPath(uiModulePath)),
-      "run-ui.js"
+    // 사용자 프로젝트의 패키지들 중에서 @sonamu-kit/ui를 찾습니다.
+    // 이를 위해서 createRequire를 사용하여 프로젝트 경로 기준으로 resolve합니다.
+    const projectRequire = createRequire(
+      path.join(Sonamu.apiRootPath, "package.json")
     );
+    const uiPackagePath = projectRequire.resolve("@sonamu-kit/ui"); // 없으면 여기서 터져요(MODULE_NOT_FOUND)
+    const uiNodePath = path.join(path.dirname(uiPackagePath), "run-ui.js");
 
     if (!(await exists(uiNodePath))) {
       console.log(

@@ -70,7 +70,6 @@
   },
   "devDependencies": {
     "@sonamu-kit/hot-hook": "workspace:^",
-    "@sonamu-kit/ui": "workspace:^",
     "@swc/cli": "^0.7.8",
     "@types/inflection": "^1.13.0",
     "@types/lodash-es": "^4.17.12",
