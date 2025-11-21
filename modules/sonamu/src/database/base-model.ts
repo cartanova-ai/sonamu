@@ -239,8 +239,8 @@ export class BaseModelClass {
     subsetQuery: SubsetQuery;
     qb: Knex.QueryBuilder;
   }> {
-    const chalk = await import("chalk");
-    const SqlParser = await import("node-sql-parser");
+    const chalk = (await import("chalk")).default;
+    const SqlParser = (await import("node-sql-parser")).default;
     const { getTableName, getTableNamesFromWhere } = await import(
       "../utils/sql-parser"
     );
@@ -338,7 +338,7 @@ export class BaseModelClass {
       if (debug === true || debug === "count") {
         console.debug(
           "DEBUG: count query",
-          chalk.default.blue(countQuery.toQuery().toString())
+          chalk.blue(countQuery.toQuery().toString())
         );
       }
 
@@ -377,7 +377,7 @@ export class BaseModelClass {
       if (debug === true || debug === "list") {
         console.debug(
           "DEBUG: list query",
-          chalk.default.blue(listQuery.toQuery().toString())
+          chalk.blue(listQuery.toQuery().toString())
         );
       }
 

@@ -144,9 +144,9 @@ class SonamuClass {
     }
 
     if (!doSilent) {
-      const chalk = await import("chalk");
+      const chalk = (await import("chalk")).default;
       console.time(
-        chalk.default.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
+        chalk.cyan(`Sonamu.init${forTesting ? " for testing" : ""}`)
       );
     }
 
@@ -167,8 +167,8 @@ class SonamuClass {
     const { DB } = await import("../database/db");
     this.dbConfig = DB.generateDBConfig(this.config.database);
     if (!doSilent) {
-      const chalk = await import("chalk");
-      console.log(chalk.default.green("DB Config Loaded!"));
+      const chalk = (await import("chalk")).default;
+      console.log(chalk.green("DB Config Loaded!"));
     }
     const { attachOnDuplicateUpdate } = await import(
       "../database/knex-plugins/knex-on-duplicate-update"
@@ -209,8 +209,8 @@ class SonamuClass {
 
     this.isInitialized = true;
     if (!doSilent) {
-      const chalk = await import("chalk");
-      console.timeEnd(chalk.default.cyan("Sonamu.init"));
+      const chalk = (await import("chalk")).default;
+      console.timeEnd(chalk.cyan("Sonamu.init"));
     }
   }
 
@@ -223,8 +223,8 @@ class SonamuClass {
     }
 
     const options = this.config.server;
-    const fastify = await import("fastify");
-    const server = fastify.default(options.fastify);
+    const fastify = (await import("fastify")).default;
+    const server = fastify(options.fastify);
     this.server = server;
 
     // Storage 설정 저장
@@ -288,8 +288,8 @@ class SonamuClass {
         });
       });
       if (!options?.doSilent) {
-        const chalk = await import("chalk");
-        console.log(chalk.default.green(`Timezone set to ${timezone}`));
+        const chalk = (await import("chalk")).default;
+        console.log(chalk.green(`Timezone set to ${timezone}`));
       }
     }
 
@@ -479,8 +479,8 @@ class SonamuClass {
       path.join(this.apiRootPath, "sonamu.config.ts"),
     ];
 
-    const chokidar = await import("chokidar");
-    this.watcher = chokidar.default.watch(watchPath, {
+    const chokidar = (await import("chokidar")).default;
+    this.watcher = chokidar.watch(watchPath, {
       ignored: (path, stats) =>
         !!stats?.isFile() && !path.endsWith(".ts") && !path.endsWith(".json"),
       persistent: true,
@@ -505,10 +505,10 @@ class SonamuClass {
 
         if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
-          const chalk = await import("chalk");
+          const chalk = (await import("chalk")).default;
           console.log(
-            chalk.default.bold(
-              `Detected(${event}): ${chalk.default.blue(relativePath)} - Restarting...`
+            chalk.bold(
+              `Detected(${event}): ${chalk.blue(relativePath)} - Restarting...`
             )
           );
           process.kill(process.pid, "SIGUSR2");
@@ -579,20 +579,20 @@ class SonamuClass {
     server: FastifyInstance,
     options: NonNullable<SonamuServerOptions["auth"]>
   ) {
-    const fastifyPassport = await import("@fastify/passport");
-    server.register(fastifyPassport.default.initialize());
-    server.register(fastifyPassport.default.secureSession());
+    const fastifyPassport = (await import("@fastify/passport")).default;
+    server.register(fastifyPassport.initialize());
+    server.register(fastifyPassport.secureSession());
 
     if (typeof options === "boolean") {
-      fastifyPassport.default.registerUserSerializer(
+      fastifyPassport.registerUserSerializer(
         async (user, _request) => user
       );
-      fastifyPassport.default.registerUserDeserializer(
+      fastifyPassport.registerUserDeserializer(
         async (serialized, _request) => serialized
       );
     } else {
-      fastifyPassport.default.registerUserSerializer(options.userSerializer);
-      fastifyPassport.default.registerUserDeserializer(
+      fastifyPassport.registerUserSerializer(options.userSerializer);
+      fastifyPassport.registerUserDeserializer(
         options.userDeserializer
       );
     }
@@ -630,8 +630,8 @@ class SonamuClass {
         await options.lifecycle?.onStart?.(server);
       })
       .catch(async (err) => {
-        const chalk = await import("chalk");
-        console.error(chalk.default.red("Failed to start server:", err));
+        const chalk = (await import("chalk")).default;
+        console.error(chalk.red("Failed to start server:", err));
         await shutdown();
       });
   }
@@ -647,10 +647,10 @@ class SonamuClass {
     this.pendingFiles.push(filePath);
 
     const relativePath = path.relative(this.apiRootPath, filePath);
-    const chalk = await import("chalk");
+    const chalk = (await import("chalk")).default;
     console.log(
-      chalk.default.bold(
-        `Detected(${event}): ${chalk.default.blue(relativePath)}`
+      chalk.bold(
+        `Detected(${event}): ${chalk.blue(relativePath)}`
       )
     );
 
@@ -671,12 +671,12 @@ class SonamuClass {
     const endTime = Date.now();
     const totalTime = endTime - this.hmrStartTime;
     const [chalk, { centerText }] = await Promise.all([
-      import("chalk"),
+      (await import("chalk")).default,
       import("../utils/console-util"),
     ]);
-    const msg = `HMR Done! ${chalk.default.bold.white(`${totalTime}ms`)}`;
+    const msg = `HMR Done! ${chalk.bold.white(`${totalTime}ms`)}`;
 
-    console.log(chalk.default.black.bgGreen(centerText(msg)));
+    console.log(chalk.black.bgGreen(centerText(msg)));
   }
 
   async destroy(): Promise<void> {
