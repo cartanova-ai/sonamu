@@ -27,9 +27,7 @@ export const companySubsetQueries: { [key in CompanySubsetKey]: SubsetQuery } = 
 };
 
 // SubsetQuery: Department
-export const departmentSubsetQueries: {
-  [key in DepartmentSubsetKey]: SubsetQuery;
-} = {
+export const departmentSubsetQueries: { [key in DepartmentSubsetKey]: SubsetQuery } = {
   A: {
     select: [
       "departments.id",
@@ -62,9 +60,7 @@ export const departmentSubsetQueries: {
 };
 
 // SubsetQuery: Employee
-export const employeeSubsetQueries: {
-  [key in EmployeeSubsetKey]: SubsetQuery;
-} = {
+export const employeeSubsetQueries: { [key in EmployeeSubsetKey]: SubsetQuery } = {
   A: {
     select: [
       "employees.id",
@@ -79,13 +75,7 @@ export const employeeSubsetQueries: {
     ],
     virtual: [],
     joins: [
-      {
-        as: "user",
-        join: "inner",
-        table: "users",
-        from: "employees.user_id",
-        to: "user.id",
-      },
+      { as: "user", join: "inner", table: "users", from: "employees.user_id", to: "user.id" },
       {
         as: "department",
         join: "outer",
@@ -136,22 +126,12 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } = 
           fromTable: "projects",
           fromCol: "id",
           idField: "id",
-          through: {
-            table: "projects__employees",
-            fromCol: "project_id",
-            toCol: "employee_id",
-          },
+          through: { table: "projects__employees", fromCol: "project_id", toCol: "employee_id" },
           toTable: "employees",
           toCol: "id",
         },
         oneJoins: [
-          {
-            as: "user",
-            join: "inner",
-            table: "users",
-            from: "employees.user_id",
-            to: "user.id",
-          },
+          { as: "user", join: "inner", table: "users", from: "employees.user_id", to: "user.id" },
           {
             as: "department",
             join: "outer",
@@ -176,11 +156,7 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } = 
           fromTable: "projects",
           fromCol: "id",
           idField: "id",
-          through: {
-            table: "project_tags",
-            fromCol: "project_id",
-            toCol: "tag_id",
-          },
+          through: { table: "project_tags", fromCol: "project_id", toCol: "tag_id" },
           toTable: "tags",
           toCol: "id",
         },
@@ -194,12 +170,7 @@ export const projectSubsetQueries: { [key in ProjectSubsetKey]: SubsetQuery } = 
 
 // SubsetQuery: Tag
 export const tagSubsetQueries: { [key in TagSubsetKey]: SubsetQuery } = {
-  A: {
-    select: ["tags.id", "tags.created_at", "tags.name"],
-    virtual: [],
-    joins: [],
-    loaders: [],
-  },
+  A: { select: ["tags.id", "tags.created_at", "tags.name"], virtual: [], joins: [], loaders: [] },
 };
 
 // SubsetQuery: User

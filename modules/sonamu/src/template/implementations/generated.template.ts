@@ -1,12 +1,11 @@
-import * as _ from "lodash-es";
-import { isVirtualProp, TemplateOptions } from "../../types/types";
-import { EntityManager } from "../../entity/entity-manager";
-import { Entity } from "../../entity/entity";
-import { EntityPropNode } from "../../types/types";
-import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
-import { Template } from "../template";
-import { nonNullable } from "../../utils/utils";
+import { uniq } from "lodash-es";
 import { Sonamu } from "../../api";
+import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
+import { Entity } from "../../entity/entity";
+import { EntityManager } from "../../entity/entity-manager";
+import { EntityPropNode, isVirtualProp, TemplateOptions } from "../../types/types";
+import { nonNullable } from "../../utils/utils";
+import { Template } from "../template";
 
 export type SourceCode = {
   label: string;
@@ -66,7 +65,7 @@ export class Template__generated extends Template {
         }
         return {
           lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: _.uniq([...result!.importKeys, ...ts.importKeys].sort()),
+          importKeys: uniq([...result!.importKeys, ...ts.importKeys].sort()),
         };
       },
       {
@@ -158,10 +157,17 @@ export class Template__generated extends Template {
       }),
     };
 
-    const schemaBody = propNodeToZodTypeDef(propNode, importKeys);
+    const schemaBody = (() => {
+      const result = propNodeToZodTypeDef(propNode, importKeys);
+      if (result.endsWith(",")) {
+        return result.slice(0, -1);
+      }
+
+      return result;
+    })();
 
     // fulltext index에 포함된 컬럼들 추출
-    const fulltextColumns = _.uniq(
+    const fulltextColumns = uniq(
       entity.indexes.filter((index) => index.type === "fulltext").flatMap((index) => index.columns),
     );
 
@@ -171,7 +177,7 @@ export class Template__generated extends Template {
       .map((prop) => prop.name);
 
     const lines = [
-      `export const ${schemaName} = ${schemaBody}`,
+      `export const ${schemaName} = ${schemaBody};`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
         (fulltextColumns.length > 0
           ? ` & { readonly __fulltext__: readonly [${fulltextColumns
@@ -182,7 +188,8 @@ export class Template__generated extends Template {
           ? ` & { readonly __virtual__: readonly [${virtualProps
               .map((prop) => `"${prop}"`)
               .join(", ")}] }`
-          : ""),
+          : "") +
+        ";",
     ];
 
     return {
@@ -265,11 +272,18 @@ z.object({
           };
 
           // EntityPropNode[]로 ZodTypeDef(string)을 가져옴
-          const body = propNodeToZodTypeDef(propNode, importKeys);
+          const body = (() => {
+            const result = propNodeToZodTypeDef(propNode, importKeys);
+            if (result.endsWith(",")) {
+              return result.slice(0, -1);
+            }
+
+            return result;
+          })();
 
           return [
-            `export const ${schemaName} = ${body}`,
-            `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
+            `export const ${schemaName} = ${body};`,
+            `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
           ];
         })
         .flat(),
@@ -286,7 +300,7 @@ z.object({
     return {
       label: `Subsets: ${entity.id}`,
       lines,
-      importKeys: _.uniq(importKeys),
+      importKeys: uniq(importKeys),
     };
   }
 }
