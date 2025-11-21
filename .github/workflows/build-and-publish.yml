@@ -24,14 +24,15 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
 
       - name: Build
-        run: yarn build
+        run: pnpm build
 
-      - name: Set NPM_TOKEN
-        run: |
-          echo 'npmAuthToken: ${{ secrets.NPM_TOKEN }}' >> ~/.yarnrc.yml
+      - name: Set publishing config
+        run: pnpm config set '//registry.npmjs.org/:_authToken' "${NODE_AUTH_TOKEN}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish
-        run: yarn publish
+        run: pnpm publish

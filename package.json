@@ -1,26 +1,21 @@
 {
   "private": true,
-  "workspaces": [
-    "examples/**/*",
-    "modules/**/*",
-    "!modules/dump-viewer"
-  ],
   "scripts": {
-    "build:tools:loader": "cowsay -f box '@sonamu-kit/loader 빌드합니다.' && yarn workspace @sonamu-kit/loader build || (cowsay -f explosion '@sonamu-kit/loader 빌드 실패!' && exit 1)",
-    "build:tools:hot-hook": "cowsay -f box '@sonamu-kit/hot-hook 빌드합니다.' && yarn workspace @sonamu-kit/hot-hook build || (cowsay -f explosion '@sonamu-kit/hot-hook 빌드 실패!' && exit 1)",
-    "build:tools:hot-runner": "cowsay -f box '@sonamu-kit/hot-runner 빌드합니다.' && yarn workspace @sonamu-kit/hot-runner build || (cowsay -f explosion '@sonamu-kit/hot-runner 빌드 실패!' && exit 1)",
+    "build:tools:loader": "cowsay -f box '@sonamu-kit/loader 빌드합니다.' && pnpm run --filter @sonamu-kit/loader build || (cowsay -f explosion '@sonamu-kit/loader 빌드 실패!' && exit 1)",
+    "build:tools:hot-hook": "cowsay -f box '@sonamu-kit/hot-hook 빌드합니다.' && pnpm run --filter @sonamu-kit/hot-hook build || (cowsay -f explosion '@sonamu-kit/hot-hook 빌드 실패!' && exit 1)",
+    "build:tools:hot-runner": "cowsay -f box '@sonamu-kit/hot-runner 빌드합니다.' && pnpm run --filter @sonamu-kit/hot-runner build || (cowsay -f explosion '@sonamu-kit/hot-runner 빌드 실패!' && exit 1)",
     "build:tools": "run-s 'build:tools:*'",
-    "build:lib:react-sui": "cowsay '@sonamu-kit/react-sui 빌드합니다.' && yarn workspace @sonamu-kit/react-sui build || (cowsay -f explosion '@sonamu-kit/react-sui 빌드 실패!' && exit 1)",
-    "build:lib:sonamu": "cowsay 'sonamu 빌드합니다.' && yarn workspace sonamu build || (cowsay -f explosion 'sonamu 빌드 실패!' && exit 1)",
-    "build:lib:ui": "cowsay '@sonamu-kit/ui 빌드합니다.' && yarn workspace @sonamu-kit/ui build || (cowsay -f explosion '@sonamu-kit/ui 빌드 실패!' && exit 1)",
+    "build:lib:react-sui": "cowsay '@sonamu-kit/react-sui 빌드합니다.' && pnpm run --filter @sonamu-kit/react-sui build || (cowsay -f explosion '@sonamu-kit/react-sui 빌드 실패!' && exit 1)",
+    "build:lib:sonamu": "cowsay 'sonamu 빌드합니다.' && pnpm run --filter sonamu build || (cowsay -f explosion 'sonamu 빌드 실패!' && exit 1)",
+    "build:lib:ui": "cowsay '@sonamu-kit/ui 빌드합니다.' && pnpm run --filter @sonamu-kit/ui build || (cowsay -f explosion '@sonamu-kit/ui 빌드 실패!' && exit 1)",
     "build:lib": "run-s 'build:lib:*'",
-    "build:miomock:api": "cowsay 'miomock-api 빌드합니다.' && yarn workspace miomock-api build || (cowsay -f explosion 'miomock-api 빌드 실패!' && exit 1)",
-    "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && echo '아! miomock-web은 지금 깨져있어서 빌드하지 않고 넘어갑니다! yarn dev를 사용하세요!'",
+    "build:miomock:api": "cowsay 'miomock-api 빌드합니다.' && pnpm run --filter miomock-api build || (cowsay -f explosion 'miomock-api 빌드 실패!' && exit 1)",
+    "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && echo '아! miomock-web은 지금 깨져있어서 빌드하지 않고 넘어갑니다! pnpm dev를 사용하세요!'",
     "build:miomock": "run-s 'build:miomock:*'",
     "build": "run-s 'build:tools' 'build:lib' 'build:miomock'",
     "publish": "tsx scripts/publich.ts"
   },
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "pnpm@10.23.0",
   "devDependencies": {
     "@types/node": "^24.10.1",
     "corepack": "^0.34.1",

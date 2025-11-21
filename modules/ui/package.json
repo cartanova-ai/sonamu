@@ -6,7 +6,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist build && yarn build:client && yarn build:node",
+    "build": "rm -rf dist build && pnpm build:client && pnpm build:node",
     "build:client": "tsc --noEmit && vite build",
     "build:node": "swc node -d dist --config-file node/.swcrc --strip-leading-paths && tsc -p ./node/tsconfig.node.json --emitDeclarationOnly",
     "watch:node": "tsc -w -p ./node/tsconfig.node.json",

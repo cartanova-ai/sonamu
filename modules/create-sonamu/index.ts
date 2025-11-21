@@ -176,12 +176,12 @@ async function init() {
   });
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
-  // 3. Set up Yarn Berry
-  const { isBerry } = await prompts(
+  // 3. Set up pnpm
+  const { isPnpm } = await prompts(
     {
       type: "confirm",
-      name: "isBerry",
-      message: "Would you like to set up Yarn Berry?",
+      name: "isPnpm",
+      message: "Would you like to set up pnpm?",
       initial: true,
     },
     {
@@ -189,21 +189,19 @@ async function init() {
     }
   );
 
-  if (isBerry) {
+  if (isPnpm) {
     try {
       for await (const dir of ["api", "web"]) {
-        await setupYarnBerry(targetRoot, dir);
+        await setupPnpm(targetRoot, dir);
       }
     } catch (error) {
       cleanup();
       throw error;
     }
   } else {
-    console.log(`\nTo set up Yarn Berry, run the following commands:\n`);
+    console.log(`\nTo set up pnpm, run the following commands:\n`);
     console.log(chalk.gray(`  $ cd ${targetRoot}/api`));
-    console.log(chalk.gray(`  $ yarn set version berry`));
-    console.log(chalk.gray(`  $ yarn install`));
-    console.log(chalk.gray(`  $ yarn dlx @yarnpkg/sdks vscode\n`));
+    console.log(chalk.gray(`  $ pnpm install`));
   }
 
   // 4. Set up Database using Docker
@@ -334,33 +332,22 @@ async function executeCommand(
   });
 }
 
-async function setupYarnBerry(projectName: string, dir: string) {
+async function setupPnpm(projectName: string, dir: string) {
   const cwd = path.resolve(projectName, dir);
 
   try {
-    console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
+    console.log(chalk.blue(`Setting up pnpm in ${cwd}...`));
 
     // 1. Corepack 활성화
     await executeCommand("npm", ["install", "-g", "corepack"], cwd);
     await executeCommand("corepack", ["enable"], cwd);
-    await executeCommand(
-      "corepack",
-      ["prepare", "yarn@stable", "--activate"],
-      cwd
-    );
 
-    // 2. Yarn 버전 설정
-    await executeCommand("yarn", ["set", "version", "stable"], cwd);
+    // 2. 의존성 설치
+    await executeCommand("pnpm", ["install"], cwd);
 
-    // 3. 의존성 설치
-    await executeCommand("yarn", ["install"], cwd);
-
-    // 4. VSCode SDK 설치
-    await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
-
-    console.log(chalk.green(`✅ Yarn Berry has been set up in ${cwd}\n`));
+    console.log(chalk.green(`✅ pnpm has been set up in ${cwd}\n`));
   } catch (error) {
-    console.error(chalk.red(`❌ Failed to set up Yarn Berry in ${cwd}`));
+    console.error(chalk.red(`❌ Failed to set up pnpm in ${cwd}`));
     console.error(error);
     throw error;
   }

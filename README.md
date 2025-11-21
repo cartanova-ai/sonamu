@@ -13,7 +13,7 @@ Sonamu는 E2E Type-safety, 효율적인 서브셋 쿼리, 스캐폴딩을 통한
 다음 환경이 필요합니다: 
 
 - Node.js v22 이상
-- Yarn v4 이상
+- pnpm v10.23.0
 - Docker CLI(`docker` 명령어 실행 가능)
 
 ### 1. 프로젝트 클론
@@ -26,13 +26,13 @@ cd sonamu
 ### 2. 의존성과 패키지들 준비
 
 ```bash
-corepack enable # Yarn PnP 활성화
-yarn install # 의존성 패키지 설치
-yarn build # 모노레포 내 패키지들 빌드
+corepack enable # pnpm PnP 활성화
+pnpm install # 의존성 패키지 설치
+pnpm build # 모노레포 내 패키지들 빌드
 ```
-워크스페이스 내 모든 package들의 의존성이 최상단 `.yarn/cache` 디렉토리에 설치됩니다.
+워크스페이스 내 모든 package들의 의존성이 최상단 `.pnpm/cache` 디렉토리에 설치됩니다.
 
-프로젝트 실행에 필요한 도구들(`@sonamu-kit/loader`, `@sonamu-kit/hot-hook`, `@sonamu-kit/hot-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `yarn build`를 실행해주어야 합니다.
+프로젝트 실행에 필요한 도구들(`@sonamu-kit/loader`, `@sonamu-kit/hot-hook`, `@sonamu-kit/hot-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `pnpm build`를 실행해주어야 합니다.
 
 ### 3. 예제 프로젝트 실행
 
@@ -47,21 +47,21 @@ API 서버를 실행합니다;
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
-yarn dev
+pnpm dev
 ```
 
 Sonamu UI를 실행합니다;
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/api
-yarn sonamu ui
+pnpm sonamu ui
 ```
 
 Web 서버를 실행합니다;
 ```bash
 # 클론받은 sonamu 저장소 루트 기준입니다.
 cd examples/miomock/web
-yarn dev
+pnpm dev
 ```
 
 ## 기타

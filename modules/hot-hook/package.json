@@ -33,10 +33,10 @@
     "lint": "eslint . --ext=.ts",
     "format": "prettier --write .",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
-    "pretest": "yarn lint",
-    "test": "c8 yarn quick:test",
-    "build": "yarn clean && tsc",
-    "prepublishOnly": "yarn lint && yarn build"
+    "pretest": "pnpm lint",
+    "test": "c8 pnpm quick:test",
+    "build": "pnpm clean && tsc",
+    "prepublishOnly": "pnpm lint && pnpm build"
   },
   "dependencies": {
     "chokidar": "^4.0.3",

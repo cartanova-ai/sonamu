@@ -1,0 +1,14 @@
+packages:
+  - examples/**/*
+  - modules/**/*
+  - "!modules/dump-viewer"
+  - "!modules/create-sonamu/template/**/*"
+
+onlyBuiltDependencies:
+  - "@parcel/watcher"
+  - "@swc/core"
+  - bcrypt
+  - esbuild
+  - sharp
+  - sodium-native
+  - unrs-resolver

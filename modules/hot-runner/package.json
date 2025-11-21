@@ -21,8 +21,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext=.ts",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
-    "test": "c8 yarn quick:test",
-    "prepublishOnly": "yarn build"
+    "test": "c8 pnpm quick:test",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@adonisjs/ace": "^13.3.0",
