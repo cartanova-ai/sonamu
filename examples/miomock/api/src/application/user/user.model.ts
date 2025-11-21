@@ -108,7 +108,7 @@ class UserModelClass extends CustomBaseModelClass<
       }
     }
 
-    Naite.t("executeSubsetQuery직전QB", qb.toQuery());
+    Naite.t("esq-query", qb.toQuery());
     const { rows, total } = await this.executeSubsetQuery({
       subset,
       qb,
