@@ -1,18 +1,17 @@
-import path from "path";
-import { Sonamu } from "../api/sonamu";
-import { AlreadyProcessedException } from "../exceptions/so-exceptions";
-import { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
-import { everyAsync, filterAsync } from "../utils/async-utils";
-import { exists } from "../utils/fs-utils";
 import chalk from "chalk";
 import { mkdir, writeFile } from "fs/promises";
-import uniq from "lodash-es/uniq.js";
-import { Template } from "../template/template";
-import { RenderedTemplate } from "../template/template";
+import * as _ from "lodash-es";
+import path from "path";
+import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
+import { AlreadyProcessedException } from "../exceptions/so-exceptions";
+import { RenderedTemplate, Template } from "../template/template";
+import { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
+import { everyAsync, filterAsync } from "../utils/async-utils";
+import { formatCode } from "../utils/formatter";
+import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
 import { AbsolutePath } from "../utils/path-utils";
-import { formatCode } from "../utils/formatter";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -120,7 +119,7 @@ async function resolveRenderedTemplate(
         // 같은 파일에서 import 하는 경우 keys 로 나열 처리
         const existsOne = r.find((importDef) => importDef.from === importPath);
         if (existsOne) {
-          existsOne.keys = uniq(existsOne.keys.concat(importKey));
+          existsOne.keys = _.uniq(existsOne.keys.concat(importKey));
         } else {
           r.push({
             keys: [importKey],
@@ -149,6 +148,13 @@ async function resolveRenderedTemplate(
     if (key === "generated_http") {
       return [header, body].join("\n\n");
     } else {
+      if (key === "generated") {
+        console.log("header", header);
+        console.log("body", body);
+        console.log(formatCode([header, body].join("\n\n"), "typescript"));
+        console.log("-".repeat(10));
+      }
+
       return formatCode([header, body].join("\n\n"), key === "entity" ? "json" : "typescript");
     }
   })();
@@ -164,7 +170,7 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
   const { appRootPath } = Sonamu;
   const filePath = `${Sonamu.appRootPath}/${pathAndCode.path}` as AbsolutePath;
 
-  const dstFilePaths = uniq(
+  const dstFilePaths = _.uniq(
     targets.map((target) => filePath.replace("/:target/", `/${target}/`)) as AbsolutePath[],
   );
   return await Promise.all(

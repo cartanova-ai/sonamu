@@ -73,14 +73,7 @@ Content-Type: application/json
 POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
-{
-  "params": {
-    "email": "EMAIL",
-    "username": "USERNAME",
-    "password": "PASSWORD",
-    "role": "normal"
-  }
-}
+{ "params": { "email": "EMAIL", "username": "USERNAME", "password": "PASSWORD", "role": "normal" } }
 
 
 ###
@@ -207,13 +200,7 @@ Content-Type: application/json
 
 {
   "spa": [
-    {
-      "id": 0,
-      "created_at": "2000-01-01",
-      "mime_type": "MIME_TYPE",
-      "name": "NAME",
-      "url": "URL"
-    }
+    { "id": 0, "created_at": "2000-01-01", "mime_type": "MIME_TYPE", "name": "NAME", "url": "URL" }
   ]
 }
 
@@ -316,13 +303,7 @@ Content-Type: application/json
 
 {
   "spa": [
-    {
-      "id": 0,
-      "created_at": "2000-01-01",
-      "name": "NAME",
-      "company_id": 0,
-      "parent_id": null
-    }
+    { "id": 0, "created_at": "2000-01-01", "name": "NAME", "company_id": 0, "parent_id": null }
   ]
 }
 
