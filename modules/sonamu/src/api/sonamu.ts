@@ -573,9 +573,9 @@ class SonamuClass {
       if (!option) return;
 
       if (option === true) {
-        server.register(await import(pluginName));
+        server.register((await import(pluginName)).default);
       } else {
-        server.register(await import(pluginName), option);
+        server.register((await import(pluginName)).default, option);
       }
     };
 
