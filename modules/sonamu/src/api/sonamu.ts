@@ -19,6 +19,7 @@ import type { AbsolutePath } from "../utils/path-utils";
 // 눈물을 머금고 fastify 정적 import..
 // fastify, @fastify/passport가 둘다 동적으로 import되면 문제가 생김..
 import fastify from "fastify";
+import fastifyPassport from "@fastify/passport";
 
 export type SonamuSecrets = {
   [key: string]: string;
@@ -582,7 +583,6 @@ class SonamuClass {
     server: FastifyInstance,
     options: NonNullable<SonamuServerOptions["auth"]>
   ) {
-    const fastifyPassport = (await import("@fastify/passport")).default;
     server.register(fastifyPassport.initialize());
     server.register(fastifyPassport.secureSession());
 
