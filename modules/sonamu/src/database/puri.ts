@@ -16,6 +16,7 @@ import type {
   ResultAvailableColumns,
   SelectObject,
   SingleTableValue,
+  ColumnKeys,
   SqlExpression,
   WhereCondition,
 } from "./puri.types";
@@ -169,7 +170,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   join<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
     left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${keyof TSubResult & string}`,
+    right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`
   ): Puri<
     TSchema,
     TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
@@ -179,7 +180,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   join<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
     left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${keyof TSchema[TJoinTable] & string}`,
+    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinAlias, TSchema[TJoinTable]>, // TTables 확장!
@@ -189,7 +190,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   join<TJoinTable extends keyof TSchema>(
     tableName: TJoinTable,
     left: AvailableColumns<TTables>,
-    right: `${TJoinTable & string}.${keyof TSchema[TJoinTable] & string}`,
+    right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinTable, TSchema[TJoinTable]>, // 테이블명이 키
@@ -219,7 +220,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   leftJoin<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
     left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${keyof TSubResult & string}`,
+    right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
@@ -229,7 +230,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
     left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${keyof TSchema[TJoinTable] & string}`,
+    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinAlias, TSchema[TJoinTable]>, // TTables 확장!
@@ -239,7 +240,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   leftJoin<TJoinTable extends keyof TSchema>(
     tableName: TJoinTable,
     left: AvailableColumns<TTables>,
-    right: `${TJoinTable & string}.${keyof TSchema[TJoinTable] & string}`,
+    right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinTable, TSchema[TJoinTable]>, // 테이블명이 키

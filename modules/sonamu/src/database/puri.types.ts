@@ -4,19 +4,36 @@ import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
 
-// 메타데이터 컬럼 제외
+// 메타데이터 컬럼 유틸
 type MetadataColumns = "__fulltext__" | "__virtual__";
-export type ExcludeMetadataColumns<T> = Exclude<T, MetadataColumns>;
+
+// virtual 컬럼 타입 추출
+type VirtualKeys<T> = T extends { __virtual__: readonly (infer V)[] }
+  ? V & string
+  : never;
+
+// virtual 컬럼 제거
+type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
+
+// 메타데이터 필드 제외한 실제 엔티티 컬럼
+export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, MetadataColumns> &
+  string;
+
+// virtual 컬럼 제거 후 __fulltext__ 메타데이터 유지
+export type PuriTable<T> = Omit<StripVirtual<T>, "__virtual__">;
+
+// 메타데이터 컬럼 제외 타입 정의
 export type OmitMetadataColumns<T> = Omit<T, MetadataColumns>;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> =
   | {
-      [TAlias in keyof TTables]: `${TAlias & string}.${ExcludeMetadataColumns<keyof TTables[TAlias]> & string}`;
+      [TAlias in keyof TTables]: `${TAlias & string}.${ColumnKeys<TTables[TAlias]>}`;
     }[keyof TTables]
   | (IsSingleKey<TTables> extends true
-      ? ExcludeMetadataColumns<keyof TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
+      ? ColumnKeys<TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
       : never);
+
 // Group By, Order By, Having 등에서 선택 가능한 컬럼
 export type ResultAvailableColumns<TTables extends Record<string, any>, TResult = any> =
   | AvailableColumns<TTables>
@@ -119,7 +136,7 @@ type NullableToOptional<T> = {
 }>;
 
 // Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<Omit<T, "id" | "created_at" | "__fulltext__">>;
+export type InsertData<T> = NullableToOptional<Omit<PuriTable<T>, "id" | "created_at" | MetadataColumns>>;
 
 // SubsetQuery를 위한 타입 유틸리티
 type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>

@@ -5,8 +5,8 @@ import type { Knex } from "knex";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { DBPreset } from "./db";
 import { Puri } from "./puri";
-import type { OmitMetadataColumns } from "./puri.types";
 import type { UBRef, UpsertBuilder } from "./upsert-builder";
+import type { ColumnKeys, OmitMetadataColumns, PuriTable } from "./puri.types";
 
 type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
 
@@ -28,40 +28,56 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
 
   // 테이블명으로 시작
   from<TTable extends keyof TSchema>(
-    tableName: TTable,
-  ): Puri<TSchema, Record<TTable, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
+    tableName: TTable
+  ): Puri<
+    TSchema,
+    Record<TTable, PuriTable<TSchema[TTable]>>,
+    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+  >;
   // 테이블명 + Alias로 시작
-  from<TTable extends keyof TSchema, TAlias extends string>(
-    spec: {
-      [K in TAlias]: TTable;
-    },
-  ): Puri<TSchema, Record<TAlias, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
+  from<TTable extends keyof TSchema, TAlias extends string>(spec: {
+    [K in TAlias]: TTable;
+  }): Puri<
+    TSchema,
+    Record<TAlias, PuriTable<TSchema[TTable]>>,
+    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+  >;
   // 서브쿼리로 시작
-  from<TAlias extends string, TSubResult>(
-    spec: {
-      [K in TAlias]: Puri<TSchema, any, TSubResult>;
-    },
-  ): Puri<TSchema, Record<TAlias, TSubResult>, OmitMetadataColumns<TSubResult>>;
+  from<TAlias extends string, TSubResult>(spec: {
+    [K in TAlias]: Puri<TSchema, any, TSubResult>;
+  }): Puri<
+    TSchema,
+    Record<TAlias, PuriTable<TSubResult>>,
+    OmitMetadataColumns<PuriTable<TSubResult>>
+  >;
   from(spec: any): any {
     return new Puri(this.knex, spec);
   }
 
   // 테이블명으로 시작
   table<TTable extends keyof TSchema>(
-    tableName: TTable,
-  ): Puri<TSchema, Record<TTable, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
+    tableName: TTable
+  ): Puri<
+    TSchema,
+    Record<TTable, PuriTable<TSchema[TTable]>>,
+    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+  >;
   // 테이블명 + Alias로 시작
-  table<TTable extends keyof TSchema, TAlias extends string>(
-    spec: {
-      [K in TAlias]: TTable;
-    },
-  ): Puri<TSchema, Record<TAlias, TSchema[TTable]>, OmitMetadataColumns<TSchema[TTable]>>;
+  table<TTable extends keyof TSchema, TAlias extends string>(spec: {
+    [K in TAlias]: TTable;
+  }): Puri<
+    TSchema,
+    Record<TAlias, PuriTable<TSchema[TTable]>>,
+    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+  >;
   // 서브쿼리로 시작
-  table<TAlias extends string, TSubResult>(
-    spec: {
-      [K in TAlias]: Puri<TSchema, any, TSubResult>;
-    },
-  ): Puri<TSchema, Record<TAlias, TSubResult>, OmitMetadataColumns<TSubResult>>;
+  table<TAlias extends string, TSubResult>(spec: {
+    [K in TAlias]: Puri<TSchema, any, TSubResult>;
+  }): Puri<
+    TSchema,
+    Record<TAlias, PuriTable<TSubResult>>,
+    OmitMetadataColumns<PuriTable<TSubResult>>
+  >;
   table(spec: any): any {
     return new Puri(this.knex, spec);
   }
@@ -117,8 +133,8 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ubRegister<TTable extends TableName<TSchema>>(
     tableName: TTable,
     row: Partial<{
-      [K in keyof TSchema[TTable]]: TSchema[TTable][K] | UBRef;
-    }>,
+      [K in ColumnKeys<TSchema[TTable]>]: TSchema[TTable][K] | UBRef;
+    }>
   ): UBRef {
     return this.upsertBuilder.register(tableName, row);
   }
