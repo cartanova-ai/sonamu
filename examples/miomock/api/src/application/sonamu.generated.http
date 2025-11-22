@@ -9,6 +9,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/user/findMany
 	?subset=SUBSET
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###

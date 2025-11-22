@@ -68,7 +68,7 @@ class UserModelClass extends CustomBaseModelClass<
   })
   async findMany<T extends UserSubsetKey>(
     subset: T,
-    _params: UserListParams = {},
+    rawParams: UserListParams = {},
   ): Promise<ListResult<UserSubsetMapping[T]>> {
     // params with defaults
     const params = {
@@ -76,7 +76,7 @@ class UserModelClass extends CustomBaseModelClass<
       page: 1,
       search: "id" as const,
       orderBy: "id-desc" as const,
-      ..._params,
+      ...rawParams,
     };
 
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
