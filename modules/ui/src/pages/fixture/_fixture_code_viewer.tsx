@@ -65,7 +65,7 @@ export default function FixtureCodeViewer({
           <div key={entity.id} className="fixture-entity-group">
             <h3>Entity: {entity.id}</h3>
             {results.map((result) => (
-              <div key={result.data.id} className="fixture-code-item">
+              <div key={String(result.data.id)} className="fixture-code-item">
                 <FixtureCode
                   fixture={result}
                   entity={entity}
@@ -156,7 +156,7 @@ const FixtureCode = ({
       SonamuUIService.getEntityById(
         targetDB,
         fixture.entityId,
-        fixture.data.id,
+        String(fixture.data.id),
         selectedSubset
       )
         .then((res) => {
@@ -165,10 +165,14 @@ const FixtureCode = ({
             newCodes.set(selectedSubset, {
               fixture: getFixtureLoaderCode(
                 fixture.entityId,
-                fixture.data.id,
+                Number(fixture.data.id),
                 selectedSubset
               ),
-              test: getFixtureTestCode(fixture.entityId, fixture.data.id, res),
+              test: getFixtureTestCode(
+                fixture.entityId,
+                Number(fixture.data.id),
+                res
+              ),
             });
             return newCodes;
           });
@@ -181,7 +185,7 @@ const FixtureCode = ({
     <div>
       <div className="fixture-code-header">
         <strong>
-          Fixture ID: {fixture.entityId}#{fixture.data.id}
+          Fixture ID: {fixture.entityId}#{String(fixture.data.id)}
         </strong>
         <div style={{ display: "flex", alignItems: "center" }}>
           <Dropdown

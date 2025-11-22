@@ -43,7 +43,7 @@ export async function createServer(options: {
   apiRootPath: string;
   watch?: boolean;
 }) {
-  const { listen, apiRootPath, watch, projectName } = options;
+  const { listen, watch, projectName } = options;
 
   const server = fastify();
 
@@ -74,7 +74,7 @@ export async function createServer(options: {
     lines.push(`╰─`);
 
     const errorLog = lines.map((line) => chalk.red(line)).join("\n");
-    console.error("\n" + errorLog + "\n");
+    console.error(`\n${errorLog}\n`);
   });
 
   // 웹 빌드 데이터로 정적 데이터 서빙
@@ -131,7 +131,7 @@ export async function createServer(options: {
       return (await openai.getMessages({ run_id: run.id }))[0];
     });
 
-    server.get("/api/openai/chat/stream", async (request, reply) => {
+    server.get("/api/openai/chat/stream", async (_request, reply) => {
       const runner = openai.getRunner();
 
       reply.raw.writeHead(200, {
@@ -172,7 +172,7 @@ export async function createServer(options: {
 
   server.get("/api/t1", async () => {
     const entityIds = EntityManager.getAllIds();
-    const { apiRootPath, isInitialized } = Sonamu;
+    const { apiRootPath } = Sonamu;
 
     return {
       t1: "t5",
@@ -279,10 +279,10 @@ export async function createServer(options: {
       const entity = EntityManager.get(entityId);
       if ((entity.title ?? "") !== "") {
         glossary.set(underscore(entity.id), entity.title);
-        glossary.set(underscore(pluralize(entity.id)), entity.title + "리스트");
+        glossary.set(underscore(pluralize(entity.id)), `${entity.title}리스트`);
       }
 
-      entity.props.map((prop) => {
+      entity.props.forEach((prop) => {
         if (glossary.has(prop.name)) {
           return;
         }
@@ -312,7 +312,7 @@ export async function createServer(options: {
       for (const comb of combinations) {
         const remainStr = remainArr.join("_");
         if (remainStr.includes(comb.w) && glossary.has(comb.w)) {
-          remainArr = remainStr.replace(comb.w, REPLACED_PREFIX + glossary.get(comb.w)!).split("_");
+          remainArr = remainStr.replace(comb.w, REPLACED_PREFIX + glossary.get(comb.w)).split("_");
         }
       }
 
@@ -710,8 +710,8 @@ export async function createServer(options: {
   });
 
   server.post<{
-    Body: {};
-  }>("/api/migrations/generatePreparedCodes", async (request) => {
+    Body;
+  }>("/api/migrations/generatePreparedCodes", async (_requestt) => {
     return await migrator.generatePreparedCodes();
   });
 
@@ -873,7 +873,7 @@ export async function createServer(options: {
   });
 
   server.get("/api/entity/findById", async (request) => {
-    const { db, entityId, id, subset } = request.query as {
+    const { entityId, id, subset } = request.query as {
       db: keyof SonamuDBConfig;
       entityId: string;
       id: string;

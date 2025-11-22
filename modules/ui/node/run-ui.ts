@@ -12,8 +12,8 @@ import { startServers } from "./index";
  * - UI_PORT: UI 서버 포트
  */
 
-const projectName = process.env.PROJECT_NAME!;
-const apiRootPath = process.env.API_ROOT_PATH!;
+const projectName = process.env.PROJECT_NAME;
+const apiRootPath = process.env.API_ROOT_PATH;
 const port = parseInt(process.env.UI_PORT || "57000");
 
 if (!projectName || !apiRootPath) {
