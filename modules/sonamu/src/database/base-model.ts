@@ -58,18 +58,12 @@ export class BaseModelClass {
       selectField = unqKeyFields[0];
       unqKeys = rows.map((row) => row[unqKeyFields[0]] as string);
     }
-    const chunks = Array.from(
-      {
-        length: Math.ceil(unqKeys.length / chunkSize),
-      },
-      (_, index) => unqKeys.slice(index * chunkSize, (index + 1) * chunkSize),
-    );
 
     let resultIds: number[] = [];
-    for (const chunk of chunks) {
+    for (const items of chunk(unqKeys, chunkSize)) {
       const dbRows = await wdb(tableName)
         .select("id", wdb.raw(selectField))
-        .whereIn(whereInField as string, chunk);
+        .whereIn(whereInField as string, items);
       resultIds = resultIds.concat(
         dbRows.map((dbRow: UnknownDBRecord) => parseInt(String(dbRow.id))),
       );
@@ -136,9 +130,9 @@ export class BaseModelClass {
       }
 
       // 불러온 row들을 참조ID 기준으로 분류 배치
-      const subRowGroups = Object.groupBy(subRows, (row) => row[toCol]);
+      const subRowGroups = group(subRows, (row) => row[toCol] as string);
       rows = rows.map((row) => {
-        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map((r) =>
+        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField] as string] ?? []).map((r) =>
           omit(r, [toCol]),
         );
         return row;
