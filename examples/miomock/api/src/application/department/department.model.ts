@@ -1,14 +1,14 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
 } from "sonamu";
-import { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
+import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
 import { departmentSubsetQueries } from "../sonamu.generated.sso";
-import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
+import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 /*
   Department Model
@@ -69,7 +69,7 @@ class DepartmentModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: departmentSubsetQueries[subset],
@@ -94,7 +94,7 @@ class DepartmentModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("departments." + orderByField, orderByDirec);
+          qb.orderBy(`departments.${orderByField}`, orderByDirec);
         }
 
         if (virtual.includes("employee_count")) {
@@ -119,9 +119,9 @@ class DepartmentModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    for (const sp of spa) {
       wdb.ubRegister("departments", sp);
-    });
+    }
 
     // transaction
     return wdb.transaction(async (trx) => {

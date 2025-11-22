@@ -1,6 +1,7 @@
+import assert from "assert";
+import { range } from "radash";
 import { Sonamu } from "sonamu";
 import { EmployeeModel } from "../application/employee/employee.model";
-import assert from "assert";
 
 // UpdateBatch 예제
 async function examples() {
@@ -67,7 +68,7 @@ async function examples() {
   console.log("\n=== Example 2: UpdateBatch with Composite Key ===");
   await puri.transaction(async (trx) => {
     // 1. 여러 User 생성
-    Array.from({ length: 3 }, (_, i) => {
+    range(3).forEach((i) => {
       trx.ubRegister("users", {
         email: `emp${i}@test.com`,
         username: `emp${i}`,
@@ -97,7 +98,7 @@ async function examples() {
     // 이 방식은 employee_number가 변경되지 않는다는 전제 하에 유용
     userIds.forEach((userId, i) => {
       trx.ubRegister("employees", {
-        user_id: userId!, // 매칭 키 1
+        user_id: userId, // 매칭 키 1
         employee_number: `E${1000 + i}`, // 매칭 키 2
         salary: String(60000 + i * 1000), // 업데이트할 값
       });
@@ -160,7 +161,8 @@ async function examples() {
     await trx.ubUpdateBatch("users");
 
     // 3. 결과 확인
-    const updatedUser = await trx.table("users").selectAll().where("id", userIds[0]!).first();
+    assert(userIds[0]);
+    const updatedUser = await trx.table("users").selectAll().where("id", userIds[0]).first();
 
     console.log("Updated user:", updatedUser);
 
@@ -171,7 +173,7 @@ async function examples() {
     assert(updatedUser.is_verified === false); // 변경 안됨
 
     // 정리
-    await trx.table("users").where("id", userIds[0]!).delete();
+    await trx.table("users").where("id", userIds[0]).delete();
     console.log("✅ Cleanup completed");
   });
 

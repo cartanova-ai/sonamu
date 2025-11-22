@@ -1,16 +1,16 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
-  upload,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
   Sonamu,
+  upload,
 } from "sonamu";
-import { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
+import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileSubsetQueries } from "../sonamu.generated.sso";
-import { FileListParams, FileSaveParams } from "./file.types";
+import type { FileListParams, FileSaveParams } from "./file.types";
 
 /*
   File Model
@@ -60,7 +60,7 @@ class FileModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: fileSubsetQueries[subset],
@@ -85,7 +85,7 @@ class FileModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("files." + orderByField, orderByDirec);
+          qb.orderBy(`files.${orderByField}`, orderByDirec);
         }
 
         return qb;
@@ -104,9 +104,9 @@ class FileModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    for (const sp of spa) {
       wdb.ubRegister("files", sp);
-    });
+    }
 
     // transaction
     return wdb.transaction(async (trx) => {

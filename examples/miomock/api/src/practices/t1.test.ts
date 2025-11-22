@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { t1 } from "./t1";
 
 describe("t1", () => {

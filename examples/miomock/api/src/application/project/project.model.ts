@@ -1,14 +1,14 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
 } from "sonamu";
-import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectSubsetQueries } from "../sonamu.generated.sso";
-import { ProjectListParams, ProjectSaveParams } from "./project.types";
+import type { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 /*
   Project Model
@@ -69,7 +69,7 @@ class ProjectModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: projectSubsetQueries[subset],
@@ -94,7 +94,7 @@ class ProjectModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("projects." + orderByField, orderByDirec);
+          qb.orderBy(`projects.${orderByField}`, orderByDirec);
         }
 
         return qb;
@@ -113,15 +113,15 @@ class ProjectModelClass extends BaseModelClass {
     const puri = this.getPuri("w");
 
     // register
-    spa.map(({ employee_ids, tag_ids, ...sp }) => {
+    spa.forEach(({ employee_ids, tag_ids, ...sp }) => {
       const project_id = puri.ubRegister("projects", sp);
-      employee_ids.map((employee_id) => {
+      employee_ids.forEach((employee_id) => {
         puri.ubRegister("projects__employees", {
           project_id,
           employee_id,
         });
       });
-      tag_ids.map((tag_id) => {
+      tag_ids.forEach((tag_id) => {
         puri.ubRegister("project_tags", {
           project_id,
           tag_id,

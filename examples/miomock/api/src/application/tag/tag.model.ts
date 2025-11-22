@@ -1,14 +1,14 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
 } from "sonamu";
-import { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { tagSubsetQueries } from "../sonamu.generated.sso";
-import { TagListParams, TagSaveParams } from "./tag.types";
+import type { TagListParams, TagSaveParams } from "./tag.types";
 
 /*
   Tag Model
@@ -58,7 +58,7 @@ class TagModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: tagSubsetQueries[subset],
@@ -83,7 +83,7 @@ class TagModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("tags." + orderByField, orderByDirec);
+          qb.orderBy(`tags.${orderByField}`, orderByDirec);
         }
 
         return qb;
@@ -102,7 +102,7 @@ class TagModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("tags", sp);
     });
 

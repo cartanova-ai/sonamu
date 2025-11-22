@@ -1,12 +1,14 @@
-import { Sonamu, Puri, DatabaseSchemaExtend } from "sonamu";
-import { UserModel } from "../application/user/user.model";
-import {
-  UserBaseSchema,
+/** biome-ignore-all lint/suspicious/noExplicitAny: Puri 테스트 코드이므로 any 사용 */
+
+import { type DatabaseSchemaExtend, type Puri, Sonamu } from "sonamu";
+import type {
   CompanyBaseSchema,
-  EmployeeBaseSchema,
   DepartmentBaseSchema,
+  EmployeeBaseSchema,
+  UserBaseSchema,
   UserSubsetKey,
 } from "../application/sonamu.generated";
+import { UserModel } from "../application/user/user.model";
 
 // 사용 예제
 async function examples() {

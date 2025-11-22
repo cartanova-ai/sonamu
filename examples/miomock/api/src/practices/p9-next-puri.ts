@@ -1,5 +1,5 @@
-import { BaseModel, Puri, Sonamu } from "sonamu";
 import chalk from "chalk";
+import { BaseModel, Puri, Sonamu } from "sonamu";
 
 Sonamu.runScript(async () => {
   const puri = BaseModel.getPuri("r");
@@ -13,20 +13,18 @@ Sonamu.runScript(async () => {
     id: "users.id",
     username: "users.username",
   });
-  // @ts-ignore - unused
-  const t3Result = await test3;
+  // @ts-expect-error - unused
+  const _t3Result = await test3;
   expectAndLog(
     "select `u`.`id` as `id`, `u`.`name` as `name` from `users` as `u`",
     test3.toQuery(),
   );
-  // @ts-ignore - unused
-  type Test3Result = Awaited<typeof test3>[0];
 
   // Test: select 타입 체크
   type Test4Result = Awaited<typeof test3>[0];
   // 예상: { id: number, username: string }
-  // @ts-ignore - unused
-  const test4Check: Test4Result = {
+  // @ts-expect-error - unused
+  const _test4Check: Test4Result = {
     id: 1,
     username: "test",
     // @ts-expect-error - email은 select 안 했으므로 없어야 함
@@ -80,21 +78,21 @@ Sonamu.runScript(async () => {
     id: "users.id",
     username: "users.username",
   });
-  // @ts-ignore - unused
-  const test9 = puri
+  // @ts-expect-error - unused
+  const _test9 = puri
     .from({ users: "users" })
     .join({ c: sq }, "users.id", "c.id")
     .where("c.username", "test");
 
   // test: join with subquery and callback
-  // @ts-ignore - unused
-  const test10 = puri.from("users").join({ c: sq }, (j) => {
+  // @ts-expect-error - unused
+  const _test10 = puri.from("users").join({ c: sq }, (j) => {
     j.on("users.username", "c.username");
     j.orOn("users.id", "c.id");
   });
 
   // test: select with sql expression
-  const test11 = puri.from({ users: "users" }).select({
+  puri.from({ users: "users" }).select({
     id: "users.id",
     username: "users.username",
     salary: Puri.sum("users.salary"),
@@ -102,8 +100,6 @@ Sonamu.runScript(async () => {
     dd: Puri.rawDate("users.created_at"),
     cc: Puri.rawBoolean("users.is_active"),
   });
-  // @ts-ignore - unused
-  type T11 = Awaited<typeof test11>[0];
 
   // test: where match
   const test12 = puri.from({ users: "users" }).whereMatch("users.bio", "test");
@@ -126,12 +122,12 @@ Sonamu.runScript(async () => {
 
   // test: pluck
   const test14 = puri.from({ users: "users" }).pluck("id");
-  // @ts-ignore - unused
-  const t14Result = await test14;
+  // @ts-expect-error - unused
+  const _t14Result = await test14;
 
   // test: insert
-  // @ts-ignore - unused
-  const test15 = puri.from({ users: "users" }).insert({
+  // @ts-expect-error - unused
+  const _test15 = puri.from({ users: "users" }).insert({
     email: "test@test.com",
     username: "test",
     password: "test",
@@ -139,14 +135,14 @@ Sonamu.runScript(async () => {
   });
 
   // test: join 상황에서 insert 시도시 불가
-  // @ts-ignore - unused
-  const test16 = puri.from("users").insert({
+  // @ts-expect-error - unused
+  const _test16 = puri.from("users").insert({
     bio: "aa",
   });
 
   // test: JOIN 후 업데이트
-  // @ts-ignore - unused
-  const test17 = puri.from({ u: "users" }).join({ e: "employees" }, "u.id", "e.user_id").update({
+  // @ts-expect-error - unused
+  const _test17 = puri.from({ u: "users" }).join({ e: "employees" }, "u.id", "e.user_id").update({
     "u.bio": "aa",
     "e.id": 1,
     "e.salary": "10000",

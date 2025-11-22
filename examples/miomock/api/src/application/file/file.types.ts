@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { FileBaseSchema, FileBaseListParams } from "../sonamu.generated";
+import type { z } from "zod";
+import { FileBaseListParams, FileBaseSchema } from "../sonamu.generated";
 
 // File - ListParams
 export const FileListParams = FileBaseListParams;

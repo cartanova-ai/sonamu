@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DepartmentBaseSchema, DepartmentBaseListParams } from "../sonamu.generated";
+import { DepartmentBaseListParams, DepartmentBaseSchema } from "../sonamu.generated";
 
 // Department - ListParams
 export const DepartmentListParams = DepartmentBaseListParams;
@@ -14,5 +14,6 @@ export const DepartmentSaveParams = DepartmentBaseSchema.partial({
 });
 export type DepartmentSaveParams = z.infer<typeof DepartmentSaveParams>;
 
+// biome-ignore lint/suspicious/noShadowRestrictedNames: Sonamu 내부 사용 타입
 export const Number = z.number();
 export type Number = z.infer<typeof Number>;

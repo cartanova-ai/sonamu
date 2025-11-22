@@ -1,6 +1,6 @@
-import { BaseModelClass, transactional, api, Sonamu } from "sonamu";
-import { UserSaveParams } from "../application/user/user.types";
 import assert from "assert";
+import { api, BaseModelClass, Sonamu, transactional } from "sonamu";
+import type { UserSaveParams } from "../application/user/user.types";
 
 /**
  * @transactional 데코레이터 사용 예제
@@ -23,7 +23,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
     const wdb = this.getPuri("w"); // 자동으로 트랜잭션 컨텍스트가 주입됨
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("users", sp);
     });
 
@@ -130,7 +130,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
   async example5_withApiDecorator(spa: UserSaveParams[]): Promise<{ ids: number[] }> {
     const wdb = this.getPuri("w");
 
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("users", sp);
     });
 
@@ -188,11 +188,12 @@ class TransactionalExampleModelClass extends BaseModelClass {
 
     // 4. DB에 순서대로 저장
     const [companyId] = await wdb.ubUpsert("companies");
+    assert(companyId);
     const [_departmentId] = await wdb.ubUpsert("departments");
     const userIds = await wdb.ubUpsert("users");
     const employeeIds = await wdb.ubUpsert("employees");
 
-    return { companyId: companyId!, userIds, employeeIds };
+    return { companyId, userIds, employeeIds };
   }
 
   /**
@@ -203,7 +204,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
   async saveOldWay(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("users", sp);
     });
 
@@ -219,7 +220,7 @@ class TransactionalExampleModelClass extends BaseModelClass {
   async saveNewWay(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("users", sp);
     });
 

@@ -1,6 +1,6 @@
+import assert from "assert";
 import { Puri, Sonamu } from "sonamu";
 import { EmployeeModel } from "../application/employee/employee.model";
-import assert from "assert";
 
 // UpsertBuilder 예제
 async function examples() {
@@ -59,7 +59,7 @@ async function examples() {
     });
 
     // 실제로 생성된 Employee 조회
-    const employee = await trx.table("employees").selectAll().where("id", employeeId!).first();
+    const employee = await trx.table("employees").selectAll().where("id", employeeId).first();
 
     assert(employee);
     assert(employee.employee_number === "E001");
@@ -74,10 +74,10 @@ async function examples() {
     });
 
     // 7. 정리 (외래 키 역순으로 삭제)
-    await trx.table("employees").where("id", employeeId!).delete();
-    await trx.table("users").where("id", userId!).delete();
-    await trx.table("departments").where("id", departmentId!).delete();
-    await trx.table("companies").where("id", companyId!).delete();
+    await trx.table("employees").where("id", employeeId).delete();
+    await trx.table("users").where("id", userId).delete();
+    await trx.table("departments").where("id", departmentId).delete();
+    await trx.table("companies").where("id", companyId).delete();
 
     console.log("✅ Cleanup completed");
   });
@@ -147,7 +147,7 @@ async function examples() {
     const joinRecords = await trx
       .table("projects__employees")
       .selectAll()
-      .where("project_id", projectId!);
+      .where("project_id", projectId);
 
     assert(joinRecords.length === 2);
     assert(
@@ -159,10 +159,10 @@ async function examples() {
     console.log("Join records:", joinRecords);
 
     // 7. 정리 (외래 키 역순으로 삭제)
-    await trx.table("projects__employees").where("project_id", projectId!).delete();
+    await trx.table("projects__employees").where("project_id", projectId).delete();
     await trx.table("employees").whereIn("id", employeeIds).delete();
     await trx.table("users").whereIn("id", userIds).delete();
-    await trx.table("projects").where("id", projectId!).delete();
+    await trx.table("projects").where("id", projectId).delete();
 
     console.log("✅ Cleanup completed");
   });
@@ -208,6 +208,7 @@ async function examples() {
     const departmentIds = await trx.ubUpsert("departments");
     const userIds = await trx.ubUpsert("users");
     const employeeIds = await trx.ubUpsert("employees");
+    assert(companyId);
 
     console.log("Bulk insert results:", {
       companyId,
@@ -239,7 +240,7 @@ async function examples() {
     await trx.table("employees").whereIn("id", employeeIds).delete();
     await trx.table("users").whereIn("id", userIds).delete();
     await trx.table("departments").whereIn("id", departmentIds).delete();
-    await trx.table("companies").where("id", companyId!).delete();
+    await trx.table("companies").where("id", companyId).delete();
 
     console.log("✅ Cleanup completed");
   });

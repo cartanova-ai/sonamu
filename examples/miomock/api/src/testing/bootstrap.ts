@@ -1,4 +1,4 @@
-import { Context, DB, Sonamu } from "sonamu";
+import { type Context, DB, Naite, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 
 export function bootstrap() {
@@ -27,7 +27,7 @@ function getMockContext(): Context {
       login: async () => {},
       logout: () => {},
     },
-    naiteStore: new Map<string, any>(),
+    naiteStore: Naite.createStore(),
   } as unknown as Context;
 }
 
