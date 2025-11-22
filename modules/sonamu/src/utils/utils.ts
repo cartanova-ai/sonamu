@@ -15,6 +15,10 @@ export function findApiRootPath(): AbsolutePath {
     return workspacePath as AbsolutePath;
   }
 
+  if (nonNullable(process.env["PNPM_PACKAGE_NAME"])) {
+    return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
+  }
+
   const basePath = import.meta.filename;
   let dir = path.dirname(basePath);
   if (dir.includes("/.yarn/")) {
