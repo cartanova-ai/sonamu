@@ -1,4 +1,5 @@
 import { Biome } from "@biomejs/js-api/nodejs";
+import { Naite } from "../naite/naite";
 
 const biome = new Biome();
 let projectKey: number = -1;
@@ -19,6 +20,18 @@ export function setupBiome(path: string) {
       lineWidth: 100,
       attributePosition: "auto",
     },
+    linter: {
+      enabled: true,
+      rules: {
+        recommended: true,
+        style: {
+          useNodejsImportProtocol: "off",
+        },
+        correctness: {
+          useParseIntRadix: "off",
+        },
+      },
+    },
     javascript: {
       formatter: {
         jsxQuoteStyle: "double",
@@ -37,10 +50,20 @@ export function setupBiome(path: string) {
         indentWidth: 2,
       },
     },
+    assist: {
+      enabled: true,
+      actions: {
+        source: {
+          organizeImports: "on",
+        },
+      },
+    },
   });
 }
 
 export function formatCode(code: string, parser: "typescript" | "json") {
+  Naite.t("formatCode", { code, parser });
+
   if (projectKey === -1) {
     console.warn("Biome is not setup. Please call setupBiome first.");
     return code;
@@ -51,7 +74,12 @@ export function formatCode(code: string, parser: "typescript" | "json") {
     parser === "typescript"
       ? "src/application/sonamu.generated.ts"
       : "src/application/sonamu.generated.json";
-  return biome.formatContent(projectKey, code, {
-    filePath,
-  }).content;
+
+  const result = biome.formatContent(projectKey, code, { filePath });
+  Naite.t("formatCode:result", result);
+  if (result.diagnostics.filter((d) => d.severity === "error").length > 0) {
+    console.error(result.diagnostics);
+    throw new Error("Biome format error");
+  }
+  return result.content;
 }
