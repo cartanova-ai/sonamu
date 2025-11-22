@@ -1,8 +1,8 @@
+import assert from "assert";
 import { writeFile } from "fs/promises";
 import inflection from "inflection";
-import groupBy from "lodash-es/groupBy.js";
-import uniq from "lodash-es/uniq.js";
 import path from "path";
+import { group, unique } from "radash";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import {
@@ -137,7 +137,7 @@ export class Entity {
     prefix = prefix.replace(/\./g, "__");
 
     // 서브셋을 1뎁스만 분리하여 그룹핑
-    const subsetGroup = groupBy(fields, (field) => {
+    const subsetGroup = group(fields, (field) => {
       if (field.includes(".")) {
         const [rel] = field.split(".");
         return rel;
@@ -149,6 +149,8 @@ export class Entity {
     const result = Object.keys(subsetGroup).reduce(
       (r, groupKey) => {
         const fields = subsetGroup[groupKey];
+        assert(fields !== undefined, "fields is undefined");
+
         // 현재 테이블 필드셋은 select, virtual에 추가하고 리턴
         if (groupKey === "") {
           const realFields = fields.filter((field) => !isVirtualProp(this.propsDict[field]));
@@ -563,7 +565,7 @@ export class Entity {
 
     const subsets = _subsets ?? this.subsets;
     const subsetKeys = Object.keys(subsets);
-    const allFields = uniq(subsetKeys.flatMap((key) => subsets[key]));
+    const allFields = unique(subsetKeys.flatMap((key) => subsets[key]));
 
     return this.props.map((prop) => {
       if (

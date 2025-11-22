@@ -2,13 +2,13 @@ import crypto, { type BinaryLike } from "crypto";
 import equal from "fast-deep-equal";
 import { createReadStream, type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
-import differenceWith from "lodash-es/differenceWith.js";
-import isEqual from "lodash-es/isEqual.js";
 import path from "path";
+import { isEqual } from "radash";
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
 import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
+import { differenceWith } from "../utils/utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
 type PathAndChecksum = {

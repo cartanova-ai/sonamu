@@ -1,11 +1,8 @@
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
-import chunk from "lodash-es/chunk.js";
-import defaults from "lodash-es/defaults.js";
-import groupBy from "lodash-es/groupBy.js";
-import uniq from "lodash-es/uniq.js";
+import { group, unique } from "radash";
 import { EntityManager } from "../entity/entity-manager";
-import { assertDefined, nonNullable } from "../utils/utils";
+import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 
 type TableData = {
@@ -190,10 +187,10 @@ export class UpsertBuilder {
         refTables: [] as TableData[],
       },
     );
-    const extractFields = uniq(references).map((reference) => reference.split(".")[1]);
+    const extractFields = unique(references).map((reference) => reference.split(".")[1]);
 
     // 내부 참조 있는 경우 필터하여 분리
-    const groups = groupBy(table.rows, (row) =>
+    const groups = group(table.rows, (row) =>
       Object.entries(row).some(([, value]) => isRefField(value)) ? "selfRef" : "normal",
     );
     const normalRows = groups.normal ?? [];
@@ -213,7 +210,7 @@ export class UpsertBuilder {
       // upsert된 row들을 다시 조회하여 uuidMap에 저장
       const uuids = chunk.map((row) => row.uuid);
       const upsertedRows = await wdb(tableName)
-        .select(uniq(["uuid", "id", ...extractFields]))
+        .select(unique(["uuid", "id", ...extractFields]))
         .whereIn("uuid", uuids as readonly string[]);
       for (const row of upsertedRows) {
         uuidMap.set(row.uuid, row);
@@ -266,10 +263,11 @@ export class UpsertBuilder {
       where?: string | string[];
     },
   ): Promise<void> {
-    options = defaults(options, {
-      chunkSize: 500,
-      where: "id",
-    });
+    options = {
+      ...options,
+      chunkSize: options?.chunkSize ?? 500,
+      where: options?.where ?? "id",
+    };
 
     if (this.hasTable(tableName) === false) {
       return;

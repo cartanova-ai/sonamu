@@ -3,11 +3,9 @@ import chalk from "chalk";
 import { execSync } from "child_process";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
-import groupBy from "lodash-es/groupBy.js";
-import sum from "lodash-es/sum.js";
-import uniqBy from "lodash-es/uniqBy.js";
 import path from "path";
 import prompts from "prompts";
+import { group, sum, unique } from "radash";
 import { Sonamu } from "../api";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
@@ -212,7 +210,7 @@ export class Migrator {
     }[]
   > {
     // get uniq knex configs
-    const configs = uniqBy(
+    const configs = unique(
       targets
         .map((target) => ({
           connKey: target,
@@ -614,13 +612,14 @@ export class Migrator {
     // 조인테이블만 추출
     const joinTablesWithDup = entitySetsWithJoinTable.flatMap((entitySet) => entitySet.joinTables);
     // 중복 제거 (중복인 경우 indexes를 병합)
-    const joinTables = Object.values(groupBy(joinTablesWithDup, (jt) => jt.table)).map((tables) => {
+    const joinTables = Object.values(group(joinTablesWithDup, (jt) => jt.table)).map((tables) => {
+      assert(tables !== undefined, "tables is undefined");
       if (tables.length === 1) {
         return tables[0];
       }
       return {
         ...tables[0],
-        indexes: uniqBy(
+        indexes: unique(
           tables.flatMap((t) => t.indexes),
           (index) => [index.type, ...index.columns.sort()].join("-"),
         ),

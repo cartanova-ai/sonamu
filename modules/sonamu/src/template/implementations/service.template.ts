@@ -1,8 +1,6 @@
+import assert from "assert";
 import inflection from "inflection";
-import difference from "lodash-es/difference.js";
-import groupBy from "lodash-es/groupBy.js";
-import sortBy from "lodash-es/sortBy.js";
-import uniq from "lodash-es/uniq.js";
+import { diff, group, sort, unique } from "radash";
 import {
   apiParamToTsCode,
   apiParamToTsCodeAsObject,
@@ -68,10 +66,11 @@ export class Template__service extends Template {
     // 제네릭에서 선언한 타입, importKeys에서 제외 필요
     let typeParamNames: string[] = [];
 
-    const groups = groupBy(apis, (api) => api.modelName);
+    const groups = group(apis, (api) => api.modelName);
     const body = Object.keys(groups)
       .map((modelName) => {
         const methods = groups[modelName];
+        assert(methods);
         const methodCodes = methods
           .map((api) => {
             // 컨텍스트 제외된 파라미터 리스트
@@ -81,6 +80,7 @@ export class Template__service extends Template {
                 !ApiParamType.isRefKnex(param.type) &&
                 !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
             );
+            console.log({ paramsWithoutContext });
 
             // 파라미터 타입 정의
             const typeParamsDef = api.typeParameters
@@ -110,51 +110,50 @@ export class Template__service extends Template {
             // 기본 URL
             const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
+            assert(api.options.clients, "api.options.clients is undefined");
             return [
               // 클라이언트별로 생성
-              ...sortBy(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map(
-                (client) => {
-                  switch (client) {
-                    case "axios":
-                      return this.renderAxios(
-                        api,
-                        apiBaseUrl,
-                        typeParamsDef,
-                        paramsDef,
-                        returnTypeDef,
-                        payloadDef,
-                      );
-                    case "axios-multipart":
-                      return this.renderAxiosMultipart(
-                        api,
-                        apiBaseUrl,
-                        typeParamsDef,
-                        paramsDef,
-                        returnTypeDef,
-                        paramsWithoutContext,
-                      );
-                    case "swr":
-                      return this.renderSwr(
-                        api,
-                        apiBaseUrl,
-                        typeParamsDef,
-                        paramsDef,
-                        returnTypeDef,
-                        payloadDef,
-                      );
-                    case "window-fetch":
-                      return this.renderWindowFetch(
-                        api,
-                        apiBaseUrl,
-                        typeParamsDef,
-                        paramsDef,
-                        payloadDef,
-                      );
-                    default:
-                      return `// Not supported ${inflection.camelize(client, true)} yet.`;
-                  }
-                },
-              ),
+              ...sort(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map((client) => {
+                switch (client) {
+                  case "axios":
+                    return this.renderAxios(
+                      api,
+                      apiBaseUrl,
+                      typeParamsDef,
+                      paramsDef,
+                      returnTypeDef,
+                      payloadDef,
+                    );
+                  case "axios-multipart":
+                    return this.renderAxiosMultipart(
+                      api,
+                      apiBaseUrl,
+                      typeParamsDef,
+                      paramsDef,
+                      returnTypeDef,
+                      paramsWithoutContext,
+                    );
+                  case "swr":
+                    return this.renderSwr(
+                      api,
+                      apiBaseUrl,
+                      typeParamsDef,
+                      paramsDef,
+                      returnTypeDef,
+                      payloadDef,
+                    );
+                  case "window-fetch":
+                    return this.renderWindowFetch(
+                      api,
+                      apiBaseUrl,
+                      typeParamsDef,
+                      paramsDef,
+                      payloadDef,
+                    );
+                  default:
+                    return `// Not supported ${inflection.camelize(client, true)} yet.`;
+                }
+              }),
               // 스트리밍인 경우
               ...(api.streamOptions ? [this.renderStream(api, apiBaseUrl, paramsDefAsObject)] : []),
             ].join("\n");
@@ -169,7 +168,7 @@ ${methodCodes}
 
     return {
       lines: [body],
-      importKeys: difference(uniq(importKeys), typeParamNames),
+      importKeys: diff(unique(importKeys), typeParamNames),
     };
   }
 
@@ -223,7 +222,7 @@ export async function ${methodNameAxios}${typeParamsDef}(${paramsDef}): Promise<
 
     const formDataDef = isMultiple
       ? [
-          `${fileParamName}.forEach(f => formData.append("${fileParamName}", f));`,
+          `${fileParamName}.forEach(f => { formData.append("${fileParamName}", f) } ); `,
           ...paramsWithoutContext.map(
             (param) => `formData.append('${param.name}', String(${param.name}));`,
           ),

@@ -1,7 +1,6 @@
 import assert from "assert";
 import inflection from "inflection";
-import flattenDeep from "lodash-es/flattenDeep.js";
-import uniq from "lodash-es/uniq.js";
+import { flat, unique } from "radash";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
@@ -108,7 +107,7 @@ export class Template__view_list extends Template {
           names = EntityManager.getNamesFromId(relProp.with);
           return this.renderColumnImport(entityId, child, names);
         });
-        return flattenDeep(result);
+        return flat(result ?? []);
       } catch {
         return [null];
       }
@@ -282,7 +281,7 @@ export class Template__view_list extends Template {
 
     // 리스트 컬럼
     assert(columnsNode.children);
-    const columnImports = uniq(
+    const columnImports = unique(
       columnsNode.children
         .flatMap((col) => {
           return this.renderColumnImport(entityId, col, names);

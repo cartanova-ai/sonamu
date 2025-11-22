@@ -1,6 +1,6 @@
 import assert from "assert";
 import inflection from "inflection";
-import uniq from "lodash-es/uniq.js";
+import { unique } from "radash";
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
@@ -75,7 +75,7 @@ export class Template__generated_sso extends Template {
         assert(result);
         return {
           lines: [...result.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: uniq([...result.importKeys, ...ts.importKeys]),
+          importKeys: unique([...result.importKeys, ...ts.importKeys]),
         };
       },
       {
@@ -103,7 +103,7 @@ export class Template__generated_sso extends Template {
 
     const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
-    const joinTableSchemaLines = uniq(
+    const joinTableSchemaLines = unique(
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const fromTableKey = inflection.singularize(entity.table);

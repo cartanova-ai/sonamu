@@ -1,5 +1,5 @@
-import uniq from "lodash-es/uniq.js";
 import type { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
+import { unique } from "radash";
 
 export function getTableName(expr: ColumnRef) {
   if ("table" in expr && expr.table !== null) {
@@ -30,7 +30,7 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
     return [...extractTableName(where.left), ...extractTableName(where.right)];
   };
 
-  return uniq(
+  return unique(
     (Array.isArray(ast) ? ast : [ast]).flatMap((a) =>
       a.type === "select" || a.type === "update" || a.type === "delete"
         ? extractTableNames(a.where)

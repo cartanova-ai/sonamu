@@ -1,15 +1,11 @@
 import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
-import chunk from "lodash-es/chunk.js";
-import groupBy from "lodash-es/groupBy.js";
-import isObject from "lodash-es/isObject.js";
-import omit from "lodash-es/omit.js";
-import set from "lodash-es/set.js";
-import uniq from "lodash-es/uniq.js";
+import { group, isObject, omit, set, unique } from "radash";
 import type { SubsetQuery } from "../types/types";
 import { isCustomJoinClause } from "../types/types";
 import type { BaseListParams } from "../utils/model";
+import { chunk } from "../utils/utils";
 import { DB, type DBPreset } from "./db";
 import { PuriWrapper } from "./puri-wrapper";
 import { UpsertBuilder } from "./upsert-builder";
@@ -115,7 +111,7 @@ export class BaseModelClass {
             `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`,
           )
           .whereIn(idColumn as string, fromIds as string[])
-          .select(uniq([...loader.select, idColumn]));
+          .select(unique([...loader.select, idColumn]));
 
         // ManyToMany에서 OneJoin이 있는 경우
         loader.oneJoins.forEach((join) => {
@@ -135,11 +131,11 @@ export class BaseModelClass {
       }
 
       // 불러온 row들을 참조ID 기준으로 분류 배치
-      const subRowGroups = groupBy(subRows, toCol);
+      const subRowGroups = group(subRows, (r) => r[toCol] as string);
       rows = rows.map((row) => {
         row[loader.as] = (
           subRowGroups[row[loader.manyJoin.idField] as keyof UnknownDBRecord] ?? []
-        ).map((r) => omit(r, toCol));
+        ).map((r) => omit(r, [toCol]));
         return row;
       });
     }
@@ -150,9 +146,10 @@ export class BaseModelClass {
     return rows.map((row: T) => {
       // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-      const groups = groupBy(nestedKeys, (key) => key.split("__")[0]);
+      const groups = group(nestedKeys, (key) => key.split("__")[0]);
       const nullKeys = Object.keys(groups).filter(
         (key) =>
+          groups[key] &&
           groups[key].length > 1 &&
           groups[key].every(
             (field) =>
@@ -276,7 +273,7 @@ export class BaseModelClass {
         const parsedQuery = parser.astify(clonedQb.toQuery());
         const tables = getTableNamesFromWhere(parsedQuery);
         // where절에 사용되는 테이블의 조인을 위해 사용되는 테이블
-        const needToJoin = uniq(
+        const needToJoin = unique(
           tables.flatMap((table) => table.split("__").map((t) => inflection.pluralize(t))),
         );
         applyJoinClause(

@@ -2,7 +2,7 @@ export type DBPreset = "w" | "r";
 
 import { AsyncLocalStorage } from "async_hooks";
 import knex, { type Knex } from "knex";
-import merge from "lodash-es/merge.js";
+import { assign } from "radash";
 import { Sonamu } from "../api";
 import type { DatabaseConfig, SonamuConfig } from "../api/config";
 import { TransactionContext } from "./transaction-context";
@@ -92,7 +92,7 @@ class DBClass {
   }
 
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
-    const defaultKnexConfig: Partial<DatabaseConfig> = merge(
+    const defaultKnexConfig: Partial<DatabaseConfig> = assign(
       {
         client: "mysql2",
         pool: {
@@ -111,14 +111,14 @@ class DBClass {
     );
 
     // 로컬 환경 설정
-    const test: DatabaseConfig = merge({}, defaultKnexConfig, {
+    const test: DatabaseConfig = assign(defaultKnexConfig, {
       connection: {
         database: `${config.name}_test`,
         ...config.defaultOptions?.connection,
       },
     });
 
-    const fixture_local = merge({}, defaultKnexConfig, {
+    const fixture_local = assign(defaultKnexConfig, {
       connection: {
         database: `${config.name}_fixture_local`,
         ...config.defaultOptions?.connection,
@@ -128,26 +128,29 @@ class DBClass {
     // 개발 환경 설정
     const devMasterOptions = config.environments?.development;
     const devSlaveOptions = config.environments?.development_slave;
-    const development_master = merge({}, defaultKnexConfig, devMasterOptions);
-    const development_slave = merge({}, defaultKnexConfig, devMasterOptions, devSlaveOptions);
+    const development_master = assign(defaultKnexConfig, devMasterOptions ?? {});
+    const development_slave = assign(
+      assign(defaultKnexConfig, devMasterOptions ?? {}),
+      devSlaveOptions ?? {},
+    );
     // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
-    const fixture_remote = merge(
-      {},
-      defaultKnexConfig,
-      devMasterOptions,
-      {
+    const fixture_remote = assign(
+      assign(assign(defaultKnexConfig, devMasterOptions ?? {}), {
         connection: {
           database: `${config.name}_fixture_remote`,
         },
-      },
-      config.environments?.remote_fixture,
+      }),
+      config.environments?.remote_fixture ?? {},
     );
 
     // 프로덕션 환경 설정
     const prodMasterOptions = config.environments?.production ?? {};
     const prodSlaveOptions = config.environments?.production_slave ?? {};
-    const production_master = merge({}, defaultKnexConfig, prodMasterOptions);
-    const production_slave = merge({}, defaultKnexConfig, prodMasterOptions, prodSlaveOptions);
+    const production_master = assign(defaultKnexConfig, prodMasterOptions);
+    const production_slave = assign(
+      assign(defaultKnexConfig, prodMasterOptions),
+      prodSlaveOptions ?? {},
+    );
 
     return {
       test,

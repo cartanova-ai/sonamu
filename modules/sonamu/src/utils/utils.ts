@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { cluster } from "radash";
 import type { AbsolutePath } from "./path-utils";
 
 export async function findAppRootPath(): Promise<AbsolutePath> {
@@ -63,4 +64,26 @@ export function assertDefined<T>(value: T | undefined, message?: string): T {
     throw new Error(message ?? "Value must be defined");
   }
   return value;
+}
+
+// lodash chunk 대체 (radash cluster 사용)
+export function chunk<T>(array: T[], size: number): T[][] {
+  return cluster(array, Math.ceil(array.length / size));
+}
+// lodash intersectionBy 대체
+export function intersectionBy<T, K>(
+  arr1: readonly T[],
+  arr2: readonly T[],
+  iteratee: (item: T) => K,
+): T[] {
+  const arr2Keys = new Set(arr2.map(iteratee));
+  return arr1.filter((item) => arr2Keys.has(iteratee(item)));
+}
+// lodash differenceWith 대체
+export function differenceWith<T>(
+  arr1: readonly T[],
+  arr2: readonly T[],
+  comparator: (a: T, b: T) => boolean,
+): T[] {
+  return arr1.filter((itemA) => !arr2.some((itemB) => comparator(itemA, itemB)));
 }

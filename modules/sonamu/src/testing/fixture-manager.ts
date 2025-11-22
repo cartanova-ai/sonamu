@@ -2,8 +2,7 @@ import chalk from "chalk";
 import { readFileSync, writeFileSync } from "fs";
 import inflection from "inflection";
 import knex, { type Knex } from "knex";
-import uniq from "lodash-es/uniq.js";
-import uniqBy from "lodash-es/uniqBy.js";
+import { unique } from "radash";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";
@@ -204,7 +203,7 @@ export class FixtureManagerClass {
     // 방문 기록 초기화 (새로운 import 작업 시작)
     this.visitedRecords.clear();
 
-    const queries = uniq(
+    const queries = unique(
       (
         await Promise.all(
           ids.map(async (id) => {
@@ -296,7 +295,7 @@ export class FixtureManagerClass {
       }),
     );
 
-    return [...uniq(relQueries.reverse().flat()), selfQuery];
+    return [...unique(relQueries.reverse().flat()), selfQuery];
   }
 
   async destroy() {
@@ -380,7 +379,7 @@ export class FixtureManagerClass {
     await targetDB.destroy();
     await sourceDB.destroy();
 
-    return uniqBy(fixtures, (f) => f.fixtureId);
+    return unique(fixtures, (f) => f.fixtureId);
   }
 
   async createFixtureRecord(
@@ -478,7 +477,7 @@ export class FixtureManagerClass {
   }
 
   async insertFixtures(dbName: keyof SonamuDBConfig, _fixtures: FixtureRecord[]) {
-    const fixtures = uniqBy(_fixtures, (f) => f.fixtureId);
+    const fixtures = unique(_fixtures, (f) => f.fixtureId);
 
     this.relationGraph.buildGraph(fixtures);
     const insertionOrder = this.relationGraph.getInsertionOrder();
@@ -538,7 +537,7 @@ export class FixtureManagerClass {
 
     await db.destroy();
 
-    return uniqBy(records, (r) => `${r.entityId}#${r.data.id}`);
+    return unique(records, (r) => `${r.entityId}#${r.data.id}`);
   }
 
   private prepareInsertData(fixture: FixtureRecord) {

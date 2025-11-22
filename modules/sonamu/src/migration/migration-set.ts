@@ -1,6 +1,7 @@
+import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
-import groupBy from "lodash-es/groupBy.js";
+import { group } from "radash";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
@@ -66,7 +67,7 @@ export async function getMigrationSetFromDB(
     };
   });
 
-  const dbIndexesGroup = groupBy(
+  const dbIndexesGroup = group(
     dbIndexes.filter(
       (dbIndex) =>
         dbIndex.Key_name !== "PRIMARY" &&
@@ -85,6 +86,7 @@ export async function getMigrationSetFromDB(
   // indexes 처리
   const indexes: MigrationIndex[] = Object.keys(dbIndexesGroup).map((keyName) => {
     const currentIndexes = dbIndexesGroup[keyName];
+    assert(currentIndexes);
     return {
       type: parseIndexType(currentIndexes[0]),
       columns: currentIndexes.map((currentIndex) => currentIndex.Column_name),

@@ -1,8 +1,7 @@
 import equal from "fast-deep-equal";
-import differenceBy from "lodash-es/differenceBy.js";
-import differenceWith from "lodash-es/differenceWith.js";
-import intersectionBy from "lodash-es/intersectionBy.js";
+import { diff } from "radash";
 import type { MigrationColumn, MigrationIndex } from "../types/types";
+import { differenceWith, intersectionBy } from "../utils/utils";
 
 export class CodeGenerator {
   getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
@@ -14,8 +13,8 @@ export class CodeGenerator {
 
     // 컬럼명 기준 비교
     const extraColumns = {
-      db: differenceBy(dbColumns, entityColumns, (col) => col.name),
-      entity: differenceBy(entityColumns, dbColumns, (col) => col.name),
+      db: diff(dbColumns, entityColumns, (col) => col.name),
+      entity: diff(entityColumns, dbColumns, (col) => col.name),
     };
     if (extraColumns.entity.length > 0) {
       columnsTo.add = columnsTo.add.concat(extraColumns.entity);
@@ -39,12 +38,8 @@ export class CodeGenerator {
       drop: [] as MigrationIndex[],
     };
     const extraIndexes = {
-      db: differenceBy(dbIndexes, entityIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//"),
-      ),
-      entity: differenceBy(entityIndexes, dbIndexes, (col) =>
-        [col.type, col.columns.join("-")].join("//"),
-      ),
+      db: diff(dbIndexes, entityIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
+      entity: diff(entityIndexes, dbIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
     };
     if (extraIndexes.entity.length > 0) {
       indexesTo.add = indexesTo.add.concat(extraIndexes.entity);

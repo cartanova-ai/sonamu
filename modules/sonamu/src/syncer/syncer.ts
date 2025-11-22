@@ -2,10 +2,9 @@ import { hot } from "@sonamu-kit/hot-hook";
 import assert from "assert";
 import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
-import groupBy from "lodash-es/groupBy.js";
-import uniq from "lodash-es/uniq.js";
 import { minimatch } from "minimatch";
 import path, { dirname } from "path";
+import { group, unique } from "radash";
 import type { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
@@ -193,7 +192,7 @@ export class Syncer {
   }
 
   private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
-    return groupBy(diffFiles, (r) => {
+    return group(diffFiles, (r) => {
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
       return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
@@ -226,7 +225,7 @@ export class Syncer {
 
     await this.actionGenerateSchemas();
 
-    diffGroups.generated = uniq([
+    diffGroups.generated = unique([
       ...(diffGroups.generated ?? []),
       path.join(Sonamu.apiRootPath, "src/application/sonamu.generated.ts") as AbsolutePath,
     ]);
@@ -236,7 +235,7 @@ export class Syncer {
   private async handleTypesOrFunctionsOrGeneratedChange(
     diffGroups: DiffGroups,
   ): Promise<FileType[]> {
-    const tsPaths = uniq([
+    const tsPaths = unique([
       ...(diffGroups.types ?? []),
       ...(diffGroups.functions ?? []),
       ...(diffGroups.generated ?? []),
@@ -398,12 +397,7 @@ export class Syncer {
 
     const newFileContent = (() => {
       const nfc = oldFileContent.replace(/from "sonamu"/g, `from "src/services/sonamu.shared"`);
-
-      if (toPath.includes("/web/")) {
-        return nfc; // .replace(/from "lodash";/g, `from "lodash-es";`); // TODO 흠? 필요없을듯.
-      } else {
-        return nfc;
-      }
+      return nfc;
     })();
     return writeFile(toPath, newFileContent);
   }
