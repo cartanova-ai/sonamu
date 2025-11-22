@@ -9,24 +9,28 @@ export type NaiteStore = Map<string, any>;
 export const Naite = {
   // 테스트 로그 기록
   t(name: string, value: any) {
-    const context = Sonamu.getContext();
-    const store = context?.naiteStore;
+    try {
+      const context = Sonamu.getContext();
+      const store = context?.naiteStore;
 
-    if (!store) {
-      return;
-    }
-    if (store.has(name)) {
-      // 이미 값이 있는 경우
-      if (Array.isArray(store.get(name))) {
-        // 배열에 추가
-        store.set(name, [...store.get(name), value]);
-      } else {
-        // 배열이 아닌 경우 배열로 변환
-        store.set(name, [store.get(name), value]);
+      if (!store) {
+        return;
       }
-    } else {
-      // 값이 없는 경우 추가
-      store.set(name, value);
+      if (store.has(name)) {
+        // 이미 값이 있는 경우
+        if (Array.isArray(store.get(name))) {
+          // 배열에 추가
+          store.set(name, [...store.get(name), value]);
+        } else {
+          // 배열이 아닌 경우 배열로 변환
+          store.set(name, [store.get(name), value]);
+        }
+      } else {
+        // 값이 없는 경우 추가
+        store.set(name, value);
+      }
+    } catch {
+      // Context 없는 상황에서 Naite.t 호출
     }
   },
 
