@@ -207,6 +207,10 @@ class SonamuClass {
 
       this.syncer.syncUI();
     }
+    // 테스트시에도 Biome는 필요하여 추가함
+    if (isTest()) {
+      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
+    }
 
     this.isInitialized = true;
     if (!doSilent) {

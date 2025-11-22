@@ -8,6 +8,7 @@ import { group, unique } from "radashi";
 import type { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { Naite } from "../naite/naite";
 import { Template } from "../template/template";
 import type { GenerateOptions } from "../types/types";
 import { TemplateKey, type TemplateOptions } from "../types/types";
@@ -198,7 +199,7 @@ export class Syncer {
     }) as unknown as DiffGroups;
   }
 
-  private async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
+  public async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
     // console.log(
     //   chalk.gray(
     //     `[Processing] Handling entity changes: ${diffGroups["entity"]?.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
@@ -252,7 +253,8 @@ export class Syncer {
     return [];
   }
 
-  private async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
+  async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
+    Naite.t("step", "handleModelOrFrameChange");
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
     // console.log(
@@ -263,8 +265,11 @@ export class Syncer {
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.
+    Naite.t("step", "autoloadModels");
     await this.autoloadModels();
+    Naite.t("step", "autoloadTypes");
     await this.autoloadTypes();
+    Naite.t("step", "autoloadApis");
     await this.autoloadApis();
 
     const params: {
@@ -308,6 +313,7 @@ export class Syncer {
    * @returns 생성된 파일 경로 배열.
    */
   private async actionGenerateSchemas(): Promise<AbsolutePath[]> {
+    Naite.t("step", "actionGenerateSchemas");
     return (
       await Promise.all([
         generateTemplate("generated_sso", {}, { overwrite: true }),
@@ -328,6 +334,8 @@ export class Syncer {
       namesRecord: EntityNamesRecord;
     }[],
   ): Promise<string[]> {
+    Naite.t("step", "actionGenerateServices");
+    Naite.t("actionGenerateServices", paramsArray);
     return (
       await Promise.all(
         paramsArray.map(async (params) =>

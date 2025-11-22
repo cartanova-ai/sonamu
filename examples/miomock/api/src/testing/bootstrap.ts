@@ -13,9 +13,7 @@ export function bootstrap() {
     vi.useRealTimers();
     await DB.clearTestTransaction();
   });
-  afterAll(() => {
-    vi.restoreAllMocks();
-  });
+  afterAll(() => {});
 }
 
 function getMockContext(): Context {

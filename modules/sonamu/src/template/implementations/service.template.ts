@@ -11,6 +11,7 @@ import {
 import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
 import type { EntityNamesRecord } from "../../entity/entity-manager";
+import { Naite } from "../../naite/naite";
 import type { TemplateOptions } from "../../types/types";
 import { type ApiParam, ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
@@ -29,6 +30,9 @@ export class Template__service extends Template {
   }
 
   render({ namesRecord }: TemplateOptions["service"]) {
+    Naite.t("step", "render");
+    Naite.t("render", { namesRecord });
+
     const {
       syncer: { apis },
     } = Sonamu;
@@ -50,9 +54,9 @@ export class Template__service extends Template {
       customHeaders: [
         `import { z } from 'zod';`,
         `import qs from "qs";`,
-        `import useSWR, { SWRResponse } from "swr";`,
+        `import useSWR, { type SWRResponse } from "swr";`,
         `import { fetch, ListResult, SWRError, SwrOptions, handleConditional, swrPostFetcher, EventHandlers, SSEStreamOptions, useSSEStream } from '../sonamu.shared';`,
-        ...(hasAxiosProgressEvent ? [`import { AxiosProgressEvent } from 'axios';`] : []),
+        ...(hasAxiosProgressEvent ? [`import { type AxiosProgressEvent } from 'axios';`] : []),
       ],
     };
   }
@@ -80,7 +84,6 @@ export class Template__service extends Template {
                 !ApiParamType.isRefKnex(param.type) &&
                 !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
             );
-            console.log({ paramsWithoutContext });
 
             // 파라미터 타입 정의
             const typeParamsDef = api.typeParameters

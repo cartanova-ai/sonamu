@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Syncer > generateTemplate > handleEntityChange 1`] = `
+[
+  "actionGenerateSchemas",
+  "generateTemplate",
+  "renderTemplate",
+  "generateTemplate",
+  "renderTemplate",
+  "Template__generated:render",
+  "resolveRenderedTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > generateTemplate > handleModelOrFrameChange 1`] = `
+[
+  "handleModelOrFrameChange",
+  "autoloadModels",
+  "autoloadTypes",
+  "autoloadApis",
+  "actionGenerateServices",
+  "generateTemplate",
+  "renderTemplate",
+  "render",
+  "resolveRenderedTemplate",
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;

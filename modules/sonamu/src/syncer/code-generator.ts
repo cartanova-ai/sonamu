@@ -5,10 +5,12 @@ import { unique } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
+import { Naite } from "../naite/naite";
 import type { RenderedTemplate } from "../template/template";
 import { Template } from "../template/template";
 import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
+import { isTest } from "../utils/controller";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
@@ -27,10 +29,13 @@ export async function generateTemplate<T extends TemplateKey>(
   templateOptions: TemplateOptions[T],
   _generateOptions?: GenerateOptions,
 ): Promise<AbsolutePath[]> {
+  Naite.t("step", "generateTemplate");
+
   const generateOptions = {
     overwrite: false,
     ..._generateOptions,
   };
+  Naite.t("generateTemplate", { key, templateOptions, generateOptions });
 
   // 키 children
   const keys: TemplateKey[] = [key];
@@ -79,6 +84,9 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
   key: T,
   options: TemplateOptions[T],
 ): Promise<PathAndCode[]> {
+  Naite.t("step", "renderTemplate");
+  Naite.t("renderTemplate", { key, options });
+
   const template = Template.find(key);
 
   const rendered = await template.render(options);
@@ -102,6 +110,9 @@ async function resolveRenderedTemplate(
   key: TemplateKey,
   result: RenderedTemplate,
 ): Promise<PathAndCode> {
+  Naite.t("step", "resolveRenderedTemplate");
+  Naite.t(`resolveRenderedTemplate${key}`, { key, result });
+
   const { target, path: filePath, body, importKeys, customHeaders } = result;
 
   // import 할 대상의 대상 path 추출
@@ -136,6 +147,7 @@ async function resolveRenderedTemplate(
     )
     // 셀프 참조 방지
     .filter((importDef) => filePath.endsWith(`${importDef.from.replace("./", "")}.ts`) === false);
+  Naite.t("resolveRenderedTemplate:importDefs", importDefs);
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [
@@ -144,19 +156,19 @@ async function resolveRenderedTemplate(
       (importDef) => `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`,
     ),
   ].join("\n");
+  Naite.t("resolveRenderedTemplate:header", header);
 
   const formatted = await (async () => {
     if (key === "generated_http") {
       return [header, body].join("\n\n");
     } else {
-      if (key === "generated") {
-        console.log("header", header);
-        console.log("body", body);
-        console.log(formatCode([header, body].join("\n\n"), "typescript"));
-        console.log("-".repeat(10));
-      }
-
-      return formatCode([header, body].join("\n\n"), key === "entity" ? "json" : "typescript");
+      Naite.t("resolveRenderedTemplate:beforeFormat", { key, header, body });
+      const formatted = formatCode(
+        [header, body].join("\n\n"),
+        key === "entity" ? "json" : "typescript",
+      );
+      Naite.t(`resolveRenderedTemplate:formatted:${key}`, formatted);
+      return formatted;
     }
   })();
 
@@ -181,9 +193,10 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
         await mkdir(dir, { recursive: true });
       }
       await writeFile(dstFilePath, pathAndCode.code);
-      console.log(
-        chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(`${appRootPath}/`, "")}`),
-      );
+      !isTest() &&
+        console.log(
+          chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(`${appRootPath}/`, "")}`),
+        );
       return dstFilePath;
     }),
   );
