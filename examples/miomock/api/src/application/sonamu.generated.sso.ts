@@ -1,19 +1,19 @@
-import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";
-import {
-  CompanySubsetKey,
-  DepartmentSubsetKey,
-  EmployeeSubsetKey,
-  FileSubsetKey,
-  ProjectSubsetKey,
-  TagSubsetKey,
-  UserSubsetKey,
+import type { ManyToManyBaseSchema, SubsetQuery } from "sonamu";
+import type {
   CompanyBaseSchema,
+  CompanySubsetKey,
   DepartmentBaseSchema,
+  DepartmentSubsetKey,
   EmployeeBaseSchema,
+  EmployeeSubsetKey,
   FileBaseSchema,
+  FileSubsetKey,
   ProjectBaseSchema,
+  ProjectSubsetKey,
   TagBaseSchema,
+  TagSubsetKey,
   UserBaseSchema,
+  UserSubsetKey,
 } from "./sonamu.generated";
 
 // SubsetQuery: Company

@@ -1,5 +1,5 @@
 import assert from "assert";
-import { range } from "radash";
+import { range } from "radashi";
 import { Sonamu } from "sonamu";
 import { EmployeeModel } from "../application/employee/employee.model";
 

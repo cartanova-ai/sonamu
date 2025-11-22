@@ -1,4 +1,4 @@
-import { Knex } from "knex";
+import type { Knex } from "knex";
 
 export function createKnexProxy(
   knexInstance: Knex,
@@ -34,7 +34,7 @@ export function createKnexProxy(
     return new Proxy(result, {
       get(target, prop, receiver) {
         if (prop === "then") {
-          return async function (onFulfilled: any, onRejected: any) {
+          return async (onFulfilled: any, onRejected: any) => {
             setupAbortHandler();
             checkAbort(signal);
             return target.then(onFulfilled, onRejected);
@@ -48,17 +48,16 @@ export function createKnexProxy(
   const handler: ProxyHandler<Knex> = {
     get(target, prop, receiver) {
       if (prop === "transaction") {
-        return async function (callback: any) {
-          return target.transaction(async (trx: Knex.Transaction) => {
+        return async (callback: any) =>
+          target.transaction(async (trx: Knex.Transaction) => {
             // 트랜잭션 내부에서도 프록시 적용
             return callback(createKnexProxy(trx, signal, knexInstance));
           });
-        };
       }
 
       const originalValue = Reflect.get(target, prop, receiver);
       if (typeof originalValue === "function") {
-        return function (...args: any[]) {
+        return (...args: any[]) => {
           const result = (originalValue as any).apply(target, args);
           if (result && typeof result.then === "function") {
             return proxyForThen(result);

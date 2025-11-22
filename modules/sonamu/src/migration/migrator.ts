@@ -5,7 +5,7 @@ import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import path from "path";
 import prompts from "prompts";
-import { group, sum, unique } from "radash";
+import { group, sum, unique } from "radashi";
 import { Sonamu } from "../api";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";

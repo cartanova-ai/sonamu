@@ -1,5 +1,6 @@
 console.time("total");
 require("dotenv").config();
+
 import fastify from "fastify";
 import { Sonamu } from "sonamu";
 

@@ -13,7 +13,7 @@ import TableNode, {
   type TableNodeRFNode,
 } from "../../components/fixture/TableNode";
 import { FixtureRecord } from "sonamu";
-import { groupBy } from "lodash";
+import { group } from "radashi";
 import { TableEdge } from "./TableEdge";
 import dagre from "@dagrejs/dagre";
 
@@ -39,7 +39,7 @@ function makeNodes(
   onRelationToggle: FixtureGraphProps["onRelationToggle"],
   setFixtureRecords: FixtureGraphProps["setFixtureRecords"]
 ): TableNodeRFNode[] {
-  const groupedFixtures = groupBy(fixtures, "entityId");
+  const groupedFixtures = group(fixtures, (fixture) => fixture.entityId);
 
   const nodes: TableNodeRFNode[] = Object.entries(groupedFixtures).map(
     ([entityId, entityFixtures]) => ({
@@ -48,7 +48,7 @@ function makeNodes(
       position: { x: 0, y: 0 },
       data: {
         entityId,
-        fixtures: entityFixtures,
+        fixtures: entityFixtures ?? [],
         selectedIds,
         onRelationToggle,
         setFixtureRecords,

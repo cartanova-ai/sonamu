@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
-import { group, unique } from "radash";
+import { group, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";

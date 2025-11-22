@@ -1,4 +1,3 @@
-import { isNil } from "lodash-es";
 import { DateTime } from "luxon";
 import { InputProps, Input } from "semantic-ui-react";
 
@@ -15,7 +14,7 @@ export function SQLDateTimeInput(
       type="datetime-local"
       {...props}
       value={
-        isNil(props.value) || props.value === ""
+        props.value === null || props.value === undefined || props.value === ""
           ? ""
           : DateTime.fromSQL(props.value).toISO({
               includeOffset: false,

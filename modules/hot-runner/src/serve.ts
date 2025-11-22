@@ -1,6 +1,6 @@
 import { relative } from "node:path";
-import { type ExecaChildProcess } from "execa";
-import { BaseCommand, args, flags } from "@adonisjs/ace";
+import { args, BaseCommand, flags } from "@adonisjs/ace";
+import type { ExecaChildProcess } from "execa";
 
 import { runNode } from "./helpers.js";
 

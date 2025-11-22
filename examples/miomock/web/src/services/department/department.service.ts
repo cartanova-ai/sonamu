@@ -1,20 +1,20 @@
-import { z } from "zod";
+import { AxiosProgressEvent } from "axios";
 import qs from "qs";
-import useSWR, { SWRResponse } from "swr";
+import useSWR, { type SWRResponse } from "swr";
+import { z } from "zod";
+import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
 import {
-  fetch,
-  ListResult,
-  SWRError,
-  SwrOptions,
-  handleConditional,
-  swrPostFetcher,
   EventHandlers,
+  fetch,
+  handleConditional,
+  type ListResult,
   SSEStreamOptions,
+  type SWRError,
+  type SwrOptions,
+  swrPostFetcher,
   useSSEStream,
 } from "../sonamu.shared";
-import { AxiosProgressEvent } from "axios";
-import { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
-import { DepartmentListParams, DepartmentSaveParams } from "./department.types";
+import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 export namespace DepartmentService {
   export function useDepartment<T extends DepartmentSubsetKey>(

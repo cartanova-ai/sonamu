@@ -1,5 +1,5 @@
-import { join } from "desm";
 import { readFile } from "node:fs/promises";
+import { join } from "desm";
 
 /**
  * Returns the HTML content of the Hot Hook Dump Viewer

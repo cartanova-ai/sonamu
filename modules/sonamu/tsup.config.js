@@ -31,6 +31,7 @@ export default defineConfig({
     "flydrive",
     "inflection",
     "knex",
+    "radashi",
     "luxon",
     "mime-types",
     "minimatch",

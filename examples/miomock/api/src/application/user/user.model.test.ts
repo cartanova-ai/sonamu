@@ -1,4 +1,4 @@
-import { range } from "radash";
+import { range } from "radashi";
 import { BaseModel, Naite } from "sonamu";
 import { assert, describe, expect, test } from "vitest";
 import { bootstrap, notImpl, runWithMockContext } from "../../testing/bootstrap";

@@ -1,18 +1,18 @@
-import type { LoaderFileSystem } from "#ts/utility/scope";
+import * as assert from "node:assert/strict";
 import type {
   LoadFnOutput,
   LoadHookContext,
   ResolveFnOutput,
   ResolveHookContext,
 } from "node:module";
-import * as assert from "node:assert/strict";
-import { SourceTextModule, createContext } from "node:vm";
+import { createContext, SourceTextModule } from "node:vm";
 import {
   makeAsyncFileSystemFromSyncForTesting,
   makeTestFileSystem,
 } from "@loaderkit/resolve/adapter";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
 import { makeResolveAndLoad } from "#ts/esm";
+import type { LoaderFileSystem } from "#ts/utility/scope";
 
 /** @internal */
 export function makeTestLoader(files: Record<string, string>) {
@@ -79,8 +79,8 @@ export function makeTestLoader(files: Record<string, string>) {
     cache.set(mainResolution.url, Promise.resolve(entry));
     const get = (resolution: ResolveFnOutput) =>
       cache.get(resolution.url) ??
-      (function () {
-        const module = (async function () {
+      (() => {
+        const module = (async () => {
           const loadResult = await load(resolution);
           // eslint-disable-next-line @typescript-eslint/no-base-to-string
           return new SourceTextModule(String(loadResult.source), {

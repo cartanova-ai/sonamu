@@ -1,4 +1,4 @@
-import { ProcessErrorReasonEnum } from "./types";
+import type { ProcessErrorReasonEnum } from "./types";
 
 export class SonamuTaskError extends Error {
   cause: Error | undefined;

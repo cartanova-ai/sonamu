@@ -1,5 +1,5 @@
 import inflection from "inflection";
-import { unique } from "radash";
+import { unique } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";

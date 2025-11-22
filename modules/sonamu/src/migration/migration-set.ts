@@ -1,7 +1,7 @@
 import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
-import { group } from "radash";
+import { group } from "radashi";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {

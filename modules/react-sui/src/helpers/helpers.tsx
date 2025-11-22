@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { intersection, isObject, uniq, get, cloneDeep, set } from "lodash-es";
+import { isObject, unique, get, cloneDeep, set } from "radashi";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
@@ -262,7 +262,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   // 전체 키가 바뀔 때마다 validation하여 갱신된 전체 키에 포함된 키만 유지
   useEffect(() => {
     const selectionKeys = Array.from(selection.keys());
-    if (intersection(allKeys, selectionKeys).length === selectionKeys.length) {
+    if (allKeys.concat(selectionKeys.filter(key => !allKeys.includes(key))).length === allKeys.length) {
       return;
     }
 
@@ -304,7 +304,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
         })();
         setSelection(
           new Map(
-            uniq([...selectedKeys, ...allKeys.slice(begin, end)]).map((k) => [
+            unique([...selectedKeys, ...allKeys.slice(begin, end)]).map((k) => [
               k,
               true,
             ])

@@ -1,17 +1,17 @@
-import useSWR, { SWRResponse } from "swr";
-import { fetch, swrPostFetcher } from "./sonamu.shared";
-import {
+import type {
+  Entity,
   EntityIndex,
   EntityProp,
+  FixtureImportResult,
+  FixtureRecord,
+  FixtureSearchOptions,
   FlattenSubsetRow,
   MigrationStatus,
   PathAndCode,
-  Entity,
-  FixtureRecord,
-  FixtureSearchOptions,
-  FixtureImportResult,
   SonamuDBConfig,
 } from "sonamu";
+import useSWR, { type SWRResponse } from "swr";
+import { fetch, swrPostFetcher } from "./sonamu.shared";
 
 type SWRError = {
   name: string;

@@ -1,5 +1,5 @@
 import type { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
-import { unique } from "radash";
+import { unique } from "radashi";
 
 export function getTableName(expr: ColumnRef) {
   if ("table" in expr && expr.table !== null) {

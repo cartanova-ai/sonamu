@@ -1,9 +1,9 @@
 import {
   BaseModelClass,
-  DatabaseSchemaExtend,
-  Puri,
-  PuriWrapper,
-  UnionExtractedTTables,
+  type DatabaseSchemaExtend,
+  type Puri,
+  type PuriWrapper,
+  type UnionExtractedTTables,
 } from "sonamu";
 
 export abstract class CustomBaseModelClass<

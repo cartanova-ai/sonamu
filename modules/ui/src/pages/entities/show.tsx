@@ -12,7 +12,7 @@ import { useSheetTable } from "../../components/useSheetTable";
 import { EditableInput } from "../../components/EditableInput";
 import { EntitySelector } from "./_entity_selector";
 import classNames from "classnames";
-import { uniq } from "lodash";
+import { unique } from "radashi";
 import { AICreateEnumForm } from "./_ai_create_enum_form";
 
 type EntitiesShowPageProps = {};
@@ -330,7 +330,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         } else {
           console.log({ toAppend });
           // 선택 추가
-          return uniq([...oldSubset, ...toAppend]);
+          return unique([...oldSubset, ...toAppend]);
         }
       } else {
         const targetFields = entity.flattenSubsetRows
@@ -352,7 +352,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         } else {
           console.log({ toAppend });
           // 선택 추가
-          return uniq([...oldSubset, ...toAppend]);
+          return unique([...oldSubset, ...toAppend]);
         }
       }
     })();

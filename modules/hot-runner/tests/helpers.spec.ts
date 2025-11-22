@@ -1,5 +1,5 @@
-import { pEvent } from "p-event";
 import { test } from "@japa/runner";
+import { pEvent } from "p-event";
 
 import { runNode } from "../src/helpers.js";
 

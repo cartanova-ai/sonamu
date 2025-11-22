@@ -2,7 +2,7 @@ import assert from "assert";
 import { writeFile } from "fs/promises";
 import inflection from "inflection";
 import path from "path";
-import { group, unique } from "radash";
+import { group, unique } from "radashi";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import {

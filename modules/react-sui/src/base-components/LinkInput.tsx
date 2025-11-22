@@ -1,4 +1,3 @@
-import { isNil } from "lodash-es";
 import { InputProps, Input, Button } from "semantic-ui-react";
 
 export function LinkInput(
@@ -21,12 +20,12 @@ export function LinkInput(
     });
 
   const isValidUrl = (someString: string | undefined | null) => {
-    if (isNil(someString)) {
+    if (someString === null || someString === undefined) {
       return false;
     }
 
     try {
-      new URL(someString);
+      new URL(someString!);
       return true;
     } catch (_) {
       return false;
@@ -42,7 +41,7 @@ export function LinkInput(
         </Button>
       }
       labelPosition="right"
-      value={isNil(props.value) ? "" : props.value}
+      value={props.value ?? ""}
       onChange={(e, data) => {
         if (props.onChange) {
           return props.onChange(e, {

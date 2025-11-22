@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Modal, Input, List } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
-import _ from "lodash";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { SearchResult, useEntitySearch } from "./useEntitySearch";
+import { group } from "radashi";
+import assert from "assert";
 
 type SearchModalProps = {
   open: boolean;
@@ -148,6 +149,46 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     [open, results, selectedIndex, selectedIndex2]
   );
 
+  const getResultDescriptions = (
+    result: SearchResult["item"],
+    fields: SearchResult["fields"]
+  ) => {
+    const grouped = Object.entries(
+      group(
+        fields?.filter((f) => f.type === "subsets"),
+        (field) => field.key
+      )
+    ).filter(([_, value]) => value !== undefined);
+    return grouped.map(([key, group], index) => {
+      assert(group);
+      return (
+        <div key={key} className="sub-item">
+          <List.Description>
+            <strong>{`Subset${key} >`}</strong>
+          </List.Description>
+          {group.map((field) => (
+            <List.Description
+              key={field.desc}
+              dangerouslySetInnerHTML={{
+                __html: highlightText(field.desc, query),
+              }}
+              className={`click-item sub-item ${
+                index === selectedIndex &&
+                selectedIndex2 !== -1 &&
+                selectedIndex2 === fields.indexOf(field)
+                  ? "selected"
+                  : ""
+              }`}
+              onClick={() =>
+                handleResultClick(`/entities/${result.id}`, field.desc)
+              }
+            />
+          ))}
+        </div>
+      );
+    });
+  };
+
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -264,39 +305,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   )}
 
                   {!!fields?.filter((f) => f.type === "subsets")?.length &&
-                    _(fields?.filter((f) => f.type === "subsets"))
-                      .groupBy("key")
-                      .map((group, key) => {
-                        return (
-                          <div key={key} className="sub-item">
-                            <List.Description>
-                              <strong>{`Subset${key} >`}</strong>
-                            </List.Description>
-                            {group.map((field) => (
-                              <List.Description
-                                key={field.desc}
-                                dangerouslySetInnerHTML={{
-                                  __html: highlightText(field.desc, query),
-                                }}
-                                className={`click-item sub-item ${
-                                  index === selectedIndex &&
-                                  selectedIndex2 !== -1 &&
-                                  selectedIndex2 === fields.indexOf(field)
-                                    ? "selected"
-                                    : ""
-                                }`}
-                                onClick={() =>
-                                  handleResultClick(
-                                    `/entities/${result.id}`,
-                                    field.desc
-                                  )
-                                }
-                              />
-                            ))}
-                          </div>
-                        );
-                      })
-                      .value()}
+                    getResultDescriptions(result, fields)}
 
                   {!!fields?.filter((f) => f.type === "enums")?.length && (
                     <div className="sub-item">

@@ -1,5 +1,6 @@
 require("dotenv").config();
-import { SonamuDBBaseConfig } from "sonamu";
+
+import type { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {
   database: process.env.MYSQL_DATABASE!,
@@ -8,7 +9,7 @@ const baseconfig: SonamuDBBaseConfig = {
       host: process.env.DB_HOST,
       user: process.env.DB_USER!,
       password: process.env.DB_PASSWORD!,
-      typeCast: function (field: any, next: any) {
+      typeCast: (field: any, next: any) => {
         if (field.type == "TINY" && field.length == 1) {
           const value = field.string();
           return value ? value == "1" : null;

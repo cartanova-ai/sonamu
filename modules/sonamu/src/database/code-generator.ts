@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { diff } from "radash";
+import { diff } from "radashi";
 import type { MigrationColumn, MigrationIndex } from "../types/types";
 import { differenceWith, intersectionBy } from "../utils/utils";
 

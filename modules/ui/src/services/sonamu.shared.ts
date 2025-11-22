@@ -1,6 +1,6 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 import qs from "qs";
-import { ZodIssue } from "zod";
+import type { ZodIssue } from "zod";
 
 const baseURL = "";
 

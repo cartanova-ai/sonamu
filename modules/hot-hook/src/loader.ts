@@ -1,15 +1,15 @@
-import { fileURLToPath } from "node:url";
 import { access, realpath } from "node:fs/promises";
-import chokidar, { type FSWatcher } from "chokidar";
-import type { MessagePort } from "node:worker_threads";
-import { resolve as pathResolve, dirname } from "node:path";
 import type { InitializeHook, LoadHook, ResolveHook } from "node:module";
+import { dirname, resolve as pathResolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import type { MessagePort } from "node:worker_threads";
+import chokidar, { type FSWatcher } from "chokidar";
 
 import debug from "./debug.js";
-import { Matcher } from "./matcher.js";
 import DependencyTree from "./dependency_tree.js";
 import { DynamicImportChecker } from "./dynamic_import_checker.js";
 import { FileNotImportedDynamicallyException } from "./errors/file_not_imported_dynamically_exception.js";
+import { Matcher } from "./matcher.js";
 import type {
   FileChangeAction,
   InitializeHookOptions,

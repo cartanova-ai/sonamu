@@ -1,24 +1,24 @@
-import { z } from "zod";
+import { AxiosProgressEvent } from "axios";
 import qs from "qs";
-import useSWR, { SWRResponse } from "swr";
+import useSWR, { type SWRResponse } from "swr";
+import { z } from "zod";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import {
-  fetch,
-  ListResult,
-  SWRError,
-  SwrOptions,
-  handleConditional,
-  swrPostFetcher,
   EventHandlers,
+  fetch,
+  handleConditional,
+  type ListResult,
   SSEStreamOptions,
+  type SWRError,
+  type SwrOptions,
+  swrPostFetcher,
   useSSEStream,
 } from "../sonamu.shared";
-import { AxiosProgressEvent } from "axios";
-import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import {
+import type {
   UserListParams,
-  UserSaveParams,
   UserLoginParams,
   UserRegisterParams,
+  UserSaveParams,
   UserSearchParams,
 } from "./user.types";
 

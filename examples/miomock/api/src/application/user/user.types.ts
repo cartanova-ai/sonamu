@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserBaseSchema, UserBaseListParams } from "../sonamu.generated";
+import { UserBaseListParams, UserBaseSchema } from "../sonamu.generated";
 
 // User - ListParams
 export const UserListParams = UserBaseListParams;

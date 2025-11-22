@@ -1,4 +1,4 @@
-import { last, set } from "lodash-es";
+import { last, set } from "radashi";
 import React, { ComponentType } from "react";
 import { Route } from "react-router-dom";
 
@@ -28,7 +28,7 @@ export function loadDynamicRoutes(
     if ((last(p) ?? "").startsWith("_")) {
       return result;
     }
-    return set(result, p, {
+    return set(result, p.join("."), {
       path: last(p),
       module: modules[key],
     });

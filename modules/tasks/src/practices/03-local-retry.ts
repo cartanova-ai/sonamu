@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createScheduler } from "../scheduler";
-import type { TaskContext, SchedulerConfig } from "../types";
+import type { SchedulerConfig, TaskContext } from "../types";
 
 function getConfig(): SchedulerConfig {
   const schema = z.object();
@@ -15,7 +15,7 @@ function getConfig(): SchedulerConfig {
         port: 3306,
         user: "root",
         password: "miomock123",
-        typeCast: function (field: any, next: any) {
+        typeCast: (field: any, next: any) => {
           if (field.type === "TINY" && field.length === 1) {
             const value = field.string();
             return value ? value === "1" : null;
@@ -42,7 +42,7 @@ function getConfig(): SchedulerConfig {
           maxAttempts: 3,
           // delay는 함수로 넘겨서 Exponential Backoff 등을 구현할 수 있음.
           delay: (attempt: number) => {
-            return { seconds: Math.pow(3, attempt) };
+            return { seconds: 3 ** attempt };
           },
         },
         schema: schema,

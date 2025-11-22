@@ -1,5 +1,5 @@
+import { SonamuQueryMode, zArrayable } from "src/services/sonamu.shared";
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
 
 // CustomScalar: Number
 const Number = z.number();

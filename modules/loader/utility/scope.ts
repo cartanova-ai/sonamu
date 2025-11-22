@@ -1,5 +1,5 @@
-import type { FileSystemAsync } from "@loaderkit/resolve/fs";
 import type { ModuleFormat } from "node:module";
+import type { FileSystemAsync } from "@loaderkit/resolve/fs";
 import JSON5 from "json5";
 import { testAnyJavaScript, testAnyTypeScript } from "./translate.js";
 
@@ -78,9 +78,9 @@ function makeReadParseCachedForever<Content, Type extends object>(
   const cache = new Map<string, Promise<Type | null | undefined>>();
   return (file: URL) =>
     cache.get(file.href) ??
-    (function () {
-      const promise = (async function () {
-        const content = await (async function () {
+    (() => {
+      const promise = (async () => {
+        const content = await (async () => {
           try {
             return await read(file);
           } catch {}
@@ -181,7 +181,7 @@ export function makeResolveTypeScriptPackage(fs: LoaderFileSystem) {
         compilerOptions.outDir !== undefined
           ? makeLocation(compilerOptions.outDir, configPath)
           : undefined;
-      const sourceBase = (function () {
+      const sourceBase = (() => {
         if (compilerOptions.rootDirs) {
           return makeLocation(compilerOptions.rootDirs[0]!, configPath);
         } else if (compilerOptions.rootDir === undefined) {

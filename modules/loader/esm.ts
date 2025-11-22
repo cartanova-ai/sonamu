@@ -1,17 +1,17 @@
-import type { LoaderFileSystem, PackageJson, ResolutionConfig } from "./utility/scope.js";
-import type { FileSystemAsync } from "@loaderkit/resolve/fs";
 import type { LoadHook, ResolveHook } from "node:module";
 import { resolve as cjsResolve } from "@loaderkit/resolve/cjs";
 import { resolve as esmResolve } from "@loaderkit/resolve/esm";
-import { transpileSource } from "./utility/swc.js";
+import type { FileSystemAsync } from "@loaderkit/resolve/fs";
+import type { LoaderFileSystem, PackageJson, ResolutionConfig } from "./utility/scope.js";
 import { makeResolveTypeScriptPackage, resolveFormat, resolvePackage } from "./utility/scope.js";
+import { transpileSource } from "./utility/swc.js";
 import {
   absoluteJavaScriptToTypeScript,
   absoluteTypeScriptToJavaScript,
   outputToSourceCandidates,
   sourceToOutput,
-  testAnyJSON,
   testAnyJavaScript,
+  testAnyJSON,
   testAnyScript,
   testAnyTypeScript,
 } from "./utility/translate.js";
@@ -26,11 +26,11 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
   // Cache `package.json` reads
   const fileSystem = {
     ...underlyingFileSystem,
-    readFileJSON: (function (readFileJSON) {
+    readFileJSON: ((readFileJSON) => {
       const cache = new Map<string, Promise<unknown>>();
       return (url: URL) =>
         cache.get(url.href) ??
-        (function () {
+        (() => {
           const result = readFileJSON(url);
           cache.set(url.href, result);
           return result;
@@ -47,7 +47,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
   };
 
   // Resolves from .ts source files to another source file. Used for relative imports.
-  const sourceResolverFileSystem = (function (): FileSystemAsync {
+  const sourceResolverFileSystem = ((): FileSystemAsync => {
     const findSource = async (url: URL) => {
       // First try .js -> .ts map since this is the most likely case
       if (testAnyJavaScript.test(url.pathname)) {
@@ -143,7 +143,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     if (parentUrlString === undefined) {
       // Program entrypoint. We can assume that `specifier` is a fully-resolved file URL with
       // no query parameters. It could be either a source file or an output file.
-      return (async function () {
+      return (async () => {
         const url = new URL(specifier);
         const packageMeta = await resolvePackage(fileSystem, url);
         const tsConfig = await resolveTypeScriptPackage(url, packageMeta?.packagePath);
@@ -193,7 +193,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
 
     // Check for fully-resolved .ts files, i.e. `import(import.meta.resolve('./specifier.js'))`
     if (specifier.startsWith("file:///") && !specifier.includes("/node_modules/")) {
-      return (async function () {
+      return (async () => {
         const outputUrl = new URL(specifier);
         const packageMeta = await resolvePackage(fileSystem, outputUrl);
         const tsConfig = await resolveTypeScriptPackage(outputUrl, packageMeta?.packagePath);
@@ -213,7 +213,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
           sourceUrl = outputUrl;
         } else {
           // output 파일이라면 source 파일을 찾기
-          sourceUrl = await (async function () {
+          sourceUrl = await (async () => {
             for (const url of outputToSourceCandidates(outputUrl, tsConfig?.locations)) {
               if (await fileSystem.fileExists(url)) {
                 return url;
@@ -244,13 +244,13 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     }
 
     // Try as TypeScript resolution
-    return (async function () {
+    return (async () => {
       // Look up parent tsconfig
       const packageMeta = await resolvePackage(fileSystem, parentURL);
       const tsConfig = await resolveTypeScriptPackage(parentURL, packageMeta?.packagePath);
 
       // Dispatch custom resolution
-      const result = await (async function () {
+      const result = await (async () => {
         try {
           if (specifier.startsWith(".")) {
             // Relative imports will use a resolver which returns the source file URL. It
@@ -283,7 +283,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
             const resolvedTsConfig = await resolveTsConfig(outputResolution.url);
             return {
               ...outputResolution,
-              sourceUrl: await (async function () {
+              sourceUrl: await (async () => {
                 for (const url of outputToSourceCandidates(
                   outputResolution.url,
                   resolvedTsConfig?.locations,
@@ -366,7 +366,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
       return nextLoad(urlString, context);
     }
 
-    return (async function () {
+    return (async () => {
       // `tsSourceUrl` is a `.ts` file, or maybe a `.js` file with `allowJs`, or `.json` file with `allowJson`.
       const tsSourceUrl = new URL(tsSource);
 

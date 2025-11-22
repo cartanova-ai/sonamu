@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { readFileSync, writeFileSync } from "fs";
 import inflection from "inflection";
 import knex, { type Knex } from "knex";
-import { unique } from "radash";
+import { unique } from "radashi";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";

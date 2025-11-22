@@ -13,7 +13,9 @@
     "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && echo '아! miomock-web은 지금 깨져있어서 빌드하지 않고 넘어갑니다! pnpm dev를 사용하세요!'",
     "build:miomock": "run-s 'build:miomock:*'",
     "build": "run-s 'build:tools' 'build:lib' 'build:miomock'",
-    "publish": "tsx scripts/publich.ts"
+    "publish": "tsx scripts/publich.ts",
+    "format": "biome format --write",
+    "check": "biome check"
   },
   "packageManager": "pnpm@10.23.0",
   "devDependencies": {

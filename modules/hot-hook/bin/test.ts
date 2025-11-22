@@ -1,8 +1,8 @@
-import { join } from "desm";
 import { assert } from "@japa/assert";
-import { snapshot } from "@japa/snapshot";
 import { fileSystem } from "@japa/file-system";
 import { configure, processCLIArgs, run } from "@japa/runner";
+import { snapshot } from "@japa/snapshot";
+import { join } from "desm";
 
 processCLIArgs(process.argv.splice(2));
 configure({

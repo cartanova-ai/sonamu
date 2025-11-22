@@ -8,7 +8,7 @@ import {
 } from "semantic-ui-react";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { useState } from "react";
-import { difference, intersection, uniq } from "lodash";
+import { diff, unique } from "radashi";
 import classNames from "classnames";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { useCommonModal } from "../../components/core/CommonModal";
@@ -27,7 +27,9 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
 
-  const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
+  const [selectedConnKeys, setSelectedConnKeys] = useState<
+    (keyof SonamuDBConfig)[]
+  >([]);
   const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
@@ -56,15 +58,16 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
     })();
 
     if (
-      intersection(targetKeys, selectedConnKeys).length === targetKeys.length
+      targetKeys.filter((key) => selectedConnKeys.includes(key)).length ===
+      targetKeys.length
     ) {
       setSelectedConnKeys(
         selectedConnKeys.filter((key) => !targetKeys.includes(key))
       );
-    } else if (difference(targetKeys, selectedConnKeys).length > 0) {
+    } else if (diff(targetKeys, selectedConnKeys).length > 0) {
       setSelectedConnKeys(targetKeys);
     } else {
-      setSelectedConnKeys(uniq([...selectedConnKeys, ...targetKeys]));
+      setSelectedConnKeys(unique([...selectedConnKeys, ...targetKeys]));
     }
   };
 
@@ -274,12 +277,12 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                     >
                       <Checkbox
                         label={`${conn.name} / ${conn.status}`}
-                        disabled={conn.status === 'error'}
+                        disabled={conn.status === "error"}
                         checked={selectedConnKeys.includes(conn.connKey)}
                         onChange={(_e, data) => {
                           if (data.checked) {
                             setSelectedConnKeys(
-                              uniq([...selectedConnKeys, conn.connKey])
+                              unique([...selectedConnKeys, conn.connKey])
                             );
                           } else {
                             setSelectedConnKeys(
@@ -295,9 +298,14 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {conns.some((conn) => conn.status === 'error') && (
+                {conns.some((conn) => conn.status === "error") && (
                   <Table.Row className="table-empty">
-                    <Table.Cell colSpan={6}><b>Some connections are in error state. Please check the connection settings and try again.</b></Table.Cell>
+                    <Table.Cell colSpan={6}>
+                      <b>
+                        Some connections are in error state. Please check the
+                        connection settings and try again.
+                      </b>
+                    </Table.Cell>
                   </Table.Row>
                 )}
                 {codes.length === 0 && (
@@ -314,7 +322,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                         onChange={(_e, data) => {
                           if (data.checked) {
                             setSelectedCodeNames(
-                              uniq([...selectedCodeNames, code.name])
+                              unique([...selectedCodeNames, code.name])
                             );
                           } else {
                             setSelectedCodeNames(
@@ -352,7 +360,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                             icon="minus"
                             content="PENDING"
                           />
-                        ) :conn.status === 'error' ? (
+                        ) : conn.status === "error" ? (
                           <Label
                             size="mini"
                             color="red"

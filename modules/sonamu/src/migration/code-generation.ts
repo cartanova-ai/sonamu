@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { alphabetical, diff, fork, omit } from "radash";
+import { alphabetical, diff, fork, omit } from "radashi";
 import type {
   GenMigrationCode,
   MigrationColumn,

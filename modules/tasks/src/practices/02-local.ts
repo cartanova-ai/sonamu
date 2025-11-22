@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createScheduler } from "../scheduler";
-import type { TaskContext, SchedulerConfig, TaskEvent } from "../types";
+import type { SchedulerConfig, TaskContext, TaskEvent } from "../types";
 
 function getConfig(): SchedulerConfig {
   const schema = z.object();
@@ -15,7 +15,7 @@ function getConfig(): SchedulerConfig {
         port: 3306,
         user: "root",
         password: "miomock123",
-        typeCast: function (field: any, next: any) {
+        typeCast: (field: any, next: any) => {
           if (field.type === "TINY" && field.length === 1) {
             const value = field.string();
             return value ? value === "1" : null;

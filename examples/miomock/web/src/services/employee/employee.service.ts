@@ -1,20 +1,20 @@
-import { z } from "zod";
+import { AxiosProgressEvent } from "axios";
 import qs from "qs";
-import useSWR, { SWRResponse } from "swr";
+import useSWR, { type SWRResponse } from "swr";
+import { z } from "zod";
+import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import {
-  fetch,
-  ListResult,
-  SWRError,
-  SwrOptions,
-  handleConditional,
-  swrPostFetcher,
   EventHandlers,
+  fetch,
+  handleConditional,
+  type ListResult,
   SSEStreamOptions,
+  type SWRError,
+  type SwrOptions,
+  swrPostFetcher,
   useSSEStream,
 } from "../sonamu.shared";
-import { AxiosProgressEvent } from "axios";
-import { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
-import { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
+import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 export namespace EmployeeService {
   export function useEmployee<T extends EmployeeSubsetKey>(

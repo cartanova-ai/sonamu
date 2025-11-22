@@ -6,7 +6,7 @@ import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { EntityJson } from "sonamu";
 import { useSheetTable } from "../../components/useSheetTable";
-import { uniq } from "lodash";
+import { unique } from "radashi";
 
 type AICreateEntityFormProps = {};
 export function AICreateEntityForm({}: AICreateEntityFormProps) {
@@ -88,7 +88,7 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
       return [];
     }
 
-    const subsets = uniq(Object.values(entity.subsets).flat());
+    const subsets = unique(Object.values(entity.subsets).flat());
     const splitField = subsets.map((subset) => subset.split("."));
 
     // splitField의 각 아이템에 대해 배열 길이순 정렬(길이가 같을 경우 각 아이템의 마지막 요소를 제외하고 요소별 알파벳순 정렬)

@@ -3,7 +3,7 @@ import equal from "fast-deep-equal";
 import { createReadStream, type PathLike } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import path from "path";
-import { isEqual } from "radash";
+import { isEqual } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import { globAsync } from "../utils/async-utils";
 import { exists } from "../utils/fs-utils";
@@ -29,9 +29,7 @@ export async function findChangedFilesUsingChecksums(): Promise<AbsolutePath[]> 
     return [];
   }
 
-  const diff = differenceWith(calculatedChecksums, savedChecksums, isEqual);
-
-  return diff.map((r) => r.path);
+  return differenceWith(calculatedChecksums, savedChecksums, isEqual).map((r) => r.path);
 }
 
 /**

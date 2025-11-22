@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 import { FixtureManager, Sonamu } from "sonamu";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 

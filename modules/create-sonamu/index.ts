@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import * as path from "node:path";
-import * as fs from "node:fs";
-import prompts from "prompts";
 import { spawn } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import ora from "ora";
-import { fileURLToPath } from "node:url";
+import prompts from "prompts";
 
 // 생성된 파일/디렉토리 전역에서 추적하기 위한 변수
 let createdTargetRoot: string | null = null;
@@ -55,7 +55,7 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir, targetPath } = result;
+  const { targetDir, targetPath } = result;
 
   // 경로가 상대 경로인지 절대 경로인지 확인
   const resolvedPath = path.isAbsolute(targetPath)

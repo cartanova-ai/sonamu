@@ -1,29 +1,30 @@
-import fastify from "fastify";
-import {
-  Sonamu,
-  SonamuDBConfig,
-  EntityManager,
-  EntityProp,
-  EntityIndex,
-  EntitySubsetRow,
-  Migrator,
-  nonNullable,
-  BadRequestException,
-  TemplateKey,
-  isSoException,
-  ServiceUnavailableException,
-  PathAndCode,
-  Entity,
-  FixtureRecord,
-  FixtureManager,
-  FixtureSearchOptions,
-  BaseModelClass,
-} from "sonamu";
+import chalk from "chalk";
 import { execSync } from "child_process";
+import fastify from "fastify";
+import fs from "fs";
 import { pluralize, underscore } from "inflection";
 import path from "path";
-import fs from "fs";
-
+import { range } from "radashi";
+import {
+  BadRequestException,
+  BaseModelClass,
+  type Entity,
+  type EntityIndex,
+  EntityManager,
+  type EntityProp,
+  type EntitySubsetRow,
+  FixtureManager,
+  type FixtureRecord,
+  type FixtureSearchOptions,
+  isSoException,
+  Migrator,
+  nonNullable,
+  type PathAndCode,
+  ServiceUnavailableException,
+  Sonamu,
+  type SonamuDBConfig,
+  TemplateKey,
+} from "sonamu";
 // 얘 모듈 이름은 왜 ./openai가 아니고 ./openai-client인가?
 // esm을 지원하기 위해 빌드 타임에 import 경로의 확장자를 resolve 해주는 resolveFully 옵션을 사용중입니다.
 // 얘는 "./openai" 같은 이름으로 import하면 그걸 알아서 "./openai.js" 같은 확장자가 붙은 경로로 변환해줍니다.
@@ -32,8 +33,6 @@ import fs from "fs";
 // 즉 "같은 디렉토리 내에 패키지 이름과 같은 이름의 모듈 파일이 있으면 안 되는 문제"입니다.
 // 이를 피하기 위해 "openai"를 사용하는 쪽 모듈 이름은 openai-client.ts로 변경하였습니다.
 import { openai } from "./openai-client";
-import range from "lodash-es/range.js";
-import chalk from "chalk";
 
 export async function createServer(options: {
   projectName: string;
@@ -296,16 +295,16 @@ export async function createServer(options: {
     const suggested = (() => {
       // 단어 분리, 가능한 조합 생성
       const words = origin.split("_");
-      const combinations = range(words.length, 0, -1)
-        .map((len) => {
-          return range(0, words.length - len + 1).map((start) => {
+      const combinations = [...range(words.length, 0, -1)].flatMap((len) => {
+        return [
+          ...range(0, words.length - len + 1, (idx) => {
             return {
               len,
-              w: words.slice(start, start + len).join("_"),
+              w: words.slice(idx, idx + len).join("_"),
             };
-          });
-        })
-        .flat();
+          }),
+        ];
+      });
 
       // 조합을 순회하며, 치환 용어집에 있는 단어가 포함된 경우, 치환 용어로 치환
       const REPLACED_PREFIX = "#REPLACED//"; // 치환된 단어를 join 이후에도 식별하기 위해 prefix 추가
@@ -337,12 +336,10 @@ export async function createServer(options: {
     const entityIds = EntityManager.getAllIds();
 
     function flattenSubsetRows(subsetRows: EntitySubsetRow[]) {
-      return subsetRows
-        .map((subsetRow) => {
-          const { children, ...sRow } = subsetRow;
-          return [sRow, ...flattenSubsetRows(children)];
-        })
-        .flat();
+      return subsetRows.flatMap((subsetRow) => {
+        const { children, ...sRow } = subsetRow;
+        return [sRow, ...flattenSubsetRows(children)];
+      });
     }
 
     const entities = await Promise.all(
@@ -393,12 +390,10 @@ export async function createServer(options: {
         return typeIds;
       }
 
-      const enumIds = EntityManager.getAllIds()
-        .map((entityId) => {
-          const entity = EntityManager.get(entityId);
-          return Object.keys(entity.enumLabels);
-        })
-        .flat();
+      const enumIds = EntityManager.getAllIds().flatMap((entityId) => {
+        const entity = EntityManager.get(entityId);
+        return Object.keys(entity.enumLabels);
+      });
 
       if (filter === "enums") {
         return enumIds;
@@ -646,8 +641,7 @@ export async function createServer(options: {
 
     const entityIds = EntityManager.getAllIds();
     const isReferenced = entityIds
-      .map((entityId) => EntityManager.get(entityId).props)
-      .flat()
+      .flatMap((entityId) => EntityManager.get(entityId).props)
       .some((prop) => prop.type === "enum" && prop.id === enumId);
     if (isReferenced) {
       throw new Error(`${enumId}를 참조하는 프로퍼티가 존재합니다.`);
@@ -742,25 +736,21 @@ export async function createServer(options: {
     entityIds.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const templateKeys = TemplateKey.options.filter((tk) => _templateKeys.includes(tk));
 
-    const combinations = entityIds
-      .map((entityId) => {
-        if (templateGroupName === "Enums") {
-          const entityIds = [entityId, ...EntityManager.getChildrenIds(entityId)];
-          const allEnumIds = entityIds
-            .map((entityId) => Object.keys(EntityManager.get(entityId).enumLabels))
-            .flat();
-          return templateKeys
-            .map((templateKey) =>
-              allEnumIds
-                .filter((enumId) => enumIds.includes(enumId))
-                .map((enumId) => [entityId, templateKey, enumId]),
-            )
-            .flat();
-        } else {
-          return templateKeys.map((templateKey) => [entityId, templateKey]);
-        }
-      })
-      .flat();
+    const combinations = entityIds.flatMap((entityId) => {
+      if (templateGroupName === "Enums") {
+        const entityIds = [entityId, ...EntityManager.getChildrenIds(entityId)];
+        const allEnumIds = entityIds.flatMap((entityId) =>
+          Object.keys(EntityManager.get(entityId).enumLabels),
+        );
+        return templateKeys.flatMap((templateKey) =>
+          allEnumIds
+            .filter((enumId) => enumIds.includes(enumId))
+            .map((enumId) => [entityId, templateKey, enumId]),
+        );
+      } else {
+        return templateKeys.map((templateKey) => [entityId, templateKey]);
+      }
+    });
 
     const statuses = await Promise.all(
       combinations.map(async ([entityId, templateKey, enumId]) => {

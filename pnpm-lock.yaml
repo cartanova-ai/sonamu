@@ -62,9 +62,9 @@ importers:
       mysql2:
         specifier: ^3.14.5
         version: 3.15.3
-      radash:
-        specifier: ^12.1.1
-        version: 12.1.1
+      radashi:
+        specifier: ^12.2.0
+        version: 12.7.1
       sonamu:
         specifier: workspace:^
         version: link:../../../modules/sonamu
@@ -141,6 +141,9 @@ importers:
       qs:
         specifier: ^6.14.0
         version: 6.14.0
+      radashi:
+        specifier: ^12.2.0
+        version: 12.7.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -483,9 +486,6 @@ importers:
       inflection:
         specifier: ^1.13.2
         version: 1.13.4
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       luxon:
         specifier: ^3.0.3
         version: 3.7.2
@@ -495,6 +495,9 @@ importers:
       qs:
         specifier: ^6.11.0
         version: 6.14.0
+      radashi:
+        specifier: ^12.2.0
+        version: 12.7.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -523,12 +526,6 @@ importers:
       '@types/inflection':
         specifier: ^1.13.0
         version: 1.13.2
-      '@types/lodash':
-        specifier: ^4
-        version: 4.17.20
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
       '@types/luxon':
         specifier: ^3.0.1
         version: 3.7.1
@@ -556,9 +553,6 @@ importers:
       debug:
         specifier: ^4.3.7
         version: 4.4.3(supports-color@10.2.2)
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
       scss:
         specifier: ^0.2.4
         version: 0.2.4
@@ -673,9 +667,9 @@ importers:
       qs:
         specifier: ^6.11.0
         version: 6.14.0
-      radash:
-        specifier: ^12.1.1
-        version: 12.1.1
+      radashi:
+        specifier: ^12.2.0
+        version: 12.7.1
       tsicli:
         specifier: ^1.0.5
         version: 1.0.5
@@ -822,12 +816,6 @@ importers:
       knex:
         specifier: ^3.1.0
         version: 3.1.0(supports-color@9.4.0)
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       openai:
         specifier: ^6.9.1
         version: 6.9.1(zod@4.1.12)
@@ -837,6 +825,9 @@ importers:
       qs:
         specifier: ^6.11.2
         version: 6.14.0
+      radashi:
+        specifier: ^12.2.0
+        version: 12.7.1
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -892,12 +883,6 @@ importers:
       '@types/inflection':
         specifier: ^1.13.0
         version: 1.13.2
-      '@types/lodash':
-        specifier: ^4.14.198
-        version: 4.17.20
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
       '@types/node':
         specifier: ^20.6.3
         version: 20.19.25
@@ -3651,12 +3636,6 @@ packages:
 
   '@types/jsonfile@6.1.4':
     resolution: {integrity: sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ==}
-
-  '@types/lodash-es@4.17.12':
-    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
-
-  '@types/lodash@4.17.20':
-    resolution: {integrity: sha512-H3MHACvFUEiujabxhaI/ImO6gUrd8oOurg7LQtS7mbwIXA/cUqWrvBsaeJ23aZEPk1TAYkurjfMbSELfoCXlGA==}
 
   '@types/luxon@3.7.1':
     resolution: {integrity: sha512-H3iskjFIAn5SlJU7OuxUmTEpebK6TKB8rxZShDslBMZJ5u9S//KM1sbdAisiSrqwLQncVjnpi2OK2J51h+4lsg==}
@@ -7640,9 +7619,9 @@ packages:
     resolution: {integrity: sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==}
     engines: {node: '>=10'}
 
-  radash@12.1.1:
-    resolution: {integrity: sha512-h36JMxKRqrAxVD8201FrCpyeNuUY9Y5zZwujr20fFO77tpUtGa6EZzfKw/3WaiBX95fq7+MpsuMLNdSnORAwSA==}
-    engines: {node: '>=14.18.0'}
+  radashi@12.7.1:
+    resolution: {integrity: sha512-rwxcGY3oKMQJ+ojhS4MlxyVWqdXPVJSxg3ZjXDYYz26DYRuAAs+7XBM406/GYzPEBbjSJqdKfHDpBRfjWn34RQ==}
+    engines: {node: '>=16.0.0'}
 
   rc@1.2.8:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
@@ -12568,12 +12547,6 @@ snapshots:
     dependencies:
       '@types/node': 24.10.1
 
-  '@types/lodash-es@4.17.12':
-    dependencies:
-      '@types/lodash': 4.17.20
-
-  '@types/lodash@4.17.20': {}
-
   '@types/luxon@3.7.1': {}
 
   '@types/mdast@4.0.4':
@@ -17378,7 +17351,7 @@ snapshots:
 
   quick-lru@5.1.1: {}
 
-  radash@12.1.1: {}
+  radashi@12.7.1: {}
 
   rc@1.2.8:
     dependencies:

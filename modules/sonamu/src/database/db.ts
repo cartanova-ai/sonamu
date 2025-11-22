@@ -1,11 +1,11 @@
-export type DBPreset = "w" | "r";
-
 import { AsyncLocalStorage } from "async_hooks";
 import knex, { type Knex } from "knex";
-import { assign } from "radash";
+import { assign } from "radashi";
 import { Sonamu } from "../api";
 import type { DatabaseConfig, SonamuConfig } from "../api/config";
 import { TransactionContext } from "./transaction-context";
+
+export type DBPreset = "w" | "r";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;

@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import OpenAI from "openai";
-import { MessageListParams } from "openai/resources/beta/threads/messages";
+import type { MessageListParams } from "openai/resources/beta/threads/messages";
 import path from "path";
 import { Sonamu } from "sonamu";
 
@@ -62,7 +62,9 @@ class OpenAIClass {
   }
 
   async getMessage(id: string) {
-    const message = await this.openai.beta.threads.messages.retrieve(id, { thread_id: this.threadId });
+    const message = await this.openai.beta.threads.messages.retrieve(id, {
+      thread_id: this.threadId,
+    });
     return {
       id: message.id,
       content: message.content[0].type === "text" ? message.content[0].text.value : "",

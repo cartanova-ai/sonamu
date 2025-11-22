@@ -1,7 +1,7 @@
 import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
-import { group, isObject, omit, set, unique } from "radash";
+import { group, isObject, omit, set, unique } from "radashi";
 import type { SubsetQuery } from "../types/types";
 import { isCustomJoinClause } from "../types/types";
 import type { BaseListParams } from "../utils/model";
@@ -58,7 +58,12 @@ export class BaseModelClass {
       selectField = unqKeyFields[0];
       unqKeys = rows.map((row) => row[unqKeyFields[0]] as string);
     }
-    const chunks = chunk(unqKeys, chunkSize);
+    const chunks = Array.from(
+      {
+        length: Math.ceil(unqKeys.length / chunkSize),
+      },
+      (_, index) => unqKeys.slice(index * chunkSize, (index + 1) * chunkSize),
+    );
 
     let resultIds: number[] = [];
     for (const chunk of chunks) {
@@ -131,11 +136,11 @@ export class BaseModelClass {
       }
 
       // 불러온 row들을 참조ID 기준으로 분류 배치
-      const subRowGroups = group(subRows, (r) => r[toCol] as string);
+      const subRowGroups = Object.groupBy(subRows, (row) => row[toCol]);
       rows = rows.map((row) => {
-        row[loader.as] = (
-          subRowGroups[row[loader.manyJoin.idField] as keyof UnknownDBRecord] ?? []
-        ).map((r) => omit(r, [toCol]));
+        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map((r) =>
+          omit(r, [toCol]),
+        );
         return row;
       });
     }
@@ -146,16 +151,18 @@ export class BaseModelClass {
     return rows.map((row: T) => {
       // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
-      const groups = group(nestedKeys, (key) => key.split("__")[0]);
-      const nullKeys = Object.keys(groups).filter(
-        (key) =>
-          groups[key] &&
-          groups[key].length > 1 &&
-          groups[key].every(
-            (field) =>
-              row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
-          ),
-      );
+      const groups = Object.groupBy(nestedKeys, (key) => key.split("__")[0]);
+      const nullKeys = Object.entries(groups)
+        .filter(
+          ([_, data]) =>
+            data &&
+            data.length > 1 &&
+            data.every(
+              (field) =>
+                row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
+            ),
+        )
+        .map(([key]) => key);
 
       const hydrated = Object.keys(row).reduce((r, field) => {
         if (!field.includes("__")) {

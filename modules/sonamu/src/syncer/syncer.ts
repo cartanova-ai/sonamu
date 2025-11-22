@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { minimatch } from "minimatch";
 import path, { dirname } from "path";
-import { group, unique } from "radash";
+import { group, unique } from "radashi";
 import type { z } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";

@@ -1,8 +1,8 @@
 import { join } from "node:path";
+import { setTimeout } from "node:timers/promises";
+import { test } from "@japa/runner";
 import { pEvent } from "p-event";
 import supertest from "supertest";
-import { test } from "@japa/runner";
-import { setTimeout } from "node:timers/promises";
 
 import { createHandlerFile, fakeInstall, runProcess } from "./helpers.js";
 

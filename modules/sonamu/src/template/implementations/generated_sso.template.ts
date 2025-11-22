@@ -1,6 +1,6 @@
 import assert from "assert";
 import inflection from "inflection";
-import { unique } from "radash";
+import { unique } from "radashi";
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";

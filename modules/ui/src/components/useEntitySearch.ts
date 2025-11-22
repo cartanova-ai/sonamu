@@ -1,7 +1,7 @@
-import groupBy from "lodash-es/groupBy.js";
-import map from "lodash-es/map.js";
-import { ExtendedEntity } from "../services/sonamu-ui.service";
+import assert from "assert";
+import { group } from "radashi";
 import { useCallback, useState } from "react";
+import type { ExtendedEntity } from "../services/sonamu-ui.service";
 
 class InvertedIndex {
   private index: Map<string, Set<number>>;
@@ -246,17 +246,19 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
         .filter((result) => result.score > 0.1)
         .sort((a, b) => b.score - a.score);
 
-      const grouped = groupBy(searchResult, (r) => r.item.id + Math.floor(r.score * 10) / 10);
+      const grouped = group(searchResult, (r) => `${r.item.id}${Math.floor(r.score * 10) / 10}`);
 
-      return map(grouped, (group) => {
-        const { id, title } = group[0].item;
-        const fields = group
-          .map(({ fields }) => fields)
-          .flat()
-          .filter(Boolean) as SearchResult["fields"];
-        const score = Math.max(...group.map(({ score }) => score));
-        return { item: { id, title }, fields, score };
-      })
+      return Object.values(grouped)
+        .filter((group) => group !== undefined)
+        .map((group) => {
+          assert(group.length > 1);
+          const { id, title } = group[0].item;
+          const fields = group
+            .flatMap(({ fields }) => fields)
+            .filter(Boolean) as SearchResult["fields"];
+          const score = Math.max(...group.map(({ score }) => score));
+          return { item: { id, title }, fields, score };
+        })
         .sort((a, b) => {
           if (a.item.id === currentEntity) return -1;
           if (b.item.id === currentEntity) return 1;

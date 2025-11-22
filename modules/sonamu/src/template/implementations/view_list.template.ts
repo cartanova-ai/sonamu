@@ -1,6 +1,6 @@
 import assert from "assert";
 import inflection from "inflection";
-import { flat, unique } from "radash";
+import { flat, unique } from "radashi";
 import { z } from "zod";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";

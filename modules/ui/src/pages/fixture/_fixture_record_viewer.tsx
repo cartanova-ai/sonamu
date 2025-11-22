@@ -1,7 +1,7 @@
 import { SetStateAction } from "react";
 import { FixtureRecord } from "sonamu";
 import EntityTable from "../../components/fixture/EntityTable"; // 공통 테이블 컴포넌트 임포트
-import { groupBy } from "lodash";
+import { group } from "radashi";
 
 type FixtureResultProps = {
   fixtureRecords: FixtureRecord[];
@@ -21,14 +21,14 @@ export default function FixtureRecordViewer({
   selectedIds,
   setFixtureRecords,
 }: FixtureResultProps) {
-  const groupedRecords = groupBy(fixtureRecords, "entityId");
+  const groupedRecords = group(fixtureRecords, (record) => record.entityId);
 
   return (
     <div className="fixture-record-viewer">
       {Object.entries(groupedRecords).map(([entityId, records]) => (
         <EntityTable
           key={entityId}
-          fixtures={records}
+          fixtures={records ?? []}
           selectedIds={selectedIds}
           onRelationToggle={onRelationToggle}
           setFixtureRecords={setFixtureRecords}

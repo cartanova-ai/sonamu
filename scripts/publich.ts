@@ -17,9 +17,9 @@
  * 따라서 실행 환경의 ~/.yarnrc.yml 파일에 npmAuthToken이 설정되어 있어야 합니다.
  */
 
-import { resolve as pathResolve } from "path";
-import { readFile } from "fs/promises";
 import { exec } from "child_process";
+import { readFile } from "fs/promises";
+import { resolve as pathResolve } from "path";
 
 type LocalPackageInfo = {
   name: string;

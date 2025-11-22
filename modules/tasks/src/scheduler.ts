@@ -1,20 +1,20 @@
 import EventEmitter from "events";
 import knex, { type Knex } from "knex";
 import { createTask, type ScheduledTask } from "node-cron";
-import { type RouterContext, addRoute, createRouter } from "rou3";
+import { addRoute, createRouter, type RouterContext } from "rou3";
 import { v7 } from "uuid";
-import { wrapRemoteTask, wrapLocalTask } from "./tasks";
+import { wrapLocalTask, wrapRemoteTask } from "./tasks";
 import {
-  resolve,
   type EventType,
   type LocalTaskConfig,
-  type SchedulerInfo,
   type OnEventFunction,
   type RemoteTaskConfig,
   type Resolvable,
   type RetryConfig,
-  type TaskEvent,
+  resolve,
   type SchedulerConfig,
+  type SchedulerInfo,
+  type TaskEvent,
   type TaskRouterContext,
 } from "./types";
 

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { cluster } from "radash";
+import { cluster } from "radashi";
 import type { AbsolutePath } from "./path-utils";
 
 export async function findAppRootPath(): Promise<AbsolutePath> {

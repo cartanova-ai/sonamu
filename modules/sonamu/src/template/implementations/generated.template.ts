@@ -1,5 +1,5 @@
 import assert from "assert";
-import { unique } from "radash";
+import { unique } from "radashi";
 import { Sonamu } from "../../api";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
 import type { Entity } from "../../entity/entity";

@@ -1,6 +1,6 @@
 import assert from "assert";
 import inflection from "inflection";
-import { diff, group, sort, unique } from "radash";
+import { diff, group, sort, unique } from "radashi";
 import {
   apiParamToTsCode,
   apiParamToTsCodeAsObject,
