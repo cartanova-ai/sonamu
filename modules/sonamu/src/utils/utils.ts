@@ -16,7 +16,7 @@ export function findApiRootPath(): AbsolutePath {
     return workspacePath as AbsolutePath;
   }
 
-  if (nonNullable(process.env["PNPM_PACKAGE_NAME"])) {
+  if (nonNullable(process.env.PNPM_PACKAGE_NAME)) {
     return process.cwd().split(path.sep).join(path.sep) as AbsolutePath;
   }
 
