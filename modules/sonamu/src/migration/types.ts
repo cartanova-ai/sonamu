@@ -1,5 +1,5 @@
-import { SonamuDBConfig } from "../database/db";
-import { GenMigrationCode } from "../types/types";
+import type { SonamuDBConfig } from "../database/db";
+import type { GenMigrationCode } from "../types/types";
 
 export type MigrationCode = {
   name: string;

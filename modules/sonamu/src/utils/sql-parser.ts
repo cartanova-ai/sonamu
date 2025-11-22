@@ -1,5 +1,5 @@
 import uniq from "lodash-es/uniq.js";
-import { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
+import type { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
 
 export function getTableName(expr: ColumnRef) {
   if ("table" in expr && expr.table !== null) {

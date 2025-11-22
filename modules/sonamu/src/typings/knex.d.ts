@@ -1,4 +1,8 @@
-import { Knex } from "knex";
+/** biome-ignore-all lint/correctness/noUnusedImports: d.ts */
+/** biome-ignore-all lint/suspicious/noExplicitAny: d.ts */
+/** biome-ignore-all lint/correctness/noUnusedVariables: d.ts */
+
+import type { Knex } from "knex";
 
 declare module "knex" {
   namespace Knex {

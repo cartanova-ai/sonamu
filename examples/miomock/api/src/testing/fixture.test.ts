@@ -1,5 +1,5 @@
-import { bootstrap } from "../testing/bootstrap";
 import { describe, expect, test } from "vitest";
+import { bootstrap } from "../testing/bootstrap";
 import { loadFixtures } from "./fixture";
 
 bootstrap();

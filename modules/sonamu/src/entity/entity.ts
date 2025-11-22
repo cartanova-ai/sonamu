@@ -1,32 +1,32 @@
+import { writeFile } from "fs/promises";
+import inflection from "inflection";
 import groupBy from "lodash-es/groupBy.js";
 import uniq from "lodash-es/uniq.js";
-import { createImportUrl } from "../utils/esm-utils";
-import { EntityManager as EntityManager } from "./entity-manager";
-import {
-  EntityProp,
-  RelationProp,
-  isRelationProp,
-  SubsetQuery,
-  isVirtualProp,
-  isBelongsToOneRelationProp,
-  isOneToOneRelationProp,
-  isHasManyRelationProp,
-  isManyToManyRelationProp,
-  EntityPropNode,
-  isEnumProp,
-  StringProp,
-  EntityIndex,
-  EntityJson,
-  EntitySubsetRow,
-} from "../types/types";
-import inflection from "inflection";
 import path from "path";
-import { writeFile } from "fs/promises";
 import { z } from "zod";
 import { Sonamu } from "../api/sonamu";
-import { nonNullable } from "../utils/utils";
-import { exists } from "../utils/fs-utils";
+import {
+  type EntityIndex,
+  type EntityJson,
+  type EntityProp,
+  type EntityPropNode,
+  type EntitySubsetRow,
+  isBelongsToOneRelationProp,
+  isEnumProp,
+  isHasManyRelationProp,
+  isManyToManyRelationProp,
+  isOneToOneRelationProp,
+  isRelationProp,
+  isVirtualProp,
+  type RelationProp,
+  type StringProp,
+  type SubsetQuery,
+} from "../types/types";
+import { createImportUrl } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";
+import { exists } from "../utils/fs-utils";
+import { nonNullable } from "../utils/utils";
+import { EntityManager } from "./entity-manager";
 
 export class Entity {
   id: string;
@@ -53,7 +53,7 @@ export class Entity {
     [name: string]: z.ZodTypeAny;
   } = {};
   enums: {
-    [enumId: string]: z.ZodEnum<any>;
+    [enumId: string]: z.ZodEnum<Readonly<Record<string, string>>>;
   } = {};
   enumLabels: {
     [enumId: string]: {
@@ -78,22 +78,16 @@ export class Entity {
         }
         return prop;
       });
-      this.propsDict = props.reduce((result, prop) => {
-        return {
-          ...result,
-          [prop.name]: prop,
-        };
-      }, {});
+      this.propsDict = Object.fromEntries(
+        props.map((prop) => {
+          return [prop.name, prop];
+        }),
+      );
 
       // relations
-      this.relations = props
-        .filter((prop) => isRelationProp(prop))
-        .reduce((result, prop) => {
-          return {
-            ...result,
-            [prop.name]: prop,
-          };
-        }, {});
+      this.relations = Object.fromEntries(
+        props.filter((prop) => isRelationProp(prop)).map((prop) => [prop.name, prop]),
+      );
     } else {
       this.props = [];
       this.propsDict = {};
@@ -215,30 +209,37 @@ export class Entity {
             }
           })();
           const relSubsetQuery = relEntity.resolveSubsetQuery(
-            `${prefix !== "" ? prefix + "." : ""}${groupKey}`,
+            `${prefix !== "" ? `${prefix}.` : ""}${groupKey}`,
             relFields,
             innerOrOuter === "outer",
           );
           r.select = r.select.concat(relSubsetQuery.select);
           r.virtual = r.virtual.concat(relSubsetQuery.virtual);
 
-          const joinAs = prefix === "" ? groupKey : prefix + "__" + groupKey;
+          const joinAs = prefix === "" ? groupKey : `${prefix}__${groupKey}`;
           const fromTable = prefix === "" ? this.table : prefix;
 
-          let joinClause;
+          let joinClause:
+            | {
+                from: string;
+                to: string;
+              }
+            | {
+                custom: string;
+              };
           if (relation.customJoinClause) {
             joinClause = {
               custom: relation.customJoinClause,
             };
           } else {
-            let from, to;
+            let from: string, to: string;
             if (isOneToOneRelationProp(relation)) {
               if (relation.hasJoinColumn) {
                 from = `${fromTable}.${relation.name}_id`;
                 to = `${joinAs}.id`;
               } else {
                 from = `${fromTable}.id`;
-                to = `${joinAs}.${inflection.underscore(this.names.fs.replace(/\-/g, "_"))}_id`;
+                to = `${joinAs}.${inflection.underscore(this.names.fs.replace(/-/g, "_"))}_id`;
               }
             } else {
               from = `${fromTable}.${relation.name}_id`;
@@ -335,7 +336,7 @@ export class Entity {
   fieldExprsToPropNodes(fieldExprs: string[], entity: Entity = this): EntityPropNode[] {
     const groups = fieldExprs.reduce(
       (result, fieldExpr) => {
-        let key, value, elseExpr;
+        let key: string, value: string, elseExpr: string[];
         if (fieldExpr.includes(".")) {
           [key, ...elseExpr] = fieldExpr.split(".");
           value = elseExpr.join(".");
@@ -352,84 +353,82 @@ export class Entity {
       },
     );
 
-    return Object.keys(groups)
-      .map((key) => {
-        const group = groups[key];
+    return Object.keys(groups).flatMap((key) => {
+      const group = groups[key];
 
-        // 일반 prop 처리
-        if (key === "") {
-          return group.map((propName) => {
-            // uuid 개별 처리
-            if (propName === "uuid") {
-              return {
-                nodeType: "plain" as const,
-                prop: {
-                  type: "string",
-                  name: "uuid",
-                  length: 128,
-                } as StringProp,
-                children: [],
-              };
-            }
-
-            const prop = entity.props.find((p) => p.name === propName);
-            if (prop === undefined) {
-              console.log({ propName, groups });
-              throw new Error(`${entity.id} -- 잘못된 FieldExpr ${propName}`);
-            }
-            return {
-              nodeType: "plain" as const,
-              prop,
-              children: [],
-            };
-          });
-        }
-
-        // relation prop 처리
-        const prop = entity.propsDict[key];
-        if (!isRelationProp(prop)) {
-          throw new Error(`잘못된 FieldExpr ${key}.${group[0]}`);
-        }
-        const relEntity = EntityManager.get(prop.with);
-
-        // relation -One 에 id 필드 하나인 경우
-        if (isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)) {
-          if (group.length == 1 && (group[0] === "id" || group[0] == "id?")) {
-            // id 하나만 있는지 체크해서, 하나만 있으면 상위 prop으로 id를 리턴
-            const idProp = relEntity.propsDict.id;
+      // 일반 prop 처리
+      if (key === "") {
+        return group.map((propName) => {
+          // uuid 개별 처리
+          if (propName === "uuid") {
             return {
               nodeType: "plain" as const,
               prop: {
-                ...idProp,
-                name: key + "_id",
-                nullable: prop.nullable,
-              },
+                type: "string",
+                name: "uuid",
+                length: 128,
+              } as StringProp,
               children: [],
-            };
+            } as EntityPropNode;
           }
+
+          const prop = entity.props.find((p) => p.name === propName);
+          if (prop === undefined) {
+            console.log({ propName, groups });
+            throw new Error(`${entity.id} -- 잘못된 FieldExpr ${propName}`);
+          }
+          return {
+            nodeType: "plain" as const,
+            prop,
+            children: [],
+          };
+        });
+      }
+
+      // relation prop 처리
+      const prop = entity.propsDict[key];
+      if (!isRelationProp(prop)) {
+        throw new Error(`잘못된 FieldExpr ${key}.${group[0]}`);
+      }
+      const relEntity = EntityManager.get(prop.with);
+
+      // relation -One 에 id 필드 하나인 경우
+      if (isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)) {
+        if (group.length === 1 && (group[0] === "id" || group[0] === "id?")) {
+          // id 하나만 있는지 체크해서, 하나만 있으면 상위 prop으로 id를 리턴
+          const idProp = relEntity.propsDict.id;
+          return {
+            nodeType: "plain" as const,
+            prop: {
+              ...idProp,
+              name: `${key}_id`,
+              nullable: prop.nullable,
+            },
+            children: [],
+          };
         }
+      }
 
-        // -One 그외의 경우 object로 리턴
-        // -Many의 경우 array로 리턴
-        // Recursive 로 뎁스 처리
-        const children = this.fieldExprsToPropNodes(group, relEntity);
-        const nodeType =
-          isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)
-            ? ("object" as const)
-            : ("array" as const);
+      // -One 그외의 경우 object로 리턴
+      // -Many의 경우 array로 리턴
+      // Recursive 로 뎁스 처리
+      const children = this.fieldExprsToPropNodes(group, relEntity);
+      const nodeType =
+        isBelongsToOneRelationProp(prop) || isOneToOneRelationProp(prop)
+          ? ("object" as const)
+          : ("array" as const);
 
-        return {
-          prop,
-          children,
-          nodeType,
-        };
-      })
-      .flat();
+      return {
+        prop,
+        children,
+        nodeType,
+      };
+    });
   }
 
   getFieldExprs(prefix = "", maxDepth: number = 3, froms: string[] = []): string[] {
     return this.props
-      .map((prop) => {
+      .flatMap((prop) => {
         const propName = [prefix, prop.name].filter((v) => v !== "").join(".");
         if (propName === prefix) {
           return null;
@@ -448,7 +447,6 @@ export class Entity {
         }
         return propName;
       })
-      .flat()
       .filter((f) => f !== null) as string[];
   }
 
@@ -480,18 +478,18 @@ export class Entity {
     if (Object.keys(this.subsets).length > 0) {
       EntityManager.setModulePath(`${this.id}SubsetKey`, `sonamu.generated`);
       EntityManager.setModulePath(`${this.id}SubsetMapping`, `sonamu.generated`);
-      Object.keys(this.subsets).map((subsetKey) => {
+      for (const subsetKey of Object.keys(this.subsets)) {
         EntityManager.setModulePath(
           `${this.id}Subset${subsetKey.toUpperCase()}`,
           `sonamu.generated`,
         );
-      });
+      }
     }
 
     // enums
-    Object.keys(this.enumLabels).map((enumId) => {
+    for (const enumId of Object.keys(this.enumLabels)) {
       EntityManager.setModulePath(enumId, `sonamu.generated`);
-    });
+    }
 
     // types
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
@@ -503,13 +501,12 @@ export class Entity {
     if (await exists(typesFileDistPath)) {
       const importUrl = createImportUrl(typesFileDistPath);
       const t = await import(importUrl);
-      this.types = Object.keys(t).reduce((result, key) => {
-        EntityManager.setModulePath(key, typesModulePath);
-        return {
-          ...result,
-          [key]: t[key],
-        };
-      }, {});
+      this.types = Object.fromEntries(
+        Object.entries(t).map(([key, value]) => {
+          EntityManager.setModulePath(key, typesModulePath);
+          return [key, value];
+        }),
+      ) as { [name: string]: z.ZodTypeAny };
     }
   }
 
@@ -566,12 +563,12 @@ export class Entity {
 
     const subsets = _subsets ?? this.subsets;
     const subsetKeys = Object.keys(subsets);
-    const allFields = uniq(subsetKeys.map((key) => subsets[key]).flat());
+    const allFields = uniq(subsetKeys.flatMap((key) => subsets[key]));
 
     return this.props.map((prop) => {
       if (
         prop.type === "relation" &&
-        allFields.find((f) => f.startsWith([...prefixes, prop.name].join(".") + "."))
+        allFields.find((f) => f.startsWith(`${[...prefixes, prop.name].join(".")}.`))
       ) {
         const relEntity = EntityManager.get(prop.with);
         const children = relEntity.getSubsetRows(subsets, [...prefixes, `${prop.name}`]);
@@ -600,7 +597,7 @@ export class Entity {
             const subsetFields = subsets[subsetKey];
             const has = subsetFields.some((f) => {
               const field = [...prefixes, prop.name].join(".");
-              return f === field || f.startsWith(field + ".");
+              return f === field || f.startsWith(`${field}.`);
             });
             return [subsetKey, has];
           }),
@@ -742,9 +739,9 @@ export class Entity {
     }
 
     // 현재 엔티티의 인덱스에서 제외
-    EntityManager.get(this.id).indexes.map((index) => {
+    for (const index of EntityManager.get(this.id).indexes) {
       index.columns = index.columns.filter((col) => col !== oldName);
-    });
+    }
 
     // 프롭 삭제
     this.props.splice(at, 1);

@@ -1,14 +1,14 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
 } from "sonamu";
-import { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
+import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeSubsetQueries } from "../sonamu.generated.sso";
-import { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
+import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 /*
   Employee Model
@@ -69,7 +69,7 @@ class EmployeeModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: employeeSubsetQueries[subset],
@@ -94,7 +94,7 @@ class EmployeeModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("employees." + orderByField, orderByDirec);
+          qb.orderBy(`employees.${orderByField}`, orderByDirec);
         }
 
         return qb;
@@ -113,7 +113,7 @@ class EmployeeModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("employees", sp);
     });
 

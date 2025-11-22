@@ -1,15 +1,14 @@
-import path from "path";
-import { globAsync } from "../utils/async-utils";
-import { createReadStream, PathLike } from "fs";
-import { readFile, writeFile } from "fs/promises";
-import { exists } from "../utils/fs-utils";
-
-import crypto from "crypto";
+import crypto, { type BinaryLike } from "crypto";
 import equal from "fast-deep-equal";
+import { createReadStream, type PathLike } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import differenceWith from "lodash-es/differenceWith.js";
 import isEqual from "lodash-es/isEqual.js";
+import path from "path";
 import { Sonamu } from "../api/sonamu";
-import { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
+import { globAsync } from "../utils/async-utils";
+import { exists } from "../utils/fs-utils";
+import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 import { getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 
 type PathAndChecksum = {
@@ -133,10 +132,10 @@ async function getChecksumOfFile(filePath: PathLike): Promise<string> {
     const hash = crypto.createHash("sha1");
     const input = createReadStream(filePath);
     input.on("error", reject);
-    input.on("data", function (chunk: any) {
+    input.on("data", (chunk: BinaryLike) => {
       hash.update(chunk);
     });
-    input.on("close", function () {
+    input.on("close", () => {
       resolve(hash.digest("hex"));
     });
   });

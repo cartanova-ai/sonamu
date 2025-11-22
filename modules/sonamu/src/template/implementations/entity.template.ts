@@ -1,7 +1,7 @@
-import { TemplateOptions } from "../../types/types";
-import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { Template } from "../template";
 import { Sonamu } from "../../api";
+import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import type { TemplateOptions } from "../../types/types";
+import { Template } from "../template";
 
 export class Template__entity extends Template {
   constructor() {
@@ -38,7 +38,7 @@ export class Template__entity extends Template {
         id: entityId,
         title: title ?? entityId,
         parentId,
-        table: table ?? names.fsPlural.replace(/\-/g, "_"),
+        table: table ?? names.fsPlural.replace(/-/g, "_"),
         props: options.props?.length
           ? options.props
           : [

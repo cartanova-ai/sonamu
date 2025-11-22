@@ -1,8 +1,8 @@
-import differenceBy from "lodash-es/differenceBy.js";
-import intersectionBy from "lodash-es/intersectionBy.js";
-import differenceWith from "lodash-es/differenceWith.js";
 import equal from "fast-deep-equal";
-import { MigrationColumn, MigrationIndex } from "../types/types";
+import differenceBy from "lodash-es/differenceBy.js";
+import differenceWith from "lodash-es/differenceWith.js";
+import intersectionBy from "lodash-es/intersectionBy.js";
+import type { MigrationColumn, MigrationIndex } from "../types/types";
 
 export class CodeGenerator {
   getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
@@ -34,7 +34,7 @@ export class CodeGenerator {
 
   getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
     // 인덱스 비교
-    let indexesTo = {
+    const indexesTo = {
       add: [] as MigrationIndex[],
       drop: [] as MigrationIndex[],
     };

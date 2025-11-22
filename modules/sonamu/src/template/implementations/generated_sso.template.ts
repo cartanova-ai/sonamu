@@ -1,12 +1,13 @@
-import { isManyToManyRelationProp, SubsetQuery, TemplateOptions } from "../../types/types";
-import { EntityManager } from "../../entity/entity-manager";
-import { Template } from "../template";
+import assert from "assert";
 import inflection from "inflection";
-import { SourceCode } from "./generated.template";
 import uniq from "lodash-es/uniq.js";
-import { nonNullable } from "../../utils/utils";
 import { Sonamu } from "../../api";
-import { Entity } from "../../entity/entity";
+import type { Entity } from "../../entity/entity";
+import { EntityManager } from "../../entity/entity-manager";
+import { isManyToManyRelationProp, type SubsetQuery } from "../../types/types";
+import { nonNullable } from "../../utils/utils";
+import { Template } from "../template";
+import type { SourceCode } from "./generated.template";
 
 export class Template__generated_sso extends Template {
   constructor() {
@@ -22,7 +23,7 @@ export class Template__generated_sso extends Template {
     };
   }
 
-  render({}: TemplateOptions["generated_sso"]) {
+  render() {
     const entityIds = EntityManager.getAllIds();
     const entities = entityIds.map((id) => EntityManager.get(id));
 
@@ -71,9 +72,10 @@ export class Template__generated_sso extends Template {
         if (ts === null) {
           return result;
         }
+        assert(result);
         return {
-          lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: uniq([...result!.importKeys, ...ts.importKeys]),
+          lines: [...result.lines, `// ${ts.label}`, ...ts.lines, ""],
+          importKeys: uniq([...result.importKeys, ...ts.importKeys]),
         };
       },
       {

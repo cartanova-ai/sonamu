@@ -1,15 +1,15 @@
-import type { Knex } from "knex";
-import type { Driver } from "../file-storage/driver";
-import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
-import type { SonamuFastifyConfig } from "../types/types";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyFormbodyOptions } from "@fastify/formbody";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
+import type { DeserializeFunction, SerializeFunction } from "@fastify/passport/dist/Authenticator";
 import type { SecureSessionPluginOptions } from "@fastify/secure-session";
 import type { FastifyStaticOptions } from "@fastify/static";
+import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from "fastify";
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
-import type { DeserializeFunction, SerializeFunction } from "@fastify/passport/dist/Authenticator";
+import type { Knex } from "knex";
+import type { Driver } from "../file-storage/driver";
+import type { SonamuFastifyConfig } from "../types/types";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.MySql2ConnectionConfig;

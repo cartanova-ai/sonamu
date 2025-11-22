@@ -5,13 +5,14 @@ import path from "path";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
-import { RenderedTemplate, Template } from "../template/template";
-import { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
+import type { RenderedTemplate } from "../template/template";
+import { Template } from "../template/template";
+import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
 import { wrapIf } from "../utils/lodash-able";
-import { AbsolutePath } from "../utils/path-utils";
+import type { AbsolutePath } from "../utils/path-utils";
 
 /**
  * 템플릿을 렌더링하고 파일로 생성합니다.
@@ -21,9 +22,9 @@ import { AbsolutePath } from "../utils/path-utils";
  * @param _generateOptions - 생성 옵션 (overwrite 여부)
  * @returns 생성된 파일 경로 배열
  */
-export async function generateTemplate(
-  key: TemplateKey,
-  templateOptions: any,
+export async function generateTemplate<T extends TemplateKey>(
+  key: T,
+  templateOptions: TemplateOptions[T],
   _generateOptions?: GenerateOptions,
 ): Promise<AbsolutePath[]> {
   const generateOptions = {
@@ -112,7 +113,7 @@ async function resolveRenderedTemplate(
         if (modulePath.includes("/") || modulePath.includes(".")) {
           importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [
             p.startsWith(".") === false,
-            "./" + p,
+            `./${p}`,
           ]);
         }
 
@@ -134,7 +135,7 @@ async function resolveRenderedTemplate(
       }[],
     )
     // 셀프 참조 방지
-    .filter((importDef) => filePath.endsWith(importDef.from.replace("./", "") + ".ts") === false);
+    .filter((importDef) => filePath.endsWith(`${importDef.from.replace("./", "")}.ts`) === false);
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [
@@ -160,7 +161,7 @@ async function resolveRenderedTemplate(
   })();
 
   return {
-    path: target + "/" + filePath,
+    path: `${target}/${filePath}`,
     code: formatted,
   };
 }
@@ -181,7 +182,7 @@ async function writeCodeToPathEachTarget(pathAndCode: PathAndCode): Promise<Abso
       }
       await writeFile(dstFilePath, pathAndCode.code);
       console.log(
-        chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(appRootPath + "/", "")}`),
+        chalk.bold("Generated: ") + chalk.blue(`${dstFilePath.replace(`${appRootPath}/`, "")}`),
       );
       return dstFilePath;
     }),

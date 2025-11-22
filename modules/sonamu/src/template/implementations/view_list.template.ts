@@ -1,14 +1,15 @@
+import assert from "assert";
 import inflection from "inflection";
-import uniq from "lodash-es/uniq.js";
 import flattenDeep from "lodash-es/flattenDeep.js";
+import uniq from "lodash-es/uniq.js";
 import { z } from "zod";
-import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
-import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { getRelationPropFromColName, getEnumInfoFromColName } from "../helpers";
-import { RenderedTemplate } from "../template";
-import { Template } from "../template";
-import { zodTypeToRenderingNode, getZodTypeById } from "../zod-converter";
+import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { getColumnsNode } from "../entity-converter";
+import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
+import type { RenderedTemplate } from "../template";
+import { Template } from "../template";
+import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 
 export class Template__view_list extends Template {
   constructor() {
@@ -42,9 +43,10 @@ export class Template__view_list extends Template {
       case "string-date":
       case "number-id":
         return `<>{${colName}}</>`;
-      case "number-fk_id":
+      case "number-fk_id": {
         const relPropFk = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         return `<>${relPropFk.with}#{${colName}}</>`;
+      }
       case "string-image":
         return `<>{${col.nullable ? `${colName} && ` : ""}<img src={${colName}} />}</>`;
       case "datetime":
@@ -61,17 +63,18 @@ export class Template__view_list extends Template {
         }
       case "boolean":
         return `<>{${colName} ? <Label color='green' circular>O</Label> : <Label color='grey' circular>X</Label> }</>`;
-      case "enums":
+      case "enums": {
         const { id: enumId } = getEnumInfoFromColName(entityId, col.name);
         return `<>{${col.nullable ? `${colName} && ` : ""}${enumId}Label[${colName}]}</>`;
+      }
       case "array-images":
         return `<>{ ${colName}.map(r => ${col.nullable ? `r && ` : ""}<img src={r} />) }</>`;
       case "number-plain":
         return `<>{${col.nullable ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
         return `<>{/* object ${colName} */}</>`;
-      case "object-pick":
-        const pickedChild = col.children!.find((child) => child.name === col.config?.picked);
+      case "object-pick": {
+        const pickedChild = col.children?.find((child) => child.name === col.config?.picked);
         if (!pickedChild) {
           throw new Error(`object-pick 선택 실패 (오브젝트: ${col.name})`);
         }
@@ -81,6 +84,7 @@ export class Template__view_list extends Template {
           names,
           `${colName}${col.nullable ? "?" : ""}`,
         );
+      }
       case "array":
         return `<>{ /* array ${colName} */ }</>`;
       default:
@@ -99,7 +103,7 @@ export class Template__view_list extends Template {
     } else if (col.renderType === "object") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name);
-        const result = col.children!.map((child) => {
+        const result = col.children?.map((child) => {
           entityId = relProp.with;
           names = EntityManager.getNamesFromId(relProp.with);
           return this.renderColumnImport(entityId, child, names);
@@ -109,7 +113,8 @@ export class Template__view_list extends Template {
         return [null];
       }
     } else if (col.renderType === "array") {
-      return this.renderColumnImport(entityId, col.element!, names);
+      assert(col.element);
+      return this.renderColumnImport(entityId, col.element, names);
     }
 
     return [null];
@@ -231,12 +236,12 @@ export class Template__view_list extends Template {
       )
       // orderBy가 가장 뒤로 오게 순서 조정
       .sort((a) => {
-        return a.name == "orderBy" ? 1 : -1;
+        return a.name === "orderBy" ? 1 : -1;
       });
 
     // 필터 컬럼을 프리 템플릿으로 설정
     const preTemplates: RenderedTemplate["preTemplates"] = [];
-    for (let col of filterColumns) {
+    for (const col of filterColumns) {
       let key: TemplateKey;
       let targetEntityId = entityId;
       let enumId: string | undefined;
@@ -276,17 +281,18 @@ export class Template__view_list extends Template {
     }
 
     // 리스트 컬럼
+    assert(columnsNode.children);
     const columnImports = uniq(
-      columnsNode
-        .children!.map((col) => {
+      columnsNode.children
+        .flatMap((col) => {
           return this.renderColumnImport(entityId, col, names);
         })
-        .flat()
         .filter((col) => col !== null),
     ).join("\n");
 
     // SearchInput
-    preTemplates!.push({
+    assert(preTemplates);
+    preTemplates.push({
       key: "view_search_input",
       options: {
         entityId,

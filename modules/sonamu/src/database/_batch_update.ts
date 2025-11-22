@@ -3,11 +3,12 @@
   https://github.com/knex/knex/issues/5716
 */
 
-import { Knex } from "knex";
+import type { Knex } from "knex";
 
+type ColumnValue = string | number | boolean | null;
 export type RowWithId<Id extends string> = {
-  [key in Id]: any;
-} & Record<string, any>;
+  [key in Id]: ColumnValue;
+} & Record<string, ColumnValue>;
 
 /**
  * Batch update rows in a table. Technically its a patch since it only updates the specified columns. Any omitted columns will not be affected
@@ -56,7 +57,7 @@ export async function batchUpdate<Id extends string>(
  * [ { a: 1, b: 2 }, { a: 3, c: 4 } ] => Set([ "a", "b", "c" ])
  * @param data
  */
-function generateKeySetFromData(data: Record<string, any>[]) {
+function generateKeySetFromData(data: Record<string, ColumnValue>[]) {
   const keySet: Set<string> = new Set();
   for (const row of data) {
     for (const key of Object.keys(row)) {
@@ -69,7 +70,7 @@ function generateKeySetFromData(data: Record<string, any>[]) {
 function generateBatchUpdateSQL<Id extends string>(
   db: Knex,
   tableName: string,
-  data: Record<string, any>[],
+  data: Record<string, ColumnValue>[],
   identifiers: Id[],
 ) {
   const keySet = generateKeySetFromData(data);
@@ -88,7 +89,7 @@ function generateBatchUpdateSQL<Id extends string>(
 
     const rows = [];
     for (const row of data) {
-      if (Object.hasOwnProperty.call(row, key)) {
+      if (Object.hasOwn(row, key)) {
         const whereClause = identifiers.map((id) => `\`${id}\` = ?`).join(" AND ");
         rows.push(`WHEN (${whereClause}) THEN ?`);
         bindings.push(...identifiers.map((i) => row[i]), row[key]);

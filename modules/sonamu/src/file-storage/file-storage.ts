@@ -1,6 +1,6 @@
 import type { MultipartFile } from "@fastify/multipart";
-import mime from "mime-types";
 import { createHash } from "crypto";
+import mime from "mime-types";
 import type { Driver } from "./driver";
 
 /**

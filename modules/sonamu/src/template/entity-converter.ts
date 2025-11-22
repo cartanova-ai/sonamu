@@ -1,8 +1,9 @@
+import assert from "assert";
 import z from "zod";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import { EntityPropNode, RenderingNode } from "../types/types";
-import { zodTypeToRenderingNode, propToZodType } from "./zod-converter";
+import type { EntityPropNode, RenderingNode } from "../types/types";
+import { propToZodType, zodTypeToRenderingNode } from "./zod-converter";
 
 /**
  * 엔티티의 특정 subset을 RenderingNode로 변환합니다.
@@ -21,12 +22,15 @@ export async function getColumnsNode(entityId: string, subsetKey: string): Promi
     children: propNodes,
   };
 
+  // biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
   const columnsZodType = (await propNodeToZodType(rootPropNode)) as z.ZodObject<any>;
 
   const columnsNode = zodTypeToRenderingNode(columnsZodType);
-  columnsNode.children = columnsNode.children!.map((child) => {
+  assert(columnsNode.children !== undefined, "columnsNode.children is undefined");
+  columnsNode.children = columnsNode.children.map((child) => {
     if (child.renderType === "object") {
-      const pickedCol = child.children!.find((cc) => ["title", "name"].includes(cc.name));
+      assert(child.children !== undefined, "child.children is undefined");
+      const pickedCol = child.children.find((cc) => ["title", "name"].includes(cc.name));
       if (pickedCol) {
         return {
           ...child,
@@ -43,7 +47,7 @@ export async function getColumnsNode(entityId: string, subsetKey: string): Promi
       child.element &&
       child.element.renderType === "object"
     ) {
-      const pickedCol = child.element!.children!.find((cc) => ["title", "name"].includes(cc.name));
+      const pickedCol = child.element?.children?.find((cc) => ["title", "name"].includes(cc.name));
       if (pickedCol) {
         return {
           ...child,
@@ -91,11 +95,13 @@ export async function propNodeToZodType(propNode: EntityPropNode): Promise<z.Zod
       }
     }
   } else if (propNode.nodeType === "object") {
-    const obj = await propNode.children.reduce(async (promise, childPropNode) => {
-      const result = await promise;
-      result[childPropNode.prop!.name] = await propNodeToZodType(childPropNode);
-      return result;
-    }, {} as any);
+    const entries = await Promise.all(
+      propNode.children.map(async (childPropNode) => {
+        assert(childPropNode.prop?.name !== undefined, "childPropNode.prop.name is undefined");
+        return [childPropNode.prop.name, await propNodeToZodType(childPropNode)] as const;
+      }),
+    );
+    const obj = Object.fromEntries(entries);
 
     if (propNode.prop?.nullable === true) {
       return z.object(obj).nullable();

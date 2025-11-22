@@ -1,21 +1,22 @@
 import inflection from "inflection";
+import difference from "lodash-es/difference.js";
 import groupBy from "lodash-es/groupBy.js";
 import sortBy from "lodash-es/sortBy.js";
-import difference from "lodash-es/difference.js";
 import uniq from "lodash-es/uniq.js";
-import { TemplateOptions } from "../../types/types";
-import { EntityNamesRecord } from "../../entity/entity-manager";
-import { ApiParamType, ApiParam } from "../../types/types";
 import {
-  apiParamTypeToTsType,
   apiParamToTsCode,
+  apiParamToTsCodeAsObject,
+  apiParamTypeToTsType,
   unwrapPromiseOnce,
   zodTypeToTsTypeDef,
-  apiParamToTsCodeAsObject,
 } from "../../api/code-converters";
-import { ExtendedApi } from "../../api/decorators";
-import { Template } from "../template";
+import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
+import type { EntityNamesRecord } from "../../entity/entity-manager";
+import type { TemplateOptions } from "../../types/types";
+import { type ApiParam, ApiParamType } from "../../types/types";
+import { assertDefined } from "../../utils/utils";
+import { Template } from "../template";
 
 export class Template__service extends Template {
   constructor() {
@@ -99,7 +100,7 @@ export class Template__service extends Template {
 
             // 리턴 타입 정의
             const returnTypeDef = apiParamTypeToTsType(
-              unwrapPromiseOnce(api.returnType),
+              assertDefined(unwrapPromiseOnce(api.returnType)),
               importKeys,
             );
 
@@ -181,7 +182,7 @@ ${methodCodes}
     payloadDef: string,
   ) {
     const methodNameAxios = api.options.resourceName
-      ? "get" + inflection.camelize(api.options.resourceName)
+      ? `get${inflection.camelize(api.options.resourceName)}`
       : api.methodName;
 
     if (api.options.httpMethod === "GET") {
@@ -266,8 +267,8 @@ export async function ${api.methodName}${typeParamsDef}(
     payloadDef: string,
   ) {
     const methodNameSwr = api.options.resourceName
-      ? "use" + inflection.camelize(api.options.resourceName)
-      : "use" + inflection.camelize(api.methodName);
+      ? `use${inflection.camelize(api.options.resourceName)}`
+      : `use${inflection.camelize(api.methodName)}`;
     return `  export function ${inflection.camelize(methodNameSwr, true)}${typeParamsDef}(${[
       paramsDef,
       "swrOptions?: SwrOptions",
@@ -305,8 +306,8 @@ export async function ${api.methodName}${typeParamsDef}(${paramsDef}): Promise<R
     }
 
     const methodNameStream = api.options.resourceName
-      ? "use" + inflection.camelize(api.options.resourceName)
-      : "use" + inflection.camelize(api.methodName);
+      ? `use${inflection.camelize(api.options.resourceName)}`
+      : `use${inflection.camelize(api.methodName)}`;
     const methodNameStreamCamelized = inflection.camelize(methodNameStream, true);
 
     const eventsTypeDef = zodTypeToTsTypeDef(api.streamOptions.events);

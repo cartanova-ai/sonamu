@@ -1,6 +1,8 @@
-import { DatabaseSchemaExtend } from "../types/types";
-import { Puri } from "./puri";
-import { PuriWrapper } from "./puri-wrapper";
+/** biome-ignore-all lint/suspicious/noExplicitAny: Puri.types.ts는 다양한 타입을 사용하고 있습니다. */
+
+import type { DatabaseSchemaExtend } from "../types/types";
+import type { Puri } from "./puri";
+import type { PuriWrapper } from "./puri-wrapper";
 
 // 메타데이터 컬럼 제외
 type MetadataColumns = "__fulltext__" | "__virtual__";

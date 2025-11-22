@@ -1,19 +1,20 @@
-import { AsyncLocalStorage } from "async_hooks";
-import { readFile } from "fs/promises";
-import path from "path";
 import assert from "assert";
+import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { readFile } from "fs/promises";
 import type { IncomingMessage, Server, ServerResponse } from "http";
+import path from "path";
 import type { ZodObject } from "zod";
 import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
+import { Naite } from "../naite/naite";
 import type { Syncer } from "../syncer/syncer";
 import type { SonamuFastifyConfig } from "../types/types";
+import type { AbsolutePath } from "../utils/path-utils";
+import type { SonamuConfig, SonamuServerOptions } from "./config";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
-import type { SonamuConfig, SonamuServerOptions } from "./config";
-import type { AbsolutePath } from "../utils/path-utils";
 
 export type SonamuSecrets = {
   [key: string]: string;
@@ -41,6 +42,7 @@ class SonamuClass {
         reply: null,
         headers: {},
         createSSE: () => {},
+        // biome-ignore lint/suspicious/noExplicitAny: 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
         naiteStore: new Map<string, any>(),
       } as unknown as Context;
     } else {
@@ -64,7 +66,7 @@ class SonamuClass {
     if (this._apiRootPath === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._apiRootPath!;
+    return this._apiRootPath;
   }
   get appRootPath(): string {
     return this.apiRootPath.split(path.sep).slice(0, -1).join(path.sep);
@@ -78,7 +80,7 @@ class SonamuClass {
     if (this._dbConfig === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._dbConfig!;
+    return this._dbConfig;
   }
 
   private _syncer: Syncer | null = null;
@@ -89,7 +91,7 @@ class SonamuClass {
     if (this._syncer === null) {
       throw new Error("Sonamu has not been initialized");
     }
-    return this._syncer!;
+    return this._syncer;
   }
 
   private _config: SonamuConfig | null = null;
@@ -302,9 +304,12 @@ class SonamuClass {
     }
 
     // 전체 라우팅 리스트
-    server.get(`${this.config.api.route.prefix}/routes`, async (_request, _reply): Promise<any> => {
-      return this.syncer.apis;
-    });
+    server.get(
+      `${this.config.api.route.prefix}/routes`,
+      async (_request, _reply): Promise<typeof this.syncer.apis> => {
+        return this.syncer.apis;
+      },
+    );
 
     // Healthcheck API
     server.get(
@@ -330,7 +335,7 @@ class SonamuClass {
         throw new NotFoundException("존재하지 않는 API 접근입니다.");
       });
     } else {
-      this.syncer.apis.map((api) => {
+      for (const api of this.syncer.apis) {
         // model
         if (this.syncer.models[api.modelName] === undefined) {
           throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
@@ -338,11 +343,11 @@ class SonamuClass {
 
         // route
         server.route({
-          method: api.options.httpMethod!,
+          method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
           handler: this.getApiHandler(api, config),
         }); // END server.route
-      });
+      }
     }
   }
 
@@ -421,7 +426,7 @@ class SonamuClass {
               reply,
               headers: request.headers,
               createSSE,
-              naiteStore: new Map<string, any>(),
+              naiteStore: Naite.createStore(),
               // auth
               user: request.user ?? null,
               passport: {
@@ -438,6 +443,7 @@ class SonamuClass {
       const model = this.syncer.models[api.modelName];
       return this.asyncLocalStorage.run({ context }, async () => {
         const { ApiParamType } = await import("../types/types");
+        // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
         const result = await (model as any)[api.methodName].apply(
           model,
           api.parameters.map((param) => {

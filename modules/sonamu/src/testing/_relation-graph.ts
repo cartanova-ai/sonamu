@@ -1,10 +1,10 @@
-import { RelationNode, EntityProp, FixtureRecord } from "../types/types";
 import { EntityManager } from "../entity/entity-manager";
+import type { EntityProp, FixtureRecord, RelationNode } from "../types/types";
 import {
-  isRelationProp,
   isBelongsToOneRelationProp,
-  isOneToOneRelationProp,
   isManyToManyRelationProp,
+  isOneToOneRelationProp,
+  isRelationProp,
 } from "../types/types";
 
 // 관계 그래프 처리를 별도 클래스로 분리
@@ -25,7 +25,10 @@ export class RelationGraph {
 
     // 2. 의존성 추가
     for (const fixture of fixtures) {
-      const node = this.graph.get(fixture.fixtureId)!;
+      const node = this.graph.get(fixture.fixtureId);
+      if (node === undefined) {
+        throw new Error(`Node not found for fixture ${fixture.fixtureId}`);
+      }
 
       for (const [, column] of Object.entries(fixture.columns)) {
         const prop = column.prop as EntityProp;
@@ -41,12 +44,12 @@ export class RelationGraph {
             }
           } else if (isManyToManyRelationProp(prop)) {
             // ManyToMany 관계의 경우 양방향 의존성 추가
-            const relatedIds = column.value as number[];
+            const relatedIds = column.value as unknown as number[];
             for (const relatedId of relatedIds) {
               const relatedFixtureId = `${prop.with}#${relatedId}`;
               if (this.graph.has(relatedFixtureId)) {
                 node.related.add(relatedFixtureId);
-                this.graph.get(relatedFixtureId)!.related.add(fixture.fixtureId);
+                this.graph.get(relatedFixtureId)?.related.add(fixture.fixtureId);
               }
             }
           }
@@ -69,11 +72,17 @@ export class RelationGraph {
 
       tempVisited.add(fixtureId);
 
-      const node = this.graph.get(fixtureId)!;
+      const node = this.graph.get(fixtureId);
+      if (node === undefined) {
+        throw new Error(`Node not found for fixture ${fixtureId}`);
+      }
       const entity = EntityManager.get(node.entityId);
 
       for (const depId of node.related) {
-        const depNode = this.graph.get(depId)!;
+        const depNode = this.graph.get(depId);
+        if (depNode === undefined) {
+          throw new Error(`Node not found for fixture ${depId}`);
+        }
 
         // BelongsToOne 관계이면서 nullable이 아닌 경우 먼저 방문
         const relationProp = entity.props.find(

@@ -8,8 +8,8 @@ export abstract class SoException extends Error {
   }
 }
 
-export function isSoException(err: any): err is SoException {
-  return err.statusCode !== undefined;
+export function isSoException(err: unknown): err is SoException {
+  return (err as SoException).statusCode !== undefined;
 }
 
 /*

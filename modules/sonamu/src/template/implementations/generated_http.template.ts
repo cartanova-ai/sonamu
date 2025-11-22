@@ -1,9 +1,8 @@
 import qs from "qs";
 import { z } from "zod";
 import { getZodObjectFromApi } from "../../api/code-converters";
-import { ExtendedApi } from "../../api/decorators";
+import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
-import { TemplateOptions } from "../../types/types";
 import { formatCode } from "../../utils/formatter";
 import { Template } from "../template";
 
@@ -21,7 +20,7 @@ export class Template__generated_http extends Template {
     };
   }
 
-  async render({}: TemplateOptions["generated_http"]) {
+  async render() {
     const {
       syncer: { types, apis },
       config: {
@@ -103,13 +102,16 @@ export class Template__generated_http extends Template {
     } else if (zodType instanceof z.ZodUnknown) {
       return "unknown";
     } else if (zodType instanceof z.ZodTuple) {
+      /** biome-ignore lint/suspicious/noExplicitAny: ZodTuple 타입 사용 */
       return zodType.def.items.map((item: any) => this.zodTypeToReqDefault(item, name));
     } else if (zodType instanceof z.ZodDate) {
       return "2000-01-01";
     } else if (zodType instanceof z.ZodLiteral) {
       return zodType.value;
     } else if (zodType instanceof z.ZodRecord || zodType instanceof z.ZodMap) {
+      // biome-ignore lint/suspicious/noExplicitAny: ZodRecord 타입 사용
       const kvDef = (zodType as z.ZodRecord<any, z.ZodType> | z.ZodMap<z.ZodType, z.ZodType>).def;
+      // biome-ignore lint/suspicious/noExplicitAny: ZodIntersection 타입 사용
       const key = this.zodTypeToReqDefault(kvDef.keyType, name) as any;
       const value = this.zodTypeToReqDefault(kvDef.valueType, name);
       return { [key]: value };
@@ -130,6 +132,7 @@ export class Template__generated_http extends Template {
 
   resolveApiParams(
     api: ExtendedApi,
+    // biome-ignore lint/suspicious/noExplicitAny: ZodObject 타입 사용
     references: { [typeName: string]: z.ZodObject<any> },
   ): { [key: string]: unknown } {
     const reqType = getZodObjectFromApi(api, references);

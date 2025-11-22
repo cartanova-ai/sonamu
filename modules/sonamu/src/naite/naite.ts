@@ -1,9 +1,14 @@
-import { Sonamu } from "../api/sonamu";
-import { expect } from "vitest";
+/** biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함 */
 
-export class Naite {
+import { expect } from "vitest";
+import { Sonamu } from "../api/sonamu";
+
+export type NaiteStore = Map<string, any>;
+
+// Naite 싱글턴 객체 (추후 logger 연결 등의 상태 관리 필요성 고려)
+export const Naite = {
   // 테스트 로그 기록
-  static t(name: string, value: any) {
+  t(name: string, value: any) {
     const context = Sonamu.getContext();
     const store = context?.naiteStore;
 
@@ -23,46 +28,50 @@ export class Naite {
       // 값이 없는 경우 추가
       store.set(name, value);
     }
-  }
+  },
 
   // 테스트에서 값 가져오기
-  static get(name: string): any {
+  get(name: string): any {
     const context = Sonamu.getContext();
     if (!context?.naiteStore || !context.naiteStore.has(name)) {
       throw new Error(`Naite.get: \`${name}\` not found`);
     }
     return context?.naiteStore?.get(name);
-  }
+  },
 
   // 전체 리스트 가져오기
-  static getAll(): { [key: string]: any } {
+  getAll(): { [key: string]: any } {
     const context = Sonamu.getContext();
     if (!context?.naiteStore) {
       return {};
     }
     return Object.fromEntries(context.naiteStore.entries());
-  }
+  },
 
   // expect 래퍼
-  static expect(name: string) {
+  expect(name: string) {
     return expect(this.get(name));
-  }
+  },
+
+  createStore(): NaiteStore {
+    return new Map<string, any>();
+  },
 
   // 일반 로그 레벨
-  static d(_message: string) {
+  d(_message: string) {
     // TODO: Logger 연결
     console.log(`[DEBUG] ${_message}`);
-  }
-  static i(_message: string) {
+  },
+  i(_message: string) {
     // TODO: Logger 연결
     console.log(`[INFO] ${_message}`);
-  }
-  static w(_message: string) {
+  },
+  w(_message: string) {
     // TODO: Logger 연결
     console.log(`[WARN] ${_message}`);
-  }
-  static e(_message: string) {
+  },
+  e(_message: string) {
     // TODO: Logger 연결
     console.log(`[ERROR] ${_message}`);
-  }
-}
+  },
+};

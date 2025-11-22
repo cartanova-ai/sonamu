@@ -1,14 +1,14 @@
 import path from "path";
+import { z } from "zod";
+import type { BaseFrameClass } from "../api/base-frame";
+import type { ApiDecoratorOptions } from "../api/decorators";
+import { Sonamu } from "../api/sonamu";
+import type { BaseModelClass } from "../database/base-model";
+import type { ApiParam, ApiParamType } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
-import { z } from "zod";
-import { Sonamu } from "../api/sonamu";
+import { type AbsolutePath, runtimePath } from "../utils/path-utils";
 import { readApisFromFile } from "./api-parser";
-import { BaseFrameClass } from "../api/base-frame";
-import { BaseModelClass } from "../database/base-model";
-import { AbsolutePath, runtimePath } from "../utils/path-utils";
-import { ApiParam, ApiParamType } from "../types/types";
-import { ApiDecoratorOptions } from "../api/decorators";
 
 export type LoadedApis = {
   typeParameters: ApiParamType.TypeParam[];
@@ -20,6 +20,7 @@ export type LoadedApis = {
   options: ApiDecoratorOptions;
 }[];
 
+// biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
 export type LoadedTypes = { [typeName: string]: z.ZodObject<any> };
 
 export type LoadedModels = {
@@ -43,11 +44,9 @@ export async function loadApis(): Promise<LoadedApis> {
   const modelPaths = (await globAsync(modelPathsPattern)) as AbsolutePath[];
 
   const apis: LoadedApis = [];
-  let count = 0;
   for (const filePath of modelPaths) {
     const parsedApis = await readApisFromFile(filePath);
     apis.push(...parsedApis);
-    count++;
   }
   // console.log(
   //   chalk.gray(`[Loading] Loaded APIs from "*.model.ts" files: ${count} files.`)
@@ -67,7 +66,7 @@ export async function loadModels(): Promise<LoadedModels> {
   const modelPaths = await globAsync(modelPathsPattern);
 
   const models: LoadedModels = {};
-  let count = 0;
+  let _count = 0;
   for (const filePath of modelPaths) {
     const importedMembers = await importMembers<BaseModelClass | BaseFrameClass>(filePath);
 
@@ -76,7 +75,7 @@ export async function loadModels(): Promise<LoadedModels> {
         models[name] = value;
       }
     }
-    count++;
+    _count++;
   }
   // console.log(
   //   chalk.gray(
@@ -98,15 +97,16 @@ export async function loadTypes(): Promise<LoadedTypes> {
   const typePaths = (await Promise.all(typePathsPatterns.map(globAsync))).flat();
 
   const types: LoadedTypes = {};
-  let count = 0;
+  let _count = 0;
   for (const filePath of typePaths) {
+    // biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
     const importedMembers = await importMembers<z.ZodObject<any>>(filePath);
     for (const { name, value } of importedMembers) {
       if (value instanceof z.ZodObject) {
         types[name] = value;
       }
     }
-    count++;
+    _count++;
   }
   // console.log(
   //   chalk.gray(

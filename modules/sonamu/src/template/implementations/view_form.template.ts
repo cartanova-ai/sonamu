@@ -1,11 +1,11 @@
 import inflection from "inflection";
-import { z } from "zod";
-import { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
-import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
-import { RenderedTemplate } from "../template";
-import { Template } from "../template";
-import { getRelationPropFromColName, getEnumInfoFromColName } from "../helpers";
 import uniq from "lodash-es/uniq.js";
+import { z } from "zod";
+import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
+import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
+import type { RenderedTemplate } from "../template";
+import { Template } from "../template";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 
 export class Template__view_form extends Template {

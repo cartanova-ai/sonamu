@@ -1,28 +1,28 @@
+import bcrypt from "bcrypt";
 import {
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
-  UnauthorizedException,
   api,
+  asArray,
+  BadRequestException,
+  type DatabaseSchemaExtend,
+  exhaustive,
+  type ListResult,
+  Naite,
+  NotFoundException,
+  type PuriWrapper,
   Sonamu,
   transactional,
-  DatabaseSchemaExtend,
-  PuriWrapper,
-  exhaustive,
-  Naite,
+  UnauthorizedException,
 } from "sonamu";
-import { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userSubsetQueries } from "../sonamu.generated.sso";
-import {
+import { CustomBaseModelClass } from "./custom-base-model-class";
+import type {
   UserListParams,
-  UserSaveParams,
   UserLoginParams,
   UserRegisterParams,
+  UserSaveParams,
   UserSearchParams,
 } from "./user.types";
-import bcrypt from "bcrypt";
-import { CustomBaseModelClass } from "./custom-base-model-class";
 
 /*
   User Model
@@ -123,7 +123,7 @@ class UserModelClass extends CustomBaseModelClass<
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("users", sp);
     });
 
@@ -330,9 +330,9 @@ const puriBasedUserSubsetQueries = {
   },
 };
 const puriBasedUserSubsetLoaders = {
-  A: userSubsetQueries["P"].loaders,
-  P: userSubsetQueries["A"].loaders,
-  SS: userSubsetQueries["SS"].loaders,
+  A: userSubsetQueries.P.loaders,
+  P: userSubsetQueries.A.loaders,
+  SS: userSubsetQueries.SS.loaders,
 };
 
 export const UserModel = new UserModelClass(puriBasedUserSubsetQueries, puriBasedUserSubsetLoaders);

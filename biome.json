@@ -1,11 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.3.7/schema.json",
   "linter": {
-    "enabled": false,
+    "enabled": true,
     "rules": {
       "recommended": true,
       "style": {
         "useNodejsImportProtocol": "off"
+      },
+      "correctness": {
+        "useParseIntRadix": "off"
       }
     }
   },

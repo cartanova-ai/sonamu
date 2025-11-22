@@ -1,6 +1,6 @@
 import path from "path";
 import { Sonamu } from "../api/sonamu";
-import { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
+import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 
 export type FileType =
   | "model"

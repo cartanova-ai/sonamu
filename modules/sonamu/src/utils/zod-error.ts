@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 
 type ValidationError = {
   path: string[];

@@ -1,10 +1,12 @@
-import { Knex } from "knex";
-import { Puri } from "./puri";
-import { UBRef, UpsertBuilder } from "./upsert-builder";
-import { DatabaseSchemaExtend } from "../types/types";
+/** biome-ignore-all lint/suspicious/noExplicitAny: PuriWrapper는 다양한 타입을 사용하고 있습니다. */
+
 import chalk from "chalk";
-import { DBPreset } from "./db";
-import { OmitMetadataColumns } from "./puri.types";
+import type { Knex } from "knex";
+import type { DatabaseSchemaExtend } from "../types/types";
+import type { DBPreset } from "./db";
+import { Puri } from "./puri";
+import type { OmitMetadataColumns } from "./puri.types";
+import type { UBRef, UpsertBuilder } from "./upsert-builder";
 
 type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
 

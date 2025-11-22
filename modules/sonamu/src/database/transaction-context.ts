@@ -1,5 +1,5 @@
-import type { PuriTransactionWrapper } from "./puri-wrapper";
 import type { DBPreset } from "./db";
+import type { PuriTransactionWrapper } from "./puri-wrapper";
 
 export class TransactionContext {
   private transactions: Map<DBPreset, PuriTransactionWrapper> = new Map();

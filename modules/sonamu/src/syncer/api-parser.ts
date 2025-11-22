@@ -1,10 +1,10 @@
-import { ApiParam, ApiParamType } from "../types/types";
-import { readFile } from "fs/promises";
-import ts from "typescript";
-import { ExtendedApi, registeredApis } from "../api/decorators";
-import inflection from "inflection";
 import assert from "assert";
-import { AbsolutePath } from "../utils/path-utils";
+import { readFile } from "fs/promises";
+import inflection from "inflection";
+import ts from "typescript";
+import { type ExtendedApi, registeredApis } from "../api/decorators";
+import type { ApiParam, ApiParamType } from "../types/types";
+import type { AbsolutePath } from "../utils/path-utils";
 
 /**
  * TypeScript 파일을 파싱하여 API 메소드 정보를 추출합니다.
@@ -12,7 +12,7 @@ import { AbsolutePath } from "../utils/path-utils";
  * @param filePath - 파싱할 TypeScript 파일의 절대 경로
  * @returns API 메소드 정보 배열 (타입 파라미터, 파라미터, 리턴 타입 등)
  */
-export async function readApisFromFile(filePath: AbsolutePath) {
+export async function readApisFromFile(filePath: AbsolutePath): Promise<ExtendedApi[]> {
   if (!filePath.endsWith(".ts")) {
     throw new Error(
       `${filePath} does not seem to be a TypeScript file. Please check the file path. We only support parsing TypeScript files.`,
@@ -68,7 +68,7 @@ export async function readApisFromFile(filePath: AbsolutePath) {
       if (node.type === undefined) {
         throw new Error(`리턴 타입이 기재되지 않은 메소드 ${modelName}.${methodName}`);
       }
-      const returnType = resolveTypeNode(node.type!);
+      const returnType = resolveTypeNode(node.type);
 
       methods.push({
         modelName,
@@ -104,11 +104,14 @@ export async function readApisFromFile(filePath: AbsolutePath) {
     const foundMethod = methods.find(
       (method) => method.modelName === api.modelName && method.methodName === api.methodName,
     );
+    if (!foundMethod) {
+      throw new Error(`API ${api.modelName}.${api.methodName} not found in ${filePath}`);
+    }
     return {
       ...api,
-      typeParameters: foundMethod!.typeParameters,
-      parameters: foundMethod!.parameters,
-      returnType: foundMethod!.returnType,
+      typeParameters: foundMethod?.typeParameters,
+      parameters: foundMethod?.parameters,
+      returnType: foundMethod?.returnType,
     };
   });
   return extendedApis;
@@ -132,7 +135,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
       return "null";
     case ts.SyntaxKind.VoidKeyword:
       return "void";
-    case ts.SyntaxKind.LiteralType:
+    case ts.SyntaxKind.LiteralType: {
       const literal = (typeNode as ts.LiteralTypeNode).literal;
       if (ts.isStringLiteral(literal)) {
         return {
@@ -156,13 +159,15 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
         }
         throw new Error("알 수 없는 리터럴");
       }
-    case ts.SyntaxKind.ArrayType:
+    }
+    case ts.SyntaxKind.ArrayType: {
       const arrNode = typeNode as ts.ArrayTypeNode;
       return {
         t: "array",
         elementsType: resolveTypeNode(arrNode.elementType),
       };
-    case ts.SyntaxKind.TypeLiteral:
+    }
+    case ts.SyntaxKind.TypeLiteral: {
       const literalNode = typeNode as ts.TypeLiteralNode;
       return {
         t: "object",
@@ -189,6 +194,7 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
           }
         }),
       };
+    }
     case ts.SyntaxKind.TypeReference:
       return {
         t: "ref",

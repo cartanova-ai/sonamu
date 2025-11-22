@@ -1,10 +1,10 @@
-import { rm } from "fs/promises";
-import { exists } from "../utils/fs-utils";
 import chalk from "chalk";
-import { EntityManager } from "../entity/entity-manager";
-import { TemplateOptions } from "../types/types";
-import { BadRequestException } from "../exceptions/so-exceptions";
+import { rm } from "fs/promises";
 import { Sonamu } from "../api/sonamu";
+import { EntityManager } from "../entity/entity-manager";
+import { BadRequestException } from "../exceptions/so-exceptions";
+import type { TemplateOptions } from "../types/types";
+import { exists } from "../utils/fs-utils";
 import { generateTemplate } from "./code-generator";
 
 /**
@@ -12,7 +12,7 @@ import { generateTemplate } from "./code-generator";
  * entityId는 반드시 CamelCase 형식이어야 합니다.
  */
 export async function createEntity(
-  form: Omit<TemplateOptions["entity"], "title"> & { title?: string },
+  form: Omit<TemplateOptions["entity"], "title"> & { title: string },
 ) {
   if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
     throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
@@ -41,9 +41,9 @@ export async function delEntity(entityId: string): Promise<{ delPaths: string[] 
       return [
         `${Sonamu.apiRootPath}/src/application/${entity.names.fs}`,
         `${Sonamu.apiRootPath}/dist/application/${entity.names.fs}`,
-        ...Sonamu.config.sync.targets
-          .map((target) => [`${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`])
-          .flat(),
+        ...Sonamu.config.sync.targets.flatMap((target) => [
+          `${Sonamu.appRootPath}/${target}/src/services/${entity.names.fs}`,
+        ]),
       ];
     }
   })(); // iife

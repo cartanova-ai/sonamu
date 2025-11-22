@@ -1,6 +1,6 @@
 import inflection from "inflection";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { isEnumProp, isRelationProp, RelationProp } from "../types/types";
+import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { isEnumProp, isRelationProp, type RelationProp } from "../types/types";
 
 /**
  * Enum의 표시용 라벨을 가져옵니다.
@@ -15,7 +15,7 @@ export function getLabel(entityId: string, enumId: string): string {
     const enumProp = EntityManager.get(entityId).props.find(
       (prop) => `${entityId}${inflection.camelize(prop.name)}` === enumId,
     );
-    if (enumProp && enumProp.desc) {
+    if (enumProp?.desc) {
       return enumProp.desc;
     }
     return enumId;
@@ -46,7 +46,7 @@ export function getEnumInfoFromColName(
     };
   } else {
     const idCandidate = inflection.camelize(
-      inflection.underscore(entityId) + "_" + inflection.underscore(colName),
+      `${inflection.underscore(entityId)}_${inflection.underscore(colName)}`,
       false,
     );
     try {

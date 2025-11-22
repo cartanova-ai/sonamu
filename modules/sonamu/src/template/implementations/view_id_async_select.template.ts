@@ -1,5 +1,5 @@
-import { TemplateOptions } from "../../types/types";
-import { EntityManager, EntityNamesRecord } from "../../entity/entity-manager";
+import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import type { TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 
 export class Template__view_id_async_select extends Template {

@@ -1,34 +1,34 @@
-import path, { dirname } from "path";
+import { hot } from "@sonamu-kit/hot-hook";
+import assert from "assert";
+import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
-import { exists } from "../utils/fs-utils";
 import groupBy from "lodash-es/groupBy.js";
 import uniq from "lodash-es/uniq.js";
-import { EntityManager, EntityNamesRecord } from "../entity/entity-manager";
-import { GenerateOptions } from "../types/types";
-import chalk from "chalk";
-import { TemplateKey, TemplateOptions } from "../types/types";
-import { Sonamu } from "../api/sonamu";
-import assert from "assert";
 import { minimatch } from "minimatch";
+import path, { dirname } from "path";
+import type { z } from "zod";
+import { Sonamu } from "../api/sonamu";
+import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { Template } from "../template/template";
+import type { GenerateOptions } from "../types/types";
+import { TemplateKey, type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
+import { exists } from "../utils/fs-utils";
+import type { AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
-import { AbsolutePath } from "../utils/path-utils";
+import { areFilesSame, findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
-import { Template } from "../template";
-import { FileType, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
-import { findChangedFilesUsingChecksums, renewChecksums, areFilesSame } from "./checksum";
+import { createEntity, delEntity } from "./entity-operations";
+import { type FileType, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
 import {
+  type LoadedApis,
+  type LoadedModels,
+  type LoadedTypes,
   loadApis,
   loadModels,
   loadTypes,
-  LoadedApis,
-  LoadedModels,
-  LoadedTypes,
 } from "./module-loader";
-import { createEntity, delEntity } from "./entity-operations";
-import { z } from "zod";
-import { hot } from "@sonamu-kit/hot-hook";
 
 type DiffGroups = {
   [key in FileType]: AbsolutePath[];
@@ -210,7 +210,7 @@ export class Syncer {
 
     // types 생성(entity 새로 추가된 경우)
     // parentId가 없고, types가 없는 경우에만 생성
-    const entityId = EntityManager.getEntityIdFromPath(diffGroups["entity"]?.[0]);
+    const entityId = EntityManager.getEntityIdFromPath(diffGroups.entity?.[0]);
 
     if (entityId) {
       const entity = EntityManager.get(entityId);
@@ -226,8 +226,8 @@ export class Syncer {
 
     await this.actionGenerateSchemas();
 
-    diffGroups["generated"] = uniq([
-      ...(diffGroups["generated"] ?? []),
+    diffGroups.generated = uniq([
+      ...(diffGroups.generated ?? []),
       path.join(Sonamu.apiRootPath, "src/application/sonamu.generated.ts") as AbsolutePath,
     ]);
     diffTypes.push("generated");
@@ -237,9 +237,9 @@ export class Syncer {
     diffGroups: DiffGroups,
   ): Promise<FileType[]> {
     const tsPaths = uniq([
-      ...(diffGroups["types"] ?? []),
-      ...(diffGroups["functions"] ?? []),
-      ...(diffGroups["generated"] ?? []),
+      ...(diffGroups.types ?? []),
+      ...(diffGroups.functions ?? []),
+      ...(diffGroups.generated ?? []),
     ]);
 
     // console.log(
@@ -254,7 +254,7 @@ export class Syncer {
   }
 
   private async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
-    const mergedGroup = [...(diffGroups["model"] ?? []), ...(diffGroups["frame"] ?? [])];
+    const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
     // console.log(
     //   chalk.gray(
@@ -332,7 +332,7 @@ export class Syncer {
     return (
       await Promise.all(
         paramsArray.map(async (params) =>
-          generateTemplate("service", params, {
+          generateTemplate("service", params as TemplateOptions["service"], {
             overwrite: true,
           }),
         ),
@@ -347,7 +347,11 @@ export class Syncer {
    * @returns 생성된 파일 경로.
    */
   private async actionGenerateHttps(): Promise<AbsolutePath> {
-    const [res] = await generateTemplate("generated_http", {}, { overwrite: true });
+    const [res] = await generateTemplate(
+      "generated_http",
+      { entityId: "dummy" },
+      { overwrite: true },
+    );
     assert(res);
     return res;
   }
@@ -374,7 +378,7 @@ export class Syncer {
                 await mkdir(dir, { recursive: true });
               }
               console.log(
-                chalk.bold("Copied: ") + chalk.blue(dst.replace(Sonamu.appRootPath + "/", "")),
+                chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
               );
               await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
@@ -439,7 +443,7 @@ export class Syncer {
   async checkExists(
     entityId: string,
     enums: {
-      [name: string]: z.ZodEnum<any>;
+      [name: string]: z.ZodEnum<Readonly<Record<string, string | number>>>;
     },
   ): Promise<Record<`${TemplateKey}${string}`, boolean>> {
     const keys: TemplateKey[] = TemplateKey.options;
@@ -489,7 +493,7 @@ export class Syncer {
   /**
    * 하위호환용 프록시 메소드입니다.
    */
-  async createEntity(form: Omit<TemplateOptions["entity"], "title"> & { title?: string }) {
+  async createEntity(form: TemplateOptions["entity"]) {
     return await createEntity(form);
   }
 
@@ -503,9 +507,9 @@ export class Syncer {
   /**
    * 하위호환용 프록시 메소드입니다.
    */
-  async generateTemplate(
-    key: TemplateKey,
-    templateOptions: any,
+  async generateTemplate<T extends TemplateKey>(
+    key: T,
+    templateOptions: TemplateOptions[T],
     _generateOptions?: GenerateOptions,
   ) {
     return await generateTemplate(key, templateOptions, _generateOptions);
@@ -514,7 +518,10 @@ export class Syncer {
   /**
    * 하위호환용 프록시 메소드입니다.
    */
-  async renderTemplate(key: TemplateKey, templateOptions: any) {
+  async renderTemplate<T extends keyof TemplateOptions>(
+    key: T,
+    templateOptions: TemplateOptions[T],
+  ) {
     return await renderTemplate(key, templateOptions);
   }
 

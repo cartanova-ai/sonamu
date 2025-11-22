@@ -1,19 +1,20 @@
 import chalk from "chalk";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-import path from "path";
-import { createRequire } from "module";
-import { tsicli } from "tsicli";
 import { execSync, spawn } from "child_process";
 import { mkdir, readdir, writeFile } from "fs/promises";
-import { exists } from "../utils/fs-utils";
+import knex, { type Knex } from "knex";
+import { createRequire } from "module";
+import path from "path";
 import process from "process";
+import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
-import knex, { Knex } from "knex";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
+import { exists } from "../utils/fs-utils";
 import { findApiRootPath } from "../utils/utils";
 
 let migrator: Migrator;
@@ -310,7 +311,7 @@ async function stub_practice(name: string) {
     const filteredSeqs = fileNames
       .filter((fileName) => fileName.startsWith("p") && fileName.endsWith(".ts"))
       .map((fileName) => {
-        const [, seqNo] = fileName.match(/^p([0-9]+)\-/) ?? ["0", "0"];
+        const [, seqNo] = fileName.match(/^p([0-9]+)-/) ?? ["0", "0"];
         return parseInt(seqNo);
       })
       .sort((a, b) => b - a);
@@ -350,7 +351,7 @@ async function stub_practice(name: string) {
 }
 
 async function stub_entity(entityId: string) {
-  await Sonamu.syncer.createEntity({ entityId });
+  await Sonamu.syncer.createEntity({ entityId, title: entityId });
 }
 
 async function scaffold_model(entityId: string) {

@@ -1,12 +1,11 @@
-import { glob } from "fs/promises";
+import assert from "assert";
+import { glob, readFile } from "fs/promises";
 import inflection from "inflection";
 import path from "path";
-import { Entity } from "./entity";
-import { EntityJson } from "../types/types";
 import { Sonamu } from "../api/sonamu";
-import { readFile } from "fs/promises";
-import { AbsolutePath } from "../utils/path-utils";
-import assert from "assert";
+import type { EntityJson } from "../types/types";
+import type { AbsolutePath } from "../utils/path-utils";
+import { Entity } from "./entity";
 
 export type EntityNamesRecord = Record<
   "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
@@ -29,10 +28,8 @@ class EntityManagerClass {
     }
     const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
 
-    let count = 0;
-    for await (const file of glob(path.resolve(pathPattern!))) {
+    for await (const file of glob(path.resolve(pathPattern))) {
       await this.register(JSON.parse((await readFile(file)).toString()));
-      count++;
     }
     // !doSilent &&
     //   console.log(
@@ -141,7 +138,7 @@ class EntityManagerClass {
   getEntityIdFromPath(filePath: AbsolutePath): string {
     const matched = filePath.match(/application\/(.+)\//);
     assert(matched?.[1]);
-    return inflection.camelize(matched[1].replace(/\-/g, "_"));
+    return inflection.camelize(matched[1].replace(/-/g, "_"));
   }
 }
 

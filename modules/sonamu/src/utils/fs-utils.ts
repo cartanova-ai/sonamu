@@ -1,4 +1,4 @@
-import { PathLike, constants } from "fs";
+import { constants, type PathLike } from "fs";
 import { access } from "fs/promises";
 
 /**

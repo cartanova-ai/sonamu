@@ -1,21 +1,24 @@
+/** biome-ignore-all lint/suspicious/noThenProperty: Puri는 thenable 인터페이스를 구현하고 있습니다. */
+/** biome-ignore-all lint/suspicious/noExplicitAny: Puri는 다양한 타입을 사용하고 있습니다. */
+
+import assert from "assert";
+import chalk from "chalk";
 import type { Knex } from "knex";
+import { Naite } from "../naite/naite";
 import type {
   AvailableColumns,
-  SelectObject,
-  ParseSelectObject,
-  WhereCondition,
   ComparisonOperator,
-  ExtractColumnType,
-  SqlExpression,
   Expand,
+  ExtractColumnType,
   FulltextColumns,
-  ResultAvailableColumns,
   InsertData,
+  ParseSelectObject,
+  ResultAvailableColumns,
+  SelectObject,
   SingleTableValue,
+  SqlExpression,
+  WhereCondition,
 } from "./puri.types";
-import chalk from "chalk";
-import assert from "assert";
-import { Naite } from "../naite/naite";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
@@ -337,16 +340,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
-  where(columnOrConditions: any, operatorOrValue?: any, value?: any): this {
+  where(...args: [columnOrConditions: any, operatorOrValue?: any, value?: any]): this {
+    const [columnOrConditions, operatorOrValue, value] = args;
     if (typeof columnOrConditions === "object") {
       this.knexQuery.where(columnOrConditions);
-    } else if (arguments.length === 2) {
+    } else if (typeof value === "undefined") {
       if (operatorOrValue === null) {
         this.knexQuery.whereNull(columnOrConditions);
         return this;
       }
       this.knexQuery.where(columnOrConditions, operatorOrValue);
-    } else if (arguments.length === 3) {
+    } else if (typeof value !== "undefined") {
       if (value === null) {
         if (operatorOrValue === "!=") {
           this.knexQuery.whereNotNull(columnOrConditions);
@@ -623,7 +627,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const indentedLines = [];
     let indentLevel = 0;
 
-    for (let line of lines) {
+    for (const line of lines) {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
 

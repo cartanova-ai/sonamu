@@ -1,7 +1,7 @@
-import type { GuardKey } from "./../api/decorators";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
+import type { GuardKey } from "./../api/decorators";
 
 /*
   Enums
@@ -30,6 +30,7 @@ export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
 export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
+// biome-ignore lint/suspicious/noExplicitAny: any is used to make the type distributive
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 /*
@@ -256,68 +257,68 @@ export type EntityPropNode =
 /*
   Prop Type Guards
 */
-export function isIntegerProp(p: any): p is IntegerProp {
-  return p?.type === "integer";
+export function isIntegerProp(p: unknown): p is IntegerProp {
+  return (p as IntegerProp)?.type === "integer";
 }
-export function isBigIntegerProp(p: any): p is BigIntegerProp {
-  return p?.type === "bigInteger";
+export function isBigIntegerProp(p: unknown): p is BigIntegerProp {
+  return (p as BigIntegerProp)?.type === "bigInteger";
 }
-export function isTextProp(p: any): p is TextProp {
-  return p?.type === "text";
+export function isTextProp(p: unknown): p is TextProp {
+  return (p as TextProp)?.type === "text";
 }
-export function isStringProp(p: any): p is StringProp {
-  return p?.type === "string";
+export function isStringProp(p: unknown): p is StringProp {
+  return (p as StringProp)?.type === "string";
 }
-export function isEnumProp(p: any): p is EnumProp {
-  return p?.type === "enum";
+export function isEnumProp(p: unknown): p is EnumProp {
+  return (p as EnumProp)?.type === "enum";
 }
-export function isFloatProp(p: any): p is FloatProp {
-  return p?.type === "float";
+export function isFloatProp(p: unknown): p is FloatProp {
+  return (p as FloatProp)?.type === "float";
 }
-export function isDoubleProp(p: any): p is DoubleProp {
-  return p?.type === "double";
+export function isDoubleProp(p: unknown): p is DoubleProp {
+  return (p as DoubleProp)?.type === "double";
 }
-export function isDecimalProp(p: any): p is DecimalProp {
-  return p?.type === "decimal";
+export function isDecimalProp(p: unknown): p is DecimalProp {
+  return (p as DecimalProp)?.type === "decimal";
 }
-export function isBooleanProp(p: any): p is BooleanProp {
-  return p?.type === "boolean";
+export function isBooleanProp(p: unknown): p is BooleanProp {
+  return (p as BooleanProp)?.type === "boolean";
 }
-export function isDateProp(p: any): p is DateProp {
-  return p?.type === "date";
+export function isDateProp(p: unknown): p is DateProp {
+  return (p as DateProp)?.type === "date";
 }
-export function isDateTimeProp(p: any): p is DateTimeProp {
-  return p?.type === "datetime";
+export function isDateTimeProp(p: unknown): p is DateTimeProp {
+  return (p as DateTimeProp)?.type === "datetime";
 }
-export function isTimeProp(p: any): p is TimeProp {
-  return p?.type === "time";
+export function isTimeProp(p: unknown): p is TimeProp {
+  return (p as TimeProp)?.type === "time";
 }
-export function isTimestampProp(p: any): p is TimestampProp {
-  return p?.type === "timestamp";
+export function isTimestampProp(p: unknown): p is TimestampProp {
+  return (p as TimestampProp)?.type === "timestamp";
 }
-export function isJsonProp(p: any): p is JsonProp {
-  return p?.type === "json";
+export function isJsonProp(p: unknown): p is JsonProp {
+  return (p as JsonProp)?.type === "json";
 }
-export function isUuidProp(p: any): p is UuidProp {
-  return p?.type === "uuid";
+export function isUuidProp(p: unknown): p is UuidProp {
+  return (p as UuidProp)?.type === "uuid";
 }
-export function isVirtualProp(p: any): p is VirtualProp {
-  return p?.type === "virtual";
+export function isVirtualProp(p: unknown): p is VirtualProp {
+  return (p as VirtualProp)?.type === "virtual";
 }
-export function isRelationProp(p: any): p is RelationProp {
-  return p?.type === "relation";
+export function isRelationProp(p: unknown): p is RelationProp {
+  return (p as RelationProp)?.type === "relation";
 }
-export function isOneToOneRelationProp(p: any): p is OneToOneRelationProp {
-  return p?.relationType === "OneToOne";
+export function isOneToOneRelationProp(p: unknown): p is OneToOneRelationProp {
+  return (p as OneToOneRelationProp)?.relationType === "OneToOne";
 }
-export function isBelongsToOneRelationProp(p: any): p is BelongsToOneRelationProp {
-  return p?.relationType === "BelongsToOne";
+export function isBelongsToOneRelationProp(p: unknown): p is BelongsToOneRelationProp {
+  return (p as BelongsToOneRelationProp)?.relationType === "BelongsToOne";
 }
-export function isHasManyRelationProp(p: any): p is HasManyRelationProp {
-  return p?.relationType === "HasMany";
+export function isHasManyRelationProp(p: unknown): p is HasManyRelationProp {
+  return (p as HasManyRelationProp)?.relationType === "HasMany";
 }
-export function isManyToManyRelationProp(p: any): p is ManyToManyRelationProp {
-  return p?.relationType === "ManyToMany";
+export function isManyToManyRelationProp(p: unknown): p is ManyToManyRelationProp {
+  return (p as ManyToManyRelationProp)?.relationType === "ManyToMany";
 }
 
 type JoinClause =
@@ -328,8 +329,8 @@ type JoinClause =
   | {
       custom: string;
     };
-export function isCustomJoinClause(p: any): p is { custom: string } {
-  return p?.custom;
+export function isCustomJoinClause(p: unknown): p is { custom: string } {
+  return !!(p as { custom: string })?.custom;
 }
 
 /* 서브셋 */
@@ -414,8 +415,8 @@ export type KnexError = {
   sqlMessage: string;
   sqlState: string;
 };
-export function isKnexError(e: any): e is KnexError {
-  return e.code && e.sqlMessage && e.sqlState;
+export function isKnexError(e: unknown): e is KnexError {
+  return !!(e as KnexError)?.code && !!(e as KnexError)?.sqlMessage && !!(e as KnexError)?.sqlState;
 }
 
 export type KnexColumnType =
@@ -551,53 +552,83 @@ export namespace ApiParamType {
     constraint?: ApiParamType;
   };
 
-  export function isObject(v: any): v is ApiParamType.Object {
-    return v?.t === "object";
+  export function isObject(v: unknown): v is ApiParamType.Object {
+    return (v as ApiParamType.Object)?.t === "object";
   }
-  export function isUnion(v: any): v is ApiParamType.Union {
-    return v?.t === "union";
+  export function isUnion(v: unknown): v is ApiParamType.Union {
+    return (v as ApiParamType.Union)?.t === "union";
   }
-  export function isIntersection(v: any): v is ApiParamType.Intersection {
-    return v?.t === "intersection";
+  export function isIntersection(v: unknown): v is ApiParamType.Intersection {
+    return (v as ApiParamType.Intersection)?.t === "intersection";
   }
-  export function isStringLiteral(v: any): v is ApiParamType.StringLiteral {
-    return v?.t === "string-literal";
+  export function isStringLiteral(v: unknown): v is ApiParamType.StringLiteral {
+    return (v as ApiParamType.StringLiteral)?.t === "string-literal";
   }
-  export function isNumericLiteral(v: any): v is ApiParamType.NumericLiteral {
-    return v?.t === "numeric-literal";
+  export function isNumericLiteral(v: unknown): v is ApiParamType.NumericLiteral {
+    return (v as ApiParamType.NumericLiteral)?.t === "numeric-literal";
   }
-  export function isArray(v: any): v is ApiParamType.Array {
-    return v?.t === "array";
+  export function isArray(v: unknown): v is ApiParamType.Array {
+    return (v as ApiParamType.Array)?.t === "array";
   }
-  export function isRef(v: any): v is ApiParamType.Ref {
-    return v?.t === "ref";
+  export function isRef(v: unknown): v is ApiParamType.Ref {
+    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "ref";
   }
-  export function isIndexedAccess(v: any): v is ApiParamType.IndexedAccess {
-    return v?.t === "indexed-access";
+  export function isIndexedAccess(v: unknown): v is ApiParamType.IndexedAccess {
+    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "indexed-access";
   }
-  export function isTupleType(v: any): v is ApiParamType.TupleType {
-    return v?.t === "tuple-type";
+  export function isTupleType(v: unknown): v is ApiParamType.TupleType {
+    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "tuple-type";
   }
-  export function isPick(v: any): v is ApiParamType.Pick {
-    return v?.t === "ref" && v.id === "Pick";
+  export function isPick(v: unknown): v is ApiParamType.Pick {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Pick"
+    );
   }
-  export function isOmit(v: any): v is ApiParamType.Omit {
-    return v?.t === "ref" && v.id === "Omit";
+  export function isOmit(v: unknown): v is ApiParamType.Omit {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Omit"
+    );
   }
-  export function isPartial(v: any): v is ApiParamType.Partial {
-    return v?.t === "ref" && v.id === "Partial";
+  export function isPartial(v: unknown): v is ApiParamType.Partial {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Partial"
+    );
   }
-  export function isPromise(v: any): v is ApiParamType.Promise {
-    return v?.t === "ref" && v.id === "Promise";
+  export function isPromise(v: unknown): v is ApiParamType.Promise {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Promise"
+    );
   }
-  export function isContext(v: any): v is ApiParamType.Context {
-    return v?.t === "ref" && v.id === "Context";
+  export function isContext(v: unknown): v is ApiParamType.Context {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Context"
+    );
   }
-  export function isRefKnex(v: any): v is ApiParamType.Ref {
-    return v?.t === "ref" && v.id === "Knex";
+  export function isRefKnex(v: unknown): v is ApiParamType.Ref {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      (v as { t?: unknown }).t === "ref" &&
+      (v as { id?: unknown }).id === "Knex"
+    );
   }
-  export function isTypeParam(v: any): v is ApiParamType.TypeParam {
-    return v?.t === "type-param";
+  export function isTypeParam(v: unknown): v is ApiParamType.TypeParam {
+    return typeof v === "object" && v !== null && (v as { t?: unknown }).t === "type-param";
   }
 }
 export type ApiParamType =
@@ -695,8 +726,8 @@ export const TemplateOptions = z.object({
   }),
   model: z.object({
     entityId: z.string(),
-    defaultSearchField: z.string(),
-    defaultOrderBy: z.string(),
+    defaultSearchField: z.string().optional(),
+    defaultOrderBy: z.string().optional(),
   }),
   model_test: z.object({
     entityId: z.string(),
@@ -800,6 +831,7 @@ export type FixtureSearchOptions = {
   searchType: "equals" | "like";
 };
 
+type ColumnValue = string | number | boolean | Date | null;
 export type FixtureRecord = {
   fixtureId: string;
   entityId: string;
@@ -807,7 +839,7 @@ export type FixtureRecord = {
   columns: {
     [key: string]: {
       prop: EntityProp;
-      value: any;
+      value: ColumnValue | ColumnValue[];
     };
   };
   fetchedRecords: string[];
@@ -820,7 +852,7 @@ export type FixtureRecord = {
 export type FixtureImportResult = {
   entityId: string;
   data: {
-    [key: string]: any;
+    [key: string]: ColumnValue;
   };
 };
 
@@ -830,6 +862,7 @@ export type RelationNode = {
   related: Set<string>;
 };
 
+// biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
 export interface DatabaseSchemaExtend {}
 export type ManyToManyBaseSchema<FromIdKey extends string, ToIdKey extends string> = {
   id: number;

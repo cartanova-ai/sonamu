@@ -1,28 +1,28 @@
 import chalk from "chalk";
+import { readFileSync, writeFileSync } from "fs";
+import inflection from "inflection";
+import knex, { type Knex } from "knex";
 import uniq from "lodash-es/uniq.js";
 import uniqBy from "lodash-es/uniqBy.js";
 import { Sonamu } from "../api";
+import { BaseModel } from "../database/base-model";
+import type { SonamuDBConfig } from "../database/db";
+import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  EntityProp,
-  FixtureImportResult,
-  FixtureRecord,
-  FixtureSearchOptions,
-  ManyToManyRelationProp,
+  type EntityProp,
+  type FixtureImportResult,
+  type FixtureRecord,
+  type FixtureSearchOptions,
   isBelongsToOneRelationProp,
   isHasManyRelationProp,
   isManyToManyRelationProp,
   isOneToOneRelationProp,
   isRelationProp,
   isVirtualProp,
+  type ManyToManyRelationProp,
 } from "../types/types";
-import { Entity } from "../entity/entity";
-import inflection from "inflection";
-import { readFileSync, writeFileSync } from "fs";
 import { RelationGraph } from "./_relation-graph";
-import knex, { Knex } from "knex";
-import { BaseModel } from "../database/base-model";
-import { SonamuDBConfig } from "../database/db";
 
 export class FixtureManagerClass {
   private _tdb: Knex | null = null;
@@ -85,7 +85,7 @@ export class FixtureManagerClass {
       const [tables] = await this.tdb.raw(
         `SHOW TABLE STATUS WHERE Engine IS NOT NULL AND Name != 'migrations'`,
       );
-      const tableNames = tables.map((tableInfo: { Name: string }) => tableInfo["Name"]);
+      const tableNames = tables.map((tableInfo: { Name: string }) => tableInfo.Name);
       this.cachedTableNames = tableNames;
       return tableNames;
     })();
@@ -103,10 +103,10 @@ export class FixtureManagerClass {
 
     // 체크섬 맵 생성
     const fdbChecksums = new Map(
-      fdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum]),
+      fdbChecksumRows.map((row) => [row.Table.split(".").pop(), row.Checksum]),
     );
     const tdbChecksums = new Map(
-      tdbChecksumRows.map((row) => [row.Table.split(".").pop()!, row.Checksum]),
+      tdbChecksumRows.map((row) => [row.Table.split(".").pop(), row.Checksum]),
     );
 
     // 변경된 테이블들만 처리
@@ -146,7 +146,7 @@ export class FixtureManagerClass {
     const frdb = knex(Sonamu.dbConfig.fixture_remote);
 
     const [tables] = await this.fdb.raw("SHOW TABLE STATUS WHERE Engine IS NOT NULL");
-    const tableNames: string[] = tables.map((table: any) => table.Name as string);
+    const tableNames: string[] = tables.map((table: { Name: string }) => table.Name);
 
     console.log(chalk.magenta("SYNC..."));
     await Promise.all(
@@ -171,7 +171,7 @@ export class FixtureManagerClass {
             console.log(chalk.blue(tableName), rows.length);
             await transaction
               .insert(
-                rows.map((row: any) => {
+                rows.map((row: Record<string, string | number | boolean | null | object>) => {
                   return Object.fromEntries(
                     Object.entries(row).map(([key, value]) => {
                       if (value === null) {
@@ -215,7 +215,7 @@ export class FixtureManagerClass {
     );
 
     const wdb = BaseModel.getDB("w");
-    for (let query of queries) {
+    for (const query of queries) {
       const [rsh] = await wdb.raw(query);
       console.log({
         query,
@@ -244,8 +244,10 @@ export class FixtureManagerClass {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as any).database;
-    const realDatabase = (Sonamu.dbConfig.production_master.connection as any).database;
+    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig)
+      .database;
+    const realDatabase = (Sonamu.dbConfig.production_master.connection as Knex.ConnectionConfig)
+      .database;
 
     const selfQuery = `INSERT IGNORE INTO \`${fixtureDatabase}\`.\`${entity.table}\` (SELECT * FROM \`${realDatabase}\`.\`${entity.table}\` WHERE \`id\` = ${id})`;
 
@@ -275,7 +277,7 @@ export class FixtureManagerClass {
             throw new Error(`${relatedEntity.id}의 ${entity.id} 관계 프롭을 찾을 수 없습니다.`);
           }
           field = `${relatedIdColumnName}_id`;
-          id = row["id"];
+          id = row.id;
         } else {
           field = "id";
           id = row[`${relation.name}_id`];
@@ -383,7 +385,10 @@ export class FixtureManagerClass {
 
   async createFixtureRecord(
     entity: Entity,
-    row: any,
+    row: {
+      id: number;
+      [key: string]: string | number | boolean | null;
+    },
     options?: {
       singleRecord?: boolean;
       _db?: Knex;
@@ -392,7 +397,13 @@ export class FixtureManagerClass {
     const records: FixtureRecord[] = [];
     const visitedEntities = new Set<string>();
 
-    const create = async (entity: Entity, row: any) => {
+    const create = async (
+      entity: Entity,
+      row: {
+        id: number;
+        [key: string]: string | number | boolean | null;
+      },
+    ) => {
       const fixtureId = `${entity.id}#${row.id}`;
       if (visitedEntities.has(fixtureId)) {
         return;
@@ -477,8 +488,11 @@ export class FixtureManagerClass {
       await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
 
       for (const fixtureId of insertionOrder) {
-        const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        const result = await this.insertFixture(trx as any, fixture);
+        const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
+        if (!fixture) {
+          continue;
+        }
+        const result = await this.insertFixture(trx, fixture);
         if (result.id !== fixture.id) {
           // ID가 변경된 경우, 다른 fixture에서 참조하는 경우가 찾아서 수정
           console.log(
@@ -502,8 +516,11 @@ export class FixtureManagerClass {
       }
 
       for (const fixtureId of insertionOrder) {
-        const fixture = fixtures.find((f) => f.fixtureId === fixtureId)!;
-        await this.handleManyToManyRelations(trx as any, fixture, fixtures);
+        const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
+        if (!fixture) {
+          continue;
+        }
+        await this.handleManyToManyRelations(trx, fixture, fixtures);
       }
       await trx.raw(`SET FOREIGN_KEY_CHECKS = 1`);
     });
@@ -525,7 +542,7 @@ export class FixtureManagerClass {
   }
 
   private prepareInsertData(fixture: FixtureRecord) {
-    const insertData: any = {};
+    const insertData: Record<string, string | number | boolean | null | object> = {};
     for (const [propName, column] of Object.entries(fixture.columns)) {
       if (isVirtualProp(column.prop)) {
         continue;
@@ -536,7 +553,14 @@ export class FixtureManagerClass {
         if (prop.type === "json") {
           insertData[propName] = JSON.stringify(column.value);
         } else if (prop.type === "timestamp" || prop.type === "datetime") {
-          insertData[propName] = new Date(column.value);
+          if (column.value === null) {
+            insertData[propName] = null;
+          } else if (
+            (column.value && typeof column.value === "string") ||
+            typeof column.value === "number"
+          ) {
+            insertData[propName] = new Date(column.value);
+          }
         } else {
           insertData[propName] = column.value;
         }
@@ -632,15 +656,14 @@ export class FixtureManagerClass {
   }
 
   async addFixtureLoader(code: string) {
-    const path = Sonamu.apiRootPath + "/src/testing/fixture.ts";
-    let content = readFileSync(path).toString();
+    const path = `${Sonamu.apiRootPath}/src/testing/fixture.ts`;
+    const content = readFileSync(path).toString();
 
     const fixtureLoaderStart = content.indexOf("const fixtureLoader = {");
     const fixtureLoaderEnd = content.indexOf("};", fixtureLoaderStart);
 
     if (fixtureLoaderStart !== -1 && fixtureLoaderEnd !== -1) {
-      const newContent =
-        content.slice(0, fixtureLoaderEnd) + "  " + code + "\n" + content.slice(fixtureLoaderEnd);
+      const newContent = `${content.slice(0, fixtureLoaderEnd)}  ${code}\n${content.slice(fixtureLoaderEnd)}`;
 
       writeFileSync(path, newContent);
     } else {

@@ -1,22 +1,22 @@
-import uniqBy from "lodash-es/uniqBy.js";
-import sum from "lodash-es/sum.js";
-import groupBy from "lodash-es/groupBy.js";
-import knex, { Knex } from "knex";
+import assert from "assert";
 import chalk from "chalk";
-import { mkdir, readdir, unlink, writeFile } from "fs/promises";
-import { exists } from "../utils/fs-utils";
-import prompts from "prompts";
 import { execSync } from "child_process";
+import { mkdir, readdir, unlink, writeFile } from "fs/promises";
+import knex, { type Knex } from "knex";
+import groupBy from "lodash-es/groupBy.js";
+import sum from "lodash-es/sum.js";
+import uniqBy from "lodash-es/uniqBy.js";
 import path from "path";
-import { GenMigrationCode, MigrationSet } from "../types/types";
-import { EntityManager } from "../entity/entity-manager";
+import prompts from "prompts";
 import { Sonamu } from "../api";
+import type { SonamuDBConfig } from "../database/db";
+import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
-import { SonamuDBConfig } from "../database/db";
-import { generateCreateCode, generateAlterCode } from "./code-generation";
-import { MigrationStatus, MigrationCode, ConnString } from "./types";
-import { getMigrationSetFromDB } from "./migration-set";
-import { getMigrationSetFromEntity } from "./migration-set";
+import type { GenMigrationCode, MigrationSet } from "../types/types";
+import { exists } from "../utils/fs-utils";
+import { generateAlterCode, generateCreateCode } from "./code-generation";
+import { getMigrationSetFromDB, getMigrationSetFromEntity } from "./migration-set";
+import type { ConnString, MigrationCode, MigrationStatus } from "./types";
 
 type MigratorMode = "dev" | "deploy";
 export type MigratorOptions = {
@@ -127,14 +127,14 @@ export class Migrator {
           try {
             const [, fdList] = await tConn.migrate.list();
             return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
-          } catch (err) {
+          } catch (_err) {
             return [];
           }
         })();
         const currentVersion = await (async () => {
           try {
             return await tConn.migrate.currentVersion();
-          } catch (err) {
+          } catch (_err) {
             return "error";
           }
         })();
@@ -340,7 +340,7 @@ export class Migrator {
       if (pcode.formatted) {
         const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
-        await writeFile(filePath, pcode.formatted!);
+        await writeFile(filePath, pcode.formatted);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       }
     }
@@ -365,7 +365,7 @@ export class Migrator {
     const delList = pendingList.map((df) => {
       return path.join(migrationsDir, df.file);
     });
-    for (let p of delList) {
+    for (const p of delList) {
       if (await exists(p)) {
         await unlink(p);
       }
@@ -378,7 +378,8 @@ export class Migrator {
    * CLI에서 사용됩니다.
    */
   async check(): Promise<void> {
-    const codes = await this.compareMigrations(this.targets.compare!);
+    assert(this.targets.compare, "compare is not defined");
+    const codes = await this.compareMigrations(this.targets.compare);
     if (codes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return;
@@ -403,7 +404,7 @@ export class Migrator {
     if (pendingList.length > 0) {
       console.log(
         chalk.red("pending 된 마이그레이션이 존재합니다."),
-        pendingList.map((pending: any) => pending.file),
+        pendingList.map((pending: { file: string }) => pending.file),
       );
 
       // pending이 있는 경우 Shadow DB 테스트 진행 여부 컨펌
@@ -433,7 +434,8 @@ export class Migrator {
     }
 
     // Entity-DB간 비교하여 코드 생성 리턴
-    const codes = await this.compareMigrations(this.targets.compare!);
+    assert(this.targets.compare, "compare is not defined");
+    const codes = await this.compareMigrations(this.targets.compare);
     if (codes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return;
@@ -465,7 +467,7 @@ export class Migrator {
       if (code.formatted) {
         const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
-        await writeFile(filePath, code.formatted!);
+        await writeFile(filePath, code.formatted);
         console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       }
     }
@@ -507,7 +509,7 @@ export class Migrator {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
-    const shadowDatabase = tdbConn.database + "__migration_shadow";
+    const shadowDatabase = `${tdbConn.database}__migration_shadow`;
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
 
     // 테스트DB 덤프 후 Database명 치환
@@ -610,24 +612,20 @@ export class Migrator {
       .map((entityId) => getMigrationSetFromEntity(EntityManager.get(entityId)));
 
     // 조인테이블만 추출
-    const joinTablesWithDup = entitySetsWithJoinTable
-      .map((entitySet) => entitySet.joinTables)
-      .flat();
+    const joinTablesWithDup = entitySetsWithJoinTable.flatMap((entitySet) => entitySet.joinTables);
     // 중복 제거 (중복인 경우 indexes를 병합)
-    const joinTables = Object.values(groupBy(joinTablesWithDup, (jt) => jt.table)).map(
-      (tables) => {
-        if (tables.length === 1) {
-          return tables[0];
-        }
-        return {
-          ...tables[0],
-          indexes: uniqBy(
-            tables.flatMap((t) => t.indexes),
-            (index) => [index.type, ...index.columns.sort()].join("-"),
-          ),
-        };
-      },
-    );
+    const joinTables = Object.values(groupBy(joinTablesWithDup, (jt) => jt.table)).map((tables) => {
+      if (tables.length === 1) {
+        return tables[0];
+      }
+      return {
+        ...tables[0],
+        indexes: uniqBy(
+          tables.flatMap((t) => t.indexes),
+          (index) => [index.type, ...index.columns.sort()].join("-"),
+        ),
+      };
+    });
 
     // 조인테이블 포함하여 MigrationSet 배열
     const entitySets: MigrationSet[] = [...entitySetsWithJoinTable, ...joinTables];
@@ -650,7 +648,7 @@ export class Migrator {
 
     // normal 타입이 앞으로, foreign이 뒤로
     codes.sort((codeA, codeB) => {
-      if (codeA.type === "foreign" && codeB.type == "normal") {
+      if (codeA.type === "foreign" && codeB.type === "normal") {
         return 1;
       } else if (codeA.type === "normal" && codeB.type === "foreign") {
         return -1;

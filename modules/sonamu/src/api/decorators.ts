@@ -1,15 +1,17 @@
+import assert from "assert";
 import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
-import type { ApiParam, ApiParamType } from "../types/types";
-import { z } from "zod";
+import type { z } from "zod";
+import type { BaseModelClass } from "../database/base-model";
+import { DB } from "../database/db";
 import {
   PuriTransactionWrapper,
-  PuriWrapper,
-  TransactionalOptions,
+  type PuriWrapper,
+  type TransactionalOptions,
 } from "../database/puri-wrapper";
-import { DB } from "../database/db";
-import { Sonamu } from "./sonamu";
+import type { ApiParam, ApiParamType } from "../types/types";
 import type { UploadContext } from "./context";
+import { Sonamu } from "./sonamu";
 
 export interface GuardKeys {
   query: true;
@@ -35,6 +37,7 @@ export type ApiDecoratorOptions = {
 };
 export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
+  // biome-ignore lint/suspicious/noExplicitAny: 이벤트 키별로 넘겨주는 값이므로 어떤 타입이든 상관없음
   events: z.ZodObject<any>;
   path?: string;
   resourceName?: string;
@@ -63,6 +66,7 @@ export type ExtendedApi = {
   parameters: ApiParam[];
   returnType: ApiParamType;
 };
+type DecoratorTarget = { constructor: { name: string } };
 
 export function api(options: ApiDecoratorOptions = {}) {
   options = {
@@ -72,8 +76,12 @@ export function api(options: ApiDecoratorOptions = {}) {
     ...options,
   };
 
-  return function (target: Object, propertyKey: string) {
-    const modelName = target.constructor.name.match(/(.+)Class$/)![1];
+  return (target: DecoratorTarget, propertyKey: string) => {
+    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    assert(
+      modelName,
+      `modelName is required on @api decorator on ${target.constructor.name}.${propertyKey}`,
+    );
     const methodName = propertyKey;
 
     const defaultPath = `/${inflection.camelize(
@@ -99,8 +107,12 @@ export function api(options: ApiDecoratorOptions = {}) {
 }
 
 export function stream(options: StreamDecoratorOptions) {
-  return function (target: Object, propertyKey: string) {
-    const modelName = target.constructor.name.match(/(.+)Class$/)![1];
+  return (target: DecoratorTarget, propertyKey: string) => {
+    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    assert(
+      modelName,
+      `modelName is required on @stream decorator on ${target.constructor.name}.${propertyKey}`,
+    );
     const methodName = propertyKey;
 
     const defaultPath = `/${inflection.camelize(
@@ -131,10 +143,10 @@ export function stream(options: StreamDecoratorOptions) {
 export function transactional(options: TransactionalOptions = {}) {
   const { isolation, readOnly, dbPreset = "w" } = options;
 
-  return function (_target: Object, _propertyKey: string, descriptor: PropertyDescriptor) {
+  return (_target: DecoratorTarget, _propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (this: any, ...args: any[]) {
+    descriptor.value = async function (this: BaseModelClass, ...args: unknown[]) {
       const existingContext = DB.transactionStorage.getStore();
 
       // 이미 AsyncLocalStorage 컨텍스트 안에 있는지 확인
@@ -180,9 +192,13 @@ export function transactional(options: TransactionalOptions = {}) {
 }
 
 export function upload(options: UploadDecoratorOptions = {}) {
-  return function (_target: Object, _propertyKey: string, descriptor: PropertyDescriptor) {
+  return (_target: DecoratorTarget, _propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
-    const modelName = _target.constructor.name.match(/(.+)Class$/)![1];
+    const modelName = _target.constructor.name.match(/(.+)Class$/)?.[1];
+    assert(
+      modelName,
+      `modelName is required on @upload decorator on ${_target.constructor.name}.${_propertyKey}`,
+    );
     const methodName = _propertyKey;
 
     // registeredApis에서 해당 API 찾아서 uploadOptions 추가
@@ -193,7 +209,7 @@ export function upload(options: UploadDecoratorOptions = {}) {
       existingApi.uploadOptions = options;
     }
 
-    descriptor.value = async function (this: any, ...args: any[]) {
+    descriptor.value = async function (this: BaseModelClass, ...args: unknown[]) {
       const { request } = Sonamu.getContext();
       const uploadContext: UploadContext = {
         file: undefined,

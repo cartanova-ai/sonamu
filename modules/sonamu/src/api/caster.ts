@@ -25,6 +25,7 @@ function isZodNumberAnyway(zodType: $ZodType) {
 }
 
 // ZodType을 이용해 raw를 Type Coercing
+// biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
 export function caster(zodType: $ZodType, raw: any): any {
   if (isZodNumberAnyway(zodType) && typeof raw === "string") {
     // number
@@ -37,6 +38,7 @@ export function caster(zodType: $ZodType, raw: any): any {
     if (Array.isArray(raw)) {
       const numType = zodType.options.find((opt) => isNumberType(opt));
       assert(numType !== undefined);
+      // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
       return raw.map((elem: any) => caster(numType, elem));
     } else {
       return Number(raw);
@@ -46,13 +48,17 @@ export function caster(zodType: $ZodType, raw: any): any {
     return raw === "true";
   } else if (raw !== null && Array.isArray(raw) && zodType instanceof z.ZodArray) {
     // array
+    // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
     return raw.map((elem: any) => caster(zodType.element, elem));
   } else if (zodType instanceof z.ZodObject && typeof raw === "object" && raw !== null) {
     // object
-    return Object.keys(raw).reduce((r, rawKey) => {
-      r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
-      return r;
-    }, {} as any);
+    return Object.keys(raw).reduce(
+      (r, rawKey) => {
+        r[rawKey] = caster(zodType.shape[rawKey], raw[rawKey]);
+        return r;
+      },
+      {} as Record<string, unknown>,
+    );
   } else if (zodType instanceof z.ZodOptional) {
     // optional
     return caster(zodType.def.innerType, raw);
@@ -68,7 +74,9 @@ export function caster(zodType: $ZodType, raw: any): any {
   }
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
 export function fastifyCaster(schema: z.ZodObject<any>) {
+  // biome-ignore lint/suspicious/noExplicitAny: 캐스팅에는 any가 필요함.
   return z.preprocess((raw: any) => {
     return caster(schema, raw);
   }, schema);

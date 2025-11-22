@@ -1,6 +1,6 @@
-import path from "path";
 import fs from "fs";
-import { AbsolutePath } from "./path-utils";
+import path from "path";
+import type { AbsolutePath } from "./path-utils";
 
 export async function findAppRootPath(): Promise<AbsolutePath> {
   const apiRootPath = findApiRootPath();
@@ -10,7 +10,7 @@ export async function findAppRootPath(): Promise<AbsolutePath> {
 export function findApiRootPath(): AbsolutePath {
   // NOTE: for support npm / yarn / pnpm workspaces
   // 하지만 workspace 쓰면 process.cwd() 하면 되는데... 이건 나중에 협의 후 수정하는걸로
-  const workspacePath = process.env["PNPM_SCRIPT_SRC_DIR"] ?? process.env["INIT_CWD"];
+  const workspacePath = process.env.PNPM_SCRIPT_SRC_DIR ?? process.env.INIT_CWD;
   if (nonNullable(workspacePath)) {
     return workspacePath as AbsolutePath;
   }
@@ -36,4 +36,27 @@ export function nonNullable<T>(value: T): value is NonNullable<T> {
 
 export function exhaustive(_param: never) {
   throw new Error(`exhaustive`);
+}
+
+// 일반 버전
+export function assertExists<T>(value: T | null | undefined, message?: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(message ?? "Value must exist");
+  }
+  return value;
+}
+
+// null만 체크
+export function assertNotNull<T>(value: T | null, message?: string): T {
+  if (value === null) {
+    throw new Error(message ?? "Value must not be null");
+  }
+  return value;
+}
+// undefined만 체크
+export function assertDefined<T>(value: T | undefined, message?: string): T {
+  if (value === undefined) {
+    throw new Error(message ?? "Value must be defined");
+  }
+  return value;
 }

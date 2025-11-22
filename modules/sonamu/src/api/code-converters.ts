@@ -1,11 +1,11 @@
 import { z } from "zod";
+import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
 import {
-  ApiParam,
+  type ApiParam,
   ApiParamType,
-  EntityProp,
-  EntityPropNode,
-  TextProp,
+  type EntityProp,
+  type EntityPropNode,
   isBelongsToOneRelationProp,
   isBigIntegerProp,
   isBooleanProp,
@@ -25,9 +25,9 @@ import {
   isTimestampProp,
   isUuidProp,
   isVirtualProp,
+  type TextProp,
 } from "../types/types";
-import { ExtendedApi } from "./decorators";
-import type { core } from "zod/v4";
+import type { ExtendedApi } from "./decorators";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
@@ -49,12 +49,13 @@ export function getZodObjectFromApi(
   } = {},
 ) {
   if (api.typeParameters?.length > 0) {
-    api.typeParameters.map((typeParam) => {
+    for (const typeParam of api.typeParameters) {
       if (typeParam.constraint) {
-        let zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
-        (references[typeParam.id] as any) = zodType;
+        const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
+        // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
+        (references[typeParam.id] as z.ZodType<any>) = zodType;
       }
-    });
+    }
   }
 
   const ReqType = getZodObjectFromApiParams(
@@ -79,16 +80,15 @@ export function getZodObjectFromApiParams(
   } = {},
 ): z.ZodObject {
   return z.object(
-    apiParams.reduce((r, param) => {
-      let zodType = getZodTypeFromApiParamType(param.type, references);
-      if (param.optional) {
-        zodType = zodType.optional();
-      }
-      return {
-        ...r,
-        [param.name]: zodType,
-      };
-    }, {}),
+    Object.fromEntries(
+      apiParams.map((param) => {
+        let zodType = getZodTypeFromApiParamType(param.type, references);
+        if (param.optional) {
+          zodType = zodType.optional();
+        }
+        return [param.name, zodType];
+      }),
+    ),
   );
 }
 
@@ -108,22 +108,24 @@ export function getZodTypeFromApiParamType(
       return z.number();
     case "boolean":
       return z.boolean();
-    default:
-      const advType = paramType as { t: string };
+    default: {
+      const advType = paramType as { t: string; value?: string | number };
       switch (advType.t) {
         case "string-literal":
         case "numeric-literal":
-          return z.literal((advType as any).value);
-        case "object":
+          return z.literal(advType.value);
+        case "object": {
           const objType = paramType as { t: string; props: ApiParam[] };
           return getZodObjectFromApiParams(objType.props);
-        case "array":
+        }
+        case "array": {
           const arrType = paramType as {
             t: string;
             elementsType: ApiParamType;
           };
           return z.array(getZodTypeFromApiParamType(arrType.elementsType, references));
-        case "ref":
+        }
+        case "ref": {
           const refType = paramType as {
             t: string;
             id: string;
@@ -140,8 +142,9 @@ export function getZodTypeFromApiParamType(
             if (refType.args?.length !== 2) {
               throw new Error(`잘못된 ${refType.id}`);
             }
-            const [obj, literalOrUnion] = refType.args!.map((arg) =>
-              getZodTypeFromApiParamType(arg, references),
+            const [obj, literalOrUnion] = refType.args.map(
+              (arg) => getZodTypeFromApiParamType(arg, references),
+              // biome-ignore lint/suspicious/noExplicitAny: 생성되는 ZodUnion의 타입을 추적하기 어려움
             ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
@@ -151,12 +154,7 @@ export function getZodTypeFromApiParamType(
             } else {
               keys = (literalOrUnion as z.ZodLiteral<string>).def.values;
             }
-            const keyRecord = keys.reduce((result, key) => {
-              return {
-                ...result,
-                [key]: true,
-              };
-            }, {} as any);
+            const keyRecord = Object.fromEntries(keys.map((key) => [key, true as const]));
 
             if (refType.id === "Pick") {
               if (obj.pick) {
@@ -173,7 +171,8 @@ export function getZodTypeFromApiParamType(
               throw new Error(`잘못된 ${refType.id}`);
             }
             const obj = getZodTypeFromApiParamType(refType.args[0], references);
-            return (obj as any).partial();
+            // biome-ignore lint/suspicious/noExplicitAny: Partial 인수 타입 캐스팅
+            return (obj as z.ZodObject<any>).partial();
           }
 
           const reference = references[refType.id];
@@ -182,7 +181,8 @@ export function getZodTypeFromApiParamType(
             // throw new Error(`ref 참조 불가 ${refType.id}`);
           }
           return reference;
-        case "union":
+        }
+        case "union": {
           const unionType = paramType as {
             t: string;
             types: ApiParamType[];
@@ -198,28 +198,36 @@ export function getZodTypeFromApiParamType(
 
           // 일반 유니온
           return z.union(
-            unionType.types.map((type) => getZodTypeFromApiParamType(type, references)) as any,
+            unionType.types.map((type) => getZodTypeFromApiParamType(type, references)),
           );
-        case "intersection":
+        }
+        case "intersection": {
           const intersectionType = paramType as {
             t: string;
             types: ApiParamType[];
           };
-          return intersectionType.types.reduce((result, type, index) => {
-            const resolvedType = getZodTypeFromApiParamType(type, references);
-            if (index === 0) {
-              return resolvedType;
-            } else {
-              return z.intersection(result as any, resolvedType);
-            }
-          }, z.unknown() as any) as any;
-        case "tuple-type":
+          return intersectionType.types.reduce(
+            (result, type, index) => {
+              const resolvedType = getZodTypeFromApiParamType(type, references);
+              if (index === 0) {
+                return resolvedType;
+              } else {
+                return z.intersection(result, resolvedType);
+              }
+            },
+            z.unknown() as z.ZodType<unknown>,
+          );
+        }
+        case "tuple-type": {
           const tupleType = paramType as ApiParamType.TupleType;
           return z.tuple(
+            // biome-ignore lint/suspicious/noExplicitAny: 생성되는 ZodTuple의 타입을 추적하기 어려움
             tupleType.elements.map((elem) => getZodTypeFromApiParamType(elem, references)) as any,
           );
+        }
       }
       return z.unknown();
+    }
   }
 }
 
@@ -244,7 +252,7 @@ export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys:
         .map((childPropNode) => propNodeToZodTypeDef(childPropNode, injectImportKeys))
         .join("\n"),
       "",
-      `})${propNode.prop && propNode.prop.nullable ? ".nullable()" : ""},`,
+      `})${propNode.prop?.nullable ? ".nullable()" : ""},`,
     ].join("\n");
   } else {
     throw Error;
@@ -315,7 +323,7 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt += ".nullable()";
   }
 
-  return stmt + ",";
+  return `${stmt},`;
 }
 
 // TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
@@ -342,17 +350,19 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
     case "never":
       return "z.never()";
     case "nullable":
-      return zodTypeToZodCode((zt as AnyZodNullable).def.innerType) + ".nullable()";
-    case "default":
+      return `${zodTypeToZodCode((zt as AnyZodNullable).def.innerType)}.nullable()`;
+    case "default": {
       const zDefaultDef = (zt as AnyZodDefault).def;
-      return zodTypeToZodCode(zDefaultDef.innerType) + `.default(${zDefaultDef.defaultValue})`;
-    case "record":
+      return `${zodTypeToZodCode(zDefaultDef.innerType)}.default(${zDefaultDef.defaultValue})`;
+    }
+    case "record": {
       const zRecordDef = (zt as AnyZodRecord).def;
       return `z.record(${zodTypeToZodCode(zRecordDef.keyType)}, ${zodTypeToZodCode(
         zRecordDef.valueType,
       )})`;
-    case "literal":
-      const items = Array.from((zt as z.ZodLiteral<any>).values).map((value) => {
+    }
+    case "literal": {
+      const items = Array.from((zt as z.ZodLiteral<string | number>).values).map((value) => {
         if (typeof value === "string") {
           return `"${value}"`;
         }
@@ -372,6 +382,7 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
         return `z.literal(${items[0]})`;
       }
       return `z.literal([${items.join(", ")}])`;
+    }
     case "union":
       return `z.union([${(zt as AnyZodUnion).def.options
         .map((option: z.ZodType) => zodTypeToZodCode(option))
@@ -383,22 +394,22 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
         .join(", ")}})`;
     case "array":
       return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element)})`;
-    case "object":
-      const shape = (zt as any).shape;
+    case "object": {
+      const shape = (zt as AnyZodObject).shape;
       return [
         "z.object({",
         ...Object.keys(shape).map((key) => `${key}: ${zodTypeToZodCode(shape[key])},`),
         "})",
       ].join("\n");
+    }
     case "optional":
-      return zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType) + ".optional()";
+      return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType)}.optional()`;
     case "file":
       return `z.file()`;
-    case "intersection":
+    case "intersection": {
       const zIntersectionDef = (zt as z.ZodIntersection<z.ZodType, z.ZodType>).def;
       return `z.intersection(${zodTypeToZodCode(zIntersectionDef.left)}, ${zodTypeToZodCode(zIntersectionDef.right)})`;
-    case "file":
-      return `z.file()`;
+    }
     default:
       throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
   }
@@ -455,7 +466,7 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
   } else if (ApiParamType.isIntersection(paramType)) {
     return paramType.types.map((type) => apiParamTypeToTsType(type, injectImportKeys)).join(" & ");
   } else if (ApiParamType.isArray(paramType)) {
-    return apiParamTypeToTsType(paramType.elementsType, injectImportKeys) + "[]";
+    return `${apiParamTypeToTsType(paramType.elementsType, injectImportKeys)}[]`;
   } else if (ApiParamType.isRef(paramType)) {
     if (["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) === false) {
       // importKeys 인젝션
@@ -488,76 +499,9 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
 
 export function unwrapPromiseOnce(paramType: ApiParamType) {
   if (ApiParamType.isPromise(paramType)) {
-    return paramType.args![0];
+    return paramType.args?.[0];
   } else {
     return paramType;
-  }
-}
-
-// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
-export function serializeZodType(zt: z.ZodType): any {
-  switch (zt.def.type) {
-    case "object":
-      return {
-        type: "object",
-        shape: Object.keys((zt as AnyZodObject).shape).reduce((result, key) => {
-          return {
-            ...result,
-            [key]: serializeZodType((zt as AnyZodObject).shape[key]),
-          };
-        }, {}),
-      };
-    case "array":
-      return {
-        type: "array",
-        element: serializeZodType((zt as AnyZodArray).def.element),
-      };
-    case "enum":
-      return {
-        type: "enum",
-        values: (zt as z.ZodEnum).def.entries,
-      };
-    case "string":
-      return {
-        type: "string",
-        checks: zt.def.checks,
-      };
-    case "number":
-      return {
-        type: "number",
-        checks: zt.def.checks,
-      };
-    case "boolean":
-      return {
-        type: "boolean",
-      };
-    case "nullable":
-      return {
-        ...serializeZodType((zt as AnyZodNullable).def.innerType),
-        nullable: true,
-      };
-    case "optional":
-      return {
-        ...serializeZodType((zt as AnyZodOptional).def.innerType),
-        optional: true,
-      };
-    case "any":
-      return {
-        type: "any",
-      };
-    case "record":
-      return {
-        type: "record",
-        keyType: serializeZodType((zt as AnyZodRecord).def.keyType),
-        valueType: serializeZodType((zt as AnyZodRecord).def.valueType),
-      };
-    case "union":
-      return {
-        type: "union",
-        options: (zt.def as AnyZodUnion).options.map((option) => serializeZodType(option)),
-      };
-    default:
-      throw new Error(`Serialize 로직이 정의되지 않은 ZodType: ${zt.def.type}`);
   }
 }
 
@@ -576,12 +520,13 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     case "never":
       return zt.def.type;
     case "nullable":
-      return zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType) + " | null";
+      return `${zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType)} | null`;
     case "default":
       return zodTypeToTsTypeDef((zt as AnyZodDefault).def.innerType);
-    case "record":
+    case "record": {
       const recordType = zt as AnyZodRecord;
       return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
+    }
     case "literal":
       return Array.from((zt as z.ZodLiteral).values)
         .map((value) => {
@@ -608,7 +553,7 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
       return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
     case "array":
       return `${zodTypeToTsTypeDef((zt as AnyZodArray).element)}[]`;
-    case "object":
+    case "object": {
       const shape = (zt as AnyZodObject).shape;
       return [
         "{",
@@ -621,8 +566,9 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
         }),
         "}",
       ].join("\n");
+    }
     case "optional":
-      return zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType) + " | undefined";
+      return `${zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType)} | undefined`;
     default:
       throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
   }

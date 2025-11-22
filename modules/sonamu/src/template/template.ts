@@ -1,8 +1,8 @@
-import { TemplateKey, TemplateOptions } from "../types/types";
-import { EntityNamesRecord } from "../entity/entity-manager";
+import path from "path";
+import type { EntityNamesRecord } from "../entity/entity-manager";
+import type { TemplateKey, TemplateOptions } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
-import path from "path";
 
 export type RenderedTemplate = {
   target: string;
@@ -36,6 +36,7 @@ export abstract class Template {
     );
 
     for (const templateFile of templateFiles) {
+      // biome-ignore lint/suspicious/noExplicitAny: importMembers의 반환 타입을 명시적으로 지정할 수 없음
       const templates = await importMembers<any>(templateFile);
       if (
         templates.length === 1 &&
@@ -44,7 +45,7 @@ export abstract class Template {
       ) {
         // 클래스의 인스턴스를 생성하여 등록
         const instance = new templates[0].value();
-        this.templates.set(instance.key, instance);
+        Template.templates.set(instance.key, instance);
       } else {
         throw new Error(
           `Template ${templateFile} should export only one class that extends Template`,
@@ -64,7 +65,7 @@ export abstract class Template {
    * @returns
    */
   public static find(key: TemplateKey): Template {
-    const instance = this.templates.get(key);
+    const instance = Template.templates.get(key);
     if (!instance) {
       throw new Error(
         `Template ${key} not found. It might be becasuse you tried to find a template before loading all templates. Did you call Template.loadAll()?`,

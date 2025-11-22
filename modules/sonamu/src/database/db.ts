@@ -1,10 +1,11 @@
 export type DBPreset = "w" | "r";
-import knex, { Knex } from "knex";
+
+import { AsyncLocalStorage } from "async_hooks";
+import knex, { type Knex } from "knex";
 import merge from "lodash-es/merge.js";
 import { Sonamu } from "../api";
-import { AsyncLocalStorage } from "async_hooks";
+import type { DatabaseConfig, SonamuConfig } from "../api/config";
 import { TransactionContext } from "./transaction-context";
-import { DatabaseConfig, SonamuConfig } from "../api/config";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
@@ -40,15 +41,15 @@ class DBClass {
       } else if (this.wdb) {
         return this.wdb;
       } else {
-        this["wdb"] = knex({
-          ...dbConfig["test"],
+        this.wdb = knex({
+          ...dbConfig.test,
           // 단일 풀
           pool: {
             min: 1,
             max: 1,
           },
         });
-        return this["wdb"];
+        return this.wdb;
       }
     }
 
@@ -61,14 +62,14 @@ class DBClass {
         case "staging":
           config =
             which === "w"
-              ? dbConfig["development_master"]
-              : (dbConfig["development_slave"] ?? dbConfig["development_master"]);
+              ? dbConfig.development_master
+              : (dbConfig.development_slave ?? dbConfig.development_master);
           break;
         case "production":
           config =
             which === "w"
-              ? dbConfig["production_master"]
-              : (dbConfig["production_slave"] ?? dbConfig["production_master"]);
+              ? dbConfig.production_master
+              : (dbConfig.production_slave ?? dbConfig.production_master);
           break;
         default:
           throw new Error(`현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`);
@@ -76,7 +77,7 @@ class DBClass {
       this[instanceName] = knex(config);
     }
 
-    return this[instanceName]!;
+    return this[instanceName];
   }
 
   async destroy(): Promise<void> {

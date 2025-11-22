@@ -1,5 +1,5 @@
-import { FastifyInstance } from "fastify";
-import { ZodIssue } from "zod";
+import type { FastifyInstance } from "fastify";
+import type z from "zod";
 import { isSoException } from "./so-exceptions";
 
 export function setupErrorHandler(server: FastifyInstance) {
@@ -7,7 +7,7 @@ export function setupErrorHandler(server: FastifyInstance) {
     error.statusCode ??= 400;
 
     if (isSoException(error) && error.payload && Array.isArray(error.payload)) {
-      const issues = error.payload as ZodIssue[];
+      const issues = error.payload as z.core.$ZodIssue[];
       const [issue] = issues;
       const message = `${issue.message} (${issue.path.join("/")})`;
 

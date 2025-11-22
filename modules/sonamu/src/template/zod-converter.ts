@@ -1,7 +1,11 @@
+import inflection from "inflection";
+import path from "path";
 import z from "zod";
+import { getTextTypeLength } from "../api";
+import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
-  EntityProp,
+  type EntityProp,
   isBelongsToOneRelationProp,
   isBigIntegerProp,
   isBooleanProp,
@@ -21,13 +25,9 @@ import {
   isTimestampProp,
   isUuidProp,
   isVirtualProp,
-  RenderingNode,
+  type RenderingNode,
 } from "../types/types";
-import path from "path";
 import { createImportUrl } from "../utils/esm-utils";
-import { Sonamu } from "../api/sonamu";
-import inflection from "inflection";
-import { getTextTypeLength } from "../api";
 
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
@@ -35,7 +35,7 @@ import { getTextTypeLength } from "../api";
  */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
   const modulePath = EntityManager.getModulePath(zodTypeId);
-  const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", modulePath + ".js");
+  const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", `${modulePath}.js`);
   const importUrl = createImportUrl(moduleAbsPath);
   const imported = await import(importUrl);
 
@@ -50,7 +50,7 @@ export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
  * 재귀적으로 중첩된 타입들을 처리합니다.
  */
 export function zodTypeToRenderingNode(
-  zodType: z.ZodType<any>,
+  zodType: z.ZodTypeAny,
   baseKey: string = "root",
 ): RenderingNode {
   const def = {
@@ -70,7 +70,7 @@ export function zodTypeToRenderingNode(
       children,
     };
   } else if (zodType instanceof z.ZodArray) {
-    const innerType = (zodType as z.ZodArray<z.ZodType<any>>).def.element;
+    const innerType = (zodType as z.ZodArray<z.ZodTypeAny>).def.element;
     if (innerType instanceof z.ZodString && baseKey.includes("images")) {
       return {
         ...def,

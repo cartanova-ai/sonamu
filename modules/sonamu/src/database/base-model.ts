@@ -1,17 +1,20 @@
-import { Knex } from "knex";
+import assert from "assert";
+import inflection from "inflection";
+import type { Knex } from "knex";
 import chunk from "lodash-es/chunk.js";
 import groupBy from "lodash-es/groupBy.js";
 import isObject from "lodash-es/isObject.js";
 import omit from "lodash-es/omit.js";
 import set from "lodash-es/set.js";
 import uniq from "lodash-es/uniq.js";
-import { DBPreset, DB } from "./db";
-import { isCustomJoinClause } from "../types/types";
-import inflection from "inflection";
-import { UpsertBuilder } from "./upsert-builder";
-import { PuriWrapper } from "./puri-wrapper";
 import type { SubsetQuery } from "../types/types";
+import { isCustomJoinClause } from "../types/types";
 import type { BaseListParams } from "../utils/model";
+import { DB, type DBPreset } from "./db";
+import { PuriWrapper } from "./puri-wrapper";
+import { UpsertBuilder } from "./upsert-builder";
+
+type UnknownDBRecord = Record<string, unknown>;
 
 export class BaseModelClass {
   public modelName: string = "Unknown";
@@ -39,7 +42,7 @@ export class BaseModelClass {
 
   async getInsertedIds(
     wdb: Knex,
-    rows: any[],
+    rows: UnknownDBRecord[],
     tableName: string,
     unqKeyFields: string[],
     chunkSize: number = 500,
@@ -49,7 +52,7 @@ export class BaseModelClass {
     }
 
     let unqKeys: string[];
-    let whereInField: any, selectField: string;
+    let whereInField: string | Knex.Raw, selectField: string;
     if (unqKeyFields.length > 1) {
       whereInField = wdb.raw(`CONCAT_WS('_', '${unqKeyFields.join(",")}')`);
       selectField = `${whereInField} as tmpUid`;
@@ -57,29 +60,31 @@ export class BaseModelClass {
     } else {
       whereInField = unqKeyFields[0];
       selectField = unqKeyFields[0];
-      unqKeys = rows.map((row) => row[unqKeyFields[0]]);
+      unqKeys = rows.map((row) => row[unqKeyFields[0]] as string);
     }
     const chunks = chunk(unqKeys, chunkSize);
 
     let resultIds: number[] = [];
-    for (let chunk of chunks) {
+    for (const chunk of chunks) {
       const dbRows = await wdb(tableName)
         .select("id", wdb.raw(selectField))
-        .whereIn(whereInField, chunk);
-      resultIds = resultIds.concat(dbRows.map((dbRow: any) => parseInt(dbRow.id)));
+        .whereIn(whereInField as string, chunk);
+      resultIds = resultIds.concat(
+        dbRows.map((dbRow: UnknownDBRecord) => parseInt(String(dbRow.id))),
+      );
     }
 
     return resultIds;
   }
 
-  async useLoaders(db: Knex, rows: any[], loaders: SubsetQuery["loaders"]) {
+  async useLoaders(db: Knex, rows: UnknownDBRecord[], loaders: SubsetQuery["loaders"]) {
     if (loaders.length === 0) {
       return rows;
     }
 
-    for (let loader of loaders) {
-      let subQ: any;
-      let subRows: any[];
+    for (const loader of loaders) {
+      let subQ: Knex.QueryBuilder;
+      let subRows: UnknownDBRecord[];
       let toCol: string;
 
       const fromIds = rows.map((row) => row[loader.manyJoin.idField]);
@@ -88,14 +93,14 @@ export class BaseModelClass {
         // HasMany
         const idColumn = `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`;
         subQ = db(loader.manyJoin.toTable)
-          .whereIn(idColumn, fromIds)
+          .whereIn(idColumn as string, fromIds as string[])
           .select([...loader.select, idColumn]);
 
         // HasMany에서 OneJoin이 있는 경우
-        loader.oneJoins.map((join) => {
-          if (join.join == "inner") {
+        loader.oneJoins.forEach((join) => {
+          if (join.join === "inner") {
             subQ.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
-          } else if (join.join == "outer") {
+          } else if (join.join === "outer") {
             subQ.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           }
         });
@@ -109,14 +114,14 @@ export class BaseModelClass {
             `${loader.manyJoin.through.table}.${loader.manyJoin.through.toCol}`,
             `${loader.manyJoin.toTable}.${loader.manyJoin.toCol}`,
           )
-          .whereIn(idColumn, fromIds)
+          .whereIn(idColumn as string, fromIds as string[])
           .select(uniq([...loader.select, idColumn]));
 
         // ManyToMany에서 OneJoin이 있는 경우
-        loader.oneJoins.map((join) => {
-          if (join.join == "inner") {
+        loader.oneJoins.forEach((join) => {
+          if (join.join === "inner") {
             subQ.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
-          } else if (join.join == "outer") {
+          } else if (join.join === "outer") {
             subQ.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
           }
         });
@@ -132,17 +137,17 @@ export class BaseModelClass {
       // 불러온 row들을 참조ID 기준으로 분류 배치
       const subRowGroups = groupBy(subRows, toCol);
       rows = rows.map((row) => {
-        row[loader.as] = (subRowGroups[row[loader.manyJoin.idField]] ?? []).map((r) =>
-          omit(r, toCol),
-        );
+        row[loader.as] = (
+          subRowGroups[row[loader.manyJoin.idField] as keyof UnknownDBRecord] ?? []
+        ).map((r) => omit(r, toCol));
         return row;
       });
     }
     return rows;
   }
 
-  hydrate<T>(rows: T[]): T[] {
-    return rows.map((row: any) => {
+  hydrate<T extends UnknownDBRecord>(rows: T[]): T[] {
+    return rows.map((row: T) => {
       // nullable relation인 경우 관련된 필드가 전부 null로 생성되는 것 방지하는 코드
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
       const groups = groupBy(nestedKeys, (key) => key.split("__")[0]);
@@ -182,11 +187,13 @@ export class BaseModelClass {
         );
 
         return r;
-      }, {} as any);
-      nullKeys.map((nullKey) => (hydrated[nullKey] = null));
+      }, {} as UnknownDBRecord);
+      nullKeys.forEach((nullKey) => {
+        hydrated[nullKey] = null;
+      });
 
       return hydrated;
-    });
+    }) as T[];
   }
 
   async runSubsetQuery<T extends BaseListParams, U extends string>({
@@ -222,6 +229,7 @@ export class BaseModelClass {
     db?: Knex;
     optimizeCountQuery?: boolean;
   }): Promise<{
+    // biome-ignore lint/suspicious/noExplicitAny: Puri 도입 전까지 any로 유지
     rows: any[];
     total?: number | undefined;
     subsetQuery: SubsetQuery;
@@ -245,10 +253,10 @@ export class BaseModelClass {
     });
 
     const applyJoinClause = (qb: Knex.QueryBuilder, joins: SubsetQuery["joins"]) => {
-      joins.map((join) => {
-        if (join.join == "inner") {
+      joins.forEach((join) => {
+        if (join.join === "inner") {
           qb.innerJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
-        } else if (join.join == "outer") {
+        } else if (join.join === "outer") {
           qb.leftOuterJoin(`${join.table} as ${join.as}`, this.getJoinClause(db, join));
         }
       });
@@ -323,8 +331,9 @@ export class BaseModelClass {
 
       // limit, offset
       if (params.num !== 0) {
-        qb.limit(params.num!);
-        qb.offset(params.num! * (params.page! - 1));
+        assert(params.num);
+        qb.limit(params.num);
+        qb.offset(params.num * ((params.page ?? 1) - 1));
       }
 
       // select, rows
@@ -356,6 +365,7 @@ export class BaseModelClass {
     return { rows, total, subsetQuery, qb };
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: Knex.Raw<any> is used to return a raw SQL string
   getJoinClause(db: Knex<any, unknown>, join: SubsetQuery["joins"][number]): Knex.Raw<any> {
     if (!isCustomJoinClause(join)) {
       return db.raw(`${join.from} = ${join.to}`);

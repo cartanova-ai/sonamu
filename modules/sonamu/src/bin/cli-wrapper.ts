@@ -1,9 +1,9 @@
 #!/usr/bin/env ts-node
 
-import { spawnSync, execSync } from "child_process";
-import { resolve } from "path";
-import { existsSync, rmSync } from "fs";
 import chalk from "chalk";
+import { execSync, spawnSync } from "child_process";
+import { existsSync, rmSync } from "fs";
+import { resolve } from "path";
 import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-config";
 
 const scriptPath = resolve(import.meta.dirname, "cli.js");

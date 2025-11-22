@@ -1,14 +1,14 @@
 import {
-  BaseModelClass,
-  ListResult,
-  asArray,
-  NotFoundException,
-  BadRequestException,
   api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  type ListResult,
+  NotFoundException,
 } from "sonamu";
-import { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
+import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
 import { companySubsetQueries } from "../sonamu.generated.sso";
-import { CompanyListParams, CompanySaveParams } from "./company.types";
+import type { CompanyListParams, CompanySaveParams } from "./company.types";
 
 /*
   Company Model
@@ -69,7 +69,7 @@ class CompanyModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: companySubsetQueries[subset],
@@ -94,7 +94,7 @@ class CompanyModelClass extends BaseModelClass {
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("companies." + orderByField, orderByDirec);
+          qb.orderBy(`companies.${orderByField}`, orderByDirec);
         }
 
         return qb;
@@ -113,7 +113,7 @@ class CompanyModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("companies", sp);
     });
 

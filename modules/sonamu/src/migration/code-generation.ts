@@ -1,12 +1,12 @@
-import partition from "lodash-es/partition.js";
-import differenceBy from "lodash-es/differenceBy.js";
-import intersectionBy from "lodash-es/intersectionBy.js";
-import differenceWith from "lodash-es/differenceWith.js";
-import difference from "lodash-es/difference.js";
-import sortBy from "lodash-es/sortBy.js";
-import omit from "lodash-es/omit.js";
 import equal from "fast-deep-equal";
-import {
+import difference from "lodash-es/difference.js";
+import differenceBy from "lodash-es/differenceBy.js";
+import differenceWith from "lodash-es/differenceWith.js";
+import intersectionBy from "lodash-es/intersectionBy.js";
+import omit from "lodash-es/omit.js";
+import partition from "lodash-es/partition.js";
+import sortBy from "lodash-es/sortBy.js";
+import type {
   GenMigrationCode,
   MigrationColumn,
   MigrationForeign,
@@ -353,7 +353,7 @@ function getAlterColumnLinesTo(
   table: string,
   dbForeigns: MigrationForeign[],
 ) {
-  let linesTo = {
+  const linesTo = {
     add: {
       up: [] as string[],
       down: [] as string[],
@@ -405,7 +405,7 @@ function getAlterColumnLinesTo(
   };
   linesTo.alter = columnsTo.alter.reduce(
     (r, dbColumn) => {
-      const entityColumn = entityColumns.find((col) => col.name == dbColumn.name);
+      const entityColumn = entityColumns.find((col) => col.name === dbColumn.name);
       if (entityColumn === undefined) {
         return r;
       }
@@ -423,12 +423,12 @@ function getAlterColumnLinesTo(
         r.up = [
           ...r.up,
           "// alter column",
-          ...columnDiffUp.map((l) => l.replace(";", "") + ".alter();"),
+          ...columnDiffUp.map((l) => `${l.replace(";", "")}.alter();`),
         ];
         r.down = [
           ...r.down,
           "// rollback - alter column",
-          ...columnDiffDown.map((l) => l.replace(";", "") + ".alter();"),
+          ...columnDiffDown.map((l) => `${l.replace(";", "")}.alter();`),
         ];
       }
 
@@ -448,7 +448,7 @@ function getAlterColumnLinesTo(
  */
 function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
   // 인덱스 비교
-  let indexesTo = {
+  const indexesTo = {
     add: [] as MigrationIndex[],
     drop: [] as MigrationIndex[],
   };

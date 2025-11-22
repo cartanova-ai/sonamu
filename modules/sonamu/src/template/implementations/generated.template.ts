@@ -1,9 +1,10 @@
+import assert from "assert";
 import uniq from "lodash-es/uniq.js";
 import { Sonamu } from "../../api";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
-import { Entity } from "../../entity/entity";
+import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
-import { EntityPropNode, isVirtualProp, TemplateOptions } from "../../types/types";
+import { type EntityPropNode, isVirtualProp } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 
@@ -26,21 +27,19 @@ export class Template__generated extends Template {
     };
   }
 
-  render({}: TemplateOptions["generated"]) {
+  render() {
     const entityIds = EntityManager.getAllIds();
     const entities = entityIds.map((id) => EntityManager.get(id));
 
     // 전체 SourceCode 생성
-    const sourceCodes = entities
-      .map((entity) => {
-        return [
-          this.getEnumsSourceCode(entity),
-          this.getBaseSchemaSourceCode(entity),
-          this.getBaseListParamsSourceCode(entity),
-          this.getSubsetSourceCode(entity),
-        ].filter(nonNullable);
-      })
-      .flat();
+    const sourceCodes = entities.flatMap((entity) => {
+      return [
+        this.getEnumsSourceCode(entity),
+        this.getBaseSchemaSourceCode(entity),
+        this.getBaseListParamsSourceCode(entity),
+        this.getSubsetSourceCode(entity),
+      ].filter(nonNullable);
+    });
 
     // Sort
     const LABEL_KEY_ORDER = ["Enums", "BaseSchema", "BaseListParams", "Subsets", "SubsetQueries"];
@@ -64,8 +63,8 @@ export class Template__generated extends Template {
           return result;
         }
         return {
-          lines: [...result!.lines, `// ${ts.label}`, ...ts.lines, ""],
-          importKeys: uniq([...result!.importKeys, ...ts.importKeys].sort()),
+          lines: [...result.lines, `// ${ts.label}`, ...ts.lines, ""],
+          importKeys: uniq([...result.importKeys, ...ts.importKeys].sort()),
         };
       },
       {
@@ -75,27 +74,26 @@ export class Template__generated extends Template {
     );
 
     // .types.ts의 타입을 참조하는 경우 순환참조(상호참조)가 발생하므로 타입을 가져와 인라인 처리
-    const allTypeKeys = entities.map((entity) => Object.keys(entity.types)).flat();
+    const allTypeKeys = entities.flatMap((entity) => Object.keys(entity.types));
     const cdImportKeys = sourceCode.importKeys.filter((importKey) =>
       allTypeKeys.includes(importKey),
     );
     if (cdImportKeys.length > 0) {
-      const customScalarLines = cdImportKeys
-        .map((importKey) => {
-          const entity = entities.find((entity) => entity.types[importKey]);
-          if (!entity) {
-            throw new Error(`ZodType not found ${importKey}`);
-          }
-          const zodType = entity.types[importKey]!;
+      const customScalarLines = cdImportKeys.flatMap((importKey) => {
+        const entity = entities.find((entity) => entity.types[importKey]);
+        if (!entity) {
+          throw new Error(`ZodType not found ${importKey}`);
+        }
+        const zodType = entity.types[importKey];
+        assert(zodType);
 
-          return [
-            `// CustomScalar: ${importKey}`,
-            `const ${importKey} = ${zodTypeToZodCode(zodType)};`,
-            `type ${importKey} = z.infer<typeof ${importKey}>`,
-            "",
-          ];
-        })
-        .flat();
+        return [
+          `// CustomScalar: ${importKey}`,
+          `const ${importKey} = ${zodTypeToZodCode(zodType)};`,
+          `type ${importKey} = z.infer<typeof ${importKey}>`,
+          "",
+        ];
+      });
       sourceCode.lines = [...customScalarLines, ...sourceCode.lines];
       sourceCode.importKeys = sourceCode.importKeys.filter(
         (importKey) => !cdImportKeys.includes(importKey),
@@ -132,14 +130,13 @@ export class Template__generated extends Template {
       lines: [
         ...Object.entries(entity.enumLabels)
           .filter(([_, enumLabel]) => Object.keys(enumLabel).length > 0)
-          .map(([enumId, enumLabel]) => [
+          .flatMap(([enumId, enumLabel]) => [
             `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
               (el) => `"${el}"`,
             )}]).describe("${enumId}");`,
             `export type ${enumId} = z.infer<typeof ${enumId}>`,
             `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
-          ])
-          .flat(),
+          ]),
       ],
       importKeys: [],
     };
@@ -249,7 +246,7 @@ z.object({
   }
 
   getSubsetSourceCode(entity: Entity): SourceCode | null {
-    if (Object.keys(entity.subsets).length == 0) {
+    if (Object.keys(entity.subsets).length === 0) {
       return null;
     } else if (entity.parentId !== undefined) {
       return null;
@@ -258,35 +255,26 @@ z.object({
     const subsetKeys = Object.keys(entity.subsets);
     const importKeys: string[] = [];
     const lines: string[] = [
-      ...subsetKeys
-        .map((subsetKey) => {
-          // 서브셋에서 FieldExpr[] 가져옴
-          const fieldExprs = entity.subsets[subsetKey];
+      ...subsetKeys.flatMap((subsetKey) => {
+        // 서브셋에서 FieldExpr[] 가져옴
+        const fieldExprs = entity.subsets[subsetKey];
 
-          // FieldExpr[]로 EntityPropNode[] 가져옴
-          const propNodes = entity.fieldExprsToPropNodes(fieldExprs);
-          const schemaName = `${entity.names.module}Subset${subsetKey}`;
-          const propNode: EntityPropNode = {
-            nodeType: "object",
-            children: propNodes,
-          };
+        // FieldExpr[]로 EntityPropNode[] 가져옴
+        const propNodes = entity.fieldExprsToPropNodes(fieldExprs);
+        const schemaName = `${entity.names.module}Subset${subsetKey}`;
+        const propNode: EntityPropNode = {
+          nodeType: "object",
+          children: propNodes,
+        };
 
-          // EntityPropNode[]로 ZodTypeDef(string)을 가져옴
-          const body = (() => {
-            const result = propNodeToZodTypeDef(propNode, importKeys);
-            if (result.endsWith(",")) {
-              return result.slice(0, -1);
-            }
+        // EntityPropNode[]로 ZodTypeDef(string)을 가져옴
+        const body = propNodeToZodTypeDef(propNode, importKeys);
 
-            return result;
-          })();
-
-          return [
-            `export const ${schemaName} = ${body};`,
-            `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
-          ];
-        })
-        .flat(),
+        return [
+          `export const ${schemaName} = ${body}`,
+          `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
+        ];
+      }),
       `export type ${entity.names.module}SubsetMapping = {`,
       ...subsetKeys.map((subsetKey) => `  ${subsetKey}: ${entity.names.module}Subset${subsetKey};`),
       "}",

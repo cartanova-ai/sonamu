@@ -1,16 +1,16 @@
 import { randomUUID } from "crypto";
-import uniq from "lodash-es/uniq.js";
-import groupBy from "lodash-es/groupBy.js";
+import type { Knex } from "knex";
 import chunk from "lodash-es/chunk.js";
 import defaults from "lodash-es/defaults.js";
-import { Knex } from "knex";
+import groupBy from "lodash-es/groupBy.js";
+import uniq from "lodash-es/uniq.js";
 import { EntityManager } from "../entity/entity-manager";
-import { nonNullable } from "../utils/utils";
-import { RowWithId, batchUpdate } from "./_batch_update";
+import { assertDefined, nonNullable } from "../utils/utils";
+import { batchUpdate, type RowWithId } from "./_batch_update";
 
 type TableData = {
   references: Set<string>;
-  rows: any[];
+  rows: Record<string, unknown>[];
   uniqueIndexes: { name?: string; columns: string[] }[];
   uniquesMap: Map<string, string>;
 };
@@ -19,9 +19,12 @@ export type UBRef = {
   of: string;
   use?: string;
 };
-export function isRefField(field: any): field is UBRef {
+export function isRefField(field: unknown): field is UBRef {
   return (
-    field !== undefined && field !== null && field.of !== undefined && field.uuid !== undefined
+    field !== undefined &&
+    field !== null &&
+    (field as UBRef)?.of !== undefined &&
+    (field as UBRef)?.uuid !== undefined
   );
 }
 
@@ -33,24 +36,26 @@ export class UpsertBuilder {
 
   getTable(tableName: string): TableData {
     const table = this.tables.get(tableName);
-    if (table === undefined) {
-      const tableSpec = (() => {
-        try {
-          return EntityManager.getTableSpec(tableName);
-        } catch {
-          return null;
-        }
-      })();
-
-      this.tables.set(tableName, {
-        references: new Set(),
-        rows: [],
-        uniqueIndexes: tableSpec?.uniqueIndexes ?? [],
-        uniquesMap: new Map<string, string>(),
-      });
+    if (table) {
+      return table;
     }
 
-    return this.tables.get(tableName)!;
+    const tableSpec = (() => {
+      try {
+        return EntityManager.getTableSpec(tableName);
+      } catch {
+        return null;
+      }
+    })();
+
+    const tableData = {
+      references: new Set<string>(),
+      rows: [],
+      uniqueIndexes: tableSpec?.uniqueIndexes ?? [],
+      uniquesMap: new Map<string, string>(),
+    };
+    this.tables.set(tableName, tableData);
+    return tableData;
   }
 
   hasTable(tableName: string): boolean {
@@ -91,7 +96,7 @@ export class UpsertBuilder {
       if (uniqueKeys.length > 0) {
         for (const uniqueKey of uniqueKeys) {
           if (table.uniquesMap.has(uniqueKey)) {
-            return table.uniquesMap.get(uniqueKey)!; // 이미 has 체크를 했으므로 undefined 불가능
+            return assertDefined(table.uniquesMap.get(uniqueKey), "Unique key not found");
           }
         }
       }
@@ -109,21 +114,20 @@ export class UpsertBuilder {
 
     // 이 테이블에 사용된 RefField를 순회하여, 현재 테이블 정보에 어떤 필드를 참조하는지 추가
     // 이 정보를 나중에 치환할 때 사용
-    row = Object.keys(row).reduce((r, rowKey) => {
-      const rowValue = row[rowKey as keyof typeof row];
-
-      if (isRefField(rowValue)) {
-        rowValue.use ??= "id";
-        table.references.add(rowValue.of + "." + rowValue.use);
-        r[rowKey] = rowValue;
-      } else if (typeof rowValue === "object" && !(rowValue instanceof Date)) {
-        // object인 경우 JSON으로 변환
-        r[rowKey] = rowValue === null ? null : JSON.stringify(rowValue);
-      } else {
-        r[rowKey] = rowValue;
-      }
-      return r;
-    }, {} as any);
+    row = Object.fromEntries(
+      Object.entries(row).map(([rowKey, rowValue]) => {
+        if (isRefField(rowValue)) {
+          rowValue.use ??= "id";
+          table.references.add(`${rowValue.of}.${rowValue.use}`);
+          return [rowKey, rowValue];
+        } else if (typeof rowValue === "object" && !(rowValue instanceof Date)) {
+          // object인 경우 JSON으로 변환
+          return [rowKey, rowValue === null ? null : JSON.stringify(rowValue)];
+        } else {
+          return [rowKey, rowValue];
+        }
+      }),
+    ) as { [key in T]?: unknown };
 
     table.rows.push({
       uuid,
@@ -172,7 +176,7 @@ export class UpsertBuilder {
     const { references, refTables } = Array.from(this.tables).reduce(
       (r, [, table]) => {
         const reference = Array.from(table.references.values()).find((ref) =>
-          ref.includes(tableName + "."),
+          ref.includes(`${tableName}.`),
         );
         if (reference) {
           r.references.push(reference);
@@ -196,7 +200,7 @@ export class UpsertBuilder {
     const selfRefRows = groups.selfRef ?? [];
 
     const chunks = chunkSize ? chunk(normalRows, chunkSize) : [normalRows];
-    const uuidMap = new Map<string, any>();
+    const uuidMap = new Map<string, unknown>();
 
     for (const chunk of chunks) {
       const q = wdb.insert(chunk).into(tableName);
@@ -210,31 +214,33 @@ export class UpsertBuilder {
       const uuids = chunk.map((row) => row.uuid);
       const upsertedRows = await wdb(tableName)
         .select(uniq(["uuid", "id", ...extractFields]))
-        .whereIn("uuid", uuids);
-      upsertedRows.forEach((row: any) => {
+        .whereIn("uuid", uuids as readonly string[]);
+      for (const row of upsertedRows) {
         uuidMap.set(row.uuid, row);
-      });
+      }
     }
 
     // 해당 테이블 참조를 실제 밸류로 변경
-    refTables.map((table) => {
+    for (const table of refTables) {
       table.rows = table.rows.map((row) => {
-        Object.keys(row).map((key) => {
+        for (const key of Object.keys(row)) {
           const prop = row[key];
           if (isRefField(prop) && prop.of === tableName) {
             const parent = uuidMap.get(prop.uuid);
-            if (parent === undefined) {
+            if (!parent) {
               console.error(prop);
               throw new Error(`존재하지 않는 uuid ${prop.uuid} -- in ${tableName}`);
             }
-            row[key] = parent[prop.use ?? "id"];
+            row[key] = (parent as Record<string, unknown>)[prop.use ?? "id"];
           }
-        });
+        }
         return row;
       });
-    });
+    }
 
-    const allIds = Array.from(uuidMap.values()).map((row) => row.id);
+    const allIds = Array.from(uuidMap.values()).map(
+      (row) => (row as { id: number }).id,
+    ) as number[];
 
     // 자기 참조가 있는 경우 재귀적으로 upsert
     if (selfRefRows.length > 0) {
@@ -268,14 +274,16 @@ export class UpsertBuilder {
     if (this.hasTable(tableName) === false) {
       return;
     }
-    const table = this.tables.get(tableName)!;
-    if (table.rows.length === 0) {
+    const table = this.tables.get(tableName);
+    if (!table) {
+      throw new Error(`등록되지 않은 테이블 ${tableName}에 updateBatch 요청`);
+    } else if (table.rows.length === 0) {
       return;
     }
 
     const whereColumns = Array.isArray(options.where) ? options.where : [options.where ?? "id"];
     const rows = table.rows.map((_row) => {
-      const { uuid, ...row } = _row;
+      const { uuid: _, ...row } = _row; // uuid 제외
       return row as RowWithId<string>;
     });
 
