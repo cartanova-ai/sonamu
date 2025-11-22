@@ -3,22 +3,21 @@
 */
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
+import { z, ZodIssue } from "zod";
 import qs from "qs";
-import { type ZodIssue, z } from "zod";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
 function dateReviver(key: string, value: any): any {
   if (typeof value === "string") {
     // ISO 8601 형식: 2024-01-15T09:30:00.000Z 또는 2024-01-15T09:30:00+09:00
-    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/;
+    const isoRegex =
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/;
 
     // Timezone 포맷: 2024-01-15 09:30:00+09:00
     const timezoneRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
 
-    if (
-      (isoRegex.test(value) || timezoneRegex.test(value)) &&
-      new Date(value).toString() !== "Invalid Date"
-    ) {
+    if ((isoRegex.test(value) || timezoneRegex.test(value)) &&
+        new Date(value).toString() !== "Invalid Date") {
       return new Date(value);
     }
   }
@@ -62,7 +61,7 @@ export class SonamuError extends Error {
   constructor(
     public code: number,
     public message: string,
-    public issues: z.ZodIssue[],
+    public issues: z.ZodIssue[]
   ) {
     super(message);
     this.isSonamuError = true;
@@ -107,7 +106,9 @@ export async function swrFetcher(args: [string, object]): Promise<any> {
     const res = await axios.get(`${url}?${qs.stringify(params)}`);
     return res.data;
   } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
+    const error: any = new Error(
+      e.response.data.message ?? e.response.message ?? "Unknown"
+    );
     error.statusCode = e.response?.data.statusCode ?? e.response.status;
     throw error;
   }
@@ -118,14 +119,16 @@ export async function swrPostFetcher(args: [string, object]): Promise<any> {
     const res = await axios.post(url, params);
     return res.data;
   } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
+    const error: any = new Error(
+      e.response.data.message ?? e.response.message ?? "Unknown"
+    );
     error.statusCode = e.response?.data.statusCode ?? e.response.status;
     throw error;
   }
 }
 export function handleConditional(
   args: [string, object],
-  conditional?: () => boolean,
+  conditional?: () => boolean
 ): [string, object] | null {
   if (conditional) {
     return conditional() ? args : null;
@@ -136,7 +139,9 @@ export function handleConditional(
 /*
   Utils
 */
-export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
+export function zArrayable<T extends z.ZodTypeAny>(
+  shape: T
+): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
 
@@ -170,7 +175,6 @@ export type SSEStreamState = {
 export type EventHandlers<T> = {
   [K in keyof T]: (data: T[K]) => void;
 };
-
 import { useEffect, useRef, useState } from "react";
 
 export function useSSEStream<T extends Record<string, any>>(
@@ -179,7 +183,7 @@ export function useSSEStream<T extends Record<string, any>>(
   handlers: {
     [K in keyof T]?: (data: T[K]) => void;
   },
-  options: SSEStreamOptions = {},
+  options: SSEStreamOptions = {}
 ): SSEStreamState {
   const { enabled = true, retry = 3, retryInterval = 3000 } = options;
 
@@ -309,7 +313,10 @@ export function useSSEStream<T extends Record<string, any>>(
               const data = JSON.parse(event.data);
               handler(data);
             } catch (error) {
-              console.error(`Failed to parse SSE data for event ${eventType}:`, error);
+              console.error(
+                `Failed to parse SSE data for event ${eventType}:`,
+                error
+              );
             }
             setState((prev) => ({
               ...prev,

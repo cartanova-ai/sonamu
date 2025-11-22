@@ -1,19 +1,19 @@
-import type { ManyToManyBaseSchema, SubsetQuery } from "sonamu";
-import type {
-  CompanyBaseSchema,
+import { SubsetQuery, ManyToManyBaseSchema } from "sonamu";
+import {
   CompanySubsetKey,
-  DepartmentBaseSchema,
   DepartmentSubsetKey,
-  EmployeeBaseSchema,
   EmployeeSubsetKey,
-  FileBaseSchema,
   FileSubsetKey,
-  ProjectBaseSchema,
   ProjectSubsetKey,
-  TagBaseSchema,
   TagSubsetKey,
-  UserBaseSchema,
   UserSubsetKey,
+  CompanyBaseSchema,
+  DepartmentBaseSchema,
+  EmployeeBaseSchema,
+  FileBaseSchema,
+  ProjectBaseSchema,
+  TagBaseSchema,
+  UserBaseSchema,
 } from "./sonamu.generated";
 
 // SubsetQuery: Company
@@ -194,6 +194,7 @@ export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
   P: {
     select: [
       "users.id",
+      "users.email",
       "users.username",
       "users.role",
       "users.bio",
@@ -221,7 +222,16 @@ export const userSubsetQueries: { [key in UserSubsetKey]: SubsetQuery } = {
     loaders: [],
   },
   SS: {
-    select: ["users.id", "users.email", "users.password", "users.role"],
+    select: [
+      "users.id",
+      "users.created_at",
+      "users.email",
+      "users.username",
+      "users.role",
+      "users.last_login_at",
+      "users.bio",
+      "users.is_verified",
+    ],
     virtual: [],
     joins: [],
     loaders: [],

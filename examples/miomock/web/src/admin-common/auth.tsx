@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { UserSubsetMapping } from "src/services/sonamu.generated";
+import { UserSubsetSS } from "src/services/sonamu.generated";
 import { UserService } from "src/services/user/user.service";
 import { UserLoginParams } from "src/services/user/user.types";
 
 interface AuthContextType {
-  user: UserSubsetMapping["SS"] | null;
+  user: UserSubsetSS | null;
   loading: boolean;
   login: (loginParams: UserLoginParams) => void;
   logout: () => void;

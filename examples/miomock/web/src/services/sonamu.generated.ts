@@ -1,9 +1,9 @@
-import { SonamuQueryMode, zArrayable } from "src/services/sonamu.shared";
 import { z } from "zod";
+import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
 
-// CustomScalar: Number
-const Number = z.number();
-type Number = z.infer<typeof Number>;
+// CustomScalar: NumberType
+const NumberType = z.number();
+type NumberType = z.infer<typeof NumberType>;
 
 // CustomScalar: StringArray
 const StringArray = z.array(z.string());
@@ -94,7 +94,7 @@ export const DepartmentBaseSchema = z.object({
   company_id: z.int(),
   parent_id: z.int().nullable(),
   // employees: HasMany Employee
-  employee_count: Number,
+  employee_count: NumberType,
 });
 export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
   readonly __virtual__: readonly ["employee_count"];
@@ -276,7 +276,7 @@ export const DepartmentSubsetA = z.object({
   id: z.int().nonnegative(),
   created_at: z.date(),
   name: z.string().max(128),
-  employee_count: Number,
+  employee_count: NumberType,
   company: z.object({
     id: z.int().nonnegative(),
     name: z.string().max(255),
@@ -402,6 +402,7 @@ export const UserSubsetA = z.object({
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({
   id: z.int().nonnegative(),
+  email: z.string().max(255),
   username: z.string().max(255),
   role: UserRole,
   bio: z.string().max(65535).nullable(),
@@ -420,9 +421,13 @@ export const UserSubsetP = z.object({
 export type UserSubsetP = z.infer<typeof UserSubsetP>;
 export const UserSubsetSS = z.object({
   id: z.int().nonnegative(),
+  created_at: z.date(),
   email: z.string().max(255),
-  password: z.string().max(255),
+  username: z.string().max(255),
   role: UserRole,
+  last_login_at: z.date().nullable(),
+  bio: z.string().max(65535).nullable(),
+  is_verified: z.boolean(),
 });
 export type UserSubsetSS = z.infer<typeof UserSubsetSS>;
 export type UserSubsetMapping = {

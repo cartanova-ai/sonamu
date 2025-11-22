@@ -42,7 +42,7 @@
       "name": "employee_count",
       "desc": "직원수",
       "type": "virtual",
-      "id": "Number"
+      "id": "NumberType"
     }
   ],
   "indexes": [],

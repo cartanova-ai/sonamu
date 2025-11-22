@@ -1,20 +1,20 @@
-import { AxiosProgressEvent } from "axios";
-import qs from "qs";
-import useSWR, { type SWRResponse } from "swr";
 import { z } from "zod";
-import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import qs from "qs";
+import useSWR, { SWRResponse } from "swr";
 import {
-  EventHandlers,
   fetch,
+  ListResult,
+  SWRError,
+  SwrOptions,
   handleConditional,
-  type ListResult,
-  SSEStreamOptions,
-  type SWRError,
-  type SwrOptions,
   swrPostFetcher,
+  EventHandlers,
+  SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
-import type { TagListParams, TagSaveParams } from "./tag.types";
+import { AxiosProgressEvent } from "axios";
+import { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import { TagListParams, TagSaveParams } from "./tag.types";
 
 export namespace TagService {
   export function useTag<T extends TagSubsetKey>(

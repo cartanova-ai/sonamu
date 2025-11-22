@@ -14,6 +14,5 @@ export const DepartmentSaveParams = DepartmentBaseSchema.partial({
 });
 export type DepartmentSaveParams = z.infer<typeof DepartmentSaveParams>;
 
-// biome-ignore lint/suspicious/noShadowRestrictedNames: Sonamu 내부 사용 타입
-export const Number = z.number();
-export type Number = z.infer<typeof Number>;
+export const NumberType = z.number();
+export type NumberType = z.infer<typeof NumberType>;

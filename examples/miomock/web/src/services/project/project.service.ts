@@ -1,20 +1,20 @@
-import { AxiosProgressEvent } from "axios";
-import qs from "qs";
-import useSWR, { type SWRResponse } from "swr";
 import { z } from "zod";
-import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import qs from "qs";
+import useSWR, { SWRResponse } from "swr";
 import {
-  EventHandlers,
   fetch,
+  ListResult,
+  SWRError,
+  SwrOptions,
   handleConditional,
-  type ListResult,
-  SSEStreamOptions,
-  type SWRError,
-  type SwrOptions,
   swrPostFetcher,
+  EventHandlers,
+  SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
-import type { ProjectListParams, ProjectSaveParams } from "./project.types";
+import { AxiosProgressEvent } from "axios";
+import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 export namespace ProjectService {
   export function useProject<T extends ProjectSubsetKey>(

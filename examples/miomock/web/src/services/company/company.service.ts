@@ -1,20 +1,20 @@
-import { AxiosProgressEvent } from "axios";
-import qs from "qs";
-import useSWR, { type SWRResponse } from "swr";
 import { z } from "zod";
-import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
+import qs from "qs";
+import useSWR, { SWRResponse } from "swr";
 import {
-  EventHandlers,
   fetch,
+  ListResult,
+  SWRError,
+  SwrOptions,
   handleConditional,
-  type ListResult,
-  SSEStreamOptions,
-  type SWRError,
-  type SwrOptions,
   swrPostFetcher,
+  EventHandlers,
+  SSEStreamOptions,
   useSSEStream,
 } from "../sonamu.shared";
-import type { CompanyListParams, CompanySaveParams } from "./company.types";
+import { AxiosProgressEvent } from "axios";
+import { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
+import { CompanyListParams, CompanySaveParams } from "./company.types";
 
 export namespace CompanyService {
   export function useCompany<T extends CompanySubsetKey>(
