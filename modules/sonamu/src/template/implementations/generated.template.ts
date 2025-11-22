@@ -4,6 +4,7 @@ import { Sonamu } from "../../api";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
+import { Naite } from "../../naite/naite";
 import { type EntityPropNode, isVirtualProp } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
@@ -28,6 +29,7 @@ export class Template__generated extends Template {
   }
 
   render() {
+    Naite.t("step", "Template__generated:render");
     const entityIds = EntityManager.getAllIds();
     const entities = entityIds.map((id) => EntityManager.get(id));
 
@@ -40,6 +42,7 @@ export class Template__generated extends Template {
         this.getSubsetSourceCode(entity),
       ].filter(nonNullable);
     });
+    Naite.t("Template__generated:sourceCodes", sourceCodes);
 
     // Sort
     const LABEL_KEY_ORDER = ["Enums", "BaseSchema", "BaseListParams", "Subsets", "SubsetQueries"];
@@ -101,6 +104,7 @@ export class Template__generated extends Template {
     }
 
     const body = sourceCode.lines.join("\n");
+    Naite.t("Template__generated:body", body);
 
     // import
     const sonamuImports = [
@@ -134,8 +138,8 @@ export class Template__generated extends Template {
             `export const ${enumId} = z.enum([${Object.keys(enumLabel).map(
               (el) => `"${el}"`,
             )}]).describe("${enumId}");`,
-            `export type ${enumId} = z.infer<typeof ${enumId}>`,
-            `export const ${enumId}Label = ${JSON.stringify(enumLabel)}`,
+            `export type ${enumId} = z.infer<typeof ${enumId}>;`,
+            `export const ${enumId}Label = ${JSON.stringify(enumLabel)};`,
           ]),
       ],
       importKeys: [],
@@ -235,7 +239,7 @@ z.object({
 
     const lines = [
       `export const ${schemaName} = ${schemaBody}`,
-      `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
+      `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
     ];
 
     return {
@@ -271,17 +275,17 @@ z.object({
         const body = propNodeToZodTypeDef(propNode, importKeys);
 
         return [
-          `export const ${schemaName} = ${body}`,
-          `export type ${schemaName} = z.infer<typeof ${schemaName}>`,
+          `export const ${schemaName} = ${body.replace(/,$/, "")};`,
+          `export type ${schemaName} = z.infer<typeof ${schemaName}>;`,
         ];
       }),
       `export type ${entity.names.module}SubsetMapping = {`,
       ...subsetKeys.map((subsetKey) => `  ${subsetKey}: ${entity.names.module}Subset${subsetKey};`),
-      "}",
+      "};",
       `export const ${entity.names.module}SubsetKey = z.enum([${subsetKeys
         .map((k) => `"${k}"`)
         .join(",")}]);`,
-      `export type ${entity.names.module}SubsetKey = z.infer<typeof ${entity.names.module}SubsetKey>`,
+      `export type ${entity.names.module}SubsetKey = z.infer<typeof ${entity.names.module}SubsetKey>;`,
       "",
     ];
 
