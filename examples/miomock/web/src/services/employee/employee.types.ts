@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { EmployeeBaseSchema, EmployeeBaseListParams } from "../sonamu.generated";
+import type { z } from "zod";
+import { EmployeeBaseListParams, EmployeeBaseSchema } from "../sonamu.generated";
 
 // Employee - ListParams
 export const EmployeeListParams = EmployeeBaseListParams;

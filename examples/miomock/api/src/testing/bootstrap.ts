@@ -1,5 +1,5 @@
 import { type Context, DB, Naite, Sonamu } from "sonamu";
-import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
 
 export function bootstrap() {
   beforeAll(async () => {
@@ -38,4 +38,8 @@ export async function runWithContext(context: Context | null, fn: () => Promise<
 
 export async function runWithMockContext(fn: () => Promise<void>) {
   await runWithContext(getMockContext(), fn);
+}
+
+export async function notImpl(fn: () => Promise<void>) {
+  return await expect(fn).rejects.toThrow("Not implemented");
 }

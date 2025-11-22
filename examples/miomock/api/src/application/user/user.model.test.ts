@@ -1,8 +1,8 @@
-import { describe, test, expect, assert } from "vitest";
-import { bootstrap, runWithMockContext } from "../../testing/bootstrap";
-import { UserModel } from "./user.model";
-import range from "lodash-es/range.js";
+import { range } from "radash";
 import { BaseModel, Naite } from "sonamu";
+import { assert, describe, expect, test } from "vitest";
+import { bootstrap, notImpl, runWithMockContext } from "../../testing/bootstrap";
+import { UserModel } from "./user.model";
 
 bootstrap();
 describe("UserModel", () => {
@@ -15,15 +15,13 @@ describe("UserModel", () => {
           expect(user.username).toBe("Minsang Kim");
           expect(true).toBe(true);
 
-          // @ts-ignore: unused
-          const res1 = await trx.table("users").insert({
+          await trx.table("users").insert({
             username: `testuser${no}`,
             email: `testuser${no}@test.com`,
             password: "testpassword",
             role: "normal",
           });
-          // @ts-ignore: unused
-          const resDelete = await trx.table("users").where("id", 1).delete();
+          await trx.table("users").where("id", 1).delete();
 
           await trx.table("companies").insert({
             name: "testcompany",
@@ -72,7 +70,3 @@ describe("UserModel", () => {
     expect(false).toBe(false);
   });
 });
-
-export async function notImpl(fn: () => Promise<void>) {
-  return await expect(fn).rejects.toThrow("Not implemented");
-}

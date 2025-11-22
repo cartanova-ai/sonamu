@@ -5,7 +5,7 @@ import { UserService } from "src/services/user/user.service";
 import { UserLoginParams } from "src/services/user/user.types";
 
 interface AuthContextType {
-  user: UserSubsetMapping["A"] | null;
+  user: UserSubsetMapping["SS"] | null;
   loading: boolean;
   login: (loginParams: UserLoginParams) => void;
   logout: () => void;

@@ -59,9 +59,6 @@ importers:
       knex:
         specifier: ^3.1.0
         version: 3.1.0(mysql2@3.15.3)
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       mysql2:
         specifier: ^3.14.5
         version: 3.15.3
@@ -96,9 +93,6 @@ importers:
       '@types/bcrypt':
         specifier: ^6
         version: 6.0.0
-      '@types/lodash-es':
-        specifier: ^4
-        version: 4.17.12
       '@types/node':
         specifier: ^24.5.0
         version: 24.10.1
@@ -138,9 +132,6 @@ importers:
       jotai:
         specifier: ^2.14.0
         version: 2.15.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@18.3.27)(react@18.3.1)
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
@@ -175,9 +166,6 @@ importers:
         specifier: ^4.1.12
         version: 4.1.12
     devDependencies:
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
       '@types/luxon':
         specifier: ^3
         version: 3.7.1
@@ -664,9 +652,6 @@ importers:
       knex:
         specifier: ^3.1.0
         version: 3.1.0(mysql2@3.15.3)
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       mime-types:
         specifier: ^3.0.1
         version: 3.0.2
@@ -688,6 +673,9 @@ importers:
       qs:
         specifier: ^6.11.0
         version: 6.14.0
+      radash:
+        specifier: ^12.1.1
+        version: 12.1.1
       tsicli:
         specifier: ^1.0.5
         version: 1.0.5
@@ -710,9 +698,6 @@ importers:
       '@types/inflection':
         specifier: ^1.13.0
         version: 1.13.2
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
       '@types/mime-types':
         specifier: ^3.0.1
         version: 3.0.1

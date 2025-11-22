@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ProjectBaseSchema, ProjectBaseListParams } from "../sonamu.generated";
+import { ProjectBaseListParams, ProjectBaseSchema } from "../sonamu.generated";
 
 // Project - ListParams
 export const ProjectListParams = ProjectBaseListParams;

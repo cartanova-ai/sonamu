@@ -64,6 +64,7 @@
     ],
     "P": [
       "id",
+      "email",
       "username",
       "role",
       "bio",
