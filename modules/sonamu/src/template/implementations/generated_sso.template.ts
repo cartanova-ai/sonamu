@@ -83,11 +83,11 @@ export class Template__generated_sso extends Template {
       const puriLoaderQuery: SourceCode = {
         label: `Puri LoaderQuery: ${entity.id}`,
         lines: [
-          `export const ${entityCamelName}PuriLoaderQueries: PuriLoaderQuery<${subsetKeyTypeName}> = {`,
+          `export const ${entityCamelName}PuriLoaderQueries = {`,
           ...subsetKeys.map((subsetKey) => {
             return `${subsetKey}: ${entity.getPuriLoaderQuery(subsetKey)},`;
           }),
-          `};`,
+          `} as const satisfies PuriLoaderQueries<${subsetKeyTypeName}>;`,
           "",
         ],
         importKeys: [],
@@ -126,7 +126,7 @@ export class Template__generated_sso extends Template {
       "SubsetQuery",
       "PuriWrapper",
       "DatabaseSchemaExtend",
-      "PuriLoaderQuery",
+      "PuriLoaderQueries",
       isUsingManyToManyBaseSchema ? "ManyToManyBaseSchema" : "",
     ]
       .filter(Boolean)

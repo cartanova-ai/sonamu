@@ -12,12 +12,13 @@ import type { BaseListParams } from "../utils/model";
 import { chunk } from "../utils/utils";
 import { UpsertBuilder } from "./upsert-builder";
 import { PuriWrapper } from "./puri-wrapper";
-import { Puri } from "./puri";
 import {
+  InferAllSubsets,
+  PuriLoaderQueries,
   PuriSubsetFn,
-  PuriLoaderQuery,
   UnionExtractedTTables,
 } from "./puri.types";
+import { Puri } from "./puri";
 
 type UnknownDBRecord = Record<string, unknown>;
 
@@ -43,14 +44,15 @@ type ResolveIntersection<
 
 export class BaseModelClass<
   TSubsetKey extends string = never,
-  TSubsetMapping extends Record<TSubsetKey, any> = never,
+  TSubsetMapping extends Record<string, any> = never,
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn> = never,
+  TLoaderQueries extends PuriLoaderQueries<TSubsetKey> = never,
 > {
   public modelName: string = "Unknown";
 
   constructor(
     protected puriSubsetQueries?: TSubsetQueries,
-    protected subsetLoaders?: PuriLoaderQuery<TSubsetKey>
+    protected subsetLoaders?: TLoaderQueries
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -116,7 +118,8 @@ export class BaseModelClass<
       throw new Error("puriSubsetQueries is not defined");
     }
 
-    const qb = this.puriSubsetQueries[subset]?.(this.getPuri("r"));
+    const puriWrapper = new PuriWrapper(this.getDB("r"), new UpsertBuilder());
+    const qb = this.puriSubsetQueries[subset]?.(puriWrapper);
 
     return {
       qb: qb as unknown as Puri<
@@ -138,7 +141,10 @@ export class BaseModelClass<
     };
   }
 
-  async executeSubsetQuery<T extends TSubsetKey>({
+  async executeSubsetQuery<
+    T extends TSubsetKey,
+    TComputedResults extends InferAllSubsets<TSubsetQueries, TLoaderQueries>,
+  >({
     subset,
     qb,
     params,
@@ -151,7 +157,13 @@ export class BaseModelClass<
       page?: number;
     };
     debug?: boolean;
-  }): Promise<{ rows: TSubsetMapping[T][]; total: number }> {
+  }): Promise<{
+    rows: TComputedResults[T][];
+    total: number;
+    enhancers: {
+      [K in TSubsetKey]: (row: TComputedResults[K]) => TSubsetMapping[K];
+    };
+  }> {
     if (!this.subsetLoaders) {
       throw new Error("subsetLoaders is not defined");
     }
@@ -161,39 +173,51 @@ export class BaseModelClass<
     }
 
     const { num, page } = params;
-    let unloadedRows = (await qb
-      .limit(num)
-      .offset(num * (page - 1))) as TSubsetMapping[T][];
+
+    let unloadedRows = (await qb.limit(num).offset(num * (page - 1))) as any[];
 
     if (debug) {
-      qb.debug();
+      console.debug(
+        chalk.cyan("[Puri Debug - List Query]"),
+        chalk.blue(qb.toQuery())
+      );
     }
 
-    const total = 0;
+    const loaders = (this.subsetLoaders as any)[subset];
+    if (loaders && Array.isArray(loaders)) {
+      for (const resolveLoader of loaders) {
+        const { as, qb: resolveLoaderQbFn } = resolveLoader;
 
-    for (const resolveLoader of this.subsetLoaders[subset]) {
-      const { as, qb: resolveLoaderQbFn } = resolveLoader;
-      const resolveLoaderQb = resolveLoaderQbFn(
-        this.getPuri("r"),
-        unloadedRows.map((row) => row.id)
-      );
+        const resolveLoaderQb = resolveLoaderQbFn(
+          new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
+          unloadedRows.map((row) => row.id)
+        );
 
-      if (debug) {
-        resolveLoaderQb.debug();
+        if (debug) {
+          console.debug(
+            chalk.cyan("[Puri Debug - Loader Query]"),
+            chalk.blue(resolveLoaderQb.toQuery())
+          );
+        }
+
+          const loadedRows = await resolveLoaderQb as any[];
+          const subRowGroups = group(loadedRows, (row) => row["refId"]);
+
+          unloadedRows = unloadedRows.map((row) => {
+            row[as] = (subRowGroups[row.id] ?? []).map((r) => omit(r, ["refId"]));
+            return row;
+          });
+        }
       }
 
-      const loadedRows = await resolveLoaderQb;
-      const subRowGroups = groupBy(loadedRows, "refId");
-      unloadedRows = unloadedRows.map((row) => {
-        row[as] = (subRowGroups[row.id] ?? []).map((r) => omit(r, "refId"));
-        return row;
-      });
-    }
+    const rows = this.hydrate(unloadedRows) as TComputedResults[T][];
 
-    // 불러온 row들을 참조ID 기준으로 분류 배치
-    const rows = this.hydrate(unloadedRows) as TSubsetMapping[T][];
+    // 빈 enhancers 객체 반환 (사용자가 채워서 사용)
+    const enhancers = {} as {
+      [K in TSubsetKey]: (row: TComputedResults[K]) => TSubsetMapping[K];
+    };
 
-    return { rows, total };
+    return { rows, total: 0, enhancers };
   }
 
 
@@ -501,4 +525,4 @@ export class BaseModelClass<
     return new UpsertBuilder();
   }
 }
-export const BaseModel = new BaseModelClass({}, {});
+export const BaseModel = new BaseModelClass();
