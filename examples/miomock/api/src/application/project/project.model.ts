@@ -1,19 +1,27 @@
 import {
   api,
   asArray,
-  BadRequestException,
   BaseModelClass,
   type ListResult,
   NotFoundException,
+  exhaustive,
 } from "sonamu";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
-import { projectSubsetQueries } from "../sonamu.generated.sso";
 import type { ProjectListParams, ProjectSaveParams } from "./project.types";
+import {
+  projectPuriLoaderQueries,
+  projectPuriSubsetQueries,
+} from "../sonamu.generated.sso";
 
 /*
   Project Model
 */
-class ProjectModelClass extends BaseModelClass {
+class ProjectModelClass extends BaseModelClass<
+  ProjectSubsetKey,
+  ProjectSubsetMapping,
+  typeof projectPuriSubsetQueries,
+  typeof projectPuriLoaderQueries
+> {
   modelName = "Project";
 
   @api({
@@ -68,39 +76,48 @@ class ProjectModelClass extends BaseModelClass {
       ...params,
     };
 
-    // build queries
-    const { rows, total } = await this.runSubsetQuery({
-      subset,
-      params,
-      subsetQuery: projectSubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("projects.id", asArray(params.id));
-        }
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
 
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("projects.id", params.keyword);
-            // } else if (params.search === "field") {
-            //   qb.where("projects.field", "like", `%${params.keyword}%`);
-          } else {
-            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
-          }
-        }
+    // id
+    if (params.id) {
+      qb.whereIn("projects.id", asArray(params.id));
+    }
 
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy(`projects.${orderByField}`, orderByDirec);
-        }
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("projects.id", Number(params.keyword));
+      } else {
+        exhaustive(params.search);
+      }
+    }
 
-        return qb;
-      },
-      debug: false,
+    // orderBy
+    if (params.orderBy) {
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("projects.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+    
+    const enhancers = this.createEnhancers({
+      A: (row) => ({ ...row, virtual_test: 1 }),
+      P: (row) => row,
     });
+
+    const { rows, total } = await this.executeSubsetQuery({
+      subset,
+      qb,
+      params,
+      enhancers,
+      debug: true,
+    });
+
+    enhancers.A = (row) => ({ ...row, virtual_test: 1 });
+    // enhancers.A = (row) => ({ ...row }); // virtual_test를 추가하지 않았으므로 오류 발생!
+    enhancers.P = (row) => row;
 
     return {
       rows,
@@ -161,4 +178,7 @@ class ProjectModelClass extends BaseModelClass {
   }
 }
 
-export const ProjectModel = new ProjectModelClass();
+export const ProjectModel = new ProjectModelClass(
+  projectPuriSubsetQueries,
+  projectPuriLoaderQueries
+);

@@ -52,11 +52,35 @@
       "desc": "이미지URLS",
       "type": "json",
       "id": "StringArray"
+    },
+    {
+      "name": "virtual_test",
+      "nullable": true,
+      "desc": "virtual prop test",
+      "type": "virtual",
+      "id": "NumberType"
     }
   ],
   "indexes": [],
   "subsets": {
     "A": [
+      "id",
+      "created_at",
+      "employee.id",
+      "employee.user.email",
+      "employee.user.username",
+      "employee.department.name",
+      "employee.employee_number",
+      "employee.salary",
+      "name",
+      "status",
+      "description",
+      "tags.id",
+      "tags.name",
+      "image_urls",
+      "virtual_test"
+    ],
+    "P": [
       "id",
       "created_at",
       "employee.id",

@@ -3,19 +3,20 @@ import {
   api,
   asArray,
   BadRequestException,
-  type DatabaseSchemaExtend,
   exhaustive,
   type ListResult,
   Naite,
   NotFoundException,
-  type PuriWrapper,
   Sonamu,
   transactional,
+  BaseModelClass,
   UnauthorizedException,
 } from "sonamu";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import { userSubsetQueries } from "../sonamu.generated.sso";
-import { CustomBaseModelClass } from "./custom-base-model-class";
+import {
+  userPuriLoaderQueries,
+  userPuriSubsetQueries,
+} from "../sonamu.generated.sso";
 import type {
   UserListParams,
   UserLoginParams,
@@ -27,10 +28,11 @@ import type {
 /*
   User Model
 */
-class UserModelClass extends CustomBaseModelClass<
+class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
-  typeof puriBasedUserSubsetQueries
+  typeof userPuriSubsetQueries,
+  typeof userPuriLoaderQueries
 > {
   modelName = "User";
 
@@ -79,11 +81,16 @@ class UserModelClass extends CustomBaseModelClass<
       ...rawParams,
     };
 
-    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+    const { qb, onSubset } = this.getSubsetQueries(subset);
 
     // id
     if (params.id) {
       qb.whereIn("users.id", asArray(params.id));
+    }
+
+    // Delete this after testing
+    if (params.test) {
+      onSubset("P").where("employee__department.name", params.test);
     }
 
     // search-keyword
@@ -110,6 +117,8 @@ class UserModelClass extends CustomBaseModelClass<
       subset,
       qb,
       params,
+      enhancers: {},
+      debug: true,
     });
 
     return {
@@ -282,57 +291,7 @@ class UserModelClass extends CustomBaseModelClass<
   }
 }
 
-const puriBasedUserSubsetQueries = {
-  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper
-      .from("users")
-      .join({ employee: "employees" }, "users.id", "employee.user_id")
-      .join(
-        { employee__department: "departments" },
-        "employee.department_id",
-        "employee__department.id",
-      )
-      .select({
-        id: "users.id",
-        username: "users.username",
-        role: "users.role",
-        bio: "users.bio",
-        is_verified: "users.is_verified",
-        employee__department__name: "employee__department.name",
-        employee__salary: "employee.salary",
-      });
-  },
-  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("users").select({
-      id: "users.id",
-      created_at: "users.created_at",
-      email: "users.email",
-      username: "users.username",
-      birth_date: "users.birth_date",
-      role: "users.role",
-      last_login_at: "users.last_login_at",
-      bio: "users.bio",
-      is_verified: "users.is_verified",
-    });
-  },
-  SS: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
-    return qbWrapper.from("users").select({
-      id: "users.id",
-      created_at: "users.created_at",
-      email: "users.email",
-      username: "users.username",
-      birth_date: "users.birth_date",
-      role: "users.role",
-      last_login_at: "users.last_login_at",
-      bio: "users.bio",
-      is_verified: "users.is_verified",
-    });
-  },
-};
-const puriBasedUserSubsetLoaders = {
-  A: userSubsetQueries.P.loaders,
-  P: userSubsetQueries.A.loaders,
-  SS: userSubsetQueries.SS.loaders,
-};
-
-export const UserModel = new UserModelClass(puriBasedUserSubsetQueries, puriBasedUserSubsetLoaders);
+export const UserModel = new UserModelClass(
+  userPuriSubsetQueries,
+  userPuriLoaderQueries
+);

@@ -1,19 +1,27 @@
 import {
   api,
   asArray,
-  BadRequestException,
   BaseModelClass,
   type ListResult,
   NotFoundException,
+  exhaustive,
 } from "sonamu";
 import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
-import { departmentSubsetQueries } from "../sonamu.generated.sso";
+import {
+  departmentPuriLoaderQueries,
+  departmentPuriSubsetQueries,
+} from "../sonamu.generated.sso";
 import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 /*
   Department Model
 */
-class DepartmentModelClass extends BaseModelClass {
+class DepartmentModelClass extends BaseModelClass<
+  DepartmentSubsetKey,
+  DepartmentSubsetMapping,
+  typeof departmentPuriSubsetQueries,
+  typeof departmentPuriLoaderQueries
+> {
   modelName = "Department";
 
   @api({
@@ -68,44 +76,55 @@ class DepartmentModelClass extends BaseModelClass {
       ...params,
     };
 
-    // build queries
-    const { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
+    // id
+    if (params.id) {
+      qb.whereIn("departments.id", asArray(params.id));
+    }
+
+    if (params.company_name) {
+      onSubset(["A", "P", "P2"]).where("company.name", params.company_name);
+    }
+
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("departments.id", Number(params.keyword));
+      } else {
+        exhaustive(params.search);
+      }
+    }
+
+    // orderBy
+    if (params.orderBy) {
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("departments.id", "desc");
+      } else if (params.orderBy === "name-asc") {
+        qb.orderBy("departments.name", "asc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+
+    const enhancers = this.createEnhancers({
+      A: (row) => ({
+        ...row,
+        employee_count: row.employees?.length ?? 0,
+      }),
+      P: (row) => ({
+        ...row,
+        employee_count: 0,
+      }),
+    });
+
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: departmentSubsetQueries[subset],
-      build: ({ qb, virtual, db }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("departments.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("departments.id", params.keyword);
-            // } else if (params.search === "field") {
-            //   qb.where("departments.field", "like", `%${params.keyword}%`);
-          } else {
-            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy(`departments.${orderByField}`, orderByDirec);
-        }
-
-        if (virtual.includes("employee_count")) {
-          qb.leftJoin("employees", "departments.id", "employees.department_id");
-          qb.groupBy("departments.id");
-          qb.select(db.raw`COUNT(employees.id) as employee_count`);
-        }
-
-        return qb;
-      },
-      debug: false,
+      enhancers,
+      debug: true,
     });
 
     return {
@@ -144,4 +163,7 @@ class DepartmentModelClass extends BaseModelClass {
   }
 }
 
-export const DepartmentModel = new DepartmentModelClass();
+export const DepartmentModel = new DepartmentModelClass(
+  departmentPuriSubsetQueries,
+  departmentPuriLoaderQueries
+);

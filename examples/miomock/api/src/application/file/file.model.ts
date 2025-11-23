@@ -9,13 +9,22 @@ import {
   upload,
 } from "sonamu";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
-import { fileSubsetQueries } from "../sonamu.generated.sso";
+import {
+  filePuriLoaderQueries,
+  filePuriSubsetQueries,
+  fileSubsetQueries,
+} from "../sonamu.generated.sso";
 import type { FileListParams, FileSaveParams } from "./file.types";
 
 /*
   File Model
 */
-class FileModelClass extends BaseModelClass {
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof filePuriSubsetQueries,
+  typeof filePuriLoaderQueries
+> {
   modelName = "File";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "File" })
@@ -183,4 +192,7 @@ class FileModelClass extends BaseModelClass {
   }
 }
 
-export const FileModel = new FileModelClass();
+export const FileModel = new FileModelClass(
+  filePuriSubsetQueries,
+  filePuriLoaderQueries
+);

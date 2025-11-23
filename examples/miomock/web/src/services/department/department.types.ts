@@ -2,7 +2,9 @@ import { z } from "zod";
 import { DepartmentBaseListParams, DepartmentBaseSchema } from "../sonamu.generated";
 
 // Department - ListParams
-export const DepartmentListParams = DepartmentBaseListParams;
+export const DepartmentListParams = DepartmentBaseListParams.extend({
+  company_name: z.string().optional(),
+});
 export type DepartmentListParams = z.infer<typeof DepartmentListParams>;
 
 // Department - SaveParams

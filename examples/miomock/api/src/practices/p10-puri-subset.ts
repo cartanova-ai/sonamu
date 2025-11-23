@@ -80,18 +80,18 @@ export type UserSubsetPuriTypes = {
 };
 
 // Puri 타입에서 각 제네릭 파라미터 추출
-type PuriSchema<P> = P extends Puri<infer S, any, any> ? S : never;
+// type PuriSchema<P> = P extends Puri<infer S, any, any> ? S : never;
 type PuriTables<P> = P extends Puri<any, infer TTables, any> ? TTables : never;
-type PuriResult<P> = P extends Puri<any, any, infer R> ? R : never;
+// type PuriResult<P> = P extends Puri<any, any, infer R> ? R : never;
 
 // 두 테이블 타입의 교집합 (공통 키만 추출)
 type IntersectTables<A, B> = Pick<A, Extract<keyof A, keyof B>>;
 
 // 두 Puri의 교집합
 type IntersectPuri<A extends Puri<any, any, any>, B extends Puri<any, any, any>> = Puri<
-  PuriSchema<A>, // TSchema (같다고 가정)
+  any,
   IntersectTables<PuriTables<A>, PuriTables<B>>, // TTables key 교집합
-  PuriResult<A> // TResult (동일하다는 가정)
+  any
 >;
 
 // 여러 Puri의 교집합 (재귀적으로 처리)

@@ -16,6 +16,7 @@ GET {{baseUrl}}/api/user/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[test]=TEST
 Content-Type: application/json
 
 ###
@@ -165,6 +166,7 @@ Content-Type: application/json
       "status": "planning",
       "description": null,
       "image_urls": null,
+      "virtual_test": null,
       "employee_ids": [0],
       "tag_ids": [0]
     }
@@ -301,6 +303,7 @@ GET {{baseUrl}}/api/department/findMany
 	&params[orderBy]=id-desc
 	&params[queryMode]=both
 	&params[id]=0
+	&params[company_name]=COMPANY_NAME
 Content-Type: application/json
 
 ###
