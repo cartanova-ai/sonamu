@@ -4,10 +4,10 @@ import { access, type FileHandle } from "fs/promises";
 import { join } from "path";
 import { Naite, Sonamu } from "sonamu";
 import type Stream from "stream";
-import { beforeAll, describe, expect, test, vi } from "vitest";
-import { bootstrap, runWithMockContext } from "../testing/bootstrap";
+import { beforeAll, describe, expect, vi } from "vitest";
+import { bootstrap, test } from "../testing/bootstrap";
 
-bootstrap();
+bootstrap(vi);
 describe("Syncer", () => {
   let apiRootPath: string;
   let syncer: typeof Sonamu.syncer;
@@ -22,113 +22,105 @@ describe("Syncer", () => {
   });
 
   test("fs/promises mock is working", async () => {
-    await runWithMockContext(async () => {
-      // 가상 파일
-      const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
-      const isExists = await exists(filePath);
-      expect(isExists).toBe(true);
+    // 가상 파일
+    const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
+    const isExists = await exists(filePath);
+    expect(isExists).toBe(true);
 
-      // 확인
-      Naite.expect("fs:access").toBe(filePath);
-    });
+    // 확인
+    Naite.expect("fs:access").toBe(filePath);
   });
 
   describe("generateTemplate", () => {
     test("handleEntityChange", async () => {
-      await runWithMockContext(async () => {
-        // 진입점: handleEntityChange
-        await syncer.handleEntityChange(
-          {
-            entity: [`/${join(apiRootPath, "src/application/user/user.entity.ts")}`],
-            types: [],
-            functions: [],
-            generated: [],
-            model: [],
-            frame: [],
-            config: [],
-          },
-          ["types"],
-        );
-
-        // // Template__generated:body
-        // Naite.expect("Template__generated:body").toMatchSnapshot();
-
-        // formatCode:result
-        // expect(Naite.get("formatCode:result")[1]).toMatchSnapshot();
-
-        // resolveRenderedTemplate:formatted
-        // Naite.expect("resolveRenderedTemplate:formatted:generated").toMatchSnapshot();
-
-        // step
-        Naite.expect("step").toMatchSnapshot();
-      });
-    });
-
-    test("handleModelOrFrameChange", async () => {
-      await runWithMockContext(async () => {
-        // 진입점: handleModelOrFrameChange
-        await syncer.handleModelOrFrameChange({
-          model: [`/${join(apiRootPath, "src/application/user/user.model.ts")}`],
-          frame: [],
+      // 진입점: handleEntityChange
+      await syncer.handleEntityChange(
+        {
+          entity: [`/${join(apiRootPath, "src/application/user/user.entity.ts")}`],
           types: [],
           functions: [],
           generated: [],
-          entity: [],
+          model: [],
+          frame: [],
           config: [],
-        });
+        },
+        ["types"],
+      );
 
-        // 중간:actionGenerateServices
-        expect(Naite.get("actionGenerateServices")).toEqual([
-          {
-            namesRecord: {
-              camel: "user",
-              camelPlural: "users",
-              capital: "User",
-              capitalPlural: "Users",
-              constant: "USER",
-              fs: "user",
-              fsPlural: "users",
-              upper: "USER",
-            },
-          },
-        ]);
+      // // Template__generated:body
+      // Naite.expect("Template__generated:body").toMatchSnapshot();
 
-        // writeFile
-        expect(Naite.get("fs:writeFile")[0].file).toBe(
-          join(apiRootPath, "src/services/user/user.service.ts").replace("/api", "/web"),
-        );
-        expect(Naite.get("fs:writeFile")[1].file).toBe(
-          join(apiRootPath, "src/application/sonamu.generated.http"),
-        );
+      // formatCode:result
+      // expect(Naite.get("formatCode:result")[1]).toMatchSnapshot();
 
-        // step
-        Naite.expect("step").toMatchSnapshot();
+      // resolveRenderedTemplate:formatted
+      // Naite.expect("resolveRenderedTemplate:formatted:generated").toMatchSnapshot();
+
+      // step
+      Naite.expect("step").toMatchSnapshot();
+    });
+
+    test("handleModelOrFrameChange", async () => {
+      // 진입점: handleModelOrFrameChange
+      await syncer.handleModelOrFrameChange({
+        model: [`/${join(apiRootPath, "src/application/user/user.model.ts")}`],
+        frame: [],
+        types: [],
+        functions: [],
+        generated: [],
+        entity: [],
+        config: [],
       });
+
+      // 중간:actionGenerateServices
+      expect(Naite.get("actionGenerateServices")).toEqual([
+        {
+          namesRecord: {
+            camel: "user",
+            camelPlural: "users",
+            capital: "User",
+            capitalPlural: "Users",
+            constant: "USER",
+            fs: "user",
+            fsPlural: "users",
+            upper: "USER",
+          },
+        },
+      ]);
+
+      // writeFile
+      expect(Naite.get("fs:writeFile")[0].file).toBe(
+        join(apiRootPath, "src/services/user/user.service.ts").replace("/api", "/web"),
+      );
+      expect(Naite.get("fs:writeFile")[1].file).toBe(
+        join(apiRootPath, "src/application/sonamu.generated.http"),
+      );
+
+      // step
+      Naite.expect("step").toMatchSnapshot();
     });
 
     test("service", async () => {
-      await runWithMockContext(async () => {
-        await syncer.generateTemplate(
-          "service",
-          {
-            namesRecord: {
-              camel: "user",
-              camelPlural: "users",
-              capital: "User",
-              capitalPlural: "Users",
-              constant: "USER",
-              fs: "user",
-              fsPlural: "users",
-              upper: "USER",
-            },
-            modelTsPath: join(apiRootPath, "src/application/user/user.model.ts"),
+      await syncer.generateTemplate(
+        "service",
+        {
+          namesRecord: {
+            camel: "user",
+            camelPlural: "users",
+            capital: "User",
+            capitalPlural: "Users",
+            constant: "USER",
+            fs: "user",
+            fsPlural: "users",
+            upper: "USER",
           },
-          {
-            overwrite: true,
-          },
-        );
-        expect(Naite.get("fs:writeFile")).toBeDefined();
-      });
+          modelTsPath: join(apiRootPath, "src/application/user/user.model.ts"),
+        },
+        {
+          overwrite: true,
+        },
+      );
+      expect(Naite.get("fs:writeFile")).toBeDefined();
     });
   });
 });

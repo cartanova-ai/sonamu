@@ -1,7 +1,14 @@
 import { type Context, DB, Naite, Sonamu } from "sonamu";
-import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  type VitestUtils,
+  test as vitestTest,
+} from "vitest";
 
-export function bootstrap() {
+export function bootstrap(vi: VitestUtils) {
   beforeAll(async () => {
     await Sonamu.initForTesting();
   });
@@ -38,6 +45,8 @@ export async function runWithMockContext(fn: () => Promise<void>) {
   await runWithContext(getMockContext(), fn);
 }
 
-export async function notImpl(fn: () => Promise<void>) {
-  return await expect(fn).rejects.toThrow("Not implemented");
+export async function test(title: string, fn: () => Promise<void>) {
+  return vitestTest(title, async () => {
+    await runWithMockContext(fn);
+  });
 }
