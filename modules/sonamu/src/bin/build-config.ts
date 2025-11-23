@@ -13,8 +13,8 @@ export const BUILD_DIR = "dist";
  * .swcrc 설정 사용
  */
 export const SWC_BUILD_COMMAND = (configFilePath: string) =>
-    `swc ${SRC_DIR} -d ${BUILD_DIR} --config-file ${configFilePath}  --strip-leading-paths`;
-  
+  `swc ${SRC_DIR} -d ${BUILD_DIR} --config-file ${configFilePath}  --strip-leading-paths`;
+
 /**
  * TSC 타입 체크 명령어
  */

@@ -153,7 +153,7 @@ class SonamuClass {
 
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
-    
+
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     const { exists } = await import("../utils/fs-utils");
     if (await exists(secretsPath)) {
