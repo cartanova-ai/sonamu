@@ -36,7 +36,8 @@
   "files": [
     "dist",
     "src",
-    "bin"
+    "bin",
+    ".swcrc"
   ],
   "dependencies": {
     "@aws-sdk/client-s3": "^3.921.0",
