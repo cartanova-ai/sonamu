@@ -35,4 +35,4 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish
-        run: pnpm publish
+        run: pnpm publish-those-not-published-yet
