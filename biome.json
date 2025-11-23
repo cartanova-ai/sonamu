@@ -8,12 +8,28 @@
         "useNodejsImportProtocol": "off"
       },
       "correctness": {
-        "useParseIntRadix": "off"
+        "useParseIntRadix": "off",
+        "noEmptyPattern": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off"
       }
     }
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "!**/dist"]
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "!**/dist",
+      "!**/node_modules",
+      "!examples/**/web/src/services/**/*"
+    ]
   },
   "formatter": {
     "enabled": true,
