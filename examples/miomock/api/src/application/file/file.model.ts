@@ -192,7 +192,4 @@ class FileModelClass extends BaseModelClass<
   }
 }
 
-export const FileModel = new FileModelClass(
-  filePuriSubsetQueries,
-  filePuriLoaderQueries
-);
+export const FileModel = new FileModelClass(filePuriSubsetQueries, filePuriLoaderQueries);

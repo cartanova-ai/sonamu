@@ -3,20 +3,17 @@ import {
   api,
   asArray,
   BadRequestException,
+  BaseModelClass,
   exhaustive,
   type ListResult,
   Naite,
   NotFoundException,
   Sonamu,
   transactional,
-  BaseModelClass,
   UnauthorizedException,
 } from "sonamu";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import {
-  userPuriLoaderQueries,
-  userPuriSubsetQueries,
-} from "../sonamu.generated.sso";
+import { userPuriLoaderQueries, userPuriSubsetQueries } from "../sonamu.generated.sso";
 import type {
   UserListParams,
   UserLoginParams,
@@ -291,7 +288,4 @@ class UserModelClass extends BaseModelClass<
   }
 }
 
-export const UserModel = new UserModelClass(
-  userPuriSubsetQueries,
-  userPuriLoaderQueries
-);
+export const UserModel = new UserModelClass(userPuriSubsetQueries, userPuriLoaderQueries);

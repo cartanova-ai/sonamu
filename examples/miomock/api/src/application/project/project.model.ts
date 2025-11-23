@@ -7,11 +7,8 @@ import {
   exhaustive,
 } from "sonamu";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
+import { projectPuriLoaderQueries, projectPuriSubsetQueries } from "../sonamu.generated.sso";
 import type { ProjectListParams, ProjectSaveParams } from "./project.types";
-import {
-  projectPuriLoaderQueries,
-  projectPuriSubsetQueries,
-} from "../sonamu.generated.sso";
 
 /*
   Project Model
@@ -101,7 +98,7 @@ class ProjectModelClass extends BaseModelClass<
         exhaustive(params.orderBy);
       }
     }
-    
+
     const enhancers = this.createEnhancers({
       A: (row) => ({ ...row, virtual_test: 1 }),
       P: (row) => row,
@@ -180,5 +177,5 @@ class ProjectModelClass extends BaseModelClass<
 
 export const ProjectModel = new ProjectModelClass(
   projectPuriSubsetQueries,
-  projectPuriLoaderQueries
+  projectPuriLoaderQueries,
 );

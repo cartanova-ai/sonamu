@@ -41,7 +41,7 @@ class TagModelClass extends BaseModelClass<
 
   async findOne<T extends TagSubsetKey>(
     subset: T,
-    listParams: TagListParams
+    listParams: TagListParams,
   ): Promise<TagSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -55,7 +55,7 @@ class TagModelClass extends BaseModelClass<
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
   async findMany<T extends TagSubsetKey>(
     subset: T,
-    params: TagListParams = {}
+    params: TagListParams = {},
   ): Promise<ListResult<TagSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -136,7 +136,4 @@ class TagModelClass extends BaseModelClass<
   }
 }
 
-export const TagModel = new TagModelClass(
-  tagPuriSubsetQueries,
-  tagPuriLoaderQueries
-);
+export const TagModel = new TagModelClass(tagPuriSubsetQueries, tagPuriLoaderQueries);

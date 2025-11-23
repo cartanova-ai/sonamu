@@ -149,5 +149,5 @@ class EmployeeModelClass extends BaseModelClass<
 
 export const EmployeeModel = new EmployeeModelClass(
   employeePuriSubsetQueries,
-  employeePuriLoaderQueries
+  employeePuriLoaderQueries,
 );

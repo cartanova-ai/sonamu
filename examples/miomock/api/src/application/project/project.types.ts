@@ -9,12 +9,14 @@ export type ProjectListParams = z.infer<typeof ProjectListParams>;
 export const ProjectSaveParams = ProjectBaseSchema.partial({
   id: true,
   created_at: true,
-}).extend({
-  employee_ids: z.array(z.number().int().positive()),
-  tag_ids: z.array(z.number().int().positive()),
-}).omit({
-  virtual_test: true,
-});
+})
+  .extend({
+    employee_ids: z.array(z.number().int().positive()),
+    tag_ids: z.array(z.number().int().positive()),
+  })
+  .omit({
+    virtual_test: true,
+  });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 
 export const StringArray = z.array(z.string());
