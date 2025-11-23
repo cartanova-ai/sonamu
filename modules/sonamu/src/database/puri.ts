@@ -17,6 +17,7 @@ import type {
   SelectObject,
   SingleTableValue,
   ColumnKeys,
+  ClearStatements,
   SqlExpression,
   WhereCondition,
 } from "./puri.types";
@@ -164,6 +165,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   selectAll(): this {
     this.knexQuery.select("*");
     return this as any;
+  }
+
+  // CLEAR
+  clear(statement: ClearStatements): this {
+    this.knexQuery.clear(statement);
+    return this;
   }
 
   // JOIN: 서브쿼리 + Alias
@@ -543,6 +550,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   debug(): this {
     console.log(`${chalk.cyan("[Puri Debug]")} ${chalk.yellow(this.toQuery())}`);
     return this;
+  }
+
+  clone(): Puri<TSchema, TTables, TResult> {
+    // 'dual'은 더미 테이블이며, 바로 아래 줄에서 knexQuery가 덮어씌워집니다.
+    const newPuri = new Puri<TSchema, TTables, TResult>(this.knex, "dual");
+    newPuri.knexQuery = this.knexQuery.clone();
+    return newPuri;
   }
 
   formatSQL(unformatted: string): string {

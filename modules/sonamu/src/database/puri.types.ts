@@ -165,3 +165,20 @@ export type PuriLoaderQuery<SubsetKey extends string> = {
     ) => Puri<any, any, any>;
   }[];
 };
+
+export type ClearStatements =
+  | "with"
+  | "select"
+  | "columns"
+  | "hintComments"
+  | "where"
+  | "union"
+  | "using"
+  | "join"
+  | "group"
+  | "order"
+  | "having"
+  | "limit"
+  | "offset"
+  | "counter"
+  | "counters";
