@@ -2,23 +2,20 @@ import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
 import { group, isObject, omit, set, unique } from "radashi";
-import { DBPreset, DB } from "./db";
-import {
-  DatabaseSchemaExtend,
-  isCustomJoinClause,
-  type SubsetQuery,
-} from "../types/types";
+import { type DatabaseSchemaExtend, isCustomJoinClause, type SubsetQuery } from "../types/types";
 import type { BaseListParams } from "../utils/model";
 import { chunk } from "../utils/utils";
-import { UpsertBuilder } from "./upsert-builder";
-import { PuriWrapper } from "./puri-wrapper";
-import {
+import type { DBPreset } from "./db";
+import { DB } from "./db";
+import { Puri } from "./puri";
+import type {
   InferAllSubsets,
   PuriLoaderQueries,
   PuriSubsetFn,
   UnionExtractedTTables,
 } from "./puri.types";
-import { Puri } from "./puri";
+import { PuriWrapper } from "./puri-wrapper";
+import { UpsertBuilder } from "./upsert-builder";
 
 type UnknownDBRecord = Record<string, unknown>;
 
@@ -42,9 +39,7 @@ type ResolveIntersection<
     : MergePuri<ReturnType<Queries[Head]>, ResolveIntersection<Tail, Queries>>
   : never;
 
-type EnhancerFn<TComputed, TMapping> = (
-  row: TComputed
-) => TMapping | Promise<TMapping>;
+type EnhancerFn<TComputed, TMapping> = (row: TComputed) => TMapping | Promise<TMapping>;
 
 /**
  * TSubsetKey 전체에 대해,
@@ -57,14 +52,16 @@ type EnhancerPlaceholder<
   TSubsetMapping extends Record<TSubsetKey, any>,
 > = {
   // TComputedResults[K]가 이미 TSubsetMapping[K]에 들어맞으면 옵셔널
-  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K]
-    ? K
-    : never]?: EnhancerFn<TComputedResults[K], TSubsetMapping[K]>;
+  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K] ? K : never]?: EnhancerFn<
+    TComputedResults[K],
+    TSubsetMapping[K]
+  >;
 } & {
   // 안 맞으면 필수
-  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K]
-    ? never
-    : K]: EnhancerFn<TComputedResults[K], TSubsetMapping[K]>;
+  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K] ? never : K]: EnhancerFn<
+    TComputedResults[K],
+    TSubsetMapping[K]
+  >;
 };
 
 export class BaseModelClass<
@@ -77,7 +74,7 @@ export class BaseModelClass<
 
   constructor(
     protected puriSubsetQueries?: TSubsetQueries,
-    protected subsetLoaders?: TLoaderQueries
+    protected subsetLoaders?: TLoaderQueries,
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -136,8 +133,7 @@ export class BaseModelClass<
 
     return resultIds;
   }
-  
-  
+
   getSubsetQueries<T extends TSubsetKey>(subset: T) {
     if (!this.puriSubsetQueries) {
       throw new Error("puriSubsetQueries is not defined");
@@ -160,7 +156,7 @@ export class BaseModelClass<
 
         // 키 배열 -> 교집합 반환
         <Arr extends readonly TSubsetKey[]>(
-          subsets: [...Arr]
+          subsets: [...Arr],
         ): ResolveIntersection<Arr, TSubsetQueries>;
       },
     };
@@ -172,7 +168,7 @@ export class BaseModelClass<
       T,
       InferAllSubsets<TSubsetQueries, TLoaderQueries>,
       TSubsetMapping
-    >
+    >,
   ) {
     return enhancers;
   }
@@ -194,11 +190,7 @@ export class BaseModelClass<
       page?: number;
       queryMode?: "list" | "count" | "both";
     };
-    enhancers: EnhancerPlaceholder<
-      TSubsetKey,
-      TComputedResults,
-      TSubsetMapping
-    >;
+    enhancers: EnhancerPlaceholder<TSubsetKey, TComputedResults, TSubsetMapping>;
     debug?: boolean;
   }): Promise<{
     rows: TSubsetMapping[T][];
@@ -219,11 +211,7 @@ export class BaseModelClass<
         return 0;
       }
 
-      const countPuri = qb
-        .clone()
-        .clear("order")
-        .clear("limit")
-        .clear("offset");
+      const countPuri = qb.clone().clear("order").clear("limit").clear("offset");
 
       // COUNT(*)로 전체 레코드 수를 계산
       // TODO: qb의 DISTINCT가 있는 경우 처리해야 함
@@ -246,9 +234,7 @@ export class BaseModelClass<
         return [];
       }
 
-      let unloadedRows = (await qb
-        .limit(num)
-        .offset(num * (page - 1))) as any[];
+      let unloadedRows = (await qb.limit(num).offset(num * (page - 1))) as any[];
 
       if (debug) {
         qb.debug();
@@ -261,15 +247,15 @@ export class BaseModelClass<
 
           const resolveLoaderQb = resolveLoaderQbFn(
             new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
-            unloadedRows.map((row) => row.id)
+            unloadedRows.map((row) => row.id),
           );
 
           if (debug) {
             resolveLoaderQb.debug();
           }
 
-          const loadedRows = await resolveLoaderQb as any[];
-          const subRowGroups = group(loadedRows, (row) => row["refId"]);
+          const loadedRows = (await resolveLoaderQb) as any[];
+          const subRowGroups = group(loadedRows, (row) => row.refId);
 
           unloadedRows = unloadedRows.map((row) => {
             row[as] = (subRowGroups[row.id] ?? []).map((r) => omit(r, ["refId"]));
@@ -284,12 +270,11 @@ export class BaseModelClass<
     // Enhancer 적용
     const enhancer = (enhancers as any)[subset];
     const rows = (await Promise.all(
-      computedRows.map((row) => enhancer?.(row) ?? row)
+      computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
 
     return { rows, total };
   }
-
 
   async useLoaders(db: Knex, rows: UnknownDBRecord[], loaders: SubsetQuery["loaders"]) {
     if (loaders.length === 0) {

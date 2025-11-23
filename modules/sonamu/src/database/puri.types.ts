@@ -8,16 +8,13 @@ import type { PuriWrapper } from "./puri-wrapper";
 type MetadataColumns = "__fulltext__" | "__virtual__";
 
 // virtual 컬럼 타입 추출
-type VirtualKeys<T> = T extends { __virtual__: readonly (infer V)[] }
-  ? V & string
-  : never;
+type VirtualKeys<T> = T extends { __virtual__: readonly (infer V)[] } ? V & string : never;
 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
 
 // 메타데이터 필드 제외한 실제 엔티티 컬럼
-export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, MetadataColumns> &
-  string;
+export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, MetadataColumns> & string;
 
 // virtual 컬럼 제거 후 __fulltext__ 메타데이터 유지
 export type PuriTable<T> = Omit<StripVirtual<T>, "__virtual__">;
@@ -136,7 +133,9 @@ type NullableToOptional<T> = {
 }>;
 
 // Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<Omit<PuriTable<T>, "id" | "created_at" | MetadataColumns>>;
+export type InsertData<T> = NullableToOptional<
+  Omit<PuriTable<T>, "id" | "created_at" | MetadataColumns>
+>;
 
 // SubsetQuery를 위한 타입 유틸리티
 type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>
@@ -152,18 +151,15 @@ export type UnionExtractedTTables<
   [K in SubsetKey]: ExtractTTables<ReturnType<SubsetQueries[K]>>;
 }[SubsetKey];
 
-export type PuriSubsetFn = (
-  qbWrapper: PuriWrapper<DatabaseSchemaExtend>
-) => Puri<any, any, any>;
+export type PuriSubsetFn = (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>;
 
 // Extracts the TResult from a Puri instance
-export type ExtractPuriResult<T> =
-  T extends Puri<any, any, infer R> ? R : never;
+export type ExtractPuriResult<T> = T extends Puri<any, any, infer R> ? R : never;
 
 // A generic loader's function type
 export type PuriLoaderQbFn = (
   qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
-  fromIds: number[]
+  fromIds: number[],
 ) => Puri<any, any, any>;
 
 // A generic loader object
@@ -207,15 +203,12 @@ export type InferAllSubsets<
 };
 
 // 구분자(__) 앞부분 추출 (Head)
-type ExtractHead<K extends string> = K extends `${infer Head}__${string}`
-  ? Head
-  : never;
+type ExtractHead<K extends string> = K extends `${infer Head}__${string}` ? Head : never;
 
 // 구분자(__) 뒷부분 추출 (Tail)
-type ExtractTail<
-  K extends string,
-  Head extends string,
-> = K extends `${Head}__${infer Tail}` ? Tail : never;
+type ExtractTail<K extends string, Head extends string> = K extends `${Head}__${infer Tail}`
+  ? Tail
+  : never;
 
 /**
  * 런타임 hydrate 함수의 동작을 타입 레벨에서 구현
@@ -227,9 +220,7 @@ export type Hydrate<T> =
   } & {
     // 2. __ 가 있는 필드들을 Head로 묶어서 중첩 객체 생성 (재귀 호출)
     [K in ExtractHead<keyof T & string>]: Hydrate<{
-      [P in keyof T as P extends `${K}__${string}`
-        ? ExtractTail<P & string, K>
-        : never]: T[P];
+      [P in keyof T as P extends `${K}__${string}` ? ExtractTail<P & string, K> : never]: T[P];
     }>;
   };
 
@@ -246,9 +237,7 @@ export type InferSubsetWithLoaders<
   // 기본 쿼리 결과 Hydration + Expand
   Expand<Hydrate<ExtractPuriResult<ReturnType<TSubsetFn>>>> &
     // 로더 결과 병합
-    (TLoaders extends readonly GenericPuriLoader[]
-      ? LoadersResult<TLoaders>
-      : {})
+    (TLoaders extends readonly GenericPuriLoader[] ? LoadersResult<TLoaders> : {})
 >;
 
 export type ClearStatements =

@@ -7,6 +7,8 @@ import type { Knex } from "knex";
 import { Naite } from "../naite/naite";
 import type {
   AvailableColumns,
+  ClearStatements,
+  ColumnKeys,
   ComparisonOperator,
   Expand,
   ExtractColumnType,
@@ -16,8 +18,6 @@ import type {
   ResultAvailableColumns,
   SelectObject,
   SingleTableValue,
-  ColumnKeys,
-  ClearStatements,
   SqlExpression,
   WhereCondition,
 } from "./puri.types";
@@ -177,7 +177,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   join<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
     left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`
+    right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`,
   ): Puri<
     TSchema,
     TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
