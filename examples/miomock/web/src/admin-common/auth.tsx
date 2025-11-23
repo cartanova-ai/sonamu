@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { UserSubsetSS } from "src/services/sonamu.generated";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import type { UserSubsetSS } from "src/services/sonamu.generated";
 import { UserService } from "src/services/user/user.service";
-import { UserLoginParams } from "src/services/user/user.types";
+import type { UserLoginParams } from "src/services/user/user.types";
 
 interface AuthContextType {
   user: UserSubsetSS | null;
@@ -32,10 +32,10 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     login: (loginParams: UserLoginParams) => {
       setLoading(true);
       UserService.login(loginParams)
-        .then(({ user }) => {
-          let from =
-            (location.state as { from?: { pathname?: string } } | undefined)
-              ?.from?.pathname ?? "/admin";
+        .then(({ user: _user }) => {
+          const from =
+            (location.state as { from?: { pathname?: string } } | undefined)?.from?.pathname ??
+            "/admin";
 
           mutate().then(() => {
             navigate(from, { replace: true });

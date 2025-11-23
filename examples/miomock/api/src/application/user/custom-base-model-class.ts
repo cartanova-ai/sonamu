@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Puri 테스트 코드이므로 any 사용 */
 import {
   BaseModelClass,
   type DatabaseSchemaExtend,

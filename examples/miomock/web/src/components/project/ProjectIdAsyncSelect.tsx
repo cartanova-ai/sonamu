@@ -1,16 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import {
-  ProjectSubsetKey,
-  ProjectSubsetMapping,
-} from "src/services/sonamu.generated";
 import { ProjectService } from "src/services/project/project.service";
-import { ProjectListParams } from "src/services/project/project.types";
+import type { ProjectListParams } from "src/services/project/project.types";
+import type { ProjectSubsetKey, ProjectSubsetMapping } from "src/services/sonamu.generated";
 
 export function ProjectIdAsyncSelect<T extends ProjectSubsetKey>({
   subset,
@@ -25,12 +22,10 @@ export function ProjectIdAsyncSelect<T extends ProjectSubsetKey>({
   valueField?: keyof ProjectSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<ProjectListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<ProjectListParams>(baseListParams ?? {});
 
-  const { data, error } = ProjectService.useProjects(subset, listParams);
-  const { rows: projects, total } = data ?? {};
+  const { data } = ProjectService.useProjects(subset, listParams);
+  const { rows: projects } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -42,17 +37,17 @@ export function ProjectIdAsyncSelect<T extends ProjectSubsetKey>({
         };
       }),
     );
-  }, [projects]);
+  }, [projects, valueField, textField]);
 
   useEffect(() => {
     setListParams({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

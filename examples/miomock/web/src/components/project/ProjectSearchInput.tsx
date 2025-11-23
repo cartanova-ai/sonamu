@@ -1,6 +1,5 @@
-import React from "react";
 import { useState } from "react";
-import { DropdownProps, Input, InputProps } from "semantic-ui-react";
+import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
 import { ProjectSearchFieldDropdown } from "src/components/project/ProjectSearchFieldDropdown";
 
 export function ProjectSearchInput({
@@ -14,6 +13,7 @@ export function ProjectSearchInput({
 
   const handleKeyDown = (e: { key: string }) => {
     if (inputOnChange && e.key === "Enter") {
+      // biome-ignore lint/suspicious/noExplicitAny: handleKeyDown 동시 사용을 위해 허용
       inputOnChange(e as any, {
         value: keyword,
       });
@@ -33,7 +33,7 @@ export function ProjectSearchInput({
       }}
       {...inputProps}
       value={keyword}
-      onChange={(e, { value }) => setKeyword(value)}
+      onChange={(_e, { value }) => setKeyword(value)}
       onKeyDown={handleKeyDown}
     />
   );

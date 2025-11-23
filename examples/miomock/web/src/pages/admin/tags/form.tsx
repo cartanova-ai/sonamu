@@ -1,44 +1,15 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { TagSaveParams } from "src/services/tag/tag.types";
+import type { TagSubsetA } from "src/services/sonamu.generated";
 import { TagService } from "src/services/tag/tag.service";
-import { TagSubsetA } from "src/services/sonamu.generated";
+import { TagSaveParams } from "src/services/tag/tag.types";
 
 export default function TagsFormPage() {
   // 라우팅 searchParams
@@ -55,7 +26,7 @@ type TagsFormProps = {
 };
 export function TagsForm({ id, mode }: TagsFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<TagSubsetA | undefined>();
+  const [_row, setRow] = useState<TagSubsetA | undefined>();
 
   // TagSaveParams 폼
   const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
@@ -70,7 +41,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -79,7 +50,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     TagService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -87,7 +58,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -102,13 +73,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/tags"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/tags" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -128,13 +93,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

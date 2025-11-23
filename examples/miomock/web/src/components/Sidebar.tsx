@@ -1,7 +1,6 @@
-import React from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, Icon, Button } from "semantic-ui-react";
 import classNames from "classnames";
+import { Link, useLocation } from "react-router-dom";
+import { Button, Icon, type IconProps, Menu } from "semantic-ui-react";
 import { useAuth } from "src/admin-common/auth";
 
 interface SidebarProps {
@@ -59,7 +58,6 @@ const menuItems: MenuItemProps[] = [
 
 export default function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
@@ -92,7 +90,7 @@ export default function Sidebar({ className }: SidebarProps) {
             active={isActive(item.path)}
             className="sidebar-menu-item"
           >
-            {item.icon && <Icon name={item.icon as any} />}
+            {item.icon && <Icon name={item.icon as IconProps["icon"]} />}
             {item.title}
           </Menu.Item>
         ))}

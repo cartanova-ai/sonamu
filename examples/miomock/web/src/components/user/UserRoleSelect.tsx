@@ -1,5 +1,4 @@
-import React from "react";
-import { Dropdown, DropdownProps } from "semantic-ui-react";
+import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
 import { UserRole, UserRoleLabel } from "src/services/sonamu.generated";
 
@@ -7,11 +6,7 @@ export type UserRoleSelectProps = {
   placeholder?: string;
   textPrefix?: string;
 } & DropdownProps;
-export function UserRoleSelect({
-  placeholder,
-  textPrefix,
-  ...props
-}: UserRoleSelectProps) {
+export function UserRoleSelect({ placeholder, textPrefix, ...props }: UserRoleSelectProps) {
   const typeOptions = UserRole.options.map((key) => ({
     key,
     value: key,

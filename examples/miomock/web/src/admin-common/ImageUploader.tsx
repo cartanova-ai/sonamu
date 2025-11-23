@@ -1,14 +1,11 @@
 import {
-  DistributiveOmit,
+  type DistributiveOmit,
   ImageUploaderFrame,
-  ImageUploaderFrameProps,
+  type ImageUploaderFrameProps,
 } from "@sonamu-kit/react-sui";
 import { FileService } from "src/services/file/file.service";
 
-export type ImageUploaderProps = {} & DistributiveOmit<
-  ImageUploaderFrameProps,
-  "uploader"
->;
+export type ImageUploaderProps = {} & DistributiveOmit<ImageUploaderFrameProps, "uploader">;
 
 export function ImageUploader(props: ImageUploaderProps) {
   if (props.multiple) {

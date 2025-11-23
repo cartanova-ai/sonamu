@@ -1,16 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import {
-  CompanySubsetKey,
-  CompanySubsetMapping,
-} from "src/services/sonamu.generated";
 import { CompanyService } from "src/services/company/company.service";
-import { CompanyListParams } from "src/services/company/company.types";
+import type { CompanyListParams } from "src/services/company/company.types";
+import type { CompanySubsetKey, CompanySubsetMapping } from "src/services/sonamu.generated";
 
 export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   subset,
@@ -25,12 +22,10 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   valueField?: keyof CompanySubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<CompanyListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<CompanyListParams>(baseListParams ?? {});
 
-  const { data, error } = CompanyService.useCompanies(subset, listParams);
-  const { rows: companies, total } = data ?? {};
+  const { data } = CompanyService.useCompanies(subset, listParams);
+  const { rows: companies } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -42,17 +37,17 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
         };
       }),
     );
-  }, [companies]);
+  }, [companies, textField, valueField]);
 
   useEffect(() => {
     setListParams({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

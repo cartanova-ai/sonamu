@@ -1,44 +1,15 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { CompanySaveParams } from "src/services/company/company.types";
 import { CompanyService } from "src/services/company/company.service";
-import { CompanySubsetA } from "src/services/sonamu.generated";
+import { CompanySaveParams } from "src/services/company/company.types";
+import type { CompanySubsetA } from "src/services/sonamu.generated";
 
 export default function CompaniesFormPage() {
   // 라우팅 searchParams
@@ -55,7 +26,7 @@ type CompaniesFormProps = {
 };
 export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<CompanySubsetA | undefined>();
+  const [_row, setRow] = useState<CompanySubsetA | undefined>();
 
   // CompanySaveParams 폼
   const { form, setForm, register } = useTypeForm(CompanySaveParams, {
@@ -72,7 +43,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -81,7 +52,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     CompanyService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -89,7 +60,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -104,13 +75,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/companies"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/companies" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -130,13 +95,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Button, Label, Segment } from "semantic-ui-react";
+/** biome-ignore-all lint/suspicious/noExplicitAny: axios 사용 시 타입 추론 어려우므로 허용 */
+
 import axios from "axios";
+import { useEffect, useRef, useState } from "react";
+import { Button, Label, Segment } from "semantic-ui-react";
 
 type ApiLog = {
   id: string;
@@ -50,7 +52,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
       },
       (error) => {
         return Promise.reject(error);
-      }
+      },
     );
 
     const responseInterceptor = axios.interceptors.response.use(
@@ -70,17 +72,15 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                   responseBody: response.data,
                   duration,
                 }
-              : log
-          )
+              : log,
+          ),
         );
 
         return response;
       },
       (error) => {
         const logId = (error.config as any)?.__logId;
-        const startTime = logId
-          ? requestStartTimes.current.get(logId)
-          : undefined;
+        const startTime = logId ? requestStartTimes.current.get(logId) : undefined;
         const duration = startTime ? Date.now() - startTime : undefined;
         if (logId) {
           requestStartTimes.current.delete(logId);
@@ -97,13 +97,13 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                     responseBody: error.response?.data,
                     duration,
                   }
-                : log
-            )
+                : log,
+            ),
           );
         }
 
         return Promise.reject(error);
-      }
+      },
     );
 
     return () => {
@@ -125,11 +125,7 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         <Label attached="top" color="purple">
           API 로그
         </Label>
-        <Button
-          size="tiny"
-          onClick={() => setApiLogs([])}
-          disabled={apiLogs.length === 0}
-        >
+        <Button size="tiny" onClick={() => setApiLogs([])} disabled={apiLogs.length === 0}>
           로그 지우기
         </Button>
       </div>
@@ -158,14 +154,10 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
               }}
             >
               <div style={{ marginBottom: "0.5em" }}>
-                <span style={{ color: "#569cd6", fontWeight: "bold" }}>
-                  [{log.method}]
-                </span>{" "}
+                <span style={{ color: "#569cd6", fontWeight: "bold" }}>[{log.method}]</span>{" "}
                 <span style={{ color: "#4ec9b0" }}>{log.url}</span>
                 {log.duration !== undefined && (
-                  <span style={{ color: "#808080", marginLeft: "1em" }}>
-                    ({log.duration}ms)
-                  </span>
+                  <span style={{ color: "#808080", marginLeft: "1em" }}>({log.duration}ms)</span>
                 )}
                 {log.responseStatus !== undefined && (
                   <span
@@ -174,8 +166,8 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                         log.responseStatus >= 200 && log.responseStatus < 300
                           ? "#6a9955"
                           : log.responseStatus >= 400
-                          ? "#f48771"
-                          : "#dcdcaa",
+                            ? "#f48771"
+                            : "#dcdcaa",
                       marginLeft: "1em",
                       fontWeight: "bold",
                     }}
@@ -185,53 +177,43 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                 )}
               </div>
 
-              {!bodyOnly &&
-                log.requestHeaders &&
-                Object.keys(log.requestHeaders).length > 0 && (
-                  <div style={{ marginBottom: "0.5em" }}>
-                    <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                      Request Headers:
-                    </div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        padding: "0.5em",
-                        backgroundColor: "#252526",
-                        borderRadius: "4px",
-                        overflowX: "auto",
-                      }}
-                    >
-                      {JSON.stringify(log.requestHeaders, null, 2)}
-                    </pre>
-                  </div>
-                )}
+              {!bodyOnly && log.requestHeaders && Object.keys(log.requestHeaders).length > 0 && (
+                <div style={{ marginBottom: "0.5em" }}>
+                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Request Headers:</div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: "0.5em",
+                      backgroundColor: "#252526",
+                      borderRadius: "4px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {JSON.stringify(log.requestHeaders, null, 2)}
+                  </pre>
+                </div>
+              )}
 
-              {!bodyOnly &&
-                log.requestQuery &&
-                Object.keys(log.requestQuery).length > 0 && (
-                  <div style={{ marginBottom: "0.5em" }}>
-                    <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                      Query Params:
-                    </div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        padding: "0.5em",
-                        backgroundColor: "#252526",
-                        borderRadius: "4px",
-                        overflowX: "auto",
-                      }}
-                    >
-                      {JSON.stringify(log.requestQuery, null, 2)}
-                    </pre>
-                  </div>
-                )}
+              {!bodyOnly && log.requestQuery && Object.keys(log.requestQuery).length > 0 && (
+                <div style={{ marginBottom: "0.5em" }}>
+                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Query Params:</div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: "0.5em",
+                      backgroundColor: "#252526",
+                      borderRadius: "4px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {JSON.stringify(log.requestQuery, null, 2)}
+                  </pre>
+                </div>
+              )}
 
               {!bodyOnly && log.requestBody !== undefined && (
                 <div style={{ marginBottom: "0.5em" }}>
-                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                    Request Body:
-                  </div>
+                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Request Body:</div>
                   <pre
                     style={{
                       margin: 0,
@@ -250,32 +232,26 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                 </div>
               )}
 
-              {!bodyOnly &&
-                log.responseHeaders &&
-                Object.keys(log.responseHeaders).length > 0 && (
-                  <div style={{ marginBottom: "0.5em" }}>
-                    <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                      Response Headers:
-                    </div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        padding: "0.5em",
-                        backgroundColor: "#252526",
-                        borderRadius: "4px",
-                        overflowX: "auto",
-                      }}
-                    >
-                      {JSON.stringify(log.responseHeaders, null, 2)}
-                    </pre>
-                  </div>
-                )}
+              {!bodyOnly && log.responseHeaders && Object.keys(log.responseHeaders).length > 0 && (
+                <div style={{ marginBottom: "0.5em" }}>
+                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Response Headers:</div>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: "0.5em",
+                      backgroundColor: "#252526",
+                      borderRadius: "4px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    {JSON.stringify(log.responseHeaders, null, 2)}
+                  </pre>
+                </div>
+              )}
 
               {log.responseBody !== undefined && (
                 <div style={{ marginBottom: "0.5em" }}>
-                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
-                    Response Body:
-                  </div>
+                  <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Response Body:</div>
                   <pre
                     style={{
                       margin: 0,

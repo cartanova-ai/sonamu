@@ -1,45 +1,23 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
-import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
 import {
   BackLink,
-  LinkInput,
-  NumberInput,
   BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
   formatDateTime,
+  SQLDateInput,
+  useGoBack,
+  useTypeForm,
 } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { UserSaveParams } from "src/services/user/user.types";
-import { UserService } from "src/services/user/user.service";
-import { UserSubsetA } from "src/services/sonamu.generated";
 import { UserRoleSelect } from "src/components/user/UserRoleSelect";
+import type { UserSubsetA } from "src/services/sonamu.generated";
+import { UserService } from "src/services/user/user.service";
+import { UserSaveParams } from "src/services/user/user.types";
 
 export default function UsersFormPage() {
   // 라우팅 searchParams
@@ -56,7 +34,7 @@ type UsersFormProps = {
 };
 export function UsersForm({ id, mode }: UsersFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<UserSubsetA | undefined>();
+  const [_row, setRow] = useState<UserSubsetA | undefined>();
 
   // UserSaveParams 폼
   const { form, setForm, register } = useTypeForm(UserSaveParams, {
@@ -81,7 +59,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -90,7 +68,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     UserService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -98,7 +76,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -113,13 +91,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/users"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/users" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -181,13 +153,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

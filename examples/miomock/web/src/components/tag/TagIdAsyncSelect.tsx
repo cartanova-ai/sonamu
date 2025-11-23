@@ -1,13 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import { TagSubsetKey, TagSubsetMapping } from "src/services/sonamu.generated";
+import type { TagSubsetKey, TagSubsetMapping } from "src/services/sonamu.generated";
 import { TagService } from "src/services/tag/tag.service";
-import { TagListParams } from "src/services/tag/tag.types";
+import type { TagListParams } from "src/services/tag/tag.types";
 
 export function TagIdAsyncSelect<T extends TagSubsetKey>({
   subset,
@@ -22,12 +22,10 @@ export function TagIdAsyncSelect<T extends TagSubsetKey>({
   valueField?: keyof TagSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<TagListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<TagListParams>(baseListParams ?? {});
 
-  const { data, error } = TagService.useTags(subset, listParams);
-  const { rows: tags, total } = data ?? {};
+  const { data } = TagService.useTags(subset, listParams);
+  const { rows: tags } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -39,17 +37,17 @@ export function TagIdAsyncSelect<T extends TagSubsetKey>({
         };
       }),
     );
-  }, [tags]);
+  }, [tags, valueField, textField]);
 
   useEffect(() => {
     setListParams({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

@@ -1,10 +1,6 @@
-import React from "react";
-import { Dropdown, DropdownProps } from "semantic-ui-react";
+import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
-import {
-  ProjectStatus,
-  ProjectStatusLabel,
-} from "src/services/sonamu.generated";
+import { ProjectStatus, ProjectStatusLabel } from "src/services/sonamu.generated";
 
 export type ProjectStatusSelectProps = {
   placeholder?: string;

@@ -1,6 +1,7 @@
+/** biome-ignore-all lint/correctness/noUnusedImports: d.ts */
+
+import type { Session } from "@fastify/secure-session";
 import {} from "sonamu";
-import { Session } from "@fastify/secure-session";
-import { UserSubsetSS } from "../application/sonamu.generated";
 
 declare module "sonamu" {
   export interface ContextExtend {

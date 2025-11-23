@@ -1,16 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import {
-  UserSubsetKey,
-  UserSubsetMapping,
-} from "src/services/sonamu.generated";
+import type { UserSubsetKey, UserSubsetMapping } from "src/services/sonamu.generated";
 import { UserService } from "src/services/user/user.service";
-import { UserListParams } from "src/services/user/user.types";
+import type { UserListParams } from "src/services/user/user.types";
 
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,
@@ -25,12 +22,10 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   valueField?: keyof UserSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<UserListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<UserListParams>(baseListParams ?? {});
 
-  const { data, error } = UserService.useUsers(subset, listParams);
-  const { rows: users, total } = data ?? {};
+  const { data } = UserService.useUsers(subset, listParams);
+  const { rows: users } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -42,17 +37,17 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
         };
       }),
     );
-  }, [users]);
+  }, [users, valueField, textField]);
 
   useEffect(() => {
     setListParams({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

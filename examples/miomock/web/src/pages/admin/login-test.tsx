@@ -1,8 +1,7 @@
 import React from "react";
-import { Button, Form, Grid, Header, Segment, Message } from "semantic-ui-react";
-import { UserLoginParams } from "src/services/user/user.types";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button, Form, Grid, Header, Message, Segment } from "semantic-ui-react";
 import { useAuth } from "src/admin-common/auth";
-import { useNavigate, useLocation } from "react-router-dom";
 
 export default function LoginTestPage() {
   const [email, setEmail] = React.useState("");
@@ -11,7 +10,7 @@ export default function LoginTestPage() {
 
   const { login, logout, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const _location = useLocation();
 
   const handleSubmit = () => {
     setError("");
@@ -34,11 +33,7 @@ export default function LoginTestPage() {
   };
 
   return (
-    <Grid
-      textAlign="center"
-      style={{ width: "98vw", height: "99vh" }}
-      verticalAlign="middle"
-    >
+    <Grid textAlign="center" style={{ width: "98vw", height: "99vh" }} verticalAlign="middle">
       <Grid.Column style={{ maxWidth: 450 }}>
         <Header as="h2" color="teal" textAlign="center">
           로그인 테스트

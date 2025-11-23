@@ -1,46 +1,19 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, upload, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-  upload,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { ProjectSaveParams } from "src/services/project/project.types";
-import { ProjectService } from "src/services/project/project.service";
-import { ProjectSubsetA } from "src/services/sonamu.generated";
-import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
-import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
-import { TagIdAsyncSelect } from "src/components/tag/TagIdAsyncSelect";
 import { ImageUploader } from "src/admin-common/ImageUploader";
+import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
+import { TagIdAsyncSelect } from "src/components/tag/TagIdAsyncSelect";
+import { ProjectService } from "src/services/project/project.service";
+import { ProjectSaveParams } from "src/services/project/project.types";
+import type { ProjectSubsetA } from "src/services/sonamu.generated";
+import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams
@@ -57,7 +30,7 @@ type ProjectsFormProps = {
 };
 export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<ProjectSubsetA | undefined>();
+  const [_row, setRow] = useState<ProjectSubsetA | undefined>();
 
   // ProjectSaveParams 폼
   const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
@@ -82,7 +55,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -92,7 +65,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   const handleSubmit = useCallback(
     (urls: string[]) => {
       ProjectService.save([{ ...form, image_urls: urls }])
-        .then(([id]) => {
+        .then(([_id]) => {
           if (mode === "modal") {
             // doneModal();
           } else {
@@ -101,7 +74,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
         })
         .catch(defaultCatch);
     },
-    [form, mode, id]
+    [form, mode, goBack],
   );
 
   // 페이지
@@ -117,13 +90,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/projects"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/projects" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -151,41 +118,25 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             <Form.Group widths="equal">
               <Form.Field>
                 <label>설명</label>
-                <TextArea
-                  rows={8}
-                  placeholder="설명"
-                  {...register(`description`)}
-                />
+                <TextArea rows={8} placeholder="설명" {...register(`description`)} />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
                 <label>EmployeeIds</label>
-                <EmployeeIdAsyncSelect
-                  {...register("employee_ids")}
-                  multiple
-                  subset="A"
-                />
+                <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
                 <label>Tags</label>
-                <TagIdAsyncSelect
-                  {...register("tag_ids")}
-                  multiple
-                  subset="A"
-                />
+                <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
               <Form.Field>
                 <label>ImageUrls</label>
-                <ImageUploader
-                  multiple={false}
-                  mode="lazy"
-                  {...register("image_urls")}
-                />
+                <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">

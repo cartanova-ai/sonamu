@@ -1,7 +1,6 @@
-import React from "react";
-import { useAuth } from "src/admin-common/auth";
-import { Button, Container, Header, Segment } from "semantic-ui-react";
 import { useNavigate } from "react-router-dom";
+import { Button, Container, Header, Segment } from "semantic-ui-react";
+import { useAuth } from "src/admin-common/auth";
 
 export default function AdminIndexPage() {
   const { user, logout } = useAuth();
@@ -30,9 +29,7 @@ export default function AdminIndexPage() {
             </p>
             <p>
               <strong>가입일:</strong>{" "}
-              {user.created_at
-                ? new Date(user.created_at).toLocaleDateString("ko-KR")
-                : "-"}
+              {user.created_at ? new Date(user.created_at).toLocaleDateString("ko-KR") : "-"}
             </p>
 
             <Button color="red" onClick={handleLogout}>
@@ -52,19 +49,11 @@ export default function AdminIndexPage() {
       <Segment>
         <Header as="h3">관리 메뉴</Header>
         <Button.Group vertical>
-          <Button onClick={() => navigate("/admin/companies")}>
-            회사 관리
-          </Button>
+          <Button onClick={() => navigate("/admin/companies")}>회사 관리</Button>
           <Button onClick={() => navigate("/admin/users")}>사용자 관리</Button>
-          <Button onClick={() => navigate("/admin/departments")}>
-            부서 관리
-          </Button>
-          <Button onClick={() => navigate("/admin/employees")}>
-            직원 관리
-          </Button>
-          <Button onClick={() => navigate("/admin/projects")}>
-            프로젝트 관리
-          </Button>
+          <Button onClick={() => navigate("/admin/departments")}>부서 관리</Button>
+          <Button onClick={() => navigate("/admin/employees")}>직원 관리</Button>
+          <Button onClick={() => navigate("/admin/projects")}>프로젝트 관리</Button>
         </Button.Group>
       </Segment>
     </Container>

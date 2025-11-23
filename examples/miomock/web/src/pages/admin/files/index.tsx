@@ -1,43 +1,39 @@
-import React, { useState } from "react";
+import {
+  AddButton,
+  AppBreadcrumbs,
+  DelButton,
+  EditButton,
+  formatDateTime,
+  type SonamuCol,
+  upload,
+  useListParams,
+  useSelection,
+  useTypeForm,
+} from "@sonamu-kit/react-sui";
+import classNames from "classnames";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Breadcrumb,
+  Button,
   Checkbox,
+  Form,
+  Label,
+  Message,
   Pagination,
   Segment,
   Table,
   TableRow,
-  Message,
   Transition,
-  Button,
-  Label,
-  Form,
 } from "semantic-ui-react";
-import classNames from "classnames";
-import { DateTime } from "luxon";
-import {
-  DelButton,
-  EditButton,
-  AppBreadcrumbs,
-  AddButton,
-  useSelection,
-  useListParams,
-  SonamuCol,
-  numF,
-  formatDate,
-  formatDateTime,
-  useTypeForm,
-  upload,
-} from "@sonamu-kit/react-sui";
-
-import { FileSubsetA } from "src/services/sonamu.generated";
-import { FileService } from "src/services/file/file.service";
-import { FileListParams, FileSaveParams } from "src/services/file/file.types";
+import { ApiLogViewer } from "src/admin-common/ApiLogViewer";
+import { ImageUploader } from "src/admin-common/ImageUploader";
+import { FileOrderBySelect } from "src/components/file/FileOrderBySelect";
 
 import { FileSearchInput } from "src/components/file/FileSearchInput";
-import { FileOrderBySelect } from "src/components/file/FileOrderBySelect";
-import { ImageUploader } from "src/admin-common/ImageUploader";
-import { ApiLogViewer } from "src/admin-common/ApiLogViewer";
+import { FileService } from "src/services/file/file.service";
+import { FileListParams, FileSaveParams } from "src/services/file/file.types";
+import type { FileSubsetA } from "src/services/sonamu.generated";
 import z from "zod";
 
 type FileListProps = {};
@@ -54,7 +50,7 @@ export default function FileList({}: FileListProps) {
     }),
     {
       urls: [],
-    }
+    },
   );
 
   // Lazy 모드 테스트 상태
@@ -64,7 +60,7 @@ export default function FileList({}: FileListProps) {
     }),
     {
       url: "",
-    }
+    },
   );
   const lazyMultipleForm = useTypeForm(
     z.object({
@@ -72,7 +68,7 @@ export default function FileList({}: FileListProps) {
     }),
     {
       urls: [],
-    }
+    },
   );
 
   const [uploading, setUploading] = useState(false);
@@ -85,10 +81,7 @@ export default function FileList({}: FileListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, error, isLoading } = FileService.useFiles(
-    "A",
-    listParams
-  );
+  const { data, mutate, isLoading } = FileService.useFiles("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -136,9 +129,7 @@ export default function FileList({}: FileListProps) {
   const columns: SonamuCol<FileSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => (
-        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
-      ),
+      tc: (row) => <span className="text-tiny">{formatDateTime(row.created_at)}</span>,
       collapsing: true,
     },
     { label: "MIME타입", tc: (row) => <>{row.mime_type}</>, collapsing: true },
@@ -154,10 +145,7 @@ export default function FileList({}: FileListProps) {
           <AppBreadcrumbs>
             <Breadcrumb.Section active>{PAGE.title}</Breadcrumb.Section>
           </AppBreadcrumbs>
-          <FileSearchInput
-            input={register("keyword")}
-            dropdown={register("search")}
-          />
+          <FileSearchInput input={register("keyword")} dropdown={register("search")} />
         </div>
         <div className="filters-row">
           &nbsp;
@@ -175,10 +163,7 @@ export default function FileList({}: FileListProps) {
               <Form.Group>
                 <Form.Field width={16}>
                   <label>파일 업로드 (즉시 업로드)</label>
-                  <ImageUploader
-                    multiple={false}
-                    {...eagerForm.register("url")}
-                  />
+                  <ImageUploader multiple={false} {...eagerForm.register("url")} />
                 </Form.Field>
               </Form.Group>
             </Form>
@@ -192,10 +177,7 @@ export default function FileList({}: FileListProps) {
               <Form.Group>
                 <Form.Field width={16}>
                   <label>파일 업로드 (즉시 업로드)</label>
-                  <ImageUploader
-                    multiple={true}
-                    {...eagerMultipleForm.register("urls")}
-                  />
+                  <ImageUploader multiple={true} {...eagerMultipleForm.register("urls")} />
                 </Form.Field>
               </Form.Group>
             </Form>
@@ -209,11 +191,7 @@ export default function FileList({}: FileListProps) {
               <Form.Group>
                 <Form.Field width={16}>
                   <label>파일 선택 (업로드 대기)</label>
-                  <ImageUploader
-                    mode="lazy"
-                    multiple={false}
-                    {...lazyForm.register("url")}
-                  />
+                  <ImageUploader mode="lazy" multiple={false} {...lazyForm.register("url")} />
                 </Form.Field>
               </Form.Group>
               <Form.Group>
@@ -223,7 +201,7 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        const urls = await upload();
+                        const _urls = await upload();
                         mutate();
                       } finally {
                         setUploading(false);
@@ -265,7 +243,7 @@ export default function FileList({}: FileListProps) {
                     onClick={async () => {
                       setUploading(true);
                       try {
-                        const urls = await upload();
+                        const _urls = await upload();
                         mutate();
                       } finally {
                         setUploading(false);
@@ -291,9 +269,7 @@ export default function FileList({}: FileListProps) {
 
       <Segment basic padded className="contents-segment" loading={isLoading}>
         <div className="buttons-row">
-          <div className={classNames("count", { hidden: isLoading })}>
-            {total} 건
-          </div>
+          <div className={classNames("count", { hidden: isLoading })}>{total} 건</div>
           <div className="buttons">
             <AddButton currentRoute={PAGE.route} icon="write" label="추가" />
           </div>
@@ -322,46 +298,45 @@ export default function FileList({}: FileListProps) {
                       <Table.HeaderCell key={index} collapsing={col.collapsing}>
                         {col.label}
                       </Table.HeaderCell>
-                    )
+                    ),
                 )
               }
               <Table.HeaderCell>관리</Table.HeaderCell>
             </TableRow>
           </Table.Header>
           <Table.Body>
-            {rows &&
-              rows.map((row, rowIndex) => (
-                <Table.Row key={row.id}>
-                  <Table.Cell>
-                    <Checkbox
-                      label={row.id}
-                      checked={getSelected(row.id)}
-                      onChange={() => toggle(row.id)}
-                      onClick={(e) => handleCheckboxClick(e, rowIndex)}
-                    />
-                  </Table.Cell>
-                  {
-                    /* Body */
-                    columns.map((col, colIndex) => (
-                      <Table.Cell
-                        key={colIndex}
-                        collapsing={col.collapsing}
-                        className={col.className}
-                      >
-                        {col.tc(row, rowIndex)}
-                      </Table.Cell>
-                    ))
-                  }
-                  <Table.Cell collapsing>
-                    <EditButton
-                      as={Link}
-                      to={`${PAGE.route}/form?id=${row.id}`}
-                      state={{ from: PAGE.route }}
-                    />
-                    <DelButton onClick={() => confirmDel([row.id])} />
-                  </Table.Cell>
-                </Table.Row>
-              ))}
+            {rows?.map((row, rowIndex) => (
+              <Table.Row key={row.id}>
+                <Table.Cell>
+                  <Checkbox
+                    label={row.id}
+                    checked={getSelected(row.id)}
+                    onChange={() => toggle(row.id)}
+                    onClick={(e) => handleCheckboxClick(e, rowIndex)}
+                  />
+                </Table.Cell>
+                {
+                  /* Body */
+                  columns.map((col, colIndex) => (
+                    <Table.Cell
+                      key={colIndex}
+                      collapsing={col.collapsing}
+                      className={col.className}
+                    >
+                      {col.tc(row, rowIndex)}
+                    </Table.Cell>
+                  ))
+                }
+                <Table.Cell collapsing>
+                  <EditButton
+                    as={Link}
+                    to={`${PAGE.route}/form?id=${row.id}`}
+                    state={{ from: PAGE.route }}
+                  />
+                  <DelButton onClick={() => confirmDel([row.id])} />
+                </Table.Cell>
+              </Table.Row>
+            ))}
           </Table.Body>
         </Table>
         <div
@@ -377,11 +352,7 @@ export default function FileList({}: FileListProps) {
       </Segment>
 
       <div className="fixed-menu">
-        <Transition
-          visible={selectedKeys.length > 0}
-          animation="slide left"
-          duration={500}
-        >
+        <Transition visible={selectedKeys.length > 0} animation="slide left" duration={500}>
           <Message size="small" color="violet" className="text-center">
             <span className="px-4">{selectedKeys.length}개 선택됨</span>
             <Button size="tiny" color="violet" onClick={() => deselectAll()}>

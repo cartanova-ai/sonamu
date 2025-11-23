@@ -1,38 +1,31 @@
-import React from "react";
+import {
+  AddButton,
+  AppBreadcrumbs,
+  DelButton,
+  EditButton,
+  formatDateTime,
+  type SonamuCol,
+  useListParams,
+  useSelection,
+} from "@sonamu-kit/react-sui";
+import classNames from "classnames";
 import { Link } from "react-router-dom";
 import {
   Breadcrumb,
+  Button,
   Checkbox,
+  Message,
   Pagination,
   Segment,
   Table,
   TableRow,
-  Message,
   Transition,
-  Button,
-  Label,
 } from "semantic-ui-react";
-import classNames from "classnames";
-import { DateTime } from "luxon";
-import {
-  DelButton,
-  EditButton,
-  AppBreadcrumbs,
-  AddButton,
-  useSelection,
-  useListParams,
-  SonamuCol,
-  numF,
-  formatDate,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
-
-import { TagSubsetA } from "src/services/sonamu.generated";
+import { TagOrderBySelect } from "src/components/tag/TagOrderBySelect";
+import { TagSearchInput } from "src/components/tag/TagSearchInput";
+import type { TagSubsetA } from "src/services/sonamu.generated";
 import { TagService } from "src/services/tag/tag.service";
 import { TagListParams } from "src/services/tag/tag.types";
-
-import { TagSearchInput } from "src/components/tag/TagSearchInput";
-import { TagOrderBySelect } from "src/components/tag/TagOrderBySelect";
 
 type TagListProps = {};
 export default function TagList({}: TagListProps) {
@@ -45,10 +38,7 @@ export default function TagList({}: TagListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, error, isLoading } = TagService.useTags(
-    "A",
-    listParams
-  );
+  const { data, mutate, isLoading } = TagService.useTags("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -96,9 +86,7 @@ export default function TagList({}: TagListProps) {
   const columns: SonamuCol<TagSubsetA>[] = [
     {
       label: "등록일시",
-      tc: (row) => (
-        <span className="text-tiny">{formatDateTime(row.created_at)}</span>
-      ),
+      tc: (row) => <span className="text-tiny">{formatDateTime(row.created_at)}</span>,
       collapsing: true,
     },
     { label: "태그명", tc: (row) => <>{row.name}</>, collapsing: true },
@@ -112,10 +100,7 @@ export default function TagList({}: TagListProps) {
           <AppBreadcrumbs>
             <Breadcrumb.Section active>{PAGE.title}</Breadcrumb.Section>
           </AppBreadcrumbs>
-          <TagSearchInput
-            input={register("keyword")}
-            dropdown={register("search")}
-          />
+          <TagSearchInput input={register("keyword")} dropdown={register("search")} />
         </div>
         <div className="filters-row">
           &nbsp;
@@ -125,9 +110,7 @@ export default function TagList({}: TagListProps) {
 
       <Segment basic padded className="contents-segment" loading={isLoading}>
         <div className="buttons-row">
-          <div className={classNames("count", { hidden: isLoading })}>
-            {total} 건
-          </div>
+          <div className={classNames("count", { hidden: isLoading })}>{total} 건</div>
           <div className="buttons">
             <AddButton currentRoute={PAGE.route} icon="write" label="추가" />
           </div>
@@ -158,46 +141,45 @@ export default function TagList({}: TagListProps) {
                       <Table.HeaderCell key={index} collapsing={col.collapsing}>
                         {col.label}
                       </Table.HeaderCell>
-                    )
+                    ),
                 )
               }
               <Table.HeaderCell>관리</Table.HeaderCell>
             </TableRow>
           </Table.Header>
           <Table.Body>
-            {rows &&
-              rows.map((row, rowIndex) => (
-                <Table.Row key={row.id}>
-                  <Table.Cell>
-                    <Checkbox
-                      label={row.id}
-                      checked={getSelected(row.id)}
-                      onChange={() => toggle(row.id)}
-                      onClick={(e) => handleCheckboxClick(e, rowIndex)}
-                    />
-                  </Table.Cell>
-                  {
-                    /* Body */
-                    columns.map((col, colIndex) => (
-                      <Table.Cell
-                        key={colIndex}
-                        collapsing={col.collapsing}
-                        className={col.className}
-                      >
-                        {col.tc(row, rowIndex)}
-                      </Table.Cell>
-                    ))
-                  }
-                  <Table.Cell collapsing>
-                    <EditButton
-                      as={Link}
-                      to={`${PAGE.route}/form?id=${row.id}`}
-                      state={{ from: PAGE.route }}
-                    />
-                    <DelButton onClick={() => confirmDel([row.id])} />
-                  </Table.Cell>
-                </Table.Row>
-              ))}
+            {rows?.map((row, rowIndex) => (
+              <Table.Row key={row.id}>
+                <Table.Cell>
+                  <Checkbox
+                    label={row.id}
+                    checked={getSelected(row.id)}
+                    onChange={() => toggle(row.id)}
+                    onClick={(e) => handleCheckboxClick(e, rowIndex)}
+                  />
+                </Table.Cell>
+                {
+                  /* Body */
+                  columns.map((col, colIndex) => (
+                    <Table.Cell
+                      key={colIndex}
+                      collapsing={col.collapsing}
+                      className={col.className}
+                    >
+                      {col.tc(row, rowIndex)}
+                    </Table.Cell>
+                  ))
+                }
+                <Table.Cell collapsing>
+                  <EditButton
+                    as={Link}
+                    to={`${PAGE.route}/form?id=${row.id}`}
+                    state={{ from: PAGE.route }}
+                  />
+                  <DelButton onClick={() => confirmDel([row.id])} />
+                </Table.Cell>
+              </Table.Row>
+            ))}
           </Table.Body>
         </Table>
         <div
@@ -213,11 +195,7 @@ export default function TagList({}: TagListProps) {
       </Segment>
 
       <div className="fixed-menu">
-        <Transition
-          visible={selectedKeys.length > 0}
-          animation="slide left"
-          duration={500}
-        >
+        <Transition visible={selectedKeys.length > 0} animation="slide left" duration={500}>
           <Message size="small" color="violet" className="text-center">
             <span className="px-4">{selectedKeys.length}개 선택됨</span>
             <Button size="tiny" color="violet" onClick={() => deselectAll()}>

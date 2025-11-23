@@ -1,46 +1,17 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { DepartmentSaveParams } from "src/services/department/department.types";
-import { DepartmentService } from "src/services/department/department.service";
-import { DepartmentSubsetA } from "src/services/sonamu.generated";
 import { CompanyIdAsyncSelect } from "src/components/company/CompanyIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "src/components/department/DepartmentIdAsyncSelect";
+import { DepartmentService } from "src/services/department/department.service";
+import { DepartmentSaveParams } from "src/services/department/department.types";
+import type { DepartmentSubsetA } from "src/services/sonamu.generated";
 
 export default function DepartmentsFormPage() {
   // 라우팅 searchParams
@@ -57,7 +28,7 @@ type DepartmentsFormProps = {
 };
 export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<DepartmentSubsetA | undefined>();
+  const [_row, setRow] = useState<DepartmentSubsetA | undefined>();
 
   // DepartmentSaveParams 폼
   const { form, setForm, register } = useTypeForm(DepartmentSaveParams, {
@@ -78,7 +49,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -87,7 +58,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     DepartmentService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -95,7 +66,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -110,13 +81,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/departments"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/departments" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -144,21 +109,11 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
             <Form.Group widths="equal">
               <Form.Field>
                 <label>ParentId</label>
-                <DepartmentIdAsyncSelect
-                  {...register("parent_id")}
-                  clearable
-                  subset="A"
-                />
+                <DepartmentIdAsyncSelect {...register("parent_id")} clearable subset="A" />
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

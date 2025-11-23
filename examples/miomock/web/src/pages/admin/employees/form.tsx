@@ -1,46 +1,17 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { EmployeeSaveParams } from "src/services/employee/employee.types";
-import { EmployeeService } from "src/services/employee/employee.service";
-import { EmployeeSubsetA } from "src/services/sonamu.generated";
-import { UserIdAsyncSelect } from "src/components/user/UserIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "src/components/department/DepartmentIdAsyncSelect";
+import { UserIdAsyncSelect } from "src/components/user/UserIdAsyncSelect";
+import { EmployeeService } from "src/services/employee/employee.service";
+import { EmployeeSaveParams } from "src/services/employee/employee.types";
+import type { EmployeeSubsetA } from "src/services/sonamu.generated";
 
 export default function EmployeesFormPage() {
   // 라우팅 searchParams
@@ -57,7 +28,7 @@ type EmployeesFormProps = {
 };
 export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<EmployeeSubsetA | undefined>();
+  const [_row, setRow] = useState<EmployeeSubsetA | undefined>();
 
   // EmployeeSaveParams 폼
   const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
@@ -79,7 +50,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -88,7 +59,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     EmployeeService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -96,7 +67,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -111,13 +82,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/employees"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/employees" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -139,11 +104,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
             <Form.Group widths="equal">
               <Form.Field>
                 <label>부서</label>
-                <DepartmentIdAsyncSelect
-                  {...register("department_id")}
-                  clearable
-                  subset="A"
-                />
+                <DepartmentIdAsyncSelect {...register("department_id")} clearable subset="A" />
               </Form.Field>
             </Form.Group>
             <Form.Group widths="equal">
@@ -159,13 +120,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

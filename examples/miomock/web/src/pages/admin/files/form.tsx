@@ -1,44 +1,15 @@
-import React, {
-  useEffect,
-  useState,
-  Dispatch,
-  SetStateAction,
-  forwardRef,
-  Ref,
-  useImperativeHandle,
-  useCallback,
-} from "react";
+import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from "semantic-ui-react";
-import { DateTime } from "luxon";
-
-import {
-  BackLink,
-  LinkInput,
-  NumberInput,
-  BooleanToggle,
-  SQLDateTimeInput,
-  SQLDateInput,
-  useTypeForm,
-  useGoBack,
-  formatDateTime,
-} from "@sonamu-kit/react-sui";
+import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "src/services/sonamu.shared";
+
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "src/admin-common/CommonModal";
 
-import { FileSaveParams } from "src/services/file/file.types";
 import { FileService } from "src/services/file/file.service";
-import { FileSubsetA } from "src/services/sonamu.generated";
+import { FileSaveParams } from "src/services/file/file.types";
+import type { FileSubsetA } from "src/services/sonamu.generated";
 
 export default function FilesFormPage() {
   // 라우팅 searchParams
@@ -55,7 +26,7 @@ type FilesFormProps = {
 };
 export function FilesForm({ id, mode }: FilesFormProps) {
   // 편집시 기존 row
-  const [row, setRow] = useState<FileSubsetA | undefined>();
+  const [_row, setRow] = useState<FileSubsetA | undefined>();
 
   // FileSaveParams 폼
   const { form, setForm, register } = useTypeForm(FileSaveParams, {
@@ -74,7 +45,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
         });
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
   // CommonModal
   // const { doneModal, closeModal } = useCommonModal();
@@ -83,7 +54,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     FileService.save([form])
-      .then(([id]) => {
+      .then(([_id]) => {
         if (mode === "modal") {
           // doneModal();
         } else {
@@ -91,7 +62,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, id]);
+  }, [form, mode, goBack]);
 
   // 페이지
   const PAGE = {
@@ -106,13 +77,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
             <Header>{PAGE.title}</Header>
             {mode !== "modal" && (
               <div className="buttons">
-                <BackLink
-                  primary
-                  size="tiny"
-                  to="/admin/files"
-                  content="목록"
-                  icon="list"
-                />
+                <BackLink primary size="tiny" to="/admin/files" content="목록" icon="list" />
               </div>
             )}
           </div>
@@ -144,13 +109,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                primary
-                onClick={handleSubmit}
-                content="저장"
-                icon="save"
-              />
+              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
             </Segment>
           </Form>
         </Segment>

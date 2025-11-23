@@ -1,5 +1,6 @@
+/** biome-ignore-all lint/correctness/noUnusedVariables: generated 생성 시점에 CustomScalar 여부 확인 어려우므로 허용 */
+import { SonamuQueryMode, zArrayable } from "src/services/sonamu.shared";
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
 
 // CustomScalar: NumberType
 const NumberType = z.number();

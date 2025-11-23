@@ -1,16 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import {
-  DepartmentSubsetKey,
-  DepartmentSubsetMapping,
-} from "src/services/sonamu.generated";
 import { DepartmentService } from "src/services/department/department.service";
-import { DepartmentListParams } from "src/services/department/department.types";
+import type { DepartmentListParams } from "src/services/department/department.types";
+import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "src/services/sonamu.generated";
 
 export function DepartmentIdAsyncSelect<T extends DepartmentSubsetKey>({
   subset,
@@ -25,12 +22,10 @@ export function DepartmentIdAsyncSelect<T extends DepartmentSubsetKey>({
   valueField?: keyof DepartmentSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<DepartmentListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<DepartmentListParams>(baseListParams ?? {});
 
-  const { data, error } = DepartmentService.useDepartments(subset, listParams);
-  const { rows: departments, total } = data ?? {};
+  const { data } = DepartmentService.useDepartments(subset, listParams);
+  const { rows: departments } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -42,17 +37,17 @@ export function DepartmentIdAsyncSelect<T extends DepartmentSubsetKey>({
         };
       }),
     );
-  }, [departments]);
+  }, [departments, textField, valueField]);
 
   useEffect(() => {
     setListParams({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

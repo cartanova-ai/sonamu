@@ -1,16 +1,13 @@
-import React, { useState, useEffect, SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useState } from "react";
 import {
-  DropdownProps,
-  DropdownItemProps,
-  DropdownOnSearchChangeData,
   Dropdown,
+  type DropdownItemProps,
+  type DropdownOnSearchChangeData,
+  type DropdownProps,
 } from "semantic-ui-react";
-import {
-  EmployeeSubsetKey,
-  EmployeeSubsetMapping,
-} from "src/services/sonamu.generated";
 import { EmployeeService } from "src/services/employee/employee.service";
-import { EmployeeListParams } from "src/services/employee/employee.types";
+import type { EmployeeListParams } from "src/services/employee/employee.types";
+import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "src/services/sonamu.generated";
 
 export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
   subset,
@@ -25,12 +22,10 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
   valueField?: keyof EmployeeSubsetMapping[T];
 }) {
   const [options, setOptions] = useState<DropdownItemProps[]>([]);
-  const [listParams, setListParams] = useState<EmployeeListParams>(
-    baseListParams ?? {},
-  );
+  const [listParams, setListParams] = useState<EmployeeListParams>(baseListParams ?? {});
 
-  const { data, error } = EmployeeService.useEmployees(subset, listParams);
-  const { rows: employees, total } = data ?? {};
+  const { data } = EmployeeService.useEmployees(subset, listParams);
+  const { rows: employees } = data ?? {};
 
   useEffect(() => {
     setOptions(
@@ -55,10 +50,10 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
       ...listParams,
       ...baseListParams,
     });
-  }, [baseListParams]);
+  }, [baseListParams, listParams]);
 
   const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
+    _e: SyntheticEvent<HTMLElement, Event>,
     data: DropdownOnSearchChangeData,
   ) => {
     setListParams({

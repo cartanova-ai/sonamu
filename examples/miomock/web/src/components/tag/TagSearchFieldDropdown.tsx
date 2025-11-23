@@ -1,5 +1,4 @@
-import React from "react";
-import { Dropdown, DropdownProps } from "semantic-ui-react";
+import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
 import { TagSearchFieldLabel } from "src/services/sonamu.generated";
 
@@ -8,7 +7,7 @@ export function TagSearchFieldDropdown(props: DropdownProps) {
     return {
       key,
       value: key,
-      text: "검색: " + label,
+      text: `검색: ${label}`,
     };
   });
   return <Dropdown className="label" options={options} {...props} />;
