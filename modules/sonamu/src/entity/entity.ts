@@ -136,12 +136,10 @@ export class Entity {
       if ("custom" in join) {
         // custom join clause는 raw 사용
         lines.push(
-          `.${joinMethod}({ ${join.as}: "${join.table}" }, qbWrapper.knex.raw(\`${join.custom}\`))`
+          `.${joinMethod}({ ${join.as}: "${join.table}" }, qbWrapper.knex.raw(\`${join.custom}\`))`,
         );
       } else {
-        lines.push(
-          `.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
-        );
+        lines.push(`.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`);
       }
     }
 
@@ -191,13 +189,13 @@ export class Entity {
       lines.push(
         "{",
         `as: "${loader.as}",`,
-        `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`
+        `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`,
       );
       if (through === undefined) {
         lines.push(
           //
           `return qbWrapper`,
-          `.from("${toTable}")`
+          `.from("${toTable}")`,
         );
 
         loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
@@ -207,11 +205,11 @@ export class Entity {
             lines.push(
               `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
               `j.on(Puri.rawString("${join.custom}"));`,
-              `})`
+              `})`,
             );
           } else {
             lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
+              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
             );
           }
         });
@@ -221,7 +219,7 @@ export class Entity {
           `.select({`,
           `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
           `refId: "${toTable}.${toCol}",`,
-          `});`
+          `});`,
         );
       } else {
         // const idColumn = `${through.table}.${through.fromCol}`;
@@ -229,7 +227,7 @@ export class Entity {
         lines.push(
           `return qbWrapper`,
           `.from("${through.table}")`,
-          `.join("${toTable}", "${through.table}.${through.toCol}", "${toTable}.${toCol}")`
+          `.join("${toTable}", "${through.table}.${through.toCol}", "${toTable}.${toCol}")`,
         );
 
         loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
@@ -239,11 +237,11 @@ export class Entity {
             lines.push(
               `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
               `j.on(Puri.rawString("${join.custom}"));`,
-              `})`
+              `})`,
             );
           } else {
             lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
+              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
             );
           }
         });
@@ -251,11 +249,9 @@ export class Entity {
         lines.push(
           `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
           `.select({`,
-          `${loader.select
-            .map((select: string) => parseSelect(select, toTable))
-            .join(",")},`,
+          `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
           `refId: "${through.table}.${through.fromCol}",`,
-          `});`
+          `});`,
         );
       }
 

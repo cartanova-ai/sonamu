@@ -28,8 +28,7 @@ export class Template__generated_sso extends Template {
 
     // SubsetQueries 생성 대상: 부모 엔티티가 없고 서브셋이 존재
     const targetEntities = entities.filter(
-      (entity) =>
-        entity.parentId === undefined && Object.keys(entity.subsets).length > 0
+      (entity) => entity.parentId === undefined && Object.keys(entity.subsets).length > 0,
     );
 
     // SubsetQueries 생성
@@ -43,7 +42,7 @@ export class Template__generated_sso extends Template {
         },
         {} as {
           [key: string]: SubsetQuery;
-        }
+        },
       );
 
       const subsetKeyTypeName = `${entity.names.module}SubsetKey`;
@@ -54,7 +53,7 @@ export class Template__generated_sso extends Template {
         label: `SubsetQuery: ${entity.id}`,
         lines: [
           `export const ${entityCamelName}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
-            subsetQueryObject
+            subsetQueryObject,
           )};`,
           "",
         ],
@@ -67,11 +66,9 @@ export class Template__generated_sso extends Template {
         lines: [
           `export const ${entityCamelName}PuriSubsetQueries = {`,
           ...subsetKeys.map(
-            (
-              subsetKey
-            ) => `${subsetKey}: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+            (subsetKey) => `${subsetKey}: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
             ${entity.getPuriSubsetQuery(subsetKey)};
-          },`
+          },`,
           ),
           `};`,
           "",
