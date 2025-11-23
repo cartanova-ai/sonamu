@@ -88,13 +88,17 @@ export default defineConfig({
     },
 
     storage: (() => {
-      if (process.env.NODE_ENV === "production") {
+      if (
+        process.env.NODE_ENV === "production" &&
+        process.env.AWS_ACCESS_KEY_ID &&
+        process.env.AWS_SECRET_ACCESS_KEY
+      ) {
         return new S3Driver({
           bucket: "miomock",
           region: "ap-northeast-2",
           credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
           },
         });
       }
