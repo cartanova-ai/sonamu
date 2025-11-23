@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import chalk from "chalk";
 import { execSync, spawnSync } from "child_process";
 import { existsSync, rmSync } from "fs";

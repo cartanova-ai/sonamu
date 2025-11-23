@@ -11,9 +11,10 @@
     "hot-reload"
   ],
   "main": "build/bin/run.js",
-  "bin": "build/bin/run.js",
+  "bin": "./bin/run.js",
   "files": [
-    "build"
+    "build",
+    "bin"
   ],
   "scripts": {
     "clean": "del-cli build",
