@@ -10,7 +10,7 @@
     "build:lib:ui": "cowsay '@sonamu-kit/ui 빌드합니다.' && pnpm run --filter @sonamu-kit/ui build || (cowsay -f explosion '@sonamu-kit/ui 빌드 실패!' && exit 1)",
     "build:lib": "run-s 'build:lib:*'",
     "build:miomock:api": "cowsay 'miomock-api 빌드합니다.' && pnpm run --filter miomock-api build || (cowsay -f explosion 'miomock-api 빌드 실패!' && exit 1)",
-    "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && echo '아! miomock-web은 지금 깨져있어서 빌드하지 않고 넘어갑니다! pnpm dev를 사용하세요!'",
+    "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && pnpm run --filter miomock-web build || (cowsay -f explosion 'miomock-web 빌드 실패!' && exit 1)",
     "build:miomock": "run-s 'build:miomock:*'",
     "build": "run-s 'build:tools' 'build:lib' 'build:miomock'",
     "publish": "tsx scripts/publich.ts",
