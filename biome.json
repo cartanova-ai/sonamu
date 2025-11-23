@@ -13,7 +13,7 @@
     }
   },
   "files": {
-    "includes": ["**/*.ts", "!**/dist"]
+    "includes": ["**/*.ts", "**/*.tsx", "!**/dist"]
   },
   "formatter": {
     "enabled": true,
