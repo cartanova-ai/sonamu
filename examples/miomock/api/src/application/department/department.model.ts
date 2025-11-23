@@ -2,15 +2,12 @@ import {
   api,
   asArray,
   BaseModelClass,
+  exhaustive,
   type ListResult,
   NotFoundException,
-  exhaustive,
 } from "sonamu";
 import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
-import {
-  departmentPuriLoaderQueries,
-  departmentPuriSubsetQueries,
-} from "../sonamu.generated.sso";
+import { departmentPuriLoaderQueries, departmentPuriSubsetQueries } from "../sonamu.generated.sso";
 import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 /*
@@ -165,5 +162,5 @@ class DepartmentModelClass extends BaseModelClass<
 
 export const DepartmentModel = new DepartmentModelClass(
   departmentPuriSubsetQueries,
-  departmentPuriLoaderQueries
+  departmentPuriLoaderQueries,
 );

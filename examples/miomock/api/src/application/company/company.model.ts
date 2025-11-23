@@ -149,5 +149,5 @@ class CompanyModelClass extends BaseModelClass<
 
 export const CompanyModel = new CompanyModelClass(
   companyPuriSubsetQueries,
-  companyPuriLoaderQueries
+  companyPuriLoaderQueries,
 );
