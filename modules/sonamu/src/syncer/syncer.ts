@@ -125,9 +125,20 @@ export class Syncer {
       if (!(await exists(srcPath))) {
         return;
       }
+      if (!(await exists(path.join(Sonamu.appRootPath, target)))) {
+        throw new Error(
+          `Tried to copy sonamu.shared.ts to target '${target}' but the target directory does not exist. Please check your project directory structure.`,
+        );
+      }
 
       // 이건 프로젝트에 .ts 소스 코드 파일을 생성하는 것이므로 src의 .ts 경로로 갑니다.
       const destPath = path.join(Sonamu.appRootPath, target, "src/services/sonamu.shared.ts");
+
+      // 정말 혹시나지만 target 디렉토리는 있어도 src/services 디렉토리는 없을 수 있으므로 미리 생성해줍니다.
+      if (!(await exists(path.dirname(destPath)))) {
+        await mkdir(path.dirname(destPath), { recursive: true });
+        console.warn(`Created directory '${path.dirname(destPath)}' because it did not exist.`);
+      }
 
       if (await areFilesSame(srcPath, destPath)) {
         return;
