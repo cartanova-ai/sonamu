@@ -166,6 +166,106 @@ export class Entity {
     return lines.join("\n");
   }
 
+  getPuriLoaderQuery(subsetKey: string): string {
+    const subset = this.subsets[subsetKey];
+    const { loaders } = this.resolveSubsetQuery("", subset);
+
+    const lines: string[] = [`[`];
+
+    const parseSelect = (select: string, table: string) => {
+      const tablePrefix = `${table}.`;
+      if (select.startsWith(tablePrefix)) {
+        return `${select.replace(tablePrefix, "")}: "${select}"`;
+      }
+
+      if (select.includes(" as ")) {
+        const [column, alias] = select.split(" as ");
+        return `${alias}: "${column}"`;
+      }
+      return `${select}: "${select}"`;
+    };
+
+    for (const loader of loaders) {
+      const { toTable, toCol, through } = loader.manyJoin;
+      lines.push();
+      lines.push(
+        "{",
+        `as: "${loader.as}",`,
+        `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`
+      );
+      if (through === undefined) {
+        lines.push(
+          //
+          `return qbWrapper`,
+          `.from("${toTable}")`
+        );
+
+        loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
+          const joinType = join.join === "inner" ? "join" : "leftJoin";
+          if ("custom" in join) {
+            // FIXME: 검증 필요
+            lines.push(
+              `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+              `j.on(Puri.rawString("${join.custom}"));`,
+              `})`
+            );
+          } else {
+            lines.push(
+              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
+            );
+          }
+        });
+
+        lines.push(
+          `.whereIn("${toTable}.${toCol}", fromIds)`,
+          `.select({`,
+          `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
+          `refId: "${toTable}.${toCol}",`,
+          `});`
+        );
+      } else {
+        // const idColumn = `${through.table}.${through.fromCol}`;
+
+        lines.push(
+          `return qbWrapper`,
+          `.from("${through.table}")`,
+          `.join("${toTable}", "${through.table}.${through.toCol}", "${toTable}.${toCol}")`
+        );
+
+        loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
+          const joinType = join.join === "inner" ? "join" : "leftJoin";
+          if ("custom" in join) {
+            // FIXME: 검증 필요
+            lines.push(
+              `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+              `j.on(Puri.rawString("${join.custom}"));`,
+              `})`
+            );
+          } else {
+            lines.push(
+              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`
+            );
+          }
+        });
+
+        lines.push(
+          `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
+          `.select({`,
+          `${loader.select
+            .map((select: string) => parseSelect(select, toTable))
+            .join(",")},`,
+          `refId: "${through.table}.${through.fromCol}",`,
+          `});`
+        );
+      }
+
+      lines.push(`},`, `},`);
+    }
+    lines.push(`]`);
+
+    return lines.join("\n");
+  }
+
   /*
     subset SELECT/JOIN/LOADER 결과 리턴
   */
