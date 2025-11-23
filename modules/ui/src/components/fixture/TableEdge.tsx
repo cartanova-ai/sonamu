@@ -1,4 +1,4 @@
-import { BaseEdge, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, type EdgeProps, getSmoothStepPath } from "@xyflow/react";
 
 export function TableEdge({
   id,

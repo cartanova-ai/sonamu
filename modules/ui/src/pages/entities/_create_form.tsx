@@ -1,13 +1,12 @@
-import { Segment, Header, Form, Button } from "semantic-ui-react";
-import { z } from "zod";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { useCommonModal } from "../../components/core/CommonModal";
-import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { useTypeForm } from "@sonamu-kit/react-sui";
-import { pluralize, underscore } from "inflection";
-import { FormInputWithSuggestion } from "../../components/FormInputWithSuggestion";
-import { camelize } from "inflection";
+import { camelize, pluralize, underscore } from "inflection";
+import { Button, Form, Header, Segment } from "semantic-ui-react";
+import { z } from "zod";
+import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
+import { FormInputWithSuggestion } from "../../components/FormInputWithSuggestion";
+import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 
 type EntityCreateFormProps = {};
 export function EntityCreateForm({}: EntityCreateFormProps) {
@@ -25,7 +24,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
       id: "",
       title: "",
       table: "",
-    }
+    },
   );
 
   const handleSubmit = () => {
@@ -81,10 +80,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                 </Form.Field>
                 <Form.Field required>
                   <label>Title</label>
-                  <FormInputWithSuggestion
-                    {...register("title")}
-                    origin={underscore(form.id)}
-                  />
+                  <FormInputWithSuggestion {...register("title")} origin={underscore(form.id)} />
                 </Form.Field>
               </Form.Group>
               <div className="text-center">
@@ -100,6 +96,7 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                           });
                           return true;
                         }
+                        return false;
                       })
                       .some((e) => e === true);
                     if (ifError) {

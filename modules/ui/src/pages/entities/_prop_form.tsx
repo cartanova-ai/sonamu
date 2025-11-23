@@ -1,27 +1,15 @@
-import { useCommonModal } from "../../components/core/CommonModal";
-import {
-  Button,
-  Divider,
-  Form,
-  Header,
-  Input,
-  Label,
-  Segment,
-} from "semantic-ui-react";
-import {
-  BooleanToggle,
-  FormNumberInput,
-  useTypeForm,
-} from "@sonamu-kit/react-sui";
-import { z } from "zod";
-import { EntityProp } from "sonamu";
+import { BooleanToggle, FormNumberInput, useTypeForm } from "@sonamu-kit/react-sui";
 import { useEffect } from "react";
-import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { InputWithSuggestion } from "../../components/InputWithSuggestion";
-import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
+import { Button, Divider, Form, Header, Input, Label, Segment } from "semantic-ui-react";
+import type { EntityProp } from "sonamu";
+import { z } from "zod";
+import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
+import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
+import { InputWithSuggestion } from "../../components/InputWithSuggestion";
+import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
+import { defaultCatch } from "../../services/sonamu.shared";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 
 type EntityPropFormProps = {
   entityId: string;
@@ -47,9 +35,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       scale: z.number().optional(),
       id: z.string().optional(),
       as: z.union([z.object({ ref: z.string() }), z.any()]).optional(),
-      relationType: z
-        .enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"])
-        .optional(),
+      relationType: z.enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"]).optional(),
       customJoinClause: z.string().optional(),
       hasJoinColumn: z.boolean().optional(),
       joinColumn: z.string().optional(),
@@ -64,7 +50,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       type: "",
       desc: "",
       ...oldOne,
-    }
+    },
   );
   console.log({ oldOne, form });
 
@@ -91,6 +77,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     text: type,
   }));
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: form 변경시에만 keydown 갱신
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -107,7 +94,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     };
   }, [form]);
 
-  // 타입이 변경되었을 때 Validation 처리
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 타입이 변경되었을 때 Validation 처리
   useEffect(() => {
     const result = EntityPropZodSchema.safeParse(form);
     if (result.success) {
@@ -206,9 +193,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                         {(() => {
                           if (form.dbDefault === undefined) {
                             return "undefined";
-                          } else if (
-                            Number.isNaN(Number(form.dbDefault)) === false
-                          ) {
+                          } else if (Number.isNaN(Number(form.dbDefault)) === false) {
                             return "number";
                           } else if (
                             form.dbDefault.startsWith('"') &&
@@ -277,9 +262,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                       <BooleanToggle {...register("unsigned")} />
                     </Form.Field>
                   )}
-                  {(form.type === "float" ||
-                    form.type === "double" ||
-                    form.type === "decimal") && (
+                  {(form.type === "float" || form.type === "double" || form.type === "decimal") && (
                     <>
                       <Form.Field required>
                         <label>Precision</label>
@@ -299,11 +282,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                     <label>CustomType ID</label>
                     <div className="flex">
                       <FormTypeIdAsyncSelect {...register("id")} search />
-                      <Button
-                        icon="code"
-                        size="mini"
-                        onClick={() => openVscodePreset("types")}
-                      />
+                      <Button icon="code" size="mini" onClick={() => openVscodePreset("types")} />
                     </div>
                   </Form.Field>
                 </Form.Group>
@@ -317,12 +296,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                         {...register("relationType")}
                         search
                         selection
-                        options={[
-                          "OneToOne",
-                          "BelongsToOne",
-                          "HasMany",
-                          "ManyToMany",
-                        ].map((k) => ({
+                        options={["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"].map((k) => ({
                           key: k,
                           value: k,
                           text: k,
@@ -351,13 +325,11 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                             {...register("onUpdate")}
                             search
                             selection
-                            options={EntityPropZodSchema.RelationOn.options.map(
-                              (k) => ({
-                                key: k,
-                                value: k,
-                                text: k,
-                              })
-                            )}
+                            options={EntityPropZodSchema.RelationOn.options.map((k) => ({
+                              key: k,
+                              value: k,
+                              text: k,
+                            }))}
                           />
                         </Form.Field>
                         <Form.Field required>
@@ -366,13 +338,11 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                             {...register("onDelete")}
                             search
                             selection
-                            options={EntityPropZodSchema.RelationOn.options.map(
-                              (k) => ({
-                                key: k,
-                                value: k,
-                                text: k,
-                              })
-                            )}
+                            options={EntityPropZodSchema.RelationOn.options.map((k) => ({
+                              key: k,
+                              value: k,
+                              text: k,
+                            }))}
                           />
                         </Form.Field>
                       </>

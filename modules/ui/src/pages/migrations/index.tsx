@@ -1,19 +1,12 @@
-import {
-  Button,
-  Checkbox,
-  Divider,
-  Label,
-  Segment,
-  Table,
-} from "semantic-ui-react";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { useState } from "react";
-import { diff, unique } from "radashi";
 import classNames from "classnames";
-import { defaultCatch } from "../../services/sonamu.shared";
+import { diff, unique } from "radashi";
+import { useState } from "react";
+import { Button, Checkbox, Divider, Label, Segment, Table } from "semantic-ui-react";
+import type { SonamuDBConfig } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
+import { defaultCatch } from "../../services/sonamu.shared";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { MigrationActionForm } from "../entities/_action_form";
-import { SonamuDBConfig } from "sonamu";
 
 type MigrationsIndexProps = {};
 export default function MigrationsIndex(_props: MigrationsIndexProps) {
@@ -27,15 +20,11 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
 
-  const [selectedConnKeys, setSelectedConnKeys] = useState<
-    (keyof SonamuDBConfig)[]
-  >([]);
+  const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
   const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
-  const toggleConnKeys = (
-    preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE"
-  ) => {
+  const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
     const targetKeys: (keyof SonamuDBConfig)[] = (() => {
       switch (preset) {
         case "ALL":
@@ -57,13 +46,8 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
       }
     })();
 
-    if (
-      targetKeys.filter((key) => selectedConnKeys.includes(key)).length ===
-      targetKeys.length
-    ) {
-      setSelectedConnKeys(
-        selectedConnKeys.filter((key) => !targetKeys.includes(key))
-      );
+    if (targetKeys.filter((key) => selectedConnKeys.includes(key)).length === targetKeys.length) {
+      setSelectedConnKeys(selectedConnKeys.filter((key) => !targetKeys.includes(key)));
     } else if (diff(targetKeys, selectedConnKeys).length > 0) {
       setSelectedConnKeys(targetKeys);
     } else {
@@ -76,7 +60,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
       return;
     }
     const answer = confirm(
-      `Are you sure to delete the selected ${selectedCodeNames.length} migration codes?`
+      `Are you sure to delete the selected ${selectedCodeNames.length} migration codes?`,
     );
     if (!answer) {
       return;
@@ -110,20 +94,17 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
 
   const openActionModal = (
     action: "apply" | "rollback" | "shadow",
-    _targets?: (keyof SonamuDBConfig)[]
+    _targets?: (keyof SonamuDBConfig)[],
   ) => {
     if (!conns) {
       return;
     }
     const targets = _targets ?? selectedConnKeys;
-    openModal(
-      <MigrationActionForm action={action} targets={targets} conns={conns} />,
-      {
-        onCompleted: () => {
-          mutate();
-        },
-      }
-    );
+    openModal(<MigrationActionForm action={action} targets={targets} conns={conns} />, {
+      onCompleted: () => {
+        mutate();
+      },
+    });
   };
 
   const toggleAllFiles = () => {
@@ -182,9 +163,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
               <Table.Body>
                 {preparedCodes.length === 0 && (
                   <Table.Row className="table-empty">
-                    <Table.Cell colSpan={6}>
-                      No prepared migration codes.
-                    </Table.Cell>
+                    <Table.Cell colSpan={6}>No prepared migration codes.</Table.Cell>
                   </Table.Row>
                 )}
                 {preparedCodes.map((pcode, pcodeIndex) => (
@@ -192,13 +171,8 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                     <Table.Cell collapsing>{pcode.type}</Table.Cell>
                     <Table.Cell collapsing>{pcode.table}</Table.Cell>
                     <Table.Cell collapsing>{pcode.title}</Table.Cell>
-                    <Table.Cell
-                      style={{ padding: 0, width: 700, textAlign: "center" }}
-                    >
-                      <CodeViewer
-                        code={pcode.formatted!}
-                        open={isAllCodeViewerOpen}
-                      />
+                    <Table.Cell style={{ padding: 0, width: 700, textAlign: "center" }}>
+                      <CodeViewer code={pcode.formatted ?? ""} open={isAllCodeViewerOpen} />
                     </Table.Cell>
                   </Table.Row>
                 ))}
@@ -221,17 +195,15 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
               />
             </div>
             <div className="conn-preset-buttons">
-              {(["ALL", "LOCAL", "REMOTE", "TESTING", "FIXTURE"] as const).map(
-                (preset) => (
-                  <Button
-                    key={preset}
-                    color="black"
-                    size="tiny"
-                    content={preset}
-                    onClick={() => toggleConnKeys(preset)}
-                  />
-                )
-              )}
+              {(["ALL", "LOCAL", "REMOTE", "TESTING", "FIXTURE"] as const).map((preset) => (
+                <Button
+                  key={preset}
+                  color="black"
+                  size="tiny"
+                  content={preset}
+                  onClick={() => toggleConnKeys(preset)}
+                />
+              ))}
             </div>
             <div className="conn-action-buttons">
               <Button
@@ -270,9 +242,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                       key={connIndex}
                       width="2"
                       className={classNames({
-                        "conn-selected": selectedConnKeys.includes(
-                          conn.connKey
-                        ),
+                        "conn-selected": selectedConnKeys.includes(conn.connKey),
                       })}
                     >
                       <Checkbox
@@ -281,14 +251,10 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                         checked={selectedConnKeys.includes(conn.connKey)}
                         onChange={(_e, data) => {
                           if (data.checked) {
-                            setSelectedConnKeys(
-                              unique([...selectedConnKeys, conn.connKey])
-                            );
+                            setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));
                           } else {
                             setSelectedConnKeys(
-                              selectedConnKeys.filter(
-                                (key) => key !== conn.connKey
-                              )
+                              selectedConnKeys.filter((key) => key !== conn.connKey),
                             );
                           }
                         }}
@@ -302,8 +268,8 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                   <Table.Row className="table-empty">
                     <Table.Cell colSpan={6}>
                       <b>
-                        Some connections are in error state. Please check the
-                        connection settings and try again.
+                        Some connections are in error state. Please check the connection settings
+                        and try again.
                       </b>
                     </Table.Cell>
                   </Table.Row>
@@ -321,14 +287,10 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                         checked={selectedCodeNames.includes(code.name)}
                         onChange={(_e, data) => {
                           if (data.checked) {
-                            setSelectedCodeNames(
-                              unique([...selectedCodeNames, code.name])
-                            );
+                            setSelectedCodeNames(unique([...selectedCodeNames, code.name]));
                           } else {
                             setSelectedCodeNames(
-                              selectedCodeNames.filter(
-                                (name) => name !== code.name
-                              )
+                              selectedCodeNames.filter((name) => name !== code.name),
                             );
                           }
                         }}
@@ -348,32 +310,15 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                       <Table.Cell
                         key={connIndex}
                         className={classNames("conn-status", {
-                          "conn-selected": selectedConnKeys.includes(
-                            conn.connKey
-                          ),
+                          "conn-selected": selectedConnKeys.includes(conn.connKey),
                         })}
                       >
                         {conn.pending.includes(code.name) ? (
-                          <Label
-                            size="mini"
-                            color="yellow"
-                            icon="minus"
-                            content="PENDING"
-                          />
+                          <Label size="mini" color="yellow" icon="minus" content="PENDING" />
                         ) : conn.status === "error" ? (
-                          <Label
-                            size="mini"
-                            color="red"
-                            icon="times"
-                            content="ERROR"
-                          />
+                          <Label size="mini" color="red" icon="times" content="ERROR" />
                         ) : (
-                          <Label
-                            size="mini"
-                            color="green"
-                            icon="check"
-                            content="APPLIED"
-                          />
+                          <Label size="mini" color="green" icon="check" content="APPLIED" />
                         )}
                       </Table.Cell>
                     ))}
@@ -394,8 +339,6 @@ type CodeViewerProps = {
 };
 export function CodeViewer({ code, open }: CodeViewerProps) {
   return (
-    <div className="code-viewer">
-      {open ? <code>{code}</code> : <div>Code is collapsed</div>}
-    </div>
+    <div className="code-viewer">{open ? <code>{code}</code> : <div>Code is collapsed</div>}</div>
   );
 }

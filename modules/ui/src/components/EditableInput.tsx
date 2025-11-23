@@ -1,19 +1,12 @@
 import classNames from "classnames";
 import { useEffect, useState } from "react";
-import { Input, InputProps } from "semantic-ui-react";
+import { Input, type InputProps } from "semantic-ui-react";
 
 type EditableInputProps = Omit<InputProps, "onChange"> & {
   value: string;
-  onChange: (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    data: { value: string }
-  ) => Promise<void>;
+  onChange: (e: React.KeyboardEvent<HTMLInputElement>, data: { value: string }) => Promise<void>;
 };
-export function EditableInput({
-  onChange,
-  value: originValue,
-  ...inputProps
-}: EditableInputProps) {
+export function EditableInput({ onChange, value: originValue, ...inputProps }: EditableInputProps) {
   const [loading, setLoading] = useState(false);
   const [value, setValue] = useState<string>(inputProps.originValue);
 
@@ -21,7 +14,7 @@ export function EditableInput({
     if (value !== originValue) {
       setValue(originValue);
     }
-  }, [originValue]);
+  }, [originValue, value]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();

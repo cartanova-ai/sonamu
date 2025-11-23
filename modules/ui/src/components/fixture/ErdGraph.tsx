@@ -1,21 +1,19 @@
-import { SetStateAction, useEffect, useMemo } from "react";
 import {
   ConnectionLineType,
-  Edge,
+  type Edge,
   Position,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
+import { type SetStateAction, useEffect, useMemo } from "react";
 import "@xyflow/react/dist/style.css";
 import "./graph.scss";
-import TableNode, {
-  type TableNodeRFNode,
-} from "../../components/fixture/TableNode";
-import { FixtureRecord } from "sonamu";
-import { group } from "radashi";
-import { TableEdge } from "./TableEdge";
 import dagre from "@dagrejs/dagre";
+import { group } from "radashi";
+import type { FixtureRecord } from "sonamu";
+import TableNode, { type TableNodeRFNode } from "../../components/fixture/TableNode";
+import { TableEdge } from "./TableEdge";
 
 type FixtureGraphProps = {
   fixtures: FixtureRecord[];
@@ -24,7 +22,7 @@ type FixtureGraphProps = {
     parentFixtureId: string,
     entityId: string,
     id: number,
-    isChecked: boolean
+    isChecked: boolean,
   ) => void;
   setFixtureRecords: (value: SetStateAction<FixtureRecord[]>) => void;
 };
@@ -37,7 +35,7 @@ function makeNodes(
   fixtures: FixtureRecord[],
   selectedIds: Set<string>,
   onRelationToggle: FixtureGraphProps["onRelationToggle"],
-  setFixtureRecords: FixtureGraphProps["setFixtureRecords"]
+  setFixtureRecords: FixtureGraphProps["setFixtureRecords"],
 ): TableNodeRFNode[] {
   const groupedFixtures = group(fixtures, (fixture) => fixture.entityId);
 
@@ -55,7 +53,7 @@ function makeNodes(
       },
       targetPosition: Position.Top,
       sourcePosition: Position.Bottom,
-    })
+    }),
   );
 
   return nodes;
@@ -102,7 +100,7 @@ function makeEdges(fixtures: FixtureRecord[]): Edge[] {
 function getLayoutedElements(
   nodes: TableNodeRFNode[],
   edges: Edge[],
-  direction: "TB" | "LR" = "TB"
+  direction: "TB" | "LR" = "TB",
 ) {
   const nodeWidth = 630;
   const baseNodeHeight = 100;
@@ -159,12 +157,7 @@ export default function FixtureGraph({
       return { nodes: [] as TableNodeRFNode[], edges: [] as Edge[] };
     }
 
-    const nodes = makeNodes(
-      fixtures,
-      selectedIds,
-      onRelationToggle,
-      setFixtureRecords
-    );
+    const nodes = makeNodes(fixtures, selectedIds, onRelationToggle, setFixtureRecords);
     const edges = makeEdges(fixtures);
 
     return getLayoutedElements(nodes, edges, "TB");

@@ -1,16 +1,12 @@
-import { ChangeEvent, useState } from "react";
-import { Button, Input, InputProps } from "semantic-ui-react";
+import { type ChangeEvent, useState } from "react";
+import { Button, Input, type InputProps } from "semantic-ui-react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type InputWithSuggestionProps = {
   origin: string | undefined | null;
   entityId?: string;
 } & InputProps;
-export function InputWithSuggestion({
-  origin,
-  entityId,
-  ...inputProps
-}: InputWithSuggestionProps) {
+export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWithSuggestionProps) {
   const [loading, setLoading] = useState(false);
 
   const triggerChange = (value: string) => {

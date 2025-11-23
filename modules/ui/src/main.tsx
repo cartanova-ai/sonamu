@@ -1,16 +1,16 @@
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { SWRConfig } from "swr";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { SWRConfig } from "swr";
 import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
+import FixtureIndex from "./pages/fixture/index.tsx";
 import MigrationsIndex from "./pages/migrations/index.tsx";
 import { ScaffoldingIndex } from "./pages/scaffolding/index.tsx";
 import { swrFetcher } from "./services/sonamu.shared.ts";
-import FixtureIndex from "./pages/fixture/index.tsx";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <SWRConfig
     value={{
       errorRetryInterval: 3000,
@@ -32,5 +32,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="*" element={<div>Page Not Found</div>} />
       </Routes>
     </BrowserRouter>
-  </SWRConfig>
+  </SWRConfig>,
 );

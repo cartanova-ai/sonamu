@@ -1,9 +1,9 @@
-import { useCommonModal } from "../../components/core/CommonModal";
-import { Button, Dropdown, Form, Header, Segment } from "semantic-ui-react";
 import { useTypeForm } from "@sonamu-kit/react-sui";
-import { z } from "zod";
-import { EntityIndex } from "sonamu";
 import { useEffect, useRef } from "react";
+import { Button, Dropdown, Form, Header, Segment } from "semantic-ui-react";
+import type { EntityIndex } from "sonamu";
+import { z } from "zod";
+import { useCommonModal } from "../../components/core/CommonModal";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
 type EntityIndexFormProps = { entityId: string; oldOne?: EntityIndex };
@@ -22,13 +22,13 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
       type: "index",
       columns: [],
       ...oldOne,
-    }
+    },
   );
 
   // 초기 마운트 체크
   const isInitialMount = useRef(true);
 
-  // form.type이 변경되면 columns 초기화 (초기 진입 시 제외)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: form.type이 변경되면 columns 초기화 (초기 진입 시 제외)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -37,6 +37,7 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
     setForm({ ...form, columns: [], parser: undefined });
   }, [form.type]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onKeyDown 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -108,9 +109,7 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
                   <TableColumnAsyncSelect
                     {...register("columns")}
                     entityId={entityId}
-                    allowedTypes={
-                      form.type === "fulltext" ? ["string", "text"] : undefined
-                    }
+                    allowedTypes={form.type === "fulltext" ? ["string", "text"] : undefined}
                     className="focus-2"
                   />
                 </Form.Field>

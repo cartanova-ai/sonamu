@@ -1,16 +1,13 @@
-import { useState, useEffect } from "react";
-import { Button, Dropdown, Input, Segment, Tab, Icon } from "semantic-ui-react";
-import {
-  ExtendedEntity,
-  SonamuUIService,
-} from "../../services/sonamu-ui.service";
 import { useTypeForm } from "@sonamu-kit/react-sui";
+import { useEffect, useState } from "react";
+import { Button, Dropdown, Icon, Input, Segment, Tab } from "semantic-ui-react";
+import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { FixtureRecord, FixtureImportResult } from "sonamu";
-import FixtureRecordViewer from "./_fixture_record_viewer";
-import FixtureCodeViewer from "./_fixture_code_viewer";
 import FixtureGraph from "../../components/fixture/ErdGraph";
+import { defaultCatch } from "../../services/sonamu.shared";
+import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
+import FixtureCodeViewer from "./_fixture_code_viewer";
+import FixtureRecordViewer from "./_fixture_record_viewer";
 
 const DB_NAMES = [
   "development_master",
@@ -21,8 +18,7 @@ const DB_NAMES = [
 ];
 
 export default function FixtureIndex() {
-  const { data: entitiesData, isLoading: entitiesLoading } =
-    SonamuUIService.useEntities();
+  const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
   const [targetDB, setTargetDB] = useState("fixture_remote"); // 저장할 대상 DB
 
@@ -41,7 +37,7 @@ export default function FixtureIndex() {
       value: z.string(),
       searchType: z.enum(["equals", "like"]),
     }),
-    { entityId: "", field: "id", value: "", searchType: "equals" }
+    { entityId: "", field: "id", value: "", searchType: "equals" },
   );
 
   const [searchEntity, setSearchEntity] = useState<ExtendedEntity | null>(null);
@@ -85,7 +81,7 @@ export default function FixtureIndex() {
     parentFixtureId: string,
     entityId: string,
     id: number,
-    isChecked: boolean
+    isChecked: boolean,
   ) => {
     const fixtureId = `${entityId}#${id}`;
 
@@ -97,35 +93,29 @@ export default function FixtureIndex() {
         searchType: "equals",
       })
         .then((res) => {
-          const parent = fixtureRecords.find(
-            (r) => r.fixtureId === parentFixtureId
-          );
+          const parent = fixtureRecords.find((r) => r.fixtureId === parentFixtureId);
           if (parent) {
             parent.fetchedRecords.push(fixtureId);
           }
 
           const newRecords = res.filter(
-            (r) => !fixtureRecords.some((fr) => fr.fixtureId === r.fixtureId)
+            (r) => !fixtureRecords.some((fr) => fr.fixtureId === r.fixtureId),
           );
-          setFixtureRecords((prevRecords) =>
-            Array.from([...prevRecords, ...newRecords])
-          );
+          setFixtureRecords((prevRecords) => Array.from([...prevRecords, ...newRecords]));
           setSelectedIds((prev) => {
             const newSet = new Set(prev);
-            newRecords.forEach((r) => newSet.add(r.fixtureId));
+            newRecords.forEach((r) => {
+              newSet.add(r.fixtureId);
+            });
             return newSet;
           });
         })
         .catch(defaultCatch);
     } else {
-      const parent = fixtureRecords.find(
-        (r) => r.fixtureId === parentFixtureId
-      );
+      const parent = fixtureRecords.find((r) => r.fixtureId === parentFixtureId);
       if (!parent) return;
 
-      parent.fetchedRecords = parent.fetchedRecords.filter(
-        (r) => r !== fixtureId
-      );
+      parent.fetchedRecords = parent.fetchedRecords.filter((r) => r !== fixtureId);
 
       const toDelete = new Set<string>([fixtureId]);
       const record = fixtureRecords.find((r) => r.fixtureId === fixtureId);
@@ -136,9 +126,9 @@ export default function FixtureIndex() {
 
         fixtureRecords.forEach((r) => {
           if (r.fixtureId !== fixtureId) {
-            r.fetchedRecords.forEach((relatedFixtureId) =>
-              toProtect.add(relatedFixtureId)
-            );
+            r.fetchedRecords.forEach((relatedFixtureId) => {
+              toProtect.add(relatedFixtureId);
+            });
           }
         });
 
@@ -167,12 +157,14 @@ export default function FixtureIndex() {
 
       setSelectedIds((prev) => {
         const newSet = new Set(prev);
-        toDelete.forEach((fixtureId) => newSet.delete(fixtureId));
+        toDelete.forEach((fixtureId) => {
+          newSet.delete(fixtureId);
+        });
         return newSet;
       });
 
       setFixtureRecords((prevRecords) =>
-        prevRecords.filter((record) => !toDelete.has(record.fixtureId))
+        prevRecords.filter((record) => !toDelete.has(record.fixtureId)),
       );
     }
   };
@@ -282,8 +274,7 @@ export default function FixtureIndex() {
                       if (p.type === "virtual") return false;
                       if (p.type === "relation") {
                         if (p.relationType === "BelongsToOne") return true;
-                        if (p.relationType === "OneToOne" && p.hasJoinColumn)
-                          return true;
+                        if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
                         return false;
                       }
                       return true;
@@ -296,11 +287,7 @@ export default function FixtureIndex() {
                   {...register("field")}
                   style={{ flexBasis: "150px" }}
                 />
-                <Input
-                  placeholder="검색 값 입력"
-                  {...register("value")}
-                  style={{ flexGrow: 1 }}
-                />
+                <Input placeholder="검색 값 입력" {...register("value")} style={{ flexGrow: 1 }} />
                 <Dropdown
                   selection
                   options={[
@@ -316,9 +303,7 @@ export default function FixtureIndex() {
             {/* Search Button */}
             <Button
               onClick={search}
-              disabled={
-                !form.entityId || !form.field || !form.value || entitiesLoading
-              }
+              disabled={!form.entityId || !form.field || !form.value || entitiesLoading}
               loading={entitiesLoading}
               primary
               content="검색"

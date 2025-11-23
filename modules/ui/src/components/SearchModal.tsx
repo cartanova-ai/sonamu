@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { Modal, Input, List } from "semantic-ui-react";
-import { useNavigate } from "react-router-dom";
-import { SonamuUIService } from "../services/sonamu-ui.service";
-import { SearchResult, useEntitySearch } from "./useEntitySearch";
-import { group } from "radashi";
 import assert from "assert";
+import { group } from "radashi";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Input, List, Modal } from "semantic-ui-react";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { type SearchResult, useEntitySearch } from "./useEntitySearch";
 
 type SearchModalProps = {
   open: boolean;
@@ -63,12 +63,10 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     const escapedQuery = query.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
     const regex = new RegExp(`[${escapedQuery}]`, "gi");
 
-    return target.replace(
-      regex,
-      (match) => `<span style="color: green;">${match}</span>`
-    );
+    return target.replace(regex, (match) => `<span style="color: green;">${match}</span>`);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: query 변경시에만
   useEffect(() => {
     if (documents) {
       const entity = window.location.pathname.split("/entities/")[1];
@@ -78,6 +76,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     }
   }, [query]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleResultClick 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!open) return;
@@ -86,9 +85,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         case "ArrowDown":
           if (selectedIndex !== -1) {
             setSelectedIndex2((prevIndex2) =>
-              prevIndex2 < results[selectedIndex].fields.length - 1
-                ? prevIndex2 + 1
-                : prevIndex2
+              prevIndex2 < results[selectedIndex].fields.length - 1 ? prevIndex2 + 1 : prevIndex2,
             );
           }
           setSelectedIndex((prevIndex) => {
@@ -116,10 +113,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             setSelectedIndex2((prevIndex2) => {
               if (results.length === 0) return -1;
               if (prevIndex2 === -1) {
-                return (
-                  results[nextIndex > -1 ? nextIndex : results.length - 1]
-                    .fields.length - 1
-                );
+                return results[nextIndex > -1 ? nextIndex : results.length - 1].fields.length - 1;
               }
               return prevIndex2 - 1;
             });
@@ -146,18 +140,15 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           break;
       }
     },
-    [open, results, selectedIndex, selectedIndex2]
+    [open, results, selectedIndex, selectedIndex2],
   );
 
-  const getResultDescriptions = (
-    result: SearchResult["item"],
-    fields: SearchResult["fields"]
-  ) => {
+  const getResultDescriptions = (result: SearchResult["item"], fields: SearchResult["fields"]) => {
     const grouped = Object.entries(
       group(
         fields?.filter((f) => f.type === "subsets"),
-        (field) => field.key
-      )
+        (field) => field.key,
+      ),
     ).filter(([_, value]) => value !== undefined);
     return grouped.map(([key, group], index) => {
       assert(group);
@@ -169,6 +160,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           {group.map((field) => (
             <List.Description
               key={field.desc}
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
               dangerouslySetInnerHTML={{
                 __html: highlightText(field.desc, query),
               }}
@@ -179,9 +171,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   ? "selected"
                   : ""
               }`}
-              onClick={() =>
-                handleResultClick(`/entities/${result.id}`, field.desc)
-              }
+              onClick={() => handleResultClick(`/entities/${result.id}`, field.desc)}
             />
           ))}
         </div>
@@ -224,44 +214,41 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               <List.Item
                 key={`${result.id}-${index}`}
                 className={`search-result ${
-                  index === selectedIndex && selectedIndex2 === -1
-                    ? "selected"
-                    : ""
+                  index === selectedIndex && selectedIndex2 === -1 ? "selected" : ""
                 }`}
               >
-                <div
+                <button
+                  type="button"
                   className="click-item"
                   onClick={() => handleResultClick(`/entities/${result.id}`)}
                 >
                   <List.Header
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                     dangerouslySetInnerHTML={{
                       __html: highlightText(result.id, query),
                     }}
                   />
                   <List.Description
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                     dangerouslySetInnerHTML={{
                       __html: highlightText(result.title, query),
                     }}
                   />
-                </div>
+                </button>
 
                 {!!fields?.filter((f) => f.type === "scaffolding")?.length && (
                   <List.Description
                     className={`click-item sub-item ${
-                      index === selectedIndex &&
-                      selectedIndex2 !== -1 &&
-                      selectedIndex2 === 0
+                      index === selectedIndex && selectedIndex2 !== -1 && selectedIndex2 === 0
                         ? "selected"
                         : ""
                     }`}
                     onClick={() => handleResultClick("/scaffolding", result.id)}
                   >
                     <strong
+                      // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                       dangerouslySetInnerHTML={{
-                        __html: highlightText(
-                          `Scaffolding > ${result.id}(${result.title})`,
-                          query
-                        ),
+                        __html: highlightText(`Scaffolding > ${result.id}(${result.title})`, query),
                       }}
                     />
                   </List.Description>
@@ -274,16 +261,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                         <strong>{"props >"}</strong>
                       </List.Description>
                       {fields?.map((field, fieldIndex) => {
-                        if (field.type !== "props") return;
+                        if (field.type !== "props") return <>&nbsp;</>;
 
                         return (
                           <List.Description
                             key={field.key}
+                            // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                             dangerouslySetInnerHTML={{
-                              __html: highlightText(
-                                `${field.key}(${field.desc})`,
-                                query
-                              ),
+                              __html: highlightText(`${field.key}(${field.desc})`, query),
                             }}
                             className={`click-item sub-item ${
                               index === selectedIndex &&
@@ -293,10 +278,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                                 : ""
                             }`}
                             onClick={() =>
-                              handleResultClick(
-                                `/entities/${result.id}`,
-                                `prop-${field.key}`
-                              )
+                              handleResultClick(`/entities/${result.id}`, `prop-${field.key}`)
                             }
                           />
                         );
@@ -313,11 +295,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                         <strong>{"enums >"}</strong>
                       </List.Description>
                       {fields?.map((field) => {
-                        if (field.type !== "enums") return;
+                        if (field.type !== "enums") return <>&nbsp;</>;
 
                         return (
                           <List.Description
                             key={field.key}
+                            // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                             dangerouslySetInnerHTML={{
                               __html: highlightText(field.key, query),
                             }}
@@ -329,10 +312,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                                 : ""
                             }`}
                             onClick={() =>
-                              handleResultClick(
-                                `/entities/${result.id}`,
-                                `enum-${field.key}`
-                              )
+                              handleResultClick(`/entities/${result.id}`, `enum-${field.key}`)
                             }
                           />
                         );

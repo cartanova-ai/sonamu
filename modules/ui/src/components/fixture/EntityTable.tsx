@@ -1,6 +1,6 @@
-import { SetStateAction } from "react";
+import type { SetStateAction } from "react";
 import { Checkbox, Icon, Popup, Table } from "semantic-ui-react";
-import { FixtureRecord } from "sonamu";
+import type { FixtureRecord } from "sonamu";
 
 type EntityTableProps = {
   fixtures: FixtureRecord[];
@@ -8,7 +8,7 @@ type EntityTableProps = {
     parentFixtureId: string,
     entityId: string,
     id: number,
-    isChecked: boolean
+    isChecked: boolean,
   ) => void;
   selectedIds: Set<string>;
   setFixtureRecords: (value: SetStateAction<FixtureRecord[]>) => void;
@@ -26,6 +26,7 @@ export default function EntityTable({
   isGraphNode = false,
 }: EntityTableProps) {
   // 컬럼 목록에서 'id'를 제외하는 헬퍼 함수
+  // biome-ignore lint/suspicious/noExplicitAny: 컬럼 목록은 동적으로 생성되므로 any 사용
   const refineColumns = (columns: Record<string, any>) => {
     return Object.entries(columns).filter(([c]) => c !== "id");
   };
@@ -43,9 +44,7 @@ export default function EntityTable({
       <Table.Header>
         {!isGraphNode && (
           <Table.Row>
-            <Table.HeaderCell
-              colSpan={Object.keys(firstRecord.columns).length + 1}
-            >
+            <Table.HeaderCell colSpan={Object.keys(firstRecord.columns).length + 1}>
               {entityId}
             </Table.HeaderCell>
           </Table.Row>
@@ -63,21 +62,16 @@ export default function EntityTable({
       <Table.Body>
         {fixtures.map((record) => (
           <>
-            <Table.Row
-              key={record.id}
-              className={record.unique ? "unique-violated" : ""}
-            >
-              <Table.Cell
-                collapsing
-                rowSpan={record.target || record.unique ? 2 : 1}
-              >
+            <Table.Row key={record.id} className={record.unique ? "unique-violated" : ""}>
+              <Table.Cell collapsing rowSpan={record.target || record.unique ? 2 : 1}>
                 {record.id} {record.unique && `(${record.unique.id})`}
                 {record.target && (
                   <Popup
                     content="Override"
                     position="top center"
                     trigger={
-                      <div
+                      <button
+                        type="button"
                         style={{
                           cursor: "pointer",
                           padding: "1em",
@@ -89,21 +83,18 @@ export default function EntityTable({
                             prev.map((r) =>
                               r.fixtureId === record.fixtureId
                                 ? { ...r, override: !r.override }
-                                : r
-                            )
+                                : r,
+                            ),
                           );
                         }}
                       >
-                        <Icon
-                          name="check"
-                          color={record.override ? "green" : "grey"}
-                        />
-                      </div>
+                        <Icon name="check" color={record.override ? "green" : "grey"} />
+                      </button>
                     }
                   />
                 )}
                 {record.unique && (
-                  <span onClick={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={(e) => e.stopPropagation()}>
                     <Popup
                       content="Unique Violated"
                       position="top center"
@@ -120,7 +111,7 @@ export default function EntityTable({
                         </div>
                       }
                     />
-                  </span>
+                  </button>
                 )}
               </Table.Cell>
 
@@ -129,8 +120,7 @@ export default function EntityTable({
                 <Table.Cell key={key} collapsing>
                   <div className="scrollable-cell-content">
                     {(Array.isArray(value) ? value : [value]).map((v, index) =>
-                      prop.type === "relation" &&
-                      prop.relationType !== "BelongsToOne" ? (
+                      prop.type === "relation" && prop.relationType !== "BelongsToOne" ? (
                         <div key={index}>
                           {JSON.stringify(v)}
                           {v !== null && (
@@ -142,7 +132,7 @@ export default function EntityTable({
                                   record.fixtureId,
                                   prop.with,
                                   v,
-                                  data.checked as boolean
+                                  data.checked as boolean,
                                 );
                               }}
                             />
@@ -150,7 +140,7 @@ export default function EntityTable({
                         </div>
                       ) : (
                         JSON.stringify(v)
-                      )
+                      ),
                     )}
                   </div>
                 </Table.Cell>
@@ -160,30 +150,22 @@ export default function EntityTable({
             {record.target && (
               <Table.Row key={record.target.id} warning>
                 <Table.Cell collapsing>target</Table.Cell>
-                {refineColumns(record.target.columns).map(
-                  ([key, { value }]) => (
-                    <Table.Cell key={key} collapsing>
-                      <div className="scrollable-cell-content">
-                        {JSON.stringify(value)}
-                      </div>
-                    </Table.Cell>
-                  )
-                )}
+                {refineColumns(record.target.columns).map(([key, { value }]) => (
+                  <Table.Cell key={key} collapsing>
+                    <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
+                  </Table.Cell>
+                ))}
               </Table.Row>
             )}
 
             {record.unique && (
-              <Table.Row key={record.id + "unique"}>
+              <Table.Row key={`${record.id}unique`}>
                 <Table.Cell collapsing>target</Table.Cell>
-                {refineColumns(record.unique.columns).map(
-                  ([key, { value }]) => (
-                    <Table.Cell key={key} collapsing>
-                      <div className="scrollable-cell-content">
-                        {JSON.stringify(value)}
-                      </div>
-                    </Table.Cell>
-                  )
-                )}
+                {refineColumns(record.unique.columns).map(([key, { value }]) => (
+                  <Table.Cell key={key} collapsing>
+                    <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
+                  </Table.Cell>
+                ))}
               </Table.Row>
             )}
           </>

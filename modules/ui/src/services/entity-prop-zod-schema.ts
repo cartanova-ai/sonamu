@@ -123,6 +123,7 @@ export namespace EntityPropZodSchema {
   export function safeParse(form: {
     type: string;
     relationType?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용
   }): z.ZodSafeParseSuccess<any> | z.ZodSafeParseError<any> {
     const zodSchema = (() => {
       switch (form.type) {

@@ -1,10 +1,7 @@
-import { Button, Checkbox, Form, Icon, Modal, Table } from "semantic-ui-react";
-import {
-  ScaffoldingStatus,
-  SonamuUIService,
-} from "../../services/sonamu-ui.service";
 import { useState } from "react";
+import { Button, Checkbox, Form, Icon, Modal, Table } from "semantic-ui-react";
 import { defaultCatch } from "../../services/sonamu.shared";
+import { type ScaffoldingStatus, SonamuUIService } from "../../services/sonamu-ui.service";
 
 type ScaffoldingIndexProps = {};
 export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
@@ -58,12 +55,9 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
 
   const filteredEnumIds = (allEntities ?? [])
     .filter(
-      (e) =>
-        selected.entityIds.includes(e.id) ||
-        selected.entityIds.includes(e.parentId ?? "")
+      (e) => selected.entityIds.includes(e.id) || selected.entityIds.includes(e.parentId ?? ""),
     )
-    .map((e) => Object.keys(e.enumLabels))
-    .flat();
+    .flatMap((e) => Object.keys(e.enumLabels));
   const setEntityIds = (entityIds: string[]) => {
     setSelected({
       ...selected,
@@ -71,10 +65,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       enumIds: filteredEnumIds.filter((eid) => selected.enumIds.includes(eid)),
     });
   };
-  const setTemplateKeys = (
-    templateGroupName: "Entity" | "Enums",
-    templateKeys: string[]
-  ) => {
+  const setTemplateKeys = (templateGroupName: "Entity" | "Enums", templateKeys: string[]) => {
     const group = templateGroups.find((g) => g.name === templateGroupName);
     if (!group) {
       return;
@@ -82,9 +73,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     setSelected({
       ...selected,
       templateGroupName,
-      templateKeys: group.templateKeys.filter((tk) =>
-        templateKeys.includes(tk)
-      ),
+      templateKeys: group.templateKeys.filter((tk) => templateKeys.includes(tk)),
       enumIds: templateGroupName === "Entity" ? [] : selected.enumIds,
     });
   };
@@ -112,18 +101,21 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
 
     const filtered = statuses.filter((st) => st.isExists);
     const allOverwrite = filtered.every(
-      (st) => generateOptions[getScaffoldingKey(st)]?.overwrite ?? false
+      (st) => generateOptions[getScaffoldingKey(st)]?.overwrite ?? false,
     );
     if (allOverwrite) {
       setGenerateOptions({});
     } else {
       setGenerateOptions(
-        filtered.reduce((acc, st) => {
-          acc[getScaffoldingKey(st)] = {
-            overwrite: true,
-          };
-          return acc;
-        }, {} as { [key: string]: { overwrite: boolean } })
+        filtered.reduce(
+          (acc, st) => {
+            acc[getScaffoldingKey(st)] = {
+              overwrite: true,
+            };
+            return acc;
+          },
+          {} as { [key: string]: { overwrite: boolean } },
+        ),
       );
     }
   };
@@ -188,9 +180,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                 if (checked) {
                   setEntityIds([...selected.entityIds, entity.id]);
                 } else {
-                  setEntityIds(
-                    selected.entityIds.filter((id) => id !== entity.id)
-                  );
+                  setEntityIds(selected.entityIds.filter((id) => id !== entity.id));
                 }
               }}
             />
@@ -208,9 +198,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   size="mini"
                   icon="check"
                   content={`Check all`}
-                  onClick={() =>
-                    setTemplateKeys(group.name, group.templateKeys)
-                  }
+                  onClick={() => setTemplateKeys(group.name, group.templateKeys)}
                 />
               ) : (
                 <Button
@@ -231,14 +219,11 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   }
                   onChange={(_e, { checked }) => {
                     if (checked) {
-                      setTemplateKeys(group.name, [
-                        ...selected.templateKeys,
-                        templateKey,
-                      ]);
+                      setTemplateKeys(group.name, [...selected.templateKeys, templateKey]);
                     } else {
                       setTemplateKeys(
                         group.name,
-                        selected.templateKeys.filter((id) => id !== templateKey)
+                        selected.templateKeys.filter((id) => id !== templateKey),
                       );
                     }
                   }}
@@ -290,8 +275,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           {!statuses && !scaffoldingIsLoading && (
             <div className="message-box warning">
               Please select EntityIDs / TemplateKeys
-              {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to
-              generate
+              {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to generate
             </div>
           )}
           {statuses && (
@@ -363,8 +347,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                             <Form.Field>
                               <Checkbox
                                 checked={
-                                  generateOptions[getScaffoldingKey(status)]
-                                    ?.overwrite ?? false
+                                  generateOptions[getScaffoldingKey(status)]?.overwrite ?? false
                                 }
                                 onChange={(_e, { checked }) => {
                                   setGenerateOptions({
@@ -404,13 +387,12 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         <Modal.Header>Preview</Modal.Header>
         <Modal.Content>
           <Modal.Description>
-            {previewModalState.pathAndCodes &&
-              previewModalState.pathAndCodes.map((pnc) => (
-                <div className="preview-item">
-                  <h4>{pnc.path}</h4>
-                  <code>{pnc.code}</code>
-                </div>
-              ))}
+            {previewModalState.pathAndCodes?.map((pnc) => (
+              <div className="preview-item" key={pnc.path}>
+                <h4>{pnc.path}</h4>
+                <code>{pnc.code}</code>
+              </div>
+            ))}
           </Modal.Description>
         </Modal.Content>
       </Modal>

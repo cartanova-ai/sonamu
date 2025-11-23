@@ -1,7 +1,7 @@
-import { SetStateAction } from "react";
-import { FixtureRecord } from "sonamu";
-import EntityTable from "../../components/fixture/EntityTable"; // 공통 테이블 컴포넌트 임포트
 import { group } from "radashi";
+import type { SetStateAction } from "react";
+import type { FixtureRecord } from "sonamu";
+import EntityTable from "../../components/fixture/EntityTable"; // 공통 테이블 컴포넌트 임포트
 
 type FixtureResultProps = {
   fixtureRecords: FixtureRecord[];
@@ -9,7 +9,7 @@ type FixtureResultProps = {
     parentFixtureId: string,
     entityId: string,
     id: number,
-    isChecked: boolean
+    isChecked: boolean,
   ) => void;
   selectedIds: Set<string>;
   setFixtureRecords: (value: SetStateAction<FixtureRecord[]>) => void;

@@ -1,16 +1,10 @@
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import {
-  Link,
-  Outlet,
-  useNavigate,
-  useOutletContext,
-  useParams,
-} from "react-router-dom";
 import classnames from "classnames";
+import { Link, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Divider } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
-import { EntityCreateForm } from "./_create_form";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { AICreateEntityForm } from "./_ai_create_entity_form";
+import { EntityCreateForm } from "./_create_form";
 
 type EntitiesLayoutProps = {};
 export default function EntitiesLayout(_props: EntitiesLayoutProps) {
@@ -31,7 +25,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
     openModal(<EntityCreateForm />, {
       onControlledOpen: () => {
         const focusInput = document.querySelector(
-          ".entity-create-form .focus-0 input"
+          ".entity-create-form .focus-0 input",
         ) as HTMLInputElement;
         if (focusInput) {
           focusInput.focus();
@@ -49,9 +43,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const createEntityWithAI = () => {
     openModal(<AICreateEntityForm />, {
       onControlledOpen: () => {
-        const focusInput = document.querySelector(
-          ".create-ai-form textarea"
-        ) as HTMLInputElement;
+        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
         if (focusInput) {
           focusInput.focus();
         }
@@ -70,23 +62,22 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
       <div className="sidemenu">
         {isLoading && <div>Loading...</div>}
         {error && <div>Error: {error.message}</div>}
-        {entities &&
-          entities.map((entity) => (
-            <Link
-              key={entity.id}
-              className={classnames("entity-list-item", {
-                selected: entity.id === params.entityId,
-              })}
-              to={`/entities/${entity.id}`}
-            >
-              {entity.parentId && (
-                <span style={{ color: "silver" }}>
-                  {entity.parentId} {"> "}
-                </span>
-              )}
-              {entity.id}
-            </Link>
-          ))}
+        {entities?.map((entity) => (
+          <Link
+            key={entity.id}
+            className={classnames("entity-list-item", {
+              selected: entity.id === params.entityId,
+            })}
+            to={`/entities/${entity.id}`}
+          >
+            {entity.parentId && (
+              <span style={{ color: "silver" }}>
+                {entity.parentId} {"> "}
+              </span>
+            )}
+            {entity.id}
+          </Link>
+        ))}
         <Divider />
         <div className="text-center footer-buttons">
           <Button
@@ -110,11 +101,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
         icon="arrow up"
         circular
         className="move-to-top"
-        onClick={() =>
-          document
-            .getElementById("scroller")
-            ?.scrollIntoView({ behavior: "smooth" })
-        }
+        onClick={() => document.getElementById("scroller")?.scrollIntoView({ behavior: "smooth" })}
       />
     </div>
   );

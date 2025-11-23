@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
-import {
-  Segment,
-  Form,
-  TextArea,
-  Button,
-  Header,
-  Popup,
-} from "semantic-ui-react";
 import { atom, useAtom } from "jotai";
-import { SonamuUIService } from "../services/sonamu-ui.service";
+import { useEffect, useState } from "react";
+import { Button, Form, Header, Popup, Segment, TextArea } from "semantic-ui-react";
+import type { Entity, EntityJson } from "sonamu";
 import { defaultCatch } from "../services/sonamu.shared";
-import { Entity, EntityJson } from "sonamu";
+import { SonamuUIService } from "../services/sonamu-ui.service";
 
 // Types
 export type EnumJson = Entity["enumLabels"];
@@ -37,8 +30,7 @@ type AICreateFormProps = {
   write?: () => void;
 };
 export default function AICreateForm({ children, write }: AICreateFormProps) {
-  const [{ loading, type, response }, setAICreateFormState] =
-    useAtom(aiCreateFormAtom);
+  const [{ loading, type, response }, setAICreateFormState] = useAtom(aiCreateFormAtom);
 
   const [content, setContent] = useState("");
 
@@ -87,26 +79,23 @@ export default function AICreateForm({ children, write }: AICreateFormProps) {
     SonamuUIService.clearThread().catch(defaultCatch);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: content 변경시에
   useEffect(() => {
     const adjustHeight = () => {
-      const textarea = document.getElementById(
-        "dynamicTextarea"
-      ) as HTMLTextAreaElement;
+      const textarea = document.getElementById("dynamicTextarea") as HTMLTextAreaElement;
       if (!textarea) return;
 
       textarea.style.height = "auto";
       const computedStyle = window.getComputedStyle(textarea);
       const lineHeight = parseInt(computedStyle.lineHeight);
-      const newHeight = Math.min(
-        Math.max(textarea.scrollHeight, lineHeight),
-        15 * lineHeight
-      );
+      const newHeight = Math.min(Math.max(textarea.scrollHeight, lineHeight), 15 * lineHeight);
       textarea.style.height = `${newHeight}px`;
     };
 
     adjustHeight();
   }, [content]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 마운트시 한번만
   useEffect(() => {
     setAICreateFormState((prev) => ({
       ...prev,
@@ -137,13 +126,7 @@ export default function AICreateForm({ children, write }: AICreateFormProps) {
             {write && (
               <Popup
                 content={`Create ${type}`}
-                trigger={
-                  <Button
-                    icon="plus"
-                    onClick={write}
-                    disabled={!loading && !response}
-                  />
-                }
+                trigger={<Button icon="plus" onClick={write} disabled={!loading && !response} />}
               />
             )}
           </div>
@@ -175,13 +158,10 @@ export default function AICreateForm({ children, write }: AICreateFormProps) {
   );
 }
 
-export function useAICreateForm<T extends ResponseType>({
-  type,
-}: {
-  type: "entity" | "enum";
-}) {
+export function useAICreateForm<T extends ResponseType>({ type }: { type: "entity" | "enum" }) {
   const [state, setState] = useAtom(aiCreateFormAtom);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 마운트시 한번만
   useEffect(() => {
     setState((prev) => ({ ...prev, type }));
 

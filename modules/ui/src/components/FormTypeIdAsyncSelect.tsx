@@ -1,8 +1,8 @@
-import { FormDropdownProps, Button, FormDropdown } from "semantic-ui-react";
-import { SonamuUIService } from "../services/sonamu-ui.service";
-import { defaultCatch } from "../services/sonamu.shared";
-import { SyntheticEvent } from "react";
 import { camelize } from "inflection";
+import type { SyntheticEvent } from "react";
+import { Button, FormDropdown, type FormDropdownProps } from "semantic-ui-react";
+import { defaultCatch } from "../services/sonamu.shared";
+import { SonamuUIService } from "../services/sonamu-ui.service";
 
 export function FormTypeIdAsyncSelect({
   filter,
@@ -23,9 +23,7 @@ export function FormTypeIdAsyncSelect({
       return;
     }
 
-    const defEnumId = `${withAddEnumButton.entityId}${camelize(
-      withAddEnumButton.propName
-    )}`;
+    const defEnumId = `${withAddEnumButton.entityId}${camelize(withAddEnumButton.propName)}`;
     const newEnumId = prompt("New Enum ID", defEnumId);
     if (!newEnumId) {
       return;
@@ -65,9 +63,7 @@ export function FormTypeIdAsyncSelect({
         {...props}
       />
       <Button icon="refresh" size="mini" onClick={() => mutate()} />
-      {withAddEnumButton && (
-        <Button icon="plus" size="mini" onClick={() => promptAddEnum()} />
-      )}
+      {withAddEnumButton && <Button icon="plus" size="mini" onClick={() => promptAddEnum()} />}
     </>
   );
 }

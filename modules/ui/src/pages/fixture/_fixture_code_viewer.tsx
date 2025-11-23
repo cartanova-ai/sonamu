@@ -1,18 +1,22 @@
-import { useEffect, useState } from "react";
-import { Button, Checkbox, Dropdown, Segment, Icon } from "semantic-ui-react";
-import { FixtureImportResult } from "sonamu";
-import inflection from "inflection";
-import Markdown from "react-markdown";
-import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
-import {
-  ExtendedEntity,
-  SonamuUIService,
-} from "../../services/sonamu-ui.service";
-import { defaultCatch } from "../../services/sonamu.shared";
+/** biome-ignore-all lint/correctness/noChildrenProp: 여기는 다 허용 */
+/** biome-ignore-all lint/performance/noAccumulatingSpread: 여기는 다 허용 */
+/** biome-ignore-all lint/suspicious/noExplicitAny: 여기는 다 허용 */
+/** biome-ignore-all lint/a11y/useKeyWithClickEvents: 여기는 다 허용 */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
+/** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
 
+import inflection from "inflection";
+import { useEffect, useState } from "react";
+import Markdown from "react-markdown";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
 // 울며 겨자먹기 workaround입니다. 누가 고쳐주세요 ㅠㅡㅠ
-import { Prism, SyntaxHighlighterProps } from "react-syntax-highlighter";
+import { Prism, type SyntaxHighlighterProps } from "react-syntax-highlighter";
+import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Button, Checkbox, Dropdown, Icon, Segment } from "semantic-ui-react";
+import type { FixtureImportResult } from "sonamu";
+import { defaultCatch } from "../../services/sonamu.shared";
+import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
+
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 
 type ThemeKey = keyof typeof markdownTheme;
@@ -28,7 +32,7 @@ export default function FixtureCodeViewer({
   targetDB,
 }: FixtureCodeViewerProps) {
   const [theme, setTheme] = useState(
-    (localStorage.getItem("markdown-theme") as ThemeKey) ?? "oneDark"
+    (localStorage.getItem("markdown-theme") as ThemeKey) ?? "oneDark",
   );
 
   const getThemeOptions = () =>
@@ -57,21 +61,14 @@ export default function FixtureCodeViewer({
       </div>
 
       {entities.map((entity) => {
-        const results = fixtureResults.filter(
-          (result) => result.entityId === entity.id
-        );
+        const results = fixtureResults.filter((result) => result.entityId === entity.id);
         if (results.length === 0) return null;
         return (
           <div key={entity.id} className="fixture-entity-group">
             <h3>Entity: {entity.id}</h3>
             {results.map((result) => (
               <div key={String(result.data.id)} className="fixture-code-item">
-                <FixtureCode
-                  fixture={result}
-                  entity={entity}
-                  targetDB={targetDB}
-                  theme={theme}
-                />
+                <FixtureCode fixture={result} entity={entity} targetDB={targetDB} theme={theme} />
               </div>
             ))}
           </div>
@@ -94,40 +91,22 @@ const FixtureCode = ({
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
   const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
-  const [codes, setCodes] = useState<
-    Map<string, { fixture: string; test: string }>
-  >(new Map());
+  const [codes, setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
 
-  const getFixtureLoaderCode = (
-    entityId: string,
-    id: number,
-    subset: string
-  ) => {
+  const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
     return `${inflection.camelize(entityId, true)}${id
       .toString()
-      .padStart(
-        2,
-        "0"
-      )}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
+      .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
   };
 
-  const getFixtureTestCode = (
-    entityId: string,
-    id: number,
-    res: { [key: string]: any }
-  ) => {
-    const fixtureName =
-      inflection.camelize(entityId, true) + id.toString().padStart(2, "0");
+  const getFixtureTestCode = (entityId: string, id: number, res: { [key: string]: any }) => {
+    const fixtureName = inflection.camelize(entityId, true) + id.toString().padStart(2, "0");
 
     const generateExpects = (obj: { [key: string]: any }, path = "") => {
       let expects = "";
       for (const [key, value] of Object.entries(obj)) {
         const currentPath = path ? `${path}.${key}` : key;
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          !Array.isArray(value)
-        ) {
+        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
           expects += generateExpects(value, currentPath);
         } else if (Array.isArray(value)) {
           value.forEach((item, index) => {
@@ -135,13 +114,13 @@ const FixtureCode = ({
               expects += generateExpects(item, `${currentPath}[${index}]`);
             } else {
               expects += `expect(${fixtureName}${
-                currentPath ? "." + currentPath : ""
+                currentPath ? `.${currentPath}` : ""
               }[${index}]).toBe(${JSON.stringify(item)});\n`;
             }
           });
         } else {
           expects += `expect(${fixtureName}${
-            currentPath ? "." + currentPath : ""
+            currentPath ? `.${currentPath}` : ""
           }).toBe(${JSON.stringify(value)});\n`;
         }
       }
@@ -151,13 +130,14 @@ const FixtureCode = ({
     return generateExpects(res);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 선택된 서브셋이 변경되었을 때 코드 생성
   useEffect(() => {
     if (selectedSubset) {
       SonamuUIService.getEntityById(
         targetDB,
         fixture.entityId,
         String(fixture.data.id),
-        selectedSubset
+        selectedSubset,
       )
         .then((res) => {
           setCodes((prev) => {
@@ -166,13 +146,9 @@ const FixtureCode = ({
               fixture: getFixtureLoaderCode(
                 fixture.entityId,
                 Number(fixture.data.id),
-                selectedSubset
+                selectedSubset,
               ),
-              test: getFixtureTestCode(
-                fixture.entityId,
-                Number(fixture.data.id),
-                res
-              ),
+              test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), res),
             });
             return newCodes;
           });
@@ -289,9 +265,7 @@ const CodeBlock = ({
 
   return (
     <Markdown
-      children={`\`\`\`${language} ${
-        filename ? `title="${filename}"` : ""
-      }\n${code}\n\`\`\``}
+      children={`\`\`\`${language} ${filename ? `title="${filename}"` : ""}\n${code}\n\`\`\``}
       components={{
         code({ children, className, node, ref, ...rest }) {
           // Remove leading/trailing newlines which might be added by the markdown parser
@@ -304,11 +278,7 @@ const CodeBlock = ({
                 <div>
                   {lineSelection && (
                     <Checkbox
-                      label={
-                        selectedLines.every((line) => line)
-                          ? "전체 해제"
-                          : "전체 선택"
-                      }
+                      label={selectedLines.every((line) => line) ? "전체 해제" : "전체 선택"}
                       checked={selectedLines.every((line) => line)}
                       onChange={() => {
                         const allSelected = selectedLines.every((line) => line);
@@ -316,16 +286,8 @@ const CodeBlock = ({
                       }}
                     />
                   )}
-                  <Button
-                    icon
-                    onClick={() => handleCopy(codeContent)}
-                    size="tiny"
-                  >
-                    <Icon
-                      name={
-                        copied ? "check circle outline" : "clipboard outline"
-                      }
-                    />
+                  <Button icon onClick={() => handleCopy(codeContent)} size="tiny">
+                    <Icon name={copied ? "check circle outline" : "clipboard outline"} />
                     {copied ? "복사 완료" : "복사"}
                   </Button>
                 </div>
@@ -346,11 +308,7 @@ const CodeBlock = ({
                         <div
                           key={i}
                           className={`code-line ${isHovered ? "hovered" : ""}`}
-                          style={
-                            isSelected
-                              ? { backgroundColor: "rgba(0, 123, 255, 0.1)" }
-                              : {}
-                          }
+                          style={isSelected ? { backgroundColor: "rgba(0, 123, 255, 0.1)" } : {}}
                           onMouseEnter={() => setHoveredLine(i)}
                           onMouseLeave={() => setHoveredLine(null)}
                           onClick={() => lineSelection && handleLineToggle(i)}
@@ -369,9 +327,7 @@ const CodeBlock = ({
                                 return (
                                   <span
                                     key={j}
-                                    className={child.properties.className.join(
-                                      " "
-                                    )}
+                                    className={child.properties.className.join(" ")}
                                     // SyntaxHighlighter 스타일 적용
                                     style={{
                                       ...child.properties.className.reduce(
@@ -384,19 +340,15 @@ const CodeBlock = ({
                                           }
                                           return acc;
                                         },
-                                        {}
+                                        {},
                                       ),
                                       // Line-specific style adjustment (optional, but good practice)
-                                      fontWeight: isHovered
-                                        ? "normal"
-                                        : "normal",
+                                      fontWeight: isHovered ? "normal" : "normal",
                                     }}
                                   >
-                                    {child.children.map(
-                                      (grandChild: any, k: number) => (
-                                        <span key={k}>{grandChild.value}</span>
-                                      )
-                                    )}
+                                    {child.children.map((grandChild: any, k: number) => (
+                                      <span key={k}>{grandChild.value}</span>
+                                    ))}
                                   </span>
                                 );
                               }

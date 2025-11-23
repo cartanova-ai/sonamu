@@ -1,7 +1,7 @@
+import { useRef } from "react";
 import { Dropdown, Form, Header, Segment } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { useRef } from "react";
 
 type EntitySelectorProps = {};
 export function EntitySelector({}: EntitySelectorProps) {

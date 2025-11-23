@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Dropdown, DropdownItemProps, DropdownProps } from "semantic-ui-react";
-import { SonamuUIService } from "../services/sonamu-ui.service";
+import { Dropdown, type DropdownItemProps, type DropdownProps } from "semantic-ui-react";
 import { defaultCatch } from "../services/sonamu.shared";
+import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type TableColumnAsyncSelectProps = {
   entityId: string;
@@ -26,7 +26,7 @@ export function TableColumnAsyncSelect({
             key: c.name,
             value: c.name,
             text: c.name,
-          }))
+          })),
         );
       })
       .catch(defaultCatch);

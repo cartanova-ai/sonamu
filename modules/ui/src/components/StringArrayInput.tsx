@@ -25,26 +25,24 @@ export function StringArrayInput({ value, onChange }: StringArrayInputProps) {
         {value.map((v) => (
           <div key={v} className="old-value">
             {v}
-            <span
+            <button
+              type="button"
+              style={{ display: "inline-block" }}
               className="remove-button"
               onClick={() =>
                 onChange(
                   {},
                   {
                     value: value.filter((vv) => vv !== v),
-                  }
+                  },
                 )
               }
             >
               ❌
-            </span>
+            </button>
           </div>
         ))}
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => handleUserInput(e.target.value)}
-        />
+        <input type="text" value={inputValue} onChange={(e) => handleUserInput(e.target.value)} />
       </div>
     </div>
   );

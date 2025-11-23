@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
-import { Button, Modal, ModalProps } from "semantic-ui-react";
 import { atom, useAtom } from "jotai";
+import type React from "react";
+import { useEffect } from "react";
+import { Button, Modal, type ModalProps } from "semantic-ui-react";
 
 type ExtendedModalProps = ModalProps & {
   onCompleted?: (data?: unknown) => void;
@@ -20,14 +21,7 @@ export const commonModalAtom = atom<
 export type CommonModalProps = {};
 export function CommonModal({}: CommonModalProps) {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
-  const {
-    open,
-    reactNode,
-    onCompleted,
-    onControlledOpen,
-    onControlledClose,
-    ...modalProps
-  } = atomValue;
+  const { open, reactNode, onControlledOpen, onControlledClose, ...modalProps } = atomValue;
 
   const closeAndClear = () => {
     if (onControlledClose) {
@@ -40,6 +34,7 @@ export function CommonModal({}: CommonModalProps) {
     });
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: open 변경시에만 감지
   useEffect(() => {
     if (open && onControlledOpen) {
       onControlledOpen();
@@ -63,13 +58,7 @@ export function CommonModal({}: CommonModalProps) {
       }}
     >
       <Modal.Actions>
-        <Button
-          icon="close"
-          inverted
-          circular
-          className="floating-close"
-          onClick={closeAndClear}
-        />
+        <Button icon="close" inverted circular className="floating-close" onClick={closeAndClear} />
       </Modal.Actions>
       <Modal.Content>
         <Modal.Description>{reactNode}</Modal.Description>
@@ -82,10 +71,7 @@ export function useCommonModal() {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
   const { open, reactNode, onCompleted, onControlledClose } = atomValue;
 
-  const openModal = (
-    reactNode: React.ReactNode,
-    props?: ExtendedModalProps
-  ) => {
+  const openModal = (reactNode: React.ReactNode, props?: ExtendedModalProps) => {
     setAtomValue({
       open: true,
       reactNode,

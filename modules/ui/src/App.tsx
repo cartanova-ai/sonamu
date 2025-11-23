@@ -1,9 +1,9 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import "./styles/App.scss";
 import "semantic-ui-css/semantic.min.css";
-import { CommonModal } from "./components/core/CommonModal";
 import classNames from "classnames";
 import { useEffect, useState } from "react";
+import { CommonModal } from "./components/core/CommonModal";
 import SearchModal from "./components/SearchModal";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
@@ -31,6 +31,7 @@ function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [projectName, setProjectName] = useState<string | null>(null);
 
+  // biome-ignore lint/suspicious/noExplicitAny: 키보드 이벤트 호환되지 않아 any 처리
   const handleKeyDown = (event: any) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "k") {
       event.preventDefault();
@@ -38,6 +39,7 @@ function App() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleKeyDown 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -76,12 +78,12 @@ function App() {
               ))}
             </div>
           </div>
-          <div className="search" onClick={() => setShowSearch(true)}>
+          <button className="search" type="button" onClick={() => setShowSearch(true)}>
             <span>🔍</span>
             <span>Search</span>
             <kbd className="keycap">⌘</kbd>
             <kbd className="keycap">K</kbd>
-          </div>
+          </button>
         </div>
         <div className="content">
           <Outlet context={{ showSearch }} />

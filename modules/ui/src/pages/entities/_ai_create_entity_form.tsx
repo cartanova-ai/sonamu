@@ -1,12 +1,12 @@
+import { unique } from "radashi";
 import { useEffect, useMemo, useState } from "react";
 import { Icon, Label, LabelDetail, List, Table } from "semantic-ui-react";
+import type { EntityJson } from "sonamu";
 import AICreateForm, { useAICreateForm } from "../../components/AICreateForm";
 import { useCommonModal } from "../../components/core/CommonModal";
+import { useSheetTable } from "../../components/useSheetTable";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { EntityJson } from "sonamu";
-import { useSheetTable } from "../../components/useSheetTable";
-import { unique } from "radashi";
 
 type AICreateEntityFormProps = {};
 export function AICreateEntityForm({}: AICreateEntityFormProps) {
@@ -79,7 +79,7 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
           key,
           label,
         })),
-      ])
+      ]),
     );
   }, [entity]);
 
@@ -105,13 +105,11 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
   useEffect(() => {
     if (response) {
       const keys = Object.keys(response);
-      ["id", "title", "table", "props", "indexes", "enums", "subsets"].forEach(
-        (key) => {
-          if (!keys.includes(key)) {
-            throw new Error(`Entity JSON is missing key: ${key}`);
-          }
+      ["id", "title", "table", "props", "indexes", "enums", "subsets"].forEach((key) => {
+        if (!keys.includes(key)) {
+          throw new Error(`Entity JSON is missing key: ${key}`);
         }
-      );
+      });
 
       setEntity(response);
     } else {
@@ -168,16 +166,9 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                       key={propIndex}
                       {...regRow("props", propIndex)}
                     >
-                      <Table.Cell {...regCell("props", propIndex, 0)}>
-                        {prop.name}
-                      </Table.Cell>
-                      <Table.Cell {...regCell("props", propIndex, 1)}>
-                        {prop.desc}
-                      </Table.Cell>
-                      <Table.Cell
-                        {...regCell("props", propIndex, 2)}
-                        collapsing
-                      >
+                      <Table.Cell {...regCell("props", propIndex, 0)}>{prop.name}</Table.Cell>
+                      <Table.Cell {...regCell("props", propIndex, 1)}>{prop.desc}</Table.Cell>
+                      <Table.Cell {...regCell("props", propIndex, 2)} collapsing>
                         {prop.type}{" "}
                         {(prop.type === "integer" ||
                           prop.type === "bigInteger" ||
@@ -185,9 +176,7 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                           prop.type === "double" ||
                           prop.type === "decimal") &&
                           prop.unsigned && <>unsigned </>}
-                        {(prop.type === "string" || prop.type === "enum") && (
-                          <>({prop.length}) </>
-                        )}
+                        {(prop.type === "string" || prop.type === "enum") && <>({prop.length}) </>}
                         {(prop.type === "float" ||
                           prop.type === "double" ||
                           prop.type === "decimal") && (
@@ -196,51 +185,25 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                           </>
                         )}
                       </Table.Cell>
-                      <Table.Cell
-                        {...regCell("props", propIndex, 3)}
-                        collapsing
-                      >
+                      <Table.Cell {...regCell("props", propIndex, 3)} collapsing>
                         {prop.nullable && <Label>NULL</Label>}
                       </Table.Cell>
-                      <Table.Cell
-                        {...regCell("props", propIndex, 4)}
-                        collapsing
-                      >
-                        {prop.type === "enum" && (
-                          <>
-                            <Label color="teal">{prop.id}</Label>
-                          </>
-                        )}
+                      <Table.Cell {...regCell("props", propIndex, 4)} collapsing>
+                        {prop.type === "enum" && <Label color="teal">{prop.id}</Label>}
                         {(prop.type === "json" || prop.type === "virtual") && (
-                          <>
-                            <Label color="brown">{prop.id}</Label>
-                          </>
+                          <Label color="brown">{prop.id}</Label>
                         )}
                         {prop.type === "relation" && (
-                          <>
-                            <Label
-                              color={
-                                prop.relationType.endsWith("ToOne")
-                                  ? "orange"
-                                  : "purple"
-                              }
-                            >
-                              {prop.relationType}: {prop.with}
-                            </Label>
-                          </>
+                          <Label color={prop.relationType.endsWith("ToOne") ? "orange" : "purple"}>
+                            {prop.relationType}: {prop.with}
+                          </Label>
                         )}
                       </Table.Cell>
 
-                      <Table.Cell
-                        {...regCell("props", propIndex, 5)}
-                        collapsing
-                      >
+                      <Table.Cell {...regCell("props", propIndex, 5)} collapsing>
                         {prop.type !== "relation" && <>{prop.dbDefault}</>}
                       </Table.Cell>
-                      <Table.Cell
-                        {...regCell("props", propIndex, 6)}
-                        collapsing
-                      >
+                      <Table.Cell {...regCell("props", propIndex, 6)} collapsing>
                         {prop.toFilter && <Icon name="check" />}
                       </Table.Cell>
                     </Table.Row>
@@ -259,14 +222,8 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                 </Table.Header>
                 <Table.Body>
                   {entity.indexes.map((index, indexIndex) => (
-                    <Table.Row
-                      key={indexIndex}
-                      {...regRow("indexes", indexIndex)}
-                    >
-                      <Table.Cell
-                        {...regCell("indexes", indexIndex, 0)}
-                        collapsing
-                      >
+                    <Table.Row key={indexIndex} {...regRow("indexes", indexIndex)}>
+                      <Table.Cell {...regCell("indexes", indexIndex, 0)} collapsing>
                         <strong>{index.type}</strong>
                       </Table.Cell>
                       <Table.Cell {...regCell("indexes", indexIndex, 1)}>
@@ -288,44 +245,27 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                       <Table celled selectable id={`enum-${enumId}`} collapsing>
                         <Table.Header>
                           <Table.Row>
-                            <Table.HeaderCell colSpan={2}>
-                              {enumId}
-                            </Table.HeaderCell>
+                            <Table.HeaderCell colSpan={2}>{enumId}</Table.HeaderCell>
                           </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                          {enumLabelsArray[enumId].map(
-                            ({ key, label }, enumLabelIndex) => (
-                              <Table.Row
-                                id={`enum-${enumId}-${key}`}
-                                key={enumLabelIndex}
-                                {...regRow(
-                                  `enumLabels-${enumId}`,
-                                  enumLabelIndex
-                                )}
+                          {enumLabelsArray[enumId].map(({ key, label }, enumLabelIndex) => (
+                            <Table.Row
+                              id={`enum-${enumId}-${key}`}
+                              key={enumLabelIndex}
+                              {...regRow(`enumLabels-${enumId}`, enumLabelIndex)}
+                            >
+                              <Table.Cell
+                                {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 0)}
+                                collapsing
                               >
-                                <Table.Cell
-                                  {...regCell(
-                                    `enumLabels-${enumId}`,
-                                    enumLabelIndex,
-                                    0
-                                  )}
-                                  collapsing
-                                >
-                                  {key}
-                                </Table.Cell>
-                                <Table.Cell
-                                  {...regCell(
-                                    `enumLabels-${enumId}`,
-                                    enumLabelIndex,
-                                    1
-                                  )}
-                                >
-                                  {label}
-                                </Table.Cell>
-                              </Table.Row>
-                            )
-                          )}
+                                {key}
+                              </Table.Cell>
+                              <Table.Cell {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 1)}>
+                                {label}
+                              </Table.Cell>
+                            </Table.Row>
+                          ))}
                         </Table.Body>
                       </Table>
                     </div>
@@ -355,9 +295,7 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                           key={subsetRowIndex}
                           {...regRow("subsets", subsetRowIndex)}
                         >
-                          <Table.Cell
-                            {...regCell("subsets", subsetRowIndex, 0)}
-                          >
+                          <Table.Cell {...regCell("subsets", subsetRowIndex, 0)}>
                             <span style={{ color: "silver" }}>
                               {subsetRow.slice(0, -1).join(" > ")}
                               {subsetRow.slice(0, -1).length > 0 && " > "}
@@ -366,9 +304,9 @@ export function AICreateEntityForm({}: AICreateEntityFormProps) {
                           </Table.Cell>
                           {Object.keys(entity.subsets).map((subsetKey) => (
                             <Table.Cell key={subsetKey}>
-                              {entity.subsets[subsetKey].includes(
-                                subsetRow.join(".")
-                              ) && <Icon name="check" />}
+                              {entity.subsets[subsetKey].includes(subsetRow.join(".")) && (
+                                <Icon name="check" />
+                              )}
                             </Table.Cell>
                           ))}
                         </Table.Row>

@@ -1,5 +1,5 @@
-import { ChangeEvent, useState } from "react";
-import { Button, FormInput, InputProps } from "semantic-ui-react";
+import { type ChangeEvent, useState } from "react";
+import { Button, FormInput, type InputProps } from "semantic-ui-react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type FormInputWithSuggestionProps = {

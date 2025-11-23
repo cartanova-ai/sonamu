@@ -14,7 +14,7 @@ class InvertedIndex {
     if (!this.index.has(ngram)) {
       this.index.set(ngram, new Set());
     }
-    this.index.get(ngram)!.add(docId);
+    this.index.get(ngram)?.add(docId);
   }
 
   search(ngram: string): Set<number> {
@@ -76,10 +76,12 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
       addToIndex(item.title, index);
       item.props.forEach((prop) => {
         addToIndex(prop.name, index);
-        addToIndex(prop.desc!, index);
+        addToIndex(prop.desc ?? "", index);
       });
       Object.values(item.subsets).forEach((subset) => {
-        subset.forEach((value) => addToIndex(value, index));
+        subset.forEach((value) => {
+          addToIndex(value, index);
+        });
       });
       Object.entries(item.enumLabels).forEach(([key]) => {
         addToIndex(key, index);
@@ -157,7 +159,7 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
       // Props 검사
       item.props.forEach((prop) => {
         const nameScore = calculateFieldScore(query, prop.name);
-        const descScore = calculateFieldScore(query, prop.desc!);
+        const descScore = calculateFieldScore(query, prop.desc ?? "");
         if (nameScore > 0.2 || descScore > 0.2) {
           if (maxScore < Math.max(nameScore, descScore)) {
             maxScore = Math.max(nameScore, descScore);
@@ -168,7 +170,7 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
               {
                 type: "props",
                 key: prop.name,
-                desc: prop.desc!,
+                desc: prop.desc ?? "",
                 id: `prop-${prop.name}`,
               },
             ],
@@ -238,7 +240,9 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
 
       queryNgrams.forEach((ngram) => {
         const ids = invertedIndex.search(ngram);
-        ids.forEach((id) => candidateIds.add(id));
+        ids.forEach((id) => {
+          candidateIds.add(id);
+        });
       });
 
       const searchResult: SearchResult[] = Array.from(candidateIds)

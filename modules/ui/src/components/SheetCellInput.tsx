@@ -6,11 +6,7 @@ type SheetCellInputProps = {
   initialValue: string;
   onChange: (value: string) => void;
 };
-export function SheetCellInput({
-  editable,
-  initialValue,
-  onChange,
-}: SheetCellInputProps) {
+export function SheetCellInput({ editable, initialValue, onChange }: SheetCellInputProps) {
   const [value, setValue] = useState(initialValue);
 
   const handleOnChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,9 +25,7 @@ export function SheetCellInput({
   useEffect(() => {
     if (editable) {
       setTimeout(() => {
-        const input = document.querySelector(
-          `.sheet-cell-input input`
-        ) as HTMLInputElement;
+        const input = document.querySelector(`.sheet-cell-input input`) as HTMLInputElement;
         input?.focus();
       });
     }

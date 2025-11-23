@@ -1,23 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Table } from "semantic-ui-react";
-import AICreateForm, {
-  EnumJson,
-  useAICreateForm,
-} from "../../components/AICreateForm";
+import type { Entity } from "sonamu";
+import AICreateForm, { type EnumJson, useAICreateForm } from "../../components/AICreateForm";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { useSheetTable } from "../../components/useSheetTable";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { defaultCatch } from "../../services/sonamu.shared";
-import { Entity } from "sonamu";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 
 type AICreateEnumFormProps = {
   entityId: string;
   enumLables: Entity["enumLabels"];
 };
-export function AICreateEnumForm({
-  entityId,
-  enumLables,
-}: AICreateEnumFormProps) {
+export function AICreateEnumForm({ entityId, enumLables }: AICreateEnumFormProps) {
   // useCommonModal
   const { doneModal } = useCommonModal();
   const { response } = useAICreateForm<EnumJson>({
@@ -70,13 +64,11 @@ export function AICreateEnumForm({
     return Object.fromEntries(
       Object.entries(newEnum).map(([enumId, enumLabels]) => [
         enumId,
-        Object.entries(enumLabels as Record<string, string>).map(
-          ([key, label]) => ({
-            key,
-            label,
-          })
-        ),
-      ])
+        Object.entries(enumLabels as Record<string, string>).map(([key, label]) => ({
+          key,
+          label,
+        })),
+      ]),
     );
   }, [newEnum]);
 
@@ -94,44 +86,27 @@ export function AICreateEnumForm({
                       <Table celled selectable id={`enum-${enumId}`} collapsing>
                         <Table.Header>
                           <Table.Row>
-                            <Table.HeaderCell colSpan={2}>
-                              {enumId}
-                            </Table.HeaderCell>
+                            <Table.HeaderCell colSpan={2}>{enumId}</Table.HeaderCell>
                           </Table.Row>
                         </Table.Header>
                         <Table.Body>
-                          {enumLabelsArray[enumId].map(
-                            ({ key, label }, enumLabelIndex) => (
-                              <Table.Row
-                                id={`enum-${enumId}-${key}`}
-                                key={enumLabelIndex}
-                                {...regRow(
-                                  `enumLabels-${enumId}`,
-                                  enumLabelIndex
-                                )}
+                          {enumLabelsArray[enumId].map(({ key, label }, enumLabelIndex) => (
+                            <Table.Row
+                              id={`enum-${enumId}-${key}`}
+                              key={enumLabelIndex}
+                              {...regRow(`enumLabels-${enumId}`, enumLabelIndex)}
+                            >
+                              <Table.Cell
+                                {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 0)}
+                                collapsing
                               >
-                                <Table.Cell
-                                  {...regCell(
-                                    `enumLabels-${enumId}`,
-                                    enumLabelIndex,
-                                    0
-                                  )}
-                                  collapsing
-                                >
-                                  {key}
-                                </Table.Cell>
-                                <Table.Cell
-                                  {...regCell(
-                                    `enumLabels-${enumId}`,
-                                    enumLabelIndex,
-                                    1
-                                  )}
-                                >
-                                  {label}
-                                </Table.Cell>
-                              </Table.Row>
-                            )
-                          )}
+                                {key}
+                              </Table.Cell>
+                              <Table.Cell {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 1)}>
+                                {label}
+                              </Table.Cell>
+                            </Table.Row>
+                          ))}
                         </Table.Body>
                       </Table>
                     </div>

@@ -1,23 +1,19 @@
-import { Segment, Header, Button, Icon } from "semantic-ui-react";
-import { z } from "zod";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { useCommonModal } from "../../components/core/CommonModal";
-import { defaultCatch } from "../../services/sonamu.shared";
 import { BooleanToggle, useTypeForm } from "@sonamu-kit/react-sui";
-import { MigrationStatus, SonamuDBConfig } from "sonamu";
 import classNames from "classnames";
 import { useState } from "react";
+import { Button, Header, Icon, Segment } from "semantic-ui-react";
+import type { MigrationStatus, SonamuDBConfig } from "sonamu";
+import { z } from "zod";
+import { useCommonModal } from "../../components/core/CommonModal";
+import { defaultCatch } from "../../services/sonamu.shared";
+import { SonamuUIService } from "../../services/sonamu-ui.service";
 
 type MigrationActionFormProps = {
   action: "apply" | "rollback" | "shadow";
   targets: (keyof SonamuDBConfig)[];
   conns: MigrationStatus["conns"];
 };
-export function MigrationActionForm({
-  action,
-  targets,
-  conns,
-}: MigrationActionFormProps) {
+export function MigrationActionForm({ action, targets, conns }: MigrationActionFormProps) {
   const [loading, setLoading] = useState(false);
 
   // useCommonModal
@@ -29,7 +25,7 @@ export function MigrationActionForm({
     }),
     {
       doShadowDbTesting: action === "apply",
-    }
+    },
   );
 
   const handleSubmit = async () => {
@@ -83,12 +79,7 @@ export function MigrationActionForm({
               </div>
             )}
             <div className="text-center" style={{ marginTop: "2em" }}>
-              <Button
-                color="green"
-                onClick={() => handleSubmit()}
-                icon="play"
-                content="Commit"
-              />
+              <Button color="green" onClick={() => handleSubmit()} icon="play" content="Commit" />
             </div>
           </Segment>
         </Segment>

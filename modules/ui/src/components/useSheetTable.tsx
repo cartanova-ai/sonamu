@@ -23,8 +23,9 @@ export function useSheetTable(options: {
       name: sheet.name,
       width: 0,
       height: 0,
-    }))
+    })),
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sheets.length 변경시에만 감지
   useEffect(() => {
     sheetConfigsRef.current = sheets.map((sheet) => ({
       name: sheet.name,
@@ -50,7 +51,7 @@ export function useSheetTable(options: {
   const moveCursorToDown = (amount: number) => {
     setCursor((cursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet
+        (sheetConfig) => sheetConfig.name === cursor.sheet,
       );
       if (sheetIndex === -1) {
         return { ...cursor, y: 0 };
@@ -80,7 +81,7 @@ export function useSheetTable(options: {
   const moveCursorToUp = (amount: number) => {
     setCursor((cursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet
+        (sheetConfig) => sheetConfig.name === cursor.sheet,
       );
       if (sheetIndex === -1) {
         return { ...cursor, y: 0 };
@@ -105,7 +106,7 @@ export function useSheetTable(options: {
   const moveCursorToLeft = (amount: number) => {
     setCursor((cursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet
+        (sheetConfig) => sheetConfig.name === cursor.sheet,
       );
       if (sheetIndex === -1) {
         return { ...cursor, y: 0 };
@@ -135,13 +136,13 @@ export function useSheetTable(options: {
   const moveCursorToRight = (amount: number) => {
     setCursor((cursor) => {
       const sheetIndex = sheetConfigsRef.current.findIndex(
-        (sheetConfig) => sheetConfig.name === cursor.sheet
+        (sheetConfig) => sheetConfig.name === cursor.sheet,
       );
       if (sheetIndex === -1) {
         return { ...cursor, y: 0 };
       }
       const sheet = sheetConfigsRef.current.find(
-        (sheetConfig) => sheetConfig.name === cursor.sheet
+        (sheetConfig) => sheetConfig.name === cursor.sheet,
       );
       if (!sheet) {
         return { ...cursor, y: 0 };
@@ -172,6 +173,7 @@ export function useSheetTable(options: {
   // 키 타이머 (1초 이내 입력인 경우 keyword를 누적하고 아닌 경우 초기화 후 입력)
   const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>();
   const keySwitchRef = useRef<boolean>(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 키 스트로크 관련 이벤트만
   useEffect(() => {
     if (disable) {
       return;
@@ -224,10 +226,7 @@ export function useSheetTable(options: {
           e.preventDefault();
           return;
         case "Enter":
-          if (
-            e.target instanceof HTMLInputElement ||
-            e.target instanceof HTMLTextAreaElement
-          ) {
+          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
           }
           setFocusedCursor(cursor);
@@ -244,10 +243,7 @@ export function useSheetTable(options: {
         const diff = nowTimestamp - prevTimestamp;
         keyTimerRef.current = {
           timestamp: nowTimestamp,
-          keyword:
-            diff < THRESHOLD
-              ? (keyTimerRef.current?.keyword ?? "") + e.key
-              : e.key,
+          keyword: diff < THRESHOLD ? (keyTimerRef.current?.keyword ?? "") + e.key : e.key,
         };
         const keyword = keyTimerRef.current?.keyword ?? e.key;
         if (onKeywordChanged) {
@@ -262,10 +258,7 @@ export function useSheetTable(options: {
     const onMousedown = (e: MouseEvent) => {
       if (focusedCursor === null) {
         return;
-      } else if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      } else if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
       setFocusedCursor(null);
@@ -281,9 +274,7 @@ export function useSheetTable(options: {
 
   return {
     regRow: (sheet: string, y: number, className?: string) => {
-      const sheetConfig = sheetConfigsRef.current.find(
-        (sheetConfig) => sheetConfig.name === sheet
-      );
+      const sheetConfig = sheetConfigsRef.current.find((sheetConfig) => sheetConfig.name === sheet);
       if (sheetConfig) {
         sheetConfig.height = Math.max(sheetConfig.height, y + 1);
       }
@@ -295,9 +286,7 @@ export function useSheetTable(options: {
       };
     },
     regCell: (sheet: string, y: number, x: number) => {
-      const sheetConfig = sheetConfigsRef.current.find(
-        (sheetConfig) => sheetConfig.name === sheet
-      );
+      const sheetConfig = sheetConfigsRef.current.find((sheetConfig) => sheetConfig.name === sheet);
       if (sheetConfig) {
         sheetConfig.width = Math.max(sheetConfig.width, x + 1);
         sheetConfig.height = Math.max(sheetConfig.height, y + 1);
@@ -305,8 +294,7 @@ export function useSheetTable(options: {
 
       return {
         className: classNames({
-          "cursor-cell-pointed":
-            cursor.sheet === sheet && cursor.y === y && cursor.x === x,
+          "cursor-cell-pointed": cursor.sheet === sheet && cursor.y === y && cursor.x === x,
         }),
         onClick: () =>
           setCursor({

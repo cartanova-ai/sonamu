@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: fetching 함수는 any사용 */
+
 import axios, { type AxiosRequestConfig } from "axios";
 import qs from "qs";
 import type { ZodIssue } from "zod";

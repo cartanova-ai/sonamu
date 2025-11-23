@@ -1,13 +1,7 @@
-import {
-  Handle,
-  Node,
-  NodeProps,
-  NodeResizeControl,
-  Position,
-} from "@xyflow/react";
+import { Handle, type Node, type NodeProps, NodeResizeControl, Position } from "@xyflow/react";
 import "./graph.scss";
-import { FixtureRecord } from "sonamu";
-import { SetStateAction } from "react";
+import type { SetStateAction } from "react";
+import type { FixtureRecord } from "sonamu";
 import EntityTable from "../../components/fixture/EntityTable";
 
 type TableNodeData = {
@@ -17,7 +11,7 @@ type TableNodeData = {
     parentFixtureId: string,
     entityId: string,
     id: number,
-    isChecked: boolean
+    isChecked: boolean,
   ) => void;
   selectedIds: Set<string>;
   setFixtureRecords: (value: SetStateAction<FixtureRecord[]>) => void;
@@ -26,13 +20,7 @@ type TableNodeData = {
 export type TableNodeRFNode = Node<TableNodeData, "tableNode">;
 
 export default function TableNode({ data, width }: NodeProps<TableNodeRFNode>) {
-  const {
-    entityId,
-    fixtures,
-    selectedIds,
-    onRelationToggle,
-    setFixtureRecords,
-  } = data;
+  const { entityId, fixtures, selectedIds, onRelationToggle, setFixtureRecords } = data;
 
   return (
     <div
@@ -51,18 +39,8 @@ export default function TableNode({ data, width }: NodeProps<TableNodeRFNode>) {
         }}
       />
 
-      <Handle
-        type="target"
-        position={Position.Top}
-        id={entityId}
-        isConnectable={false}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id={entityId}
-        isConnectable={false}
-      />
+      <Handle type="target" position={Position.Top} id={entityId} isConnectable={false} />
+      <Handle type="source" position={Position.Bottom} id={entityId} isConnectable={false} />
       <EntityTable
         fixtures={fixtures}
         selectedIds={selectedIds}
