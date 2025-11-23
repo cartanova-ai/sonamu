@@ -42,6 +42,31 @@ type ResolveIntersection<
     : MergePuri<ReturnType<Queries[Head]>, ResolveIntersection<Tail, Queries>>
   : never;
 
+type EnhancerFn<TComputed, TMapping> = (
+  row: TComputed
+) => TMapping | Promise<TMapping>;
+
+/**
+ * TSubsetKey 전체에 대해,
+ * - TComputedResults[K] 가 TSubsetMapping[K] 에 assignable 이면 → enhancer 옵셔널
+ * - 아니면 → enhancer 필수
+ */
+type EnhancerPlaceholder<
+  TSubsetKey extends string,
+  TComputedResults extends Record<TSubsetKey, any>,
+  TSubsetMapping extends Record<TSubsetKey, any>,
+> = {
+  // TComputedResults[K]가 이미 TSubsetMapping[K]에 들어맞으면 옵셔널
+  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K]
+    ? K
+    : never]?: EnhancerFn<TComputedResults[K], TSubsetMapping[K]>;
+} & {
+  // 안 맞으면 필수
+  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K]
+    ? never
+    : K]: EnhancerFn<TComputedResults[K], TSubsetMapping[K]>;
+};
+
 export class BaseModelClass<
   TSubsetKey extends string = never,
   TSubsetMapping extends Record<string, any> = never,
@@ -141,6 +166,17 @@ export class BaseModelClass<
     };
   }
 
+  // 헬퍼 메서드: 타입 검증 및 추론을 도와줌
+  createEnhancers<T extends TSubsetKey>(
+    enhancers: EnhancerPlaceholder<
+      T,
+      InferAllSubsets<TSubsetQueries, TLoaderQueries>,
+      TSubsetMapping
+    >
+  ) {
+    return enhancers;
+  }
+
   async executeSubsetQuery<
     T extends TSubsetKey,
     TComputedResults extends InferAllSubsets<TSubsetQueries, TLoaderQueries>,
@@ -148,6 +184,7 @@ export class BaseModelClass<
     subset,
     qb,
     params,
+    enhancers,
     debug = false,
   }: {
     subset: T;
@@ -157,13 +194,15 @@ export class BaseModelClass<
       page?: number;
       queryMode?: "list" | "count" | "both";
     };
+    enhancers: EnhancerPlaceholder<
+      TSubsetKey,
+      TComputedResults,
+      TSubsetMapping
+    >;
     debug?: boolean;
   }): Promise<{
-    rows: TComputedResults[T][];
+    rows: TSubsetMapping[T][];
     total: number;
-    enhancers: {
-      [K in TSubsetKey]: (row: TComputedResults[K]) => TSubsetMapping[K];
-    };
   }> {
     if (!this.subsetLoaders) {
       throw new Error("subsetLoaders is not defined");
@@ -202,7 +241,7 @@ export class BaseModelClass<
       return countResult?.total ?? 0;
     })();
 
-    const rows = await (async () => {
+    const computedRows = await (async () => {
       if (params.queryMode === "count") {
         return [];
       }
@@ -242,12 +281,13 @@ export class BaseModelClass<
       return this.hydrate(unloadedRows) as TComputedResults[T][];
     })();
 
-    // 빈 enhancers 객체 반환 (호출 측에서 가상 필드 등을 추가하는 데 사용)
-    const enhancers = {} as {
-      [K in TSubsetKey]: (row: TComputedResults[K]) => TSubsetMapping[K];
-    };
+    // Enhancer 적용
+    const enhancer = (enhancers as any)[subset];
+    const rows = (await Promise.all(
+      computedRows.map((row) => enhancer?.(row) ?? row)
+    )) as TSubsetMapping[T][];
 
-    return { rows, total, enhancers };
+    return { rows, total };
   }
 
 
