@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { execSync, spawn } from "child_process";
-import { mkdir, readdir, writeFile } from "fs/promises";
+import { mkdir, readdir, rm, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -16,12 +16,13 @@ import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
 import { exists } from "../utils/fs-utils";
 import { findApiRootPath } from "../utils/utils";
+import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-config";
 
 let migrator: Migrator;
 
 async function bootstrap() {
-  // dev 명령어가 아닌 경우에만 Sonamu 초기화
-  if (process.argv[2] !== "dev") {
+  const notToInit = ["dev", "build", "start"].includes(process.argv[2] ?? "");
+  if (!notToInit) {
     await Sonamu.init(false, false);
   }
 
@@ -57,6 +58,7 @@ async function bootstrap() {
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
       ["dev"],
+      ["build"],
       ["start"],
     ],
     runners: {
@@ -77,10 +79,12 @@ async function bootstrap() {
       // scaffold_view_list,
       // scaffold_view_form,
       dev,
+      build,
       start,
     },
   });
 }
+
 bootstrap().finally(async () => {
   if (migrator) {
     await migrator.destroy();
@@ -88,6 +92,16 @@ bootstrap().finally(async () => {
   await FixtureManager.destroy();
 });
 
+/**
+ * pnpm dev 하면 실행되는 함수입니다.
+ * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
+ *
+ * TypeScript를 바로 실행할 수 있도록 @sonamu-kit/loader를,
+ * HMR을 지원하기 위해 sonamu/hot-hook-register를 import하며,
+ * 소스맵 지원을 위해 --enable-source-maps 플래그를 포함하여 실행합니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
 async function dev() {
   const apiRoot = findApiRootPath();
   const entryPoint = "src/index.ts";
@@ -133,7 +147,98 @@ async function dev() {
   });
 }
 
+/**
+ * pnpm build 하면 실행되는 함수입니다.
+ * 프로젝트를 빌드합니다.
+ *
+ * 빌드에 필요한 .swcrc는 프로젝트 루트에서 찾고, 없으면 sonamu의 그것을 사용합니다.
+ * sonamu.config.ts는 src에 들어있지 않기 때문에 SWC_BUILD_COMMAND로 빌드되지 않습니다.
+ * 따라서 따로 빌드해줍니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
+async function build() {
+  const apiRoot = findApiRootPath();
+
+  // 출력 디렉토리를 제걱합니다.
+  try {
+    console.log(chalk.blue("Removing build directory..."));
+    if (await exists(BUILD_DIR)) {
+      await rm(BUILD_DIR, { recursive: true, force: true });
+    }
+  } catch (error) {
+    console.error(chalk.red("Remove build directory failed."), error);
+    process.exit(1);
+  }
+
+  // .swcrc 파일을 지정합니다.
+  let swcFilePath = ".swcrc";
+  try {
+    if (await exists(swcFilePath)) {
+      // 사용자 프로젝트에 .swcrc가 있으면 우선으로 사용합니다.
+      console.log(chalk.blue("Using .swcrc from project root..."));
+    } else {
+      // 아니라면 sonamu 패키지 자체의 빌드에 사용하는 .swcrc를 가져다 씁니다.
+      // note: 언젠가 sonamu의 빌드 설정과 사용자 프로젝트의 빌드 설정이 달라진다면
+      // 프로젝트 빌드용 .swcrc 파일을 별도로 만들어 관리해야 하겠습니다만, 지금은 이렇게 갑니다.
+      console.log(chalk.blue("Using default .swcrc from sonamu package..."));
+      swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc");
+    }
+  } catch (error) {
+    console.error(chalk.red("Setting up swc config file failed."), error);
+    process.exit(1);
+  }
+
+  // 소스 디렉토리를 빌드합니다.
+  try {
+    console.log(chalk.blue("Building with swc..."));
+    execSync(SWC_BUILD_COMMAND(swcFilePath), { cwd: apiRoot, stdio: "inherit" });
+  } catch (error) {
+    console.error(chalk.red("Build failed."), error);
+    process.exit(1);
+  }
+
+  // sonamu.config.ts만 따로 빌드합니다.
+  // 이 친구는 src에 들어있지 않기 때문에 SWC_BUILD_COMMAND로 빌드되지 않습니다.
+  // 따라서 따로 빌드해줍니다.
+  try {
+    const configPath = path.join(apiRoot, "sonamu.config.ts");
+    if (await exists(configPath)) {
+      console.log(chalk.blue("Building sonamu.config.ts..."));
+      execSync(`swc ${configPath} -o ${BUILD_DIR}/sonamu.config.js`, {
+        cwd: apiRoot,
+        stdio: "inherit",
+      });
+    }
+  } catch (error) {
+    console.error(chalk.red("Building sonamu.config.ts failed."), error);
+    process.exit(1);
+  }
+
+  // 마지막에는 타입 체크를 해요.
+  try {
+    console.log(chalk.blue("Checking types with tsc..."));
+    execSync(TSC_TYPE_CHECK_COMMAND, {
+      cwd: apiRoot,
+      stdio: "inherit",
+    });
+  } catch (error) {
+    console.error(chalk.red("Type check failed."), error);
+    process.exit(1);
+  }
+}
+
+/**
+ * pnpm start 하면 실행되는 함수입니다.
+ * 빌드된 프로젝트를 실행합니다.
+ *
+ * 빌드된 결과물(dist 디렉토리의 index.js 엔트리포인트)이 없다면 실행을 중단합니다.
+ * 소스맵 지원과 dotenv 지원을 포함하여 실행합니다.
+ *
+ * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
+ */
 async function start() {
+  const apiRoot = findApiRootPath();
   const entryPoint = "dist/index.js";
 
   if (!(await exists(entryPoint))) {
@@ -144,7 +249,7 @@ async function start() {
 
   const { spawn } = await import("child_process");
   const serverProcess = spawn("node", ["--enable-source-maps", "-r", "dotenv/config", entryPoint], {
-    cwd: Sonamu.apiRootPath,
+    cwd: apiRoot,
     stdio: "inherit",
   });
 

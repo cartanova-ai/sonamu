@@ -150,8 +150,10 @@ class SonamuClass {
     // API 루트 패스
     const { findApiRootPath } = await import("../utils/utils");
     this.apiRootPath = apiRootPath ?? findApiRootPath();
+
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
+    
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     const { exists } = await import("../utils/fs-utils");
     if (await exists(secretsPath)) {
