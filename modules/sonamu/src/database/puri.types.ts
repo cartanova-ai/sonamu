@@ -151,3 +151,17 @@ export type UnionExtractedTTables<
 > = {
   [K in SubsetKey]: ExtractTTables<ReturnType<SubsetQueries[K]>>;
 }[SubsetKey];
+
+export type PuriSubsetFn = (
+  qbWrapper: PuriWrapper<DatabaseSchemaExtend>
+) => Puri<any, any, any>;
+
+export type PuriLoaderQuery<SubsetKey extends string> = {
+  [key in SubsetKey]: {
+    as: string;
+    qb: (
+      qbWrapper: PuriWrapper<DatabaseSchemaExtend>,
+      fromIds: number[]
+    ) => Puri<any, any, any>;
+  }[];
+};

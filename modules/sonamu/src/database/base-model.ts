@@ -13,7 +13,11 @@ import { chunk } from "../utils/utils";
 import { UpsertBuilder } from "./upsert-builder";
 import { PuriWrapper } from "./puri-wrapper";
 import { Puri } from "./puri";
-import { UnionExtractedTTables } from "./puri.types";
+import {
+  PuriSubsetFn,
+  PuriLoaderQuery,
+  UnionExtractedTTables,
+} from "./puri.types";
 
 type UnknownDBRecord = Record<string, unknown>;
 
@@ -40,16 +44,13 @@ type ResolveIntersection<
 export class BaseModelClass<
   TSubsetKey extends string = never,
   TSubsetMapping extends Record<TSubsetKey, any> = never,
-  TSubsetQueries extends Record<
-    TSubsetKey,
-    (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
-  > = never,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn> = never,
 > {
   public modelName: string = "Unknown";
 
   constructor(
     protected puriSubsetQueries?: TSubsetQueries,
-    protected subsetLoaders?: Record<TSubsetKey, SubsetQuery["loaders"]>
+    protected subsetLoaders?: PuriLoaderQuery<TSubsetKey>
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -160,7 +161,7 @@ export class BaseModelClass<
     }
 
     const { num, page } = params;
-    const unloadedRows = (await qb
+    let unloadedRows = (await qb
       .limit(num)
       .offset(num * (page - 1))) as TSubsetMapping[T][];
 
@@ -170,10 +171,27 @@ export class BaseModelClass<
 
     const total = 0;
 
-    const loaders = this.subsetLoaders[subset];
-    const loadedRows = await this.useLoaders(qb.knex, unloadedRows, loaders);
+    for (const resolveLoader of this.subsetLoaders[subset]) {
+      const { as, qb: resolveLoaderQbFn } = resolveLoader;
+      const resolveLoaderQb = resolveLoaderQbFn(
+        this.getPuri("r"),
+        unloadedRows.map((row) => row.id)
+      );
 
-    const rows = this.hydrate(loadedRows) as TSubsetMapping[T][];
+      if (debug) {
+        resolveLoaderQb.debug();
+      }
+
+      const loadedRows = await resolveLoaderQb;
+      const subRowGroups = groupBy(loadedRows, "refId");
+      unloadedRows = unloadedRows.map((row) => {
+        row[as] = (subRowGroups[row.id] ?? []).map((r) => omit(r, "refId"));
+        return row;
+      });
+    }
+
+    // 불러온 row들을 참조ID 기준으로 분류 배치
+    const rows = this.hydrate(unloadedRows) as TSubsetMapping[T][];
 
     return { rows, total };
   }

@@ -79,7 +79,21 @@ export class Template__generated_sso extends Template {
         importKeys: [],
       };
 
-      return [jsonSubsetQuery, puriSubsetQuery];
+      // Puri 기반 SubsetLoadersQuery
+      const puriLoaderQuery: SourceCode = {
+        label: `Puri LoaderQuery: ${entity.id}`,
+        lines: [
+          `export const ${entityCamelName}PuriLoaderQueries: PuriLoaderQuery<${subsetKeyTypeName}> = {`,
+          ...subsetKeys.map((subsetKey) => {
+            return `${subsetKey}: ${entity.getPuriLoaderQuery(subsetKey)},`;
+          }),
+          `};`,
+          "",
+        ],
+        importKeys: [],
+      };
+
+      return [jsonSubsetQuery, puriSubsetQuery, puriLoaderQuery];
     });
 
     // DatabaseSchema 생성
@@ -112,6 +126,7 @@ export class Template__generated_sso extends Template {
       "SubsetQuery",
       "PuriWrapper",
       "DatabaseSchemaExtend",
+      "PuriLoaderQuery",
       isUsingManyToManyBaseSchema ? "ManyToManyBaseSchema" : "",
     ]
       .filter(Boolean)
