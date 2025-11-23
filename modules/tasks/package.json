@@ -42,7 +42,6 @@
   },
   "peerDependencies": {
     "knex": "^3.1.0",
-    "mysql2": "^3.6.1",
-    "nodemon": "3.1.10"
+    "mysql2": "^3.6.1"
   }
 }

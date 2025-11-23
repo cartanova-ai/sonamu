@@ -82,7 +82,8 @@
     "@types/prompts": "^2.0.14",
     "@types/qs": "^6.9.7",
     "tsup": "^8.1.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "nodemon": "3.1.10"
   },
   "peerDependencies": {
     "@sonamu-kit/hot-runner": "^0.1.1",
@@ -92,6 +93,6 @@
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
     "mysql2": "^3.6.1",
-    "nodemon": "3.1.10"
+    "typescript": "^5.2.2"
   }
 }
