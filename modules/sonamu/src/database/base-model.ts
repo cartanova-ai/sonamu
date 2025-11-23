@@ -155,6 +155,7 @@ export class BaseModelClass<
     params: {
       num?: number;
       page?: number;
+      queryMode?: "list" | "count" | "both";
     };
     debug?: boolean;
   }): Promise<{
@@ -174,31 +175,59 @@ export class BaseModelClass<
 
     const { num, page } = params;
 
-    let unloadedRows = (await qb.limit(num).offset(num * (page - 1))) as any[];
+    const total = await (async () => {
+      if (params.queryMode === "list") {
+        return 0;
+      }
 
-    if (debug) {
-      console.debug(
-        chalk.cyan("[Puri Debug - List Query]"),
-        chalk.blue(qb.toQuery())
-      );
-    }
+      const countPuri = qb
+        .clone()
+        .clear("order")
+        .clear("limit")
+        .clear("offset");
 
-    const loaders = (this.subsetLoaders as any)[subset];
-    if (loaders && Array.isArray(loaders)) {
-      for (const resolveLoader of loaders) {
-        const { as, qb: resolveLoaderQbFn } = resolveLoader;
+      // COUNT(*)로 전체 레코드 수를 계산
+      // TODO: qb의 DISTINCT가 있는 경우 처리해야 함
+      const countResult: { total?: number } = await countPuri
+        .clear("select")
+        .select({
+          total: Puri.rawNumber(`COUNT(*)`),
+        })
+        .first();
 
-        const resolveLoaderQb = resolveLoaderQbFn(
-          new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
-          unloadedRows.map((row) => row.id)
-        );
+      if (debug) {
+        countPuri.debug();
+      }
 
-        if (debug) {
-          console.debug(
-            chalk.cyan("[Puri Debug - Loader Query]"),
-            chalk.blue(resolveLoaderQb.toQuery())
+      return countResult?.total ?? 0;
+    })();
+
+    const rows = await (async () => {
+      if (params.queryMode === "count") {
+        return [];
+      }
+
+      let unloadedRows = (await qb
+        .limit(num)
+        .offset(num * (page - 1))) as any[];
+
+      if (debug) {
+        qb.debug();
+      }
+
+      const loaders = (this.subsetLoaders as any)[subset];
+      if (loaders && Array.isArray(loaders)) {
+        for (const resolveLoader of loaders) {
+          const { as, qb: resolveLoaderQbFn } = resolveLoader;
+
+          const resolveLoaderQb = resolveLoaderQbFn(
+            new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
+            unloadedRows.map((row) => row.id)
           );
-        }
+
+          if (debug) {
+            resolveLoaderQb.debug();
+          }
 
           const loadedRows = await resolveLoaderQb as any[];
           const subRowGroups = group(loadedRows, (row) => row["refId"]);
@@ -210,14 +239,15 @@ export class BaseModelClass<
         }
       }
 
-    const rows = this.hydrate(unloadedRows) as TComputedResults[T][];
+      return this.hydrate(unloadedRows) as TComputedResults[T][];
+    })();
 
-    // 빈 enhancers 객체 반환 (사용자가 채워서 사용)
+    // 빈 enhancers 객체 반환 (호출 측에서 가상 필드 등을 추가하는 데 사용)
     const enhancers = {} as {
       [K in TSubsetKey]: (row: TComputedResults[K]) => TSubsetMapping[K];
     };
 
-    return { rows, total: 0, enhancers };
+    return { rows, total, enhancers };
   }
 
 
