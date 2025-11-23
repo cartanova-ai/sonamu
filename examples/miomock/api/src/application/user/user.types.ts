@@ -2,7 +2,9 @@ import { z } from "zod";
 import { UserBaseListParams, UserBaseSchema } from "../sonamu.generated";
 
 // User - ListParams
-export const UserListParams = UserBaseListParams;
+export const UserListParams = UserBaseListParams.extend({
+  test: z.string().optional(),
+});
 export type UserListParams = z.infer<typeof UserListParams>;
 
 // User - SaveParams

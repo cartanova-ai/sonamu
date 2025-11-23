@@ -7,13 +7,22 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
-import { employeeSubsetQueries } from "../sonamu.generated.sso";
+import {
+  employeePuriLoaderQueries,
+  employeePuriSubsetQueries,
+  employeeSubsetQueries,
+} from "../sonamu.generated.sso";
 import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 /*
   Employee Model
 */
-class EmployeeModelClass extends BaseModelClass {
+class EmployeeModelClass extends BaseModelClass<
+  EmployeeSubsetKey,
+  EmployeeSubsetMapping,
+  typeof employeePuriSubsetQueries,
+  typeof employeePuriLoaderQueries
+> {
   modelName = "Employee";
 
   @api({
@@ -138,4 +147,7 @@ class EmployeeModelClass extends BaseModelClass {
   }
 }
 
-export const EmployeeModel = new EmployeeModelClass();
+export const EmployeeModel = new EmployeeModelClass(
+  employeePuriSubsetQueries,
+  employeePuriLoaderQueries
+);

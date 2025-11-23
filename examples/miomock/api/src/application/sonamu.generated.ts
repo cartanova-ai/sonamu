@@ -2,8 +2,8 @@
 /** biome-ignore-all assist: generated는 무시 */
 /** biome-ignore-all style: generated는 무시 */
 
+import { SonamuQueryMode, zArrayable } from "sonamu";
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode } from "sonamu";
 
 // CustomScalar: NumberType
 const NumberType = z.number();
@@ -135,8 +135,11 @@ export const ProjectBaseSchema = z.object({
   description: z.string().max(4294967295).nullable(),
   // tags: ManyToMany Tag
   image_urls: StringArray.nullable(),
+  virtual_test: NumberType.nullable(),
 });
-export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema>;
+export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
+  readonly __virtual__: readonly ["virtual_test"];
+};
 
 // BaseSchema: Tag
 export const TagBaseSchema = z.object({
@@ -291,12 +294,52 @@ export const DepartmentSubsetA = z.object({
       name: z.string().max(128),
     })
     .nullable(),
+  employees: z.array(
+    z.object({
+      id: z.int().nonnegative(),
+      employee_number: z.string().max(32),
+      salary: z.string().nullable(),
+      user: z.object({
+        id: z.int().nonnegative(),
+        email: z.string().max(255),
+      }),
+    }),
+  ),
 });
 export type DepartmentSubsetA = z.infer<typeof DepartmentSubsetA>;
+export const DepartmentSubsetP = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  name: z.string().max(128),
+  employee_count: NumberType,
+  company: z.object({
+    id: z.int().nonnegative(),
+    name: z.string().max(255),
+  }),
+  parent: z
+    .object({
+      id: z.int().nonnegative(),
+      name: z.string().max(128),
+    })
+    .nullable(),
+});
+export type DepartmentSubsetP = z.infer<typeof DepartmentSubsetP>;
+export const DepartmentSubsetP2 = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  name: z.string().max(128),
+  company: z.object({
+    id: z.int().nonnegative(),
+    name: z.string().max(255),
+  }),
+});
+export type DepartmentSubsetP2 = z.infer<typeof DepartmentSubsetP2>;
 export type DepartmentSubsetMapping = {
   A: DepartmentSubsetA;
+  P: DepartmentSubsetP;
+  P2: DepartmentSubsetP2;
 };
-export const DepartmentSubsetKey = z.enum(["A"]);
+export const DepartmentSubsetKey = z.enum(["A", "P", "P2"]);
 export type DepartmentSubsetKey = z.infer<typeof DepartmentSubsetKey>;
 
 // Subsets: Employee
@@ -313,6 +356,7 @@ export const EmployeeSubsetA = z.object({
     .object({
       id: z.int().nonnegative(),
       name: z.string().max(128),
+      employee_count: NumberType,
       company: z.object({
         name: z.string().max(255),
       }),
@@ -349,6 +393,38 @@ export const ProjectSubsetA = z.object({
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
   image_urls: StringArray.nullable(),
+  virtual_test: NumberType.nullable(),
+  employee: z.array(
+    z.object({
+      id: z.int().nonnegative(),
+      employee_number: z.string().max(32),
+      salary: z.string().nullable(),
+      user: z.object({
+        email: z.string().max(255),
+        username: z.string().max(255),
+      }),
+      department: z
+        .object({
+          name: z.string().max(128),
+        })
+        .nullable(),
+    }),
+  ),
+  tags: z.array(
+    z.object({
+      id: z.int().nonnegative(),
+      name: z.string().max(30),
+    }),
+  ),
+});
+export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;
+export const ProjectSubsetP = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  name: z.string().max(255),
+  status: ProjectStatus,
+  description: z.string().max(4294967295).nullable(),
+  image_urls: StringArray.nullable(),
   employee: z.array(
     z.object({
       id: z.int().nonnegative(),
@@ -371,11 +447,12 @@ export const ProjectSubsetA = z.object({
     }),
   ),
 });
-export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;
+export type ProjectSubsetP = z.infer<typeof ProjectSubsetP>;
 export type ProjectSubsetMapping = {
   A: ProjectSubsetA;
+  P: ProjectSubsetP;
 };
-export const ProjectSubsetKey = z.enum(["A"]);
+export const ProjectSubsetKey = z.enum(["A", "P"]);
 export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
 
 // Subsets: Tag

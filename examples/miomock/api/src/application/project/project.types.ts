@@ -12,8 +12,13 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
 }).extend({
   employee_ids: z.array(z.number().int().positive()),
   tag_ids: z.array(z.number().int().positive()),
+}).omit({
+  virtual_test: true,
 });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 
 export const StringArray = z.array(z.string());
 export type StringArray = z.infer<typeof StringArray>;
+
+export const Boolean = z.boolean();
+export type Boolean = z.infer<typeof Boolean>;

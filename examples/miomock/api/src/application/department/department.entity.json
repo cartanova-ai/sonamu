@@ -36,7 +36,7 @@
       "with": "Employee",
       "desc": "직원리스트",
       "relationType": "HasMany",
-      "joinColumn": "id"
+      "joinColumn": "department_id"
     },
     {
       "name": "employee_count",
@@ -55,8 +55,24 @@
       "company.name",
       "parent.id",
       "parent.name",
+      "employees.id",
+      "employees.user.id",
+      "employees.user.email",
+      "employees.employee_number",
+      "employees.salary",
       "employee_count"
-    ]
+    ],
+    "P": [
+      "id",
+      "created_at",
+      "name",
+      "company.id",
+      "company.name",
+      "parent.id",
+      "parent.name",
+      "employee_count"
+    ],
+    "P2": ["id", "created_at", "name", "company.id", "company.name"]
   },
   "enums": {
     "DepartmentOrderBy": {

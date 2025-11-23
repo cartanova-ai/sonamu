@@ -55,6 +55,7 @@
       "department.id",
       "department.name",
       "department.company.name",
+      "department.employee_count",
       "employee_number",
       "salary"
     ]

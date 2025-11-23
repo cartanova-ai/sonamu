@@ -7,13 +7,22 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
-import { tagSubsetQueries } from "../sonamu.generated.sso";
+import {
+  tagPuriLoaderQueries,
+  tagPuriSubsetQueries,
+  tagSubsetQueries,
+} from "../sonamu.generated.sso";
 import type { TagListParams, TagSaveParams } from "./tag.types";
 
 /*
   Tag Model
 */
-class TagModelClass extends BaseModelClass {
+class TagModelClass extends BaseModelClass<
+  TagSubsetKey,
+  TagSubsetMapping,
+  typeof tagPuriSubsetQueries,
+  typeof tagPuriLoaderQueries
+> {
   modelName = "Tag";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tag" })
@@ -32,7 +41,7 @@ class TagModelClass extends BaseModelClass {
 
   async findOne<T extends TagSubsetKey>(
     subset: T,
-    listParams: TagListParams,
+    listParams: TagListParams
   ): Promise<TagSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -46,7 +55,7 @@ class TagModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
   async findMany<T extends TagSubsetKey>(
     subset: T,
-    params: TagListParams = {},
+    params: TagListParams = {}
   ): Promise<ListResult<TagSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -127,4 +136,7 @@ class TagModelClass extends BaseModelClass {
   }
 }
 
-export const TagModel = new TagModelClass();
+export const TagModel = new TagModelClass(
+  tagPuriSubsetQueries,
+  tagPuriLoaderQueries
+);
