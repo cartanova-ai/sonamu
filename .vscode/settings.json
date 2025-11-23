@@ -1,16 +1,23 @@
 {
-  "typescript.enablePromptUseWorkspaceTsdk": true,
-  "rest-client.environmentVariables": {
-    "$shared": {
-      "baseUrl": "http://localhost:10280"
-    }
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true,
+    "**/node_modules": true
   },
+  "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome",
     "editor.codeActionsOnSave": {
       "source.organizeImports.biome": "explicit",
-      "quickfix.biome": "explicit",
+      "source.fixAll.biome": "explicit"
+    }
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.biome": "explicit",
+      "source.fixAll.biome": "explicit"
     }
   },
   "[javascript]": {
@@ -20,13 +27,19 @@
     }
   },
   "[json]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "rest-client.environmentVariables": {
+    "$shared": {
+      "baseUrl": "http://localhost:10280"
+    }
   },
   "files.readonlyInclude": {
-    "examples/**/web/src/services/**/*": true,
-    "examples/**/web/public/sitemap.xml": true
-  },
+    "examples/**/web/src/services/**/*": true
+  }
 }
