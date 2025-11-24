@@ -189,6 +189,7 @@ export class Entity {
       lines.push(
         "{",
         `as: "${loader.as}",`,
+        `refId: "${loader.manyJoin.idField}",`,
         `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`,
       );
       if (through === undefined) {

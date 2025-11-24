@@ -165,6 +165,7 @@ export type PuriLoaderQbFn = (
 // A generic loader object
 export type GenericPuriLoader = {
   readonly as: string;
+  readonly refId: string;
   readonly qb: PuriLoaderQbFn;
 };
 

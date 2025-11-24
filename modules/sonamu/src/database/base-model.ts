@@ -256,11 +256,11 @@ export class BaseModelClass<
       const loaders = (this.subsetLoaders as any)[subset];
       if (loaders && Array.isArray(loaders)) {
         for (const resolveLoader of loaders) {
-          const { as, qb: resolveLoaderQbFn } = resolveLoader;
+          const { as, refId, qb: resolveLoaderQbFn } = resolveLoader;
 
           const resolveLoaderQb = resolveLoaderQbFn(
             new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
-            unloadedRows.map((row) => row.id),
+            unloadedRows.map((row) => row[refId]),
           );
 
           if (debug) {
@@ -271,7 +271,7 @@ export class BaseModelClass<
           const subRowGroups = group(loadedRows, (row) => row.refId);
 
           unloadedRows = unloadedRows.map((row) => {
-            row[as] = (subRowGroups[row.id] ?? []).map((r) => omit(r, ["refId"]));
+            row[as] = (subRowGroups[row[refId]] ?? []).map((r) => omit(r, ["refId"]));
             return row;
           });
         }
