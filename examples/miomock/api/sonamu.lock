@@ -65,7 +65,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "8ab91d4462cb2d661dae212bcbdf803834e54977"
+    "checksum": "230c991b08cafd7c705ef971fdc446b3f13c02e6"
   },
   {
     "path": "src/application/tag/tag.entity.json",
