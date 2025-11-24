@@ -114,7 +114,6 @@ class UserModelClass extends BaseModelClass<
       subset,
       qb,
       params,
-      enhancers: {},
       debug: true,
     });
 

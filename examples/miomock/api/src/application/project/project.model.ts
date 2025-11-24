@@ -2,9 +2,9 @@ import {
   api,
   asArray,
   BaseModelClass,
+  exhaustive,
   type ListResult,
   NotFoundException,
-  exhaustive,
 } from "sonamu";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectPuriLoaderQueries, projectPuriSubsetQueries } from "../sonamu.generated.sso";
@@ -101,6 +101,7 @@ class ProjectModelClass extends BaseModelClass<
 
     const enhancers = this.createEnhancers({
       A: (row) => ({ ...row, virtual_test: 1 }),
+      // A: (row) => ({ ...row }), // virtual_test를 추가하지 않았으므로 오류 발생!
       P: (row) => row,
     });
 
@@ -111,10 +112,6 @@ class ProjectModelClass extends BaseModelClass<
       enhancers,
       debug: true,
     });
-
-    enhancers.A = (row) => ({ ...row, virtual_test: 1 });
-    // enhancers.A = (row) => ({ ...row }); // virtual_test를 추가하지 않았으므로 오류 발생!
-    enhancers.P = (row) => row;
 
     return {
       rows,
