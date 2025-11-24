@@ -1,9 +1,8 @@
 import { range } from "radashi";
 import { BaseModel, Naite } from "sonamu";
-import { assert, describe, expect, test } from "vitest";
+import { assert, describe, expect, test, vi } from "vitest";
 import { bootstrap, runWithMockContext } from "../../testing/bootstrap";
 import { UserModel } from "./user.model";
-import { vi } from "vitest";
 
 bootstrap(vi);
 describe("UserModel", () => {

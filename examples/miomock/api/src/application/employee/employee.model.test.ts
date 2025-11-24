@@ -1,6 +1,5 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { bootstrap } from "../../testing/bootstrap";
-import { vi } from "vitest";
 
 bootstrap(vi);
 describe("EmployeeModel", () => {

@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { bootstrap } from "../testing/bootstrap";
-import { vi } from "vitest";
 
 bootstrap(vi);
 describe.skip("Migrator", () => {
