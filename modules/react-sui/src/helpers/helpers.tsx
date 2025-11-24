@@ -1,6 +1,6 @@
 import React, { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { isObject, unique, get, cloneDeep, set } from "radashi";
+import { isObject, unique, get,  set } from "radashi";
 import { z } from "zod";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
@@ -122,9 +122,7 @@ export function useTypeForm<
             newValue = prop.value === "" ? undefined : prop.value;
           }
 
-          const newForm = cloneDeep(form);
-          set(newForm, objPath, newValue);
-          setForm(newForm);
+          setForm(set(form, objPath, newValue));
         },
         ...(error && { error }),
       };
