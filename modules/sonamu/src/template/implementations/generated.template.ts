@@ -97,13 +97,7 @@ export class Template__generated extends Template {
           "",
         ];
       });
-      sourceCode.lines = [
-        "/** biome-ignore-all lint: generated는 무시 */",
-        "/** biome-ignore-all assist: generated는 무시 */",
-        "/** biome-ignore-all style: generated는 무시 */",
-        ...customScalarLines,
-        ...sourceCode.lines,
-      ];
+      sourceCode.lines = [...customScalarLines, ...sourceCode.lines];
       sourceCode.importKeys = sourceCode.importKeys.filter(
         (importKey) => !cdImportKeys.includes(importKey),
       );
@@ -125,6 +119,10 @@ export class Template__generated extends Template {
       body,
       importKeys: sourceCode.importKeys,
       customHeaders: [
+        "/** biome-ignore-all lint: generated는 무시 */",
+        "/** biome-ignore-all assist: generated는 무시 */",
+        "/** biome-ignore-all style: generated는 무시 */",
+        "",
         `import { z } from 'zod';`,
         `import { ${sonamuImports.join(",")} } from "sonamu";`,
       ],
