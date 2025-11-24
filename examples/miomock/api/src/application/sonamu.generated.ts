@@ -364,10 +364,32 @@ export const EmployeeSubsetA = z.object({
     .nullable(),
 });
 export type EmployeeSubsetA = z.infer<typeof EmployeeSubsetA>;
+export const EmployeeSubsetP = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  user: z.object({
+    id: z.int().nonnegative(),
+    username: z.string().max(255),
+    employee: z
+      .object({
+        department: z
+          .object({
+            id: z.int().nonnegative(),
+            employee_count: NumberType,
+          })
+          .nullable(),
+        employee_number: z.string().max(32),
+        salary: z.string().nullable(),
+      })
+      .nullable(),
+  }),
+});
+export type EmployeeSubsetP = z.infer<typeof EmployeeSubsetP>;
 export type EmployeeSubsetMapping = {
   A: EmployeeSubsetA;
+  P: EmployeeSubsetP;
 };
-export const EmployeeSubsetKey = z.enum(["A"]);
+export const EmployeeSubsetKey = z.enum(["A", "P"]);
 export type EmployeeSubsetKey = z.infer<typeof EmployeeSubsetKey>;
 
 // Subsets: File

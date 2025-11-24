@@ -5,13 +5,10 @@ import {
   BaseModelClass,
   type ListResult,
   NotFoundException,
+  withProp,
 } from "sonamu";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
-import {
-  employeePuriLoaderQueries,
-  employeePuriSubsetQueries,
-  employeeSubsetQueries,
-} from "../sonamu.generated.sso";
+import { employeePuriLoaderQueries, employeePuriSubsetQueries } from "../sonamu.generated.sso";
 import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 /*
@@ -78,36 +75,60 @@ class EmployeeModelClass extends BaseModelClass<
     };
 
     // build queries
-    const { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+
+    // id
+    if (params.id) {
+      qb.whereIn("employees.id", asArray(params.id));
+    }
+
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      // search-keyword
+      if (params.search === "id") {
+        qb.where("employees.id", Number(params.keyword));
+        // } else if (params.search === "field") {
+        //   qb.where("employees.field", "like", `%${params.keyword}%`);
+      } else {
+        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+      }
+    }
+
+    if (params.orderBy) {
+      const [orderByField, orderByDirec] = params.orderBy.split("-");
+      if (orderByField === "id") {
+        qb.orderBy("employees.id", orderByDirec === "asc" ? "asc" : "desc");
+      }
+    }
+
+    const enhancers = this.createEnhancers({
+      A: (row) => ({
+        ...row,
+        department: {
+          ...row.department,
+          employee_count: 0,
+        },
+      }),
+      P: (row) => withProp(row, "user.employee.department.employee_count", 0),
+      // P: (row) => ({
+      //   ...row,
+      //   user: {
+      //     ...row.user,
+      //     employee: {
+      //       ...row.user.employee,
+      //       department: {
+      //         ...row.user.employee.department,
+      //         employee_count: 0,
+      //       },
+      //     },
+      //   },
+      // }),
+    });
+
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: employeeSubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("employees.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("employees.id", params.keyword);
-            // } else if (params.search === "field") {
-            //   qb.where("employees.field", "like", `%${params.keyword}%`);
-          } else {
-            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy(`employees.${orderByField}`, orderByDirec);
-        }
-
-        return qb;
-      },
+      enhancers,
       debug: false,
     });
 

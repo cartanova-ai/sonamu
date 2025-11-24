@@ -258,6 +258,36 @@ export const employeeSubsetQueries: { [key in EmployeeSubsetKey]: SubsetQuery } 
     ],
     loaders: [],
   },
+  P: {
+    select: [
+      "employees.id",
+      "employees.created_at",
+      "user.id as user__id",
+      "user.username as user__username",
+      "user__employee__department.id as user__employee__department__id",
+      "user__employee.employee_number as user__employee__employee_number",
+      "user__employee.salary as user__employee__salary",
+    ],
+    virtual: [],
+    joins: [
+      { as: "user", join: "inner", table: "users", from: "employees.user_id", to: "user.id" },
+      {
+        as: "user__employee",
+        join: "outer",
+        table: "employees",
+        from: "user.id",
+        to: "user__employee.user_id",
+      },
+      {
+        as: "user__employee__department",
+        join: "outer",
+        table: "departments",
+        from: "user__employee.department_id",
+        to: "user__employee__department.id",
+      },
+    ],
+    loaders: [],
+  },
 };
 
 // Puri SubsetQuery: Employee
@@ -284,11 +314,32 @@ export const employeePuriSubsetQueries = {
         department__company__name: "department__company.name",
       });
   },
+  P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper
+      .from("employees")
+      .join({ user: "users" }, "employees.user_id", "user.id")
+      .leftJoin({ user__employee: "employees" }, "user.id", "user__employee.user_id")
+      .leftJoin(
+        { user__employee__department: "departments" },
+        "user__employee.department_id",
+        "user__employee__department.id",
+      )
+      .select({
+        id: "employees.id",
+        created_at: "employees.created_at",
+        user__id: "user.id",
+        user__username: "user.username",
+        user__employee__department__id: "user__employee__department.id",
+        user__employee__employee_number: "user__employee.employee_number",
+        user__employee__salary: "user__employee.salary",
+      });
+  },
 };
 
 // Puri LoaderQuery: Employee
 export const employeePuriLoaderQueries = {
   A: [],
+  P: [],
 } as const satisfies PuriLoaderQueries<EmployeeSubsetKey>;
 
 // SubsetQuery: File
