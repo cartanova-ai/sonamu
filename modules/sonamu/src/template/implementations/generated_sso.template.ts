@@ -144,14 +144,15 @@ export class Template__generated_sso extends Template {
 
     const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
-    const joinTableSchemaLines = unique(
+    const joinTables = unique(
       entities.flatMap((entity) =>
         entity.props.filter(isManyToManyRelationProp).map((prop) => {
           const fromTableKey = inflection.singularize(entity.table);
           const toTableKey = inflection.singularize(EntityManager.get(prop.with).table);
-          return `${prop.joinTable}: ManyToManyBaseSchema<"${fromTableKey}", "${toTableKey}">;`;
+          return { table: prop.joinTable, fromTableKey, toTableKey };
         }),
       ),
+      (joinTable) => joinTable.table,
     );
 
     return {
@@ -160,7 +161,10 @@ export class Template__generated_sso extends Template {
         `declare module "sonamu" {`,
         `  export interface DatabaseSchemaExtend {`,
         ...entitySchemaLines,
-        ...joinTableSchemaLines,
+        ...joinTables.map(
+          (joinTable) =>
+            `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}">;`,
+        ),
         `  }`,
         `}`,
       ],
