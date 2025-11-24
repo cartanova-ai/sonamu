@@ -60,3 +60,24 @@ export function withProp<T extends object, P extends string, V>(
   setDeep(result, keys, value);
   return result as SetPath<T, P, V>;
 }
+
+interface ChainWrapper<T> {
+  // 경로에 값을 설정하고 변경된 타입의 새로운 체인 래퍼를 반환합니다.
+  set<P extends string, V>(path: P, value: V): ChainWrapper<SetPath<T, P, V>>;
+
+  // 최종 결과 객체를 반환합니다.
+  value(): T;
+}
+
+/**
+ * 객체를 감싸서 체이닝을 시작합니다.
+ */
+export function withProps<T extends object>(obj: T): ChainWrapper<T> {
+  return {
+    set: <P extends string, V>(path: P, value: V) => {
+      const nextObj = withProp(obj, path, value);
+      return withProps(nextObj) as ChainWrapper<SetPath<T, P, V>>;
+    },
+    value: () => obj,
+  };
+}
