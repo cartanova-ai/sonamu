@@ -1,14 +1,10 @@
-<<<<<<< HEAD
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 /** biome-ignore-all style: generated는 무시 */
 
-=======
->>>>>>> ca3bfd6a ([miomock] Puri Subset 적용)
 import { z } from "zod";
 import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
 
-/** biome-ignore-all lint/correctness/noUnusedVariables: generated 생성 시점에 CustomScalar 여부 확인 어려우므로 허용 */
 // CustomScalar: NumberType
 const NumberType = z.number();
 type NumberType = z.infer<typeof NumberType>;

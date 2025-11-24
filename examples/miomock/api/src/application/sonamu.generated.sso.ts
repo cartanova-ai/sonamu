@@ -1,25 +1,25 @@
-import type {
-  DatabaseSchemaExtend,
-  ManyToManyBaseSchema,
-  PuriLoaderQueries,
-  PuriWrapper,
+import {
   SubsetQuery,
+  PuriWrapper,
+  DatabaseSchemaExtend,
+  PuriLoaderQueries,
+  ManyToManyBaseSchema,
 } from "sonamu";
-import type {
-  CompanyBaseSchema,
+import {
   CompanySubsetKey,
-  DepartmentBaseSchema,
   DepartmentSubsetKey,
-  EmployeeBaseSchema,
   EmployeeSubsetKey,
-  FileBaseSchema,
   FileSubsetKey,
-  ProjectBaseSchema,
   ProjectSubsetKey,
-  TagBaseSchema,
   TagSubsetKey,
-  UserBaseSchema,
   UserSubsetKey,
+  CompanyBaseSchema,
+  DepartmentBaseSchema,
+  EmployeeBaseSchema,
+  FileBaseSchema,
+  ProjectBaseSchema,
+  TagBaseSchema,
+  UserBaseSchema,
 } from "./sonamu.generated";
 
 // SubsetQuery: Company

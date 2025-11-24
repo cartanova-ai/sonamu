@@ -166,7 +166,6 @@ Content-Type: application/json
       "status": "planning",
       "description": null,
       "image_urls": null,
-      "virtual_test": null,
       "employee_ids": [0],
       "tag_ids": [0]
     }
