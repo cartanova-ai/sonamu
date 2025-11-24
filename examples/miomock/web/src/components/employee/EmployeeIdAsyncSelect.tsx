@@ -31,15 +31,26 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
     setOptions(
       (employees ?? []).map((employee) => {
         // textField가 지정되지 않은 경우, user.username과 employee_number를 조합
-        const defaultText =
-          subset === "A" && "user" in employee && employee.user
-            ? `${employee.user.username}-${employee.employee_number}`
-            : String(employee[textField ?? "employee_number"]);
+        const text = (() => {
+          if (textField) {
+            return String(employee[textField]);
+          }
+
+          if (subset === "A") {
+            const e = employee as EmployeeSubsetMapping["A"];
+            return `${e.user.username}-${e.employee_number}`;
+          } else if (subset === "P") {
+            const e = employee as EmployeeSubsetMapping["P"];
+            return `${e.user.username}-${e.user.employee?.employee_number}`;
+          } else {
+            throw new Error(`Unexpected subset: ${subset}`);
+          }
+        })();
 
         return {
           key: employee.id,
           value: employee[valueField ?? "id"] as string | number,
-          text: textField ? String(employee[textField]) : defaultText,
+          text,
         };
       }),
     );
