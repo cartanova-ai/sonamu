@@ -99,6 +99,7 @@ export class Template__generated extends Template {
       });
       sourceCode.lines = [
         "/** biome-ignore-all lint/correctness/noUnusedVariables: generated 생성 시점에 CustomScalar 여부 확인 어려우므로 허용 */",
+        "/** biome-ignore-all assist/source/organizeImports: generated 생성 시 import 순서 정렬 방지 */",
         ...customScalarLines,
         ...sourceCode.lines,
       ];
