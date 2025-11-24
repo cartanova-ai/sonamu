@@ -7,6 +7,7 @@ import {
   type VitestUtils,
   test as vitestTest,
 } from "vitest";
+import type { UserSubsetSS } from "../application/sonamu.generated";
 
 export function bootstrap(vi: VitestUtils) {
   beforeAll(async () => {
@@ -48,5 +49,17 @@ export async function runWithMockContext(fn: () => Promise<void>) {
 export async function test(title: string, fn: () => Promise<void>) {
   return vitestTest(title, async () => {
     await runWithMockContext(fn);
+  });
+}
+
+export async function testAs(user: UserSubsetSS, title: string, fn: () => Promise<void>) {
+  return vitestTest(title, async () => {
+    await runWithContext(
+      {
+        ...getMockContext(),
+        user,
+      },
+      fn,
+    );
   });
 }

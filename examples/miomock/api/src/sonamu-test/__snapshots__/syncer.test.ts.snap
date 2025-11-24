@@ -2,6 +2,7 @@
 
 exports[`Syncer > generateTemplate > handleEntityChange 1`] = `
 [
+  "handleEntityChange",
   "actionGenerateSchemas",
   "generateTemplate",
   "renderTemplate",

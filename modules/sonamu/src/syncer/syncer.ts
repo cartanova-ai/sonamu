@@ -239,11 +239,8 @@ export class Syncer {
   }
 
   public async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
-    // console.log(
-    //   chalk.gray(
-    //     `[Processing] Handling entity changes: ${diffGroups["entity"]?.map((p) => path.relative(Sonamu.apiRootPath, p)).join(", ")}`
-    //   )
-    // );
+    Naite.t("step", "handleEntityChange");
+    Naite.t("handleEntityChange", { diffGroups, diffTypes });
 
     await EntityManager.reload();
 

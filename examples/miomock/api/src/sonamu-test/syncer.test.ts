@@ -47,7 +47,7 @@ describe("Syncer", () => {
         ["types"],
       );
 
-      // // Template__generated:body
+      // Template__generated:body
       // Naite.expect("Template__generated:body").toMatchSnapshot();
 
       // formatCode:result
