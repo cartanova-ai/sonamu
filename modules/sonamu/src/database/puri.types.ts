@@ -235,10 +235,12 @@ export type InferSubsetWithLoaders<
   TSubsetFn extends (...args: any) => Puri<any, any, any>,
   TLoaders extends readonly GenericPuriLoader[] | undefined = undefined,
 > = Expand<
-  // 기본 쿼리 결과 Hydration + Expand
-  Expand<Hydrate<ExtractPuriResult<ReturnType<TSubsetFn>>>> &
-    // 로더 결과 병합
-    (TLoaders extends readonly GenericPuriLoader[] ? LoadersResult<TLoaders> : {})
+  Hydrate<
+    // 기본 쿼리 결과
+    ExtractPuriResult<ReturnType<TSubsetFn>> &
+      // 로더 결과 병합
+      (TLoaders extends readonly GenericPuriLoader[] ? LoadersResult<TLoaders> : {})
+  >
 >;
 
 export type ClearStatements =
