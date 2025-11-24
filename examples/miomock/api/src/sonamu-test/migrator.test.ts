@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { bootstrap } from "../testing/bootstrap";
+import { vi } from "vitest";
 
-bootstrap();
+bootstrap(vi);
 describe.skip("Migrator", () => {
   it("test1", async () => {
     expect(1).toBe(1);

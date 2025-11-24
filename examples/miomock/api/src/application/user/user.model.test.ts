@@ -1,10 +1,11 @@
 import { range } from "radashi";
 import { BaseModel, Naite } from "sonamu";
 import { assert, describe, expect, test } from "vitest";
-import { bootstrap, notImpl, runWithMockContext } from "../../testing/bootstrap";
+import { bootstrap, runWithMockContext } from "../../testing/bootstrap";
 import { UserModel } from "./user.model";
+import { vi } from "vitest";
 
-bootstrap();
+bootstrap(vi);
 describe("UserModel", () => {
   const func1 = (no: number) => {
     return async () => {
@@ -55,7 +56,7 @@ describe("UserModel", () => {
   test("testNaite", async () => {
     await runWithMockContext(async () => {
       // 메서드 자체는 의도된 에러 상황
-      await notImpl(UserModel.testNaite);
+      expect(UserModel.testNaite).toThrowError();
 
       // 하지만 에러 발생 전에 기록된 로깅은 유지됨
       Naite.expect("testArray").toEqual([1, 2, 3]);

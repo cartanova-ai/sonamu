@@ -1,8 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { CompanyModel } from "../application/company/company.model";
 import { bootstrap } from "../testing/bootstrap";
 
-bootstrap();
+bootstrap(vi);
 describe("픽스쳐", () => {
   test("전체 픽스쳐 테스트", async () => {
     // const f = await loadFixtures(["company01"]);

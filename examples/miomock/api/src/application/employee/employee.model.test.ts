@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { bootstrap } from "../../testing/bootstrap";
+import { vi } from "vitest";
 
-bootstrap();
+bootstrap(vi);
 describe("EmployeeModel", () => {
   test("should be defined", () => {
     expect(true).toBe(true);
