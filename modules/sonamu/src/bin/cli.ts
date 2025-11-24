@@ -331,17 +331,13 @@ async function fixture_init() {
       config: Sonamu.dbConfig.fixture_remote,
     },
     {
-      label: "(LOCAL) Fixture DB",
-      config: Sonamu.dbConfig.fixture_local,
-      toSkip: (() => {
-        const remoteConn = Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig;
-        const localConn = Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig;
-        return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
-      })(),
-    },
-    {
       label: "(LOCAL) Testing DB",
       config: Sonamu.dbConfig.test,
+      toSkip: (() => {
+        const remoteConn = Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig;
+        const localConn = Sonamu.dbConfig.test.connection as Knex.ConnectionConfig;
+        return remoteConn.host === localConn.host && remoteConn.database === localConn.database;
+      })(),
     },
   ] as {
     label: string;

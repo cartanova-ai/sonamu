@@ -4,5 +4,4 @@
  * 이후 DDL 추가는 Sonamu UI의 DB Migration 기능을 사용해주세요.
  */
 CREATE DATABASE IF NOT EXISTS miomock_fixture_remote;
-CREATE DATABASE IF NOT EXISTS miomock_fixture_local;
 CREATE DATABASE IF NOT EXISTS miomock_test;

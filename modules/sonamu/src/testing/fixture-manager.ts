@@ -69,7 +69,7 @@ export class FixtureManagerClass {
     }
 
     this.tdb = knex(Sonamu.dbConfig.test);
-    this.fdb = knex(Sonamu.dbConfig.fixture_local);
+    this.fdb = knex(Sonamu.dbConfig.fixture_remote);
   }
 
   async cleanAndSeed(usingTables?: string[]) {
@@ -125,7 +125,7 @@ export class FixtureManagerClass {
             (Sonamu.dbConfig.test.connection as Knex.ConnectionConfig).database
           }.${tableName}
         SELECT * FROM ${
-          (Sonamu.dbConfig.fixture_local.connection as Knex.ConnectionConfig).database
+          (Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig).database
         }.${tableName}`;
           await trx.raw(rawQuery);
         }),
@@ -142,8 +142,6 @@ export class FixtureManagerClass {
   }
 
   async sync() {
-    const frdb = knex(Sonamu.dbConfig.fixture_remote);
-
     const [tables] = await this.fdb.raw("SHOW TABLE STATUS WHERE Engine IS NOT NULL");
     const tableNames: string[] = tables.map((table: { Name: string }) => table.Name);
 
@@ -154,15 +152,15 @@ export class FixtureManagerClass {
           return;
         }
 
-        const remoteChecksum = await this.getChecksum(frdb, tableName);
-        const localChecksum = await this.getChecksum(this.fdb, tableName);
+        const remoteChecksum = await this.getChecksum(this.fdb, tableName); // fixture_remote
+        const localChecksum = await this.getChecksum(this.tdb, tableName); // test
 
         if (remoteChecksum !== localChecksum) {
-          await this.fdb.transaction(async (transaction) => {
+          await this.tdb.transaction(async (transaction) => {
             await transaction.raw(`SET FOREIGN_KEY_CHECKS = 0`);
             await transaction(tableName).truncate();
 
-            const rows = await frdb(tableName);
+            const rows = await this.fdb(tableName);
             if (rows.length === 0) {
               return;
             }
@@ -194,8 +192,6 @@ export class FixtureManagerClass {
       }),
     );
     console.log(chalk.magenta("DONE!"));
-
-    await frdb.destroy();
   }
 
   private visitedRecords = new Set<string>();
