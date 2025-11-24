@@ -49,6 +49,9 @@ export type UploadDecoratorOptions = {
   mode?: "single" | "multiple";
 };
 export const registeredApis: {
+  /**
+   * modelName은 모델 클래스 이름입니다. (ex. "UserModel")
+   */
   modelName: string;
   methodName: string;
   path: string;

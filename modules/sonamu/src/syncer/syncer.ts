@@ -6,6 +6,7 @@ import { minimatch } from "minimatch";
 import path, { dirname } from "path";
 import { group, unique } from "radashi";
 import type { z } from "zod";
+import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
@@ -86,13 +87,24 @@ export class Syncer {
     // 일단 변경된 파일과 dependent 파일들을 invalidate 합니다.
     // 한 번 이상 import된 친구들에 대해서만 실제 작업이 일어납니다.
     // 그러니 안심하고 invalidate 해도 됩니다.
-    const invalidatedPaths = await hot.invalidateFile(diffFilePath, event);
+    const invalidatedPaths = (await hot.invalidateFile(diffFilePath, event)) as AbsolutePath[];
     if (invalidatedPaths.length > 0) {
-      console.log(
-        chalk.bold(
-          `🔄 Invalidated:\n${chalk.blue(invalidatedPaths.map((p) => `- ${path.relative(Sonamu.apiRootPath, p)}`).join("\n"))}`,
-        ),
-      );
+      console.log(chalk.bold(`🔄 Invalidated:`));
+
+      for (const invalidatedPath of invalidatedPaths) {
+        // 만약 model.ts 파일이 변경(invalidate)되었다? 그러면 registeredApis 중에서 이 모델에 해당하는 api들은 지워줘요.
+        // registeredApis는 통으로 다 날려버릴 수 없습니다. registeredApis에 올라오는 친구들은 초기 로드시 또는 HMR시에만 등록되기 때문입니다.
+        // 따라서 model.ts 파일의 변경으로 다음번 새로운 eval이 예상되는 이 시점에서만, 이 모델에서 나온 registeredApis들을 지워줄 수 있습니다.
+        const removedApis = this.removeInvalidatedRegisteredApis(invalidatedPath);
+        if (removedApis.length > 0) {
+          console.log(
+            chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`),
+            chalk.gray(`(with ${removedApis.length} APIs)`),
+          );
+        } else {
+          console.log(chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`));
+        }
+      }
     }
 
     const isInCheckPatternGroup = Object.values(getChecksumPatternGroupInAbsolutePath()).some(
@@ -111,6 +123,22 @@ export class Syncer {
     await this.autoloadApis();
 
     this.syncUI();
+  }
+
+  private removeInvalidatedRegisteredApis(
+    invalidatedPath: AbsolutePath,
+  ): (typeof registeredApis)[number][] {
+    if (!invalidatedPath.endsWith(".model.ts" /*소스 코드를 다루는 상황이니 .ts 경로로 봅니다.*/)) {
+      return [];
+    }
+
+    const entityId = EntityManager.getEntityIdFromPath(invalidatedPath);
+    const toRemove = registeredApis.filter((api) => api.modelName === `${entityId}Model`);
+    for (const api of toRemove) {
+      registeredApis.splice(registeredApis.indexOf(api), 1);
+    }
+
+    return toRemove;
   }
 
   private async copySharedToTargets(targets: string[]): Promise<void> {
