@@ -253,28 +253,40 @@ export class BaseModelClass<
         qb.debug();
       }
 
-      const loaders = (this.subsetLoaders as any)[subset];
-      if (loaders && Array.isArray(loaders)) {
+      // 재귀적으로 loader를 처리하는 헬퍼 함수
+      const processLoaders = async (rows: any[], loaders: any[]): Promise<any[]> => {
         for (const resolveLoader of loaders) {
-          const { as, refId, qb: resolveLoaderQbFn } = resolveLoader;
+          const { as, refId, qb: resolveLoaderQbFn, loaders: nestedLoaders } = resolveLoader;
 
           const resolveLoaderQb = resolveLoaderQbFn(
             new PuriWrapper(this.getDB("r"), new UpsertBuilder()),
-            unloadedRows.map((row) => row[refId]),
+            rows.map((row) => row[refId]),
           );
 
           if (debug) {
             resolveLoaderQb.debug();
           }
 
-          const loadedRows = (await resolveLoaderQb) as any[];
+          let loadedRows = (await resolveLoaderQb) as any[];
+
+          // 중첩 loaders가 있으면 재귀 처리
+          if (nestedLoaders && nestedLoaders.length > 0) {
+            loadedRows = await processLoaders(loadedRows, nestedLoaders);
+          }
+
           const subRowGroups = group(loadedRows, (row) => row.refId);
 
-          unloadedRows = unloadedRows.map((row) => {
+          rows = rows.map((row) => {
             row[as] = (subRowGroups[row[refId]] ?? []).map((r) => omit(r, ["refId"]));
             return row;
           });
         }
+        return rows;
+      };
+
+      const loaders = (this.subsetLoaders as any)[subset];
+      if (loaders && Array.isArray(loaders)) {
+        unloadedRows = await processLoaders(unloadedRows, loaders);
       }
 
       return this.hydrate(unloadedRows) as TComputedResults[T][];

@@ -167,6 +167,7 @@ export type GenericPuriLoader = {
   readonly as: string;
   readonly refId: string;
   readonly qb: PuriLoaderQbFn;
+  readonly loaders?: readonly GenericPuriLoader[];
 };
 
 // The collection of loaders for a model. Renamed from PuriLoaderQuery
@@ -175,9 +176,12 @@ export type PuriLoaderQueries<TSubsetKey extends string> = Record<
   readonly GenericPuriLoader[]
 >;
 
-// Builds an object type from an array of loaders
+// Builds an object type from an array of loaders (재귀적으로 중첩 loader 처리)
 export type LoadersResult<TLoaders extends readonly GenericPuriLoader[]> = {
-  [L in TLoaders[number] as L["as"]]: ExtractLoaderResult<L["qb"]>[];
+  [L in TLoaders[number] as L["as"]]: Expand<
+    ExtractLoaderResult<L["qb"]> &
+    (L["loaders"] extends readonly GenericPuriLoader[] ? LoadersResult<L["loaders"]> : {})
+  >[];
 };
 
 // Combines the base result with the loaders result

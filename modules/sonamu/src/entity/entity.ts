@@ -183,81 +183,96 @@ export class Entity {
       return `${select}: "${select}"`;
     };
 
-    for (const loader of loaders) {
-      const { toTable, toCol, through } = loader.manyJoin;
-      lines.push();
-      lines.push(
-        "{",
-        `as: "${loader.as}",`,
-        `refId: "${loader.manyJoin.idField}",`,
-        `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`,
-      );
-      if (through === undefined) {
-        lines.push(
-          //
-          `return qbWrapper`,
-          `.from("${toTable}")`,
+    // 재귀적으로 loader 생성하는 헬퍼 함수
+    const generateLoaderCode = (loaders: SubsetQuery["loaders"]): string[] => {
+      const loaderLines: string[] = [];
+
+      for (const loader of loaders) {
+        const { toTable, toCol, through } = loader.manyJoin;
+        loaderLines.push(
+          "{",
+          `as: "${loader.as}",`,
+          `refId: "${loader.manyJoin.idField}",`,
+          `qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {`,
         );
 
-        loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-          const joinType = join.join === "inner" ? "join" : "leftJoin";
-          if ("custom" in join) {
-            // FIXME: 검증 필요
-            lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
-              `j.on(Puri.rawString("${join.custom}"));`,
-              `})`,
-            );
-          } else {
-            lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
-            );
-          }
-        });
+        if (through === undefined) {
+          // HasMany
+          loaderLines.push(
+            //
+            "return qbWrapper",
+            `.from("${toTable}")`,
+          );
 
-        lines.push(
-          `.whereIn("${toTable}.${toCol}", fromIds)`,
-          `.select({`,
-          `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
-          `refId: "${toTable}.${toCol}",`,
-          `});`,
-        );
-      } else {
-        // const idColumn = `${through.table}.${through.fromCol}`;
+          loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
+            const joinType = join.join === "inner" ? "join" : "leftJoin";
+            if ("custom" in join) {
+              // FIXME: 검증 필요
+              loaderLines.push(
+                `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+                `j.on(Puri.rawString("${join.custom}"));`,
+                "})",
+              );
+            } else {
+              loaderLines.push(
+                `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
+              );
+            }
+          });
 
-        lines.push(
-          `return qbWrapper`,
-          `.from("${through.table}")`,
-          `.join("${toTable}", "${through.table}.${through.toCol}", "${toTable}.${toCol}")`,
-        );
+          loaderLines.push(
+            `.whereIn("${toTable}.${toCol}", fromIds)`,
+            `.select({`,
+            `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
+            `refId: "${toTable}.${toCol}",`,
+            `});`,
+          );
+        } else {
+          // ManyToMany
+          loaderLines.push(
+            "return qbWrapper",
+            `.from("${through.table}")`,
+            `.join("${toTable}", "${through.table}.${through.toCol}", "${toTable}.${toCol}")`,
+          );
 
-        loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-          const joinType = join.join === "inner" ? "join" : "leftJoin";
-          if ("custom" in join) {
-            // FIXME: 검증 필요
-            lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
-              `j.on(Puri.rawString("${join.custom}"));`,
-              `})`,
-            );
-          } else {
-            lines.push(
-              `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
-            );
-          }
-        });
+          loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
+            const joinType = join.join === "inner" ? "join" : "leftJoin";
+            if ("custom" in join) {
+              // FIXME: 검증 필요
+              loaderLines.push(
+                `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+                `j.on(Puri.rawString("${join.custom}"));`,
+                "})",
+              );
+            } else {
+              loaderLines.push(
+                `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
+              );
+            }
+          });
+          loaderLines.push(
+            `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
+            `.select({`,
+            `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
+            `refId: "${through.table}.${through.fromCol}",`,
+            `});`,
+          );
+        }
 
-        lines.push(
-          `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
-          `.select({`,
-          `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
-          `refId: "${through.table}.${through.fromCol}",`,
-          `});`,
-        );
+        loaderLines.push(`},`);
+
+        // 중첩 loaders 처리
+        if (loader.loaders && loader.loaders.length > 0) {
+          loaderLines.push("loaders: [", ...generateLoaderCode(loader.loaders), "],");
+        }
+
+        loaderLines.push("},");
       }
 
-      lines.push(`},`, `},`);
-    }
+      return loaderLines;
+    };
+
+    lines.push(...generateLoaderCode(loaders));
     lines.push(`]`);
 
     return lines.join("\n");
