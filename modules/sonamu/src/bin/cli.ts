@@ -506,7 +506,7 @@ async function ui() {
       process.execPath,
       [
         "--import",
-        "@sonamu-kit/loader",
+        "sonamu/loader-register",
         "--import",
         "sonamu/hot-hook-register",
         "--enable-source-maps",
