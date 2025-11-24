@@ -199,24 +199,12 @@ export class BaseModelClass<
       queryMode?: "list" | "count" | "both";
     };
     debug?: boolean;
-  } & ([RequiredEnhancerKeys<
-    TSubsetKey,
-    TComputedResults,
-    TSubsetMapping
-  >] extends [never]
+  } & ([RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping>] extends [never]
     ? {
-        enhancers?: EnhancerPlaceholder<
-          TSubsetKey,
-          TComputedResults,
-          TSubsetMapping
-        >;
+        enhancers?: EnhancerPlaceholder<TSubsetKey, TComputedResults, TSubsetMapping>;
       }
     : {
-        enhancers: EnhancerPlaceholder<
-          TSubsetKey,
-          TComputedResults,
-          TSubsetMapping
-        >;
+        enhancers: EnhancerPlaceholder<TSubsetKey, TComputedResults, TSubsetMapping>;
       })): Promise<{
     rows: TSubsetMapping[T][];
     total: number;
@@ -405,7 +393,7 @@ export class BaseModelClass<
             .slice(1)
             .map((part) => `[${part}]`)
             .join("");
-        set(
+        r = set(
           r,
           objPath,
           row[field] && Array.isArray(row[field]) && isObject(row[field][0])
