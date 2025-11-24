@@ -33,7 +33,7 @@
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "0aa8642f57a2ac569b1ab26179569857ea2476a7"
+    "checksum": "6f05242e4c15b16fc2bbcb1a8804eb9f962af698"
   },
   {
     "path": "src/application/employee/employee.types.ts",

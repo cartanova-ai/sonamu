@@ -5,7 +5,7 @@ import {
   BaseModelClass,
   type ListResult,
   NotFoundException,
-  withProp,
+  withProps,
 } from "sonamu";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeePuriLoaderQueries, employeePuriSubsetQueries } from "../sonamu.generated.sso";
@@ -109,9 +109,12 @@ class EmployeeModelClass extends BaseModelClass<
         },
       }),
       P: (row) => {
-        const a = withProp(row, "user.employee.department.employee_count", 0);
-        const b = withProp(a, "department.employees.projs.virtual_test", 0);
-        return b;
+        // let 변수를 withProp으로 재할당할 경우 타입 추론이 깨짐(유니온)
+        // 여러 필드를 수정해야 하는 경우 const로 매번 다른 변수를 생성하거나, 아래처럼 체이닝으로 해결
+        return withProps(row)
+          .set("user.employee.department.employee_count", 0)
+          .set("department.employees.projs.virtual_test", 0)
+          .value();
       },
       // P: (row) => ({
       //   ...row,
