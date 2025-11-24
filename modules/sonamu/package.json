@@ -13,6 +13,9 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./loader-register": {
+      "default": "./dist/bin/loader-register.js"
+    },
     "./hot-hook-register": {
       "default": "./dist/bin/hot-hook-register.js"
     }
@@ -70,11 +73,13 @@
     "qs": "^6.11.0",
     "tsicli": "^1.0.5",
     "vitest": "^4.0.10",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@sonamu-kit/loader": "workspace:^",
+    "@sonamu-kit/hot-hook": "workspace:^",
+    "@sonamu-kit/hot-runner": "workspace:^"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
-    "@sonamu-kit/hot-hook": "workspace:^",
     "@swc/cli": "^0.7.8",
     "@types/inflection": "^1.13.0",
     "@types/mime-types": "^3.0.1",
@@ -86,8 +91,6 @@
     "nodemon": "3.1.10"
   },
   "peerDependencies": {
-    "@sonamu-kit/hot-runner": "^0.1.1",
-    "@sonamu-kit/loader": "^2.1.3",
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.13.5",
     "fastify": "^4.23.2",

@@ -97,8 +97,12 @@ bootstrap().finally(async () => {
  * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
  *
  * TypeScript를 바로 실행할 수 있도록 @sonamu-kit/loader를,
- * HMR을 지원하기 위해 sonamu/hot-hook-register를 import하며,
+ * HMR을 지원하기 위해 @sonamu-kit/hot-hook을 import하며,
  * 소스맵 지원을 위해 --enable-source-maps 플래그를 포함하여 실행합니다.
+ *
+ * 이때 @sonamu-kit/loader와 @sonamu-kit/hot-hook는 sonamu가 자체적으로 가지고 있는 dependency입니다.
+ * 또한 실행에 사용하는 @sonamu-kit/hot-runner도 마찬가지로 sonamu가 자체적으로 가지고 있는 dependency입니다.
+ * 따라서 사용자 프로젝트에서는 이 세 패키지를 직접 설치할 필요가 없습니다.
  *
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
@@ -108,14 +112,21 @@ async function dev() {
 
   console.log(chalk.yellow.bold("🚀 Starting Sonamu dev server...\n"));
 
+  // 이 sonamu 패키지가 dependencies로 가지고 있는 @sonamu-kit/hot-runner의 bin/run.js를 사용합니다.
+  // 이 경로(/bin/run.js)는 @sonamu-kit/hot-runner의 package.json의 bin 필드에 명시되어 있는 그것과 같습니다.
+  const hotRunnerBinPath = createRequire(import.meta.url).resolve(
+    "@sonamu-kit/hot-runner/bin/run.js",
+  );
+
   const serverProcess = spawn(
-    "hot-runner",
+    process.execPath, // node
     [
-      "--clear-screen=false",
-      "--node-args=--import=@sonamu-kit/loader",
-      "--node-args=--import=sonamu/hot-hook-register",
-      "--node-args=--enable-source-maps",
-      entryPoint,
+      hotRunnerBinPath, // 이렇게 해서 hot-runner를 실행하구요
+      "--clear-screen=false", // 이하 hot-runner에게 넘겨줄 인자들입니다.
+      "--node-args=--import=sonamu/loader-register", // TypeScript 서포트를 위한 로더,
+      "--node-args=--import=sonamu/hot-hook-register", // HMR을 지원하기 위한 hot-hook,
+      "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
+      entryPoint, // 마지막으로 실제 실행할 스크립트의 경로를 넘겨줍니다.
     ],
     {
       cwd: apiRoot,
@@ -123,8 +134,8 @@ async function dev() {
       env: {
         ...process.env,
         NODE_ENV: "development",
-        HOT: "yes",
-        API_ROOT_PATH: apiRoot,
+        HOT: "yes", // 얘가 있어야 HMR이 활성화됩니다.
+        API_ROOT_PATH: apiRoot, // 이 경로가 hot-hook의 루트 디렉토리가 됩니다.
       },
     },
   );
@@ -160,7 +171,7 @@ async function dev() {
 async function build() {
   const apiRoot = findApiRootPath();
 
-  // 출력 디렉토리를 제걱합니다.
+  // 출력 디렉토리를 제거합니다.
   try {
     console.log(chalk.blue("Removing build directory..."));
     if (await exists(BUILD_DIR)) {
@@ -248,10 +259,14 @@ async function start() {
   }
 
   const { spawn } = await import("child_process");
-  const serverProcess = spawn("node", ["--enable-source-maps", "-r", "dotenv/config", entryPoint], {
-    cwd: apiRoot,
-    stdio: "inherit",
-  });
+  const serverProcess = spawn(
+    process.execPath,
+    ["--enable-source-maps", "-r", "dotenv/config", entryPoint],
+    {
+      cwd: apiRoot,
+      stdio: "inherit",
+    },
+  );
 
   process.on("SIGINT", () => {
     serverProcess.kill("SIGTERM");
