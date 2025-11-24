@@ -1,47 +1,62 @@
-type SetPath<T, P extends string, V> = P extends `${infer First}.${infer Rest}`
-  ? First extends keyof T
-    ? { [K in keyof T]: K extends First ? SetPath<T[K], Rest, V> : T[K] }
-    : T & { [K in First]: SetPath<{}, Rest, V> }
-  : T & { [K in P]: V };
+// 타입을 펼쳐서 보여주는 유틸리티 (객체에만 사용해야 함)
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
 
-/**
- * 불변성을 유지하면서 중첩 객체의 필드를 설정합니다.
- * @param obj 기본값 (예: { a: 1 })
- * @param path 경로 (예: "b.c.d")
- * @param value 값 (예: 0)
- * @returns 설정된 객체 (예: { a: 1, b: { c: { d: 0 } } })
- */
+// 핵심 로직
+type SetPath<T, P extends string, V> = T extends readonly (infer U)[] // [Step 1] 현재 타입이 배열인가? -> 요소(U)에 대해 재귀 호출 후 배열로 감쌈
+  ? SetPath<U, P, V>[]
+  : // [Step 2] 경로가 점(.)으로 나뉘는가?
+    P extends `${infer K}.${infer Rest}`
+    ? K extends keyof T
+      ? // [Step 2-1] 키가 존재함
+        Expand<{
+          [Key in keyof T]: Key extends K
+            ? SetPath<T[K], Rest, V> // 재귀 호출
+            : T[Key];
+        }>
+      : // [Step 2-2] 키가 없음 (새로운 객체 경로 생성)
+        Expand<T & { [Key in K]: SetPath<{}, Rest, V> }>
+    : // [Step 3] 경로의 마지막 (Base Case)
+      P extends keyof T
+      ? // [Step 3-1] 기존 키 덮어쓰기 (교차 타입 & 대신 조건부 타입으로 완전 교체)
+        Expand<{ [Key in keyof T]: Key extends P ? V : T[Key] }>
+      : // [Step 3-2] 새 키 추가
+        Expand<T & { [Key in P]: V }>;
+
 export function withProp<T extends object, P extends string, V>(
   obj: T,
   path: P,
   value: V,
 ): SetPath<T, P, V> {
   const keys = path.split(".");
-
-  if (keys.length === 0) {
-    throw new Error("Path cannot be empty");
-  }
-
+  if (keys.length === 0) throw new Error("Path cannot be empty");
   const result = structuredClone(obj);
-  let current: any = result;
 
-  for (const [index, key] of keys.entries()) {
-    if (index === keys.length - 1) {
-      break;
+  const setDeep = (current: any, keys: string[], value: V): void => {
+    if (keys.length === 0) return;
+    const [key, ...rest] = keys;
+
+    if (rest.length === 0) {
+      if (Array.isArray(current)) {
+        current.forEach((item) => {
+          item[key] = value;
+        });
+      } else {
+        current[key] = value;
+      }
+    } else {
+      if (!(key in current) || typeof current[key] !== "object") {
+        current[key] = {};
+      }
+      if (Array.isArray(current[key])) {
+        current[key].forEach((item: any) => {
+          setDeep(item, rest, value);
+        });
+      } else {
+        setDeep(current[key], rest, value);
+      }
     }
+  };
 
-    // key가 없거나 객체가 아니면 빈 객체로 초기화
-    if (!(key in current) || typeof current[key] !== "object") {
-      current[key] = {};
-    }
-    current = current[key] as Record<string, unknown>;
-  }
-
-  const lastKey = keys[keys.length - 1];
-  if (!lastKey) {
-    throw new Error("Invalid path: empty last key");
-  }
-
-  current[lastKey] = value;
+  setDeep(result, keys, value);
   return result as SetPath<T, P, V>;
 }
