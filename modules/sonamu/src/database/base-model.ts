@@ -41,6 +41,14 @@ type ResolveIntersection<
 
 type EnhancerFn<TComputed, TMapping> = (row: TComputed) => TMapping | Promise<TMapping>;
 
+type RequiredEnhancerKeys<
+  TSubsetKey extends string,
+  TComputedResults extends Record<TSubsetKey, any>,
+  TSubsetMapping extends Record<TSubsetKey, any>,
+> = keyof {
+  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K] ? never : K]: unknown;
+};
+
 /**
  * TSubsetKey 전체에 대해,
  * - TComputedResults[K] 가 TSubsetMapping[K] 에 assignable 이면 → enhancer 옵셔널
@@ -190,9 +198,26 @@ export class BaseModelClass<
       page?: number;
       queryMode?: "list" | "count" | "both";
     };
-    enhancers: EnhancerPlaceholder<TSubsetKey, TComputedResults, TSubsetMapping>;
     debug?: boolean;
-  }): Promise<{
+  } & ([RequiredEnhancerKeys<
+    TSubsetKey,
+    TComputedResults,
+    TSubsetMapping
+  >] extends [never]
+    ? {
+        enhancers?: EnhancerPlaceholder<
+          TSubsetKey,
+          TComputedResults,
+          TSubsetMapping
+        >;
+      }
+    : {
+        enhancers: EnhancerPlaceholder<
+          TSubsetKey,
+          TComputedResults,
+          TSubsetMapping
+        >;
+      })): Promise<{
     rows: TSubsetMapping[T][];
     total: number;
   }> {
@@ -268,7 +293,7 @@ export class BaseModelClass<
     })();
 
     // Enhancer 적용
-    const enhancer = (enhancers as any)[subset];
+    const enhancer = (enhancers as any)?.[subset];
     const rows = (await Promise.all(
       computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
