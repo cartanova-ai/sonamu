@@ -383,6 +383,17 @@ export const EmployeeSubsetP = z.object({
       })
       .nullable(),
   }),
+  department: z
+    .object({
+      id: z.int().nonnegative(),
+      employees: z.array(
+        z.object({
+          id: z.int().nonnegative(),
+          salary: z.string().nullable(),
+        }),
+      ),
+    })
+    .nullable(),
 });
 export type EmployeeSubsetP = z.infer<typeof EmployeeSubsetP>;
 export type EmployeeSubsetMapping = {

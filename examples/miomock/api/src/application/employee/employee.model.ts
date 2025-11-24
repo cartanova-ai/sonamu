@@ -129,7 +129,7 @@ class EmployeeModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
-      debug: false,
+      debug: true,
     });
 
     return {

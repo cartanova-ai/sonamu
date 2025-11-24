@@ -204,6 +204,7 @@ export const departmentPuriLoaderQueries = {
   A: [
     {
       as: "employees",
+      refId: "id",
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
         return qbWrapper
           .from("employees")
@@ -267,6 +268,7 @@ export const employeeSubsetQueries: { [key in EmployeeSubsetKey]: SubsetQuery } 
       "user__employee__department.id as user__employee__department__id",
       "user__employee.employee_number as user__employee__employee_number",
       "user__employee.salary as user__employee__salary",
+      "department.id as department__id",
     ],
     virtual: [],
     joins: [
@@ -285,8 +287,30 @@ export const employeeSubsetQueries: { [key in EmployeeSubsetKey]: SubsetQuery } 
         from: "user__employee.department_id",
         to: "user__employee__department.id",
       },
+      {
+        as: "department",
+        join: "outer",
+        table: "departments",
+        from: "employees.department_id",
+        to: "department.id",
+      },
     ],
-    loaders: [],
+    loaders: [
+      {
+        as: "department__employees",
+        table: "employees",
+        manyJoin: {
+          fromTable: "departments",
+          fromCol: "id",
+          idField: "department__id",
+          toTable: "employees",
+          toCol: "department_id",
+        },
+        oneJoins: [],
+        select: ["employees.id", "employees.salary"],
+        loaders: [],
+      },
+    ],
   },
 };
 
@@ -324,6 +348,7 @@ export const employeePuriSubsetQueries = {
         "user__employee.department_id",
         "user__employee__department.id",
       )
+      .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
       .select({
         id: "employees.id",
         created_at: "employees.created_at",
@@ -332,6 +357,7 @@ export const employeePuriSubsetQueries = {
         user__employee__department__id: "user__employee__department.id",
         user__employee__employee_number: "user__employee.employee_number",
         user__employee__salary: "user__employee.salary",
+        department__id: "department.id",
       });
   },
 };
@@ -339,7 +365,19 @@ export const employeePuriSubsetQueries = {
 // Puri LoaderQuery: Employee
 export const employeePuriLoaderQueries = {
   A: [],
-  P: [],
+  P: [
+    {
+      as: "department__employees",
+      refId: "department__id",
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+        return qbWrapper.from("employees").whereIn("employees.department_id", fromIds).select({
+          id: "employees.id",
+          salary: "employees.salary",
+          refId: "employees.department_id",
+        });
+      },
+    },
+  ],
 } as const satisfies PuriLoaderQueries<EmployeeSubsetKey>;
 
 // SubsetQuery: File
@@ -522,6 +560,7 @@ export const projectPuriLoaderQueries = {
   A: [
     {
       as: "employee",
+      refId: "id",
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
         return qbWrapper
           .from("projects__employees")
@@ -542,6 +581,7 @@ export const projectPuriLoaderQueries = {
     },
     {
       as: "tags",
+      refId: "id",
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
         return qbWrapper
           .from("project_tags")
@@ -558,6 +598,7 @@ export const projectPuriLoaderQueries = {
   P: [
     {
       as: "employee",
+      refId: "id",
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
         return qbWrapper
           .from("projects__employees")
@@ -577,6 +618,7 @@ export const projectPuriLoaderQueries = {
     },
     {
       as: "tags",
+      refId: "id",
       qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
         return qbWrapper
           .from("project_tags")
