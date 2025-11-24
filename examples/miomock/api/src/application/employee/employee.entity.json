@@ -43,6 +43,17 @@
       "type": "decimal",
       "precision": 10,
       "scale": 2
+    },
+    {
+      "type": "relation",
+      "name": "projs",
+      "with": "Project",
+      "nullable": true,
+      "desc": "참여중인 프로젝트",
+      "relationType": "ManyToMany",
+      "joinTable": "projects__employees",
+      "onUpdate": "CASCADE",
+      "onDelete": "CASCADE"
     }
   ],
   "indexes": [],
@@ -70,7 +81,15 @@
       "user.employee.salary",
       "department.id",
       "department.employees.id",
-      "department.employees.salary"
+      "department.employees.salary",
+      "department.employees.projs.id",
+      "department.employees.projs.name",
+      "department.employees.projs.status",
+      "department.employees.projs.virtual_test",
+      "projs.id",
+      "projs.name",
+      "projs.status",
+      "projs.description"
     ]
   },
   "enums": {

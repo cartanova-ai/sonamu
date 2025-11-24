@@ -108,7 +108,11 @@ class EmployeeModelClass extends BaseModelClass<
           employee_count: 0,
         },
       }),
-      P: (row) => withProp(row, "user.employee.department.employee_count", 0),
+      P: (row) => {
+        const a = withProp(row, "user.employee.department.employee_count", 0);
+        const b = withProp(a, "department.employees.projs.virtual_test", 0);
+        return b;
+      },
       // P: (row) => ({
       //   ...row,
       //   user: {
@@ -120,6 +124,13 @@ class EmployeeModelClass extends BaseModelClass<
       //         employee_count: 0,
       //       },
       //     },
+      //   },
+      //   department: {
+      //     ...row.department,
+      //     employees: row.department.employees.map((employee) => ({
+      //       ...employee,
+      //       projs: employee.projs.map((proj) => ({ ...proj, virtual_test: 0 })),
+      //     })),
       //   },
       // }),
     });

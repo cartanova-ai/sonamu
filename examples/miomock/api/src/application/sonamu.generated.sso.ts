@@ -308,6 +308,41 @@ export const employeeSubsetQueries: { [key in EmployeeSubsetKey]: SubsetQuery } 
         },
         oneJoins: [],
         select: ["employees.id", "employees.salary"],
+        loaders: [
+          {
+            as: "projs",
+            table: "projects",
+            manyJoin: {
+              fromTable: "employees",
+              fromCol: "id",
+              idField: "id",
+              through: {
+                table: "projects__employees",
+                fromCol: "employee_id",
+                toCol: "project_id",
+              },
+              toTable: "projects",
+              toCol: "id",
+            },
+            oneJoins: [],
+            select: ["projects.id", "projects.name", "projects.status"],
+            loaders: [],
+          },
+        ],
+      },
+      {
+        as: "projs",
+        table: "projects",
+        manyJoin: {
+          fromTable: "employees",
+          fromCol: "id",
+          idField: "id",
+          through: { table: "projects__employees", fromCol: "employee_id", toCol: "project_id" },
+          toTable: "projects",
+          toCol: "id",
+        },
+        oneJoins: [],
+        select: ["projects.id", "projects.name", "projects.status", "projects.description"],
         loaders: [],
       },
     ],
@@ -375,6 +410,41 @@ export const employeePuriLoaderQueries = {
           salary: "employees.salary",
           refId: "employees.department_id",
         });
+      },
+      loaders: [
+        {
+          as: "projs",
+          refId: "id",
+          qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+            return qbWrapper
+              .from("projects__employees")
+              .join("projects", "projects__employees.project_id", "projects.id")
+              .whereIn("projects__employees.employee_id", fromIds)
+              .select({
+                id: "projects.id",
+                name: "projects.name",
+                status: "projects.status",
+                refId: "projects__employees.employee_id",
+              });
+          },
+        },
+      ],
+    },
+    {
+      as: "projs",
+      refId: "id",
+      qb: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>, fromIds: number[]) => {
+        return qbWrapper
+          .from("projects__employees")
+          .join("projects", "projects__employees.project_id", "projects.id")
+          .whereIn("projects__employees.employee_id", fromIds)
+          .select({
+            id: "projects.id",
+            name: "projects.name",
+            status: "projects.status",
+            description: "projects.description",
+            refId: "projects__employees.employee_id",
+          });
       },
     },
   ],
@@ -786,7 +856,7 @@ declare module "sonamu" {
     projects: ProjectBaseSchema;
     tags: TagBaseSchema;
     users: UserBaseSchema;
-    projects__employees: ManyToManyBaseSchema<"project", "employee">;
+    projects__employees: ManyToManyBaseSchema<"employee", "project">;
     project_tags: ManyToManyBaseSchema<"project", "tag">;
   }
 }

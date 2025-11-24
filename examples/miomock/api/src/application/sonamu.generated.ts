@@ -112,6 +112,7 @@ export const EmployeeBaseSchema = z.object({
   department_id: z.int().nullable(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
+  // projs: ManyToMany Project
 });
 export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
 
@@ -390,10 +391,26 @@ export const EmployeeSubsetP = z.object({
         z.object({
           id: z.int().nonnegative(),
           salary: z.string().nullable(),
+          projs: z.array(
+            z.object({
+              id: z.int().nonnegative(),
+              name: z.string().max(255),
+              status: ProjectStatus,
+              virtual_test: NumberType.nullable(),
+            }),
+          ),
         }),
       ),
     })
     .nullable(),
+  projs: z.array(
+    z.object({
+      id: z.int().nonnegative(),
+      name: z.string().max(255),
+      status: ProjectStatus,
+      description: z.string().max(4294967295).nullable(),
+    }),
+  ),
 });
 export type EmployeeSubsetP = z.infer<typeof EmployeeSubsetP>;
 export type EmployeeSubsetMapping = {
