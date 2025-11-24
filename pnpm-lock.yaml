@@ -780,6 +780,9 @@ importers:
       '@sonamu-kit/hot-hook':
         specifier: workspace:^
         version: link:../hot-hook
+      '@sonamu-kit/loader':
+        specifier: workspace:^
+        version: link:../loader
       '@sonamu-kit/react-sui':
         specifier: workspace:^
         version: link:../react-sui

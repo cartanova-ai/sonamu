@@ -44,6 +44,7 @@
     "@fastify/multipart": "^9.0.1",
     "@fastify/static": "^6.10.2",
     "@sonamu-kit/hot-hook": "workspace:^",
+    "@sonamu-kit/loader": "workspace:^",
     "@sonamu-kit/react-sui": "workspace:^",
     "@vitejs/plugin-react": "^4.0.3",
     "@xyflow/react": "^12.9.3",
