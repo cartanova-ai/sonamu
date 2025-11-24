@@ -1,6 +1,7 @@
 import assert from "assert";
 import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
+import { isEqual } from "radashi";
 import type { z } from "zod";
 import type { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
@@ -88,18 +89,28 @@ export function api(options: ApiDecoratorOptions = {}) {
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
       true,
     )}/${inflection.camelize(propertyKey, true)}`;
+    const path = options.path ?? defaultPath;
 
     // 기존 동일한 메서드가 있는지 확인 후 있는 경우 override
     const existingApi = registeredApis.find(
       (api) => api.modelName === modelName && api.methodName === methodName,
     );
     if (existingApi) {
-      existingApi.options = options;
+      // 기존의 path와 새로운 path가 다르다면(=빈 스트링이 아니었는데 다른 스트링으로 바뀌게 된다면) 에러를 터뜨려줍니다.
+      assertNoConflictingPath("api", modelName, methodName, existingApi.path, path);
+      existingApi.path = path;
+
+      // 기존의 옵션과 새로운 옵션이 겹치는 부분이 있다면 에러를 터뜨려줍니다.
+      assertNoConflictingOptions("api", modelName, methodName, existingApi.options, options);
+      existingApi.options = {
+        ...existingApi.options, // 기존의 옵션을 존중하되
+        ...options, // @api 데코레이터의 옵션을 추가합니다.
+      };
     } else {
       registeredApis.push({
         modelName,
         methodName,
-        path: options.path ?? defaultPath,
+        path,
         options,
       });
     }
@@ -119,21 +130,40 @@ export function stream(options: StreamDecoratorOptions) {
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
       true,
     )}/${inflection.camelize(propertyKey, true)}`;
+    const path = options.path ?? defaultPath;
+    const optionsWithDefaults = {
+      ...options,
+      httpMethod: "GET" as HTTPMethods,
+    };
 
     const existingApi = registeredApis.find(
       (api) => api.modelName === modelName && api.methodName === methodName,
     );
     if (existingApi) {
-      existingApi.options = options;
+      // 기존의 path와 새로운 path가 다르다면(=빈 스트링이 아니었는데 다른 스트링으로 바뀌게 된다면) 에러를 터뜨려줍니다.
+      assertNoConflictingPath("stream", modelName, methodName, existingApi.path, path);
+      existingApi.path = path;
+
+      // 기존의 옵션과 새로운 옵션이 겹치는 부분이 있다면 에러를 터뜨려줍니다.
+      assertNoConflictingOptions(
+        "stream",
+        modelName,
+        methodName,
+        existingApi.options,
+        optionsWithDefaults,
+      );
+      existingApi.options = {
+        ...existingApi.options, // 기존의 옵션을 존중하되
+        ...optionsWithDefaults, // @stream 데코레이터의 옵션을 추가합니다.
+      };
+
+      existingApi.streamOptions = options;
     } else {
       registeredApis.push({
         modelName,
         methodName,
-        path: options.path ?? defaultPath,
-        options: {
-          ...options,
-          httpMethod: "GET",
-        },
+        path,
+        options: optionsWithDefaults,
         streamOptions: options,
       });
     }
@@ -191,6 +221,11 @@ export function transactional(options: TransactionalOptions = {}) {
   };
 }
 
+/**
+ * api 데코레이터와 함께 사용할 수 있습니다.
+ * @param options
+ * @returns
+ */
 export function upload(options: UploadDecoratorOptions = {}) {
   return (_target: DecoratorTarget, _propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
@@ -207,6 +242,18 @@ export function upload(options: UploadDecoratorOptions = {}) {
     );
     if (existingApi) {
       existingApi.uploadOptions = options;
+    } else {
+      // 이 메소드에 붙은 @api 데코레이터가 아직 eval되지 않은 상황입니다. (만약 @api가 안 붙어 있었다면 심각한 상황입니다..!)
+      // 여기에서 최초로 modelName과 methodName에 대해 registeredApis에 하나를 추가해주어야 합니다.
+      // uploadOptions는 그대로 추가하고, path는 빈 스트링으로 추가해줍니다.
+      // 이후 @api 데코레이터가 eval되면 실제 path로 덮어씌워지고, options가 추가됩니다.
+      registeredApis.push({
+        modelName,
+        methodName,
+        path: "",
+        options: {},
+        uploadOptions: options,
+      });
     }
 
     descriptor.value = async function (this: BaseModelClass, ...args: unknown[]) {
@@ -244,4 +291,60 @@ export function upload(options: UploadDecoratorOptions = {}) {
 
     return descriptor;
   };
+}
+
+/**
+ * 기존의 path와 새로운 path가 다르다면(=값이 있던 스트링이 다른 값이 있는 스트링으로 바뀌게 된다면) 에러를 터뜨려줍니다.
+ * @param decoratorName 데코레이터 이름
+ * @param modelName 모델 이름
+ * @param methodName 메서드 이름
+ * @param existingPath 기존의 path
+ * @param newPath 새로운 path
+ */
+function assertNoConflictingPath(
+  decoratorName: string,
+  modelName: string,
+  methodName: string,
+  existingPath: string,
+  newPath: string,
+) {
+  if (existingPath !== "" && newPath !== "" && existingPath !== newPath) {
+    // 이것이 무슨 상황이냐면요, api.path가 덮어씌워지는 상황입니다.
+    // 가령 @api({ path: "/api/v1/users" }) 데코레이터가 붙어있는 메서드에
+    // @stream({ path: "/api/v1/users/stream" }) 같은 것이 붙어 있는 상황입니다.
+    // 이렇게 되면 두 데코레이터가 같은 api의 path 필드를 건드리게 되므로, 에러를 터뜨려줍니다.
+    throw new Error(
+      `@${decoratorName} decorator on ${modelName}.${methodName} has conflicting path: ${newPath}. The decorator is trying to override the existing path(${existingPath}) with the new path(${newPath}).`,
+    );
+  }
+}
+
+/**
+ * 기존의 옵션과 새로운 옵션이 겹치는 부분이 있다면 에러를 터뜨려줍니다.
+ * @param decoratorName 데코레이터 이름
+ * @param modelName 모델 이름
+ * @param methodName 메서드 이름
+ * @param existingOptions 기존의 옵션
+ * @param newOptions 새로운 옵션
+ */
+function assertNoConflictingOptions(
+  decoratorName: string,
+  modelName: string,
+  methodName: string,
+  // biome-ignore lint/suspicious/noExplicitAny: <아 쉽게쉽게 좀 갑시다>
+  existingOptions: Record<string, any>,
+  // biome-ignore lint/suspicious/noExplicitAny: <이럴 때 아니면 any 언제 씁니까>
+  newOptions: Record<string, any>,
+) {
+  Object.keys(newOptions).forEach((key) => {
+    if (existingOptions[key] && !isEqual(existingOptions[key], newOptions[key])) {
+      // 이것이 무슨 상황이냐면요, api.options가 덮어씌워지는 상황입니다.
+      // 가령 @api({ resourceName: "Users" }) 데코레이터가 붙어있는 메서드에
+      // @stream({ resourceName: "Posts" }) 같은 것이 붙어 있는 상황입니다.
+      // 이렇게 되면 두 데코레이터가 같은 api의 options 속 같은 필드를 건드리게 되므로, 에러를 터뜨려줍니다.
+      throw new Error(
+        `@${decoratorName} decorator on ${modelName}.${methodName} has conflicting options: ${key}. The decorator is trying to override the existing option(${JSON.stringify(existingOptions[key])}) with the new option(${JSON.stringify(newOptions[key])}).`,
+      );
+    }
+  });
 }
