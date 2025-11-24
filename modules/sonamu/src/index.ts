@@ -22,6 +22,7 @@ export * from "./testing/fixture-manager";
 export * from "./types/types";
 export * from "./utils/controller";
 export * from "./utils/model";
+export * from "./utils/type-utils";
 export * from "./utils/utils";
 
 // export * from "./api/code-converters";
