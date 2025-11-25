@@ -4,6 +4,7 @@ import type { Knex } from "knex";
 import { group, isObject, omit, set, unique } from "radashi";
 import { type DatabaseSchemaExtend, isCustomJoinClause, type SubsetQuery } from "../types/types";
 import type { BaseListParams } from "../utils/model";
+import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
 import type { DBPreset } from "./db";
 import { DB } from "./db";
@@ -190,6 +191,7 @@ export class BaseModelClass<
     params,
     enhancers,
     debug = false,
+    optimizeCountQuery = false,
   }: {
     subset: T;
     qb: Puri<any, any, any>;
@@ -199,6 +201,7 @@ export class BaseModelClass<
       queryMode?: "list" | "count" | "both";
     };
     debug?: boolean;
+    optimizeCountQuery?: boolean;
   } & ([RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping>] extends [never]
     ? {
         enhancers?: EnhancerPlaceholder<TSubsetKey, TComputedResults, TSubsetMapping>;
@@ -225,6 +228,21 @@ export class BaseModelClass<
       }
 
       const countPuri = qb.clone().clear("order").clear("limit").clear("offset");
+
+      if (optimizeCountQuery) {
+        // inner join과 where절에 사용되는 테이블의 조인만 남기고 나머지 조인 제거
+        const { default: SqlParser } = await import("node-sql-parser");
+        const parser = new SqlParser.Parser();
+        const parsedQuery = parser.astify(countPuri.toQuery());
+
+        const leftJoinTables = getJoinTables(parsedQuery, ["LEFT JOIN"]);
+        const whereTables = getTableNamesFromWhere(parsedQuery);
+
+        const tablesToRemove = leftJoinTables.filter((j) => !whereTables.includes(j));
+        tablesToRemove.forEach((table) => {
+          countPuri.clearJoin(table);
+        });
+      }
 
       // COUNT(*)로 전체 레코드 수를 계산
       // TODO: qb의 DISTINCT가 있는 경우 처리해야 함
