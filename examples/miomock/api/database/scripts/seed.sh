@@ -2,6 +2,9 @@
 # fixture DB에 덤프 적용하는 스크립트
 # Usage: pnpm seed
 
+# 환경변수
+source .env
+
 set -e # 에러 발생 시 즉시 중단
 
 SOURCE_DB="miomock_test"
