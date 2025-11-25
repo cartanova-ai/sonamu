@@ -164,7 +164,7 @@ async function dev() {
  * pnpm build 하면 실행되는 함수입니다.
  * 프로젝트를 빌드합니다.
  *
- * 빌드에 필요한 .swcrc는 프로젝트 루트에서 찾고, 없으면 sonamu의 그것을 사용합니다.
+ * 빌드에 필요한 .swcrc는 프로젝트 루트에서 찾고, 없으면 sonamu가 관리하는 .swcrc.project-default를 사용합니다.
  * sonamu.config.ts는 src에 들어있지 않기 때문에 SWC_BUILD_COMMAND로 빌드되지 않습니다.
  * 따라서 따로 빌드해줍니다.
  *
@@ -191,11 +191,9 @@ async function build() {
       // 사용자 프로젝트에 .swcrc가 있으면 우선으로 사용합니다.
       console.log(chalk.blue("Using .swcrc from project root..."));
     } else {
-      // 아니라면 sonamu 패키지 자체의 빌드에 사용하는 .swcrc를 가져다 씁니다.
-      // note: 언젠가 sonamu의 빌드 설정과 사용자 프로젝트의 빌드 설정이 달라진다면
-      // 프로젝트 빌드용 .swcrc 파일을 별도로 만들어 관리해야 하겠습니다만, 지금은 이렇게 갑니다.
+      // 아니라면 sonamu가 관리하는 .swcrc.project-default를 가져다 씁니다.
       console.log(chalk.blue("Using default .swcrc from sonamu package..."));
-      swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc");
+      swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
     }
   } catch (error) {
     console.error(chalk.red("Setting up swc config file failed."), error);
