@@ -393,7 +393,6 @@ export namespace SonamuUIService {
   }
 
   export function getEntityById(
-    db: string,
     entityId: string,
     id: string,
     subset: string,
@@ -401,7 +400,7 @@ export namespace SonamuUIService {
     return fetch({
       method: "GET",
       url: `/api/entity/findById`,
-      params: { db, entityId, id, subset },
+      params: { entityId, id, subset },
     });
   }
 }
