@@ -18,7 +18,8 @@
         "noBannedTypes": "off"
       },
       "suspicious": {
-        "noArrayIndexKey": "off"
+        "noArrayIndexKey": "off",
+        "noFocusedTests": "off"
       }
     }
   },
