@@ -126,6 +126,8 @@ async function dev() {
       "--node-args=--import=sonamu/loader-register", // TypeScript 서포트를 위한 로더,
       "--node-args=--import=sonamu/hot-hook-register", // HMR을 지원하기 위한 hot-hook,
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
+      "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
+      `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 sonamu.lock 파일을 지우고 서버 재시작하게 해줘요.
       entryPoint, // 마지막으로 실제 실행할 스크립트의 경로를 넘겨줍니다.
     ],
     {
