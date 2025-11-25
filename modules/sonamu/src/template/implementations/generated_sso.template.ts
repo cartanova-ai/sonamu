@@ -4,7 +4,7 @@ import { unique } from "radashi";
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
-import { isManyToManyRelationProp, type SubsetQuery } from "../../types/types";
+import { isManyToManyRelationProp } from "../../types/types";
 import { Template } from "../template";
 import type { SourceCode } from "./generated.template";
 
@@ -34,31 +34,9 @@ export class Template__generated_sso extends Template {
     // SubsetQueries 생성
     const sourceCodes: SourceCode[] = targetEntities.flatMap((entity) => {
       const subsetKeys = Object.keys(entity.subsets);
-      const subsetQueryObject = subsetKeys.reduce(
-        (r, subsetKey) => {
-          const subsetQuery = entity.getSubsetQuery(subsetKey);
-          r[subsetKey] = subsetQuery;
-          return r;
-        },
-        {} as {
-          [key: string]: SubsetQuery;
-        },
-      );
 
       const subsetKeyTypeName = `${entity.names.module}SubsetKey`;
       const entityCamelName = inflection.camelize(entity.id, true);
-
-      // JSON 기반 SubsetQuery
-      const jsonSubsetQuery: SourceCode = {
-        label: `SubsetQuery: ${entity.id}`,
-        lines: [
-          `export const ${entityCamelName}SubsetQueries:{ [key in ${subsetKeyTypeName}]: SubsetQuery} = ${JSON.stringify(
-            subsetQueryObject,
-          )};`,
-          "",
-        ],
-        importKeys: [subsetKeyTypeName],
-      };
 
       // Puri 기반 SubsetQuery
       const puriSubsetQuery: SourceCode = {
@@ -87,10 +65,10 @@ export class Template__generated_sso extends Template {
           `} as const satisfies PuriLoaderQueries<${subsetKeyTypeName}>;`,
           "",
         ],
-        importKeys: [],
+        importKeys: [subsetKeyTypeName],
       };
 
-      return [jsonSubsetQuery, puriSubsetQuery, puriLoaderQuery];
+      return [puriSubsetQuery, puriLoaderQuery];
     });
 
     // DatabaseSchema 생성
@@ -120,7 +98,6 @@ export class Template__generated_sso extends Template {
     const isUsingManyToManyBaseSchema = body.includes("ManyToManyBaseSchema");
 
     const sonamuImports = [
-      "SubsetQuery",
       "PuriWrapper",
       "DatabaseSchemaExtend",
       "PuriLoaderQueries",
