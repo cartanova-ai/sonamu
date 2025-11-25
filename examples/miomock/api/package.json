@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest watch --standalone",
     "sonamu": "sonamu",
-    "practice": "node dist/practices/$0.js"
+    "practice": "node dist/practices/$0.js",
+    "dump": "bash database/scripts/dump.sh",
+    "seed": "bash database/scripts/seed.sh"
   },
   "dependencies": {
     "@swc/core": "^1.13.5",

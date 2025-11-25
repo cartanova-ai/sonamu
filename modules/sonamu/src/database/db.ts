@@ -11,7 +11,6 @@ export type SonamuDBConfig = {
   development_master: Knex.Config;
   development_slave: Knex.Config;
   test: Knex.Config;
-  fixture_local: Knex.Config;
   fixture_remote: Knex.Config;
   production_master: Knex.Config;
   production_slave: Knex.Config;
@@ -118,13 +117,6 @@ class DBClass {
       },
     });
 
-    const fixture_local = assign(defaultKnexConfig, {
-      connection: {
-        database: `${config.name}_fixture_local`,
-        ...config.defaultOptions?.connection,
-      },
-    });
-
     // 개발 환경 설정
     const devMasterOptions = config.environments?.development;
     const devSlaveOptions = config.environments?.development_slave;
@@ -154,7 +146,6 @@ class DBClass {
 
     return {
       test,
-      fixture_local,
       fixture_remote,
       development_master,
       development_slave,

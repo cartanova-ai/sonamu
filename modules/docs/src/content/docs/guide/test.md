@@ -50,7 +50,7 @@ export async function setup() {
 
 ### Fixture 입력
 
-테스트에서 사용할 데이터인 `Fixture`를 `fixture_remote` 데이터베이스에 입력합니다. 입력한 데이터는 `yarn sonamu fixture sync` 명령어를 이용하여 `fixture_local` 데이터베이스로 동기화합니다. `fixture_local` 데이터베이스는 각 테스트 시작 전에 `test` 데이터베이스를 초기화할 때 사용합니다.
+테스트용 `Fixture` 데이터는 `fixture_remote` 데이터베이스에 입력합니다. 입력한 데이터는 `pnpm sonamu fixture sync` 명령어로 `fixture_remote`에서 `test` 데이터베이스로 직접 동기화됩니다.
 
 ### Fixture 작성
 
@@ -168,4 +168,4 @@ describe("PostModelTest", () => {
 });
 ```
 
-`yarn test` 명령어를 실행하여 테스트가 성공적으로 수행되는지 확인합니다.
+`pnpm test` 명령어를 실행하여 테스트가 성공적으로 수행되는지 확인합니다.

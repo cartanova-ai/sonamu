@@ -212,21 +212,15 @@ Sonamu는 테스트와 개발을 위해 다음과 같은 데이터베이스 구�
    - 여러 개발자가 공통으로 사용할 테스트 데이터 저장
    - 예: `my_db_fixture_remote`
 
-2. **Fixture Local DB** (`<db>_fixture_local`)
-
-   - 개발자의 로컬 환경에서 관리되는 테스트 데이터
-   - 개별 개발자가 필요한 테스트 데이터를 독립적으로 관리
-   - 예: `my_db_fixture_local`
-
-3. **Test DB** (`<db>_test`)
+2. **Test DB** (`<db>_test`)
 
    - 실제 테스트가 실행되는 데이터베이스
-   - 테스트 실행 시마다 Fixture Local DB의 데이터로 초기화됨
+   - 테스트 실행 시마다 Fixture Remote DB의 데이터로 초기화됨
    - 예: 프로덕션 DB가 `my_db`인 경우 `my_db_test`로 생성
 
 Sonamu는 `SonamuDBBaseConfig` 설정을 기반으로 아래 데이터베이스들에 대한 연결을 설정합니다.
 
-- 기본 설정 이용: `<database>_test`, `<database>_fixture_local`
+- 기본 설정 이용: `<database>_test`
 - 개발환경 설정 이용: `<database>_development`, `<database>_development_slave`, `<database>_fixture_remote`
 - 운영환경 설정 이용: `<database>_production`, `<database>_production_slave`
 
@@ -247,7 +241,6 @@ yarn sonamu fixture init
 ```shell
 DUMP...
 SYNC to (REMOTE) Fixture DB...
-SYNC to (LOCAL) Fixture DB...
 SYNC to (LOCAL) Testing DB...
 ```
 

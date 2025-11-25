@@ -1,12 +1,13 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  return knex.schema.createTable("projects", (table) => {
+  await knex.schema.createTable("departments", (table) => {
     // columns
     table.increments().primary();
     table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
-    table.string("name", 255).notNullable();
-    table.string("status", 32).notNullable();
+    table.string("name", 128).notNullable();
+    table.integer("company_id").unsigned().notNullable();
+    table.integer("parent_id").unsigned().nullable();
     table.uuid("uuid").nullable();
 
     // indexes
@@ -15,5 +16,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("projects");
+  return knex.schema.dropTable("departments");
 }

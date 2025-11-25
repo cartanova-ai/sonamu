@@ -15,7 +15,7 @@ Sonamu CLI는 Sonamu 프로젝트를 관리하기 위한 명령어를 제공합�
 
 ### `fixture init`
 
-테스트를 위한 데이터베이스를 초기화합니다. `SonamuDBConfig` 형식의 DB 연결 설정 중 `development_master`의 설정을 이용하여 `fixture_remote`, `fixture_local`, `test` 데이터베이스를 생성합니다.
+테스트를 위한 데이터베이스를 초기화합니다. `SonamuDBConfig` 형식의 DB 연결 설정 중 `development_master`의 설정을 이용하여 `fixture_remote`, `test` 데이터베이스를 생성합니다.
 
 ```bash
 pnpm sonamu fixture init
@@ -23,7 +23,7 @@ pnpm sonamu fixture init
 
 ### `fixture import <entityId> <recordIds>`
 
-`development` 데이터베이스에서 `<entityId>`에 해당하는 테이블의 `<recordIds>`에 해당하는 레코드를 `fixture_remote` 데이터베이스로 복사합니다. 관련된 의존성 레코드도 함께 가져오며, `FixtureManager.sync()`를 실행하여 `fixture_local` 데이터베이스로 데이터를 복사합니다.
+`development` 데이터베이스에서 `<entityId>`에 해당하는 테이블의 `<recordIds>`에 해당하는 레코드를 `fixture_remote` 데이터베이스로 복사합니다. 관련된 의존성 레코드도 함께 가져오며, `FixtureManager.sync()`를 실행하여 `fixture_remote`의 데이터를 `test` 데이터베이스로 복사합니다.
 
 ```bash
 pnpm sonamu fixture import User 1,2,3
@@ -34,11 +34,11 @@ pnpm sonamu fixture import User 1,2,3
 - 지정된 레코드와 모든 관계된 레코드를 재귀적으로 조회
 - 순환 참조와 의존성을 자동으로 해결
 - `fixture_remote` 데이터베이스에 INSERT IGNORE 방식으로 저장
-- `fixture_local`로 자동 동기화
+- 이후 `FixtureManager.sync()`가 `fixture_remote` → `test` 데이터베이스로 동기화
 
 ### `fixture sync`
 
-`FixtureManager.sync()`를 실행하여 `fixture_remote` 데이터베이스에서 `fixture_local` 데이터베이스로 데이터를 복사합니다.
+`FixtureManager.sync()`를 실행하여 `fixture_remote` 데이터베이스에서 `test` 데이터베이스로 데이터를 복사합니다.
 
 ```bash
 pnpm sonamu fixture sync

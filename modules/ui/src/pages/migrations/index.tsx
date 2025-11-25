@@ -28,21 +28,15 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
     const targetKeys: (keyof SonamuDBConfig)[] = (() => {
       switch (preset) {
         case "ALL":
-          return [
-            "test",
-            "fixture_local",
-            "fixture_remote",
-            "development_master",
-            "production_master",
-          ];
+          return ["test", "fixture_remote", "development_master", "production_master"];
         case "LOCAL":
-          return ["test", "fixture_local"];
+          return ["test"];
         case "REMOTE":
           return ["fixture_remote", "development_master", "production_master"];
         case "TESTING":
-          return ["test", "fixture_local", "fixture_remote"];
+          return ["test", "fixture_remote"];
         case "FIXTURE":
-          return ["fixture_local", "fixture_remote"];
+          return ["fixture_remote"];
       }
     })();
 

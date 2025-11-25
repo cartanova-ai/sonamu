@@ -14,6 +14,6 @@ describe("픽스쳐", () => {
     const c = await CompanyModel.findById("A", 1);
     expect(c.id).toBe(1);
     expect(c.created_at).toBeInstanceOf(Date);
-    expect(c.name).toBe("C1");
+    expect(c.name).toBe("테크놀로지 주식회사");
   });
 });

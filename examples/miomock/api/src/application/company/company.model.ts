@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
-import { companyLoaderQueries, companySubsetQueries } from "../sonamu.generated.sso";
+import { companyPuriLoaderQueries, companyPuriSubsetQueries } from "../sonamu.generated.sso";
 import type { CompanyListParams, CompanySaveParams } from "./company.types";
 
 /*
@@ -17,8 +17,8 @@ import type { CompanyListParams, CompanySaveParams } from "./company.types";
 class CompanyModelClass extends BaseModelClass<
   CompanySubsetKey,
   CompanySubsetMapping,
-  typeof companySubsetQueries,
-  typeof companyLoaderQueries
+  typeof companyPuriSubsetQueries,
+  typeof companyPuriLoaderQueries
 > {
   modelName = "Company";
 
@@ -146,4 +146,7 @@ class CompanyModelClass extends BaseModelClass<
   }
 }
 
-export const CompanyModel = new CompanyModelClass(companySubsetQueries, companyLoaderQueries);
+export const CompanyModel = new CompanyModelClass(
+  companyPuriSubsetQueries,
+  companyPuriLoaderQueries,
+);

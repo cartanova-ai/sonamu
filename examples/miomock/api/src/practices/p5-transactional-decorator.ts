@@ -269,6 +269,7 @@ async function runExamples() {
         last_login_at: null,
         bio: null,
         is_verified: false,
+        deleted_at: null,
       },
     ]);
     console.log("✅ Created user IDs:", ids);
@@ -400,6 +401,7 @@ async function runExamples() {
         last_login_at: null,
         bio: null,
         is_verified: false,
+        deleted_at: null,
       },
     ]);
     console.log("✅ @api + @transactional works! IDs:", result.ids);

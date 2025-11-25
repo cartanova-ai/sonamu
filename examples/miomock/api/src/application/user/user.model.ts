@@ -13,7 +13,7 @@ import {
   UnauthorizedException,
 } from "sonamu";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
-import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+import { userPuriLoaderQueries, userPuriSubsetQueries } from "../sonamu.generated.sso";
 import type {
   UserListParams,
   UserLoginParams,
@@ -28,8 +28,8 @@ import type {
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
-  typeof userSubsetQueries,
-  typeof userLoaderQueries
+  typeof userPuriSubsetQueries,
+  typeof userPuriLoaderQueries
 > {
   modelName = "User";
 
@@ -287,4 +287,4 @@ class UserModelClass extends BaseModelClass<
   }
 }
 
-export const UserModel = new UserModelClass(userSubsetQueries, userLoaderQueries);
+export const UserModel = new UserModelClass(userPuriSubsetQueries, userPuriLoaderQueries);

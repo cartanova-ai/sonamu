@@ -36,6 +36,20 @@
       "textType": "longtext"
     },
     {
+      "name": "budget",
+      "type": "decimal",
+      "precision": 12,
+      "scale": 2,
+      "nullable": true,
+      "desc": "예산"
+    },
+    {
+      "name": "deadline",
+      "type": "datetime",
+      "nullable": true,
+      "desc": "마감일시"
+    },
+    {
       "type": "relation",
       "name": "tags",
       "with": "Tag",
@@ -75,6 +89,8 @@
       "name",
       "status",
       "description",
+      "budget",
+      "deadline",
       "tags.id",
       "tags.name",
       "image_urls",
@@ -91,6 +107,8 @@
       "name",
       "status",
       "description",
+      "budget",
+      "deadline",
       "tags.id",
       "tags.name",
       "image_urls"

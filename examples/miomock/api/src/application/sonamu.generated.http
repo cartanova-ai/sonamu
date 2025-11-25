@@ -36,7 +36,8 @@ Content-Type: application/json
       "role": "normal",
       "last_login_at": null,
       "bio": null,
-      "is_verified": false
+      "is_verified": false,
+      "deleted_at": null
     }
   ]
 }
@@ -165,6 +166,8 @@ Content-Type: application/json
       "name": "NAME",
       "status": "planning",
       "description": null,
+      "budget": null,
+      "deadline": null,
       "image_urls": null,
       "employee_ids": [0],
       "tag_ids": [0]
@@ -270,7 +273,9 @@ Content-Type: application/json
       "user_id": 0,
       "department_id": null,
       "employee_number": "EMPLOYEE_NUMBER",
-      "salary": null
+      "salary": null,
+      "hire_date": null,
+      "notes": null
     }
   ]
 }

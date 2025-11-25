@@ -9,13 +9,7 @@ import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.s
 import FixtureCodeViewer from "./_fixture_code_viewer";
 import FixtureRecordViewer from "./_fixture_record_viewer";
 
-const DB_NAMES = [
-  "development_master",
-  "production_master",
-  "fixture_remote",
-  "fixture_local",
-  "test",
-];
+const DB_NAMES = ["development_master", "production_master", "fixture_remote", "test"];
 
 export default function FixtureIndex() {
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
