@@ -1,5 +1,6 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
+/** biome-ignore-all style: generated는 무시 */
 
 import { z } from "zod";
 import { zArrayable, SonamuQueryMode } from "src/services/sonamu.shared";
@@ -111,6 +112,8 @@ export const EmployeeBaseSchema = z.object({
   department_id: z.int().nullable(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
+  hire_date: z.string().length(10).nullable(),
+  notes: z.string().max(65535).nullable(),
   // projs: ManyToMany Project
 });
 export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
@@ -133,6 +136,8 @@ export const ProjectBaseSchema = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
+  budget: z.string().nullable(),
+  deadline: z.date().nullable(),
   // tags: ManyToMany Tag
   image_urls: StringArray.nullable(),
   virtual_test: NumberType.nullable(),
@@ -161,6 +166,7 @@ export const UserBaseSchema = z.object({
   last_login_at: z.date().nullable(),
   bio: z.string().max(65535).nullable(),
   is_verified: z.boolean(),
+  deleted_at: z.date().nullable(),
   // employee: OneToOne Employee
 });
 export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
@@ -348,6 +354,8 @@ export const EmployeeSubsetA = z.object({
   created_at: z.date(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
+  hire_date: z.string().length(10).nullable(),
+  notes: z.string().max(65535).nullable(),
   user: z.object({
     id: z.int().nonnegative(),
     username: z.string().max(255),
@@ -441,6 +449,8 @@ export const ProjectSubsetA = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
+  budget: z.string().nullable(),
+  deadline: z.date().nullable(),
   image_urls: StringArray.nullable(),
   virtual_test: NumberType.nullable(),
   employee: z.array(
@@ -473,6 +483,8 @@ export const ProjectSubsetP = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().max(4294967295).nullable(),
+  budget: z.string().nullable(),
+  deadline: z.date().nullable(),
   image_urls: StringArray.nullable(),
   employee: z.array(
     z.object({
@@ -528,6 +540,7 @@ export const UserSubsetA = z.object({
   last_login_at: z.date().nullable(),
   bio: z.string().max(65535).nullable(),
   is_verified: z.boolean(),
+  deleted_at: z.date().nullable(),
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({

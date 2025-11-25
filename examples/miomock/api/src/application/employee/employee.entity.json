@@ -45,6 +45,19 @@
       "scale": 2
     },
     {
+      "name": "hire_date",
+      "type": "date",
+      "nullable": true,
+      "desc": "입사일"
+    },
+    {
+      "name": "notes",
+      "type": "text",
+      "textType": "text",
+      "nullable": true,
+      "desc": "비고"
+    },
+    {
       "type": "relation",
       "name": "projs",
       "with": "Project",
@@ -68,7 +81,9 @@
       "department.company.name",
       "department.employee_count",
       "employee_number",
-      "salary"
+      "salary",
+      "hire_date",
+      "notes"
     ],
     "P": [
       "id",
