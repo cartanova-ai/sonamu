@@ -40,9 +40,9 @@ export class Template__generated_sso extends Template {
 
       // Puri 기반 SubsetQuery
       const puriSubsetQuery: SourceCode = {
-        label: `Puri SubsetQuery: ${entity.id}`,
+        label: `SubsetQuery: ${entity.id}`,
         lines: [
-          `export const ${entityCamelName}PuriSubsetQueries = {`,
+          `export const ${entityCamelName}SubsetQueries = {`,
           ...subsetKeys.map(
             (subsetKey) => `${subsetKey}: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
             ${entity.getPuriSubsetQuery(subsetKey)};
@@ -56,9 +56,9 @@ export class Template__generated_sso extends Template {
 
       // Puri 기반 SubsetLoadersQuery
       const puriLoaderQuery: SourceCode = {
-        label: `Puri LoaderQuery: ${entity.id}`,
+        label: `LoaderQuery: ${entity.id}`,
         lines: [
-          `export const ${entityCamelName}PuriLoaderQueries = {`,
+          `export const ${entityCamelName}LoaderQueries = {`,
           ...subsetKeys.map((subsetKey) => {
             return `${subsetKey}: ${entity.getPuriLoaderQuery(subsetKey)},`;
           }),

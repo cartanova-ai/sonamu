@@ -81,8 +81,8 @@ export class BaseModelClass<
   public modelName: string = "Unknown";
 
   constructor(
-    protected puriSubsetQueries?: TSubsetQueries,
-    protected subsetLoaders?: TLoaderQueries,
+    protected subsetQueries?: TSubsetQueries,
+    protected loaderQueries?: TLoaderQueries,
   ) {}
 
   /* DB 인스턴스 get, destroy */
@@ -143,12 +143,12 @@ export class BaseModelClass<
   }
 
   getSubsetQueries<T extends TSubsetKey>(subset: T) {
-    if (!this.puriSubsetQueries) {
+    if (!this.subsetQueries) {
       throw new Error("puriSubsetQueries is not defined");
     }
 
     const puriWrapper = new PuriWrapper(this.getDB("r"), new UpsertBuilder());
-    const qb = this.puriSubsetQueries[subset]?.(puriWrapper);
+    const qb = this.subsetQueries[subset]?.(puriWrapper);
 
     return {
       qb: qb as unknown as Puri<
@@ -209,7 +209,7 @@ export class BaseModelClass<
     rows: TSubsetMapping[T][];
     total: number;
   }> {
-    if (!this.subsetLoaders) {
+    if (!this.loaderQueries) {
       throw new Error("subsetLoaders is not defined");
     }
 
@@ -284,7 +284,7 @@ export class BaseModelClass<
         return rows;
       };
 
-      const loaders = (this.subsetLoaders as any)[subset];
+      const loaders = (this.loaderQueries as any)[subset];
       if (loaders && Array.isArray(loaders)) {
         unloadedRows = await processLoaders(unloadedRows, loaders);
       }

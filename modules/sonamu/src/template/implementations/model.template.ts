@@ -45,8 +45,8 @@ import {
   ${entityId}SubsetMapping,
 } from "../sonamu.generated";
 import {
-  ${names.camel}PuriSubsetQueries,
-  ${names.camel}PuriLoaderQueries,
+  ${names.camel}SubsetQueries,
+  ${names.camel}LoaderQueries,
 } from "../sonamu.generated.sso";
 import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
 
@@ -56,8 +56,8 @@ import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.type
 class ${entityId}ModelClass extends BaseModelClass<
   ${entityId}SubsetKey,
   ${entityId}SubsetMapping,
-  typeof ${names.camel}PuriSubsetQueries,
-  typeof ${names.camel}PuriLoaderQueries
+  typeof ${names.camel}SubsetQueries,
+  typeof ${names.camel}LoaderQueries
 > {
   modelName = "${entityId}";
 
@@ -179,7 +179,7 @@ class ${entityId}ModelClass extends BaseModelClass<
   }
 }
 
-export const ${entityId}Model = new ${entityId}ModelClass(${names.camel}PuriSubsetQueries, ${names.camel}PuriLoaderQueries);
+export const ${entityId}Model = new ${entityId}ModelClass(${names.camel}SubsetQueries, ${names.camel}LoaderQueries);
       `.trim(),
       importKeys: [],
     };
