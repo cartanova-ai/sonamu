@@ -46,20 +46,66 @@ export async function runWithMockContext(fn: () => Promise<void>) {
   await runWithContext(getMockContext(), fn);
 }
 
-export async function test(title: string, fn: () => Promise<void>) {
-  return vitestTest(title, async () => {
-    await runWithMockContext(fn);
-  });
-}
+export const test = Object.assign(
+  async (title: string, fn: () => Promise<void>) => {
+    return vitestTest(title, async () => {
+      await runWithMockContext(fn);
+    });
+  },
+  {
+    skip: async (title: string, fn: () => Promise<void>) => {
+      return vitestTest.skip(title, async () => {
+        await runWithMockContext(fn);
+      });
+    },
+    only: async (title: string, fn: () => Promise<void>) => {
+      return vitestTest.only(title, async () => {
+        await runWithMockContext(fn);
+      });
+    },
+    todo: (title: string) => {
+      return vitestTest.todo(title);
+    },
+  },
+);
 
-export async function testAs(user: UserSubsetSS, title: string, fn: () => Promise<void>) {
-  return vitestTest(title, async () => {
-    await runWithContext(
-      {
-        ...getMockContext(),
-        user,
-      },
-      fn,
-    );
-  });
-}
+export const testAs = Object.assign(
+  async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
+    return vitestTest(title, async () => {
+      await runWithContext(
+        {
+          ...getMockContext(),
+          user,
+        },
+        fn,
+      );
+    });
+  },
+  {
+    skip: async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
+      return vitestTest.skip(title, async () => {
+        await runWithContext(
+          {
+            ...getMockContext(),
+            user,
+          },
+          fn,
+        );
+      });
+    },
+    only: async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
+      return vitestTest.only(title, async () => {
+        await runWithContext(
+          {
+            ...getMockContext(),
+            user,
+          },
+          fn,
+        );
+      });
+    },
+    todo: (title: string) => {
+      return vitestTest.todo(title);
+    },
+  },
+);
