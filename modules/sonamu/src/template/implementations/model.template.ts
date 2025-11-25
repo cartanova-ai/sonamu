@@ -39,20 +39,26 @@ export class Template__model extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from 'sonamu';
+import { BaseModelClass, type ListResult, asArray, NotFoundException, BadRequestException, api, exhaustive } from 'sonamu';
 import {
   ${entityId}SubsetKey,
   ${entityId}SubsetMapping,
 } from "../sonamu.generated";
 import {
-  ${names.camel}SubsetQueries,
+  ${names.camel}PuriSubsetQueries,
+  ${names.camel}PuriLoaderQueries,
 } from "../sonamu.generated.sso";
 import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
 
 /*
   ${entityId} Model
 */
-class ${entityId}ModelClass extends BaseModelClass {
+class ${entityId}ModelClass extends BaseModelClass<
+  ${entityId}SubsetKey,
+  ${entityId}SubsetMapping,
+  typeof ${names.camel}PuriSubsetQueries,
+  typeof ${names.camel}PuriLoaderQueries
+> {
   modelName = "${entityId}";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${entityId}" })
@@ -100,44 +106,38 @@ class ${entityId}ModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+    
+    // id
+    if (params.id) {
+      qb.whereIn("${entity.table}.id", asArray(params.id));
+    }
+
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("${entity.table}.id", Number(params.keyword));
+        // } else if (params.search === "field") {
+        //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
+      } else {
+        throw new BadRequestException(\`구현되지 않은 검색 필드 \${params.search}\`);
+      }
+    }
+      
+    // orderBy
+    if (params.orderBy) {
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("${entity.table}.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+    
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: ${names.camel}SubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("${entity.table}.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("${entity.table}.id", params.keyword);
-          // } else if (params.search === "field") {
-          //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
-          } else {
-            throw new BadRequestException(
-              \`구현되지 않은 검색 필드 \${params.search}\`
-            );
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("${entity.table}." + orderByField, orderByDirec);
-        }
-
-        this.executeSubsetQuery({
-        
-        
-        
-        });
-
-        return qb;
-      },
       debug: false,
     });
 
@@ -179,7 +179,7 @@ class ${entityId}ModelClass extends BaseModelClass {
   }
 }
 
-export const ${entityId}Model = new ${entityId}ModelClass();
+export const ${entityId}Model = new ${entityId}ModelClass(${names.camel}PuriSubsetQueries, ${names.camel}PuriLoaderQueries);
       `.trim(),
       importKeys: [],
     };
