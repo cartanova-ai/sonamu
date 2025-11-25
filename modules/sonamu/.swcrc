@@ -10,16 +10,7 @@
       "decorators": true
     },
     "baseUrl": ".", // 위 resolveFully 옵션이 작동하려면 이게 필요합니다. 이 파일이 있는 로컬에서 쉘에 직접 실행할 때에는 baseUrl에 이 파일이 위치한 경로 기준으로 절대경로가 resolve되어 들어갑니다. 그러나 만약 swc를 코드 상에서 import해서 쓰거나, 아니면 설정 파일(.swcrc) 대신 -C로 설정을 명령줄에 직접 넘기는 경우, baseUrl에 직접 올바른 절대경로를 넣어주어야 합니다.
-    "target": "esnext", // 타겟은 그냥 최신 문법으로.
-    "transform": {
-      "optimizer": {
-        "globals": {
-          "vars": {
-            "Naite.t": "(()=>\"A call to Naite.t is replaced with this empty function implementation. This placeholder will soon be removed. If you see this, please report this to the author.\")" // Naite.t로 가는 호출을 무력화해요! Sonamu 내부에서 쓰는 Naite.t들은 외부에서 사용할 때 영향을 미치면 안되거든요. 그냥 얘네들은 sonamu 자체를 vitest할 때에만 있으면 됩니다.
-          }
-        }
-      }
-    }
+    "target": "esnext" // 타겟은 그냥 최신 문법으로.
   },
   "minify": false, // 어차피 용량 10%정도 차이밖에 안 남. minify를 끄면 혹시 혹시 정말 혹시나 나중에 소스맵 없이 코드를 봐야 하는 끔찍한 상황에 조금이나마 도움이 될 수 있지 않을까 해서 끔.
   "sourceMaps": "inline", // 인라인 소스맵 생성 - yarn PnP 가상 경로 문제 해결

@@ -9,6 +9,13 @@ export type NaiteStore = Map<string, any>;
 export const Naite = {
   // 테스트 로그 기록
   t(name: string, value: any) {
+    // 이 t 함수는 테스트 환경에서만 작동해야 합니다.
+    // 그리고 테스트 환경 판단에 왜 isTest() 함수를 사용하지 않았냐면요,, 
+    // 이렇게 하는게 유틸 함수 불러와서 사용하는 것보다 조금이나마 빠를 것 같았기 때문입니다.
+    if (process.env.NODE_ENV !== "test") {
+      return;
+    }
+
     try {
       const context = Sonamu.getContext();
       const store = context?.naiteStore;
