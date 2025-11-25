@@ -8,7 +8,7 @@ import {
   withProps,
 } from "sonamu";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
-import { employeeLoaderQueries, employeeSubsetQueries } from "../sonamu.generated.sso";
+import { employeePuriLoaderQueries, employeePuriSubsetQueries } from "../sonamu.generated.sso";
 import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 
 /*
@@ -17,8 +17,8 @@ import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
 class EmployeeModelClass extends BaseModelClass<
   EmployeeSubsetKey,
   EmployeeSubsetMapping,
-  typeof employeeSubsetQueries,
-  typeof employeeLoaderQueries
+  typeof employeePuriSubsetQueries,
+  typeof employeePuriLoaderQueries
 > {
   modelName = "Employee";
 
@@ -182,4 +182,7 @@ class EmployeeModelClass extends BaseModelClass<
   }
 }
 
-export const EmployeeModel = new EmployeeModelClass(employeeSubsetQueries, employeeLoaderQueries);
+export const EmployeeModel = new EmployeeModelClass(
+  employeePuriSubsetQueries,
+  employeePuriLoaderQueries,
+);
