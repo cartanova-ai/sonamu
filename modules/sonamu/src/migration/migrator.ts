@@ -4,7 +4,6 @@ import { execSync } from "child_process";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import path from "path";
-import prompts from "prompts";
 import { group, sum, unique } from "radashi";
 import { Sonamu } from "../api";
 import type { SonamuDBConfig } from "../database/db";
@@ -66,26 +65,6 @@ export class Migrator {
     } else {
       throw new Error(`잘못된 모드 ${this.options.mode} 입력`);
     }
-  }
-
-  private async getMigrationCodes(): Promise<MigrationCode[]> {
-    const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
-
-    if (!(await exists(srcMigrationsDir))) {
-      await mkdir(srcMigrationsDir, {
-        recursive: true,
-      });
-    }
-
-    const codes = (await readdir(srcMigrationsDir))
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => ({
-        name: f.replace(".ts", ""),
-        path: path.join(srcMigrationsDir, f),
-      }))
-      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
-
-    return codes;
   }
 
   /**
@@ -304,19 +283,6 @@ export class Migrator {
     return sum(res);
   }
 
-  private genDateTag(index: number, baseDate: Date = new Date()): string {
-    const date = new Date(baseDate.getTime() + index * 1000);
-    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
-    return (
-      date.getFullYear().toString() +
-      pad(date.getMonth() + 1) +
-      pad(date.getDate()) +
-      pad(date.getHours()) +
-      pad(date.getMinutes()) +
-      pad(date.getSeconds())
-    );
-  }
-
   /**
    * 마이그레이션 코드 파일을 생성합니다.
    *
@@ -346,150 +312,6 @@ export class Migrator {
     return preparedCodes.length;
   }
 
-  /**
-   * pending 마이그레이션 목록을 삭제합니다.
-   *
-   * CLI에서 사용됩니다.
-   */
-  async clearPendingList(): Promise<void> {
-    const [, pendingList] = (await this.targets.pending.migrate.list()) as [
-      unknown,
-      {
-        file: string;
-        directory: string;
-      }[],
-    ];
-    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-    const delList = pendingList.map((df) => {
-      return path.join(migrationsDir, df.file);
-    });
-    for (const p of delList) {
-      if (await exists(p)) {
-        await unlink(p);
-      }
-    }
-  }
-
-  /**
-   * 마이그레이션 코드 파일을 확인합니다.
-   *
-   * CLI에서 사용됩니다.
-   */
-  async check(): Promise<void> {
-    assert(this.targets.compare, "compare is not defined");
-    const codes = await this.compareMigrations(this.targets.compare);
-    if (codes.length === 0) {
-      console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
-      return;
-    }
-
-    // 현재 생성된 코드 표기
-    console.table(codes, ["type", "title"]);
-    console.log(codes[0]);
-  }
-
-  /**
-   * 마이그레이션을 수행합니다.
-   *
-   * runAction이 인자로 들어온 타겟들에 대해 주어진 동작(apply/rollback)을 수행한다면,
-   * 이 함수는 생성자로 들어온 connection(knex)들에 대해 마이그레이션을 수행합니다.
-   *
-   * CLI에서 사용됩니다.
-   */
-  async run(): Promise<void> {
-    // pending 마이그레이션 확인
-    const [, pendingList] = await this.targets.pending.migrate.list();
-    if (pendingList.length > 0) {
-      console.log(
-        chalk.red("pending 된 마이그레이션이 존재합니다."),
-        pendingList.map((pending: { file: string }) => pending.file),
-      );
-
-      // pending이 있는 경우 Shadow DB 테스트 진행 여부 컨펌
-      const answer = await prompts({
-        type: "confirm",
-        name: "value",
-        message: "Shadow DB 테스트를 진행하시겠습니까?",
-        initial: true,
-      });
-      if (answer.value === false) {
-        return;
-      }
-
-      console.time(chalk.blue("Migrator - runShadowTest"));
-      await this.runShadowTest();
-      console.timeEnd(chalk.blue("Migrator - runShadowTest"));
-      await Promise.all(
-        this.targets.apply.map(async (applyDb) => {
-          const label = chalk.green(
-            `APPLIED ${applyDb.client.connectionSettings.host} ${applyDb.client.database()}`,
-          );
-          console.time(label);
-          const [,] = await applyDb.migrate.latest();
-          console.timeEnd(label);
-        }),
-      );
-    }
-
-    // Entity-DB간 비교하여 코드 생성 리턴
-    assert(this.targets.compare, "compare is not defined");
-    const codes = await this.compareMigrations(this.targets.compare);
-    if (codes.length === 0) {
-      console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
-      return;
-    }
-
-    // 현재 생성된 코드 표기
-    console.table(codes, ["type", "title"]);
-
-    /* DEBUG: 디버깅용 코드
-    codes.map((code) => console.log(code.formatted));
-    process.exit();
-     */
-
-    // 실제 파일 생성 프롬프트
-    const answer = await prompts({
-      type: "confirm",
-      name: "value",
-      message: "마이그레이션 코드를 생성하시겠습니까?",
-      initial: false,
-    });
-    if (answer.value === false) {
-      return;
-    }
-
-    // 실제 코드 생성
-    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-
-    for (const [index, code] of codes.entries()) {
-      if (code.formatted) {
-        const dateTag = this.genDateTag(index);
-        const filePath = `${migrationsDir}/${dateTag}_${code.title}.ts`;
-        await writeFile(filePath, code.formatted);
-        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
-      }
-    }
-  }
-
-  /**
-   * 타겟으로 지정된 DB를 롤백합니다.
-   *
-   * runAction이 인자로 들어온 타겟들에 대해 주어진 동작(apply/rollback)을 수행한다면,
-   * 이 함수는 생성자로 들어온 connection(knex)들에 대해 롤백을 수행합니다.
-   *
-   * CLI에서 사용됩니다.
-   */
-  async rollback() {
-    console.time(chalk.red("rollback:"));
-    const rollbackAllResult = await Promise.all(
-      this.targets.apply.map(async (db) => {
-        await db.migrate.forceFreeMigrationsLock();
-        return db.migrate.rollback(undefined, false);
-      }),
-    );
-    console.dir({ rollbackAllResult }, { depth: null });
-    console.timeEnd(chalk.red("rollback:"));
-  }
   /**
    * Shadow DB 테스트를 진행합니다.
    *
@@ -566,38 +388,18 @@ export class Migrator {
   }
 
   /**
-   * 모든 DB를 롤백하고 전체 마이그레이션 파일을 삭제합니다.
+   * 마이그레이션 대상 커넥션을 종료합니다.
    *
    * CLI에서 사용됩니다.
    *
-   * @returns
+   * @returns {Promise<void>} 종료 결과
    */
-  async resetAll() {
-    const answer = await prompts({
-      type: "confirm",
-      name: "value",
-      message: "모든 DB를 롤백하고 전체 마이그레이션 파일을 삭제하시겠습니까?",
-      initial: false,
-    });
-    if (answer.value === false) {
-      return;
-    }
-
-    console.time(chalk.red("rollback-all:"));
-    const rollbackAllResult = await Promise.all(
-      this.targets.apply.map(async (db) => {
-        await db.migrate.forceFreeMigrationsLock();
-        return db.migrate.rollback(undefined, true);
+  async destroy(): Promise<void> {
+    await Promise.all(
+      this.targets.apply.map((db) => {
+        return db.destroy();
       }),
     );
-    console.log({ rollbackAllResult });
-    console.timeEnd(chalk.red("rollback-all:"));
-
-    const migrationsDir = `${Sonamu.apiRootPath}/src/migrations`;
-    console.time(chalk.red("delete migration files"));
-    execSync(`rm -f ${migrationsDir}/*`);
-    execSync(`rm -f ${migrationsDir.replace("/src/", "/dist/")}/*`);
-    console.timeEnd(chalk.red("delete migration files"));
   }
 
   private async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
@@ -659,18 +461,36 @@ export class Migrator {
     return codes;
   }
 
-  /**
-   * 마이그레이션 대상 커넥션을 종료합니다.
-   *
-   * CLI에서 사용됩니다.
-   *
-   * @returns {Promise<void>} 종료 결과
-   */
-  async destroy(): Promise<void> {
-    await Promise.all(
-      this.targets.apply.map((db) => {
-        return db.destroy();
-      }),
+  private async getMigrationCodes(): Promise<MigrationCode[]> {
+    const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
+
+    if (!(await exists(srcMigrationsDir))) {
+      await mkdir(srcMigrationsDir, {
+        recursive: true,
+      });
+    }
+
+    const codes = (await readdir(srcMigrationsDir))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => ({
+        name: f.replace(".ts", ""),
+        path: path.join(srcMigrationsDir, f),
+      }))
+      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
+
+    return codes;
+  }
+
+  private genDateTag(index: number, baseDate: Date = new Date()): string {
+    const date = new Date(baseDate.getTime() + index * 1000);
+    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
+    return (
+      date.getFullYear().toString() +
+      pad(date.getMonth() + 1) +
+      pad(date.getDate()) +
+      pad(date.getHours()) +
+      pad(date.getMinutes()) +
+      pad(date.getSeconds())
     );
   }
 }
