@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
+import { Naite } from "../naite/naite";
 import {
   type ApiParam,
   ApiParamType,
@@ -48,17 +49,27 @@ export function getZodObjectFromApi(
     [id: string]: AnyZodObject;
   } = {},
 ) {
+  Naite.t("step", "Resolving Type Parameters");
   if (api.typeParameters?.length > 0) {
+    Naite.t("step", "type parameters exist");
+    Naite.t("length of typeParameters", api.typeParameters.length);
     for (const typeParam of api.typeParameters) {
       if (typeParam.constraint) {
+        Naite.t("step", "constraint exists");
+        Naite.t("typeParam.constraint", typeParam.constraint);
         const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
+        Naite.t("zodType converted from constraint", zodType);
         // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
         (references[typeParam.id] as z.ZodType<any>) = zodType;
+        Naite.t("references updated", references);
       }
     }
   }
+  Naite.t("references", references);
 
+  Naite.t("step", "Filtering API Parameters");
   const ReqType = getZodObjectFromApiParams(
+    // api parsing한 결과가 api params
     api.parameters.filter(
       (param) =>
         !ApiParamType.isContext(param.type) &&
@@ -67,6 +78,12 @@ export function getZodObjectFromApi(
     ),
     references,
   );
+
+  Naite.t("ApiParamType", api.parameters[0].type);
+  Naite.t("Final ReqType shape", ReqType.shape);
+  Naite.t("Final ReqType shape keys", Object.keys(ReqType.shape));
+  Naite.t("Type of Final ReqType", ReqType.type);
+
   return ReqType;
 }
 
