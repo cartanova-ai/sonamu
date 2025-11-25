@@ -1,3 +1,4 @@
+import axios from "axios";
 import chalk from "chalk";
 import { execSync } from "child_process";
 import fastify from "fastify";
@@ -7,7 +8,6 @@ import path from "path";
 import { range } from "radashi";
 import {
   BadRequestException,
-  BaseModelClass,
   type Entity,
   type EntityIndex,
   EntityManager,
@@ -874,28 +874,26 @@ export async function createServer(options: {
 
   server.get("/api/entity/findById", async (request) => {
     const { entityId, id, subset } = request.query as {
-      db: keyof SonamuDBConfig;
       entityId: string;
       id: string;
       subset: string;
     };
 
-    const BaseModel = new BaseModelClass();
     const entity = EntityManager.get(entityId);
-    const {
-      rows: [row],
-    } = await BaseModel.runSubsetQuery({
-      subset,
-      params: { id: Number(id), page: 1, num: 1 },
-      subsetQuery: entity.getSubsetQuery(subset),
-      build: ({ qb }) => {
-        qb.where(`${entity.table}.id`, id);
-        return qb;
-      },
-      baseTable: entity.table,
+
+    const dotenv = await import("dotenv");
+    // e.g. miomock/web/.sonamu.env
+    dotenv.config({
+      path: path.join(Sonamu.apiRootPath, "..", Sonamu.config.sync.targets[0], ".sonamu.env"),
     });
 
-    return row;
+    const _baseUrl = `http://${process.env.API_HOST}:${process.env.API_PORT}`;
+    const { prefix } = Sonamu.config.api.route;
+    const url = `${_baseUrl}${prefix}/${entity.names.fs}/findById?subset=${subset}&id=${id}`;
+
+    const res = await axios.get(url);
+
+    return res.data;
   });
 
   server.get("/api/all_routes", async () => {

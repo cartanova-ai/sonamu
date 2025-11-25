@@ -1,5 +1,6 @@
-import type { AST, ColumnRef, Expr, ExpressionValue, Select } from "node-sql-parser";
+import type { AST, ColumnRef, Expr, ExpressionValue, From, Join, Select } from "node-sql-parser";
 import { unique } from "radashi";
+import { nonNullable } from "./utils";
 
 export function getTableName(expr: ColumnRef) {
   if ("table" in expr && expr.table !== null) {
@@ -35,6 +36,23 @@ export function getTableNamesFromWhere(ast: AST | AST[]): string[] {
       a.type === "select" || a.type === "update" || a.type === "delete"
         ? extractTableNames(a.where)
         : [],
+    ),
+  );
+}
+
+/**
+ * 주의: table명이 아닌 alias를 반환함
+ */
+export function getJoinTables(ast: AST | AST[], joinTypes: Join["join"][]): string[] {
+  const extractJoinTables = (froms: From[]): string[] => {
+    return froms
+      .map((f) => ("join" in f && joinTypes.includes(f.join) ? f.as : null))
+      .filter(nonNullable);
+  };
+
+  return unique(
+    (Array.isArray(ast) ? ast : [ast]).flatMap((a) =>
+      a.type === "select" && Array.isArray(a.from) ? extractJoinTables(a.from) : [],
     ),
   );
 }

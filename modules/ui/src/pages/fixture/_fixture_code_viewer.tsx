@@ -133,12 +133,7 @@ const FixtureCode = ({
   // biome-ignore lint/correctness/useExhaustiveDependencies: 선택된 서브셋이 변경되었을 때 코드 생성
   useEffect(() => {
     if (selectedSubset) {
-      SonamuUIService.getEntityById(
-        targetDB,
-        fixture.entityId,
-        String(fixture.data.id),
-        selectedSubset,
-      )
+      SonamuUIService.getEntityById(fixture.entityId, String(fixture.data.id), selectedSubset)
         .then((res) => {
           setCodes((prev) => {
             const newCodes = new Map(prev);

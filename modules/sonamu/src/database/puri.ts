@@ -173,6 +173,19 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  // knex에 없어서 직접 구현함
+  clearJoin(alias: string): this {
+    (this.knexQuery as any)._statements = (this.knexQuery as any)._statements.filter((s: any) => {
+      if ("joinType" in s) {
+        const [_alias, _table] = Object.entries(s.table)[0];
+        return _alias !== alias;
+      } else {
+        return true;
+      }
+    });
+    return this;
+  }
+
   // JOIN: 서브쿼리 + Alias
   join<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
