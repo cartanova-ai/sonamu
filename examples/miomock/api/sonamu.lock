@@ -9,7 +9,7 @@
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "7753544bc5136ad3eb20a5e636857afe1eba2c78"
+    "checksum": "94adbb13c2fe644c3e3196733db563e73d5eb6e6"
   },
   {
     "path": "src/application/company/company.types.ts",
@@ -45,7 +45,7 @@
   },
   {
     "path": "src/application/file/file.model.ts",
-    "checksum": "ae6244a9bae6f94f3671b395d88e68a2ec4c1391"
+    "checksum": "73e80c4ee7b8384fa9ea057ad88d71e1bb163667"
   },
   {
     "path": "src/application/file/file.types.ts",
@@ -73,7 +73,7 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "3e0b0bc422ba0f879912a8cd7a38ff13aa67309d"
+    "checksum": "d5a1f43b6d4edb1994f5006373a4260135f4fc03"
   },
   {
     "path": "src/application/tag/tag.types.ts",
