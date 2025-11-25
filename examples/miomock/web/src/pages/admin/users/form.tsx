@@ -46,6 +46,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     last_login_at: null,
     bio: null,
     is_verified: false,
+    deleted_at: null,
   });
 
   // 수정일 때 기존 row 콜

@@ -36,6 +36,8 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
     department_id: null,
     employee_number: "",
     salary: null,
+    hire_date: null,
+    notes: null,
   });
 
   // 수정일 때 기존 row 콜

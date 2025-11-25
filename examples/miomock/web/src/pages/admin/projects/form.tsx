@@ -40,6 +40,8 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
     employee_ids: [],
     tag_ids: [],
     image_urls: [],
+    budget: null,
+    deadline: null,
   });
 
   // 수정일 때 기존 row 콜
