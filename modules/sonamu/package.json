@@ -23,6 +23,7 @@
   "scripts": {
     "dev": "nodemon exec",
     "build": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "postbuild": "find dist -name '*.js' -exec perl -i -pe 's/\\Q(()=>\"A call to Naite.t is replaced with this empty function implementation. This placeholder will soon be removed. If you see this, please report this to the author.\")\\E/false&&\\/\\*Naite.t\\*\\//g' {} +",
     "publish": "pnpm build && pnpm publish"
   },
   "license": "MIT",
