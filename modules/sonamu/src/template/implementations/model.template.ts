@@ -1,5 +1,6 @@
 import { Sonamu } from "../../api";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import { Naite } from "../../naite/naite";
 import type { TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
@@ -20,6 +21,9 @@ export class Template__model extends Template {
   }
 
   async render({ entityId }: TemplateOptions["model"]) {
+    Naite.t("step", "render:model");
+    Naite.t("render", { entityId });
+
     const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
     const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
 
@@ -126,6 +130,12 @@ class ${entityId}ModelClass extends BaseModelClass {
           qb.orderBy("${entity.table}." + orderByField, orderByDirec);
         }
 
+        this.executeSubsetQuery({
+        
+        
+        
+        });
+
         return qb;
       },
       debug: false,
@@ -144,7 +154,7 @@ class ${entityId}ModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("${entity.table}", sp);
     });
 

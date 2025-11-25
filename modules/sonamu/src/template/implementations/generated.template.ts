@@ -121,7 +121,6 @@ export class Template__generated extends Template {
       customHeaders: [
         "/** biome-ignore-all lint: generated는 무시 */",
         "/** biome-ignore-all assist: generated는 무시 */",
-        "/** biome-ignore-all style: generated는 무시 */",
         "",
         `import { z } from 'zod';`,
         `import { ${sonamuImports.join(",")} } from "sonamu";`,

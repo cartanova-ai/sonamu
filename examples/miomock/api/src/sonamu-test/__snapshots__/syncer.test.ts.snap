@@ -30,3 +30,12 @@ exports[`Syncer > generateTemplate > handleModelOrFrameChange 1`] = `
   "resolveRenderedTemplate",
 ]
 `;
+
+exports[`Syncer > generateTemplate > scaffolding: model 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "render:model",
+  "resolveRenderedTemplate",
+]
+`;

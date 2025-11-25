@@ -50,8 +50,9 @@ describe("Syncer", () => {
       // Template__generated:body
       // Naite.expect("Template__generated:body").toMatchSnapshot();
 
-      // formatCode:result
-      // expect(Naite.get("formatCode:result")[1]).toMatchSnapshot();
+      // formatCode:linted
+      // expect(Naite.get("formatCode:linted:content")).toMatchSnapshot();
+      // expect(Naite.get("formatCode:linted:diagnostics")).toMatchSnapshot();
 
       // resolveRenderedTemplate:formatted
       // Naite.expect("resolveRenderedTemplate:formatted:generated").toMatchSnapshot();
@@ -121,6 +122,23 @@ describe("Syncer", () => {
         },
       );
       expect(Naite.get("fs:writeFile")).toBeDefined();
+    });
+
+    test("scaffolding: model", async () => {
+      await syncer.generateTemplate(
+        "model",
+        {
+          entityId: "User",
+        },
+        {
+          overwrite: true,
+        },
+      );
+
+      Naite.expect("step").toMatchSnapshot();
+
+      // formatted and linted
+      // expect(Naite.get("formatCode:linted").content).toMatchSnapshot();
     });
   });
 });

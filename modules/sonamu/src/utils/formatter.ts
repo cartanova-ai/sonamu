@@ -1,5 +1,6 @@
 import { Biome } from "@biomejs/js-api/nodejs";
 import { Naite } from "../naite/naite";
+import { isTest } from "./controller";
 
 const biome = new Biome();
 let projectKey: number = -1;
@@ -75,11 +76,21 @@ export function formatCode(code: string, parser: "typescript" | "json") {
       ? "src/application/sonamu.generated.ts"
       : "src/application/sonamu.generated.json";
 
-  const result = biome.formatContent(projectKey, code, { filePath });
-  Naite.t("formatCode:result", result);
-  if (result.diagnostics.filter((d) => d.severity === "error").length > 0) {
-    console.error(result.diagnostics);
+  const formatted = biome.formatContent(projectKey, code, { filePath });
+  Naite.t("formatCode:formatted", formatted);
+  if (formatted.diagnostics.filter((d) => d.severity === "error").length > 0) {
+    console.error(formatted.diagnostics);
     throw new Error("Biome format error");
   }
-  return result.content;
+
+  const linted = biome.lintContent(projectKey, formatted.content, { filePath });
+  if (linted.diagnostics.filter((d) => d.severity === "error").length > 0) {
+    Naite.t("formatCode:linted:content", linted.content);
+    Naite.t("formatCode:linted:diagnostics", linted.diagnostics);
+    !isTest() && console.dir(linted.diagnostics, { depth: null });
+    throw new Error("Biome lint error");
+  }
+  Naite.t("formatCode:linted", linted);
+
+  return linted.content;
 }
