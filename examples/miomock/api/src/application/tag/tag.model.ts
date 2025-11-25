@@ -1,26 +1,29 @@
-
-
-import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from 'sonamu';
 import {
-  TagSubsetKey,
-  TagSubsetMapping,
-} from "../sonamu.generated";
-import {
-  tagSubsetQueries,
-} from "../sonamu.generated.sso";
-import { TagListParams, TagSaveParams } from "./tag.types";
+  api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  exhaustive,
+  type ListResult,
+  NotFoundException,
+} from "sonamu";
+import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+import { tagPuriLoaderQueries, tagPuriSubsetQueries } from "../sonamu.generated.sso";
+import type { TagListParams, TagSaveParams } from "./tag.types";
 
 /*
   Tag Model
 */
-class TagModelClass extends BaseModelClass {
+class TagModelClass extends BaseModelClass<
+  TagSubsetKey,
+  TagSubsetMapping,
+  typeof tagPuriSubsetQueries,
+  typeof tagPuriLoaderQueries
+> {
   modelName = "Tag";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tag" })
-  async findById<T extends TagSubsetKey>(
-    subset: T,
-    id: number
-  ): Promise<TagSubsetMapping[T]> {
+  async findById<T extends TagSubsetKey>(subset: T, id: number): Promise<TagSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -35,7 +38,7 @@ class TagModelClass extends BaseModelClass {
 
   async findOne<T extends TagSubsetKey>(
     subset: T,
-    listParams: TagListParams
+    listParams: TagListParams,
   ): Promise<TagSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -49,7 +52,7 @@ class TagModelClass extends BaseModelClass {
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
   async findMany<T extends TagSubsetKey>(
     subset: T,
-    params: TagListParams = {}
+    params: TagListParams = {},
   ): Promise<ListResult<TagSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -61,44 +64,38 @@ class TagModelClass extends BaseModelClass {
     };
 
     // build queries
-    let { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+
+    // id
+    if (params.id) {
+      qb.whereIn("tags.id", asArray(params.id));
+    }
+
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("tags.id", Number(params.keyword));
+        // } else if (params.search === "field") {
+        //   qb.where("tags.field", "like", `%${params.keyword}%`);
+      } else {
+        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+      }
+    }
+
+    // orderBy
+    if (params.orderBy) {
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("tags.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: tagSubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("tags.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("tags.id", params.keyword);
-          // } else if (params.search === "field") {
-          //   qb.where("tags.field", "like", `%${params.keyword}%`);
-          } else {
-            throw new BadRequestException(
-              `구현되지 않은 검색 필드 ${params.search}`
-            );
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy("tags." + orderByField, orderByDirec);
-        }
-
-        this.executeSubsetQuery({
-        
-        
-        
-        });
-
-        return qb;
-      },
       debug: false,
     });
 
@@ -109,13 +106,11 @@ class TagModelClass extends BaseModelClass {
   }
 
   @api({ httpMethod: "POST" })
-  async save(
-    spa: TagSaveParams[]
-  ): Promise<number[]> {
+  async save(spa: TagSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
     // register
-    spa.map((sp) => {
+    spa.forEach((sp) => {
       wdb.ubRegister("tags", sp);
     });
 
@@ -127,7 +122,7 @@ class TagModelClass extends BaseModelClass {
     });
   }
 
-  @api({ httpMethod: "POST", guards: [ "admin" ] })
+  @api({ httpMethod: "POST", guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 
@@ -140,4 +135,4 @@ class TagModelClass extends BaseModelClass {
   }
 }
 
-export const TagModel = new TagModelClass();
+export const TagModel = new TagModelClass(tagPuriSubsetQueries, tagPuriLoaderQueries);

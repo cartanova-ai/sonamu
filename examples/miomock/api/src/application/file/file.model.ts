@@ -3,17 +3,14 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
+  exhaustive,
   type ListResult,
   NotFoundException,
   Sonamu,
   upload,
 } from "sonamu";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
-import {
-  filePuriLoaderQueries,
-  filePuriSubsetQueries,
-  fileSubsetQueries,
-} from "../sonamu.generated.sso";
+import { filePuriLoaderQueries, filePuriSubsetQueries } from "../sonamu.generated.sso";
 import type { FileListParams, FileSaveParams } from "./file.types";
 
 /*
@@ -69,36 +66,38 @@ class FileModelClass extends BaseModelClass<
     };
 
     // build queries
-    const { rows, total } = await this.runSubsetQuery({
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+
+    if (params.id) {
+      // id
+      qb.whereIn("files.id", asArray(params.id));
+    }
+
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      // search-keyword
+      if (params.search === "id") {
+        qb.where("files.id", Number(params.keyword));
+        // } else if (params.search === "field") {
+        //   qb.where("files.field", "like", `%${params.keyword}%`);
+      } else {
+        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+      }
+    }
+
+    if (params.orderBy) {
+      // orderBy
+      // default orderBy
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("files.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+
+    const { rows, total } = await this.executeSubsetQuery({
       subset,
+      qb,
       params,
-      subsetQuery: fileSubsetQueries[subset],
-      build: ({ qb }) => {
-        // id
-        if (params.id) {
-          qb.whereIn("files.id", asArray(params.id));
-        }
-
-        // search-keyword
-        if (params.search && params.keyword && params.keyword.length > 0) {
-          if (params.search === "id") {
-            qb.where("files.id", params.keyword);
-            // } else if (params.search === "field") {
-            //   qb.where("files.field", "like", `%${params.keyword}%`);
-          } else {
-            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
-          }
-        }
-
-        // orderBy
-        if (params.orderBy) {
-          // default orderBy
-          const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy(`files.${orderByField}`, orderByDirec);
-        }
-
-        return qb;
-      },
       debug: false,
     });
 
