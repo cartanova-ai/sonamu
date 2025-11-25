@@ -62,7 +62,7 @@ export function setupBiome(path: string) {
   });
 }
 
-export function formatCode(code: string, parser: "typescript" | "json") {
+export function formatCode(code: string, parser: "typescript" | "json", filePath: string) {
   Naite.t("formatCode", { code, parser });
 
   if (projectKey === -1) {
@@ -70,12 +70,7 @@ export function formatCode(code: string, parser: "typescript" | "json") {
     return code;
   }
 
-  // TODO: biome은 파일 경로에 기반해서 동작하기 때문에 임의로 처리함.
-  const filePath =
-    parser === "typescript"
-      ? "src/application/sonamu.generated.ts"
-      : "src/application/sonamu.generated.json";
-
+  // 포맷팅을 먼저 해야함
   const formatted = biome.formatContent(projectKey, code, { filePath });
   Naite.t("formatCode:formatted", formatted);
   if (formatted.diagnostics.filter((d) => d.severity === "error").length > 0) {
@@ -83,7 +78,11 @@ export function formatCode(code: string, parser: "typescript" | "json") {
     throw new Error("Biome format error");
   }
 
-  const linted = biome.lintContent(projectKey, formatted.content, { filePath });
+  // 린팅을 그 다음에
+  const linted = biome.lintContent(projectKey, formatted.content, {
+    filePath,
+    fixFileMode: "safeAndUnsafeFixes",
+  });
   if (linted.diagnostics.filter((d) => d.severity === "error").length > 0) {
     Naite.t("formatCode:linted:content", linted.content);
     Naite.t("formatCode:linted:diagnostics", linted.diagnostics);

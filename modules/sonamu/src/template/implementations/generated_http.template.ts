@@ -3,7 +3,6 @@ import { z } from "zod";
 import { getZodObjectFromApi } from "../../api/code-converters";
 import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
-import { formatCode } from "../../utils/formatter";
 import { Template } from "../template";
 
 export class Template__generated_http extends Template {
@@ -43,7 +42,7 @@ export class Template__generated_http extends Template {
           } else {
             return {
               querystring: [],
-              body: ["", formatCode(JSON.stringify(reqObject), "json")],
+              body: ["", JSON.stringify(reqObject, null, 2)],
             };
           }
         })();

@@ -48,7 +48,7 @@ async function generateCreateCode_ColumnAndIndexes(
     table,
     type: "normal",
     title: `create__${table}`,
-    formatted: formatCode(lines.join("\n"), "typescript"),
+    formatted: formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
   };
 }
 
@@ -162,7 +162,7 @@ async function generateCreateCode_Foreign(
       table,
       type: "foreign",
       title: `foreign__${table}__${foreignKeysString}`,
-      formatted: formatCode(lines.join("\n"), "typescript"),
+      formatted: formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`),
     },
   ];
 }
@@ -284,7 +284,7 @@ async function generateAlterCode_ColumnAndIndexes(
     "}",
   ];
 
-  const formatted = formatCode(lines.join("\n"), "typescript");
+  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
   const title = [
     "alter",
     table,
@@ -566,7 +566,7 @@ async function generateAlterCode_Foreigns(
     "}",
   ];
 
-  const formatted = formatCode(lines.join("\n"), "typescript");
+  const formatted = formatCode(lines.join("\n"), "typescript", `src/migration/${table}.ts`);
   const title = [
     "alter",
     table,

@@ -25,7 +25,7 @@ import {
 import { createImportUrl } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
-import { nonNullable } from "../utils/utils";
+import { assertDefined, nonNullable } from "../utils/utils";
 import { EntityManager } from "./entity-manager";
 
 export class Entity {
@@ -150,7 +150,7 @@ export class Entity {
       const match = selectItem.match(/^(.+?)(?: as (.+))?$/);
       if (match) {
         const [, column, alias] = match;
-        const key = alias || column.split(".").pop()!;
+        const key = alias ?? assertDefined(column.split(".").pop());
         selectObj[key] = `"${column.trim()}"`;
       }
     }
@@ -711,7 +711,7 @@ export class Entity {
       `src/application/${this.names.parentFs}/${this.names.fs}.entity.json`,
     );
     const json = this.toJson();
-    await writeFile(jsonPath, formatCode(JSON.stringify(json), "json"));
+    await writeFile(jsonPath, formatCode(JSON.stringify(json), "json", jsonPath));
 
     // reload
     await EntityManager.register(json);

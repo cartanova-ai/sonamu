@@ -195,23 +195,18 @@ class SonamuClass {
     await Template.autoload();
 
     const { isLocal, isTest } = await import("../utils/controller");
+    if (isLocal()) {
+      // 로컬에서는 코드 생성을 위해 Biome 셋업이 필요함 (현재 apiRootPath 전달하여 실행)
+      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
+    }
+
     const { isHotReloadServer } = await import("../utils/esm-utils");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
-      // HMR 환경에서는 코드젠을 하고, 그때 biome 포매터가 필요합니다.
-      // Biome을 셋업할 때 프로젝트의 경로가 필요한데, 이는 apiRootPath에 담겨 있습니다.
-      // 이 곳(Sonamu.init)은 apiRootPath에 가장 이르게 접근할 수 있는 곳입니다.
-      // 그래서 여기에서 biome을 셋업합니다.
-      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
-
       await this.syncer.sync();
 
       await this.startWatcher();
 
       this.syncer.syncUI();
-    }
-    // 테스트시에도 Biome는 필요하여 추가함
-    if (isTest()) {
-      (await import("../utils/formatter")).setupBiome(this.apiRootPath);
     }
 
     this.isInitialized = true;
