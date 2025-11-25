@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
-import { departmentPuriLoaderQueries, departmentPuriSubsetQueries } from "../sonamu.generated.sso";
+import { departmentLoaderQueries, departmentSubsetQueries } from "../sonamu.generated.sso";
 import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
 
 /*
@@ -16,8 +16,8 @@ import type { DepartmentListParams, DepartmentSaveParams } from "./department.ty
 class DepartmentModelClass extends BaseModelClass<
   DepartmentSubsetKey,
   DepartmentSubsetMapping,
-  typeof departmentPuriSubsetQueries,
-  typeof departmentPuriLoaderQueries
+  typeof departmentSubsetQueries,
+  typeof departmentLoaderQueries
 > {
   modelName = "Department";
 
@@ -161,6 +161,6 @@ class DepartmentModelClass extends BaseModelClass<
 }
 
 export const DepartmentModel = new DepartmentModelClass(
-  departmentPuriSubsetQueries,
-  departmentPuriLoaderQueries,
+  departmentSubsetQueries,
+  departmentLoaderQueries,
 );

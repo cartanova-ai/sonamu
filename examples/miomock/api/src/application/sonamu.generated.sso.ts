@@ -16,8 +16,8 @@ import {
   UserBaseSchema,
 } from "./sonamu.generated";
 
-// Puri SubsetQuery: Company
-export const companyPuriSubsetQueries = {
+// SubsetQuery: Company
+export const companySubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("companies").select({
       id: "companies.id",
@@ -27,13 +27,13 @@ export const companyPuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: Company
-export const companyPuriLoaderQueries = {
+// LoaderQuery: Company
+export const companyLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<CompanySubsetKey>;
 
-// Puri SubsetQuery: Department
-export const departmentPuriSubsetQueries = {
+// SubsetQuery: Department
+export const departmentSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("departments")
@@ -78,8 +78,8 @@ export const departmentPuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: Department
-export const departmentPuriLoaderQueries = {
+// LoaderQuery: Department
+export const departmentLoaderQueries = {
   A: [
     {
       as: "employees",
@@ -104,8 +104,8 @@ export const departmentPuriLoaderQueries = {
   P2: [],
 } as const satisfies PuriLoaderQueries<DepartmentSubsetKey>;
 
-// Puri SubsetQuery: Employee
-export const employeePuriSubsetQueries = {
+// SubsetQuery: Employee
+export const employeeSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper
       .from("employees")
@@ -152,8 +152,8 @@ export const employeePuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: Employee
-export const employeePuriLoaderQueries = {
+// LoaderQuery: Employee
+export const employeeLoaderQueries = {
   A: [],
   P: [
     {
@@ -205,8 +205,8 @@ export const employeePuriLoaderQueries = {
   ],
 } as const satisfies PuriLoaderQueries<EmployeeSubsetKey>;
 
-// Puri SubsetQuery: File
-export const filePuriSubsetQueries = {
+// SubsetQuery: File
+export const fileSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("files").select({
       id: "files.id",
@@ -218,13 +218,13 @@ export const filePuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: File
-export const filePuriLoaderQueries = {
+// LoaderQuery: File
+export const fileLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<FileSubsetKey>;
 
-// Puri SubsetQuery: Project
-export const projectPuriSubsetQueries = {
+// SubsetQuery: Project
+export const projectSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("projects").select({
       id: "projects.id",
@@ -247,8 +247,8 @@ export const projectPuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: Project
-export const projectPuriLoaderQueries = {
+// LoaderQuery: Project
+export const projectLoaderQueries = {
   A: [
     {
       as: "employee",
@@ -326,8 +326,8 @@ export const projectPuriLoaderQueries = {
   ],
 } as const satisfies PuriLoaderQueries<ProjectSubsetKey>;
 
-// Puri SubsetQuery: Tag
-export const tagPuriSubsetQueries = {
+// SubsetQuery: Tag
+export const tagSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("tags").select({
       id: "tags.id",
@@ -337,13 +337,13 @@ export const tagPuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: Tag
-export const tagPuriLoaderQueries = {
+// LoaderQuery: Tag
+export const tagLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<TagSubsetKey>;
 
-// Puri SubsetQuery: User
-export const userPuriSubsetQueries = {
+// SubsetQuery: User
+export const userSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
     return qbWrapper.from("users").select({
       id: "users.id",
@@ -391,8 +391,8 @@ export const userPuriSubsetQueries = {
   },
 };
 
-// Puri LoaderQuery: User
-export const userPuriLoaderQueries = {
+// LoaderQuery: User
+export const userLoaderQueries = {
   A: [],
   P: [],
   SS: [],
