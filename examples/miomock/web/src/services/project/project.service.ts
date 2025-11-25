@@ -1,20 +1,15 @@
-import { z } from "zod";
+
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
+import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import {
   fetch,
-  ListResult,
-  SWRError,
-  SwrOptions,
   handleConditional,
-  swrPostFetcher,
-  EventHandlers,
-  SSEStreamOptions,
-  useSSEStream,
+  type ListResult,
+  type SWRError,
+  type SwrOptions,
 } from "../sonamu.shared";
-import { type AxiosProgressEvent } from "axios";
-import { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
-import { ProjectListParams, ProjectSaveParams } from "./project.types";
+import type { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 export namespace ProjectService {
   export function useProject<T extends ProjectSubsetKey>(

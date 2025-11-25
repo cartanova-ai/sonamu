@@ -10,7 +10,7 @@ import {
   upload,
 } from "sonamu";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
-import { filePuriLoaderQueries, filePuriSubsetQueries } from "../sonamu.generated.sso";
+import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
 import type { FileListParams, FileSaveParams } from "./file.types";
 
 /*
@@ -19,8 +19,8 @@ import type { FileListParams, FileSaveParams } from "./file.types";
 class FileModelClass extends BaseModelClass<
   FileSubsetKey,
   FileSubsetMapping,
-  typeof filePuriSubsetQueries,
-  typeof filePuriLoaderQueries
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
 > {
   modelName = "File";
 
@@ -191,4 +191,4 @@ class FileModelClass extends BaseModelClass<
   }
 }
 
-export const FileModel = new FileModelClass(filePuriSubsetQueries, filePuriLoaderQueries);
+export const FileModel = new FileModelClass(fileSubsetQueries, fileLoaderQueries);

@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
-import { projectPuriLoaderQueries, projectPuriSubsetQueries } from "../sonamu.generated.sso";
+import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
 import type { ProjectListParams, ProjectSaveParams } from "./project.types";
 
 /*
@@ -16,8 +16,8 @@ import type { ProjectListParams, ProjectSaveParams } from "./project.types";
 class ProjectModelClass extends BaseModelClass<
   ProjectSubsetKey,
   ProjectSubsetMapping,
-  typeof projectPuriSubsetQueries,
-  typeof projectPuriLoaderQueries
+  typeof projectSubsetQueries,
+  typeof projectLoaderQueries
 > {
   modelName = "Project";
 
@@ -172,7 +172,4 @@ class ProjectModelClass extends BaseModelClass<
   }
 }
 
-export const ProjectModel = new ProjectModelClass(
-  projectPuriSubsetQueries,
-  projectPuriLoaderQueries,
-);
+export const ProjectModel = new ProjectModelClass(projectSubsetQueries, projectLoaderQueries);

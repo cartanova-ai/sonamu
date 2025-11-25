@@ -138,7 +138,9 @@ describe("Syncer", () => {
       Naite.expect("step").toMatchSnapshot();
 
       // formatted and linted
+      // expect(Naite.get("formatCode:formatted").content).toMatchSnapshot();
       // expect(Naite.get("formatCode:linted").content).toMatchSnapshot();
+      // expect(Naite.get("resolveRenderedTemplate:formatted:model")).toMatchSnapshot();
     });
   });
 });

@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "sonamu";
 import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
-import { tagPuriLoaderQueries, tagPuriSubsetQueries } from "../sonamu.generated.sso";
+import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
 import type { TagListParams, TagSaveParams } from "./tag.types";
 
 /*
@@ -17,8 +17,8 @@ import type { TagListParams, TagSaveParams } from "./tag.types";
 class TagModelClass extends BaseModelClass<
   TagSubsetKey,
   TagSubsetMapping,
-  typeof tagPuriSubsetQueries,
-  typeof tagPuriLoaderQueries
+  typeof tagSubsetQueries,
+  typeof tagLoaderQueries
 > {
   modelName = "Tag";
 
@@ -135,4 +135,4 @@ class TagModelClass extends BaseModelClass<
   }
 }
 
-export const TagModel = new TagModelClass(tagPuriSubsetQueries, tagPuriLoaderQueries);
+export const TagModel = new TagModelClass(tagSubsetQueries, tagLoaderQueries);

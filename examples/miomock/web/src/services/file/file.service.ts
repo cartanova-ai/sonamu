@@ -1,20 +1,15 @@
-import { z } from "zod";
+import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
+import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import {
   fetch,
-  ListResult,
-  SWRError,
-  SwrOptions,
   handleConditional,
-  swrPostFetcher,
-  EventHandlers,
-  SSEStreamOptions,
-  useSSEStream,
+  type ListResult,
+  type SWRError,
+  type SwrOptions,
 } from "../sonamu.shared";
-import { type AxiosProgressEvent } from "axios";
-import { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
-import { FileListParams, FileSaveParams } from "./file.types";
+import type { FileListParams, FileSaveParams } from "./file.types";
 
 export namespace FileService {
   export function useFile<T extends FileSubsetKey>(

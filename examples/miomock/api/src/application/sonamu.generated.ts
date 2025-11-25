@@ -1,9 +1,8 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
-/** biome-ignore-all style: generated는 무시 */
 
+import { SonamuQueryMode, zArrayable } from "sonamu";
 import { z } from "zod";
-import { zArrayable, SonamuQueryMode } from "sonamu";
 
 // CustomScalar: NumberType
 const NumberType = z.number();
