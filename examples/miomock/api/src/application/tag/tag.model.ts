@@ -1,32 +1,26 @@
+
+
+import { BaseModelClass, ListResult, asArray, NotFoundException, BadRequestException, api } from 'sonamu';
 import {
-  api,
-  asArray,
-  BadRequestException,
-  BaseModelClass,
-  type ListResult,
-  NotFoundException,
-} from "sonamu";
-import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
+  TagSubsetKey,
+  TagSubsetMapping,
+} from "../sonamu.generated";
 import {
-  tagPuriLoaderQueries,
-  tagPuriSubsetQueries,
   tagSubsetQueries,
 } from "../sonamu.generated.sso";
-import type { TagListParams, TagSaveParams } from "./tag.types";
+import { TagListParams, TagSaveParams } from "./tag.types";
 
 /*
   Tag Model
 */
-class TagModelClass extends BaseModelClass<
-  TagSubsetKey,
-  TagSubsetMapping,
-  typeof tagPuriSubsetQueries,
-  typeof tagPuriLoaderQueries
-> {
+class TagModelClass extends BaseModelClass {
   modelName = "Tag";
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tag" })
-  async findById<T extends TagSubsetKey>(subset: T, id: number): Promise<TagSubsetMapping[T]> {
+  async findById<T extends TagSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<TagSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
       num: 1,
@@ -41,7 +35,7 @@ class TagModelClass extends BaseModelClass<
 
   async findOne<T extends TagSubsetKey>(
     subset: T,
-    listParams: TagListParams,
+    listParams: TagListParams
   ): Promise<TagSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
@@ -55,7 +49,7 @@ class TagModelClass extends BaseModelClass<
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
   async findMany<T extends TagSubsetKey>(
     subset: T,
-    params: TagListParams = {},
+    params: TagListParams = {}
   ): Promise<ListResult<TagSubsetMapping[T]>> {
     // params with defaults
     params = {
@@ -67,7 +61,7 @@ class TagModelClass extends BaseModelClass<
     };
 
     // build queries
-    const { rows, total } = await this.runSubsetQuery({
+    let { rows, total } = await this.runSubsetQuery({
       subset,
       params,
       subsetQuery: tagSubsetQueries[subset],
@@ -81,10 +75,12 @@ class TagModelClass extends BaseModelClass<
         if (params.search && params.keyword && params.keyword.length > 0) {
           if (params.search === "id") {
             qb.where("tags.id", params.keyword);
-            // } else if (params.search === "field") {
-            //   qb.where("tags.field", "like", `%${params.keyword}%`);
+          // } else if (params.search === "field") {
+          //   qb.where("tags.field", "like", `%${params.keyword}%`);
           } else {
-            throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+            throw new BadRequestException(
+              `구현되지 않은 검색 필드 ${params.search}`
+            );
           }
         }
 
@@ -92,8 +88,14 @@ class TagModelClass extends BaseModelClass<
         if (params.orderBy) {
           // default orderBy
           const [orderByField, orderByDirec] = params.orderBy.split("-");
-          qb.orderBy(`tags.${orderByField}`, orderByDirec);
+          qb.orderBy("tags." + orderByField, orderByDirec);
         }
+
+        this.executeSubsetQuery({
+        
+        
+        
+        });
 
         return qb;
       },
@@ -107,11 +109,13 @@ class TagModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST" })
-  async save(spa: TagSaveParams[]): Promise<number[]> {
+  async save(
+    spa: TagSaveParams[]
+  ): Promise<number[]> {
     const wdb = this.getPuri("w");
 
     // register
-    spa.forEach((sp) => {
+    spa.map((sp) => {
       wdb.ubRegister("tags", sp);
     });
 
@@ -123,7 +127,7 @@ class TagModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", guards: [ "admin" ] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 
@@ -136,4 +140,4 @@ class TagModelClass extends BaseModelClass<
   }
 }
 
-export const TagModel = new TagModelClass(tagPuriSubsetQueries, tagPuriLoaderQueries);
+export const TagModel = new TagModelClass();
