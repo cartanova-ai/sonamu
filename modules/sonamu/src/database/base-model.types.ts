@@ -23,11 +23,9 @@ export type ExtractPuriTables<T> = T extends Puri<any, infer TTables, any> ? TTa
  * getSubsetQueries의 qb 타입 정의에 사용
  */
 export type UnionExtractedTTables<
-  SubsetKey extends string,
-  SubsetQueries extends Record<SubsetKey, PuriSubsetFn>,
-> = {
-  [K in SubsetKey]: ExtractPuriTables<ReturnType<SubsetQueries[K]>>;
-}[SubsetKey];
+  TSubsetKey extends string,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
+> = ExtractPuriTables<ReturnType<TSubsetQueries[TSubsetKey]>>;
 
 // ============================================================================
 // Subset 교집합 계산 (onSubset 메서드용)
@@ -36,9 +34,9 @@ export type UnionExtractedTTables<
 /**
  * 두 Puri의 테이블 교집합을 가진 새로운 Puri 생성
  */
-type MergePuriTables<A, B> = Puri<
+type MergePuriTables<A, B, TA = ExtractPuriTables<A>, TB = ExtractPuriTables<B>> = Puri<
   DatabaseSchemaExtend,
-  Pick<ExtractPuriTables<A>, Extract<keyof ExtractPuriTables<A>, keyof ExtractPuriTables<B>>>,
+  Pick<TA, Extract<keyof TA, keyof TB>>,
   any
 >;
 

@@ -128,21 +128,15 @@ export type ExtractLoaderResult<TLoaderQb> = TLoaderQb extends PuriLoaderQbFn
  * // { employees: Array<{ ...employee fields; projects: Array<...> }> }
  */
 export type LoadersResult<TLoaders extends readonly GenericPuriLoader[]> = {
-  [L in TLoaders[number] as L["as"]]: Expand<
-    ExtractLoaderResult<L["qb"]> &
-      (L["loaders"] extends readonly GenericPuriLoader[] ? LoadersResult<L["loaders"]> : {})
-  >[];
+  [L in TLoaders[number] as L["as"]]: WithLoaders<ExtractLoaderResult<L["qb"]>, L["loaders"]>[];
 };
 
 /**
  * 기본 결과와 Loader 결과 병합
  */
-export type FinalRow<
-  TBaseResult,
-  TLoaders extends readonly GenericPuriLoader[] | undefined,
-> = TLoaders extends readonly GenericPuriLoader[]
-  ? TBaseResult & LoadersResult<TLoaders>
-  : TBaseResult;
+type WithLoaders<TBase, TLoaders> = TLoaders extends readonly GenericPuriLoader[]
+  ? TBase & LoadersResult<TLoaders>
+  : TBase;
 
 // ============================================================================
 // Subset 결과 타입 추론
@@ -154,14 +148,7 @@ export type FinalRow<
 export type InferSubsetWithLoaders<
   TSubsetFn extends (...args: any) => Puri<any, any, any>,
   TLoaders extends readonly GenericPuriLoader[] | undefined = undefined,
-> = Expand<
-  Hydrate<
-    // 기본 쿼리 결과
-    ExtractPuriResult<ReturnType<TSubsetFn>> &
-      // 로더 결과 병합
-      (TLoaders extends readonly GenericPuriLoader[] ? LoadersResult<TLoaders> : {})
-  >
->;
+> = Expand<Hydrate<WithLoaders<ExtractPuriResult<ReturnType<TSubsetFn>>, TLoaders>>>;
 
 /**
  * 전체 SubsetQueries + LoaderQueries 객체에서 전체 결과 맵 생성
