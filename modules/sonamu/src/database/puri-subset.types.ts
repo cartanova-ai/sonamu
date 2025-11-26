@@ -113,7 +113,7 @@ export type Hydrate<T> =
 /**
  * Loader 쿼리 함수에서 결과 타입 추출 (refId 제외, Hydrate 적용)
  */
-export type ExtractLoaderResult<TLoaderQb> = TLoaderQb extends PuriLoaderQbFn
+type ExtractLoaderResult<TLoaderQb> = TLoaderQb extends PuriLoaderQbFn
   ? Expand<Hydrate<Omit<ExtractPuriResult<ReturnType<TLoaderQb>>, "refId">>>
   : never;
 
@@ -145,7 +145,7 @@ type WithLoaders<TBase, TLoaders> = TLoaders extends readonly GenericPuriLoader[
 /**
  * 단일 Subset 함수 + Loader에서 최종 결과 타입 추론
  */
-export type InferSubsetWithLoaders<
+type InferSubsetWithLoaders<
   TSubsetFn extends (...args: any) => Puri<any, any, any>,
   TLoaders extends readonly GenericPuriLoader[] | undefined = undefined,
 > = Expand<Hydrate<WithLoaders<ExtractPuriResult<ReturnType<TSubsetFn>>, TLoaders>>>;
