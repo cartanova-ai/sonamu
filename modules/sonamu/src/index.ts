@@ -7,6 +7,7 @@ export * from "./database/base-model";
 export * from "./database/db";
 export * from "./database/puri";
 export * from "./database/puri.types";
+export * from "./database/puri-subset.types";
 export * from "./database/puri-wrapper";
 export * from "./database/upsert-builder";
 export * from "./entity/entity";

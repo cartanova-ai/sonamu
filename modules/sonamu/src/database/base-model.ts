@@ -9,12 +9,8 @@ import { chunk } from "../utils/utils";
 import type { DBPreset } from "./db";
 import { DB } from "./db";
 import { Puri } from "./puri";
-import type {
-  InferAllSubsets,
-  PuriLoaderQueries,
-  PuriSubsetFn,
-  UnionExtractedTTables,
-} from "./puri.types";
+import type { UnionExtractedTTables } from "./puri.types";
+import type { InferAllSubsets, PuriLoaderQueries, PuriSubsetFn } from "./puri-subset.types";
 import { PuriWrapper } from "./puri-wrapper";
 import { UpsertBuilder } from "./upsert-builder";
 

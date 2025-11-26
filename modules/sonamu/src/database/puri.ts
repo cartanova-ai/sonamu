@@ -7,7 +7,6 @@ import type { Knex } from "knex";
 import { Naite } from "../naite/naite";
 import type {
   AvailableColumns,
-  ClearStatements,
   ColumnKeys,
   ComparisonOperator,
   Expand,
@@ -21,6 +20,7 @@ import type {
   SqlExpression,
   WhereCondition,
 } from "./puri.types";
+import type { ClearStatements } from "./puri-subset.types";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
