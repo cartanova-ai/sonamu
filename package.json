@@ -13,7 +13,7 @@
     "build:miomock:web": "cowsay 'miomock-web 빌드합니다.' && pnpm run --filter miomock-web build || (cowsay -f explosion 'miomock-web 빌드 실패!' && exit 1)",
     "build:miomock": "run-s 'build:miomock:*'",
     "build": "run-s 'build:tools' 'build:lib' 'build:miomock'",
-    "publish-those-not-published-yet": "tsx scripts/publich.ts",
+    "publish-those-not-published-yet": "tsx scripts/publish.ts",
     "format": "biome format --write",
     "check": "biome check"
   },
