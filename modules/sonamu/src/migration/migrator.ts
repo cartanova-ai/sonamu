@@ -203,6 +203,7 @@ export class Migrator {
         knex: knex(config.options),
       })),
     );
+    Naite.t("runAction:conns", conns);
 
     // action
     const result = await (async () => {
@@ -238,6 +239,8 @@ export class Migrator {
         return knex.destroy();
       }),
     );
+
+    Naite.t("runAction:result", result);
 
     return result;
   }
@@ -299,6 +302,7 @@ export class Migrator {
    */
   async generatePreparedCodes(): Promise<number> {
     const { preparedCodes } = await this.getStatus();
+    Naite.t("generatePreparedCodes:preparedCodes", preparedCodes);
     if (preparedCodes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return 0;
