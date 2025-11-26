@@ -1,0 +1,54 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Code Converters > 제네릭 없는 단순 API - save 1`] = `
+[
+  "Resolving Type Parameters",
+  "Filtering API Parameters",
+]
+`;
+
+exports[`Code Converters > 제네릭 없는 단순 API - save 2`] = `{}`;
+
+exports[`Code Converters > 제네릭 없는 단순 API - save 3`] = `
+[
+  "spa",
+]
+`;
+
+exports[`Code Converters > 제네릭 없는 단순 API - save 4`] = `"object"`;
+
+exports[`Code Converters > 제네릭 있는 API - findById 1`] = `
+[
+  "Resolving Type Parameters",
+  "Filtering API Parameters",
+]
+`;
+
+exports[`Code Converters > 제네릭 있는 API - findById 2`] = `1`;
+
+exports[`Code Converters > 제네릭 있는 API - findById 3`] = `
+[
+  "subset",
+  "id",
+]
+`;
+
+exports[`Code Converters > 제네릭 있는 API - findById 4`] = `"object"`;
+
+exports[`Code Converters > 제네릭 있는 API - findMany (optional 파라미터) 1`] = `
+[
+  "Resolving Type Parameters",
+  "Filtering API Parameters",
+]
+`;
+
+exports[`Code Converters > 제네릭 있는 API - findMany (optional 파라미터) 2`] = `1`;
+
+exports[`Code Converters > 제네릭 있는 API - findMany (optional 파라미터) 3`] = `
+[
+  "subset",
+  "rawParams",
+]
+`;
+
+exports[`Code Converters > 제네릭 있는 API - findMany (optional 파라미터) 4`] = `"object"`;
