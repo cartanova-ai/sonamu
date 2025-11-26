@@ -9,62 +9,60 @@ import { Sonamu } from "../api";
 import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
+import { Naite } from "../naite/naite";
 import type { GenMigrationCode, MigrationSet } from "../types/types";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromDB, getMigrationSetFromEntity } from "./migration-set";
 import type { ConnString, MigrationCode, MigrationStatus } from "./types";
 
-type MigratorMode = "dev" | "deploy";
-export type MigratorOptions = {
-  readonly mode: MigratorMode;
-};
-
 export class Migrator {
   targets: {
-    compare?: Knex;
-    pending: Knex;
+    compare: Knex;
     shadow: Knex;
-    apply: Knex[];
   };
 
-  constructor(private readonly options: MigratorOptions) {
+  constructor() {
     const { dbConfig } = Sonamu;
 
-    if (this.options.mode === "dev") {
-      const devDB = knex(dbConfig.development_master);
-      const testDB = knex(dbConfig.test);
-
-      const applyDBs = [devDB, testDB];
-
-      if (
-        (dbConfig.test.connection as Knex.MySql2ConnectionConfig).host !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host ||
-        (dbConfig.test.connection as Knex.MySql2ConnectionConfig).database !==
-          (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).database
-      ) {
-        const fixtureRemoteDB = knex(dbConfig.fixture_remote);
-        applyDBs.push(fixtureRemoteDB);
-      }
-
-      this.targets = {
-        compare: devDB,
-        pending: devDB,
-        shadow: testDB,
-        apply: applyDBs,
-      };
-    } else if (this.options.mode === "deploy") {
-      const productionDB = knex(dbConfig.production_master);
-      const testDB = knex(dbConfig.test);
-
-      this.targets = {
-        pending: productionDB,
-        shadow: testDB,
-        apply: [productionDB],
-      };
-    } else {
-      throw new Error(`잘못된 모드 ${this.options.mode} 입력`);
+    const devDB = knex(dbConfig.development_master);
+    const testDB = knex(dbConfig.test);
+    const applyDBs = [devDB, testDB];
+    if (
+      (dbConfig.test.connection as Knex.MySql2ConnectionConfig).host !==
+        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host ||
+      (dbConfig.test.connection as Knex.MySql2ConnectionConfig).database !==
+        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).database
+    ) {
+      const fixtureRemoteDB = knex(dbConfig.fixture_remote);
+      applyDBs.push(fixtureRemoteDB);
     }
+
+    this.targets = {
+      compare: devDB,
+      shadow: testDB,
+    };
+  }
+
+  private async getMigrationCodes(): Promise<MigrationCode[]> {
+    const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
+
+    if (!(await exists(srcMigrationsDir))) {
+      await mkdir(srcMigrationsDir, {
+        recursive: true,
+      });
+    }
+
+    const codes = (await readdir(srcMigrationsDir))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => ({
+        name: f.replace(".ts", ""),
+        path: path.join(srcMigrationsDir, f),
+      }))
+      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
+
+    Naite.t("getMigrationCodes:results", codes);
+    return codes;
   }
 
   /**
@@ -115,6 +113,7 @@ export class Migrator {
             return "error";
           }
         })();
+        Naite.t("getStatus:status", status);
 
         const connection = knexOptions.connection as Knex.MySql2ConnectionConfig;
 
@@ -132,6 +131,8 @@ export class Migrator {
         };
       }),
     );
+
+    Naite.t("getStatus:conns", statuses);
 
     const preparedCodes: GenMigrationCode[] = await (async () => {
       const status0conn = statuses.find((status) => status.status === 0);
@@ -152,20 +153,13 @@ export class Migrator {
       return genCodes;
     })();
 
+    Naite.t("getStatus:preparedCodes", preparedCodes);
+
     return {
       conns: statuses,
       codes,
       preparedCodes,
     };
-    /*
-    DB 마이그레이션 상태 확인
-    1. 전체 DB설정에 대해서 현재 마이그레이션 상태 확인
-    - connKey: string
-    - status: number
-    - currentVersion: string
-    - list: { file: string; directory: string }[]
-    
-    */
   }
 
   /**
@@ -283,6 +277,19 @@ export class Migrator {
     return sum(res);
   }
 
+  private genDateTag(index: number, baseDate: Date = new Date()): string {
+    const date = new Date(baseDate.getTime() + index * 1000);
+    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
+    return (
+      date.getFullYear().toString() +
+      pad(date.getMonth() + 1) +
+      pad(date.getDate()) +
+      pad(date.getHours()) +
+      pad(date.getMinutes()) +
+      pad(date.getSeconds())
+    );
+  }
+
   /**
    * 마이그레이션 코드 파일을 생성합니다.
    *
@@ -310,6 +317,65 @@ export class Migrator {
     }
 
     return preparedCodes.length;
+  }
+
+  private async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
+    // Entity 순회하여 싱크
+    const entityIds = EntityManager.getAllIds();
+
+    // 조인테이블 포함하여 Entity에서 MigrationSet 추출
+    const entitySetsWithJoinTable = entityIds
+      .filter((entityId) => EntityManager.get(entityId).props.length > 0)
+      .map((entityId) => getMigrationSetFromEntity(EntityManager.get(entityId)));
+
+    // 조인테이블만 추출
+    const joinTablesWithDup = entitySetsWithJoinTable.flatMap((entitySet) => entitySet.joinTables);
+    // 중복 제거 (중복인 경우 indexes를 병합)
+    const joinTables = Object.values(group(joinTablesWithDup, (jt) => jt.table)).map((tables) => {
+      assert(tables !== undefined, "tables is undefined");
+      if (tables.length === 1) {
+        return tables[0];
+      }
+      return {
+        ...tables[0],
+        indexes: unique(
+          tables.flatMap((t) => t.indexes),
+          (index) => [index.type, ...index.columns.sort()].join("-"),
+        ),
+      };
+    });
+
+    // 조인테이블 포함하여 MigrationSet 배열
+    const entitySets: MigrationSet[] = [...entitySetsWithJoinTable, ...joinTables];
+
+    const codes: GenMigrationCode[] = (
+      await Promise.all(
+        entitySets.map(async (entitySet) => {
+          const dbSet = await getMigrationSetFromDB(compareDB, entitySet.table);
+
+          if (dbSet === null) {
+            // 기존 테이블 없음, 새로 테이블 생성
+            return await generateCreateCode(entitySet);
+          } else {
+            // 기존 테이블 존재하는 케이스
+            return await generateAlterCode(entitySet, dbSet);
+          }
+        }),
+      )
+    ).flat();
+
+    // normal 타입이 앞으로, foreign이 뒤로
+    codes.sort((codeA, codeB) => {
+      if (codeA.type === "foreign" && codeB.type === "normal") {
+        return 1;
+      } else if (codeA.type === "normal" && codeB.type === "foreign") {
+        return -1;
+      } else {
+        return 0;
+      }
+    });
+
+    return codes;
   }
 
   /**
@@ -395,102 +461,7 @@ export class Migrator {
    * @returns {Promise<void>} 종료 결과
    */
   async destroy(): Promise<void> {
-    await Promise.all(
-      this.targets.apply.map((db) => {
-        return db.destroy();
-      }),
-    );
-  }
-
-  private async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
-    // Entity 순회하여 싱크
-    const entityIds = EntityManager.getAllIds();
-
-    // 조인테이블 포함하여 Entity에서 MigrationSet 추출
-    const entitySetsWithJoinTable = entityIds
-      .filter((entityId) => EntityManager.get(entityId).props.length > 0)
-      .map((entityId) => getMigrationSetFromEntity(EntityManager.get(entityId)));
-
-    // 조인테이블만 추출
-    const joinTablesWithDup = entitySetsWithJoinTable.flatMap((entitySet) => entitySet.joinTables);
-    // 중복 제거 (중복인 경우 indexes를 병합)
-    const joinTables = Object.values(group(joinTablesWithDup, (jt) => jt.table)).map((tables) => {
-      assert(tables !== undefined, "tables is undefined");
-      if (tables.length === 1) {
-        return tables[0];
-      }
-      return {
-        ...tables[0],
-        indexes: unique(
-          tables.flatMap((t) => t.indexes),
-          (index) => [index.type, ...index.columns.sort()].join("-"),
-        ),
-      };
-    });
-
-    // 조인테이블 포함하여 MigrationSet 배열
-    const entitySets: MigrationSet[] = [...entitySetsWithJoinTable, ...joinTables];
-
-    const codes: GenMigrationCode[] = (
-      await Promise.all(
-        entitySets.map(async (entitySet) => {
-          const dbSet = await getMigrationSetFromDB(compareDB, entitySet.table);
-
-          if (dbSet === null) {
-            // 기존 테이블 없음, 새로 테이블 생성
-            return await generateCreateCode(entitySet);
-          } else {
-            // 기존 테이블 존재하는 케이스
-            return await generateAlterCode(entitySet, dbSet);
-          }
-        }),
-      )
-    ).flat();
-
-    // normal 타입이 앞으로, foreign이 뒤로
-    codes.sort((codeA, codeB) => {
-      if (codeA.type === "foreign" && codeB.type === "normal") {
-        return 1;
-      } else if (codeA.type === "normal" && codeB.type === "foreign") {
-        return -1;
-      } else {
-        return 0;
-      }
-    });
-
-    return codes;
-  }
-
-  private async getMigrationCodes(): Promise<MigrationCode[]> {
-    const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
-
-    if (!(await exists(srcMigrationsDir))) {
-      await mkdir(srcMigrationsDir, {
-        recursive: true,
-      });
-    }
-
-    const codes = (await readdir(srcMigrationsDir))
-      .filter((f) => f.endsWith(".ts"))
-      .map((f) => ({
-        name: f.replace(".ts", ""),
-        path: path.join(srcMigrationsDir, f),
-      }))
-      .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
-
-    return codes;
-  }
-
-  private genDateTag(index: number, baseDate: Date = new Date()): string {
-    const date = new Date(baseDate.getTime() + index * 1000);
-    const pad = (num: number, size: number = 2) => num.toString().padStart(size, "0");
-    return (
-      date.getFullYear().toString() +
-      pad(date.getMonth() + 1) +
-      pad(date.getDate()) +
-      pad(date.getHours()) +
-      pad(date.getMinutes()) +
-      pad(date.getSeconds())
-    );
+    this.targets.compare.destroy();
+    this.targets.shadow.destroy();
   }
 }

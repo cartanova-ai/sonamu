@@ -663,9 +663,7 @@ export async function createServer(options: {
     return { columns };
   });
 
-  const migrator = new Migrator({
-    mode: "dev",
-  });
+  const migrator = new Migrator();
   console.log("migrator inialized");
 
   server.get("/api/migrations/status", async () => {
