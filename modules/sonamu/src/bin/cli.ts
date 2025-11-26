@@ -128,6 +128,9 @@ async function dev() {
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
       "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
       `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 sonamu.lock 파일을 지우고 서버 재시작하게 해줘요.
+
+      "--on-key=enter:shell(echo hi):Key binding test", // enter를 key로 쓸 수 있음을 보이기 위한 테스트입니다.
+      "--on-key=ctrl+f ctrl+f:shell(git pull && pnpm install && pnpm --filter sonamu build && echo 'Sonamu is now up-to-date!'):restart:Pull & install & build & restart", // modifier와의 조합, 그리고 두 개의 chord를 사용할 수 있음을 보이기 위한 테스트입니다.
       entryPoint, // 마지막으로 실제 실행할 스크립트의 경로를 넘겨줍니다.
     ],
     {

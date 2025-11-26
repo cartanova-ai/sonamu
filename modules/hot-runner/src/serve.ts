@@ -1,16 +1,10 @@
 import { relative } from "node:path";
+import { emitKeypressEvents, type Key } from "node:readline";
 import { args, BaseCommand, flags } from "@adonisjs/ace";
 import { type ExecaChildProcess, execa } from "execa";
 
 import { runNode } from "./helpers.js";
-
-type Action = { type: "restart" } | { type: "shell"; command: string };
-
-type KeyBinding = {
-  key: string;
-  actions: Action[];
-  description: string;
-};
+import { type Action, type KeyBinding, KeybindingManager, parseKeybinding } from "./keybinding.js";
 
 export class Serve extends BaseCommand {
   static commandName = "serve";
@@ -38,12 +32,12 @@ export class Serve extends BaseCommand {
   declare onKey: string[];
 
   #httpServer?: ExecaChildProcess<string>;
-  #keyBindings: KeyBinding[] = [];
+  #keybindingManager = new KeybindingManager();
   #onReloadAsked?: (updatedFile: string, shouldBeReloadable: boolean) => void;
   #onFileInvalidated?: (invalidatedFiles: string[]) => void;
 
   /**
-   * Conditionally clear the terminal screen
+   * 조건부로 터미널 화면을 지웁니다
    */
   #clearScreen() {
     if (this.clearScreen) {
@@ -52,14 +46,14 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Log messages with hot-runner prefix
+   * hot-runner 접두사가 있는 로그 메시지를 출력합니다
    */
   #log(message: string) {
     this.logger.log(`${this.colors.blue("[hot-runner]")} ${message}`);
   }
 
   /**
-   * Starts the HTTP server
+   * HTTP 서버를 시작합니다
    */
   #startHTTPServer() {
     this.#httpServer = runNode(process.cwd(), {
@@ -68,15 +62,17 @@ export class Serve extends BaseCommand {
       scriptArgs: this.scriptArgs,
     });
 
-    this.#httpServer.on("message", async (message: any) => {
-      if (typeof message !== "object") return;
+    this.#httpServer.on("message", async (message: unknown) => {
+      if (typeof message !== "object" || message === null) return;
 
       if ("type" in message && message.type === "hot-hook:full-reload") {
-        this.#onReloadAsked?.(message.path, message.shouldBeReloadable);
+        const msg = message as unknown as { path: string; shouldBeReloadable: boolean };
+        this.#onReloadAsked?.(msg.path, msg.shouldBeReloadable);
       }
 
       if ("type" in message && message.type === "hot-hook:invalidated") {
-        this.#onFileInvalidated?.(message.paths);
+        const msg = message as unknown as { paths: string[] };
+        this.#onFileInvalidated?.(msg.paths);
       }
     });
 
@@ -86,8 +82,8 @@ export class Serve extends BaseCommand {
       })
       .catch(({ signal }) => {
         if (signal === "SIGUSR2") {
-          // 프로세스가 죽은 이유가 SIGUSR2 때문이라면, 이는 서버 프로세스 재시작을 기대하고 보낸 것일 겁니다.
-          // 따라서 재시작해줍니다.
+          // 프로세스가 죽은 이유가 SIGUSR2 때문이라면, 이는 서버 프로세스 재시작을 기대하고 보낸 것입니다.
+          // 따라서 재시작합니다.
           this.#startHTTPServer();
         } else {
           this.#log(`${this.colors.red(`${this.script} crashed.`)}`);
@@ -96,7 +92,7 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Execute a shell command
+   * 셸 명령을 실행합니다
    */
   async #executeShellCommand(command: string, description: string) {
     this.#log(`${description} executing: ${this.colors.dim(command)}`);
@@ -109,7 +105,7 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Parse action string like "restart" or "shell(yarn build)"
+   * 액션 문자열을 파싱합니다 (예: "restart" 또는 "shell(yarn build)")
    */
   #parseAction(actionStr: string): Action | null {
     if (actionStr === "restart") {
@@ -125,9 +121,10 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Parse --on-key arguments into KeyBinding objects
-   * Format: key:action1:action2:...:description
-   * Actions: "restart" or "shell(command)"
+   * --on-key 인자를 KeyBinding 객체로 파싱합니다
+   * 형식: keybinding:action1:action2:...:description
+   * 키바인딩: "r", "cmd+r", "cmd+r cmd+r" (VSCode 스타일)
+   * 액션: "restart" 또는 "shell(command)"
    */
   #parseKeyBindings() {
     if (!this.onKey?.length) return;
@@ -139,9 +136,17 @@ export class Serve extends BaseCommand {
         continue;
       }
 
-      const key = parts[0].toLowerCase();
+      const keybindingStr = parts[0];
       const description = parts[parts.length - 1];
       const actionStrs = parts.slice(1, -1);
+
+      const parsed = parseKeybinding(keybindingStr);
+      if (!parsed) {
+        this.#log(
+          `${this.colors.yellow("Warning")}: Invalid keybinding format: "${keybindingStr}" in binding: "${binding}"`,
+        );
+        continue;
+      }
 
       const actions: Action[] = [];
       for (const actionStr of actionStrs) {
@@ -156,16 +161,21 @@ export class Serve extends BaseCommand {
       }
 
       if (actions.length > 0) {
-        this.#keyBindings.push({ key, actions, description });
+        this.#keybindingManager.addKeybinding({
+          keybinding: keybindingStr,
+          parsed,
+          actions,
+          description,
+        });
       }
     }
   }
 
   /**
-   * Execute all actions for a key binding
+   * 키바인딩에 대한 모든 액션을 실행합니다
    */
   async #executeActions(binding: KeyBinding) {
-    this.#log(`${binding.description}(${this.colors.cyan(binding.key)}) triggered.`);
+    this.#log(`${binding.description}(${this.colors.cyan(binding.keybinding)}) triggered.`);
 
     for (const action of binding.actions) {
       if (action.type === "restart") {
@@ -180,36 +190,37 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Setup keyboard input listener for key bindings
+   * 키바인딩을 위한 키보드 입력 리스너를 설정합니다
    */
   #setupKeyboardListener() {
-    if (!process.stdin.isTTY || this.#keyBindings.length === 0) return;
+    const keyBindings = this.#keybindingManager.getKeybindings();
+    if (!process.stdin.isTTY || keyBindings.length === 0) return;
 
+    emitKeypressEvents(process.stdin);
     process.stdin.setRawMode(true);
     process.stdin.resume();
-    process.stdin.setEncoding("utf8");
 
-    process.stdin.on("data", (key: string) => {
-      // Ctrl+C
-      if (key === "\u0003") {
+    process.stdin.on("keypress", (_str: string, key: Key) => {
+      // Ctrl+C는 종료 처리
+      if (key.ctrl && key.name === "c") {
         this.close().then(() => process.exit());
         return;
       }
 
-      const binding = this.#keyBindings.find((b) => b.key === key.toLowerCase());
-      if (binding) {
+      // 키바인딩 매니저를 통해 키 입력을 처리합니다
+      this.#keybindingManager.processKeyPressFromReadline(key, (binding) => {
         this.#executeActions(binding);
-      }
+      });
     });
 
-    const keyHints = this.#keyBindings
-      .map((b) => `${this.colors.cyan(b.key)} ${b.description}`)
+    const keyHints = keyBindings
+      .map((b) => `${this.colors.cyan(b.keybinding)} ${b.description}`)
       .join(" | ");
     this.#log(`Keys: ${keyHints}`);
   }
 
   /**
-   * Start the HTTP server and watch for full reload requests
+   * HTTP 서버를 시작하고 전체 리로드 요청을 감시합니다
    */
   async run() {
     this.#clearScreen();
@@ -246,9 +257,10 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * Close watchers and running child processes
+   * 감시자 및 실행 중인 자식 프로세스를 종료합니다
    */
   async close() {
+    this.#keybindingManager.cleanup();
     if (this.#httpServer) {
       this.#httpServer.removeAllListeners();
       this.#httpServer.kill("SIGKILL");
