@@ -27,7 +27,7 @@
     "@dnd-kit/core": "^4.0.3",
     "@dnd-kit/sortable": "^5.1.0",
     "@dnd-kit/utilities": "^3.0.2",
-    "axios": "^0.27.2",
+    "axios": "^1.13.2",
     "classnames": "^2.3.2",
     "date-fns": "^4.1.0",
     "fast-deep-equal": "^3.1.3",

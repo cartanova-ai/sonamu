@@ -5,17 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  astro@<5.14.3: '>=5.14.3'
-  astro@<5.15.8: '>=5.15.8'
-  astro@<5.15.9: '>=5.15.9'
-  astro@<=5.15.6: '>=5.15.8'
-  astro@>=2.16.0 <5.15.5: '>=5.15.5'
-  axios@<0.30.0: '>=0.30.0'
-  axios@<0.30.2: '>=0.30.2'
-  axios@>=0.8.1 <0.28.0: '>=0.28.0'
-  esbuild@<=0.24.2: '>=0.25.0'
   prismjs@<1.30.0: '>=1.30.0'
-  zx@<8.8.5: '>=8.8.5'
 
 importers:
 
@@ -128,7 +118,7 @@ importers:
         specifier: workspace:^
         version: link:../../../modules/react-sui
       axios:
-        specifier: ^1.12.2
+        specifier: ^1.13.2
         version: 1.13.2(debug@4.4.3(supports-color@9.4.0))
       classnames:
         specifier: ^2.5.1
@@ -232,7 +222,7 @@ importers:
         specifier: ^2
         version: 2.4.9
       esbuild:
-        specifier: '>=0.25.0'
+        specifier: ^0.27.0
         version: 0.27.0
       ts-node:
         specifier: ^10.9.2
@@ -241,7 +231,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       zx:
-        specifier: '>=8.8.5'
+        specifier: ^8.8.5
         version: 8.8.5
 
   modules/docs:
@@ -256,7 +246,7 @@ importers:
         specifier: ^0.41.3
         version: 0.41.3
       astro:
-        specifier: '>=5.15.5'
+        specifier: ^5.16.0
         version: 5.16.0(@types/node@24.10.1)(jiti@2.6.1)(rollup@4.53.3)(sass@1.94.2)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
       sharp:
         specifier: ^0.34.5
@@ -479,7 +469,7 @@ importers:
         specifier: ^3.0.2
         version: 3.2.2(react@18.3.1)
       axios:
-        specifier: '>=0.28.0'
+        specifier: ^1.13.2
         version: 1.13.2(debug@4.4.3(supports-color@10.2.2))
       classnames:
         specifier: ^2.3.2
@@ -800,7 +790,7 @@ importers:
         specifier: ^12.9.3
         version: 12.9.3(@types/react@18.3.27)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       axios:
-        specifier: ^1.5.0
+        specifier: ^1.13.2
         version: 1.13.2(debug@4.4.3(supports-color@9.4.0))
       chalk:
         specifier: ^4.1.2
@@ -918,7 +908,7 @@ importers:
         specifier: ^16.3.1
         version: 16.6.1
       esbuild:
-        specifier: '>=0.25.0'
+        specifier: ^0.27.0
         version: 0.27.0
       npm-run-all:
         specifier: ^4.1.5
@@ -982,7 +972,7 @@ packages:
     resolution: {integrity: sha512-pL3CVPtuQrPnDhWjy7zqbOibNyPaxP4VpQS8T8spwKqKzauJ4yoKyNkVTD8jrP7EAJHmBhZ7PTmUGZqOpKKp8g==}
     engines: {node: 18.20.8 || ^20.3.0 || >=22.0.0}
     peerDependencies:
-      astro: '>=5.15.5'
+      astro: ^5.0.0
 
   '@astrojs/prism@3.3.0':
     resolution: {integrity: sha512-q8VwfU/fDZNoDOf+r7jUnMC2//H2l0TuQ6FkGJL8vD8nw/q5KiL3DS1KKBI3QhI9UQhpJ5dc7AtqfbXWuOgLCQ==}
@@ -994,7 +984,7 @@ packages:
   '@astrojs/starlight@0.36.3':
     resolution: {integrity: sha512-5cm4QVQHUP6ZE52O43TtUpsTvLKdZa9XEs4l3suzuY7Ymsbz4ojtoL9NhistbMqM+/qk6fm6SmxbOL6hQ/LfNA==}
     peerDependencies:
-      astro: '>=5.15.5'
+      astro: ^5.5.0
 
   '@astrojs/telemetry@3.3.0':
     resolution: {integrity: sha512-UFBgfeldP06qu6khs/yY+q1cDAaArM2/7AEIqQ9Cuvf7B1hNLq0xDrZkct+QoIGyjq56y8IaE2I3CTvG99mlhQ==}
@@ -3869,7 +3859,7 @@ packages:
   astro-expressive-code@0.41.3:
     resolution: {integrity: sha512-u+zHMqo/QNLE2eqYRCrK3+XMlKakv33Bzuz+56V1gs8H0y6TZ0hIi3VNbIxeTn51NLn+mJfUV/A0kMNfE4rANw==}
     peerDependencies:
-      astro: '>=5.15.5'
+      astro: ^4.0.0-beta || ^5.0.0-beta || ^3.3.0
 
   astro@5.16.0:
     resolution: {integrity: sha512-GaDRs2Mngpw3dr2vc085GnORh98NiXxwIjg/EoQQQl/icZt3Z7s0BRsYHDZ8swkZbOA6wZsqWJdrNirl+iKcDg==}
@@ -4047,7 +4037,7 @@ packages:
     resolution: {integrity: sha512-3WrrOuZiyaaZPWiEt4G3+IffISVC9HYlWueJEBWED4ZH4aIAC2PnkdnuRrR94M+w6yGWn4AglWtJtBI8YqvgoA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
     peerDependencies:
-      esbuild: '>=0.25.0'
+      esbuild: '>=0.18'
 
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
