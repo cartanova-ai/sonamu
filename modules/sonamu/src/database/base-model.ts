@@ -2,6 +2,7 @@ import assert from "assert";
 import inflection from "inflection";
 import type { Knex } from "knex";
 import { group, isObject, omit, set, unique } from "radashi";
+import { Sonamu } from "../api";
 import { type DatabaseSchemaExtend, isCustomJoinClause, type SubsetQuery } from "../types/types";
 import type { BaseListParams } from "../utils/model";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
@@ -211,7 +212,9 @@ export class BaseModelClass<
     if (optimizeCountQuery) {
       const { default: SqlParser } = await import("node-sql-parser");
       const parser = new SqlParser.Parser();
-      const parsedQuery = parser.astify(countPuri.toQuery());
+      const parsedQuery = parser.astify(countPuri.toQuery(), {
+        database: Sonamu.config.database.database,
+      });
 
       const leftJoinTables = getJoinTables(parsedQuery, ["LEFT JOIN"]);
       const whereTables = getTableNamesFromWhere(parsedQuery);
@@ -440,7 +443,9 @@ export class BaseModelClass<
       const parser = new SqlParser.Parser();
 
       if (optimizeCountQuery) {
-        const parsedQuery = parser.astify(clonedQb.toQuery());
+        const parsedQuery = parser.astify(clonedQb.toQuery(), {
+          database: Sonamu.config.database.database,
+        });
         const tables = getTableNamesFromWhere(parsedQuery);
         const needToJoin = unique(
           tables.flatMap((table) => table.split("__").map((t) => inflection.pluralize(t))),
@@ -455,7 +460,9 @@ export class BaseModelClass<
 
       const processedQb = afterBuild?.({ qb: clonedQb, db, select, joins, virtual }) ?? clonedQb;
 
-      const parsedQuery = parser.astify(processedQb.toQuery());
+      const parsedQuery = parser.astify(processedQb.toQuery(), {
+        database: Sonamu.config.database.database,
+      });
       const q = Array.isArray(parsedQuery) ? parsedQuery[0] : parsedQuery;
       if (q.type !== "select") {
         throw new Error("Invalid query");

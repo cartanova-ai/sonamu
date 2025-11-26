@@ -33,6 +33,8 @@ export type SonamuConfig = {
   };
 
   database: {
+    // 데이터베이스
+    database?: "mysql" | "postgresql";
     // 기본 데이터베이스 이름
     name: string;
     // 모든 환경에 적용될 기본 Knex 옵션

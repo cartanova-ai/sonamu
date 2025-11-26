@@ -153,6 +153,8 @@ class SonamuClass {
 
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
+    // sonamu.config.ts 기본값 설정
+    this.config.database.database = this.config.database.database ?? "mysql";
 
     const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
     const { exists } = await import("../utils/fs-utils");
