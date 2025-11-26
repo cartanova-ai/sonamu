@@ -1,0 +1,15 @@
+name: sonamu-task
+
+services:
+  postgres:
+    image: postgres:18.1
+    restart: always
+    # set shared memory limit
+    shm_size: 512mb
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sonamu
+    ports:
+      - "51000:5432"

@@ -1,17 +1,18 @@
 packages:
   - examples/**/*
   - modules/**/*
-  - "!modules/dump-viewer"
-  - "!modules/create-sonamu/template/**/*"
+  - '!modules/dump-viewer'
+  - '!modules/create-sonamu/template/**/*'
 
 onlyBuiltDependencies:
-  - "@parcel/watcher"
-  - "@swc/core"
+  - '@parcel/watcher'
+  - '@swc/core'
   - bcrypt
   - esbuild
+  - libpq
   - sharp
   - sodium-native
   - unrs-resolver
 
 overrides:
-  prismjs@<1.30.0: ">=1.30.0"
+  prismjs@<1.30.0: '>=1.30.0'
