@@ -182,6 +182,9 @@ export class Migrator {
       applied: string[];
     }[]
   > {
+    Naite.t("runAction:action", action);
+    Naite.t("runAction:targets", targets);
+
     // get uniq knex configs
     const configs = unique(
       targets

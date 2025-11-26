@@ -1,5 +1,5 @@
 import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
-import { afterEach, beforeAll, describe, expect, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
@@ -313,8 +313,41 @@ describe("Migrator test", () => {
       });
     });
 
-    describe.todo("rollback", () => {
-      test("마지막 배치 롤백", async () => {});
+    describe.only("rollback", () => {
+      beforeEach(async () => {
+        await migrator.runAction("apply", ["test"]);
+      });
+
+      test("마지막 배치 롤백", async () => {
+        // given: 롤백 전 상태
+        const statusBefore = await migrator.getStatus();
+        const testConnBefore = statusBefore.conns.find((c) => c.connKey === "test");
+        const pendingBefore = testConnBefore?.pending.length ?? 0;
+
+        // when: 롤백 실행
+        const result = await migrator.runAction("rollback", ["test"]);
+        Naite.expect("runAction:action").toBe("rollback");
+        Naite.expect("runAction:targets").toEqual(["test"]);
+        Naite.expect("runAction:result").toMatchSnapshot();
+
+        // then: 결과 검증
+        expect(result).toHaveLength(1);
+        expect(result[0]?.connKey).toBe("test");
+        expect(result[0]?.batchNo).toBeGreaterThanOrEqual(0);
+        expect(result[0]?.applied).toBeInstanceOf(Array);
+
+        // after: 롤백 후 상태
+        const statusAfter = await migrator.getStatus();
+        const testConnAfter = statusAfter.conns.find((c) => c.connKey === "test");
+        const pendingAfter = testConnAfter?.pending.length ?? 0;
+
+        // 롤백된 파일이 있으면 pending이 증가해야 함
+        if (result[0]?.applied && result[0].applied.length > 0) {
+          expect(testConnAfter?.pending.length).toBeGreaterThan(pendingBefore);
+        }
+
+        expect(pendingAfter).toBeGreaterThan(pendingBefore);
+      });
 
       test("Shadow 테스트 미실행", async () => {
         // rollback 시 runShadowTest 호출 안 됨
