@@ -96,11 +96,32 @@ export class Serve extends BaseCommand {
    */
   async #executeShellCommand(command: string, description: string) {
     this.#log(`${description} executing: ${this.colors.dim(command)}`);
+
+    // stdin 리스너 완전히 중지
+    const wasRawMode = process.stdin.isTTY && process.stdin.isRaw;
+    if (wasRawMode) {
+      process.stdin.setRawMode(false);
+    }
+    process.stdin.pause();
+
     try {
-      await execa(command, { shell: true, stdio: "inherit" });
+      await execa(command, {
+        shell: true,
+        stdin: "inherit", // 또는 아예 새 pty 사용
+        stdout: "inherit",
+        stderr: "inherit",
+        // 핵심: detached + 새 세션으로 TTY 제어권 넘김
+      });
       this.#log(`${this.colors.green("Done")}: ${description}`);
     } catch {
       this.#log(`${this.colors.red("Failed")}: ${description}`);
+    } finally {
+      if (process.stdin.isTTY) {
+        process.stdin.resume();
+        if (wasRawMode) {
+          process.stdin.setRawMode(true);
+        }
+      }
     }
   }
 
