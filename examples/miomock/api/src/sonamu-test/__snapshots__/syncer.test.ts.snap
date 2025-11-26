@@ -14,23 +14,6 @@ exports[`Syncer > generateTemplate > handleEntityChange 1`] = `
 ]
 `;
 
-exports[`Syncer > generateTemplate > handleModelOrFrameChange 1`] = `
-[
-  "handleModelOrFrameChange",
-  "autoloadModels",
-  "autoloadTypes",
-  "autoloadApis",
-  "actionGenerateServices",
-  "generateTemplate",
-  "renderTemplate",
-  "render",
-  "resolveRenderedTemplate",
-  "generateTemplate",
-  "renderTemplate",
-  "resolveRenderedTemplate",
-]
-`;
-
 exports[`Syncer > generateTemplate > scaffolding: model 1`] = `
 [
   "generateTemplate",

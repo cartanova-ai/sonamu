@@ -7,6 +7,7 @@ export default defineConfig({
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
+    setupFiles: ["./src/testing/setup-mocks.ts"],
     pool: "forks",
     maxWorkers: 1,
     isolate: false,

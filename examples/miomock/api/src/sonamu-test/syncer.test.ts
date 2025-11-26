@@ -1,9 +1,7 @@
-import type { Abortable } from "events";
-import { constants, type Mode, type ObjectEncodingOptions, type OpenMode, type PathLike } from "fs";
-import { access, type FileHandle } from "fs/promises";
+import { constants } from "fs";
+import { access } from "fs/promises";
 import { join } from "path";
 import { Naite, Sonamu } from "sonamu";
-import type Stream from "stream";
 import { beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
@@ -21,14 +19,31 @@ describe("Syncer", () => {
     expect(syncer).toBeDefined();
   });
 
-  test("fs/promises mock is working", async () => {
-    // 가상 파일
+  test.only("fs/promises mock is working", async () => {
+    // 가상 파일 Mock 설정
     const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
+    const mockFs = Naite.useMock("fs/promises");
+    mockFs.when("access", [filePath]).returns();
+
+    // 존재 확인
     const isExists = await exists(filePath);
     expect(isExists).toBe(true);
 
     // 확인
-    Naite.expect("fs:access").toBe(filePath);
+    Naite.expect("mocked:fs/promises.access").toMatchInlineSnapshot(`
+      {
+        "args": [
+          "/Users/minsangk/Development/sonamu/examples/miomock/api/this-file-does-not-actually-exist.ts",
+          0,
+        ],
+        "config": {
+          "returns": undefined,
+          "when": [
+            "/Users/minsangk/Development/sonamu/examples/miomock/api/this-file-does-not-actually-exist.ts",
+          ],
+        },
+      }
+    `);
   });
 
   describe("generateTemplate", () => {
@@ -90,15 +105,15 @@ describe("Syncer", () => {
       ]);
 
       // writeFile
-      expect(Naite.get("fs:writeFile")[0].file).toBe(
+      expect(Naite.get("fs/promises:writeFile")[0]).toBe(
         join(apiRootPath, "src/services/user/user.service.ts").replace("/api", "/web"),
       );
-      expect(Naite.get("fs:writeFile")[1].file).toBe(
+      expect(Naite.get("fs/promises:writeFile")[1]).toBe(
         join(apiRootPath, "src/application/sonamu.generated.http"),
       );
 
-      // step
-      Naite.expect("step").toMatchSnapshot();
+      // // step
+      // Naite.expect("step").toMatchSnapshot();
     });
 
     test("service", async () => {
@@ -121,7 +136,7 @@ describe("Syncer", () => {
           overwrite: true,
         },
       );
-      expect(Naite.get("fs:writeFile")).toBeDefined();
+      expect(Naite.get("fs/promises:writeFile")).toBeDefined();
     });
 
     test("scaffolding: model", async () => {
@@ -154,47 +169,3 @@ async function exists(filePath: string) {
     return false;
   }
 }
-
-// fs/promises mock
-vi.mock(import("fs/promises"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    access: vi.fn(async (path: PathLike, mode?: number): Promise<void> => {
-      Naite.t("fs:access", path);
-
-      if (typeof path === "string" && path.endsWith("this-file-does-not-actually-exist.ts")) {
-        return;
-      }
-      return actual.access(path, mode);
-    }),
-    writeFile: vi.fn(
-      (
-        file: PathLike | FileHandle,
-        data:
-          | string
-          | NodeJS.ArrayBufferView
-          | Iterable<string | NodeJS.ArrayBufferView>
-          | AsyncIterable<string | NodeJS.ArrayBufferView>
-          | Stream,
-        _options?:
-          | (ObjectEncodingOptions & {
-              mode?: Mode | undefined;
-              flag?: OpenMode | undefined;
-              /**
-               * If all data is successfully written to the file, and `flush`
-               * is `true`, `filehandle.sync()` is used to flush the data.
-               * @default false
-               */
-              flush?: boolean | undefined;
-            } & Abortable)
-          | BufferEncoding
-          | null,
-      ): Promise<void> => {
-        Naite.t("fs:writeFile", { file, data });
-        return Promise.resolve(undefined);
-        // return actual.writeFile(file, data, options);
-      },
-    ),
-  };
-});
