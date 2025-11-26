@@ -47,6 +47,7 @@
     "node_modules",
     "dist",
     "src/**/*.test.ts",
+    "src/**/*.test-d.ts",
     "src/**/*.test-hold.ts",
     "src/**/*.ignore.ts",
     "wasted_src/**",
