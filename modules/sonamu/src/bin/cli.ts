@@ -57,6 +57,7 @@ async function bootstrap() {
       ["scaffold", "view_list", "#entityId"],
       ["scaffold", "view_form", "#entityId"],
       ["ui"],
+      ["sync"],
       ["dev"],
       ["build"],
       ["start"],
@@ -78,6 +79,7 @@ async function bootstrap() {
       ui,
       // scaffold_view_list,
       // scaffold_view_form,
+      sync,
       dev,
       build,
       start,
@@ -91,6 +93,14 @@ bootstrap().finally(async () => {
   }
   await FixtureManager.destroy();
 });
+
+/**
+ * pnpm sync 하면 실행되는 함수입니다.
+ * 프로젝트를 싱크합니다.
+ */
+async function sync() {
+  await Sonamu.syncer.sync();
+}
 
 /**
  * pnpm dev 하면 실행되는 함수입니다.
