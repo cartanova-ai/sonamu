@@ -48,23 +48,20 @@ export type PuriLoaderQbFn = (
  */
 export type GenericPuriLoader = {
   /** 결과 객체에서 사용할 필드명 */
-  readonly as: string;
+  as: string;
   /** 부모 레코드와 연결할 참조 필드명 */
-  readonly refId: string;
+  refId: string;
   /** 데이터 로딩 쿼리 빌더 */
-  readonly qb: PuriLoaderQbFn;
+  qb: PuriLoaderQbFn;
   /** 중첩 로더 (재귀적 로딩 지원) */
-  readonly loaders?: readonly GenericPuriLoader[];
+  loaders?: GenericPuriLoader[];
 };
 
 /**
  * 모델별 Loader 쿼리 컬렉션
  * 각 SubsetKey에 대해 Loader 배열을 정의
  */
-export type PuriLoaderQueries<TSubsetKey extends string> = Record<
-  TSubsetKey,
-  readonly GenericPuriLoader[]
->;
+export type PuriLoaderQueries<TSubsetKey extends string> = Record<TSubsetKey, GenericPuriLoader[]>;
 
 // ============================================================================
 // Hydrate 타입 시스템
@@ -95,16 +92,16 @@ type ExtractTail<K extends string, Head extends string> = K extends `${Head}__${
  * type Output = Hydrate<Input>
  * // { id: number; user: { name: string; profile: { bio: string } } }
  */
-export type Hydrate<T> =
-  // 1. __ 가 없는 일반 필드 유지
-  {
-    [K in keyof T as K extends `${string}__${string}` ? never : K]: T[K];
-  } & {
-    // 2. __ 가 있는 필드들을 Head로 묶어서 중첩 객체 생성 (재귀 호출)
-    [K in ExtractHead<keyof T & string>]: Hydrate<{
+export type Hydrate<T> = Expand<HydrateInner<T>>;
+type HydrateInner<T> = {
+  [K in keyof T as K extends `${string}__${string}` ? never : K]: T[K];
+} & {
+  [K in ExtractHead<keyof T & string>]: Expand<
+    HydrateInner<{
       [P in keyof T as P extends `${K}__${string}` ? ExtractTail<P & string, K> : never]: T[P];
-    }>;
-  };
+    }>
+  >;
+};
 
 // ============================================================================
 // Loader 결과 타입 추론
@@ -127,15 +124,15 @@ type ExtractLoaderResult<TLoaderQb> = TLoaderQb extends PuriLoaderQbFn
  * type Result = LoadersResult<Loaders>
  * // { employees: Array<{ ...employee fields; projects: Array<...> }> }
  */
-export type LoadersResult<TLoaders extends readonly GenericPuriLoader[]> = {
+export type LoadersResult<TLoaders extends GenericPuriLoader[]> = Expand<{
   [L in TLoaders[number] as L["as"]]: WithLoaders<ExtractLoaderResult<L["qb"]>, L["loaders"]>[];
-};
+}>;
 
 /**
  * 기본 결과와 Loader 결과 병합
  */
-type WithLoaders<TBase, TLoaders> = TLoaders extends readonly GenericPuriLoader[]
-  ? TBase & LoadersResult<TLoaders>
+type WithLoaders<TBase, TLoaders> = TLoaders extends GenericPuriLoader[]
+  ? Expand<TBase & LoadersResult<TLoaders>>
   : TBase;
 
 // ============================================================================
@@ -147,7 +144,7 @@ type WithLoaders<TBase, TLoaders> = TLoaders extends readonly GenericPuriLoader[
  */
 type InferSubsetWithLoaders<
   TSubsetFn extends (...args: any) => Puri<any, any, any>,
-  TLoaders extends readonly GenericPuriLoader[] | undefined = undefined,
+  TLoaders extends GenericPuriLoader[] | undefined = undefined,
 > = Expand<Hydrate<WithLoaders<ExtractPuriResult<ReturnType<TSubsetFn>>, TLoaders>>>;
 
 /**
@@ -165,7 +162,7 @@ type InferSubsetWithLoaders<
  */
 export type InferAllSubsets<
   TSubsetMap extends Record<string, (...args: any) => any>,
-  TLoaderMap extends Partial<Record<string, readonly GenericPuriLoader[]>>,
+  TLoaderMap extends Partial<Record<string, GenericPuriLoader[]>>,
 > = {
   [K in keyof TSubsetMap]: InferSubsetWithLoaders<
     TSubsetMap[K],
