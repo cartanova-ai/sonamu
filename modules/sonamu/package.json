@@ -52,7 +52,7 @@
     "@fastify/formbody": "^7.1.0",
     "@fastify/multipart": "^8",
     "@fastify/passport": "^2.2.0",
-    "@fastify/secure-session": "^5.2.0",
+    "@fastify/secure-session": "^8.2.0",
     "@fastify/static": "^7",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
@@ -88,7 +88,7 @@
     "@types/prompts": "^2.0.14",
     "@types/qs": "^6.9.7",
     "tsup": "^8.1.0",
-    "typescript": "^5.2.2",
+    "typescript": "^5.9.3",
     "nodemon": "3.1.10"
   },
   "peerDependencies": {
@@ -97,6 +97,6 @@
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
     "mysql2": "^3.6.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.3"
   }
 }

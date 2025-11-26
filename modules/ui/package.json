@@ -93,7 +93,7 @@
     "@biomejs/biome": "^2.3.7",
     "tsc-watch": "^6.0.4",
     "tsup": "^8.1.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@sonamu-kit/react-sui": "^0.1.17",

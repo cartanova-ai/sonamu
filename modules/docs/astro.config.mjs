@@ -6,9 +6,11 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "Sonamu",
-      social: {
-        github: "https://github.com/ping-alive/sonamu",
-      },
+      social: [{
+        icon: "github",
+        href: "https://github.com/cartanova-ai/sonamu",
+        label: "GitHub",
+      }],
       sidebar: [
         {
           label: "Introduction",
