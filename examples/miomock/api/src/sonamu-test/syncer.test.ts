@@ -33,13 +33,13 @@ describe("Syncer", () => {
     Naite.expect("mocked:fs/promises.access").toMatchInlineSnapshot(`
       {
         "args": [
-          "/Users/minsangk/Development/sonamu/examples/miomock/api/this-file-does-not-actually-exist.ts",
+          "${filePath}",
           0,
         ],
         "config": {
           "returns": undefined,
           "when": [
-            "/Users/minsangk/Development/sonamu/examples/miomock/api/this-file-does-not-actually-exist.ts",
+            "${filePath}",
           ],
         },
       }
