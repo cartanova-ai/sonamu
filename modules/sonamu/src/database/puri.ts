@@ -402,7 +402,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     column: TColumn,
     values: ExtractColumnType<TTables, TColumn & string>[],
   ): Puri<TSchema, TTables, TResult> {
-    this.knexQuery.whereIn(column, values);
+    this.knexQuery.whereNotIn(column, values);
     return this as any;
   }
 
