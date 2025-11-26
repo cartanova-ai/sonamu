@@ -232,6 +232,7 @@ export class Syncer {
   }
 
   private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
+    Naite.t("step", "doSyncActions");
     return group(diffFiles, (r) => {
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
       return matched?.[1] ?? "unknown";
