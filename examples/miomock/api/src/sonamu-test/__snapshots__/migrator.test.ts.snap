@@ -1,0 +1,291 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > FK 추가 감지 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // add
+    table.integer("company_id").unsigned().notNullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - add
+    table.dropColumns("company_id");
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_add1",
+    "type": "normal",
+  },
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    table.dropForeign(["company_id"]);
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_foreigns",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > 신규 테이블 감지 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("test_entities", (table) => {
+    // columns
+    table.increments().primary();
+    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table.string("name", 255).notNullable();
+    table.text("description").nullable();
+    table.uuid("uuid").nullable();
+
+    // indexes
+    table.unique(["uuid"]);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.dropTable("test_entities");
+}
+",
+    "table": "test_entities",
+    "title": "create__test_entities",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > 컬럼 삭제 감지 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // drop columns
+    table.dropColumns("deleted_at");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - drop columns
+    table.datetime("deleted_at").nullable();
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_drop1",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > 컬럼 속성 변경 감지 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // alter column
+    table.datetime("deleted_at").notNullable().alter();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - alter column
+    table.datetime("deleted_at").nullable().alter();
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_alter1",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > 컬럼 추가 감지 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // add
+    table.string("test_column", 256).notNullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - add
+    table.dropColumns("test_column");
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_add1",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > preparedCodes 생성 > 코드 정렬 순서 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("test_order_entities", (table) => {
+    // columns
+    table.increments().primary();
+    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table.string("name", 255).notNullable();
+    table.integer("company_id").unsigned().notNullable();
+    table.uuid("uuid").nullable();
+
+    // indexes
+    table.unique(["uuid"]);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.dropTable("test_order_entities");
+}
+",
+    "table": "test_order_entities",
+    "title": "create__test_order_entities",
+    "type": "normal",
+  },
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("test_order_entities", (table) => {
+    // create fk
+    table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("test_order_entities", (table) => {
+    // drop fk
+    table.dropForeign(["company_id"]);
+  });
+}
+",
+    "table": "test_order_entities",
+    "title": "foreign__test_order_entities__company_id",
+    "type": "foreign",
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > 각 db의 connections 확인 1`] = `
+[
+  {
+    "connKey": "test",
+    "connString": "mysql2://root@0.0.0.0:3306/miomock_test",
+    "currentVersion": "20251124233609",
+    "name": "test",
+    "pending": [],
+    "status": 0,
+  },
+  {
+    "connKey": "fixture_remote",
+    "connString": "mysql2://root@0.0.0.0:3306/miomock_fixture_remote",
+    "currentVersion": "20251124233609",
+    "name": "fixture_remote",
+    "pending": [],
+    "status": 0,
+  },
+  {
+    "connKey": "development_master",
+    "connString": "mysql2://root@0.0.0.0:3306/miomock",
+    "currentVersion": "20251124233609",
+    "name": "development",
+    "pending": [],
+    "status": 0,
+  },
+  {
+    "connKey": "production_master",
+    "connString": "mysql2://root@0.0.0.0:3306/miomock",
+    "currentVersion": "20251124233609",
+    "name": "production",
+    "pending": [],
+    "status": 0,
+  },
+]
+`;
+
+exports[`Migrator test > getStatus > 일부 DB 미적용 상태 1`] = `
+[
+  0,
+  0,
+  0,
+  0,
+]
+`;
+
+exports[`Migrator test > runAction() > apply > 다중 DB 동시 적용 1`] = `
+[
+  {
+    "applied": [],
+    "batchNo": 2,
+    "connKey": "test",
+  },
+  {
+    "applied": [],
+    "batchNo": 2,
+    "connKey": "fixture_remote",
+  },
+  {
+    "applied": [],
+    "batchNo": 2,
+    "connKey": "development_master",
+  },
+]
+`;
+
+exports[`Migrator test > runAction() > apply > 단일(test)DB에 마이그레이션 적용 1`] = `
+[
+  {
+    "applied": [],
+    "batchNo": 2,
+    "connKey": "test",
+  },
+]
+`;
+
+exports[`Migrator test > runAction() > rollback > 마지막 배치 롤백 1`] = `
+[
+  {
+    "applied": [],
+    "batchNo": 0,
+    "connKey": "test",
+  },
+]
+`;
