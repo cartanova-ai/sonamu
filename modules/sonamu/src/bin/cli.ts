@@ -63,11 +63,6 @@ async function bootstrap() {
       ["start"],
     ],
     runners: {
-      migrate_run,
-      migrate_check,
-      migrate_rollback,
-      migrate_clear,
-      migrate_reset,
       migrate_status,
       fixture_init,
       fixture_import,
@@ -289,25 +284,11 @@ async function start() {
 
 async function setupMigrator() {
   // migrator
-  migrator = new Migrator({
-    mode: "dev",
-  });
+  migrator = new Migrator();
 }
 
 async function setupFixtureManager() {
   FixtureManager.init();
-}
-
-async function migrate_run() {
-  await setupMigrator();
-
-  await migrator.run();
-}
-
-async function migrate_check() {
-  await setupMigrator();
-
-  await migrator.check();
 }
 
 async function migrate_status() {
@@ -316,24 +297,6 @@ async function migrate_status() {
   const status = await migrator.getStatus();
   // status;
   console.log(status);
-}
-
-async function migrate_rollback() {
-  await setupMigrator();
-
-  await migrator.rollback();
-}
-
-async function migrate_clear() {
-  await setupMigrator();
-
-  await migrator.clearPendingList();
-}
-
-async function migrate_reset() {
-  await setupMigrator();
-
-  await migrator.resetAll();
 }
 
 async function fixture_init() {
