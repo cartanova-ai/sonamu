@@ -11,5 +11,10 @@ export default defineConfig({
     pool: "forks",
     maxWorkers: 1,
     isolate: false,
+    typecheck: {
+      enabled: true,
+      tsconfig: "./tsconfig.json",
+      include: ["src/**/*.test.ts"],
+    },
   },
 });
