@@ -137,8 +137,8 @@ class EntityManagerClass {
 
   /**
    * EntityId는 Model을 제외한 PascalCase 이름입니다. (ex. "User")
-   * @param filePath 
-   * @returns 
+   * @param filePath
+   * @returns
    */
   getEntityIdFromPath(filePath: AbsolutePath): string {
     const matched = filePath.match(/application\/(.+)\//);
