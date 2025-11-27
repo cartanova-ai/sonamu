@@ -258,6 +258,7 @@ export class Migrator {
    */
   async delCodes(codeNames: string[]): Promise<number> {
     const { conns } = await this.getStatus();
+
     if (
       conns.some((conn) => {
         return codeNames.some((codeName) => conn.pending.includes(codeName) === false);
@@ -404,6 +405,7 @@ export class Migrator {
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
+    Naite.t("runShadowTest:tmpSqlPath", tmpSqlPath);
 
     // 테스트DB 덤프 후 Database명 치환
     console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
@@ -442,8 +444,8 @@ export class Migrator {
       });
 
       // 생성한 Shadow DB 삭제
-      console.log(chalk.magenta(`${shadowDatabase} 삭제`));
       await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
+      console.log(chalk.magenta(`${shadowDatabase} 삭제`));
 
       return [
         {
