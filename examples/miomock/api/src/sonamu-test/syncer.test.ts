@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: 임시처리: 현우님 혼내고 지울것 */
 import type { Abortable } from "events";
 import { constants, type Mode, type ObjectEncodingOptions, type OpenMode, type PathLike } from "fs";
 import { access, type FileHandle } from "fs/promises";
@@ -49,7 +50,7 @@ describe("Syncer", () => {
       expect(mockFn).toHaveBeenCalledWith("test.txt", 1);
       expect(mockFn).toHaveBeenCalledTimes(2);
     }
-    Naite.expect("vi.fn").toMatchSnapshot();
+    expect(Naite.get("vi.fn").result()).toMatchSnapshot();
   });
 
   test.skip("fs/promises mock is working", async () => {
@@ -71,16 +72,16 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([modelPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("handleModelOrFrameChange");
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("generated 파일 변경 → 타겟에 복사", async () => {
@@ -91,7 +92,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([generatedPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const copiedFile = writeFilesArray.find(
@@ -99,9 +100,9 @@ describe("Syncer", () => {
       );
       expect(copiedFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("여러 model 파일 동시 변경", async () => {
@@ -113,13 +114,13 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("model + types 파일 동시 변경", async () => {
@@ -132,13 +133,13 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(4);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("config 파일 변경 → .sonamu.env 재생성", async () => {
@@ -146,7 +147,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([configPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const envFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
@@ -154,9 +155,9 @@ describe("Syncer", () => {
       expect(envFile.data).toContain("API_HOST=");
       expect(envFile.data).toContain("API_PORT=");
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
   });
 
@@ -179,13 +180,13 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("overwrite: false - 파일 존재 시 AlreadyProcessedException", async () => {
@@ -199,7 +200,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs/promises:writeFile");
+      const firstWriteFiles = Naite.get("fs/promises:writeFile").result();
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
@@ -238,13 +239,13 @@ describe("Syncer", () => {
         { overwrite: false },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("overwrite: true - 파일 존재해도 덮어쓰기", async () => {
@@ -258,7 +259,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs/promises:writeFile");
+      const firstWriteFiles = Naite.get("fs/promises:writeFile").result();
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
@@ -281,7 +282,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const secondWriteFiles = Naite.get("fs/promises:writeFile");
+      const secondWriteFiles = Naite.get("fs/promises:writeFile").result();
       const secondWriteFilesArray = Array.isArray(secondWriteFiles)
         ? secondWriteFiles
         : [secondWriteFiles];
@@ -306,13 +307,13 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
   });
 
@@ -327,93 +328,93 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: any) => f.file.includes(".entity.json"));
       expect(entityFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("model 템플릿", async () => {
       await syncer.generateTemplate("model", { entityId: "User" }, { overwrite: true });
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("generateTemplate");
-      Naite.expectWithSnapshot("step");
+      expect(Naite.get("step").result()).toMatchSnapshot("step");
     });
 
     test("init_types 템플릿", async () => {
       await syncer.generateTemplate("init_types", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const typesFile = writeFilesArray.find((f: any) => f.file.includes("user.types.ts"));
       expect(typesFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("generateTemplate");
       expect(steps).toContain("renderTemplate");
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("generated 템플릿", async () => {
       await syncer.generateTemplate("generated", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedFile = writeFilesArray.find((f: any) =>
         f.file.includes("sonamu.generated.ts"),
       );
       expect(generatedFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("generateTemplate");
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("generated_sso 템플릿", async () => {
       await syncer.generateTemplate("generated_sso", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedSsoFile = writeFilesArray.find((f: any) =>
         f.file.includes("sonamu.generated.sso.ts"),
       );
       expect(generatedSsoFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("generated_http 템플릿", async () => {
       await syncer.generateTemplate("generated_http", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("model_test 템플릿", async () => {
       await syncer.generateTemplate("model_test", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test.skip("view_list 템플릿", async () => {
@@ -424,7 +425,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles).toBeDefined();
     });
   });
@@ -438,7 +439,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const targetFile = writeFilesArray[0];
 
@@ -454,7 +455,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const targetFile = writeFilesArray[0];
 
@@ -471,7 +472,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThanOrEqual(2);
     });
@@ -492,7 +493,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: any) =>
         f.file.includes("user-profile.entity.json"),
@@ -518,10 +519,10 @@ describe("Syncer", () => {
       expect(result.diffTypes).toBeDefined();
       expect(result.diffTypes.length).toBe(0);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("doSyncActions");
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("알 수 없는 파일 타입 → unknown 분류", async () => {
@@ -533,9 +534,9 @@ describe("Syncer", () => {
       const result = await (syncer as any).doSyncActions(unknownPaths);
       expect(result.diffTypes).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
   });
 
@@ -558,9 +559,9 @@ describe("Syncer", () => {
       expect(diffGroups.config?.length).toBe(1);
       expect(diffGroups.generated?.length).toBe(1);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("같은 타입 여러 파일", async () => {
@@ -582,7 +583,7 @@ describe("Syncer", () => {
     test(".sonamu.env 생성", async () => {
       await (syncer as any).actionSyncConfig();
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
 
@@ -594,7 +595,7 @@ describe("Syncer", () => {
     test("config 값 정확성", async () => {
       await (syncer as any).actionSyncConfig();
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
 
@@ -615,10 +616,10 @@ describe("Syncer", () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBe(2);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
       expect(steps).toContain("actionGenerateSchemas");
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
   });
 
@@ -659,7 +660,7 @@ describe("Syncer", () => {
         ["types"],
       );
 
-      Naite.expectWithSnapshot("step");
+      expect(Naite.get("step").result()).toMatchSnapshot("step");
     });
   });
 
@@ -683,13 +684,13 @@ describe("Syncer", () => {
 
       await syncer.handleModelOrFrameChange(diffGroups);
 
-      const actionGenerateServicesData = Naite.get("actionGenerateServices");
+      const actionGenerateServicesData = Naite.get("actionGenerateServices").first();
       expect(actionGenerateServicesData).toBeDefined();
       expect(actionGenerateServicesData.length).toBe(2);
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("autoload 순서: models → types → apis", async () => {
@@ -703,7 +704,7 @@ describe("Syncer", () => {
         config: [],
       });
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       const autoloadModelsIndex = steps.indexOf("autoloadModels");
       const autoloadTypesIndex = steps.indexOf("autoloadTypes");
       const autoloadApisIndex = steps.indexOf("autoloadApis");
@@ -724,7 +725,7 @@ describe("Syncer", () => {
         config: [],
       });
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
@@ -741,7 +742,7 @@ describe("Syncer", () => {
         config: [],
       });
 
-      expect(Naite.get("actionGenerateServices")).toEqual([
+      expect(Naite.get("actionGenerateServices").first()).toEqual([
         {
           namesRecord: {
             camel: "user",
@@ -766,15 +767,15 @@ describe("Syncer", () => {
       const entityPath = join(apiRootPath, "src/application/user/user.entity.json") as AbsolutePath;
       await (syncer as any).doSyncActions([entityPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const generatedFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated"));
       expect(generatedFile).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
     test("Model + Entity 동시 변경", async () => {
@@ -785,12 +786,12 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs/promises:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles).toBeDefined();
 
-      const steps = Naite.get("step");
+      const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
-      Naite.expect("step").toMatchSnapshot();
+      expect(Naite.get("step").result()).toMatchSnapshot();
     });
   });
 

@@ -40,10 +40,10 @@ describe("UserModel", () => {
       expect(usernames).toHaveLength(1);
 
       // 쿼리 확인
-      Naite.expect("esq-query").toBe(
+      expect(Naite.get("esq-query").first()).toBe(
         "select `users`.`id` as `id`, `users`.`username` as `username`, `users`.`role` as `role`, `users`.`bio` as `bio`, `users`.`is_verified` as `is_verified`, `employee__department`.`name` as `employee__department__name`, `employee`.`salary` as `employee__salary` from `users` inner join `employees` as `employee` on `users`.`id` = `employee`.`user_id` inner join `departments` as `employee__department` on `employee`.`department_id` = `employee__department`.`id` where `users`.`id` in (1) order by `users`.`id` desc",
       );
-      Naite.expect("esq-query").toContain("where `users`.`id` in (1)");
+      expect(Naite.get("esq-query").first()).toContain("where `users`.`id` in (1)");
     };
   };
   range(0, 1).map(async (i) => {
@@ -59,11 +59,24 @@ describe("UserModel", () => {
     }
 
     // 하지만 에러 발생 전에 기록된 로깅은 유지됨
-    Naite.expect("testArray").toEqual([1, 2, 3]);
-    Naite.expect("testObjectArray").toEqual([
+    expect(Naite.get("testArray").result()).toEqual([1, 2, 3]);
+    expect(Naite.get("testObjectArray").result()).toEqual([
       { a: 1, b: 2 },
       { a: 3, b: 4 },
     ]);
+
+    // fromFile 메서드 테스트 (실제 파일 경로)
+    expect(Naite.get("testArray").fromFile("user.model.ts").result()).toEqual([1, 2, 3]);
+    // fromFile 메서드 테스트 (존재하지 않는 파일)
+    expect(Naite.get("testArray").fromFile("NOT-CALLER-FILE-PATH").result()).toEqual([]);
+
+    // fromFunction 메서드 테스트 (실제 함수 이름)
+    expect(Naite.get("testArray").fromFunction("testNaite").result()).toEqual([1, 2, 3]);
+    // fromFunction 메서드 테스트 (존재하지 않는 함수)
+    expect(Naite.get("testArray").fromFunction("NOT-CALLER-FUNCTION-NAME").result()).toEqual([]);
+
+    // 확인용
+    // console.dir(Naite.get("testArray").getTraces(), { depth: null });
   });
 
   test("should get my IP", async () => {

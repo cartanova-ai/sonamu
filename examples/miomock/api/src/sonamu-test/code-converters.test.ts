@@ -1,6 +1,6 @@
 import { join } from "path";
 import { Sonamu } from "sonamu";
-import { beforeAll, describe, vi } from "vitest";
+import { beforeAll, describe, expect, vi } from "vitest";
 import { getZodObjectFromApi } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type { ExtendedApi } from "../../../../../modules/sonamu/dist/api/decorators";
 import { Naite } from "../../../../../modules/sonamu/dist/naite/naite";
@@ -29,14 +29,14 @@ describe("Code Converters", () => {
     if (!saveApi) return;
 
     getZodObjectFromApi(saveApi);
-    //Naite.expect("step").toMatchSnapshot();
-    Naite.expect("references").toMatchSnapshot();
-    Naite.expect("Final ReqType shape keys").toMatchSnapshot();
-    Naite.expect("Type of Final ReqType").toMatchSnapshot();
+    //expect(Naite.get("step")).toMatchSnapshot();
+    expect(Naite.get("references").first()).toMatchSnapshot();
+    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
+    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
   });
 
   test("제네릭 있는 API - findById", async () => {
-    // Naite.expect("step").toMatchSnapshot();
+    // expect(Naite.get("step")).toMatchSnapshot();
     const findByIdApi = userApis.find((api) => api.methodName === "findById");
     if (!findByIdApi) return;
 
@@ -44,14 +44,14 @@ describe("Code Converters", () => {
     const references = {};
     getZodObjectFromApi(findByIdApi, references);
 
-    //Naite.expect("step").toMatchSnapshot();
+    //expect(Naite.get("step")).toMatchSnapshot();
 
     // 제네릭 처리 단계 검증
-    Naite.expect("length of typeParameters").toMatchSnapshot();
+    expect(Naite.get("length of typeParameters").first()).toMatchSnapshot();
 
     // 최종 단계 검증
-    Naite.expect("Final ReqType shape keys").toMatchSnapshot();
-    Naite.expect("Type of Final ReqType").toMatchSnapshot();
+    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
+    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
   });
 
   test("제네릭 있는 API - findMany (optional 파라미터)", async () => {
@@ -61,14 +61,14 @@ describe("Code Converters", () => {
     const references = {};
     getZodObjectFromApi(findManyApi, references);
 
-    //Naite.expect("step").toMatchSnapshot();
+    //expect(Naite.get("step")).toMatchSnapshot();
 
     // 제네릭 처리 단계 검증
-    Naite.expect("length of typeParameters").toMatchSnapshot();
+    expect(Naite.get("length of typeParameters").first()).toMatchSnapshot();
 
     // 최종 단계 검증
-    Naite.expect("Final ReqType shape keys").toMatchSnapshot();
-    Naite.expect("Type of Final ReqType").toMatchSnapshot();
+    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
+    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
   });
 
   // test("Context 필터링 - getMyIP", async () => {
@@ -83,7 +83,7 @@ describe("Code Converters", () => {
   //   expect(Object.keys(shape).length).toBe(0);
 
   //   // Naite 추적 값 검증
-  //   Naite.expect("step2").toBe("getZodObjectFromApi: Filtering API Parameters");
+  //   expect(Naite.get("step2")).toBe("getZodObjectFromApi: Filtering API Parameters");
   // });
 
   // test("_로 시작하는 optional 파라미터 필터링", async () => {
