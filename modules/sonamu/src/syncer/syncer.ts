@@ -15,6 +15,7 @@ import type { GenerateOptions } from "../types/types";
 import { TemplateKey, type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
+import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
@@ -174,7 +175,10 @@ export class Syncer {
 
       await writeFile(destPath, await readFile(srcPath));
 
-      console.log(chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)));
+      !isTest() &&
+        console.log(
+          chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)),
+        );
     }
   }
 
@@ -426,9 +430,10 @@ export class Syncer {
               if (!(await exists(dir))) {
                 await mkdir(dir, { recursive: true });
               }
-              console.log(
-                chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
-              );
+              !isTest() &&
+                console.log(
+                  chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
+                );
               await this.copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
             }),
