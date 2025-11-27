@@ -1,4 +1,11 @@
-import { type EntityJson, EntityManager, GenMigrationCode, Migrator, Naite, Sonamu } from "sonamu";
+import {
+  type EntityJson,
+  EntityManager,
+  type GenMigrationCode,
+  Migrator,
+  Naite,
+  Sonamu,
+} from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
@@ -73,7 +80,43 @@ describe("Migrator test", () => {
     test("각 db의 connections 확인", async () => {
       await migrator.getStatus();
 
-      Naite.expect("getStatus:conns").toMatchSnapshot();
+      const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
+      Naite.expect("getStatus:conns").toMatchInlineSnapshot(`
+        [
+          {
+            "connKey": "test",
+            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock_test",
+            "currentVersion": "20251124233609",
+            "name": "test",
+            "pending": [],
+            "status": 0,
+          },
+          {
+            "connKey": "fixture_remote",
+            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock_fixture_remote",
+            "currentVersion": "20251124233609",
+            "name": "fixture_remote",
+            "pending": [],
+            "status": 0,
+          },
+          {
+            "connKey": "development_master",
+            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock",
+            "currentVersion": "20251124233609",
+            "name": "development",
+            "pending": [],
+            "status": 0,
+          },
+          {
+            "connKey": "production_master",
+            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock",
+            "currentVersion": "20251124233609",
+            "name": "production",
+            "pending": [],
+            "status": 0,
+          },
+        ]
+      `);
 
       // production, development, test, fixture_remote
       Naite.expect("getStatus:conns").toHaveLength(4);
@@ -463,17 +506,17 @@ describe("Migrator test", () => {
       await migrator.getStatus();
 
       // then
-      const preparedCodes: GenMigrationCode[] = Naite.get('getStatus:preparedCodes');
+      const preparedCodes: GenMigrationCode[] = Naite.get("getStatus:preparedCodes");
       Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-      expect(preparedCodes.length).toBe(3)
+      expect(preparedCodes.length).toBe(3);
 
       // Label 테이블 생성 코드
-      const createLableCode = preparedCodes[0]
+      const createLableCode = preparedCodes[0];
       expect(createLableCode).toBeDefined();
       expect(createLableCode?.title).toBe("create__labels");
 
       // 조인테이블 (users__labels) 생성 코드
-      const createJoinTableCode = preparedCodes[1]
+      const createJoinTableCode = preparedCodes[1];
       expect(createJoinTableCode).toBeDefined();
       expect(createJoinTableCode?.title).toBe("create__users__labels");
       // 생성된 조인테이블의 컬럼 user_id, label_id, uuid

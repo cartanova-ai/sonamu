@@ -1,42 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Migrator test > getStatus > 각 db의 connections 확인 1`] = `
-[
-  {
-    "connKey": "test",
-    "connString": "mysql2://root@0.0.0.0:3306/miomock_test",
-    "currentVersion": "20251124233609",
-    "name": "test",
-    "pending": [],
-    "status": 0,
-  },
-  {
-    "connKey": "fixture_remote",
-    "connString": "mysql2://root@0.0.0.0:3306/miomock_fixture_remote",
-    "currentVersion": "20251124233609",
-    "name": "fixture_remote",
-    "pending": [],
-    "status": 0,
-  },
-  {
-    "connKey": "development_master",
-    "connString": "mysql2://root@0.0.0.0:3306/miomock",
-    "currentVersion": "20251124233609",
-    "name": "development",
-    "pending": [],
-    "status": 0,
-  },
-  {
-    "connKey": "production_master",
-    "connString": "mysql2://root@0.0.0.0:3306/miomock",
-    "currentVersion": "20251124233609",
-    "name": "production",
-    "pending": [],
-    "status": 0,
-  },
-]
-`;
-
 exports[`Migrator test > getStatus > 일부 DB 미적용 상태 확인 1`] = `
 [
   0,

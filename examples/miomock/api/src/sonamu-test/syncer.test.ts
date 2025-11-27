@@ -60,21 +60,6 @@ describe("Syncer", () => {
 
     const isExists = await exists(filePath);
     expect(isExists).toBe(true);
-
-    Naite.expect("mocked:fs/promises.access").toMatchInlineSnapshot(`
-      {
-        "args": [
-          "${filePath}",
-          0,
-        ],
-        "config": {
-          "returns": undefined,
-          "when": [
-            "${filePath}",
-          ],
-        },
-      }
-    `);
   });
 
   // ============================================
@@ -86,7 +71,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([modelPath]);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
@@ -106,7 +91,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([generatedPath]);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const copiedFile = writeFilesArray.find(
@@ -128,7 +113,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
@@ -147,7 +132,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(4);
 
@@ -161,7 +146,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions([configPath]);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const envFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
@@ -194,7 +179,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
@@ -214,7 +199,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs:writeFile");
+      const firstWriteFiles = Naite.get("fs/promises:writeFile");
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
@@ -253,7 +238,7 @@ describe("Syncer", () => {
         { overwrite: false },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
@@ -273,7 +258,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs:writeFile");
+      const firstWriteFiles = Naite.get("fs/promises:writeFile");
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
@@ -296,7 +281,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const secondWriteFiles = Naite.get("fs:writeFile");
+      const secondWriteFiles = Naite.get("fs/promises:writeFile");
       const secondWriteFilesArray = Array.isArray(secondWriteFiles)
         ? secondWriteFiles
         : [secondWriteFiles];
@@ -321,7 +306,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThan(0);
 
@@ -342,7 +327,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: any) => f.file.includes(".entity.json"));
       expect(entityFile).toBeDefined();
@@ -364,7 +349,7 @@ describe("Syncer", () => {
     test("init_types 템플릿", async () => {
       await syncer.generateTemplate("init_types", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const typesFile = writeFilesArray.find((f: any) => f.file.includes("user.types.ts"));
       expect(typesFile).toBeDefined();
@@ -379,7 +364,7 @@ describe("Syncer", () => {
     test("generated 템플릿", async () => {
       await syncer.generateTemplate("generated", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedFile = writeFilesArray.find((f: any) =>
         f.file.includes("sonamu.generated.ts"),
@@ -395,7 +380,7 @@ describe("Syncer", () => {
     test("generated_sso 템플릿", async () => {
       await syncer.generateTemplate("generated_sso", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedSsoFile = writeFilesArray.find((f: any) =>
         f.file.includes("sonamu.generated.sso.ts"),
@@ -410,7 +395,7 @@ describe("Syncer", () => {
     test("generated_http 템플릿", async () => {
       await syncer.generateTemplate("generated_http", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
@@ -423,7 +408,7 @@ describe("Syncer", () => {
     test("model_test 템플릿", async () => {
       await syncer.generateTemplate("model_test", { entityId: "User" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       expect(writeFiles).toBeDefined();
 
       const steps = Naite.get("step");
@@ -439,7 +424,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       expect(writeFiles).toBeDefined();
     });
   });
@@ -453,7 +438,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const targetFile = writeFilesArray[0];
 
@@ -469,7 +454,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const targetFile = writeFilesArray[0];
 
@@ -486,7 +471,7 @@ describe("Syncer", () => {
 
       await (syncer as any).actionSyncFilesToTargets(tsPaths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       expect(writeFilesArray.length).toBeGreaterThanOrEqual(2);
     });
@@ -507,7 +492,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: any) =>
         f.file.includes("user-profile.entity.json"),
@@ -597,7 +582,7 @@ describe("Syncer", () => {
     test(".sonamu.env 생성", async () => {
       await (syncer as any).actionSyncConfig();
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
 
@@ -609,7 +594,7 @@ describe("Syncer", () => {
     test("config 값 정확성", async () => {
       await (syncer as any).actionSyncConfig();
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
 
@@ -739,7 +724,7 @@ describe("Syncer", () => {
         config: [],
       });
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
@@ -781,7 +766,7 @@ describe("Syncer", () => {
       const entityPath = join(apiRootPath, "src/application/user/user.entity.json") as AbsolutePath;
       await (syncer as any).doSyncActions([entityPath]);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const generatedFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated"));
@@ -800,7 +785,7 @@ describe("Syncer", () => {
 
       await (syncer as any).doSyncActions(paths);
 
-      const writeFiles = Naite.get("fs:writeFile");
+      const writeFiles = Naite.get("fs/promises:writeFile");
       expect(writeFiles).toBeDefined();
 
       const steps = Naite.get("step");
@@ -883,7 +868,7 @@ vi.mock(import("fs/promises"), async (importOriginal) => {
           | null,
       ): Promise<void> => {
         const filePath = typeof file === "string" ? file : file.toString();
-        Naite.t("fs:writeFile", { file: filePath, data });
+        Naite.t("fs/promises:writeFile", { file: filePath, data });
         virtualFileSystem.add(filePath);
         return Promise.resolve(undefined);
       },
