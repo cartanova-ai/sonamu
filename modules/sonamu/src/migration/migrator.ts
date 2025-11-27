@@ -218,7 +218,7 @@ export class Migrator {
               return {
                 connKey,
                 batchNo,
-                applied,
+                applied, // 이번 latest 호출로 인해 "up"이 적용된 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L560
               };
             }),
           );
@@ -229,7 +229,7 @@ export class Migrator {
               return {
                 connKey,
                 batchNo,
-                applied,
+                applied, // 이번 rollback 호출로 인해 "down"이 적용된(=롤백된) 마이그레이션 이름(e.g. "20251124233557_create__companies.ts")들의 배열입니다. 참고: https://github.com/knex/knex/blob/01b177c485d696f1b72858dee728ba143c4fad76/lib/migrations/migrate/Migrator.js#L611
               };
             }),
           );
