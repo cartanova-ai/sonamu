@@ -30,13 +30,13 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // codes 검증
-      Naite.expect("getMigrationCodes:results").toHaveLength(13);
+      expect(Naite.get("getMigrationCodes:results").first()).toHaveLength(13);
       expect(status.codes).toHaveLength(13);
       expect(status.codes[0]).toHaveProperty("name");
       expect(status.codes[0]).toHaveProperty("path");
 
       // 각 DB 상태 검증
-      const statuses = Naite.get("getStatus:status");
+      const statuses = Naite.get("getStatus:status").result();
       expect(statuses[0]).toBe(0); // test
       expect(statuses[1]).toBe(0); // fixture_remote
       expect(statuses[2]).toBe(0); // development
@@ -65,7 +65,7 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // statuses 스냅샷
-      Naite.expect("getStatus:status").toMatchSnapshot();
+      expect(Naite.get("getStatus:status").result()).toMatchSnapshot();
 
       // pending이 있는 DB 확인
       const pendingConns = status.conns.filter((conn) => conn.pending.length > 0);
@@ -81,7 +81,7 @@ describe("Migrator test", () => {
       await migrator.getStatus();
 
       const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
-      Naite.expect("getStatus:conns").toMatchInlineSnapshot(`
+      expect(Naite.get("getStatus:conns").first()).toMatchInlineSnapshot(`
         [
           {
             "connKey": "test",
@@ -119,7 +119,7 @@ describe("Migrator test", () => {
       `);
 
       // production, development, test, fixture_remote
-      Naite.expect("getStatus:conns").toHaveLength(4);
+      expect(Naite.get("getStatus:conns").first()).toHaveLength(4);
     });
   });
 
@@ -138,7 +138,7 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // preparedCodes 스냅샷
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       status.preparedCodes.forEach((code) => {
         expect(code.table).toContain("users");
@@ -155,7 +155,7 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // preparedCodes 스냅샷
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       status.preparedCodes.forEach((code) => {
         expect(code.table).toContain("users");
@@ -175,7 +175,7 @@ describe("Migrator test", () => {
 
       const status = await migrator.getStatus();
 
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       status.preparedCodes.forEach((code) => {
         expect(code.table).toContain("users");
@@ -196,7 +196,7 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // preparedCodes 스냅샷
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then: drop 1, add 1 발생
       const alterCode = status.preparedCodes.find((code) => code.title.startsWith("alter_users_"));
@@ -223,7 +223,7 @@ describe("Migrator test", () => {
       });
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       const alterCode = status.preparedCodes.find(
         (code) => code.table === "users" && code.type === "normal",
@@ -239,7 +239,7 @@ describe("Migrator test", () => {
       userEntity.indexes = [];
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       const alterCode = status.preparedCodes.find(
         (code) => code.table === "users" && code.type === "normal",
@@ -258,7 +258,7 @@ describe("Migrator test", () => {
       }
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       const alterCode = status.preparedCodes.find(
         (code) => code.table === "users" && code.type === "normal",
@@ -286,7 +286,7 @@ describe("Migrator test", () => {
       });
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then
       const addCompanyIdCode = status.preparedCodes[0];
@@ -328,7 +328,7 @@ describe("Migrator test", () => {
       }
 
       status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // company_id 컬럼이 삭제되는 것을 확인 (FK도 함께 삭제됨)
       expect(status.preparedCodes.length).toBe(0); // 이미 DB에 추가된 적이 없으므로 코드가 생성되지 않음
@@ -363,7 +363,7 @@ describe("Migrator test", () => {
       }
 
       status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // FK 변경 코드 확인
       const foreignCode = status.preparedCodes.find(
@@ -397,7 +397,7 @@ describe("Migrator test", () => {
       await EntityManager.register(newEntity);
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then
       const createTableCode = status.preparedCodes.find(
@@ -445,7 +445,7 @@ describe("Migrator test", () => {
       await EntityManager.register(newEntity);
 
       const status = await migrator.getStatus();
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then
       const createTableCode = status.preparedCodes.find(
@@ -506,8 +506,8 @@ describe("Migrator test", () => {
       await migrator.getStatus();
 
       // then
-      const preparedCodes: GenMigrationCode[] = Naite.get("getStatus:preparedCodes");
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      const preparedCodes: GenMigrationCode[] = Naite.get("getStatus:preparedCodes").first();
+      expect(preparedCodes).toMatchSnapshot();
       expect(preparedCodes.length).toBe(3);
 
       // Label 테이블 생성 코드
@@ -541,9 +541,9 @@ describe("Migrator test", () => {
       test("단일(test)DB에 마이그레이션 적용", async () => {
         // apply 실행 (test DB)
         const result = await migrator.runAction("apply", ["test"]);
-        Naite.expect("runAction:action").toBe("apply");
-        Naite.expect("runAction:targets").toEqual(["test"]);
-        Naite.expect("runAction:result").toMatchSnapshot();
+        expect(Naite.get("runAction:action").first()).toBe("apply");
+        expect(Naite.get("runAction:targets").first()).toEqual(["test"]);
+        expect(Naite.get("runAction:result").first()).toMatchSnapshot();
 
         // then
         expect(result[0]?.connKey).toBe("test");
@@ -578,7 +578,9 @@ describe("Migrator test", () => {
       // when
       const result = await migrator.runShadowTest();
 
-      Naite.expect("runShadowTest:tmpSqlPath").toBe("/tmp/miomock_test__migration_shadow.sql");
+      expect(Naite.get("runShadowTest:tmpSqlPath").first()).toBe(
+        "/tmp/miomock_test__migration_shadow.sql",
+      );
       expect(result[0]).toMatchObject({
         applied: expect.any(Array),
         batchNo: expect.any(Number),
