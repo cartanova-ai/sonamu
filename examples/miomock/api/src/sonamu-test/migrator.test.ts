@@ -1,11 +1,4 @@
-import {
-  type EntityJson,
-  EntityManager,
-  type GenMigrationCode,
-  Migrator,
-  Naite,
-  Sonamu,
-} from "sonamu";
+import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
@@ -272,7 +265,7 @@ describe("Migrator test", () => {
       );
     });
 
-    test("FK 추가 감지", async () => {
+    test("FK 추가 감지 (BelongsToOne)", async () => {
       // UserEntity에 Company에 대한 BelongsToOne relation 추가
       const userEntity = EntityManager.get("User");
       userEntity.props.push({
@@ -302,6 +295,69 @@ describe("Migrator test", () => {
       expect(addCompanyFKConstraintCode?.formatted).toContain(
         'table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE")',
       );
+    });
+
+    test("FK 추가 감지 (ManyToMany)", async () => {
+      // given: User와 Label 간의 ManyToMany 관계 추가
+      const userEntity = EntityManager.get("User");
+
+      // 1. Label 엔티티 생성
+      const labelEntity = {
+        id: "Label",
+        table: "labels",
+        title: "LABEL",
+        props: [
+          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          { name: "name", desc: "라벨명", type: "string", length: 100 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(labelEntity);
+
+      // 2. User 엔티티에 ManyToMany 관계 추가
+      userEntity.props.push({
+        type: "relation",
+        name: "labels",
+        with: "Label",
+        desc: "라벨",
+        relationType: "ManyToMany",
+        joinTable: "users__labels",
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      });
+
+      // when
+      const status = await migrator.getStatus();
+
+      // then
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(status.preparedCodes.length).toBe(3);
+
+      // Label 테이블 생성 코드
+      const createLabelCode = status.preparedCodes[0];
+      expect(createLabelCode).toBeDefined();
+      expect(createLabelCode?.title).toBe("create__labels");
+
+      // 조인테이블 (users__labels) 생성 코드
+      const createJoinTableCode = status.preparedCodes[1];
+      expect(createJoinTableCode).toBeDefined();
+      expect(createJoinTableCode?.title).toBe("create__users__labels");
+      // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
+      expect(createJoinTableCode?.formatted).toContain("user_id");
+      expect(createJoinTableCode?.formatted).toContain("label_id");
+      expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
+      expect(createJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
+
+      // 조인테이블 FK 생성 코드
+      const user_label_FKCode = status.preparedCodes[2];
+      expect(user_label_FKCode).toBeDefined();
+      expect(user_label_FKCode?.title).toBe("foreign__users__labels__user_id_label_id");
+      // FK가 users.id와 labels.id를 참조하는지 확인
+      expect(user_label_FKCode?.formatted).toContain('references("users.id")');
+      expect(user_label_FKCode?.formatted).toContain('references("labels.id")');
+      expect(user_label_FKCode?.formatted).toContain("CASCADE");
     });
 
     test("FK 삭제 감지", async () => {
@@ -373,7 +429,7 @@ describe("Migrator test", () => {
       expect(foreignCode?.formatted).toContain("CASCADE");
     });
 
-    test("신규 테이블 감지", async () => {
+    test("신규 엔티티 감지", async () => {
       // 새 Entity 등록 → create 코드
       const newEntity = {
         id: "TestEntity",
@@ -469,70 +525,6 @@ describe("Migrator test", () => {
       );
 
       expect(createTableIndex).toBeLessThan(foreignIndex);
-    });
-
-    test("조인테이블 (ManyToMany)", async () => {
-      // given: User와 Label 간의 ManyToMany 관계 추가
-      const userEntity = EntityManager.get("User");
-
-      // 1. Lable 엔티티 생성
-      const labelEntity = {
-        id: "Label",
-        table: "labels",
-        title: "LABEL",
-        props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
-          { name: "name", desc: "라벨명", type: "string", length: 100 },
-        ],
-        indexes: [],
-        subsets: {},
-        enums: {},
-      } as EntityJson;
-      await EntityManager.register(labelEntity);
-
-      // 2. User 엔티티에 ManyToMany 관계 추가
-      userEntity.props.push({
-        type: "relation",
-        name: "labels",
-        with: "Label",
-        desc: "라벨",
-        relationType: "ManyToMany",
-        joinTable: "users__labels",
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE",
-      });
-
-      // when
-      await migrator.getStatus();
-
-      // then
-      const preparedCodes: GenMigrationCode[] = Naite.get("getStatus:preparedCodes");
-      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-      expect(preparedCodes.length).toBe(3);
-
-      // Label 테이블 생성 코드
-      const createLableCode = preparedCodes[0];
-      expect(createLableCode).toBeDefined();
-      expect(createLableCode?.title).toBe("create__labels");
-
-      // 조인테이블 (users__labels) 생성 코드
-      const createJoinTableCode = preparedCodes[1];
-      expect(createJoinTableCode).toBeDefined();
-      expect(createJoinTableCode?.title).toBe("create__users__labels");
-      // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
-      expect(createJoinTableCode?.formatted).toContain("user_id");
-      expect(createJoinTableCode?.formatted).toContain("label_id");
-      expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
-      expect(createJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
-
-      // 조인테이블 FK 생성 코드
-      const user_lable_FKCode = preparedCodes[2];
-      expect(user_lable_FKCode).toBeDefined();
-      expect(user_lable_FKCode?.title).toBe("foreign__users__labels__user_id_label_id");
-      // FK가 users.id와 labels.id를 참조하는지 확인
-      expect(user_lable_FKCode?.formatted).toContain('references("users.id")');
-      expect(user_lable_FKCode?.formatted).toContain('references("labels.id")');
-      expect(user_lable_FKCode?.formatted).toContain("CASCADE");
     });
   });
 
