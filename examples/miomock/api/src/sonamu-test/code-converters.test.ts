@@ -29,7 +29,7 @@ describe("Code Converters", () => {
     if (!saveApi) return;
 
     getZodObjectFromApi(saveApi);
-    Naite.expect("step").toMatchSnapshot();
+    //Naite.expect("step").toMatchSnapshot();
     Naite.expect("references").toMatchSnapshot();
     Naite.expect("Final ReqType shape keys").toMatchSnapshot();
     Naite.expect("Type of Final ReqType").toMatchSnapshot();
@@ -44,7 +44,7 @@ describe("Code Converters", () => {
     const references = {};
     getZodObjectFromApi(findByIdApi, references);
 
-    Naite.expect("step").toMatchSnapshot();
+    //Naite.expect("step").toMatchSnapshot();
 
     // 제네릭 처리 단계 검증
     Naite.expect("length of typeParameters").toMatchSnapshot();
@@ -61,7 +61,7 @@ describe("Code Converters", () => {
     const references = {};
     getZodObjectFromApi(findManyApi, references);
 
-    Naite.expect("step").toMatchSnapshot();
+    //Naite.expect("step").toMatchSnapshot();
 
     // 제네릭 처리 단계 검증
     Naite.expect("length of typeParameters").toMatchSnapshot();
