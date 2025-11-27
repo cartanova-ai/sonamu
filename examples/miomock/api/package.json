@@ -40,6 +40,7 @@
     "@types/node": "^24.5.0",
     "@typescript/native-preview": "^7.0.0-dev.20250923.1",
     "@vitest/coverage-v8": "^4.0.12",
+    "node-sql-parser": "^5.3.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",
