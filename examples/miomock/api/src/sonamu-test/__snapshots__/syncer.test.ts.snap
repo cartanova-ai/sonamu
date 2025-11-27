@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Syncer > generateTemplate > handleEntityChange 1`] = `
+exports[`Syncer > generateTemplate > handleEntityChange > step 1`] = `
 [
   "handleEntityChange",
   "actionGenerateSchemas",
@@ -14,7 +14,7 @@ exports[`Syncer > generateTemplate > handleEntityChange 1`] = `
 ]
 `;
 
-exports[`Syncer > generateTemplate > scaffolding: model 1`] = `
+exports[`Syncer > generateTemplate > scaffolding: model > step 1`] = `
 [
   "generateTemplate",
   "renderTemplate",

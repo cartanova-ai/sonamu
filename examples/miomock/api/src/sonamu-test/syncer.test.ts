@@ -63,17 +63,17 @@ describe("Syncer", () => {
       );
 
       // Template__generated:body
-      // Naite.expect("Template__generated:body").toMatchSnapshot();
+      // Naite.expectWithSnapshot("Template__generated:body");
 
       // formatCode:linted
-      // expect(Naite.get("formatCode:linted:content")).toMatchSnapshot();
-      // expect(Naite.get("formatCode:linted:diagnostics")).toMatchSnapshot();
+      // Naite.expectWithSnapshot(Naite.get("formatCode:linted:content"));
+      // Naite.expectWithSnapshot(Naite.get("formatCode:linted:diagnostics"));
 
       // resolveRenderedTemplate:formatted
-      // Naite.expect("resolveRenderedTemplate:formatted:generated").toMatchSnapshot();
+      // Naite.expectWithSnapshot("resolveRenderedTemplate:formatted:generated");
 
       // step
-      Naite.expect("step").toMatchSnapshot();
+      Naite.expectWithSnapshot("step");
     });
 
     test("handleModelOrFrameChange", async () => {
@@ -150,7 +150,7 @@ describe("Syncer", () => {
         },
       );
 
-      Naite.expect("step").toMatchSnapshot();
+      Naite.expectWithSnapshot("step");
 
       // formatted and linted
       // expect(Naite.get("formatCode:formatted").content).toMatchSnapshot();

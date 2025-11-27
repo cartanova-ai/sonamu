@@ -2,19 +2,28 @@
 
 import { expect } from "vitest";
 import { Sonamu } from "../api/sonamu";
+import { nonNullable } from "../utils/utils";
 
+// Naite.t가 저장되는 타입
 export type NaiteStore = Map<string, any>;
+
+// Naite useMock 인자값: 사용 프로젝트에서 확장됨
 export interface NaiteMockRegistry {
   [key: string]: any;
 }
-// Mock 설정 엔트리
+// Naite.useMock 체이닝 메서드
 type MockConfigEntry =
   | { when: any[]; returns: any }
   | { when: any[]; throws: Error }
   | { handler: Function }; // 추가
 
+type CallStack = {
+  functionName: string;
+  fileName: string;
+};
+
 // Naite 싱글턴 객체 (추후 logger 연결 등의 상태 관리 필요성 고려)
-export const Naite = {
+export class NaiteClass {
   // 테스트 로그 기록
   t(name: string, value: any) {
     // 이 t 함수는 테스트 환경에서만 작동해야 합니다.
@@ -22,6 +31,11 @@ export const Naite = {
     // 이렇게 하는게 유틸 함수 불러와서 사용하는 것보다 조금이나마 빠를 것 같았기 때문입니다.
     if (process.env.NODE_ENV !== "test") {
       return;
+    }
+
+    const callStacks = this.getCallStacks();
+    if (name === "mocked:fs/promises.access___TEMPORARY") {
+      console.log(callStacks);
     }
 
     try {
@@ -47,7 +61,7 @@ export const Naite = {
     } catch {
       // Context 없는 상황에서 Naite.t 호출
     }
-  },
+  }
 
   // 테스트에서 값 가져오기 (없는 경우 에러 throw)
   get(name: string): any {
@@ -56,7 +70,7 @@ export const Naite = {
       throw new Error(`Naite.get: \`${name}\` not found`);
     }
     return context?.naiteStore?.get(name);
-  },
+  }
 
   // safe 값 가져오기 (없는 경우 undefined 반환)
   safeGet(name: string): any {
@@ -65,7 +79,7 @@ export const Naite = {
       return undefined;
     }
     return context?.naiteStore?.get(name);
-  },
+  }
 
   // 임의의 값 지정 (강제)
   set(name: string, value: any) {
@@ -74,7 +88,7 @@ export const Naite = {
       return;
     }
     context.naiteStore.set(name, value);
-  },
+  }
 
   // 전체 리스트 가져오기
   getAll(): { [key: string]: any } {
@@ -83,34 +97,62 @@ export const Naite = {
       return {};
     }
     return Object.fromEntries(context.naiteStore.entries());
-  },
+  }
 
   // expect 래퍼
   expect(name: string) {
     return expect(this.get(name));
-  },
+  }
+
+  // expect 래퍼 with snapshot
+  expectWithSnapshot(name: string, snapshotName?: string) {
+    return expect(this.get(name)).toMatchSnapshot(snapshotName ?? name);
+  }
 
   createStore(): NaiteStore {
     return new Map<string, any>();
-  },
+  }
+
+  private getCallStacks(): CallStack[] {
+    const { stack } = new Error();
+
+    const lines = stack?.split("\n").map((line) => line.trim());
+    if (!lines) {
+      return [];
+    }
+    return lines
+      .map((line) => {
+        // "    at UserService.getUser (/path/to/file.ts:67:5)"
+        const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+
+        if (match) {
+          return {
+            functionName: match[1],
+            fileName: match[2],
+          };
+        }
+        return null;
+      })
+      .filter(nonNullable);
+  }
 
   // 일반 로그 레벨
   d(_message: string) {
     // TODO: Logger 연결
     console.log(`[DEBUG] ${_message}`);
-  },
+  }
   i(_message: string) {
     // TODO: Logger 연결
     console.log(`[INFO] ${_message}`);
-  },
+  }
   w(_message: string) {
     // TODO: Logger 연결
     console.log(`[WARN] ${_message}`);
-  },
+  }
   e(_message: string) {
     // TODO: Logger 연결
     console.log(`[ERROR] ${_message}`);
-  },
+  }
 
   /*
     For mocking
@@ -153,7 +195,7 @@ export const Naite = {
     };
 
     return builder;
-  },
+  }
 
   getMockConfig<K extends keyof NaiteMockRegistry, M extends keyof NaiteMockRegistry[K]>(
     moduleKey: K,
@@ -175,7 +217,7 @@ export const Naite = {
 
     // 2. handler fallback
     return configs.find((c) => "handler" in c);
-  },
+  }
 
   resetMocks(): void {
     const context = Sonamu.getContext();
@@ -189,41 +231,12 @@ export const Naite = {
         naiteStore.delete(key);
       }
     }
-  },
-
-  wrapMockProxy<K extends keyof NaiteMockRegistry>(
-    moduleKey: K,
-    actual: any,
-  ): NaiteMockRegistry[K] {
-    const proxy: any = { ...actual };
-
-    for (const key of Object.keys(actual)) {
-      const value = actual[key];
-      if (typeof value === "function") {
-        proxy[key] = (...args: any[]) => {
-          const config = Naite.getMockConfig(moduleKey, key, args);
-          if (!config) {
-            return value(...args);
-          }
-
-          Naite.t(`mocked:${String(moduleKey)}.${key}`, { args, config });
-
-          if ("handler" in config) {
-            return config.handler(...args);
-          }
-          if ("throws" in config) {
-            return Promise.reject(config.throws);
-          }
-          return Promise.resolve(config.returns);
-        };
-      }
-    }
-
-    return proxy;
-  },
-};
+  }
+}
 
 function isArgsMatch(expected: any[], actual: any[]): boolean {
   // expected 길이만큼만 비교 (optional 파라미터 무시)
   return expected.every((exp, i) => JSON.stringify(exp) === JSON.stringify(actual[i]));
 }
+
+export const Naite = new NaiteClass();
