@@ -19,7 +19,7 @@ describe("Syncer", () => {
     expect(syncer).toBeDefined();
   });
 
-  test.only("fs/promises mock is working", async () => {
+  test("fs/promises mock is working", async () => {
     // 가상 파일 Mock 설정
     const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
     const mockFs = Naite.useMock("fs/promises");
