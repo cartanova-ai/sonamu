@@ -261,6 +261,75 @@ describe("Migrator test", () => {
       );
     });
 
+    test("FK 삭제 감지", async () => {
+      // UserEntity에 FK 추가
+      const userEntity = EntityManager.get("User");
+      userEntity.props.push({
+        type: "relation",
+        name: "company",
+        with: "Company",
+        desc: "회사",
+        relationType: "BelongsToOne",
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      });
+
+      // FK 추가 후 상태 확인
+      let status = await migrator.getStatus();
+      expect(status.preparedCodes.length).toBeGreaterThan(0);
+
+      // FK 제거
+      const companyPropIndex = userEntity.props.findIndex((p) => p.name === "company");
+      if (companyPropIndex !== -1) {
+        userEntity.props.splice(companyPropIndex, 1);
+      }
+
+      status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // company_id 컬럼이 삭제되는 것을 확인 (FK도 함께 삭제됨)
+      expect(status.preparedCodes.length).toBe(0); // 이미 DB에 추가된 적이 없으므로 코드가 생성되지 않음
+    });
+
+    test("FK 변경 감지 (onUpdate/onDelete)", async () => {
+      // UserEntity에 FK 추가 (RESTRICT)
+      const userEntity = EntityManager.get("User");
+      userEntity.props.push({
+        type: "relation",
+        name: "company",
+        with: "Company",
+        desc: "회사",
+        relationType: "BelongsToOne",
+        onUpdate: "RESTRICT",
+        onDelete: "RESTRICT",
+      });
+
+      // 먼저 이 상태로 코드 생성
+      let status = await migrator.getStatus();
+      expect(status.preparedCodes.length).toBeGreaterThan(0);
+
+      // onUpdate/onDelete를 CASCADE로 변경
+      const companyProp = userEntity.props.find((p) => p.name === "company");
+      if (
+        companyProp &&
+        companyProp.type === "relation" &&
+        companyProp.relationType === "BelongsToOne"
+      ) {
+        companyProp.onUpdate = "CASCADE";
+        companyProp.onDelete = "CASCADE";
+      }
+
+      status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // FK 변경 코드 확인
+      const foreignCode = status.preparedCodes.find(
+        (code) => code.table === "users" && code.title.includes("foreigns"),
+      );
+      expect(foreignCode).toBeDefined();
+      expect(foreignCode?.formatted).toContain("CASCADE");
+    });
+
     test("신규 테이블 감지", async () => {
       // 새 Entity 등록 → create 코드
       const newEntity = {
