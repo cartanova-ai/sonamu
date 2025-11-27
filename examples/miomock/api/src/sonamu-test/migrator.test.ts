@@ -156,17 +156,77 @@ describe("Migrator test", () => {
       Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
 
       // then: drop 1, add 1 발생
-      const alterCode = status.preparedCodes.find((code) =>
-        code.title.startsWith("alter_users_"),
-      );
+      const alterCode = status.preparedCodes.find((code) => code.title.startsWith("alter_users_"));
       expect(alterCode).toBeDefined();
       expect(alterCode?.title).toContain("add1");
       expect(alterCode?.title).toContain("drop1");
 
-      expect(alterCode?.formatted).toContain('// add');
+      expect(alterCode?.formatted).toContain("// add");
       expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
-      expect(alterCode?.formatted).toContain('// drop columns');
+      expect(alterCode?.formatted).toContain("// drop columns");
       expect(alterCode?.formatted).toContain('table.dropColumns("username")');
+    });
+
+    test("인덱스 추가 감지 (Normal, Unique)", async () => {
+      // UserEntity에 인덱스 추가
+      const userEntity = EntityManager.get("User");
+      userEntity.indexes.push({
+        type: "index",
+        columns: ["email", "username"],
+      });
+      userEntity.indexes.push({
+        type: "unique",
+        columns: ["email"],
+      });
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      const alterCode = status.preparedCodes.find(
+        (code) => code.table === "users" && code.type === "normal",
+      );
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toContain('table.index(["email", "username"])');
+      expect(alterCode?.formatted).toContain('table.unique(["email"])');
+    });
+
+    test("인덱스 삭제 감지", async () => {
+      // UserEntity의 기존 인덱스 삭제 (fulltext index)
+      const userEntity = EntityManager.get("User");
+      userEntity.indexes = [];
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      const alterCode = status.preparedCodes.find(
+        (code) => code.table === "users" && code.type === "normal",
+      );
+      expect(alterCode).toBeDefined();
+      // fulltext index drop
+      expect(alterCode?.formatted).toContain('table.dropIndex(["bio"])');
+    });
+
+    test("인덱스 변경 감지", async () => {
+      // UserEntity의 fulltext 인덱스 컬럼 변경
+      const userEntity = EntityManager.get("User");
+      const ftIndex = userEntity.indexes.find((i) => i.type === "fulltext");
+      if (ftIndex) {
+        ftIndex.columns = ["bio", "username"];
+      }
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      const alterCode = status.preparedCodes.find(
+        (code) => code.table === "users" && code.type === "normal",
+      );
+      expect(alterCode).toBeDefined();
+      // 이전 인덱스 drop
+      expect(alterCode?.formatted).toContain('table.dropIndex(["bio"])');
+      // 새로운 인덱스 추가
+      expect(alterCode?.formatted).toContain(
+        "ALTER TABLE users ADD FULLTEXT INDEX users_bio_username_index (bio, username) WITH PARSER ngram",
+      );
     });
 
     test("FK 추가 감지", async () => {
