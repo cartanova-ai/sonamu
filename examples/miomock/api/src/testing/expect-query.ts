@@ -1,182 +1,201 @@
-import { type AST, type Column, type From, Parser } from "node-sql-parser";
-import { get, sift } from "radashi";
+import { type AST, type Binary, type OrderBy, Parser } from "node-sql-parser";
 import { Sonamu } from "sonamu";
-import { expect } from "vitest";
+import { assert, expect } from "vitest";
 
 /**
- * SQL 쿼리 문자열 파싱
+ * SQL 쿼리에서 추출 가능한 부분
  */
-function parseQuery(query: string): AST | AST[] {
-  const parser = new Parser();
+export type QueryPart =
+  | "type"
+  | "table"
+  | "columns"
+  | "set"
+  | "where"
+  | "join"
+  | "orderBy"
+  | "pagination"
+  | "groupBy"
+  | "having";
+
+const parser = new Parser();
+const dbOption = () => ({ database: Sonamu.config.database.database });
+
+/**
+ * SQL 쿼리 문자열을 AST(Abstract Syntax Tree)로 파싱
+ *
+ * @param query - 파싱할 SQL 쿼리 문자열
+ * @returns 파싱된 AST 객체
+ * @throws SQL 파싱 실패 시 에러
+ */
+function parseQuery(query: string): AST {
   try {
-    return parser.astify(query, { database: Sonamu.config.database.database });
+    const result = parser.astify(query, dbOption());
+    const ast = Array.isArray(result) ? result[0] : result;
+
+    assert(ast);
+    return ast;
   } catch (e) {
     throw new Error(`Failed to parse SQL query: ${query}\n${e}`);
   }
 }
 
 /**
- * SQL 쿼리 검증 메서드
+ * AST 표현식(Expression)을 SQL 문자열로 변환
+ *
+ * @param expr - WHERE, ON, HAVING 등에서 사용되는 조건 표현식
+ * @returns SQL 문자열 또는 변환 실패 시 null
  */
-export class QueryExpectation {
-  private ast: AST | AST[];
-  private rawQuery: string;
-
-  constructor(query: string) {
-    this.rawQuery = query;
-    this.ast = parseQuery(query);
-  }
-
-  /** SQL 문자열에 특정 문자열이 포함되어 있는지 확인 */
-  toContain(substring: string): this {
-    expect(this.rawQuery.toLowerCase()).toContain(substring.toLowerCase());
-    return this;
-  }
-
-  /** SQL 문자열에 특정 문자열이 포함되어 있지 않은지 확인 */
-  toNotContain(substring: string): this {
-    expect(this.rawQuery.toLowerCase()).not.toContain(substring.toLowerCase());
-    return this;
-  }
-
-  /**
-   * 쿼리 타입이 지정한 타입인지 검증
-   * @param type - select, insert, update, delete 중 하나
-   */
-  toBeType(type: "select" | "insert" | "update" | "delete"): this {
-    const singleAst = this.ast as AST;
-    expect(singleAst.type).toBe(type);
-    return this;
-  }
-
-  /**
-   * FROM 절에 지정한 테이블이 포함되어 있는지 검증
-   * @param table - 확인할 테이블명
-   */
-  toHaveTable(table: string): this {
-    const singleAst = this.ast as AST;
-
-    // SELECT는 from, INSERT/UPDATE/DELETE는 table
-    const fromClause = (singleAst as { from?: From[] }).from ?? [];
-    const tableClause = (singleAst as { table?: From[] }).table ?? [];
-    const allTables = [...fromClause, ...tableClause];
-
-    const tables = allTables
-      .filter((f): f is From & { table: string } => "table" in f)
-      .map((f) => f.table);
-
-    expect(tables).toContain(table);
-
-    return this;
-  }
-
-  /**
-   * SELECT 절에 지정한 컬럼이 포함되어 있는지 검증
-   * @param column - 확인할 컬럼명
-   * @param options.table - 특정 테이블의 컬럼인지 확인 (선택)
-   * @param options.alias - 특정 컬럼의 alias인지 확인 (선택)
-   */
-  toHaveColumn(column: string, options?: { table?: string; alias?: string }): this {
-    const singleAst = this.ast as AST;
-    const columns = (singleAst as { columns?: Column[] }).columns ?? [];
-
-    const matchingColumns = sift(
-      columns.map((c) => {
-        const colName = get(c, "expr.column");
-        const colTable = get(c, "expr.table.value");
-        const colAlias = get(c, "as");
-
-        if (options?.table && colTable !== options.table) return null;
-        if (options?.alias && colAlias !== options.alias) return null;
-
-        return colName;
-      }),
-    );
-
-    expect(matchingColumns).toContain(column);
-
-    return this;
-  }
-
-  /** JOIN */
-  toHaveJoin(_options?: {
-    table?: string;
-    type?: "inner" | "left" | "right" | "full";
-    count?: number;
-  }): this {
-    return this;
-  }
-
-  /** WHERE */
-  toHaveWhere(_options?: {
-    column?: string;
-    operator?: "=" | "!=" | ">" | "<" | "IN" | "NOT IN" | "IS NULL" | "IS NOT NULL" | "LIKE";
-    logic?: "AND" | "OR";
-  }): this {
-    return this;
-  }
-
-  /** AGGREGATE  */
-  toHaveAggregate(_fn: "count" | "sum" | "avg" | "max" | "min"): this {
-    return this;
-  }
-
-  toHaveGroupBy(_column: string): this {
-    return this;
-  }
-
-  toHaveHaving(): this {
-    return this;
-  }
-
-  /** ORDER + LIMIT */
-  toHavePagination(_options?: {
-    orderBy?: string;
-    direction?: "asc" | "desc";
-    limit?: number;
-    offset?: number;
-  }): this {
-    return this;
-  }
-
-  // UPDATE SET
-  toHaveSet(
-    _column: string,
-    _optionss?: {
-      type?: "value" | "increment" | "decrement";
-    },
-  ): this {
-    return this;
-  }
-
-  /** 파싱된 AST를 반환 */
-  getAst(): AST | AST[] {
-    return this.ast;
-  }
-
-  /** 디버그 - AST를 콘솔에 출력 */
-  debug(): this {
-    console.log("=== SQL Query ===");
-    console.log(this.rawQuery);
-    console.log("\n=== Parsed AST ===");
-    console.log(JSON.stringify(this.ast, null, 2));
-    return this;
+function exprToString(expr: Binary | unknown): string | null {
+  if (!expr) return null;
+  try {
+    return parser.exprToSQL(expr, dbOption());
+  } catch {
+    return null;
   }
 }
 
+/** TYPE - 쿼리 타입 추출: select, insert, update, delete */
+function extractType(ast: AST): string {
+  return ast.type;
+}
+
+/** FROM - 쿼리의 대상 테이블명 추출 */
+function extractTable(ast: AST): string | null {
+  const from = (ast as { from?: { table?: string }[] }).from;
+  const table = (ast as { table?: { table?: string }[] }).table;
+  const tables = from ?? table;
+  if (!tables || tables.length === 0) return null;
+  return tables[0]?.table ?? null;
+}
+
+/** COLUMNS - SELECT 절의 컬럼 목록 추출 (alias 포함) */
+function extractColumns(ast: AST): string | null {
+  const columns = (ast as { columns?: unknown }).columns;
+  if (!columns) return null;
+  if (columns === "*") return "*";
+
+  if (Array.isArray(columns)) {
+    const parts = columns.map((col: { expr?: unknown; as?: string | { value: string } }) => {
+      const exprSql = parser.exprToSQL(col.expr, dbOption());
+      const alias = typeof col.as === "string" ? col.as : col.as?.value;
+      return alias ? `${exprSql} AS \`${alias}\`` : exprSql;
+    });
+    return parts.join(", ");
+  }
+  return null;
+}
+
+/** UPDATE - SET절 추출 */
+function extractSet(ast: AST): string | null {
+  const set = (ast as { set?: { column: string; value: unknown }[] }).set;
+  if (!set || set.length === 0) return null;
+
+  const parts = set.map((s) => {
+    const valueSql = parser.exprToSQL(s.value, dbOption());
+    return `${s.column} = ${valueSql}`;
+  });
+  return parts.join(", ");
+}
+
+/** WHERE - 조건절 추출 */
+function extractWhere(ast: AST): string | null {
+  const where = (ast as { where?: Binary }).where;
+  return exprToString(where);
+}
+
+/** JOIN - 조인 절 추출 (테이블명/서브쿼리, ON 조건 포함) */
+function extractJoin(ast: AST): string | null {
+  const from = (
+    ast as { from?: { join?: string; table?: string; expr?: unknown; as?: string; on?: Binary }[] }
+  ).from;
+  if (!from) return null;
+
+  const joins = from.filter((f) => f.join);
+  if (joins.length === 0) return null;
+
+  const parts = joins.map((j) => {
+    const joinType = j.join?.toUpperCase() ?? "JOIN";
+    // 서브쿼리면 (subquery) AS alias, 아니면 테이블명
+    const table = j.table ?? `(subquery) AS ${j.as}`;
+    const onClause = j.on ? ` ON ${exprToString(j.on)}` : "";
+    return `${joinType} ${table}${onClause}`;
+  });
+  return parts.join(" ");
+}
+
+/** ORDER BY - 정렬 조건 추출 */
+function extractOrderBy(ast: AST): string | null {
+  const orderBy = (ast as { orderby?: OrderBy[] }).orderby;
+  if (!orderBy || orderBy.length === 0) return null;
+
+  const parts = orderBy.map((o) => {
+    const exprSql = parser.exprToSQL(o.expr, dbOption());
+    return `${exprSql} ${o.type}`;
+  });
+  return parts.join(", ");
+}
+
+/** LIMIT/OFFSET - 페이징 추출 */
+function extractPagination(ast: AST): string | null {
+  const limit = (ast as { limit?: { value: { value: number }[] } }).limit;
+  if (!limit) return null;
+
+  const values = limit.value;
+  if (values.length === 1) {
+    return `LIMIT ${values[0]?.value}`;
+  }
+  if (values.length === 2) {
+    return `LIMIT ${values[1]?.value} OFFSET ${values[0]?.value}`;
+  }
+  return null;
+}
+
+/** GROUP BY - 그룹핑 조건 추출 */
+function extractGroupBy(ast: AST): string | null {
+  const groupBy = (ast as { groupby?: { columns?: unknown[] } }).groupby;
+  if (!groupBy?.columns || groupBy.columns.length === 0) return null;
+
+  const parts = groupBy.columns.map((col) => parser.exprToSQL(col, dbOption()));
+  return parts.join(", ");
+}
+
+/** HAVING - 집계 필터 조건 추출 */
+function extractHaving(ast: AST): string | null {
+  const having = (ast as { having?: Binary }).having;
+  return exprToString(having);
+}
+
 /**
- * SQL 쿼리 문자열을 검증하는 chainable assertion 생성
+ * QueryPart별 추출 함수 매핑
+ * expectQuery() 함수에서 part 인자에 따른 추출 함수를 찾는 데 사용됩니다.
+ */
+const extractors: Record<QueryPart, (ast: AST) => string | null> = {
+  type: extractType,
+  table: extractTable,
+  columns: extractColumns,
+  where: extractWhere,
+  join: extractJoin,
+  orderBy: extractOrderBy,
+  pagination: extractPagination,
+  groupBy: extractGroupBy,
+  having: extractHaving,
+  set: extractSet,
+};
+
+/**
+ * SQL 쿼리 문자열을 검증하기 위한 expect 래퍼
  *
- * @param query - 검증할 SQL 쿼리 문자열
- * @returns QueryExpectation 인스턴스
+ * @param query - SQL 쿼리 문자열
+ * @param part - 추출할 쿼리 부분 (생략 시 전체 쿼리 검증)
+ * @returns Vitest expect 객체
  *
  * @example
- * const query = Naite.get("puri-query");
- * expectQuery(query)
- *   .toBeType("select")
- *   .toHaveTable("users")
- *   .toHaveColumn("id", { table: "users" });
+ * expectQuery('SELECT * FROM users WHERE id = 1', 'where').toBe('`id` = 1')
  */
-export function expectQuery(query: string): QueryExpectation {
-  return new QueryExpectation(query);
+export function expectQuery(query: string, part?: QueryPart) {
+  if (!part) return expect(query);
+
+  const ast = parseQuery(query);
+  const extractedSql = extractors[part](ast);
+  return expect(extractedSql);
 }
