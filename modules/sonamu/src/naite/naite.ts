@@ -296,22 +296,18 @@ export class NaiteClass {
   }
 
   // safe 값 가져오기 (내부 사용, Mock 설정용)
-  safeGet(name: string): any {
+  private safeGetValue(name: `mock:${string}`): any {
     const context = Sonamu.getContext();
     if (!context?.naiteStore || !context.naiteStore.has(name)) {
       return undefined;
     }
     // Mock 설정은 기존 방식대로 사용 (NaiteTrace가 아님)
     const value = context.naiteStore.get(name);
-    // mock: prefix인 경우 기존 방식 유지
-    if (name.startsWith("mock:")) {
-      return value;
-    }
     return value;
   }
 
   // 임의의 값 지정 (내부 사용, Mock 설정용)
-  set(name: string, value: any) {
+  private setValue(name: `mock:${string}`, value: any) {
     const context = Sonamu.getContext();
     if (!context?.naiteStore) {
       return;
@@ -376,27 +372,27 @@ export class NaiteClass {
 
         return {
           returns(value: ReturnType) {
-            const storeKey = `mock:${String(moduleKey)}.${String(method)}`;
-            const existing = Naite.safeGet(storeKey) ?? [];
+            const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
+            const existing = Naite.safeGetValue(storeKey) ?? [];
             existing.push({ when: args, returns: value });
-            Naite.set(storeKey, existing);
+            Naite.setValue(storeKey, existing);
             return builder;
           },
           throws(error: Error) {
-            const storeKey = `mock:${String(moduleKey)}.${String(method)}`;
-            const existing = Naite.safeGet(storeKey) ?? [];
+            const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
+            const existing = Naite.safeGetValue(storeKey) ?? [];
             existing.push({ when: args, throws: error });
-            Naite.set(storeKey, existing);
+            Naite.setValue(storeKey, existing);
             return builder;
           },
         };
       },
 
       handle<M extends keyof Module>(method: M, fn: Module[M]) {
-        const storeKey = `mock:${String(moduleKey)}.${String(method)}`;
-        const existing = Naite.safeGet(storeKey) ?? [];
+        const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
+        const existing = Naite.safeGetValue(storeKey) ?? [];
         existing.push({ handler: fn });
-        Naite.set(storeKey, existing);
+        Naite.setValue(storeKey, existing);
         return builder;
       },
     };
@@ -409,8 +405,8 @@ export class NaiteClass {
     method: M,
     args: any[],
   ): MockConfigEntry | undefined {
-    const storeKey = `mock:${String(moduleKey)}.${String(method)}`;
-    const configs = Naite.safeGet(storeKey) as MockConfigEntry[] | undefined;
+    const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
+    const configs = Naite.safeGetValue(storeKey) as MockConfigEntry[] | undefined;
 
     if (!configs) {
       return undefined;
