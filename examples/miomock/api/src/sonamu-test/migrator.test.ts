@@ -308,9 +308,19 @@ describe("Migrator test", () => {
         expect(result[2]?.connKey).toBe("development_master");
         expect(result[2]?.batchNo).toBeGreaterThan(1);
       });
+    });
+  });
 
-      test("Shadow DB 테스트", async () => {
-        // apply 전 runShadowTest 호출됨
+  describe("runShadowTest", () => {
+    test("Shadow DB 생성 및 마이그레이션 테스트 결과 확인", async () => {
+      // when
+      const result = await migrator.runShadowTest();
+
+      Naite.expect("runShadowTest:tmpSqlPath").toBe("/tmp/miomock_test__migration_shadow.sql");
+      expect(result[0]).toMatchObject({
+        applied: expect.any(Array),
+        batchNo: expect.any(Number),
+        connKey: "shadow",
       });
     });
   });
@@ -318,40 +328,15 @@ describe("Migrator test", () => {
   // @TODO: DDL Transaction 이슈로 skip
   describe.skip("rollback", () => {});
 
+  // @TODO: DDL Transaction 이슈로 skip (pending상태를 만들어줄 수 없음)
   describe.skip("delCodes", () => {
-    test("pending 파일 삭제 성공", async () => {
-      // 모든 DB에서 미적용 파일만 삭제 가능
-    });
-
-    test("적용된 파일 삭제 불가", async () => {
-      // 하나라도 적용된 파일은 에러 throw
-    });
-
-    test("존재하지 않는 파일은 스킵", async () => {
-      // 에러 없이 0 반환
-    });
+    test.todo("이미 applied된 파일은 삭제 불가");
+    test.todo("pending 상태인 파일은 삭제 가능");
+    test.todo("마이그레이션 파일이 존재하지 않을 시 삭제된 개수 반영 안됨");
   });
 
-  describe.skip("runShadowTest", () => {
-    test("Shadow DB 생성 및 마이그레이션 테스트", async () => {
-      // test DB → test__migration_shadow 생성
-      // mysqldump → sed 치환 → migrate.latest()
-    });
-
-    test("테스트 완료 후 Shadow DB 삭제", async () => {
-      // cleanup 확인
-    });
-
-    test("마이그레이션 실패 시 에러", async () => {
-      // migrate.latest() 실패 → ServiceUnavailableException
-      // cleanup은 여전히 실행
-    });
-  });
-
-  describe.todo("Integration - 통합 워크플로우", () => {
-    test.todo(
-      "Entity 변경 → 적용 - 초기 상태 → Entity 변경 → preparedCodes 생성 → 파일 생성 → Shadow 테스트 → 적용 → 최신 상태 확인",
-    );
+  describe("Integration - 통합 워크플로우", () => {
+    test.todo("Entity 변경 → 코드 생성 → Shadow 테스트 → 적용 → 최신 상태");
     test.todo("생성 → 삭제 - preparedCodes 생성 → 파일 생성 → 파일 삭제 → pending 없어짐");
     test.todo("적용 → 롤백 - pending 적용 → status === 0 → 롤백 → pending 다시 생김");
     test.todo("실패 복구 - Shadow 테스트 실패 → 파일 수정 → 재시도 성공 → 적용");
