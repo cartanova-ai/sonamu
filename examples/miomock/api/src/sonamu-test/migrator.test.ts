@@ -3,7 +3,7 @@ import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
-describe.skip("Migrator test", () => {
+describe("Migrator test", () => {
   let migrator: Migrator;
   beforeAll(async () => {
     // Sonamu가 테스팅 로드된 상태이므로 다시 초기화
@@ -279,6 +279,8 @@ describe.skip("Migrator test", () => {
       test("단일(test)DB에 마이그레이션 적용", async () => {
         // apply 실행 (test DB)
         const result = await migrator.runAction("apply", ["test"]);
+        Naite.expect("runAction:action").toBe("apply");
+        Naite.expect("runAction:targets").toEqual(["test"]);
         Naite.expect("runAction:result").toMatchSnapshot();
 
         // then
@@ -288,26 +290,23 @@ describe.skip("Migrator test", () => {
 
       test("다중 DB 동시 적용", async () => {
         // when: 여러 DB에 병렬 적용, 각 DB별 독립적 결과
-        await migrator.runAction("apply", [
+        const result = await migrator.runAction("apply", [
           "test",
           "fixture_remote",
           "development_master",
           "production_master",
         ]);
 
-        // 현재 development_master와 production_master는 동일한 DB를 가리키고 있기 때문에 총 3개의 DB가 적용되어야 함
-        const runActionResult: { connKey: string; batchNo: number; applied: string[] }[] =
-          Naite.get("runAction:result");
+        // development와 production은 동일한 DB를 가리키고 있기 때문에 총 3개의 DB가 적용되어야 함
+        expect(result).toHaveLength(3);
+        expect(result[0]?.connKey).toBe("test");
+        expect(result[0]?.batchNo).toBeGreaterThan(1);
 
-        expect(runActionResult).toHaveLength(3);
-        expect(runActionResult[0]?.connKey).toBe("test");
-        expect(runActionResult[0]?.batchNo).toBeGreaterThan(1);
+        expect(result[1]?.connKey).toBe("fixture_remote");
+        expect(result[1]?.batchNo).toBeGreaterThan(1);
 
-        expect(runActionResult[1]?.connKey).toBe("fixture_remote");
-        expect(runActionResult[1]?.batchNo).toBeGreaterThan(1);
-
-        expect(runActionResult[2]?.connKey).toBe("development_master");
-        expect(runActionResult[2]?.batchNo).toBeGreaterThan(1);
+        expect(result[2]?.connKey).toBe("development_master");
+        expect(result[2]?.batchNo).toBeGreaterThan(1);
       });
 
       test("Shadow DB 테스트", async () => {
