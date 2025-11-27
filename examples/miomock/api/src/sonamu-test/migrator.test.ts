@@ -1,4 +1,4 @@
-import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
+import { type EntityJson, EntityManager, GenMigrationCode, Migrator, Naite, Sonamu } from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
@@ -428,7 +428,69 @@ describe("Migrator test", () => {
       expect(createTableIndex).toBeLessThan(foreignIndex);
     });
 
-    test.todo("조인테이블 포함");
+    test("조인테이블 (ManyToMany)", async () => {
+      // given: User와 Label 간의 ManyToMany 관계 추가
+      const userEntity = EntityManager.get("User");
+
+      // 1. Lable 엔티티 생성
+      const labelEntity = {
+        id: "Label",
+        table: "labels",
+        title: "LABEL",
+        props: [
+          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          { name: "name", desc: "라벨명", type: "string", length: 100 },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(labelEntity);
+
+      // 2. User 엔티티에 ManyToMany 관계 추가
+      userEntity.props.push({
+        type: "relation",
+        name: "labels",
+        with: "Label",
+        desc: "라벨",
+        relationType: "ManyToMany",
+        joinTable: "users__labels",
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      });
+
+      // when
+      await migrator.getStatus();
+
+      // then
+      const preparedCodes: GenMigrationCode[] = Naite.get('getStatus:preparedCodes');
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+      expect(preparedCodes.length).toBe(3)
+
+      // Label 테이블 생성 코드
+      const createLableCode = preparedCodes[0]
+      expect(createLableCode).toBeDefined();
+      expect(createLableCode?.title).toBe("create__labels");
+
+      // 조인테이블 (users__labels) 생성 코드
+      const createJoinTableCode = preparedCodes[1]
+      expect(createJoinTableCode).toBeDefined();
+      expect(createJoinTableCode?.title).toBe("create__users__labels");
+      // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
+      expect(createJoinTableCode?.formatted).toContain("user_id");
+      expect(createJoinTableCode?.formatted).toContain("label_id");
+      expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
+      expect(createJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
+
+      // 조인테이블 FK 생성 코드
+      const user_lable_FKCode = preparedCodes[2];
+      expect(user_lable_FKCode).toBeDefined();
+      expect(user_lable_FKCode?.title).toBe("foreign__users__labels__user_id_label_id");
+      // FK가 users.id와 labels.id를 참조하는지 확인
+      expect(user_lable_FKCode?.formatted).toContain('references("users.id")');
+      expect(user_lable_FKCode?.formatted).toContain('references("labels.id")');
+      expect(user_lable_FKCode?.formatted).toContain("CASCADE");
+    });
   });
 
   describe("runAction", () => {
