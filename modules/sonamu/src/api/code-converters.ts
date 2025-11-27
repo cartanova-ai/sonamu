@@ -49,7 +49,7 @@ export function getZodObjectFromApi(
     [id: string]: AnyZodObject;
   } = {},
 ) {
-  Naite.t("step", "Resolving Type Parameters");
+  //Naite.t("step", "Resolving Type Parameters");
   Naite.t("length of typeParameters", api.typeParameters?.length ?? 0);
   if (api.typeParameters?.length > 0) {
     for (const typeParam of api.typeParameters) {
@@ -62,7 +62,7 @@ export function getZodObjectFromApi(
   }
   Naite.t("references", references);
 
-  Naite.t("step", "Filtering API Parameters");
+  //Naite.t("step", "Filtering API Parameters");
   const ReqType = getZodObjectFromApiParams(
     // api parsing한 결과가 api params
     api.parameters.filter(
