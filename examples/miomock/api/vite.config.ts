@@ -16,5 +16,11 @@ export default defineConfig({
       tsconfig: "./tsconfig.json",
       include: ["src/**/*.test.ts"],
     },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
+    },
   },
 });

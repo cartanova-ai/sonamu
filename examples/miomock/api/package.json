@@ -11,6 +11,7 @@
     "start:all": "./start.sh",
     "test": "vitest run",
     "test:watch": "vitest watch --standalone",
+    "test:coverage": "vitest run --coverage",
     "sonamu": "sonamu",
     "practice": "node dist/practices/$0.js",
     "dump": "bash database/scripts/dump.sh",
