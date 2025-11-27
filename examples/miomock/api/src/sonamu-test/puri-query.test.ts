@@ -10,7 +10,7 @@ describe("Puri Query", () => {
     test("select", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").select({ id: "users.id" });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"select"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -20,7 +20,7 @@ describe("Puri Query", () => {
     test("select with alias", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").select({ userId: "users.id" });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"select"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -30,7 +30,7 @@ describe("Puri Query", () => {
     test("selectAll", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").selectAll();
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"select"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -42,7 +42,7 @@ describe("Puri Query", () => {
       await db
         .table("users")
         .insert({ username: "테스트", email: "test@test.com", password: "test", role: "normal" });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"insert"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -51,7 +51,7 @@ describe("Puri Query", () => {
     test("update", async () => {
       const db = UserModel.getPuri("w");
       await db.table("users").where("users.id", 1).update({ username: "수정됨" });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -62,7 +62,7 @@ describe("Puri Query", () => {
     test("delete", async () => {
       const db = UserModel.getPuri("w");
       await db.table("users").where("users.id", 1).delete();
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"delete"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
@@ -75,7 +75,7 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
       // employees와 users 조인
       await db.table("employees").join("users", "employees.user_id", "users.id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"INNER JOIN users ON \`employees\`.\`user_id\` = \`users\`.\`id\`"`,
@@ -88,7 +88,7 @@ describe("Puri Query", () => {
       await db
         .table("employees")
         .leftJoin("departments", "employees.department_id", "departments.id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"LEFT JOIN departments ON \`employees\`.\`department_id\` = \`departments\`.\`id\`"`,
@@ -102,7 +102,7 @@ describe("Puri Query", () => {
         .table("employees")
         .leftJoin("departments", "employees.department_id", "departments.id")
         .leftJoin("companies", "departments.company_id", "companies.id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"LEFT JOIN departments ON \`employees\`.\`department_id\` = \`departments\`.\`id\` LEFT JOIN companies ON \`departments\`.\`company_id\` = \`companies\`.\`id\`"`,
@@ -116,7 +116,7 @@ describe("Puri Query", () => {
         .table("projects")
         .leftJoin("projects__employees", "projects.id", "projects__employees.project_id")
         .leftJoin("employees", "projects__employees.employee_id", "employees.id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"LEFT JOIN projects__employees ON \`projects\`.\`id\` = \`projects__employees\`.\`project_id\` LEFT JOIN employees ON \`projects__employees\`.\`employee_id\` = \`employees\`.\`id\`"`,
@@ -130,7 +130,7 @@ describe("Puri Query", () => {
       await db
         .table({ child: "departments" })
         .leftJoin({ parent: "departments" }, "child.parent_id", "parent.id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"LEFT JOIN departments ON \`child\`.\`parent_id\` = \`parent\`.\`id\`"`,
@@ -150,7 +150,7 @@ describe("Puri Query", () => {
         "departments.id",
         "emp_stats.department_id",
       );
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "join").toMatchInlineSnapshot(
         `"LEFT JOIN (subquery) AS emp_stats ON \`departments\`.\`id\` = \`emp_stats\`.\`department_id\`"`,
@@ -163,7 +163,7 @@ describe("Puri Query", () => {
       test("where - 단일조건", async () => {
         const db = UserModel.getPuri("r");
         await db.table("users").where("users.id", 1);
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`id\` = 1"`);
       });
@@ -171,7 +171,7 @@ describe("Puri Query", () => {
       test("where - 객체조건", async () => {
         const db = UserModel.getPuri("r");
         await db.table("users").where({ "users.id": 1, "users.username": "test" });
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"\`users\`.\`id\` = 1 AND \`users\`.\`username\` = 'test'"`,
@@ -181,7 +181,7 @@ describe("Puri Query", () => {
       test("where - 비교연산자", async () => {
         const db = UserModel.getPuri("r");
         await db.table("employees").where("employees.salary", ">", "70000");
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(`"\`employees\`.\`salary\` > '70000'"`);
       });
@@ -192,7 +192,7 @@ describe("Puri Query", () => {
           .table("employees")
           .where("employees.salary", ">=", "60000")
           .where("employees.salary", "<=", "80000");
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"\`employees\`.\`salary\` >= '60000' AND \`employees\`.\`salary\` <= '80000'"`,
@@ -202,7 +202,7 @@ describe("Puri Query", () => {
       test("where - 체이닝(AND)", async () => {
         const db = UserModel.getPuri("r");
         await db.table("users").where("users.role", "normal").where("users.is_verified", true);
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"\`users\`.\`role\` = 'normal' AND \`users\`.\`is_verified\` = TRUE"`,
@@ -215,7 +215,7 @@ describe("Puri Query", () => {
           .table("users")
           .whereGroup((g) => g.where("users.role", "admin"))
           .orWhereGroup((g) => g.where("users.role", "normal"));
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"(\`users\`.\`role\` = 'admin') OR (\`users\`.\`role\` = 'normal')"`,
@@ -225,7 +225,7 @@ describe("Puri Query", () => {
       test("whereIn", async () => {
         const db = UserModel.getPuri("r");
         await db.table("projects").whereIn("projects.status", ["in_progress", "planning"]);
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"\`projects\`.\`status\` IN ('in_progress', 'planning')"`,
@@ -235,7 +235,7 @@ describe("Puri Query", () => {
       test("whereNotIn", async () => {
         const db = UserModel.getPuri("r");
         await db.table("projects").whereNotIn("projects.status", ["cancelled", "completed"]);
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(
           `"\`projects\`.\`status\` NOT IN ('cancelled', 'completed')"`,
@@ -245,7 +245,7 @@ describe("Puri Query", () => {
       test("whereNull", async () => {
         const db = UserModel.getPuri("r");
         await db.table("employees").where("employees.hire_date", null);
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(`"\`employees\`.\`hire_date\` IS NULL"`);
       });
@@ -253,7 +253,7 @@ describe("Puri Query", () => {
       test("where - LIKE", async () => {
         const db = UserModel.getPuri("r");
         await db.table("users").where("users.bio", "like", "%개발%");
-        const query = Naite.get("puri-query");
+        const query = Naite.get("puri:executed-query");
 
         expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`bio\` LIKE '%개발%'"`);
       });
@@ -264,7 +264,7 @@ describe("Puri Query", () => {
     test("count", async () => {
       const db = UserModel.getPuri("r");
       await db.table("employees").select({ total: Puri.count("employees.id") });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
         `"COUNT(\`employees\`.\`id\`) AS \`total\`"`,
@@ -274,7 +274,7 @@ describe("Puri Query", () => {
     test("sum", async () => {
       const db = UserModel.getPuri("r");
       await db.table("employees").select({ totalSalary: Puri.sum("employees.salary") });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
         `"SUM(\`employees\`.\`salary\`) AS \`totalSalary\`"`,
@@ -284,7 +284,7 @@ describe("Puri Query", () => {
     test("avg", async () => {
       const db = UserModel.getPuri("r");
       await db.table("employees").select({ avgSalary: Puri.avg("employees.salary") });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
         `"AVG(\`employees\`.\`salary\`) AS \`avgSalary\`"`,
@@ -294,7 +294,7 @@ describe("Puri Query", () => {
     test("max", async () => {
       const db = UserModel.getPuri("r");
       await db.table("employees").select({ maxSalary: Puri.max("employees.salary") });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
         `"MAX(\`employees\`.\`salary\`) AS \`maxSalary\`"`,
@@ -304,7 +304,7 @@ describe("Puri Query", () => {
     test("min", async () => {
       const db = UserModel.getPuri("r");
       await db.table("employees").select({ minSalary: Puri.min("employees.salary") });
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
         `"MIN(\`employees\`.\`salary\`) AS \`minSalary\`"`,
@@ -320,7 +320,7 @@ describe("Puri Query", () => {
           count: Puri.count("employees.id"),
         })
         .groupBy("employees.department_id");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "groupBy").toMatchInlineSnapshot(`"\`employees\`.\`department_id\`"`);
     });
@@ -334,7 +334,7 @@ describe("Puri Query", () => {
           count: Puri.count("projects.id"),
         })
         .groupBy("projects.status", "projects.created_at");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "groupBy").toMatchInlineSnapshot(
         `"\`projects\`.\`status\`, \`projects\`.\`created_at\`"`,
@@ -351,7 +351,7 @@ describe("Puri Query", () => {
         })
         .groupBy("employees.department_id")
         .having("count", ">=", 2);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "having").toMatchInlineSnapshot(`"\`count\` >= 2"`);
     });
@@ -368,7 +368,7 @@ describe("Puri Query", () => {
         })
         .groupBy("employees.department_id")
         .having("avgSalary", ">=", 70000);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "groupBy").toMatchInlineSnapshot(`"\`employees\`.\`department_id\`"`);
       expectQuery(query, "having").toMatchInlineSnapshot(`"\`avgSalary\` >= 70000"`);
@@ -380,7 +380,7 @@ describe("Puri Query", () => {
       const db = UserModel.getPuri("r");
 
       await db.table("users").orderBy("users.created_at", "desc");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`users\`.\`created_at\` DESC"`);
     });
@@ -391,7 +391,7 @@ describe("Puri Query", () => {
         .table("employees")
         .orderBy("employees.salary", "desc")
         .orderBy("employees.hire_date", "asc");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "orderBy").toMatchInlineSnapshot(
         `"\`employees\`.\`salary\` DESC, \`employees\`.\`hire_date\` ASC"`,
@@ -401,7 +401,7 @@ describe("Puri Query", () => {
     test("limit", async () => {
       const db = UserModel.getPuri("r");
       await db.table("projects").limit(10);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 10"`);
     });
@@ -409,7 +409,7 @@ describe("Puri Query", () => {
     test("limit + offset", async () => {
       const db = UserModel.getPuri("r");
       await db.table("projects").limit(10).offset(10);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 10 OFFSET 10"`);
     });
@@ -417,7 +417,7 @@ describe("Puri Query", () => {
     test("orderBy + limit + offset 조합", async () => {
       const db = UserModel.getPuri("r");
       await db.table("projects").orderBy("projects.created_at", "desc").limit(10).offset(10);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`projects\`.\`created_at\` DESC"`);
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 10 OFFSET 10"`);
@@ -428,7 +428,7 @@ describe("Puri Query", () => {
     test("increment", async () => {
       const db = UserModel.getPuri("w");
       await db.table("projects").where("projects.id", 1).increment("projects.budget", 1000);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` + 1000"`);
     });
@@ -436,7 +436,7 @@ describe("Puri Query", () => {
     test("decrement", async () => {
       const db = UserModel.getPuri("w");
       await db.table("projects").where("projects.id", 1).decrement("projects.budget", 500);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` - 500"`);
     });
@@ -444,7 +444,7 @@ describe("Puri Query", () => {
     test("increment - 조건부 업데이트", async () => {
       const db = UserModel.getPuri("w");
       await db.table("projects").where("projects.id", 1).increment("projects.budget", 100);
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` + 100"`);
       expectQuery(query, "where").toMatchInlineSnapshot(`"\`projects\`.\`id\` = 1"`);
@@ -455,7 +455,7 @@ describe("Puri Query", () => {
     test("first", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").orderBy("users.created_at", "desc").first();
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 1"`);
       expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`users\`.\`created_at\` DESC"`);
@@ -464,7 +464,7 @@ describe("Puri Query", () => {
     test("pluck", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").where("users.role", "admin").pluck("users.email");
-      const query = Naite.get("puri-query");
+      const query = Naite.get("puri:executed-query");
 
       expectQuery(query, "columns").toMatchInlineSnapshot(`"\`users\`.\`email\`"`);
       expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`role\` = 'admin'"`);

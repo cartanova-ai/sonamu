@@ -482,7 +482,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     onfulfilled?: ((value: Expand<TResult>[]) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    Naite.t("puri-query", this.toQuery());
+    Naite.t("puri:executed-query", this.toQuery());
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
@@ -799,7 +799,7 @@ export class ResolvedPuri<TResolved, _TReturning> {
     onfulfilled?: ((value: TResolved) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    Naite.t("puri-query", this.toQuery());
+    Naite.t("puri:executed-query", this.toQuery());
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
   catch<TResult2 = never>(
