@@ -8,7 +8,7 @@ set -e
 
 # MySQL DB 준비 대기 함수
 wait_for_mysql() {
-  local MAX_ATTEMPTS=30
+  local MAX_ATTEMPTS=60
   local ATTEMPT=0
   
   echo "Waiting for MySQL to be ready..."
@@ -33,6 +33,7 @@ wait_for_mysql() {
 (cd examples/miomock/api/database && docker compose up -d)
 wait_for_mysql
 
+pnpm --filter miomock-api sonamu migrate run
 pnpm --filter miomock-api seed
 pnpm --filter miomock-api sonamu fixture sync
 pnpm --filter miomock-api test

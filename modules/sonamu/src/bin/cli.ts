@@ -11,6 +11,7 @@ import path from "path";
 import process from "process";
 import { tsicli } from "tsicli";
 import { Sonamu } from "../api";
+import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
@@ -64,6 +65,7 @@ async function bootstrap() {
     ],
     runners: {
       migrate_status,
+      migrate_run,
       fixture_init,
       fixture_import,
       fixture_sync,
@@ -289,6 +291,15 @@ async function setupMigrator() {
 
 async function setupFixtureManager() {
   FixtureManager.init();
+}
+
+async function migrate_run() {
+  await setupMigrator();
+
+  await migrator.runAction(
+    "apply",
+    Object.keys(Sonamu.dbConfig) as (keyof SonamuDBConfig)[] /*싹 다!*/,
+  );
 }
 
 async function migrate_status() {
