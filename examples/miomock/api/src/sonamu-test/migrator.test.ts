@@ -357,7 +357,7 @@ describe("Migrator test", () => {
       await migrator.getStatus();
 
       // HasMany 관계는 코드가 생성되지 않음
-      const preparedCodes = Naite.get("getStatus:preparedCodes");
+      const preparedCodes = Naite.get("getStatus:preparedCodes").first();
       expect(preparedCodes).toHaveLength(0);
     });
 
