@@ -297,6 +297,63 @@ describe("Migrator test", () => {
       );
     });
 
+    test("FK 추가 감지 (OneToOne)", async () => {
+      // UserEntity에 Profile에 대한 OneToOne relation 추가
+      const userEntity = EntityManager.get("User");
+      userEntity.props.push({
+        type: "relation",
+        name: "profile",
+        with: "Profile",
+        desc: "프로필",
+        relationType: "OneToOne",
+        hasJoinColumn: true,
+        useConstraint: true,
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      });
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // then
+      const addProfileIdCode = status.preparedCodes[0];
+      const addProfileFKConstraintCode = status.preparedCodes[1];
+
+      expect(status.preparedCodes).toHaveLength(2);
+      expect(addProfileIdCode?.title).toBe("alter_users_add1");
+      expect(addProfileIdCode?.formatted).toContain(
+        'table.integer("profile_id").unsigned().notNullable()',
+      );
+
+      expect(addProfileFKConstraintCode?.title).toBe("alter_users_foreigns");
+      expect(addProfileFKConstraintCode?.formatted).toContain(
+        'table.foreign("profile_id").references("profiles.id").onUpdate("CASCADE").onDelete("CASCADE")',
+      );
+
+      // unique constraint
+      // expect(addProfileFKConstraintCode?.formatted).toContain('table.unique(["profile_id"])');
+    });
+
+    test("FK 추가 감지 (HasMany)", async () => {
+      // CompanyEntity에 Department에 대한 HasMany relation 추가
+      const companyEntity = EntityManager.get("Company");
+      companyEntity.props.push({
+        type: "relation",
+        name: "departments",
+        with: "Department",
+        joinColumn: "company_id",
+        fromColumn: "id",
+        relationType: "HasMany",
+      });
+
+      // when
+      await migrator.getStatus();
+
+      // HasMany 관계는 코드가 생성되지 않음
+      const preparedCodes = Naite.get("getStatus:preparedCodes");
+      expect(preparedCodes).toHaveLength(0);
+    });
+
     test("FK 추가 감지 (ManyToMany)", async () => {
       // given: User와 Label 간의 ManyToMany 관계 추가
       const userEntity = EntityManager.get("User");

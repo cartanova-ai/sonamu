@@ -266,6 +266,51 @@ export async function down(knex: Knex): Promise<void> {
 ]
 `;
 
+exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (OneToOne) 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // add
+    table.integer("profile_id").unsigned().notNullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - add
+    table.dropColumns("profile_id");
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_add1",
+    "type": "normal",
+  },
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    table.foreign("profile_id").references("profiles.id").onUpdate("CASCADE").onDelete("CASCADE");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    table.dropForeign(["profile_id"]);
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_foreigns",
+    "type": "normal",
+  },
+]
+`;
+
 exports[`Migrator test > preparedCodes 생성 > 신규 엔티티 감지 1`] = `
 [
   {
