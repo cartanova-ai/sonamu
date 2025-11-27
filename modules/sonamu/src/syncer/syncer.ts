@@ -278,6 +278,8 @@ export class Syncer {
       ...(diffGroups.functions ?? []),
       ...(diffGroups.generated ?? []),
     ]);
+    Naite.t("step", "handleTypesOrFunctionsOrGeneratedChange");
+    Naite.t("handleTypesOrFunctionsOrGeneratedChange", { diffGroups });
 
     // console.log(
     //   chalk.gray(
@@ -292,6 +294,7 @@ export class Syncer {
 
   async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
     Naite.t("step", "handleModelOrFrameChange");
+    Naite.t("handleModelOrFrameChange", { diffGroups });
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
     // console.log(
@@ -335,9 +338,11 @@ export class Syncer {
 
   // web/.sonamu.env 에 현재 설정값 저장
   async actionSyncConfig() {
+    Naite.t("step", "actionSyncConfig");
     const { host, port } = Sonamu.config.server.listen ?? {};
     const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
 
+    Naite.t("actionSyncConfig", { content });
     await Promise.all(
       Sonamu.config.sync.targets.map(async (target) => {
         await writeFile(path.join(Sonamu.appRootPath, target, ".sonamu.env"), content);
