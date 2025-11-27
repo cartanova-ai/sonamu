@@ -259,3 +259,27 @@ exports[`Migrator test > runAction > apply > 단일(test)DB에 마이그레이�
   },
 ]
 `;
+
+exports[`Migrator test > runAction() > rollback > 마지막 배치 롤백 1`] = `
+[
+  {
+    "applied": [
+      "20251124233609_foreign__project_tags__project_id_tag_id.ts",
+      "20251124233608_foreign__projects__employees__employee_id_project_id.ts",
+      "20251124233607_foreign__employees__user_id_department_id.ts",
+      "20251124233606_foreign__departments__company_id_parent_id.ts",
+      "20251124233605_create__project_tags.ts",
+      "20251124233604_create__projects__employees.ts",
+      "20251124233603_create__users.ts",
+      "20251124233602_create__tags.ts",
+      "20251124233601_create__projects.ts",
+      "20251124233600_create__files.ts",
+      "20251124233559_create__employees.ts",
+      "20251124233558_create__departments.ts",
+      "20251124233557_create__companies.ts",
+    ],
+    "batchNo": 1,
+    "connKey": "test",
+  },
+]
+`;

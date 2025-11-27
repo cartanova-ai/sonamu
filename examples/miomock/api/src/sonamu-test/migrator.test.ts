@@ -1,4 +1,4 @@
-import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
+import { type EntityJson, EntityManager, FixtureManager, Migrator, Naite, Sonamu } from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
@@ -314,10 +314,54 @@ describe.skip("Migrator test", () => {
         // apply 전 runShadowTest 호출됨
       });
     });
-  });
 
-  // @TODO: DDL Transaction 이슈로 skip
-  describe.skip("rollback", () => {});
+    describe.only("rollback", () => {
+      afterEach(async () => {
+        // 테스트가 끝나고 나면 수습을 해줍니다.
+        // 테스트 suite가 롤백을 포함하다 보니, 테스트가 끝나면 데이터와 스키마가 모두 증발해버립니다.
+        // 따라서 테스트를 이어가기 위해서는 스키마부터 다시 건설해주어야 합니다.
+        // 그런 다음에 준비된 스키마 위에 fixture 데이터를 올려야 합니다.
+        await migrator.runAction("apply", ["test"]);
+        FixtureManager.init(); // 여러 번 호출해도 돼요.
+        await FixtureManager.sync();
+      });
+
+      test("마지막 배치 롤백", async () => {
+        // given: 롤백 전 상태
+        const statusBefore = await migrator.getStatus();
+        const testConnBefore = statusBefore.conns.find((c) => c.connKey === "test");
+        const pendingBefore = testConnBefore?.pending.length ?? 0;
+
+        // when: 롤백 실행
+        const result = await migrator.runAction("rollback", ["test"]);
+        Naite.expect("runAction:action").toBe("rollback");
+        Naite.expect("runAction:targets").toEqual(["test"]);
+        Naite.expect("runAction:result").toMatchSnapshot(); // 롤백 결과의 "applied" 배열에는 이번 롤백으로 인해 "down"된 마이그레이션의 이름들이 들어갑니다. 따라서 모두 롤백했다면 모든 (그동안 적용되었던) 마이그레이션의 이름들이 들어갑니다.
+
+        // then: 결과 검증
+        expect(result).toHaveLength(1);
+        expect(result[0]?.connKey).toBe("test");
+        expect(result[0]?.batchNo).toBeGreaterThanOrEqual(0);
+        expect(result[0]?.applied).toBeInstanceOf(Array);
+
+        // after: 롤백 후 상태
+        const statusAfter = await migrator.getStatus();
+        const testConnAfter = statusAfter.conns.find((c) => c.connKey === "test");
+        const pendingAfter = testConnAfter?.pending.length ?? 0;
+
+        // 롤백된 파일이 있으면 pending이 증가해야 함
+        if (result[0]?.applied && result[0].applied.length > 0) {
+          expect(testConnAfter?.pending.length).toBeGreaterThan(pendingBefore);
+        }
+
+        expect(pendingAfter).toBeGreaterThan(pendingBefore);
+      });
+
+      test("Shadow 테스트 미실행", async () => {
+        // rollback 시 runShadowTest 호출 안 됨
+      });
+    });
+  });
 
   describe.skip("delCodes", () => {
     test("pending 파일 삭제 성공", async () => {
