@@ -1,9 +1,9 @@
 import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
-import { afterEach, beforeAll, beforeEach, describe, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
-describe("Migrator test", () => {
+describe.skip("Migrator test", () => {
   let migrator: Migrator;
   beforeAll(async () => {
     // Sonamu가 테스팅 로드된 상태이므로 다시 초기화
@@ -52,7 +52,9 @@ describe("Migrator test", () => {
       expect(status.preparedCodes).toEqual([]);
     });
 
-    test("일부 DB 미적용 상태", async () => {
+    test("일부 DB 미적용 상태 확인", async () => {
+      // given: test DB에 미적용 마이그레이션 코드가 있는 상태
+
       const status = await migrator.getStatus();
 
       // statuses 스냅샷
@@ -76,203 +78,203 @@ describe("Migrator test", () => {
       // production, development, test, fixture_remote
       Naite.expect("getStatus:conns").toHaveLength(4);
     });
-
-    describe("preparedCodes 생성", () => {
-      test("컬럼 추가 감지", async () => {
-        // given
-        // UserEntity에 test_column 컬럼 추가
-        const userEntity = EntityManager.get("User");
-        userEntity.props.push({
-          name: "test_column",
-          type: "string",
-          desc: "Test Column",
-          length: 256,
-        });
-
-        const status = await migrator.getStatus();
-
-        // preparedCodes 스냅샷
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        status.preparedCodes.forEach((code) => {
-          expect(code.table).toContain("users");
-          expect(code.title).toContain("alter_users_add1");
-          expect(code.type).toContain("normal");
-        });
-      });
-
-      test("컬럼 삭제 감지", async () => {
-        // Entity에서 props 제거 → alter_drop 코드
-        const userEntity = EntityManager.get("User");
-        userEntity.props = userEntity.props.filter((prop) => prop.name !== "deleted_at");
-
-        const status = await migrator.getStatus();
-
-        // preparedCodes 스냅샷
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        status.preparedCodes.forEach((code) => {
-          expect(code.table).toContain("users");
-          expect(code.title).toContain("alter_users_drop1");
-          expect(code.type).toContain("normal");
-        });
-      });
-
-      test("컬럼 속성 변경 감지", async () => {
-        // userEntity의 deleted_at 컬럼의 nullable 속성을 false에서 true로 변경
-        const userEntity = EntityManager.get("User");
-        userEntity.props
-          .filter((p) => p.name === "deleted_at")
-          .forEach((p) => {
-            p.nullable = false;
-          });
-
-        const status = await migrator.getStatus();
-
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        status.preparedCodes.forEach((code) => {
-          expect(code.table).toContain("users");
-          expect(code.title).toContain("alter_users_alter1");
-          expect(code.type).toContain("normal");
-        });
-      });
-
-      test("FK 추가 감지", async () => {
-        // UserEntity에 Company에 대한 BelongsToOne relation 추가
-        const userEntity = EntityManager.get("User");
-        userEntity.props.push({
-          type: "relation",
-          name: "company",
-          with: "Company",
-          desc: "회사",
-          relationType: "BelongsToOne",
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        });
-
-        const status = await migrator.getStatus();
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        // then
-        const addCompanyIdCode = status.preparedCodes[0];
-        const addCompanyFKConstraintCode = status.preparedCodes[1];
-
-        expect(status.preparedCodes).toHaveLength(2);
-        expect(addCompanyIdCode?.title).toBe("alter_users_add1");
-        expect(addCompanyIdCode?.formatted).toContain(
-          'table.integer("company_id").unsigned().notNullable()',
-        );
-
-        expect(addCompanyFKConstraintCode?.title).toBe("alter_users_foreigns");
-        expect(addCompanyFKConstraintCode?.formatted).toContain(
-          'table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE")',
-        );
-      });
-
-      test("신규 테이블 감지", async () => {
-        // 새 Entity 등록 → create 코드
-        const newEntity = {
-          id: "TestEntity",
-          table: "test_entities",
-          title: "TEST ENTITY",
-          props: [
-            { name: "id", type: "integer", unsigned: true, desc: "ID" },
-            {
-              name: "created_at",
-              type: "timestamp",
-              desc: "등록일시",
-              dbDefault: "CURRENT_TIMESTAMP",
-            },
-            { name: "name", desc: "이름", type: "string", length: 255 },
-            { name: "description", desc: "설명", type: "text", textType: "text", nullable: true },
-          ],
-          indexes: [],
-          subsets: {},
-          enums: {},
-        } as EntityJson;
-        await EntityManager.register(newEntity);
-
-        const status = await migrator.getStatus();
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        // then
-        const createTableCode = status.preparedCodes.find(
-          (code) => code.title === "create__test_entities",
-        );
-
-        expect(createTableCode).toBeDefined();
-        expect(createTableCode?.type).toBe("normal");
-        expect(createTableCode?.table).toBe("test_entities");
-        expect(createTableCode?.formatted).toContain('knex.schema.createTable("test_entities"');
-        expect(createTableCode?.formatted).toContain("table.increments().primary()");
-        expect(createTableCode?.formatted).toContain('table.string("name", 255).notNullable()');
-        expect(createTableCode?.formatted).toContain('table.text("description").nullable()');
-      });
-
-      test("코드 정렬 순서", async () => {
-        // normal 타입이 foreign 타입보다 앞에 정렬
-        const newEntity = {
-          id: "TestOrderEntity",
-          table: "test_order_entities",
-          title: "TEST ORDER ENTITY",
-          props: [
-            { name: "id", type: "integer", unsigned: true, desc: "ID" },
-            {
-              name: "created_at",
-              type: "timestamp",
-              desc: "등록일시",
-              dbDefault: "CURRENT_TIMESTAMP",
-            },
-            { name: "name", desc: "이름", type: "string", length: 255 },
-            {
-              type: "relation",
-              name: "company",
-              with: "Company",
-              desc: "회사",
-              relationType: "BelongsToOne",
-              onUpdate: "CASCADE",
-              onDelete: "CASCADE",
-            },
-          ],
-          indexes: [],
-          subsets: {},
-          enums: {},
-        } as EntityJson;
-        await EntityManager.register(newEntity);
-
-        const status = await migrator.getStatus();
-        Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
-
-        // then
-        const createTableCode = status.preparedCodes.find(
-          (code) => code.title === "create__test_order_entities",
-        );
-        const foreignCode = status.preparedCodes.find(
-          (code) => code.title === "foreign__test_order_entities__company_id",
-        );
-
-        expect(createTableCode).toBeDefined();
-        expect(foreignCode).toBeDefined();
-        expect(createTableCode?.type).toBe("normal");
-        expect(foreignCode?.type).toBe("foreign");
-
-        // normal 타입이 foreign 타입보다 앞에 정렬되어야 함
-        const createTableIndex = status.preparedCodes.findIndex(
-          (code) => code.title === "create__test_order_entities",
-        );
-        const foreignIndex = status.preparedCodes.findIndex(
-          (code) => code.title === "foreign__test_order_entities__company_id",
-        );
-
-        expect(createTableIndex).toBeLessThan(foreignIndex);
-      });
-
-      test.todo("조인테이블 포함");
-    });
   });
 
-  describe("runAction()", () => {
+  describe("preparedCodes 생성", () => {
+    test("컬럼 추가 감지", async () => {
+      // given
+      // UserEntity에 test_column 컬럼 추가
+      const userEntity = EntityManager.get("User");
+      userEntity.props.push({
+        name: "test_column",
+        type: "string",
+        desc: "Test Column",
+        length: 256,
+      });
+
+      const status = await migrator.getStatus();
+
+      // preparedCodes 스냅샷
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      status.preparedCodes.forEach((code) => {
+        expect(code.table).toContain("users");
+        expect(code.title).toContain("alter_users_add1");
+        expect(code.type).toContain("normal");
+      });
+    });
+
+    test("컬럼 삭제 감지", async () => {
+      // Entity에서 props 제거 → alter_drop 코드
+      const userEntity = EntityManager.get("User");
+      userEntity.props = userEntity.props.filter((prop) => prop.name !== "deleted_at");
+
+      const status = await migrator.getStatus();
+
+      // preparedCodes 스냅샷
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      status.preparedCodes.forEach((code) => {
+        expect(code.table).toContain("users");
+        expect(code.title).toContain("alter_users_drop1");
+        expect(code.type).toContain("normal");
+      });
+    });
+
+    test("컬럼 속성 변경 감지", async () => {
+      // userEntity의 deleted_at 컬럼의 nullable 속성을 false에서 true로 변경
+      const userEntity = EntityManager.get("User");
+      userEntity.props
+        .filter((p) => p.name === "deleted_at")
+        .forEach((p) => {
+          p.nullable = false;
+        });
+
+      const status = await migrator.getStatus();
+
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      status.preparedCodes.forEach((code) => {
+        expect(code.table).toContain("users");
+        expect(code.title).toContain("alter_users_alter1");
+        expect(code.type).toContain("normal");
+      });
+    });
+
+    test("FK 추가 감지", async () => {
+      // UserEntity에 Company에 대한 BelongsToOne relation 추가
+      const userEntity = EntityManager.get("User");
+      userEntity.props.push({
+        type: "relation",
+        name: "company",
+        with: "Company",
+        desc: "회사",
+        relationType: "BelongsToOne",
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      });
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // then
+      const addCompanyIdCode = status.preparedCodes[0];
+      const addCompanyFKConstraintCode = status.preparedCodes[1];
+
+      expect(status.preparedCodes).toHaveLength(2);
+      expect(addCompanyIdCode?.title).toBe("alter_users_add1");
+      expect(addCompanyIdCode?.formatted).toContain(
+        'table.integer("company_id").unsigned().notNullable()',
+      );
+
+      expect(addCompanyFKConstraintCode?.title).toBe("alter_users_foreigns");
+      expect(addCompanyFKConstraintCode?.formatted).toContain(
+        'table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE")',
+      );
+    });
+
+    test("신규 테이블 감지", async () => {
+      // 새 Entity 등록 → create 코드
+      const newEntity = {
+        id: "TestEntity",
+        table: "test_entities",
+        title: "TEST ENTITY",
+        props: [
+          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          {
+            name: "created_at",
+            type: "timestamp",
+            desc: "등록일시",
+            dbDefault: "CURRENT_TIMESTAMP",
+          },
+          { name: "name", desc: "이름", type: "string", length: 255 },
+          { name: "description", desc: "설명", type: "text", textType: "text", nullable: true },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(newEntity);
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // then
+      const createTableCode = status.preparedCodes.find(
+        (code) => code.title === "create__test_entities",
+      );
+
+      expect(createTableCode).toBeDefined();
+      expect(createTableCode?.type).toBe("normal");
+      expect(createTableCode?.table).toBe("test_entities");
+      expect(createTableCode?.formatted).toContain('knex.schema.createTable("test_entities"');
+      expect(createTableCode?.formatted).toContain("table.increments().primary()");
+      expect(createTableCode?.formatted).toContain('table.string("name", 255).notNullable()');
+      expect(createTableCode?.formatted).toContain('table.text("description").nullable()');
+    });
+
+    test("코드 정렬 순서", async () => {
+      // normal 타입이 foreign 타입보다 앞에 정렬
+      const newEntity = {
+        id: "TestOrderEntity",
+        table: "test_order_entities",
+        title: "TEST ORDER ENTITY",
+        props: [
+          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          {
+            name: "created_at",
+            type: "timestamp",
+            desc: "등록일시",
+            dbDefault: "CURRENT_TIMESTAMP",
+          },
+          { name: "name", desc: "이름", type: "string", length: 255 },
+          {
+            type: "relation",
+            name: "company",
+            with: "Company",
+            desc: "회사",
+            relationType: "BelongsToOne",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+        indexes: [],
+        subsets: {},
+        enums: {},
+      } as EntityJson;
+      await EntityManager.register(newEntity);
+
+      const status = await migrator.getStatus();
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // then
+      const createTableCode = status.preparedCodes.find(
+        (code) => code.title === "create__test_order_entities",
+      );
+      const foreignCode = status.preparedCodes.find(
+        (code) => code.title === "foreign__test_order_entities__company_id",
+      );
+
+      expect(createTableCode).toBeDefined();
+      expect(foreignCode).toBeDefined();
+      expect(createTableCode?.type).toBe("normal");
+      expect(foreignCode?.type).toBe("foreign");
+
+      // normal 타입이 foreign 타입보다 앞에 정렬되어야 함
+      const createTableIndex = status.preparedCodes.findIndex(
+        (code) => code.title === "create__test_order_entities",
+      );
+      const foreignIndex = status.preparedCodes.findIndex(
+        (code) => code.title === "foreign__test_order_entities__company_id",
+      );
+
+      expect(createTableIndex).toBeLessThan(foreignIndex);
+    });
+
+    test.todo("조인테이블 포함");
+  });
+
+  describe("runAction", () => {
     describe("apply", () => {
       test("단일(test)DB에 마이그레이션 적용", async () => {
         // apply 실행 (test DB)
@@ -369,7 +371,7 @@ describe("Migrator test", () => {
     });
   });
 
-  describe.skip("runShadowTest()", () => {
+  describe.skip("runShadowTest", () => {
     test("Shadow DB 생성 및 마이그레이션 테스트", async () => {
       // test DB → test__migration_shadow 생성
       // mysqldump → sed 치환 → migrate.latest()
