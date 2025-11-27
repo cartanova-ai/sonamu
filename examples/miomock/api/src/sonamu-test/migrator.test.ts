@@ -141,6 +141,34 @@ describe("Migrator test", () => {
       });
     });
 
+    test("컬럼 이름 변경 감지 (Drop & Add)", async () => {
+      // UserEntity의 username 컬럼을 full_name으로 변경
+      const userEntity = EntityManager.get("User");
+      const nameProp = userEntity.props.find((p) => p.name === "username");
+      expect(nameProp).toBeDefined();
+      if (nameProp) {
+        nameProp.name = "full_name";
+      }
+
+      const status = await migrator.getStatus();
+
+      // preparedCodes 스냅샷
+      Naite.expect("getStatus:preparedCodes").toMatchSnapshot();
+
+      // then: drop 1, add 1 발생
+      const alterCode = status.preparedCodes.find((code) =>
+        code.title.startsWith("alter_users_"),
+      );
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.title).toContain("add1");
+      expect(alterCode?.title).toContain("drop1");
+
+      expect(alterCode?.formatted).toContain('// add');
+      expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
+      expect(alterCode?.formatted).toContain('// drop columns');
+      expect(alterCode?.formatted).toContain('table.dropColumns("username")');
+    });
+
     test("FK 추가 감지", async () => {
       // UserEntity에 Company에 대한 BelongsToOne relation 추가
       const userEntity = EntityManager.get("User");
