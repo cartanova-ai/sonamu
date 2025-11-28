@@ -62,6 +62,35 @@ export const ProjectStatusLabel = {
   cancelled: "취소",
 };
 
+// Enums: SyncFixture
+export const SyncFixtureStatus = z
+  .enum(["draft", "pending", "active", "completed", "archived"])
+  .describe("SyncFixtureStatus");
+export type SyncFixtureStatus = z.infer<typeof SyncFixtureStatus>;
+export const SyncFixtureStatusLabel = {
+  draft: "초안",
+  pending: "대기중",
+  active: "활성",
+  completed: "완료",
+  archived: "보관",
+};
+export const SyncFixtureOrderBy = z
+  .enum(["id-desc", "id-asc", "name-asc", "priority-desc", "created_at-desc"])
+  .describe("SyncFixtureOrderBy");
+export type SyncFixtureOrderBy = z.infer<typeof SyncFixtureOrderBy>;
+export const SyncFixtureOrderByLabel = {
+  "id-desc": "ID최신순",
+  "id-asc": "ID오래된순",
+  "name-asc": "이름오름차순",
+  "priority-desc": "우선순위높은순",
+  "created_at-desc": "등록일최신순",
+};
+export const SyncFixtureSearchField = z
+  .enum(["id", "name", "code"])
+  .describe("SyncFixtureSearchField");
+export type SyncFixtureSearchField = z.infer<typeof SyncFixtureSearchField>;
+export const SyncFixtureSearchFieldLabel = { id: "ID", name: "이름", code: "코드" };
+
 // Enums: Tag
 export const TagOrderBy = z.enum(["id-desc"]).describe("TagOrderBy");
 export type TagOrderBy = z.infer<typeof TagOrderBy>;
@@ -144,6 +173,21 @@ export const ProjectBaseSchema = z.object({
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];
 };
+
+// BaseSchema: SyncFixture
+export const SyncFixtureBaseSchema = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  updated_at: z.date().nullable(),
+  name: z.string().max(128),
+  code: z.string().max(32).nullable(),
+  status: SyncFixtureStatus,
+  priority: z.int().nullable(),
+  is_active: z.boolean(),
+  description: z.string().max(65535).nullable(),
+  tags: StringArray.nullable(),
+});
+export type SyncFixtureBaseSchema = z.infer<typeof SyncFixtureBaseSchema>;
 
 // BaseSchema: Tag
 export const TagBaseSchema = z.object({
@@ -241,6 +285,20 @@ export const ProjectBaseListParams = z
   })
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
+
+// BaseListParams: SyncFixture
+export const SyncFixtureBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: SyncFixtureSearchField,
+    keyword: z.string(),
+    orderBy: SyncFixtureOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+  })
+  .partial();
+export type SyncFixtureBaseListParams = z.infer<typeof SyncFixtureBaseListParams>;
 
 // BaseListParams: Tag
 export const TagBaseListParams = z
@@ -514,6 +572,26 @@ export type ProjectSubsetMapping = {
 };
 export const ProjectSubsetKey = z.enum(["A", "P"]);
 export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
+
+// Subsets: SyncFixture
+export const SyncFixtureSubsetA = z.object({
+  id: z.int().nonnegative(),
+  created_at: z.date(),
+  updated_at: z.date().nullable(),
+  name: z.string().max(128),
+  code: z.string().max(32).nullable(),
+  status: SyncFixtureStatus,
+  priority: z.int().nullable(),
+  is_active: z.boolean(),
+  description: z.string().max(65535).nullable(),
+  tags: StringArray.nullable(),
+});
+export type SyncFixtureSubsetA = z.infer<typeof SyncFixtureSubsetA>;
+export type SyncFixtureSubsetMapping = {
+  A: SyncFixtureSubsetA;
+};
+export const SyncFixtureSubsetKey = z.enum(["A"]);
+export type SyncFixtureSubsetKey = z.infer<typeof SyncFixtureSubsetKey>;
 
 // Subsets: Tag
 export const TagSubsetA = z.object({

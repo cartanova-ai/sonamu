@@ -65,7 +65,15 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "581a08bf2edffde23d62782024b080ba5d54b676"
+    "checksum": "9f821158e6946e30f8908b8edf8e12a1e2362143"
+  },
+  {
+    "path": "src/application/sync-fixture/sync-fixture.entity.json",
+    "checksum": "cf6bcc9aba5b43c16854b4486a7650ec703016e9"
+  },
+  {
+    "path": "src/application/sync-fixture/sync-fixture.types.ts",
+    "checksum": "a6f0b24ccb3dc8210361ccc174c1ec109769114b"
   },
   {
     "path": "src/application/tag/tag.entity.json",

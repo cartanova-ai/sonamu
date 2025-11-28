@@ -22,7 +22,7 @@ CREATE TABLE `companies` (
   `uuid` char(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `companies_uuid_unique` (`uuid`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=328 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `companies` WRITE;
@@ -106,12 +106,12 @@ CREATE TABLE `knex_migrations` (
   `batch` int DEFAULT NULL,
   `migration_time` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `knex_migrations` WRITE;
 /*!40000 ALTER TABLE `knex_migrations` DISABLE KEYS */;
-INSERT INTO `knex_migrations` (`id`, `name`, `batch`, `migration_time`) VALUES (1,'20251124233557_create__companies.ts',1,'2025-11-24 14:36:02'),(2,'20251124233558_create__departments.ts',1,'2025-11-24 14:36:02'),(3,'20251124233559_create__employees.ts',1,'2025-11-24 14:36:02'),(4,'20251124233600_create__files.ts',1,'2025-11-24 14:36:02'),(5,'20251124233601_create__projects.ts',1,'2025-11-24 14:36:02'),(6,'20251124233602_create__tags.ts',1,'2025-11-24 14:36:02'),(7,'20251124233603_create__users.ts',1,'2025-11-24 14:36:02'),(8,'20251124233604_create__projects__employees.ts',1,'2025-11-24 14:36:02'),(9,'20251124233605_create__project_tags.ts',1,'2025-11-24 14:36:02'),(10,'20251124233606_foreign__departments__company_id_parent_id.ts',1,'2025-11-24 14:36:02'),(11,'20251124233607_foreign__employees__user_id_department_id.ts',1,'2025-11-24 14:36:02'),(12,'20251124233608_foreign__projects__employees__employee_id_project_id.ts',1,'2025-11-24 14:36:02'),(13,'20251124233609_foreign__project_tags__project_id_tag_id.ts',1,'2025-11-24 14:36:02');
+INSERT INTO `knex_migrations` (`id`, `name`, `batch`, `migration_time`) VALUES (1,'20251124233557_create__companies.ts',1,'2025-11-27 08:53:16'),(2,'20251124233558_create__departments.ts',1,'2025-11-27 08:53:16'),(3,'20251124233559_create__employees.ts',1,'2025-11-27 08:53:16'),(4,'20251124233600_create__files.ts',1,'2025-11-27 08:53:16'),(5,'20251124233601_create__projects.ts',1,'2025-11-27 08:53:16'),(6,'20251124233602_create__tags.ts',1,'2025-11-27 08:53:16'),(7,'20251124233603_create__users.ts',1,'2025-11-27 08:53:16'),(8,'20251124233604_create__projects__employees.ts',1,'2025-11-27 08:53:16'),(9,'20251124233605_create__project_tags.ts',1,'2025-11-27 08:53:16'),(10,'20251124233606_foreign__departments__company_id_parent_id.ts',1,'2025-11-27 08:53:16'),(11,'20251124233607_foreign__employees__user_id_department_id.ts',1,'2025-11-27 08:53:16'),(12,'20251124233608_foreign__projects__employees__employee_id_project_id.ts',1,'2025-11-27 08:53:16'),(13,'20251124233609_foreign__project_tags__project_id_tag_id.ts',1,'2025-11-27 08:53:17'),(14,'20251128133442_create__sync_fixtures.ts',2,'2025-11-28 04:34:54');
 /*!40000 ALTER TABLE `knex_migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -194,6 +194,29 @@ INSERT INTO `projects__employees` (`id`, `employee_id`, `project_id`, `uuid`) VA
 UNLOCK TABLES;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sync_fixtures` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `name` varchar(128) NOT NULL,
+  `code` varchar(32) DEFAULT NULL,
+  `status` varchar(32) NOT NULL,
+  `priority` int DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `description` text,
+  `tags` json DEFAULT NULL,
+  `uuid` char(36) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `sync_fixtures_uuid_unique` (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `sync_fixtures` WRITE;
+/*!40000 ALTER TABLE `sync_fixtures` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sync_fixtures` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `tags` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -227,7 +250,7 @@ CREATE TABLE `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `users_uuid_unique` (`uuid`),
   FULLTEXT KEY `users_bio_index` (`bio`) /*!50100 WITH PARSER `ngram` */ 
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `users` WRITE;

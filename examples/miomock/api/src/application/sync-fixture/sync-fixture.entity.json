@@ -1,0 +1,54 @@
+{
+  "id": "SyncFixture",
+  "table": "sync_fixtures",
+  "title": "Syncer 테스트 픽스처",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    },
+    { "name": "updated_at", "type": "timestamp", "nullable": true, "desc": "수정일시" },
+    { "name": "name", "type": "string", "length": 128, "desc": "이름" },
+    { "name": "code", "type": "string", "length": 32, "nullable": true, "desc": "코드" },
+    { "name": "status", "type": "enum", "length": 32, "id": "SyncFixtureStatus", "desc": "상태" },
+    { "name": "priority", "type": "integer", "nullable": true, "desc": "우선순위" },
+    { "name": "is_active", "type": "boolean", "desc": "활성여부", "dbDefault": "1" },
+    { "name": "description", "type": "text", "textType": "text", "nullable": true, "desc": "설명" },
+    { "name": "tags", "type": "json", "id": "StringArray", "nullable": true, "desc": "태그목록" }
+  ],
+  "indexes": [],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "updated_at",
+      "name",
+      "code",
+      "status",
+      "priority",
+      "is_active",
+      "description",
+      "tags"
+    ]
+  },
+  "enums": {
+    "SyncFixtureStatus": {
+      "draft": "초안",
+      "pending": "대기중",
+      "active": "활성",
+      "completed": "완료",
+      "archived": "보관"
+    },
+    "SyncFixtureOrderBy": {
+      "id-desc": "ID최신순",
+      "id-asc": "ID오래된순",
+      "name-asc": "이름오름차순",
+      "priority-desc": "우선순위높은순",
+      "created_at-desc": "등록일최신순"
+    },
+    "SyncFixtureSearchField": { "id": "ID", "name": "이름", "code": "코드" }
+  }
+}
