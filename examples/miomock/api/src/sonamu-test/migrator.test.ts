@@ -354,11 +354,10 @@ describe("Migrator test", () => {
       });
 
       // when
-      await migrator.getStatus();
+      const preparedCodes = await migrator.getStatus();
 
-      // HasMany 관계는 코드가 생성되지 않음
-      const preparedCodes = Naite.get("getStatus:preparedCodes").first();
-      expect(preparedCodes).toHaveLength(0);
+      // HasMany 관계는 마이그레이션 코드 생성 안함
+      expect(preparedCodes.preparedCodes).toHaveLength(0);
     });
 
     test("FK 추가 감지 (ManyToMany)", async () => {
