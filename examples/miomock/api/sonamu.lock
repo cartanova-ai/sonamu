@@ -73,7 +73,7 @@
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.model.ts",
-    "checksum": "87721e8fa1fb1010250b67406e55ffa84ee96de5"
+    "checksum": "6193fa7013470f8daced1053dfc0f03cbb576c75"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.types.ts",
