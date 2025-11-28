@@ -11,6 +11,7 @@ export default defineConfig({
     pool: "forks",
     maxWorkers: 1,
     isolate: false,
+    restoreMocks: true,
     typecheck: {
       enabled: true,
       tsconfig: "./tsconfig.json",

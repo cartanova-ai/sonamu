@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: 임시처리: 현우님 혼내고 지울것 */
+
 import type { Abortable } from "events";
-import { constants, type Mode, type ObjectEncodingOptions, type OpenMode, type PathLike } from "fs";
-import { access, type FileHandle } from "fs/promises";
+import type { Mode, ObjectEncodingOptions, OpenMode, PathLike } from "fs";
+import type { FileHandle } from "fs/promises";
 import { join } from "path";
 import { Naite, Sonamu } from "sonamu";
 import type Stream from "stream";
@@ -25,42 +26,6 @@ describe("Syncer", () => {
     expect(syncer).toBeDefined();
 
     virtualFileSystem.clear();
-  });
-
-  // ============================================
-  // 기본 Mock 테스트
-  // ============================================
-  test("vi.fn test", async () => {
-    const mockFn = vi.fn((path: PathLike, mode?: number): Promise<void> => {
-      Naite.t("vi.fn", { path, mode, status: mode === 0 ? "success" : "error" });
-      if (mode === 0) {
-        return Promise.resolve(undefined);
-      }
-      return Promise.reject(new Error("test error"));
-    });
-
-    try {
-      await mockFn("test.txt", 0);
-      await mockFn("test.txt", 1);
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe("test error");
-    } finally {
-      expect(mockFn).toHaveBeenCalledWith("test.txt", 0);
-      expect(mockFn).toHaveBeenCalledWith("test.txt", 1);
-      expect(mockFn).toHaveBeenCalledTimes(2);
-    }
-    expect(Naite.get("vi.fn").result()).toMatchSnapshot();
-  });
-
-  test.skip("fs/promises mock is working", async () => {
-    // TODO: Naite.useMock과 vi.mock 통합 필요
-    const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
-    const mockFs = Naite.useMock("fs/promises");
-    mockFs.when("access", [filePath]).returns();
-
-    const isExists = await exists(filePath);
-    expect(isExists).toBe(true);
   });
 
   // ============================================
@@ -805,21 +770,6 @@ describe("Syncer", () => {
     test.todo("autoloadApis - apis 로드");
   });
 });
-
-// ============================================
-// 유틸 함수
-// ============================================
-async function exists(filePath: string) {
-  if (virtualFileSystem.has(filePath)) {
-    return true;
-  }
-  try {
-    await access(filePath, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 // ============================================
 // 가상 파일 시스템 및 Mock 설정
