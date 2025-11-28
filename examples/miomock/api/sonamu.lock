@@ -72,6 +72,10 @@
     "checksum": "cf6bcc9aba5b43c16854b4486a7650ec703016e9"
   },
   {
+    "path": "src/application/sync-fixture/sync-fixture.model.ts",
+    "checksum": "87721e8fa1fb1010250b67406e55ffa84ee96de5"
+  },
+  {
     "path": "src/application/sync-fixture/sync-fixture.types.ts",
     "checksum": "a6f0b24ccb3dc8210361ccc174c1ec109769114b"
   },

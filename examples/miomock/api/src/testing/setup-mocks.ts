@@ -29,7 +29,9 @@ vi.mock("fs/promises", async (importOriginal) => {
       },
     ) as typeof fsMkdir,
     writeFile: vi.fn((path: PathLike | FileHandle, data: string | Buffer | Uint8Array) => {
-      Naite.t("fs/promises:writeFile", { file: path, data });
+      const filePath = typeof path === "string" ? path : path.toString();
+
+      Naite.t(`fs/promises:writeFile`, { path: filePath, data });
     }),
   };
 });

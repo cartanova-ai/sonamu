@@ -6,7 +6,7 @@ import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path
 import { bootstrap, test } from "../testing/bootstrap";
 
 interface WriteFileRecord {
-  file: string;
+  path: string;
   data: unknown;
 }
 
@@ -39,7 +39,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const httpFile = writeFilesArray.find((f) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f) => f.path.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -60,7 +60,7 @@ describe("Syncer", () => {
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const copiedFile = writeFilesArray.find(
-        (f: WriteFileRecord) => f.file.includes("/web/") && f.file.includes("sonamu.generated.ts"),
+        (f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes("sonamu.generated.ts"),
       );
       expect(copiedFile).toBeDefined();
 
@@ -114,7 +114,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const envFile = writeFilesArray.find((f: WriteFileRecord) => f.file.includes(".sonamu.env"));
+      const envFile = writeFilesArray.find((f: WriteFileRecord) => f.path.includes(".sonamu.env"));
       expect(envFile).toBeDefined();
       expect(envFile.data).toContain("API_HOST=");
       expect(envFile.data).toContain("API_PORT=");
@@ -167,7 +167,7 @@ describe("Syncer", () => {
         ? firstWriteFiles
         : [firstWriteFiles];
       const targetFile = firstWriteFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("user.entity.json"),
+        f.path.includes("user.entity.json"),
       );
       expect(targetFile).toBeDefined();
 
@@ -230,7 +230,7 @@ describe("Syncer", () => {
         ? secondWriteFiles
         : [secondWriteFiles];
       const newFile = secondWriteFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("overwrite-test.entity.json"),
+        f.path.includes("overwrite-test.entity.json"),
       );
 
       expect(newFile).toBeDefined();
@@ -272,7 +272,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes(".entity.json"),
+        f.path.includes(".entity.json"),
       );
       expect(entityFile).toBeDefined();
 
@@ -284,10 +284,12 @@ describe("Syncer", () => {
     test("model 템플릿", async () => {
       await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const steps = Naite.get("step").result();
-      expect(steps).toBeDefined();
-      expect(steps).toContain("generateTemplate");
-      expect(Naite.get("step").result()).toMatchSnapshot("step");
+      const writeFile = Naite.get("fs/promises:writeFile:*").first().data;
+      //console.log("writeFile", writeFile);
+
+      expect(writeFile).toMatchFileSnapshot(
+        "../testing-data/snapshots/syncer.test.ts.snapshots/model.test.ts.snap",
+      );
     });
 
     test("init_types 템플릿", async () => {
@@ -296,7 +298,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const typesFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sync-fixture.types.ts"),
+        f.path.includes("sync-fixture.types.ts"),
       );
       expect(typesFile).toBeDefined();
 
@@ -313,7 +315,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sonamu.generated.ts"),
+        f.path.includes("sonamu.generated.ts"),
       );
       expect(generatedFile).toBeDefined();
 
@@ -329,7 +331,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const generatedSsoFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sonamu.generated.sso.ts"),
+        f.path.includes("sonamu.generated.sso.ts"),
       );
       expect(generatedSsoFile).toBeDefined();
 
@@ -348,7 +350,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sonamu.generated.http"),
+        f.path.includes("sonamu.generated.http"),
       );
       expect(httpFile).toBeDefined();
 
@@ -396,11 +398,11 @@ describe("Syncer", () => {
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const targetFile = writeFilesArray[0];
 
-      expect(targetFile.file).toContain("/web/");
-      expect(targetFile.file).not.toContain("/api/");
-      expect(targetFile.file).toContain("/services/");
-      expect(targetFile.file).not.toContain("/application/");
-      expect(targetFile.file).toContain("sync-fixture.types.ts");
+      expect(targetFile.path).toContain("/web/");
+      expect(targetFile.path).not.toContain("/api/");
+      expect(targetFile.path).toContain("/services/");
+      expect(targetFile.path).not.toContain("/application/");
+      expect(targetFile.path).toContain("sync-fixture.types.ts");
     });
 
     test("import 경로 변환", async () => {
@@ -451,11 +453,11 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("user-profile.entity.json"),
+        f.path.includes("user-profile.entity.json"),
       );
 
       expect(entityFile).toBeDefined();
-      expect(entityFile.file).toContain("/user-profile/");
+      expect(entityFile.path).toContain("/user-profile/");
     });
   });
 
@@ -541,7 +543,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes(".sonamu.env"),
+        f.path.includes(".sonamu.env"),
       );
 
       expect(configFile).toBeDefined();
@@ -555,7 +557,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const configFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes(".sonamu.env"),
+        f.path.includes(".sonamu.env"),
       );
 
       const { host, port } = Sonamu.config.server.listen ?? {};
@@ -701,7 +703,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
       const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sonamu.generated.http"),
+        f.path.includes("sonamu.generated.http"),
       );
       expect(httpFile).toBeDefined();
     });
@@ -751,7 +753,7 @@ describe("Syncer", () => {
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
-        f.file.includes("sonamu.generated"),
+        f.path.includes("sonamu.generated"),
       );
       expect(generatedFile).toBeDefined();
 
