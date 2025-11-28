@@ -309,6 +309,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.index(["bio", "username"], undefined, "FULLTEXT");
     table.dropIndex(["bio"]);
+    table.dropUnique(["email"]);
   });
 }
 
@@ -316,6 +317,7 @@ export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     table.dropIndex(["bio", "username"]);
     table.index(["bio"], undefined, "FULLTEXT");
+    table.unique(["email"]);
   });
 }
 ",
@@ -334,12 +336,14 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 삭제 감지 1`] = `
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.dropIndex(["bio"]);
+    table.dropUnique(["email"]);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     table.index(["bio"], undefined, "FULLTEXT");
+    table.unique(["email"]);
   });
 }
 ",
@@ -358,14 +362,12 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 추가 감지 (Normal,
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.index(["email", "username"]);
-    table.unique(["email"]);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     table.dropIndex(["email", "username"]);
-    table.dropUnique(["email"]);
   });
 }
 ",
