@@ -200,12 +200,12 @@ describe("Migrator test", () => {
     });
 
     test("인덱스 추가 감지 (Normal, Unique)", async () => {
-      // UserEntity에 인덱스 추가
+      // UserEntity에 인덱스 추가 (기존에 없는 인덱스)
       mockEntityManagerGet("User", {
         indexes: [
           ...EntityManager.get("User").indexes,
           { type: "index", columns: ["email", "username"] },
-          { type: "unique", columns: ["email"] },
+          { type: "unique", columns: ["username"] },
         ],
       });
 
@@ -217,7 +217,7 @@ describe("Migrator test", () => {
       );
       expect(alterCode).toBeDefined();
       expect(alterCode?.formatted).toContain('table.index(["email", "username"])');
-      expect(alterCode?.formatted).toContain('table.unique(["email"])');
+      expect(alterCode?.formatted).toContain('table.unique(["username"])');
     });
 
     test("인덱스 삭제 감지", async () => {

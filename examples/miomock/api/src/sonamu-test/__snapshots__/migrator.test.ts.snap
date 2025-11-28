@@ -362,12 +362,14 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 추가 감지 (Normal,
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     table.index(["email", "username"]);
+    table.unique(["username"]);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     table.dropIndex(["email", "username"]);
+    table.dropUnique(["username"]);
   });
 }
 ",

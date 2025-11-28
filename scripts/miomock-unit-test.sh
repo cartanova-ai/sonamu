@@ -43,7 +43,21 @@ fi
 
 wait_for_mysql
 
+# 새로 만들어졌을 miomock, miomock_fixture_remote, miomock_test에 
+# 마이그레이션을 적용하여 스키마를 최신으로 만들어줍니다.
+# 이 작업은 fixture sync 전에 일어나야 합니다.
+#
+# 왜 이걸 가장 앞에 두었는가?!
+# 테이블 없이 텅 빈 DB만 존재하는 상태가 영 달갑지 않아서 
+# 가장 먼저 마이그레이션부터 하게 해 두었습니다. ㅎㅎ
 pnpm --filter miomock-api sonamu migrate run
+
+# miomock_fixture_remote에 덤프를 부어줍니다.
+# 이 작업도 fixture sync 전에 일어나야 합니다.
 pnpm --filter miomock-api seed
+
+# miomock_fixture_remote에서 miomock_test로 데이터를 동기화합니다.
 pnpm --filter miomock-api sonamu fixture sync
+
+# 이제 테스트를 실행할 수 있습니다!
 pnpm --filter miomock-api test

@@ -22,7 +22,7 @@ CREATE TABLE `companies` (
   `uuid` char(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `companies_uuid_unique` (`uuid`)
-) ENGINE=InnoDB AUTO_INCREMENT=328 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=524 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `companies` WRITE;
@@ -106,12 +106,12 @@ CREATE TABLE `knex_migrations` (
   `batch` int DEFAULT NULL,
   `migration_time` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `knex_migrations` WRITE;
 /*!40000 ALTER TABLE `knex_migrations` DISABLE KEYS */;
-INSERT INTO `knex_migrations` (`id`, `name`, `batch`, `migration_time`) VALUES (1,'20251124233557_create__companies.ts',1,'2025-11-27 08:53:16'),(2,'20251124233558_create__departments.ts',1,'2025-11-27 08:53:16'),(3,'20251124233559_create__employees.ts',1,'2025-11-27 08:53:16'),(4,'20251124233600_create__files.ts',1,'2025-11-27 08:53:16'),(5,'20251124233601_create__projects.ts',1,'2025-11-27 08:53:16'),(6,'20251124233602_create__tags.ts',1,'2025-11-27 08:53:16'),(7,'20251124233603_create__users.ts',1,'2025-11-27 08:53:16'),(8,'20251124233604_create__projects__employees.ts',1,'2025-11-27 08:53:16'),(9,'20251124233605_create__project_tags.ts',1,'2025-11-27 08:53:16'),(10,'20251124233606_foreign__departments__company_id_parent_id.ts',1,'2025-11-27 08:53:16'),(11,'20251124233607_foreign__employees__user_id_department_id.ts',1,'2025-11-27 08:53:16'),(12,'20251124233608_foreign__projects__employees__employee_id_project_id.ts',1,'2025-11-27 08:53:16'),(13,'20251124233609_foreign__project_tags__project_id_tag_id.ts',1,'2025-11-27 08:53:17'),(14,'20251128133442_create__sync_fixtures.ts',2,'2025-11-28 04:34:54');
+INSERT INTO `knex_migrations` (`id`, `name`, `batch`, `migration_time`) VALUES (1,'20251124233557_create__companies.ts',1,'2025-11-27 05:08:17'),(2,'20251124233558_create__departments.ts',1,'2025-11-27 05:08:17'),(3,'20251124233559_create__employees.ts',1,'2025-11-27 05:08:17'),(4,'20251124233600_create__files.ts',1,'2025-11-27 05:08:17'),(5,'20251124233601_create__projects.ts',1,'2025-11-27 05:08:17'),(6,'20251124233602_create__tags.ts',1,'2025-11-27 05:08:17'),(7,'20251124233603_create__users.ts',1,'2025-11-27 05:08:17'),(8,'20251124233604_create__projects__employees.ts',1,'2025-11-27 05:08:17'),(9,'20251124233605_create__project_tags.ts',1,'2025-11-27 05:08:17'),(10,'20251124233606_foreign__departments__company_id_parent_id.ts',1,'2025-11-27 05:08:17'),(11,'20251124233607_foreign__employees__user_id_department_id.ts',1,'2025-11-27 05:08:17'),(12,'20251124233608_foreign__projects__employees__employee_id_project_id.ts',1,'2025-11-27 05:08:18'),(13,'20251124233609_foreign__project_tags__project_id_tag_id.ts',1,'2025-11-27 05:08:18'),(14,'20251128133442_create__sync_fixtures.ts',2,'2025-11-28 08:06:45'),(15,'20251127145948_alter_users.ts',3,'2025-11-28 14:32:23');
 /*!40000 ALTER TABLE `knex_migrations` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -248,9 +248,10 @@ CREATE TABLE `users` (
   `deleted_at` datetime DEFAULT NULL,
   `uuid` char(36) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `users_email_unique` (`email`),
   UNIQUE KEY `users_uuid_unique` (`uuid`),
   FULLTEXT KEY `users_bio_index` (`bio`) /*!50100 WITH PARSER `ngram` */ 
-) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `users` WRITE;
