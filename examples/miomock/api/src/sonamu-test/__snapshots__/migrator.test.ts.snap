@@ -614,7 +614,7 @@ exports[`Migrator test > runAction > apply > 단일(test)DB에 마이그레이�
 [
   {
     "applied": [],
-    "batchNo": 2,
+    "batchNo": 3,
     "connKey": "test",
   },
 ]

@@ -90,6 +90,14 @@ class SyncFixtureModelClass extends BaseModelClass<
       // default orderBy
       if (params.orderBy === "id-desc") {
         qb.orderBy("sync_fixtures.id", "desc");
+      } else if (params.orderBy === "name-asc") {
+        qb.orderBy("sync_fixtures.name", "asc");
+      } else if (params.orderBy === "id-asc") {
+        qb.orderBy("sync_fixtures.id", "asc");
+      } else if (params.orderBy === "priority-desc") {
+        qb.orderBy("sync_fixtures.priority", "desc");
+      } else if (params.orderBy === "created_at-desc") {
+        qb.orderBy("sync_fixtures.created_at", "desc");
       } else {
         exhaustive(params.orderBy);
       }
