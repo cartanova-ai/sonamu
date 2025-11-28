@@ -34,6 +34,7 @@ function extractCallStack(): StackFrame[] {
 
   const lines = stack.split("\n");
 
+  // 콜스택 구조:
   // [0]: "Error"
   // [1]: "at extractCallStack"
   // [2]: "at Naite.t"
@@ -54,32 +55,43 @@ function extractCallStack(): StackFrame[] {
 
 /**
  * 콜스택 한 줄을 파싱
- * 형식: "at FunctionName (filePath:lineNumber:columnNumber)"
+ * 형식1: "at FunctionName (filePath:lineNumber:columnNumber)"
+ * 형식2: "at filePath:lineNumber:columnNumber" (익명 함수/모듈 레벨)
  */
 function parseStackFrame(line: string): StackFrame | null {
-  // 패턴: "at FunctionName (filePath:lineNumber:columnNumber)"
-  const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):\d+\)/);
-  if (!match) return null;
+  // 패턴1: "at FunctionName (filePath:lineNumber:columnNumber)"
+  const matchWithFunc = line.match(/at\s+(.+?)\s+\((.+?):(\d+):\d+\)/);
+  if (matchWithFunc) {
+    const functionName = matchWithFunc[1];
+    const filePath = matchWithFunc[2];
+    const lineNumberStr = matchWithFunc[3];
 
-  const functionName = match[1];
-  const filePath = match[2];
-  const lineNumberStr = match[3];
+    // filePath에 이미 :가 포함되어 있으면 (예: "node:internal/...")
+    if (filePath.includes(":")) {
+      return { functionName, filePath, lineNumber: 0 };
+    }
 
-  // filePath에 이미 :가 포함되어 있으면 (예: "node:internal/...")
-  // lineNumber를 붙이지 않고 0으로 설정
-  if (filePath.includes(":")) {
     return {
       functionName,
       filePath,
-      lineNumber: 0,
+      lineNumber: Number.parseInt(lineNumberStr, 10),
     };
   }
 
-  return {
-    functionName,
-    filePath,
-    lineNumber: Number.parseInt(lineNumberStr, 10),
-  };
+  // 패턴2: "at filePath:lineNumber:columnNumber" (함수명 없음)
+  const matchNoFunc = line.match(/at\s+(.+?):(\d+):\d+$/);
+  if (matchNoFunc) {
+    const filePath = matchNoFunc[1];
+    const lineNumberStr = matchNoFunc[2];
+
+    return {
+      functionName: null,
+      filePath,
+      lineNumber: Number.parseInt(lineNumberStr, 10),
+    };
+  }
+
+  return null;
 }
 
 /**
