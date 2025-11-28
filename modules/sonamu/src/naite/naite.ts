@@ -2,6 +2,7 @@
 
 import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
+import { appendTrace } from "./naite-trace";
 
 // StackFrame 타입
 interface StackFrame {
@@ -261,6 +262,17 @@ export class NaiteClass {
       // 항상 배열로 관리
       const existing = store.get(name) ?? [];
       store.set(name, [...existing, trace]);
+
+      // 외부에서 Naite.t의 호출 정보를 알 수 있도록 trace에 기록해둡니다.
+      if (stack[0]?.filePath && stack[0]?.lineNumber > 0) {
+        appendTrace({
+          key: name,
+          value,
+          filePath: stack[0].filePath,
+          lineNumber: stack[0].lineNumber,
+          at: new Date().toISOString(),
+        });
+      }
     } catch {
       // Context 없는 상황에서 Naite.t 호출
     }
