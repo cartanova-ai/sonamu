@@ -9,7 +9,11 @@
       },
       "correctness": {
         "useParseIntRadix": "off",
-        "noEmptyPattern": "off"
+        "noEmptyPattern": "off",
+        "noUnusedImports": {
+          "level": "warn",
+          "fix": "safe"
+        }
       },
       "a11y": {
         "noLabelWithoutControl": "off"
