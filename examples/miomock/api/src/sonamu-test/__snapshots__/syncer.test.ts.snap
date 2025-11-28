@@ -72,21 +72,6 @@ exports[`Syncer > overwrite 옵션 > overwrite: true - 항상 파일 생성 1`] 
 ]
 `;
 
-exports[`Syncer > vi.fn test 1`] = `
-[
-  {
-    "mode": 0,
-    "path": "test.txt",
-    "status": "success",
-  },
-  {
-    "mode": 1,
-    "path": "test.txt",
-    "status": "error",
-  },
-]
-`;
-
 exports[`Syncer > 에러 처리 > 빈 배열 입력 → 정상 처리 1`] = `
 [
   "doSyncActions",

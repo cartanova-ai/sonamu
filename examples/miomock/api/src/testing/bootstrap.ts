@@ -14,7 +14,6 @@ export function bootstrap(vi: VitestUtils) {
     await Sonamu.initForTesting();
   });
   beforeEach(async () => {
-    vi.clearAllMocks();
     await DB.createTestTransaction();
   });
   afterEach(async () => {

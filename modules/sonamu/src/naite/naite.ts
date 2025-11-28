@@ -21,16 +21,6 @@ interface NaiteTrace {
 // Naite.t가 저장되는 타입 (항상 배열로 통일)
 export type NaiteStore = Map<string, NaiteTrace[]>;
 
-// Naite useMock 인자값: 사용 프로젝트에서 확장됨
-export interface NaiteMockRegistry {
-  [key: string]: any;
-}
-// Naite.useMock 체이닝 메서드
-type MockConfigEntry =
-  | { when: any[]; returns: any }
-  | { when: any[]; throws: Error }
-  | { handler: Function };
-
 /**
  * 콜스택을 파싱하여 StackFrame 배열로 반환
  * - extractCallStack 자신과 Naite.t는 제외
@@ -295,26 +285,6 @@ export class NaiteClass {
     return new NaiteQuery(allTraces);
   }
 
-  // safe 값 가져오기 (내부 사용, Mock 설정용)
-  private safeGetValue(name: `mock:${string}`): any {
-    const context = Sonamu.getContext();
-    if (!context?.naiteStore || !context.naiteStore.has(name)) {
-      return undefined;
-    }
-    // Mock 설정은 기존 방식대로 사용 (NaiteTrace가 아님)
-    const value = context.naiteStore.get(name);
-    return value;
-  }
-
-  // 임의의 값 지정 (내부 사용, Mock 설정용)
-  private setValue(name: `mock:${string}`, value: any) {
-    const context = Sonamu.getContext();
-    if (!context?.naiteStore) {
-      return;
-    }
-    context.naiteStore.set(name, value);
-  }
-
   // 전체 리스트 가져오기
   getAll(): { [key: string]: any } {
     const context = Sonamu.getContext();
@@ -333,6 +303,15 @@ export class NaiteClass {
       }
     }
     return result;
+  }
+
+  // 특정 키 삭제하기
+  del(key: string) {
+    const context = Sonamu.getContext();
+    if (!context?.naiteStore) {
+      return;
+    }
+    context.naiteStore.delete(key);
   }
 
   createStore(): NaiteStore {
@@ -356,90 +335,6 @@ export class NaiteClass {
     // TODO: Logger 연결
     console.log(`[ERROR] ${_message}`);
   }
-
-  /*
-    For mocking
-  */
-  useMock<K extends keyof NaiteMockRegistry>(moduleKey: K) {
-    type Module = NaiteMockRegistry[K];
-
-    const builder = {
-      when<M extends keyof Module>(
-        method: M,
-        args: Module[M] extends (...args: infer A) => any ? A : never,
-      ) {
-        type ReturnType = Module[M] extends (...args: any[]) => infer R ? Awaited<R> : never;
-
-        return {
-          returns(value: ReturnType) {
-            const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
-            const existing = Naite.safeGetValue(storeKey) ?? [];
-            existing.push({ when: args, returns: value });
-            Naite.setValue(storeKey, existing);
-            return builder;
-          },
-          throws(error: Error) {
-            const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
-            const existing = Naite.safeGetValue(storeKey) ?? [];
-            existing.push({ when: args, throws: error });
-            Naite.setValue(storeKey, existing);
-            return builder;
-          },
-        };
-      },
-
-      handle<M extends keyof Module>(method: M, fn: Module[M]) {
-        const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
-        const existing = Naite.safeGetValue(storeKey) ?? [];
-        existing.push({ handler: fn });
-        Naite.setValue(storeKey, existing);
-        return builder;
-      },
-    };
-
-    return builder;
-  }
-
-  getMockConfig<K extends keyof NaiteMockRegistry, M extends keyof NaiteMockRegistry[K]>(
-    moduleKey: K,
-    method: M,
-    args: any[],
-  ): MockConfigEntry | undefined {
-    const storeKey = `mock:${String(moduleKey)}.${String(method)}` as const;
-    const configs = Naite.safeGetValue(storeKey) as MockConfigEntry[] | undefined;
-
-    if (!configs) {
-      return undefined;
-    }
-
-    // 1. when 매칭 먼저 시도
-    const matched = configs.find((c) => "when" in c && isArgsMatch(c.when, args));
-    if (matched) {
-      return matched;
-    }
-
-    // 2. handler fallback
-    return configs.find((c) => "handler" in c);
-  }
-
-  resetMocks(): void {
-    const context = Sonamu.getContext();
-    if (!context?.naiteStore) {
-      return;
-    }
-    const naiteStore = context.naiteStore;
-
-    for (const key of naiteStore.keys()) {
-      if (key.startsWith("mock:")) {
-        naiteStore.delete(key);
-      }
-    }
-  }
-}
-
-function isArgsMatch(expected: any[], actual: any[]): boolean {
-  // expected 길이만큼만 비교 (optional 파라미터 무시)
-  return expected.every((exp, i) => JSON.stringify(exp) === JSON.stringify(actual[i]));
 }
 
 export const Naite = new NaiteClass();
