@@ -49,8 +49,6 @@ export function getZodObjectFromApi(
     [id: string]: AnyZodObject;
   } = {},
 ) {
-  //Naite.t("step", "Resolving Type Parameters");
-  Naite.t("length of typeParameters", api.typeParameters?.length ?? 0);
   if (api.typeParameters?.length > 0) {
     for (const typeParam of api.typeParameters) {
       if (typeParam.constraint) {
@@ -60,9 +58,7 @@ export function getZodObjectFromApi(
       }
     }
   }
-  Naite.t("references", references);
 
-  //Naite.t("step", "Filtering API Parameters");
   const ReqType = getZodObjectFromApiParams(
     // api parsing한 결과가 api params
     api.parameters.filter(
@@ -79,8 +75,6 @@ export function getZodObjectFromApi(
     api.parameters[0]
       ?.type /*file.model.ts의 upload 메소드 같은 경우는 파라미터가 0개라서 api.parameters[0]가 undefined로 나옵니다. 이에 대응하기 위해 ?. 연산자를 사용합니다.*/,
   );
-  Naite.t("Final ReqType shape keys", Object.keys(ReqType.shape));
-  Naite.t("Type of Final ReqType", ReqType.type);
 
   return ReqType;
 }

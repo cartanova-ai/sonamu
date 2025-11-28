@@ -1,166 +1,748 @@
-import { join } from "path";
-import { Sonamu } from "sonamu";
-import { beforeAll, describe, expect, vi } from "vitest";
-import { getZodObjectFromApi } from "../../../../../modules/sonamu/dist/api/code-converters";
-import type { ExtendedApi } from "../../../../../modules/sonamu/dist/api/decorators";
-import { Naite } from "../../../../../modules/sonamu/dist/naite/naite";
-import { readApisFromFile } from "../../../../../modules/sonamu/dist/syncer/api-parser";
-import { bootstrap, test } from "../testing/bootstrap";
+import { describe, expect, test } from "vitest";
+import type { z } from "zod";
+import {
+  getZodObjectFromApi,
+  getZodTypeFromApiParamType,
+} from "../../../../../modules/sonamu/dist/api/code-converters";
+import type {
+  ApiDecoratorOptions,
+  ExtendedApi,
+} from "../../../../../modules/sonamu/dist/api/decorators";
+import type { ApiParamType } from "../../../../../modules/sonamu/dist/types/types";
 
-bootstrap(vi);
-describe("Code Converters", () => {
-  let userApis: ExtendedApi[];
-  let apiRootPath: string;
+describe("getZodObjectFromApi", () => {
+  const options: ApiDecoratorOptions = {
+    httpMethod: "GET",
+    description: "testApi",
+    clients: [],
+    contentType: "application/json",
+  };
 
-  beforeAll(async () => {
-    Sonamu.isInitialized = false;
-    await Sonamu.init(true, false, undefined, false);
+  test("기본 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [],
+      parameters: [
+        {
+          name: "param",
+          type: "string",
+          optional: true,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "void" }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
 
-    apiRootPath = join(Sonamu.appRootPath, "api");
-
-    // User 모델에서 실제 API 정보 파싱
-    const userModelPath = join(apiRootPath, "src/application/user/user.model.ts");
-    // biome-ignore lint/suspicious/noExplicitAny: AbsolutePath 타입 캐스팅 필요
-    userApis = await readApisFromFile(userModelPath as any);
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+    expect(zodObject.shape.param.def.innerType.def.type).toMatchSnapshot("정의한 파라미터 타입");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입파라미터 타입 체크");
   });
 
-  test("제네릭 없는 단순 API - save", async () => {
-    const saveApi = userApis.find((api) => api.methodName === "save");
-    if (!saveApi) return;
+  test("typeParameters가 Generic Number인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: "number",
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: "number",
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "array",
+        elementsType: {
+          t: "ref",
+          id: "Promise",
+          args: [{ t: "ref", id: "number[]" }],
+        },
+      },
+    };
 
-    getZodObjectFromApi(saveApi);
-    //expect(Naite.get("step")).toMatchSnapshot();
-    expect(Naite.get("references").first()).toMatchSnapshot();
-    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
-    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
+
+    expect(zodObject.shape.param).toMatchSnapshot("parameters 반영 확인");
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입파라미터 타입 체크");
   });
 
-  test("제네릭 있는 API - findById", async () => {
-    // expect(Naite.get("step")).toMatchSnapshot();
-    const findByIdApi = userApis.find((api) => api.methodName === "findById");
-    if (!findByIdApi) return;
+  test("typeParameters가 Generic Number의 배열, String의 배열인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "array",
+            elementsType: "number",
+          },
+        },
+        {
+          t: "type-param",
+          id: "U",
+          constraint: {
+            t: "array",
+            elementsType: "string",
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "array",
+            elementsType: "string",
+          },
+          optional: false,
+        },
+        {
+          name: "param2",
+          type: {
+            t: "array",
+            elementsType: "number",
+          },
+          optional: true,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [
+          { t: "ref", id: "Promise", args: [{ t: "ref", id: "string[]" }] },
+          { t: "ref", id: "Promise", args: [{ t: "ref", id: "number[]" }] },
+        ],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
 
-    // getZodObjectFromApi 호출
-    const references = {};
-    getZodObjectFromApi(findByIdApi, references);
-
-    //expect(Naite.get("step")).toMatchSnapshot();
-
-    // 제네릭 처리 단계 검증
-    expect(Naite.get("length of typeParameters").first()).toMatchSnapshot();
-
-    // 최종 단계 검증
-    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
-    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
+    expect(zodObject.shape.param).toMatchSnapshot("정의한 파라미터1 반영 확인");
+    expect(zodObject.shape.param2).toMatchSnapshot("정의한 파라미터2 반영 확인");
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입파라미터 타입 체크");
   });
 
-  test("제네릭 있는 API - findMany (optional 파라미터)", async () => {
-    const findManyApi = userApis.find((api) => api.methodName === "findMany");
-    if (!findManyApi) return;
+  test("typeParameters가 Generic Object인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "object",
+            props: [
+              {
+                name: "id",
+                type: "number",
+                optional: false,
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "object",
+            props: [
+              {
+                name: "id",
+                type: "number",
+                optional: false,
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "object" }] }],
+      },
+    };
 
-    const references = {};
-    getZodObjectFromApi(findManyApi, references);
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
 
-    //expect(Naite.get("step")).toMatchSnapshot();
-
-    // 제네릭 처리 단계 검증
-    expect(Naite.get("length of typeParameters").first()).toMatchSnapshot();
-
-    // 최종 단계 검증
-    expect(Naite.get("Final ReqType shape keys").first()).toMatchSnapshot();
-    expect(Naite.get("Type of Final ReqType").first()).toMatchSnapshot();
+    expect(zodObject.shape.param).toMatchSnapshot("정의한 파라미터 반영 확인");
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입파라미터 타입 체크");
   });
 
-  // test("Context 필터링 - getMyIP", async () => {
-  //   const getMyIPApi = userApis.find((api) => api.methodName === "getMyIP");
-  //   if (!getMyIPApi) return;
+  test("typeParameters가 Generic Union인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "union",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "union",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "enum" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
 
-  //   // getZodObjectFromApi 호출
-  //   const zodSchema = getZodObjectFromApi(getMyIPApi);
+    expect(zodObject.shape.param).toMatchSnapshot("정의한 파라미터 반영 확인");
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입파라미터 타입 체크");
+  });
 
-  //   // 파라미터가 필터링되어야 함
-  //   const shape = zodSchema._def.shape;
-  //   expect(Object.keys(shape).length).toBe(0);
+  test("typeParameters가 Generic Intersection인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "intersection",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "intersection",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "intersection" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
 
-  //   // Naite 추적 값 검증
-  //   expect(Naite.get("step2")).toBe("getZodObjectFromApi: Filtering API Parameters");
-  // });
+    expect(zodObject.shape.param).toMatchSnapshot("정의한 파라미터 반영 확인");
+    expect(Object.values(references).map((value) => value.shape)).toMatchSnapshot(
+      "typeParameters 반영 확인(2)",
+    );
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("타입 파라미터 타입 체크");
+  });
 
-  // test("_로 시작하는 optional 파라미터 필터링", async () => {
-  //   // 수동으로 만든 테스트 API
-  //   const testApi: ExtendedApi = {
-  //     modelName: "Test",
-  //     methodName: "testMethod",
-  //     path: "/test/testMethod",
-  //     options: {
-  //       httpMethod: "POST",
-  //     },
-  //     typeParameters: [],
-  //     parameters: [
-  //       {
-  //         name: "normalParam",
-  //         type: "string",
-  //         optional: false,
-  //       },
-  //       {
-  //         name: "_internalParam",
-  //         type: "string",
-  //         optional: true,
-  //       },
-  //       {
-  //         name: "anotherParam",
-  //         type: "number",
-  //         optional: false,
-  //       },
-  //     ],
-  //     returnType: "string",
-  //   };
-
-  //   const zodSchema = getZodObjectFromApi(testApi);
-  //   const shape = zodSchema._def.shape;
-  //   const paramNames = Object.keys(shape);
-
-  //   // normalParam과 anotherParam은 포함되어야 함
-  //   expect(paramNames).toContain("normalParam");
-  //   expect(paramNames).toContain("anotherParam");
-
-  //   // _internalParam은 제외되어야 함 (optional && _로 시작)
-  //   expect(paramNames).not.toContain("_internalParam");
-  // });
-
-  // test("배열 파라미터 변환 - save", async () => {
-  //   const saveApi = userApis.find((api) => api.methodName === "save");
-  //   if (!saveApi) return;
-
-  //   const zodSchema = getZodObjectFromApi(saveApi);
-  //   const shape = zodSchema._def.shape;
-
-  //   // spa 파라미터가 있어야 함
-  //   expect(shape).toHaveProperty("spa");
-
-  //   // spa가 배열 타입이어야 함
-  //   const spaSchema = shape.spa;
-  //   // biome-ignore lint/suspicious/noExplicitAny: Zod 내부 타입 확인
-  //   expect((spaSchema._def as any).typeName).toBe("ZodArray");
-  // });
-
-  // test("배열 파라미터 변환 - del", async () => {
-  //   const delApi = userApis.find((api) => api.methodName === "del");
-  //   if (!delApi) return;
-
-  //   const zodSchema = getZodObjectFromApi(delApi);
-  //   const shape = zodSchema._def.shape;
-
-  //   // ids 파라미터가 있어야 함
-  //   expect(shape).toHaveProperty("ids");
-
-  //   // ids가 배열 타입이어야 함
-  //   const idsSchema = shape.ids;
-  //   // biome-ignore lint/suspicious/noExplicitAny: Zod 내부 타입 확인
-  //   expect((idsSchema._def as any).typeName).toBe("ZodArray");
-
-  //   // 배열의 요소 타입이 number여야 함
-  //   // biome-ignore lint/suspicious/noExplicitAny: Zod 내부 타입 확인
-  //   expect((idsSchema._def as any).type._def.typeName).toBe("ZodNumber");
-  // });
+  test("typeParameters가 Generic Tuple인 API", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "tuple-type",
+            elements: [
+              {
+                t: "string-literal",
+                value: "string",
+              },
+              {
+                t: "numeric-literal",
+                value: 1,
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "tuple-type",
+            elements: [
+              {
+                t: "string-literal",
+                value: "string",
+              },
+              {
+                t: "numeric-literal",
+                value: 1,
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "tuple" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodObject = getZodObjectFromApi(testApi, references);
+    expect(await parseZodObject(zodObject)).toMatchSnapshot("parameters 반영 확인");
+    expect(zodObject.shape.param).toMatchSnapshot("정의한 파라미터 반영 확인");
+    expect(zodObject.shape.param.def.type).toMatchSnapshot("정의한 파라미터 타입 체크");
+    expect(Object.keys(references)).toMatchSnapshot("typeParameters 반영 확인");
+  });
 });
+describe("getZodTypeFromApiParamType", () => {
+  const options: ApiDecoratorOptions = {
+    httpMethod: "GET",
+    description: "testApi",
+    clients: [],
+    contentType: "application/json",
+  };
+  test("타입 파라미터가 Generic String인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: "string",
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: "string",
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "void" }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Number인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: "number",
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: "number",
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "void" }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Array인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "array",
+            elementsType: "number",
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "array",
+            elementsType: "number",
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "void" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Object인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "object",
+            props: [
+              {
+                name: "id",
+                type: "number",
+                optional: false,
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "object",
+            props: [
+              {
+                name: "id",
+                type: "number",
+                optional: false,
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "object" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type.toString()).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Union인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: {
+        httpMethod: "POST",
+        description: "testApi",
+        clients: ["axios", "swr"],
+        contentType: "application/json",
+      },
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "union",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "union",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "union" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Intersection인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "intersection",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "intersection",
+            types: [
+              {
+                t: "string-literal",
+                value: "a",
+              },
+              {
+                t: "string-literal",
+                value: "b",
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "ref",
+        id: "Promise",
+        args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "intersection" }] }],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+  });
+
+  test("타입 파라미터가 Generic Tuple인 경우", async () => {
+    const testApi: ExtendedApi = {
+      modelName: "PracticeModel",
+      methodName: "testApi",
+      path: "/practice/testApi",
+      options: options,
+      typeParameters: [
+        {
+          t: "type-param",
+          id: "T",
+          constraint: {
+            t: "tuple-type",
+            elements: [
+              {
+                t: "string-literal",
+                value: "string",
+              },
+              {
+                t: "numeric-literal",
+                value: 1,
+              },
+            ],
+          },
+        },
+      ],
+      parameters: [
+        {
+          name: "param",
+          type: {
+            t: "tuple-type",
+            elements: [
+              {
+                t: "string-literal",
+                value: "string",
+              },
+              {
+                t: "numeric-literal",
+                value: 1,
+              },
+            ],
+          },
+          optional: false,
+        },
+      ],
+      returnType: {
+        t: "tuple-type",
+        elements: [
+          {
+            t: "string-literal",
+            value: "string",
+          },
+          {
+            t: "numeric-literal",
+            value: 1,
+          },
+        ],
+      },
+    };
+    const references: Record<string, z.ZodObject> = {};
+    const zodType = getZodTypeFromApiParamType(
+      testApi.parameters[0]?.type as unknown as ApiParamType,
+      references,
+    );
+    expect(zodType).toBeDefined();
+    expect(zodType.type).toMatchSnapshot("타입 확인");
+    expect(zodType).toMatchSnapshot("요소 확인");
+  });
+});
+
+async function parseZodObject(zodObject: z.ZodObject): Promise<string> {
+  const result = await zodObject.safeParse({});
+  return result.success ? JSON.stringify(result) : "error";
+}
