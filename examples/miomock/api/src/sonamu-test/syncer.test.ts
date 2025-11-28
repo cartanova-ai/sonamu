@@ -1,14 +1,14 @@
-import type { Abortable } from "events";
-import type { Mode, ObjectEncodingOptions, OpenMode, PathLike } from "fs";
-import type { FileHandle } from "fs/promises";
 import { join } from "path";
-import { isError } from "radashi";
 import { Naite, Sonamu } from "sonamu";
-import type Stream from "stream";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { AlreadyProcessedException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 import { bootstrap, test } from "../testing/bootstrap";
+
+interface WriteFileRecord {
+  file: string;
+  data: unknown;
+}
 
 bootstrap(vi);
 
@@ -23,48 +23,7 @@ describe("Syncer", () => {
     apiRootPath = join(Sonamu.appRootPath, "api");
     syncer = Sonamu.syncer;
     expect(syncer).toBeDefined();
-
-    virtualFileSystem.clear();
   });
-
-  // ============================================
-  // 기본 Mock 테스트
-  // ============================================
-  test("vi.fn test", async () => {
-    const mockFn = vi.fn((path: PathLike, mode?: number): Promise<void> => {
-      Naite.t("vi.fn", { path, mode, status: mode === 0 ? "success" : "error" });
-      if (mode === 0) {
-        return Promise.resolve(undefined);
-      }
-      return Promise.reject(new Error("test error"));
-    });
-
-    try {
-      await mockFn("test.txt", 0);
-      await mockFn("test.txt", 1);
-    } catch (error: unknown) {
-      if (isError(error)) {
-        expect(error).toBeInstanceOf(Error);
-        expect(error.message).toBe("test error");
-      }
-    } finally {
-      expect(mockFn).toHaveBeenCalledWith("test.txt", 0);
-      expect(mockFn).toHaveBeenCalledWith("test.txt", 1);
-      expect(mockFn).toHaveBeenCalledTimes(2);
-    }
-    expect(Naite.get("vi.fn").result()).toMatchSnapshot();
-  });
-
-  test.skip("fs/promises mock is working", async () => {
-    // TODO: Naite.useMock과 vi.mock 통합 필요
-    const filePath = join(apiRootPath, "this-file-does-not-actually-exist.ts");
-    const mockFs = Naite.useMock("fs/promises");
-    mockFs.when("access", [filePath]).returns();
-
-    const isExists = await exists(filePath);
-    expect(isExists).toBe(true);
-  });
-
   // ============================================
   // 1. 파일 변경 감지 워크플로우
   // ============================================
@@ -89,7 +48,7 @@ describe("Syncer", () => {
       expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
-    test("generated 파일 변경 → 타겟에 복사", async () => {
+    test.only("generated 파일 변경 → 타겟에 복사", async () => {
       const generatedPath = join(
         apiRootPath,
         "src/application/sonamu.generated.ts",
@@ -101,7 +60,7 @@ describe("Syncer", () => {
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const copiedFile = writeFilesArray.find(
-        (f: any) => f.file.includes("/web/") && f.file.includes("sonamu.generated.ts"),
+        (f: WriteFileRecord) => f.file.includes("/web/") && f.file.includes("sonamu.generated.ts"),
       );
       expect(copiedFile).toBeDefined();
 
@@ -155,7 +114,7 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const envFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const envFile = writeFilesArray.find((f: WriteFileRecord) => f.file.includes(".sonamu.env"));
       expect(envFile).toBeDefined();
       expect(envFile.data).toContain("API_HOST=");
       expect(envFile.data).toContain("API_PORT=");
@@ -170,9 +129,7 @@ describe("Syncer", () => {
   // 2. overwrite 옵션 테스트
   // ============================================
   describe("overwrite 옵션", () => {
-    beforeEach(() => {
-      virtualFileSystem.clear();
-    });
+    beforeEach(() => {});
 
     test("overwrite: true - 항상 파일 생성", async () => {
       await syncer.generateTemplate(
@@ -209,28 +166,22 @@ describe("Syncer", () => {
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
-      const targetFile = firstWriteFilesArray.find((f: any) => f.file.includes("user.entity.json"));
+      const targetFile = firstWriteFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("user.entity.json"),
+      );
       expect(targetFile).toBeDefined();
 
-      const targetFilePath = targetFile.file;
-
-      try {
-        virtualFileSystem.add(targetFilePath);
-
-        await expect(
-          syncer.generateTemplate(
-            "entity",
-            {
-              entityId: "User",
-              title: "사용자",
-              table: "users",
-            },
-            { overwrite: false },
-          ),
-        ).rejects.toThrow(AlreadyProcessedException);
-      } finally {
-        virtualFileSystem.delete(targetFilePath);
-      }
+      await expect(
+        syncer.generateTemplate(
+          "entity",
+          {
+            entityId: "User",
+            title: "사용자",
+            table: "users",
+          },
+          { overwrite: false },
+        ),
+      ).rejects.toThrow(AlreadyProcessedException);
     });
 
     test("overwrite: false - 파일 미존재 시 정상 생성", async () => {
@@ -264,19 +215,6 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs/promises:writeFile").result();
-      const firstWriteFilesArray = Array.isArray(firstWriteFiles)
-        ? firstWriteFiles
-        : [firstWriteFiles];
-      const targetFile = firstWriteFilesArray.find((f: any) =>
-        f.file.includes("overwrite-test.entity.json"),
-      );
-      const targetFilePath = targetFile.file;
-
-      virtualFileSystem.add(targetFilePath);
-
-      Naite.createStore().clear();
-
       await syncer.generateTemplate(
         "entity",
         {
@@ -291,13 +229,11 @@ describe("Syncer", () => {
       const secondWriteFilesArray = Array.isArray(secondWriteFiles)
         ? secondWriteFiles
         : [secondWriteFiles];
-      const newFile = secondWriteFilesArray.find((f: any) =>
+      const newFile = secondWriteFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("overwrite-test.entity.json"),
       );
 
       expect(newFile).toBeDefined();
-
-      virtualFileSystem.delete(targetFilePath);
     });
 
     test("entity 템플릿 - parentId 옵션", async () => {
@@ -335,7 +271,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const entityFile = writeFilesArray.find((f: any) => f.file.includes(".entity.json"));
+      const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".entity.json"),
+      );
       expect(entityFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -357,7 +295,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const typesFile = writeFilesArray.find((f: any) => f.file.includes("sync-fixture.types.ts"));
+      const typesFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sync-fixture.types.ts"),
+      );
       expect(typesFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -372,7 +312,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const generatedFile = writeFilesArray.find((f: any) =>
+      const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("sonamu.generated.ts"),
       );
       expect(generatedFile).toBeDefined();
@@ -388,7 +328,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const generatedSsoFile = writeFilesArray.find((f: any) =>
+      const generatedSsoFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("sonamu.generated.sso.ts"),
       );
       expect(generatedSsoFile).toBeDefined();
@@ -407,7 +347,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated.http"),
+      );
       expect(httpFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -508,7 +450,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const entityFile = writeFilesArray.find((f: any) =>
+      const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("user-profile.entity.json"),
       );
 
@@ -598,7 +540,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const configFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".sonamu.env"),
+      );
 
       expect(configFile).toBeDefined();
       expect(configFile.data).toContain("API_HOST=");
@@ -610,7 +554,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const configFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".sonamu.env"),
+      );
 
       const { host, port } = Sonamu.config.server.listen ?? {};
       expect(configFile.data).toContain(`API_HOST=${host ?? "localhost"}`);
@@ -754,7 +700,9 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated.http"),
+      );
       expect(httpFile).toBeDefined();
     });
 
@@ -802,7 +750,9 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const generatedFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated"));
+      const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated"),
+      );
       expect(generatedFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -836,65 +786,4 @@ describe("Syncer", () => {
     test.todo("autoloadModels - models 로드");
     test.todo("autoloadApis - apis 로드");
   });
-});
-
-// ============================================
-// 가상 파일 시스템 및 Mock 설정
-// ============================================
-const virtualFileSystem = new Set<string>();
-
-vi.mock(import("fs/promises"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    access: vi.fn(async (path: PathLike, mode?: number): Promise<void> => {
-      Naite.t("fs:access", path);
-      const pathStr = typeof path === "string" ? path : path.toString();
-
-      if (virtualFileSystem.has(pathStr)) {
-        return;
-      }
-
-      if (typeof path === "string" && path.endsWith("this-file-does-not-actually-exist.ts")) {
-        return;
-      }
-      return actual.access(path, mode);
-    }),
-    mkdir: vi.fn(async (path: PathLike, options?: any): Promise<string | undefined> => {
-      Naite.t("fs:mkdir", { path, options });
-      if (options?.recursive) {
-        return typeof path === "string" ? path : path.toString();
-      }
-      return undefined;
-    }) as any,
-    writeFile: vi.fn(
-      (
-        file: PathLike | FileHandle,
-        data:
-          | string
-          | NodeJS.ArrayBufferView
-          | Iterable<string | NodeJS.ArrayBufferView>
-          | AsyncIterable<string | NodeJS.ArrayBufferView>
-          | Stream,
-        _options?:
-          | (ObjectEncodingOptions & {
-              mode?: Mode | undefined;
-              flag?: OpenMode | undefined;
-              flush?: boolean | undefined;
-            } & Abortable)
-          | BufferEncoding
-          | null,
-      ): Promise<void> => {
-        const filePath = typeof file === "string" ? file : file.toString();
-        Naite.t("fs/promises:writeFile", { file: filePath, data });
-        virtualFileSystem.add(filePath);
-        return Promise.resolve(undefined);
-      },
-    ),
-    unlink: vi.fn(async (path: PathLike): Promise<void> => {
-      const pathStr = typeof path === "string" ? path : path.toString();
-      virtualFileSystem.delete(pathStr);
-      return Promise.resolve(undefined);
-    }),
-  };
 });

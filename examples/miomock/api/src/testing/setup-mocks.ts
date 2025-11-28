@@ -1,5 +1,5 @@
-import type { PathLike } from "fs";
-import type { FileHandle } from "fs/promises";
+import type { MakeDirectoryOptions, Mode, PathLike } from "fs";
+import type { FileHandle, mkdir as fsMkdir } from "fs/promises";
 import { Naite } from "sonamu";
 import { vi } from "vitest";
 
@@ -16,6 +16,18 @@ vi.mock("fs/promises", async (importOriginal) => {
 
       return actual.access(path, mode);
     }),
+    mkdir: vi.fn(
+      async (
+        path: PathLike,
+        options?: MakeDirectoryOptions | Mode | null,
+      ): Promise<string | undefined> => {
+        Naite.t("fs:mkdir", { path, options });
+        if (typeof options === "object" && options?.recursive) {
+          return typeof path === "string" ? path : path.toString();
+        }
+        return undefined;
+      },
+    ) as typeof fsMkdir,
     writeFile: vi.fn((path: PathLike | FileHandle, data: string | Buffer | Uint8Array) => {
       Naite.t("fs/promises:writeFile", { file: path, data });
     }),
