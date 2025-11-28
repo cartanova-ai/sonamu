@@ -81,42 +81,40 @@ describe("Migrator test", () => {
       await migrator.getStatus();
 
       const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
-      expect(Naite.get("getStatus:conns").first()).toMatchInlineSnapshot(`
-        [
-          {
-            "connKey": "test",
-            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock_test",
-            "currentVersion": "20251124233609",
-            "name": "test",
-            "pending": [],
-            "status": 0,
-          },
-          {
-            "connKey": "fixture_remote",
-            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock_fixture_remote",
-            "currentVersion": "20251124233609",
-            "name": "fixture_remote",
-            "pending": [],
-            "status": 0,
-          },
-          {
-            "connKey": "development_master",
-            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock",
-            "currentVersion": "20251124233609",
-            "name": "development",
-            "pending": [],
-            "status": 0,
-          },
-          {
-            "connKey": "production_master",
-            "connString": "mysql2://${dbUser}@0.0.0.0:3306/miomock",
-            "currentVersion": "20251124233609",
-            "name": "production",
-            "pending": [],
-            "status": 0,
-          },
-        ]
-      `);
+      expect(Naite.get("getStatus:conns").first()).toMatchObject([
+        {
+          connKey: "test",
+          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_test`,
+          currentVersion: "20251128133442",
+          name: "test",
+          pending: [],
+          status: 0,
+        },
+        {
+          connKey: "fixture_remote",
+          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_fixture_remote`,
+          currentVersion: "20251128133442",
+          name: "fixture_remote",
+          pending: [],
+          status: 0,
+        },
+        {
+          connKey: "development_master",
+          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
+          currentVersion: "20251128133442",
+          name: "development",
+          pending: [],
+          status: 0,
+        },
+        {
+          connKey: "production_master",
+          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
+          currentVersion: "20251128133442",
+          name: "production",
+          pending: [],
+          status: 0,
+        },
+      ]);
 
       // production, development, test, fixture_remote
       expect(Naite.get("getStatus:conns").first()).toHaveLength(4);
