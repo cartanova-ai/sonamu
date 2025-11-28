@@ -1,0 +1,206 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 스냅샷과 일치해야 한다 1`] = `
+{
+  "columns": [
+    {
+      "name": "id",
+      "nullable": false,
+      "type": "integer",
+      "unsigned": true,
+    },
+    {
+      "length": 255,
+      "name": "test_string_col",
+      "nullable": false,
+      "type": "string",
+    },
+    {
+      "name": "test_integer_nullable",
+      "nullable": true,
+      "type": "integer",
+      "unsigned": false,
+    },
+    {
+      "name": "test_boolean_col",
+      "nullable": false,
+      "type": "boolean",
+    },
+    {
+      "name": "test_text_long",
+      "nullable": false,
+      "type": "longtext",
+    },
+    {
+      "name": "test_datetime_col",
+      "nullable": false,
+      "type": "datetime",
+    },
+    {
+      "name": "test_json_col",
+      "nullable": false,
+      "type": "json",
+    },
+    {
+      "name": "test_uuid_col",
+      "nullable": false,
+      "type": "uuid",
+    },
+    {
+      "length": 32,
+      "name": "test_enum_status",
+      "nullable": false,
+      "type": "string",
+    },
+    {
+      "defaultTo": "CURRENT_TIMESTAMP",
+      "name": "test_timestamp_default",
+      "nullable": false,
+      "type": "timestamp",
+    },
+    {
+      "name": "test_decimal_precision",
+      "nullable": false,
+      "precision": 10,
+      "scale": 2,
+      "type": "decimal",
+    },
+    {
+      "name": "test_float_precision",
+      "nullable": false,
+      "precision": 8,
+      "scale": 4,
+      "type": "float",
+    },
+    {
+      "name": "test_belongs_to_one_company_id",
+      "nullable": true,
+      "type": "integer",
+      "unsigned": true,
+    },
+    {
+      "name": "test_one_to_one_profile_id",
+      "nullable": false,
+      "type": "integer",
+      "unsigned": true,
+    },
+    {
+      "name": "uuid",
+      "nullable": true,
+      "type": "uuid",
+    },
+  ],
+  "foreigns": [
+    {
+      "columns": [
+        "test_belongs_to_one_company_id",
+      ],
+      "onDelete": "SET NULL",
+      "onUpdate": "CASCADE",
+      "to": "companies.id",
+    },
+    {
+      "columns": [
+        "test_one_to_one_profile_id",
+      ],
+      "onDelete": "RESTRICT",
+      "onUpdate": "RESTRICT",
+      "to": "profiles.id",
+    },
+  ],
+  "indexes": [
+    {
+      "columns": [
+        "test_string_col",
+      ],
+      "name": "idx_test_string_col",
+      "type": "index",
+    },
+    {
+      "columns": [
+        "test_enum_status",
+      ],
+      "name": "uq_test_enum_status",
+      "type": "unique",
+    },
+    {
+      "columns": [
+        "test_text_long",
+      ],
+      "name": "ft_test_text_long",
+      "type": "fulltext",
+    },
+    {
+      "columns": [
+        "test_string_col",
+        "test_integer_nullable",
+      ],
+      "name": "idx_composite",
+      "type": "index",
+    },
+    {
+      "columns": [
+        "uuid",
+      ],
+      "type": "unique",
+    },
+  ],
+  "joinTables": [
+    {
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "type": "integer",
+          "unsigned": true,
+        },
+        {
+          "name": "migration_set_test_id",
+          "nullable": false,
+          "type": "integer",
+          "unsigned": true,
+        },
+        {
+          "name": "tag_id",
+          "nullable": false,
+          "type": "integer",
+          "unsigned": true,
+        },
+        {
+          "name": "uuid",
+          "nullable": true,
+          "type": "uuid",
+        },
+      ],
+      "foreigns": [
+        {
+          "columns": [
+            "migration_set_test_id",
+          ],
+          "onDelete": "CASCADE",
+          "onUpdate": "CASCADE",
+          "to": "migration_set_tests.id",
+        },
+        {
+          "columns": [
+            "tag_id",
+          ],
+          "onDelete": "CASCADE",
+          "onUpdate": "CASCADE",
+          "to": "tags.id",
+        },
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "uuid",
+          ],
+          "type": "unique",
+        },
+      ],
+      "table": "migration_set_tests__tags",
+    },
+  ],
+  "table": "migration_set_tests",
+}
+`;
