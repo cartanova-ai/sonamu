@@ -169,7 +169,13 @@ async function readTable(
   return [cols, indexes, foreignKeys];
 }
 
-function resolveDBColType(
+/**
+ * DB의 컬럼 타입을 분석하여 MigrationColumn 객체로 변환합니다.
+ * @param colType DB 컬럼 타입
+ * @param colField DB 컬럼 이름
+ * @returns MigrationColumn
+ */
+export function resolveDBColType(
   colType: string,
   colField: string,
 ): Pick<MigrationColumn, "type" | "unsigned" | "length" | "precision" | "scale"> {

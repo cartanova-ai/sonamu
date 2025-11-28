@@ -126,7 +126,7 @@ export class Syncer {
     this.syncUI();
   }
 
-  private removeInvalidatedRegisteredApis(
+  removeInvalidatedRegisteredApis(
     invalidatedPath: AbsolutePath,
   ): (typeof registeredApis)[number][] {
     if (!invalidatedPath.endsWith(".model.ts" /*소스 코드를 다루는 상황이니 .ts 경로로 봅니다.*/)) {
@@ -142,7 +142,7 @@ export class Syncer {
     return toRemove;
   }
 
-  private async copySharedToTargets(targets: string[]): Promise<void> {
+  async copySharedToTargets(targets: string[]): Promise<void> {
     for (const target of targets) {
       // 지금 가져가려는 이 파일은 Sonamu 코드베이스의 일부입니다.
       // 그런데 dist 속 빌드된 소스 코드 파일이 필요한 것이 아니고, src에만 있는 텍스트 파일이 필요합니다.
@@ -200,7 +200,7 @@ export class Syncer {
    * @param diffFilePaths - 변경된 파일들의 절대 경로 목록
    * @returns diffTypes - 변경된 파일의 타입 목록 (entity, types, model 등)
    */
-  private async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: string[] }> {
+  async doSyncActions(diffFilePaths: AbsolutePath[]): Promise<{ diffTypes: string[] }> {
     const diffGroups = this.calculateDiffGroups(diffFilePaths);
     const diffTypes = Object.keys(diffGroups);
 
@@ -235,7 +235,7 @@ export class Syncer {
     };
   }
 
-  private calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
+  calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
     Naite.t("step", "doSyncActions");
     return group(diffFiles, (r) => {
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
@@ -243,7 +243,7 @@ export class Syncer {
     }) as unknown as DiffGroups;
   }
 
-  public async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
+  async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
     Naite.t("step", "handleEntityChange");
     Naite.t("handleEntityChange", { diffGroups, diffTypes });
 
@@ -274,9 +274,7 @@ export class Syncer {
     diffTypes.push("generated");
   }
 
-  private async handleTypesOrFunctionsOrGeneratedChange(
-    diffGroups: DiffGroups,
-  ): Promise<FileType[]> {
+  async handleTypesOrFunctionsOrGeneratedChange(diffGroups: DiffGroups): Promise<FileType[]> {
     const tsPaths = unique([
       ...(diffGroups.types ?? []),
       ...(diffGroups.functions ?? []),
@@ -358,7 +356,7 @@ export class Syncer {
    * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
    * @returns 생성된 파일 경로 배열.
    */
-  private async actionGenerateSchemas(): Promise<AbsolutePath[]> {
+  async actionGenerateSchemas(): Promise<AbsolutePath[]> {
     Naite.t("step", "actionGenerateSchemas");
     return (
       await Promise.all([
@@ -375,7 +373,7 @@ export class Syncer {
    * @param paramsArray
    * @returns 생성된 파일 경로 배열.
    */
-  private async actionGenerateServices(
+  async actionGenerateServices(
     paramsArray: {
       namesRecord: EntityNamesRecord;
     }[],
@@ -399,7 +397,7 @@ export class Syncer {
    * sonamu.generated.http를 생성합니다.
    * @returns 생성된 파일 경로.
    */
-  private async actionGenerateHttps(): Promise<AbsolutePath> {
+  async actionGenerateHttps(): Promise<AbsolutePath> {
     const [res] = await generateTemplate(
       "generated_http",
       { entityId: "dummy" },
@@ -414,7 +412,7 @@ export class Syncer {
    * @param tsPaths
    * @returns 복사된 파일 경로 배열.
    */
-  private async actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise<string[]> {
+  async actionSyncFilesToTargets(tsPaths: AbsolutePath[]): Promise<string[]> {
     const { targets } = Sonamu.config.sync;
     const { dir: apiDir } = Sonamu.config.api;
 

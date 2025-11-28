@@ -148,6 +148,8 @@ export async function down(knex: Knex): Promise<void> {
 ]
 `;
 
+exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (HasMany) 1`] = `[]`;
+
 exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (ManyToMany) 1`] = `
 [
   {
@@ -305,11 +307,9 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 변경 감지 1`] = `
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
+    table.index(["bio", "username"], undefined, "FULLTEXT");
     table.dropIndex(["bio"]);
   });
-  await knex.raw(
-    \`ALTER TABLE users ADD FULLTEXT INDEX users_bio_username_index (bio, username) WITH PARSER ngram\`,
-  );
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -485,49 +485,19 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 속성 변경 감지 1`] 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // alter column
-    table.datetime("deleted_at").notNullable().alter();
+    table.boolean("is_verified").nullable().defaultTo(knex.raw("0")).alter();
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // rollback - alter column
-    table.datetime("deleted_at").nullable().alter();
+    table.boolean("is_verified").notNullable().defaultTo(knex.raw("0")).alter();
   });
 }
 ",
     "table": "users",
     "title": "alter_users_alter1",
-    "type": "normal",
-  },
-]
-`;
-
-exports[`Migrator test > preparedCodes 생성 > 컬럼 이름 변경 감지 (Drop & Add) 1`] = `
-[
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    // add
-    table.string("full_name", 255).notNullable();
-    // drop columns
-    table.dropColumns("username");
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
-    // rollback - add
-    table.dropColumns("full_name");
-    // rollback - drop columns
-    table.string("username", 255).notNullable();
-  });
-}
-",
-    "table": "users",
-    "title": "alter_users_add1_drop1",
     "type": "normal",
   },
 ]
@@ -606,16 +576,6 @@ export async function down(knex: Knex): Promise<void> {
     "table": "test_order_entities",
     "title": "foreign__test_order_entities__company_id",
     "type": "foreign",
-  },
-]
-`;
-
-exports[`Migrator test > runAction > apply > 단일(test)DB에 마이그레이션 적용 1`] = `
-[
-  {
-    "applied": [],
-    "batchNo": 2,
-    "connKey": "test",
   },
 ]
 `;

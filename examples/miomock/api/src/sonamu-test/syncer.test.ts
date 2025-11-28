@@ -1,15 +1,14 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: 임시처리: 현우님 혼내고 지울것 */
-
-import type { Abortable } from "events";
-import type { Mode, ObjectEncodingOptions, OpenMode, PathLike } from "fs";
-import type { FileHandle } from "fs/promises";
 import { join } from "path";
 import { Naite, Sonamu } from "sonamu";
-import type Stream from "stream";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import { AlreadyProcessedException } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
 import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 import { bootstrap, test } from "../testing/bootstrap";
+
+interface WriteFileRecord {
+  file: string;
+  data: unknown;
+}
 
 bootstrap(vi);
 
@@ -24,23 +23,23 @@ describe("Syncer", () => {
     apiRootPath = join(Sonamu.appRootPath, "api");
     syncer = Sonamu.syncer;
     expect(syncer).toBeDefined();
-
-    virtualFileSystem.clear();
   });
-
   // ============================================
   // 1. 파일 변경 감지 워크플로우
   // ============================================
   describe("파일 변경 감지 워크플로우", () => {
     test("model 파일 변경 → http 재생성", async () => {
-      const modelPath = join(apiRootPath, "src/application/user/user.model.ts") as AbsolutePath;
+      const modelPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.model.ts",
+      ) as AbsolutePath;
 
-      await (syncer as any).doSyncActions([modelPath]);
+      await syncer.doSyncActions([modelPath]);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f) => f.file.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -55,13 +54,13 @@ describe("Syncer", () => {
         "src/application/sonamu.generated.ts",
       ) as AbsolutePath;
 
-      await (syncer as any).doSyncActions([generatedPath]);
+      await syncer.doSyncActions([generatedPath]);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
       const copiedFile = writeFilesArray.find(
-        (f: any) => f.file.includes("/web/") && f.file.includes("sonamu.generated.ts"),
+        (f: WriteFileRecord) => f.file.includes("/web/") && f.file.includes("sonamu.generated.ts"),
       );
       expect(copiedFile).toBeDefined();
 
@@ -72,12 +71,12 @@ describe("Syncer", () => {
 
     test("여러 model 파일 동시 변경", async () => {
       const paths = [
-        join(apiRootPath, "src/application/user/user.model.ts"),
-        join(apiRootPath, "src/application/project/project.model.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/company/company.model.ts"),
+        join(apiRootPath, "src/application/project/project.model.ts"),
       ] as AbsolutePath[];
 
-      await (syncer as any).doSyncActions(paths);
+      await syncer.doSyncActions(paths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
@@ -90,13 +89,13 @@ describe("Syncer", () => {
 
     test("model + types 파일 동시 변경", async () => {
       const paths = [
-        join(apiRootPath, "src/application/user/user.model.ts"),
-        join(apiRootPath, "src/application/user/user.types.ts"),
-        join(apiRootPath, "src/application/project/project.model.ts"),
-        join(apiRootPath, "src/application/project/project.types.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts"),
+        join(apiRootPath, "src/application/company/company.model.ts"),
+        join(apiRootPath, "src/application/company/company.types.ts"),
       ] as AbsolutePath[];
 
-      await (syncer as any).doSyncActions(paths);
+      await syncer.doSyncActions(paths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
@@ -110,12 +109,12 @@ describe("Syncer", () => {
     test("config 파일 변경 → .sonamu.env 재생성", async () => {
       const configPath = join(apiRootPath, "src/application/sonamu.config.ts") as AbsolutePath;
 
-      await (syncer as any).doSyncActions([configPath]);
+      await syncer.doSyncActions([configPath]);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const envFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const envFile = writeFilesArray.find((f: WriteFileRecord) => f.file.includes(".sonamu.env"));
       expect(envFile).toBeDefined();
       expect(envFile.data).toContain("API_HOST=");
       expect(envFile.data).toContain("API_PORT=");
@@ -130,9 +129,7 @@ describe("Syncer", () => {
   // 2. overwrite 옵션 테스트
   // ============================================
   describe("overwrite 옵션", () => {
-    beforeEach(() => {
-      virtualFileSystem.clear();
-    });
+    beforeEach(() => {});
 
     test("overwrite: true - 항상 파일 생성", async () => {
       await syncer.generateTemplate(
@@ -169,28 +166,22 @@ describe("Syncer", () => {
       const firstWriteFilesArray = Array.isArray(firstWriteFiles)
         ? firstWriteFiles
         : [firstWriteFiles];
-      const targetFile = firstWriteFilesArray.find((f: any) => f.file.includes("user.entity.json"));
+      const targetFile = firstWriteFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("user.entity.json"),
+      );
       expect(targetFile).toBeDefined();
 
-      const targetFilePath = targetFile.file;
-
-      try {
-        virtualFileSystem.add(targetFilePath);
-
-        await expect(
-          syncer.generateTemplate(
-            "entity",
-            {
-              entityId: "User",
-              title: "사용자",
-              table: "users",
-            },
-            { overwrite: false },
-          ),
-        ).rejects.toThrow(AlreadyProcessedException);
-      } finally {
-        virtualFileSystem.delete(targetFilePath);
-      }
+      await expect(
+        syncer.generateTemplate(
+          "entity",
+          {
+            entityId: "User",
+            title: "사용자",
+            table: "users",
+          },
+          { overwrite: false },
+        ),
+      ).rejects.toThrow(AlreadyProcessedException);
     });
 
     test("overwrite: false - 파일 미존재 시 정상 생성", async () => {
@@ -224,19 +215,6 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const firstWriteFiles = Naite.get("fs/promises:writeFile").result();
-      const firstWriteFilesArray = Array.isArray(firstWriteFiles)
-        ? firstWriteFiles
-        : [firstWriteFiles];
-      const targetFile = firstWriteFilesArray.find((f: any) =>
-        f.file.includes("overwrite-test.entity.json"),
-      );
-      const targetFilePath = targetFile.file;
-
-      virtualFileSystem.add(targetFilePath);
-
-      Naite.createStore().clear();
-
       await syncer.generateTemplate(
         "entity",
         {
@@ -251,13 +229,11 @@ describe("Syncer", () => {
       const secondWriteFilesArray = Array.isArray(secondWriteFiles)
         ? secondWriteFiles
         : [secondWriteFiles];
-      const newFile = secondWriteFilesArray.find((f: any) =>
+      const newFile = secondWriteFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("overwrite-test.entity.json"),
       );
 
       expect(newFile).toBeDefined();
-
-      virtualFileSystem.delete(targetFilePath);
     });
 
     test("entity 템플릿 - parentId 옵션", async () => {
@@ -289,13 +265,15 @@ describe("Syncer", () => {
     test("entity 템플릿", async () => {
       await syncer.generateTemplate(
         "entity",
-        { title: "User", entityId: "User" },
+        { title: "SyncFixture", entityId: "SyncFixture" },
         { overwrite: true },
       );
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const entityFile = writeFilesArray.find((f: any) => f.file.includes(".entity.json"));
+      const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".entity.json"),
+      );
       expect(entityFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -304,7 +282,7 @@ describe("Syncer", () => {
     });
 
     test("model 템플릿", async () => {
-      await syncer.generateTemplate("model", { entityId: "User" }, { overwrite: true });
+      await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
 
       const steps = Naite.get("step").result();
       expect(steps).toBeDefined();
@@ -313,11 +291,13 @@ describe("Syncer", () => {
     });
 
     test("init_types 템플릿", async () => {
-      await syncer.generateTemplate("init_types", { entityId: "User" }, { overwrite: true });
+      await syncer.generateTemplate("init_types", { entityId: "SyncFixture" }, { overwrite: true });
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const typesFile = writeFilesArray.find((f: any) => f.file.includes("user.types.ts"));
+      const typesFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sync-fixture.types.ts"),
+      );
       expect(typesFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -332,7 +312,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const generatedFile = writeFilesArray.find((f: any) =>
+      const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("sonamu.generated.ts"),
       );
       expect(generatedFile).toBeDefined();
@@ -348,7 +328,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const generatedSsoFile = writeFilesArray.find((f: any) =>
+      const generatedSsoFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("sonamu.generated.sso.ts"),
       );
       expect(generatedSsoFile).toBeDefined();
@@ -359,11 +339,17 @@ describe("Syncer", () => {
     });
 
     test("generated_http 템플릿", async () => {
-      await syncer.generateTemplate("generated_http", { entityId: "User" }, { overwrite: true });
+      await syncer.generateTemplate(
+        "generated_http",
+        { entityId: "SyncFixture" },
+        { overwrite: true },
+      );
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated.http"),
+      );
       expect(httpFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -372,7 +358,7 @@ describe("Syncer", () => {
     });
 
     test("model_test 템플릿", async () => {
-      await syncer.generateTemplate("model_test", { entityId: "User" }, { overwrite: true });
+      await syncer.generateTemplate("model_test", { entityId: "SyncFixture" }, { overwrite: true });
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles).toBeDefined();
@@ -386,7 +372,7 @@ describe("Syncer", () => {
       // Biome lint 에러로 스킵
       await syncer.generateTemplate(
         "view_list",
-        { entityId: "User", extra: undefined },
+        { entityId: "SyncFixture", extra: undefined },
         { overwrite: true },
       );
 
@@ -400,9 +386,11 @@ describe("Syncer", () => {
   // ============================================
   describe("파일 경로 변환", () => {
     test("api → web 경로 변환", async () => {
-      const tsPaths = [join(apiRootPath, "src/application/user/user.types.ts") as AbsolutePath];
+      const tsPaths = [
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
+      ];
 
-      await (syncer as any).actionSyncFilesToTargets(tsPaths);
+      await syncer.actionSyncFilesToTargets(tsPaths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
@@ -412,13 +400,15 @@ describe("Syncer", () => {
       expect(targetFile.file).not.toContain("/api/");
       expect(targetFile.file).toContain("/services/");
       expect(targetFile.file).not.toContain("/application/");
-      expect(targetFile.file).toContain("user.types.ts");
+      expect(targetFile.file).toContain("sync-fixture.types.ts");
     });
 
     test("import 경로 변환", async () => {
-      const tsPaths = [join(apiRootPath, "src/application/user/user.types.ts") as AbsolutePath];
+      const tsPaths = [
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
+      ];
 
-      await (syncer as any).actionSyncFilesToTargets(tsPaths);
+      await syncer.actionSyncFilesToTargets(tsPaths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
@@ -431,11 +421,11 @@ describe("Syncer", () => {
 
     test("여러 types 파일 동시 동기화", async () => {
       const tsPaths = [
-        join(apiRootPath, "src/application/user/user.types.ts") as AbsolutePath,
-        join(apiRootPath, "src/application/project/project.types.ts") as AbsolutePath,
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
+        join(apiRootPath, "src/application/company/company.types.ts") as AbsolutePath,
       ];
 
-      await (syncer as any).actionSyncFilesToTargets(tsPaths);
+      await syncer.actionSyncFilesToTargets(tsPaths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
@@ -460,7 +450,7 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const entityFile = writeFilesArray.find((f: any) =>
+      const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
         f.file.includes("user-profile.entity.json"),
       );
 
@@ -480,7 +470,7 @@ describe("Syncer", () => {
     });
 
     test("빈 배열 입력 → 정상 처리", async () => {
-      const result = await (syncer as any).doSyncActions([]);
+      const result = await syncer.doSyncActions([]);
       expect(result.diffTypes).toBeDefined();
       expect(result.diffTypes.length).toBe(0);
 
@@ -496,7 +486,7 @@ describe("Syncer", () => {
         join(apiRootPath, "src/random/file.txt"),
       ] as AbsolutePath[];
 
-      const result = await (syncer as any).doSyncActions(unknownPaths);
+      const result = await syncer.doSyncActions(unknownPaths);
       expect(result.diffTypes).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -511,13 +501,13 @@ describe("Syncer", () => {
   describe("파일 타입 분류", () => {
     test("지원하는 파일 타입 분류", async () => {
       const paths = [
-        join(apiRootPath, "src/application/user/user.types.ts"),
-        join(apiRootPath, "src/application/user/user.model.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/sonamu.config.ts"),
         join(apiRootPath, "src/application/sonamu.generated.ts"),
       ] as AbsolutePath[];
 
-      const diffGroups = (syncer as any).calculateDiffGroups(paths);
+      const diffGroups = syncer.calculateDiffGroups(paths);
 
       expect(diffGroups.types?.length).toBe(1);
       expect(diffGroups.model?.length).toBe(1);
@@ -531,12 +521,12 @@ describe("Syncer", () => {
 
     test("같은 타입 여러 파일", async () => {
       const paths = [
-        join(apiRootPath, "src/application/user/user.model.ts"),
-        join(apiRootPath, "src/application/project/project.model.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
         join(apiRootPath, "src/application/company/company.model.ts"),
+        join(apiRootPath, "src/application/project/project.model.ts"),
       ] as AbsolutePath[];
 
-      const diffGroups = (syncer as any).calculateDiffGroups(paths);
+      const diffGroups = syncer.calculateDiffGroups(paths);
       expect(diffGroups.model?.length).toBe(3);
     });
   });
@@ -546,11 +536,13 @@ describe("Syncer", () => {
   // ============================================
   describe("Config 동기화", () => {
     test(".sonamu.env 생성", async () => {
-      await (syncer as any).actionSyncConfig();
+      await syncer.actionSyncConfig();
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const configFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".sonamu.env"),
+      );
 
       expect(configFile).toBeDefined();
       expect(configFile.data).toContain("API_HOST=");
@@ -558,11 +550,13 @@ describe("Syncer", () => {
     });
 
     test("config 값 정확성", async () => {
-      await (syncer as any).actionSyncConfig();
+      await syncer.actionSyncConfig();
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const configFile = writeFilesArray.find((f: any) => f.file.includes(".sonamu.env"));
+      const configFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes(".sonamu.env"),
+      );
 
       const { host, port } = Sonamu.config.server.listen ?? {};
       expect(configFile.data).toContain(`API_HOST=${host ?? "localhost"}`);
@@ -575,7 +569,7 @@ describe("Syncer", () => {
   // ============================================
   describe("Schema 생성", () => {
     test("actionGenerateSchemas - generated 파일 생성", async () => {
-      const result = await (syncer as any).actionGenerateSchemas();
+      const result = await syncer.actionGenerateSchemas();
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -594,7 +588,12 @@ describe("Syncer", () => {
   describe("handleEntityChange", () => {
     test("entity 변경 시 generated 파일 추가", async () => {
       const diffGroups = {
-        entity: [join(apiRootPath, "src/application/user/user.entity.json") as AbsolutePath],
+        entity: [
+          join(
+            apiRootPath,
+            "src/application/sync-fixture/sync-fixture.entity.json",
+          ) as AbsolutePath,
+        ],
         types: [],
         functions: [],
         generated: [],
@@ -614,7 +613,12 @@ describe("Syncer", () => {
     test("handleEntityChange - step 검증", async () => {
       await syncer.handleEntityChange(
         {
-          entity: [join(apiRootPath, "src/application/user/user.entity.ts") as AbsolutePath],
+          entity: [
+            join(
+              apiRootPath,
+              "src/application/sync-fixture/sync-fixture.entity.json",
+            ) as AbsolutePath,
+          ],
           types: [],
           functions: [],
           generated: [],
@@ -636,8 +640,8 @@ describe("Syncer", () => {
     test("여러 model 동시 처리", async () => {
       const diffGroups = {
         model: [
-          join(apiRootPath, "src/application/user/user.model.ts") as AbsolutePath,
-          join(apiRootPath, "src/application/project/project.model.ts") as AbsolutePath,
+          join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
+          join(apiRootPath, "src/application/company/company.model.ts") as AbsolutePath,
         ],
         frame: [],
         types: [],
@@ -660,7 +664,9 @@ describe("Syncer", () => {
 
     test("autoload 순서: models → types → apis", async () => {
       await syncer.handleModelOrFrameChange({
-        model: [join(apiRootPath, "src/application/user/user.model.ts") as AbsolutePath],
+        model: [
+          join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
+        ],
         frame: [],
         types: [],
         functions: [],
@@ -681,7 +687,9 @@ describe("Syncer", () => {
 
     test("http 파일 생성", async () => {
       await syncer.handleModelOrFrameChange({
-        model: [join(apiRootPath, "src/application/user/user.model.ts") as AbsolutePath],
+        model: [
+          join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
+        ],
         frame: [],
         types: [],
         functions: [],
@@ -692,13 +700,17 @@ describe("Syncer", () => {
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
-      const httpFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated.http"));
+      const httpFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated.http"),
+      );
       expect(httpFile).toBeDefined();
     });
 
     test("actionGenerateServices 파라미터 확인", async () => {
       await syncer.handleModelOrFrameChange({
-        model: [join(apiRootPath, "src/application/user/user.model.ts") as AbsolutePath],
+        model: [
+          join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts") as AbsolutePath,
+        ],
         frame: [],
         types: [],
         functions: [],
@@ -710,14 +722,14 @@ describe("Syncer", () => {
       expect(Naite.get("actionGenerateServices").first()).toEqual([
         {
           namesRecord: {
-            camel: "user",
-            camelPlural: "users",
-            capital: "User",
-            capitalPlural: "Users",
-            constant: "USER",
-            fs: "user",
-            fsPlural: "users",
-            upper: "USER",
+            camel: "syncFixture",
+            camelPlural: "syncFixtures",
+            capital: "SyncFixture",
+            capitalPlural: "SyncFixtures",
+            constant: "SYNC_FIXTURE",
+            fs: "sync-fixture",
+            fsPlural: "sync-fixtures",
+            upper: "SYNCFIXTURE",
           },
         },
       ]);
@@ -729,13 +741,18 @@ describe("Syncer", () => {
   // ============================================
   describe("통합 시나리오", () => {
     test("Entity 변경 → 전체 플로우", async () => {
-      const entityPath = join(apiRootPath, "src/application/user/user.entity.json") as AbsolutePath;
-      await (syncer as any).doSyncActions([entityPath]);
+      const entityPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.entity.json",
+      ) as AbsolutePath;
+      await syncer.doSyncActions([entityPath]);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
 
-      const generatedFile = writeFilesArray.find((f: any) => f.file.includes("sonamu.generated"));
+      const generatedFile = writeFilesArray.find((f: WriteFileRecord) =>
+        f.file.includes("sonamu.generated"),
+      );
       expect(generatedFile).toBeDefined();
 
       const steps = Naite.get("step").result();
@@ -745,11 +762,11 @@ describe("Syncer", () => {
 
     test("Model + Entity 동시 변경", async () => {
       const paths = [
-        join(apiRootPath, "src/application/user/user.entity.json"),
-        join(apiRootPath, "src/application/user/user.model.ts"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.entity.json"),
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
       ] as AbsolutePath[];
 
-      await (syncer as any).doSyncActions(paths);
+      await syncer.doSyncActions(paths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       expect(writeFiles).toBeDefined();
@@ -769,65 +786,4 @@ describe("Syncer", () => {
     test.todo("autoloadModels - models 로드");
     test.todo("autoloadApis - apis 로드");
   });
-});
-
-// ============================================
-// 가상 파일 시스템 및 Mock 설정
-// ============================================
-const virtualFileSystem = new Set<string>();
-
-vi.mock(import("fs/promises"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    access: vi.fn(async (path: PathLike, mode?: number): Promise<void> => {
-      Naite.t("fs:access", path);
-      const pathStr = typeof path === "string" ? path : path.toString();
-
-      if (virtualFileSystem.has(pathStr)) {
-        return;
-      }
-
-      if (typeof path === "string" && path.endsWith("this-file-does-not-actually-exist.ts")) {
-        return;
-      }
-      return actual.access(path, mode);
-    }),
-    mkdir: vi.fn(async (path: PathLike, options?: any): Promise<string | undefined> => {
-      Naite.t("fs:mkdir", { path, options });
-      if (options?.recursive) {
-        return typeof path === "string" ? path : path.toString();
-      }
-      return undefined;
-    }) as any,
-    writeFile: vi.fn(
-      (
-        file: PathLike | FileHandle,
-        data:
-          | string
-          | NodeJS.ArrayBufferView
-          | Iterable<string | NodeJS.ArrayBufferView>
-          | AsyncIterable<string | NodeJS.ArrayBufferView>
-          | Stream,
-        _options?:
-          | (ObjectEncodingOptions & {
-              mode?: Mode | undefined;
-              flag?: OpenMode | undefined;
-              flush?: boolean | undefined;
-            } & Abortable)
-          | BufferEncoding
-          | null,
-      ): Promise<void> => {
-        const filePath = typeof file === "string" ? file : file.toString();
-        Naite.t("fs/promises:writeFile", { file: filePath, data });
-        virtualFileSystem.add(filePath);
-        return Promise.resolve(undefined);
-      },
-    ),
-    unlink: vi.fn(async (path: PathLike): Promise<void> => {
-      const pathStr = typeof path === "string" ? path : path.toString();
-      virtualFileSystem.delete(pathStr);
-      return Promise.resolve(undefined);
-    }),
-  };
 });

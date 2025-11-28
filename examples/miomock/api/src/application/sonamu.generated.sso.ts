@@ -10,6 +10,8 @@ import type {
   FileSubsetKey,
   ProjectBaseSchema,
   ProjectSubsetKey,
+  SyncFixtureBaseSchema,
+  SyncFixtureSubsetKey,
   TagBaseSchema,
   TagSubsetKey,
   UserBaseSchema,
@@ -332,6 +334,29 @@ export const projectLoaderQueries = {
   ],
 } as const satisfies PuriLoaderQueries<ProjectSubsetKey>;
 
+// SubsetQuery: SyncFixture
+export const syncFixtureSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("sync_fixtures").select({
+      id: "sync_fixtures.id",
+      created_at: "sync_fixtures.created_at",
+      updated_at: "sync_fixtures.updated_at",
+      name: "sync_fixtures.name",
+      code: "sync_fixtures.code",
+      status: "sync_fixtures.status",
+      priority: "sync_fixtures.priority",
+      is_active: "sync_fixtures.is_active",
+      description: "sync_fixtures.description",
+      tags: "sync_fixtures.tags",
+    });
+  },
+};
+
+// LoaderQuery: SyncFixture
+export const syncFixtureLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<SyncFixtureSubsetKey>;
+
 // SubsetQuery: Tag
 export const tagSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -413,6 +438,7 @@ declare module "sonamu" {
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     projects: ProjectBaseSchema;
+    sync_fixtures: SyncFixtureBaseSchema;
     tags: TagBaseSchema;
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
