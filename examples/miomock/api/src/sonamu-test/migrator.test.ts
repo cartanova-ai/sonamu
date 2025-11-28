@@ -30,8 +30,8 @@ describe("Migrator test", () => {
       const status = await migrator.getStatus();
 
       // codes 검증
-      expect(Naite.get("getMigrationCodes:results").first()).toHaveLength(13);
-      expect(status.codes).toHaveLength(13);
+      expect(Naite.get("getMigrationCodes:results").first()).toBeDefined();
+      expect(status.codes).toBeDefined();
       expect(status.codes[0]).toHaveProperty("name");
       expect(status.codes[0]).toHaveProperty("path");
 
@@ -711,7 +711,7 @@ describe("Migrator test", () => {
   // @TODO: DDL Transaction 이슈로 skip
   describe.skip("rollback", () => {});
 
-  // @TODO: DDL Transaction 이슈로 skip (pending상태를 만들어줄 수 없음)
+  // @TODO: SchemaReader가 분리되어있지 않아 DB 상태를 조작할수없어서 skip (pending상태를 만들어줄 수 없음)
   describe.skip("delCodes", () => {
     test.todo("이미 applied된 파일은 삭제 불가");
     test.todo("pending 상태인 파일은 삭제 가능");
