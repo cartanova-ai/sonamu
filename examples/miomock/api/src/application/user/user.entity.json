@@ -55,7 +55,10 @@
       "relationType": "OneToOne"
     }
   ],
-  "indexes": [{ "type": "fulltext", "columns": ["bio"], "parser": "ngram" }],
+  "indexes": [
+    { "type": "fulltext", "columns": ["bio"], "parser": "ngram" },
+    { "type": "unique", "columns": ["email"] }
+  ],
   "subsets": {
     "A": [
       "id",
