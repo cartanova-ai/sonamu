@@ -9,6 +9,7 @@ import {
 } from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
+import { mockEntityManagerGet } from "../testing/test-helpers";
 
 bootstrap(vi);
 describe("Migrator test", () => {
@@ -781,14 +782,3 @@ describe("Migrator test", () => {
     test.todo("Pending 누적 - pending 있는 상태에서 Entity 변경 → 새 코드 추가 → pending 누적");
   });
 });
-
-function mockEntityManagerGet(targetEntityId: string, override: Partial<Entity>) {
-  const originalGet = EntityManager.get;
-  const originalEntity = EntityManager.get(targetEntityId);
-  vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-    if (entityId === targetEntityId) {
-      return { ...originalEntity, ...override } as Entity;
-    }
-    return originalGet.call(EntityManager, entityId);
-  });
-}
