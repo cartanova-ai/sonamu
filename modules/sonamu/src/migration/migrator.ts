@@ -11,6 +11,7 @@ import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import type { GenMigrationCode, MigrationSet } from "../types/types";
+import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromDB, getMigrationSetFromEntity } from "./migration-set";
@@ -408,21 +409,23 @@ export class Migrator {
     Naite.t("runShadowTest:tmpSqlPath", tmpSqlPath);
 
     // 테스트DB 덤프 후 Database명 치환
-    console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
+    !isTest() && console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
     execSync(
       `mysqldump -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`,
+      { stdio: "ignore" },
     );
     execSync(`sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`);
 
     // 기존 ShadowDB 리셋
-    console.log(chalk.magenta(`${shadowDatabase} 리셋`));
+    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 리셋`));
     await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
     await tdb.raw(`CREATE DATABASE \`${shadowDatabase}\`;`);
 
     // ShadowDB 테이블 + 데이터 생성
-    console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
+    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
     execSync(
       `mysql -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`,
+      { stdio: "ignore" },
     );
 
     // shadow db 테스트 진행
@@ -438,14 +441,15 @@ export class Migrator {
     // shadow db 테스트 진행
     try {
       const [batchNo, applied] = await sdb.migrate.latest();
-      console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
-        batchNo,
-        applied,
-      });
+      !isTest() &&
+        console.log(chalk.green("Shadow DB 테스트에 성공했습니다!"), {
+          batchNo,
+          applied,
+        });
 
       // 생성한 Shadow DB 삭제
       await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
-      console.log(chalk.magenta(`${shadowDatabase} 삭제`));
+      !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
 
       return [
         {

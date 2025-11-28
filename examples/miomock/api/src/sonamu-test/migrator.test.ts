@@ -595,7 +595,7 @@ describe("Migrator test", () => {
       // given: User와 Label 간의 ManyToMany 관계 추가
       const userEntity = EntityManager.get("User");
 
-      // 1. Lable 엔티티 생성
+      // 1. Label 엔티티 생성
       const labelEntity = {
         id: "Label",
         table: "labels",
@@ -631,28 +631,28 @@ describe("Migrator test", () => {
       expect(preparedCodes.length).toBe(3);
 
       // Label 테이블 생성 코드
-      const createLableCode = preparedCodes[0];
-      expect(createLableCode).toBeDefined();
-      expect(createLableCode?.title).toBe("create__labels");
+      const labelCode = preparedCodes[0];
+      expect(labelCode).toBeDefined();
+      expect(labelCode?.title).toBe("create__labels");
 
       // 조인테이블 (users__labels) 생성 코드
-      const createJoinTableCode = preparedCodes[1];
-      expect(createJoinTableCode).toBeDefined();
-      expect(createJoinTableCode?.title).toBe("create__users__labels");
+      const userLabelsJoinTableCode = preparedCodes[1];
+      expect(userLabelsJoinTableCode).toBeDefined();
+      expect(userLabelsJoinTableCode?.title).toBe("create__users__labels");
       // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
-      expect(createJoinTableCode?.formatted).toContain("user_id");
-      expect(createJoinTableCode?.formatted).toContain("label_id");
-      expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
-      expect(createJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
+      expect(userLabelsJoinTableCode?.formatted).toContain("user_id");
+      expect(userLabelsJoinTableCode?.formatted).toContain("label_id");
+      expect(userLabelsJoinTableCode?.formatted).toContain('table.uuid("uuid")');
+      expect(userLabelsJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
 
       // 조인테이블 FK 생성 코드
-      const user_lable_FKCode = preparedCodes[2];
-      expect(user_lable_FKCode).toBeDefined();
-      expect(user_lable_FKCode?.title).toBe("foreign__users__labels__user_id_label_id");
+      const userLabelFKCode = preparedCodes[2];
+      expect(userLabelFKCode).toBeDefined();
+      expect(userLabelFKCode?.title).toBe("foreign__users__labels__user_id_label_id");
       // FK가 users.id와 labels.id를 참조하는지 확인
-      expect(user_lable_FKCode?.formatted).toContain('references("users.id")');
-      expect(user_lable_FKCode?.formatted).toContain('references("labels.id")');
-      expect(user_lable_FKCode?.formatted).toContain("CASCADE");
+      expect(userLabelFKCode?.formatted).toContain('references("users.id")');
+      expect(userLabelFKCode?.formatted).toContain('references("labels.id")');
+      expect(userLabelFKCode?.formatted).toContain("CASCADE");
     });
   });
 
