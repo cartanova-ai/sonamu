@@ -1,6 +1,6 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { useEffect, useState } from "react";
-import { Button, Dropdown, Icon, Input, Segment, Tab } from "semantic-ui-react";
+import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
 import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
 import FixtureGraph from "../../components/fixture/ErdGraph";
@@ -11,10 +11,17 @@ import FixtureRecordViewer from "./_fixture_record_viewer";
 
 const DB_NAMES = ["development_master", "production_master", "fixture_remote", "test"];
 
+/**
+ * 중복 확인 옵션 타입
+ */
+type DuplicateCheckColumns = {
+  [entityId: string]: string[];
+};
+
 export default function FixtureIndex() {
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
-  const [targetDB, setTargetDB] = useState("fixture_remote"); // 저장할 대상 DB
+  const [targetDB, setTargetDB] = useState("test");
 
   const [fixtureRecords, setFixtureRecords] = useState<FixtureRecord[]>([]);
   const [importResults, setImportResults] = useState<FixtureImportResult[]>([]);
@@ -23,6 +30,17 @@ export default function FixtureIndex() {
   const [activeTab, setActiveTab] = useState(0);
 
   const [mode, setMode] = useState<"table" | "graph">("table");
+
+  // 중복 확인 컬럼 설정
+  const [duplicateCheckColumns, setDuplicateCheckColumns] = useState<DuplicateCheckColumns>({});
+  const [showDuplicateCheckSettings, setShowDuplicateCheckSettings] = useState(true);
+
+  // 중복 확인 설정용 임시 상태
+  const [dupCheckEntityId, setDupCheckEntityId] = useState<string>("");
+  const [dupCheckSelectedColumns, setDupCheckSelectedColumns] = useState<string[]>([]);
+
+  // 저장 대상 상세 보기
+  const [showSaveTargets, setShowSaveTargets] = useState(false);
 
   const { form, register } = useTypeForm(
     z.object({
@@ -36,6 +54,9 @@ export default function FixtureIndex() {
 
   const [searchEntity, setSearchEntity] = useState<ExtendedEntity | null>(null);
 
+  // 중복 확인 설정용 선택된 엔티티
+  const dupCheckEntity = entitiesData?.entities?.find((e) => e.id === dupCheckEntityId) ?? null;
+
   /**
    * 검색 실행 (Source DB에서 Fixture Record 가져오기)
    */
@@ -47,7 +68,12 @@ export default function FixtureIndex() {
     setImportResults([]);
     setSelectedIds(new Set());
 
-    SonamuUIService.getFixtures(sourceDB, targetDB, form)
+    const duplicateCheck =
+      Object.keys(duplicateCheckColumns).length > 0
+        ? { columns: duplicateCheckColumns }
+        : undefined;
+
+    SonamuUIService.getFixtures(sourceDB, targetDB, form, duplicateCheck)
       .then((res) => {
         setFixtureRecords(res);
         setSelectedIds(new Set(res.map((r) => r.fixtureId)));
@@ -62,8 +88,6 @@ export default function FixtureIndex() {
     if (fixtureRecords.length === 0) return;
     setActiveTab(1);
 
-    // SonamuUIService.importFixtures는 '가져오기'와 '저장하기' 모두에 사용되는 내부 함수입니다.
-    // 여기서는 '저장하기' 기능을 수행합니다.
     SonamuUIService.importFixtures(targetDB, fixtureRecords)
       .then((results) => {
         setImportResults(results);
@@ -79,13 +103,23 @@ export default function FixtureIndex() {
   ) => {
     const fixtureId = `${entityId}#${id}`;
 
+    const duplicateCheck =
+      Object.keys(duplicateCheckColumns).length > 0
+        ? { columns: duplicateCheckColumns }
+        : undefined;
+
     if (isChecked) {
-      SonamuUIService.getFixtures(sourceDB, targetDB, {
-        entityId,
-        field: "id",
-        value: String(id),
-        searchType: "equals",
-      })
+      SonamuUIService.getFixtures(
+        sourceDB,
+        targetDB,
+        {
+          entityId,
+          field: "id",
+          value: String(id),
+          searchType: "equals",
+        },
+        duplicateCheck,
+      )
         .then((res) => {
           const parent = fixtureRecords.find((r) => r.fixtureId === parentFixtureId);
           if (parent) {
@@ -163,6 +197,32 @@ export default function FixtureIndex() {
     }
   };
 
+  /**
+   * 중복 확인 설정 추가
+   */
+  const addDuplicateCheckSetting = () => {
+    if (!dupCheckEntityId || dupCheckSelectedColumns.length === 0) return;
+
+    setDuplicateCheckColumns((prev) => ({
+      ...prev,
+      [dupCheckEntityId]: dupCheckSelectedColumns,
+    }));
+
+    // 입력 폼 초기화
+    setDupCheckEntityId("");
+    setDupCheckSelectedColumns([]);
+  };
+
+  /**
+   * 중복 확인 설정 제거
+   */
+  const removeDuplicateCheckSetting = (entityId: string) => {
+    setDuplicateCheckColumns((prev) => {
+      const { [entityId]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
   useEffect(() => {
     if (form.entityId && entitiesData?.entities) {
       const e = entitiesData.entities.find((e) => e.id === form.entityId);
@@ -171,6 +231,11 @@ export default function FixtureIndex() {
       }
     }
   }, [form.entityId, entitiesData]);
+
+  // 엔티티 변경 시 컬럼 선택 초기화
+  useEffect(() => {
+    setDupCheckSelectedColumns([]);
+  }, []);
 
   const panes = [
     {
@@ -215,14 +280,13 @@ export default function FixtureIndex() {
     <div className="fixture-index">
       <Segment className="fixture-header">
         <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-          {/* 1. Search Section (메인 검색 컨트롤) */}
+          {/* 1. Search Section */}
           <div className="search-section">
             <div className="search-title">
               <Icon name="search" style={{ marginRight: "5px" }} />
               검색 대상 설정
             </div>
 
-            {/* Source DB Dropdown */}
             <div className="db-dropdown-wrapper">
               <Dropdown
                 fluid
@@ -238,7 +302,6 @@ export default function FixtureIndex() {
               />
             </div>
 
-            {/* Entity Dropdown */}
             <div style={{ flexGrow: 1, minWidth: "200px" }}>
               <Dropdown
                 fluid
@@ -257,7 +320,6 @@ export default function FixtureIndex() {
               />
             </div>
 
-            {/* Search Field Group */}
             {searchEntity && (
               <div className="search-field-group">
                 <Dropdown
@@ -294,7 +356,6 @@ export default function FixtureIndex() {
               </div>
             )}
 
-            {/* Search Button */}
             <Button
               onClick={search}
               disabled={!form.entityId || !form.field || !form.value || entitiesLoading}
@@ -304,37 +365,274 @@ export default function FixtureIndex() {
             />
           </div>
 
-          {/* 2. Save Section (저장 컨트롤) */}
+          {/* 2. Duplicate Check Settings */}
+          <div className="duplicate-check-section">
+            <button
+              type="button"
+              className="duplicate-check-title"
+              style={{
+                cursor: "pointer",
+                background: "none",
+                border: "none",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                textAlign: "left",
+              }}
+              onClick={() => setShowDuplicateCheckSettings(!showDuplicateCheckSettings)}
+            >
+              <Icon name={showDuplicateCheckSettings ? "chevron down" : "chevron right"} />
+              <Icon name="filter" style={{ marginRight: "5px" }} />
+              중복 확인 설정
+              {Object.keys(duplicateCheckColumns).length > 0 && (
+                <Label color="blue" size="tiny" style={{ marginLeft: "10px" }}>
+                  {Object.keys(duplicateCheckColumns).length}개 엔티티 설정됨
+                </Label>
+              )}
+            </button>
+
+            {showDuplicateCheckSettings && (
+              <div className="duplicate-check-settings" style={{ marginTop: "10px" }}>
+                <p style={{ color: "#666", fontSize: "12px", marginBottom: "10px" }}>
+                  엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. 지정하지 않으면 unique index만
+                  사용합니다.
+                </p>
+
+                {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    marginBottom: "15px",
+                  }}
+                >
+                  <Dropdown
+                    placeholder="엔티티 선택"
+                    search
+                    selection
+                    clearable
+                    loading={entitiesLoading}
+                    options={
+                      entitiesData?.entities
+                        ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
+                        .map((entity) => ({
+                          key: entity.id,
+                          value: entity.id,
+                          text: entity.id,
+                        })) || []
+                    }
+                    value={dupCheckEntityId}
+                    onChange={(_, { value }) => setDupCheckEntityId(value as string)}
+                    style={{ minWidth: "180px" }}
+                  />
+
+                  <Dropdown
+                    placeholder="중복 확인 컬럼 선택"
+                    multiple
+                    selection
+                    disabled={!dupCheckEntity}
+                    options={
+                      dupCheckEntity?.props
+                        .filter((p) => {
+                          if (p.type === "virtual") return false;
+                          if (p.type === "relation") {
+                            if (p.relationType === "BelongsToOne") return true;
+                            if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
+                            return false;
+                          }
+                          return true;
+                        })
+                        .map((prop) => ({
+                          key: prop.name,
+                          value: prop.name,
+                          text: prop.name,
+                        })) || []
+                    }
+                    value={dupCheckSelectedColumns}
+                    onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
+                    style={{ minWidth: "250px", flexGrow: 1 }}
+                  />
+
+                  <Button
+                    icon="plus"
+                    color="blue"
+                    size="small"
+                    disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
+                    onClick={addDuplicateCheckSetting}
+                  />
+                </div>
+
+                {/* 설정된 중복 확인 목록 */}
+                {Object.keys(duplicateCheckColumns).length > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                    }}
+                  >
+                    {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
+                      <Label
+                        key={entityId}
+                        size="medium"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "8px 12px",
+                        }}
+                      >
+                        <span style={{ fontWeight: "bold" }}>{entityId}</span>
+                        <span style={{ color: "#666" }}>({columns.join(", ")})</span>
+                        <Icon
+                          name="delete"
+                          style={{ cursor: "pointer", marginLeft: "4px" }}
+                          onClick={() => removeDuplicateCheckSetting(entityId)}
+                        />
+                      </Label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Save Section */}
           <div className="save-section">
-            <div className="save-title">
+            <button
+              type="button"
+              className="save-title"
+              style={{
+                cursor: "pointer",
+                background: "none",
+                border: "none",
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                textAlign: "left",
+              }}
+              onClick={() => setShowSaveTargets(!showSaveTargets)}
+            >
+              <Icon name={showSaveTargets ? "chevron down" : "chevron right"} />
               <Icon name="database" style={{ marginRight: "5px" }} />
               저장 DB 설정
-            </div>
+              {fixtureRecords.length > 0 &&
+                (() => {
+                  const saveTargets = fixtureRecords.filter((f) => {
+                    const hasTarget = !!f.target;
+                    const hasUnique = !!f.unique;
 
-            {/* Target DB Dropdown */}
-            <div className="db-dropdown-wrapper">
-              <Dropdown
-                fluid
-                placeholder="저장할 대상 DB 선택"
-                header="Fixture Target DB"
-                selection
-                options={DB_NAMES.map((db) => ({
-                  key: db,
-                  value: db,
-                  text: db,
-                }))}
-                value={targetDB}
-                onChange={(_, { value }) => setTargetDB(value as string)}
+                    // 중복 없음: 무조건 저장
+                    if (!hasTarget && !hasUnique) return true;
+
+                    // override: target이나 unique가 있어도 덮어쓰기
+                    if (f.override && (hasTarget || hasUnique)) return true;
+
+                    return false;
+                  });
+
+                  return (
+                    <Label color="green" size="small" style={{ marginLeft: "10px" }}>
+                      {saveTargets.length}개 저장 예정
+                    </Label>
+                  );
+                })()}
+            </button>
+
+            <div className="search-field-group">
+              <div className="db-dropdown-wrapper">
+                <Dropdown
+                  fluid
+                  placeholder="저장할 대상 DB 선택"
+                  header="Fixture Target DB"
+                  selection
+                  options={DB_NAMES.map((db) => ({
+                    key: db,
+                    value: db,
+                    text: db,
+                  }))}
+                  value={targetDB}
+                  onChange={(_, { value }) => setTargetDB(value as string)}
+                />
+              </div>
+
+              <Button
+                onClick={saveFixture}
+                color="blue"
+                content="저장"
+                disabled={fixtureRecords.length === 0}
               />
             </div>
 
-            {/* Save Button */}
-            <Button
-              onClick={saveFixture}
-              color="blue"
-              content="저장"
-              disabled={fixtureRecords.length === 0}
-            />
+            {showSaveTargets &&
+              fixtureRecords.length > 0 &&
+              (() => {
+                const saveTargets = fixtureRecords.filter((f) => {
+                  const hasTarget = !!f.target;
+                  const hasUnique = !!f.unique;
+
+                  if (!hasTarget && !hasUnique) return true;
+                  if (f.override && (hasTarget || hasUnique)) return true;
+
+                  return false;
+                });
+
+                const groupedByEntity = saveTargets.reduce(
+                  (acc, f) => {
+                    if (!acc[f.entityId]) {
+                      acc[f.entityId] = [];
+                    }
+                    acc[f.entityId].push(f);
+                    return acc;
+                  },
+                  {} as Record<string, FixtureRecord[]>,
+                );
+
+                return (
+                  <div style={{ marginTop: "10px", marginBottom: "10px" }}>
+                    <p style={{ color: "#666", fontSize: "12px", marginBottom: "10px" }}>
+                      저장될 픽스쳐 목록
+                    </p>
+                    <div className="fixture-record-group">
+                      {Object.entries(groupedByEntity).map(([entityId, fixtures]) => (
+                        <div
+                          key={entityId}
+                          style={{
+                            marginBottom: "8px",
+                            padding: "8px",
+                            backgroundColor: "#f9f9f9",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+                            {entityId} ({fixtures.length}개)
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#555" }}>
+                            {fixtures.map((f) => {
+                              const hasTarget = !!f.target;
+                              const hasUnique = !!f.unique;
+                              let reason = "신규";
+                              if (f.override && (hasTarget || hasUnique)) {
+                                reason = "덮어쓰기";
+                              }
+
+                              return (
+                                <Label key={f.fixtureId} size="tiny" style={{ margin: "2px" }}>
+                                  #{f.id}
+                                  <Label.Detail>{reason}</Label.Detail>
+                                </Label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         </div>
       </Segment>

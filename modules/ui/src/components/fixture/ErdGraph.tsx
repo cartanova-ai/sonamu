@@ -94,8 +94,19 @@ function makeEdges(fixtures: FixtureRecord[]): Edge[] {
 }
 
 /**
+ * 레코드별 행 수 계산 (target, unique 포함)
+ */
+function getRowCount(fixtures: FixtureRecord[]): number {
+  return fixtures.reduce((count, f) => {
+    let rows = 1; // source row
+    if (f.target) rows++;
+    if (f.unique) rows++;
+    return count + rows;
+  }, 0);
+}
+
+/**
  * dagre 라이브러리를 사용하여 노드와 엣지의 레이아웃을 계산합니다.
- * @returns 레이아웃이 적용된 노드와 엣지 배열
  */
 function getLayoutedElements(
   nodes: TableNodeRFNode[],
@@ -109,11 +120,6 @@ function getLayoutedElements(
   const isHorizontal = direction === "LR";
 
   dagreGraph.setGraph({ rankdir: direction });
-
-  const getRowCount = (fixtures: FixtureRecord[]) =>
-    fixtures.length +
-    fixtures.filter((f) => f.target).length +
-    fixtures.filter((f) => f.unique).length;
 
   nodes.forEach((node) => {
     const rowCount = getRowCount(node.data.fixtures);
