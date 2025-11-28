@@ -1,13 +1,15 @@
-import axios from "axios";
 import chalk from "chalk";
 import { execSync } from "child_process";
 import fastify from "fastify";
 import fs from "fs";
 import { pluralize, underscore } from "inflection";
+import knex from "knex";
 import path from "path";
 import { range } from "radashi";
 import {
   BadRequestException,
+  BaseModelClass,
+  type DuplicateCheckOptions,
   type Entity,
   type EntityIndex,
   EntityManager,
@@ -846,13 +848,14 @@ export async function createServer(options: {
   });
 
   server.post("/api/fixture", async (request) => {
-    const { sourceDB, targetDB, search } = request.body as {
+    const { sourceDB, targetDB, search, duplicateCheck } = request.body as {
       sourceDB: keyof SonamuDBConfig;
       targetDB: keyof SonamuDBConfig;
       search: FixtureSearchOptions;
+      duplicateCheck?: DuplicateCheckOptions;
     };
 
-    return FixtureManager.getFixtures(sourceDB, targetDB, search);
+    return FixtureManager.getFixtures(sourceDB, targetDB, search, duplicateCheck);
   });
 
   server.post("/api/fixture/import", async (request) => {
@@ -871,27 +874,30 @@ export async function createServer(options: {
   });
 
   server.get("/api/entity/findById", async (request) => {
-    const { entityId, id, subset } = request.query as {
+    const { entityId, id, subset, db } = request.query as {
+      db: keyof SonamuDBConfig;
       entityId: string;
       id: string;
       subset: string;
     };
 
+    const BaseModel = new BaseModelClass();
     const entity = EntityManager.get(entityId);
-
-    const dotenv = await import("dotenv");
-    // e.g. miomock/web/.sonamu.env
-    dotenv.config({
-      path: path.join(Sonamu.apiRootPath, "..", Sonamu.config.sync.targets[0], ".sonamu.env"),
+    const {
+      rows: [row],
+    } = await BaseModel.runSubsetQuery({
+      subset,
+      params: { id: Number(id), page: 1, num: 1 },
+      subsetQuery: entity.getSubsetQuery(subset),
+      build: ({ qb }) => {
+        qb.where(`${entity.table}.id`, id);
+        return qb;
+      },
+      baseTable: entity.table,
+      db: knex(Sonamu.dbConfig[db]),
     });
 
-    const _baseUrl = `http://${process.env.API_HOST}:${process.env.API_PORT}`;
-    const { prefix } = Sonamu.config.api.route;
-    const url = `${_baseUrl}${prefix}/${entity.names.fs}/findById?subset=${subset}&id=${id}`;
-
-    const res = await axios.get(url);
-
-    return res.data;
+    return row;
   });
 
   server.get("/api/all_routes", async () => {

@@ -1,11 +1,14 @@
+import assert from "assert";
 import chalk from "chalk";
 import { readFileSync, writeFileSync } from "fs";
 import inflection from "inflection";
 import knex, { type Knex } from "knex";
 import { unique } from "radashi";
+import { inspect } from "util";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";
+import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
@@ -22,6 +25,13 @@ import {
   type ManyToManyRelationProp,
 } from "../types/types";
 import { RelationGraph } from "./_relation-graph";
+
+/** 사용자 지정 중복 확인 컬럼 (entityId별로 지정) */
+export interface DuplicateCheckOptions {
+  columns?: {
+    [entityId: string]: string[];
+  };
+}
 
 export class FixtureManagerClass {
   private _tdb: Knex | null = null;
@@ -48,6 +58,12 @@ export class FixtureManagerClass {
   cachedTableNames: string[] | null = null;
 
   private relationGraph = new RelationGraph();
+
+  // UpsertBuilder 기반 import를 위한 상태
+  private builder: UpsertBuilder = new UpsertBuilder();
+  private fixtureRefMap: Map<string, UBRef> = new Map();
+  private uuidToFixtureId: Map<string, string> = new Map();
+  private skippedFixtures: Map<string, { entityId: string; existingId: number }> = new Map();
 
   init() {
     if (this._tdb !== null) {
@@ -246,9 +262,11 @@ export class FixtureManagerClass {
     sourceDBName: keyof SonamuDBConfig,
     targetDBName: keyof SonamuDBConfig,
     searchOptions: FixtureSearchOptions,
+    duplicateCheck?: DuplicateCheckOptions,
   ) {
     const sourceDB = knex(Sonamu.dbConfig[sourceDBName]);
     const targetDB = knex(Sonamu.dbConfig[targetDBName]);
+
     const { entityId, field, value, searchType } = searchOptions;
 
     const entity = EntityManager.get(entityId);
@@ -286,18 +304,25 @@ export class FixtureManagerClass {
     for await (const fixture of fixtures) {
       const entity = EntityManager.get(fixture.entityId);
 
-      // ID를 이용하여 targetDB에 레코드가 존재하는지 확인
-      const row = await targetDB(entity.table).where("id", fixture.id).first();
-      if (row) {
-        const [record] = await this.createFixtureRecord(entity, row, {
-          singleRecord: true,
-          _db: targetDB,
-        });
-        fixture.target = record;
-        continue;
+      // 사용자 지정 컬럼 기준 중복 확인 → target
+      const customColumns = duplicateCheck?.columns?.[fixture.entityId];
+      if (customColumns && customColumns.length > 0) {
+        const customDuplicateRow = await this.checkDuplicateByColumns(
+          targetDB,
+          entity,
+          fixture,
+          customColumns,
+        );
+        if (customDuplicateRow) {
+          const [record] = await this.createFixtureRecord(entity, customDuplicateRow, {
+            singleRecord: true,
+            _db: targetDB,
+          });
+          fixture.target = record;
+        }
       }
 
-      // ID를 이용하여 targetDB에서 조회되지 않는 경우, unique 제약을 위반하는지 확인
+      // Unique index 기준 중복 확인 → fixture.unique
       const uniqueRow = await this.checkUniqueViolation(targetDB, entity, fixture);
       if (uniqueRow) {
         const [record] = await this.createFixtureRecord(entity, uniqueRow, {
@@ -408,182 +433,404 @@ export class FixtureManagerClass {
     return records;
   }
 
-  async insertFixtures(dbName: keyof SonamuDBConfig, _fixtures: FixtureRecord[]) {
+  /**
+   * 1. RelationGraph로 fixture 단위 삽입 순서 계산 (self-reference 포함)
+   * 2. 순서대로 UpsertBuilder에 등록 (UBRef로 참조 관계 표현)
+   * 3. 테이블별 upsert 실행 (ID는 DB가 자동 할당)
+   */
+  async insertFixtures(
+    dbName: keyof SonamuDBConfig,
+    _fixtures: FixtureRecord[],
+  ): Promise<FixtureImportResult[]> {
     const fixtures = unique(_fixtures, (f) => f.fixtureId);
 
-    this.relationGraph.buildGraph(fixtures);
-    const insertionOrder = this.relationGraph.getInsertionOrder();
+    // 초기화
+    this.builder = new UpsertBuilder();
+    this.fixtureRefMap = new Map();
+    this.uuidToFixtureId = new Map();
+    this.skippedFixtures = new Map();
+
     const db = knex(Sonamu.dbConfig[dbName]);
+    const results: FixtureImportResult[] = [];
 
-    await db.transaction(async (trx) => {
-      await trx.raw(`SET FOREIGN_KEY_CHECKS = 0`);
+    try {
+      // 1. RelationGraph로 fixture 단위 삽입 순서 계산
+      this.relationGraph.buildGraph(fixtures);
+      const insertionOrder = this.relationGraph.getInsertionOrder();
 
+      // 2. 순서대로 UpsertBuilder에 등록 (override 체크)
       for (const fixtureId of insertionOrder) {
         const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
-        if (!fixture) {
-          continue;
-        }
-        const result = await this.insertFixture(trx, fixture);
-        if (result.id !== fixture.id) {
-          // ID가 변경된 경우, 다른 fixture에서 참조하는 경우가 찾아서 수정
+        if (!fixture) continue;
+
+        const hasTarget = !!fixture.target;
+        const hasUnique = !!fixture.unique;
+        const hasDuplicate = hasTarget || hasUnique;
+
+        // 중복이 있고 override=false인 경우: 스킵
+        if (hasDuplicate && !fixture.override) {
+          // 기존 레코드 ID 저장 (unique 우선, 없으면 target)
+          const existingId = fixture.unique?.id ?? fixture.target?.id;
+          assert(existingId);
+          this.skippedFixtures.set(fixtureId, {
+            entityId: fixture.entityId,
+            existingId,
+          });
+
           console.log(
             chalk.yellow(
-              `Unique constraint violation: ${fixture.entityId}#${fixture.id} -> ${fixture.entityId}#${result.id}`,
+              `Skipped ${fixture.entityId}#${fixture.id} (existing: #${existingId}, override: false)`,
             ),
           );
-          fixtures.forEach((f) => {
-            Object.values(f.columns).forEach((column) => {
-              if (
-                column.prop.type === "relation" &&
-                column.prop.with === result.entityId &&
-                column.value === fixture.id
-              ) {
-                column.value = result.id;
-              }
-            });
-          });
-          fixture.id = result.id;
-        }
-      }
-
-      for (const fixtureId of insertionOrder) {
-        const fixture = fixtures.find((f) => f.fixtureId === fixtureId);
-        if (!fixture) {
           continue;
         }
-        await this.handleManyToManyRelations(trx, fixture, fixtures);
+
+        this.registerFixture(fixture);
+        console.log(
+          chalk.blue(
+            `Registered ${fixture.entityId}#${fixture.id}${fixture.override ? ` (override existing: #${fixture.target?.id})` : ""}`,
+          ),
+        );
       }
-      await trx.raw(`SET FOREIGN_KEY_CHECKS = 1`);
-    });
 
-    const records: FixtureImportResult[] = [];
+      // 3. 테이블별 upsert 실행
+      const tableOrder = this.getTableOrder(fixtures);
 
-    for await (const r of fixtures) {
-      const entity = EntityManager.get(r.entityId);
-      const record = await db(entity.table).where("id", r.id).first();
-      records.push({
-        entityId: r.entityId,
-        data: record,
+      await db.transaction(async (trx) => {
+        const insertedIdsByTable = new Map<string, Map<string, number>>();
+
+        for (const tableName of tableOrder) {
+          if (!this.builder.hasTable(tableName)) continue;
+
+          // upsert 실행 전 uuid 목록 저장
+          const table = this.builder.getTable(tableName);
+          const uuids = table.rows.map((row) => row.uuid as string);
+
+          console.log(chalk.blue(`Upserting ${tableName} with ${uuids.length} rows`));
+          await this.builder.upsert(trx, tableName);
+
+          // upsert된 row들의 uuid -> id 매핑 구축
+          if (uuids.length > 0) {
+            const uuidToId = new Map<string, number>();
+            const rows = await trx(tableName).select("uuid", "id").whereIn("uuid", uuids);
+
+            for (const row of rows) {
+              uuidToId.set(row.uuid, row.id);
+            }
+
+            insertedIdsByTable.set(tableName, uuidToId);
+          }
+        }
+
+        // 4. ManyToMany 관계 처리
+        await this.processManyToManyRelations(trx, fixtures, insertedIdsByTable);
+
+        // 5. 결과 수집
+        for (const fixture of fixtures) {
+          const entity = EntityManager.get(fixture.entityId);
+
+          // 스킵된 fixture는 기존 레코드 정보로 결과 추가
+          const skipped = this.skippedFixtures.get(fixture.fixtureId);
+          if (skipped) {
+            results.push({
+              entityId: fixture.entityId,
+              data: await trx(entity.table).where("id", skipped.existingId).first(),
+            });
+            continue;
+          }
+
+          const ref = this.fixtureRefMap.get(fixture.fixtureId);
+          if (ref) {
+            const uuidToId = insertedIdsByTable.get(entity.table);
+            const insertedId = uuidToId?.get(ref.uuid);
+
+            if (insertedId !== undefined) {
+              results.push({
+                entityId: fixture.entityId,
+                data: await trx(entity.table).where("id", insertedId).first(),
+              });
+
+              console.log(
+                chalk.green(`Inserted into ${entity.table}: #${fixture.id} -> #${insertedId}`),
+              );
+            }
+          }
+        }
       });
+    } finally {
+      await db.destroy();
     }
 
-    await db.destroy();
-
-    return unique(records, (r) => `${r.entityId}#${r.data.id}`);
+    return unique(results, (r) => `${r.entityId}#${r.data.id}`);
   }
 
-  private prepareInsertData(fixture: FixtureRecord) {
-    const insertData: Record<string, string | number | boolean | null | object> = {};
+  /**
+   * FixtureRecord를 UpsertBuilder에 등록
+   */
+  private registerFixture(fixture: FixtureRecord): UBRef {
+    const entity = EntityManager.get(fixture.entityId);
+    const row: Record<string, unknown> = {};
+
+    // Override 모드 판단: target 또는 unique가 있고 override=true인 경우
+    const existingRecord = fixture.target ?? fixture.unique;
+    const isOverrideMode = fixture.override && existingRecord;
+
     for (const [propName, column] of Object.entries(fixture.columns)) {
-      if (isVirtualProp(column.prop)) {
+      const prop = column.prop;
+
+      if (isVirtualProp(prop)) {
         continue;
       }
 
-      const prop = column.prop as EntityProp;
-      if (!isRelationProp(prop)) {
-        if (prop.type === "json") {
-          insertData[propName] = JSON.stringify(column.value);
-        } else if (prop.type === "timestamp" || prop.type === "datetime") {
-          if (column.value === null) {
-            insertData[propName] = null;
-          } else if (
-            (column.value && typeof column.value === "string") ||
-            typeof column.value === "number"
-          ) {
-            insertData[propName] = new Date(column.value);
-          }
-        } else {
-          insertData[propName] = column.value;
+      // id/uuid 처리: Override 모드일 때만 기존 값 사용
+      if (propName === "id" || propName === "uuid") {
+        if (isOverrideMode && existingRecord) {
+          // Override: 기존 레코드의 값 사용 → UPDATE
+          row[propName] = existingRecord.columns[propName]?.value;
         }
-      } else if (
-        isBelongsToOneRelationProp(prop) ||
-        (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
-      ) {
-        insertData[`${propName}_id`] = column.value;
+        // 새 레코드: 제외 → INSERT (DB/UpsertBuilder가 생성)
+        continue;
+      }
+
+      if (isRelationProp(prop)) {
+        if (
+          isBelongsToOneRelationProp(prop) ||
+          (isOneToOneRelationProp(prop) && prop.hasJoinColumn)
+        ) {
+          const relatedId = column.value as number | null;
+          if (relatedId !== null && relatedId !== undefined) {
+            const relatedFixtureId = `${prop.with}#${relatedId}`;
+
+            // 먼저 skip된 fixture인지 확인
+            const skippedExistingId = this.skippedFixtures.get(relatedFixtureId)?.existingId;
+            if (skippedExistingId !== undefined) {
+              // skip된 fixture → target DB의 기존 레코드 id 사용
+              row[`${propName}_id`] = skippedExistingId;
+            } else {
+              const relatedRef = this.fixtureRefMap.get(relatedFixtureId);
+              if (relatedRef) {
+                // 이미 등록된 fixture 참조 → UBRef 사용
+                row[`${propName}_id`] = relatedRef;
+              } else {
+                // fixtures에 포함되지 않은 레코드 → ID 그대로 사용
+                row[`${propName}_id`] = relatedId;
+              }
+            }
+          } else {
+            row[`${propName}_id`] = null;
+          }
+        }
+        // HasMany, ManyToMany는 별도 처리
+      } else {
+        // 일반 컬럼
+        row[propName] = this.convertColumnValue(prop as EntityProp, column.value);
       }
     }
-    return insertData;
+
+    console.log(chalk.blue(`Registering ${entity.table} - ${inspect(row, false, null, true)}`));
+    const ref = this.builder.register(entity.table, row);
+    this.fixtureRefMap.set(fixture.fixtureId, ref);
+    this.uuidToFixtureId.set(ref.uuid, fixture.fixtureId);
+
+    return ref;
   }
 
-  private async insertFixture(db: Knex, fixture: FixtureRecord) {
-    const insertData = this.prepareInsertData(fixture);
-    const entity = EntityManager.get(fixture.entityId);
+  /**
+   * 컬럼 값 변환
+   */
+  private convertColumnValue(prop: EntityProp, value: unknown): unknown {
+    if (value === null || value === undefined) {
+      return null;
+    }
 
-    try {
-      const uniqueFound = await this.checkUniqueViolation(db, entity, fixture);
-      if (uniqueFound) {
-        return {
-          entityId: fixture.entityId,
-          id: uniqueFound.id,
-        };
-      }
+    switch (prop.type) {
+      case "json":
+        // UpsertBuilder.register에서 JSON.stringify 처리하므로 object 그대로 전달
+        return value;
 
-      const found = await db(entity.table).where("id", fixture.id).first();
-      if (found && !fixture.override) {
-        return {
-          entityId: fixture.entityId,
-          id: found.id,
-        };
-      }
+      case "timestamp":
+      case "datetime":
+        if (typeof value === "string" || typeof value === "number") {
+          return new Date(value);
+        }
+        return value;
 
-      const q = db.insert(insertData).into(entity.table);
-      await q.onDuplicateUpdate.apply(q, Object.keys(insertData));
-      console.log(chalk.green(`Inserted into ${entity.table}: #${fixture.id}`));
-
-      return {
-        entityId: fixture.entityId,
-        id: fixture.id,
-      };
-    } catch (err) {
-      console.log(err);
-      throw err;
+      default:
+        return value;
     }
   }
 
-  private async handleManyToManyRelations(
-    db: Knex,
-    fixture: FixtureRecord,
+  /**
+   * 테이블 순서 추출 (fixtures에 포함된 테이블만)
+   */
+  private getTableOrder(fixtures: FixtureRecord[]): string[] {
+    const tables: string[] = [];
+    const seen = new Set<string>();
+
+    for (const fixture of fixtures) {
+      const entity = EntityManager.get(fixture.entityId);
+      if (!seen.has(entity.table)) {
+        seen.add(entity.table);
+        tables.push(entity.table);
+      }
+    }
+
+    return tables;
+  }
+
+  private async processManyToManyRelations(
+    trx: Knex.Transaction,
     fixtures: FixtureRecord[],
-  ) {
-    for (const [, column] of Object.entries(fixture.columns)) {
-      const prop = column.prop as EntityProp;
-      if (isManyToManyRelationProp(prop)) {
-        const joinTable = (prop as ManyToManyRelationProp).joinTable;
-        const relatedIds = column.value as number[];
+    insertedIdsByTable: Map<string, Map<string, number>>,
+  ): Promise<void> {
+    for (const fixture of fixtures) {
+      const entity = EntityManager.get(fixture.entityId);
+      const sourceRef = this.fixtureRefMap.get(fixture.fixtureId);
 
-        for (const relatedId of relatedIds) {
-          if (!fixtures.find((f) => f.fixtureId === `${prop.with}#${relatedId}`)) {
-            continue;
-          }
+      if (!sourceRef) continue;
 
-          const entity = EntityManager.get(fixture.entityId);
+      const sourceUuidToId = insertedIdsByTable.get(entity.table);
+      const sourceId = sourceUuidToId?.get(sourceRef.uuid);
+
+      if (sourceId === undefined) continue;
+
+      for (const [, column] of Object.entries(fixture.columns)) {
+        const prop = column.prop;
+
+        if (isManyToManyRelationProp(prop) && Array.isArray(column.value)) {
+          // 선택되지 않은 MnayToMany 관계는 저장하지 않음
+          const targetTable = EntityManager.get(prop.with);
+          if (this.builder.hasTable(targetTable.table) === false) continue;
+
+          const relatedIds = column.value as number[];
+          if (relatedIds.length === 0) continue;
+
+          const joinTable = (prop as ManyToManyRelationProp).joinTable;
           const relatedEntity = EntityManager.get(prop.with);
-          if (!entity || !relatedEntity) {
-            throw new Error(`Entity not found: ${fixture.entityId}, ${prop.with}`);
-          }
 
-          const [found] = await db(joinTable)
-            .where({
-              [`${inflection.singularize(entity.table)}_id`]: fixture.id,
-              [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
-            })
-            .limit(1);
-          if (found) {
-            continue;
-          }
+          const sourceColumn = `${inflection.singularize(entity.table)}_id`;
+          const targetColumn = `${inflection.singularize(relatedEntity.table)}_id`;
 
-          const newIds = await db(joinTable).insert({
-            [`${inflection.singularize(entity.table)}_id`]: fixture.id,
-            [`${inflection.singularize(relatedEntity.table)}_id`]: relatedId,
-          });
-          console.log(
-            chalk.green(
-              `Inserted into ${joinTable}: ${entity.table}(${fixture.id}) - ${relatedEntity.table}(${relatedId}) ID: ${newIds}`,
-            ),
-          );
+          for (const relatedId of relatedIds) {
+            const relatedFixtureId = `${prop.with}#${relatedId}`;
+            const relatedRef = this.fixtureRefMap.get(relatedFixtureId);
+
+            let targetId: number;
+
+            if (relatedRef) {
+              const relatedUuidToId = insertedIdsByTable.get(relatedEntity.table);
+              const resolvedId = relatedUuidToId?.get(relatedRef.uuid);
+
+              if (resolvedId === undefined) {
+                console.warn(
+                  `Related fixture ${relatedFixtureId} not found in insertedIds, skipping`,
+                );
+                continue;
+              }
+              targetId = resolvedId;
+            } else {
+              targetId = relatedId;
+            }
+
+            // JoinTable에 삽입
+            const [found] = await trx(joinTable)
+              .where({
+                [sourceColumn]: sourceId,
+                [targetColumn]: targetId,
+              })
+              .limit(1);
+
+            if (!found) {
+              await trx(joinTable).insert({
+                [sourceColumn]: sourceId,
+                [targetColumn]: targetId,
+              });
+
+              console.log(
+                chalk.green(
+                  `Inserted into ${joinTable}: ${entity.table}(${sourceId}) - ${relatedEntity.table}(${targetId})`,
+                ),
+              );
+            }
+          }
         }
       }
     }
+  }
+
+  private async checkUniqueViolation(db: Knex, entity: Entity, fixture: FixtureRecord) {
+    const _uniqueIndexes = entity.indexes?.filter((i) => i.type === "unique") ?? [];
+
+    const uniqueIndexes = _uniqueIndexes.filter((index) =>
+      index.columns.every((column) => !column.startsWith(`${entity.table}__`)),
+    );
+    if (uniqueIndexes.length === 0) {
+      return null;
+    }
+
+    let uniqueQuery = db(entity.table);
+    let hasCondition = false;
+
+    for (const index of uniqueIndexes) {
+      // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
+      const containsNull = index.columns.some((column) => {
+        const field = column.replace(/_id$/, "");
+        return fixture.columns[field]?.value === null;
+      });
+      if (containsNull) {
+        continue;
+      }
+
+      uniqueQuery = uniqueQuery.orWhere((qb) => {
+        for (const column of index.columns) {
+          const field = column.replace(/_id$/, "");
+
+          if (Array.isArray(fixture.columns[field]?.value)) {
+            qb.whereIn(column, fixture.columns[field].value);
+          } else {
+            qb.andWhere(column, fixture.columns[field]?.value);
+          }
+        }
+      });
+      hasCondition = true;
+    }
+
+    if (!hasCondition) {
+      return null;
+    }
+
+    const [uniqueFound] = await uniqueQuery;
+    return uniqueFound;
+  }
+
+  private async checkDuplicateByColumns(
+    db: Knex,
+    entity: Entity,
+    fixture: FixtureRecord,
+    columns: string[],
+  ) {
+    if (columns.length === 0) {
+      return null;
+    }
+
+    const whereClause: Record<string, unknown> = {};
+
+    for (const column of columns) {
+      // relation 필드인 경우 _id 붙이기
+      const prop = entity.props.find((p) => p.name === column);
+      const dbColumn = prop && isRelationProp(prop) ? `${column}_id` : column;
+      const value = fixture.columns[column]?.value;
+
+      // null 값이 포함된 경우 중복 확인 스킵
+      if (value === null || value === undefined) {
+        return null;
+      }
+
+      whereClause[dbColumn] = value;
+    }
+
+    const [found] = await db(entity.table).where(whereClause).limit(1);
+    return found;
   }
 
   async addFixtureLoader(code: string) {
@@ -601,44 +848,6 @@ export class FixtureManagerClass {
       throw new Error("Failed to find fixtureLoader in fixture.ts");
     }
   }
-
-  // 해당 픽스쳐의 값으로 유니크 제약에 위배되는 레코드가 있는지 확인
-  private async checkUniqueViolation(db: Knex, entity: Entity, fixture: FixtureRecord) {
-    const _uniqueIndexes = entity.indexes.filter((i) => i.type === "unique");
-
-    // ManyToMany 관계 테이블의 유니크 제약은 제외
-    const uniqueIndexes = _uniqueIndexes.filter((index) =>
-      index.columns.every((column) => !column.startsWith(`${entity.table}__`)),
-    );
-    if (uniqueIndexes.length === 0) {
-      return null;
-    }
-
-    let uniqueQuery = db(entity.table);
-    for (const index of uniqueIndexes) {
-      // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
-      const containsNull = index.columns.some((column) => {
-        const field = column.split("_id")[0];
-        return fixture.columns[field].value === null;
-      });
-      if (containsNull) {
-        continue;
-      }
-
-      uniqueQuery = uniqueQuery.orWhere((qb) => {
-        for (const column of index.columns) {
-          const field = column.split("_id")[0];
-
-          if (Array.isArray(fixture.columns[field].value)) {
-            qb.whereIn(column, fixture.columns[field].value);
-          } else {
-            qb.andWhere(column, fixture.columns[field].value);
-          }
-        }
-      });
-    }
-    const [uniqueFound] = await uniqueQuery;
-    return uniqueFound;
-  }
 }
+
 export const FixtureManager = new FixtureManagerClass();

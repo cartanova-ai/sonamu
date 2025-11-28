@@ -1,4 +1,5 @@
 import type {
+  DuplicateCheckOptions,
   Entity,
   EntityIndex,
   EntityProp,
@@ -373,11 +374,12 @@ export namespace SonamuUIService {
     sourceDB: string,
     targetDB: string,
     search: FixtureSearchOptions,
+    duplicateCheck?: DuplicateCheckOptions,
   ): Promise<FixtureRecord[]> {
     return fetch({
       method: "POST",
       url: `/api/fixture`,
-      data: { sourceDB, targetDB, search },
+      data: { sourceDB, targetDB, search, duplicateCheck },
     });
   }
 
@@ -396,11 +398,12 @@ export namespace SonamuUIService {
     entityId: string,
     id: string,
     subset: string,
+    db?: string,
   ): Promise<ExtendedEntity> {
     return fetch({
       method: "GET",
       url: `/api/entity/findById`,
-      params: { entityId, id, subset },
+      params: { entityId, id, subset, db },
     });
   }
 }
