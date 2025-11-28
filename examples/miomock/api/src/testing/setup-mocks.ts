@@ -15,8 +15,9 @@ vi.mock("fs/promises", async (importOriginal) => {
   const wrapped = wrapMockProxy("fs/promises", actual);
   return {
     ...wrapped,
-    writeFile: vi.fn((path: PathLike | FileHandle, _data: string | Buffer | Uint8Array) => {
-      Naite.t("fs/promises:writeFile", path);
+    writeFile: vi.fn((path: PathLike | FileHandle, data: string | Buffer | Uint8Array) => {
+      Naite.t("fs/promises:writeFile", { file: path, data });
+
       return Promise.resolve();
     }),
   };
