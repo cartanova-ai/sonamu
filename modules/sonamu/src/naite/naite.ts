@@ -2,6 +2,7 @@
 
 import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
+import type { ComparisonOperator } from "../database/puri.types";
 
 // StackFrame 타입
 interface StackFrame {
@@ -157,7 +158,7 @@ export class NaiteQuery {
    * @param operator 비교 연산자
    * @param value 비교값
    */
-  where(path: string, operator: string, value: any): NaiteQuery {
+  where(path: string, operator: ComparisonOperator | "includes", value: any): NaiteQuery {
     const filtered = this.traces.filter((trace) => {
       const actual = get(trace, path) as any;
 
@@ -170,9 +171,9 @@ export class NaiteQuery {
           return actual >= value;
         case "<=":
           return actual <= value;
-        case "===":
+        case "=":
           return actual === value;
-        case "!==":
+        case "!=":
           return actual !== value;
         case "includes":
           return typeof actual === "string" && actual.includes(value);
