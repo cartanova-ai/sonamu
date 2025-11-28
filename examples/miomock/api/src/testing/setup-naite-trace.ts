@@ -11,6 +11,8 @@ beforeEach((context) => {
   NaiteReporter.setCurrentTest({
     suite: context.task.suite?.name,
     name: context.task.name,
+    filePath: context.task.file?.filepath,
+    line: context.task.location?.line,
   });
 });
 

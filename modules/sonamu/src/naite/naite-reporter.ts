@@ -15,6 +15,8 @@ import { join } from "path";
 export interface TestInfo {
   suite?: string;
   name?: string;
+  filePath?: string; // 테스트 파일 경로
+  line?: number; // 테스트 케이스 라인 번호
 }
 
 export interface NaiteTraceEntry {
@@ -123,6 +125,8 @@ class NaiteReporterClass {
       runId: this.currentRunId,
       suite: info.suite,
       name: info.name,
+      testFilePath: info.filePath,
+      testLine: info.line,
       at: new Date().toISOString(),
     });
   }
@@ -190,6 +194,8 @@ class NaiteReporterClass {
       runId: this.currentRunId ?? "unknown",
       testSuite: this.currentTestInfo?.suite,
       testName: this.currentTestInfo?.name,
+      testFilePath: this.currentTestInfo?.filePath,
+      testLine: this.currentTestInfo?.line,
     });
   }
 }
