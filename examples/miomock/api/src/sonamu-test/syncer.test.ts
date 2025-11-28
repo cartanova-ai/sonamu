@@ -48,7 +48,7 @@ describe("Syncer", () => {
       expect(Naite.get("step").result()).toMatchSnapshot();
     });
 
-    test.only("generated 파일 변경 → 타겟에 복사", async () => {
+    test("generated 파일 변경 → 타겟에 복사", async () => {
       const generatedPath = join(
         apiRootPath,
         "src/application/sonamu.generated.ts",
