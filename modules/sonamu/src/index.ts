@@ -18,7 +18,7 @@ export * from "./file-storage/driver";
 export * from "./migration/migrator";
 export * from "./migration/types";
 export * from "./naite/naite";
-export * from "./naite/naite-trace";
+export * from "./naite/naite-reporter";
 export * from "./stream/sse";
 export * from "./testing/fixture-manager";
 export * from "./types/types";

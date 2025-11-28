@@ -1,25 +1,19 @@
-import { setCurrentTest, clearCurrentTest, startTestRun, endTestRun } from "sonamu";
-import { beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+import { NaiteReporter } from "sonamu";
+import { afterEach, beforeEach } from "vitest";
 
 /**
- * Naite의 trace가 파일에 잘 기록될 수 있도록 테스트 suite/case 전후에 적절한 작업을 해줍니다.
+ * Naite의 trace가 파일에 잘 기록될 수 있도록 테스트 case 전후에 적절한 작업을 해줍니다.
+ *
+ * 참고: startTestRun/endTestRun은 naite-vitest-reporter.ts에서 처리합니다.
  */
 
-beforeAll(() => {
-  startTestRun();
-});
-
-afterAll(() => {
-  endTestRun();
-});
-
 beforeEach((context) => {
-  setCurrentTest({
+  NaiteReporter.setCurrentTest({
     suite: context.task.suite?.name,
     name: context.task.name,
   });
 });
 
 afterEach(() => {
-  clearCurrentTest();
+  NaiteReporter.clearCurrentTest();
 });

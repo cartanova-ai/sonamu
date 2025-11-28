@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import NaiteVitestReporter from "./src/testing/naite-vitest-reporter";
 
 export default defineConfig({
   plugins: [],
@@ -8,6 +9,7 @@ export default defineConfig({
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts", "./src/testing/setup-naite-trace.ts"],
+    reporters: ["default", NaiteVitestReporter],
     pool: "forks",
     maxWorkers: 1,
     isolate: false,
