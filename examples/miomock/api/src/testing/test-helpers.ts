@@ -1,6 +1,5 @@
-import { type Entity, EntityManager } from "sonamu";
+import { Entity, type EntityJson, EntityManager } from "sonamu";
 import { vi } from "vitest";
-import { MigrationSetTestEntity } from "./mock-entities";
 
 /**
  * EntityManager.get을 모킹하여 특정 엔티티만 override하고 나머지는 원본을 반환합니다.
@@ -8,12 +7,16 @@ import { MigrationSetTestEntity } from "./mock-entities";
  * @param override override할 Entity 속성
  */
 export function mockEntityManagerGet(targetEntityId: string, override: Partial<Entity>) {
+  const originalEntityJson = EntityManager.get(targetEntityId).toJson();
   const originalGet = EntityManager.get;
-  const originalEntity = EntityManager.get(targetEntityId);
   vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
     if (entityId === targetEntityId) {
-      return { ...originalEntity, ...override } as Entity;
+      return new Entity({
+        ...originalEntityJson,
+        ...override,
+      } as EntityJson);
     }
+
     return originalGet.call(EntityManager, entityId);
   });
 }
@@ -28,14 +31,5 @@ export function mockEntityManagerGetMultiple(entities: Record<string, Entity>) {
       return entities[entityId];
     }
     throw new Error(`테스트용 EntityManager.get 모의 구현에 '${entityId}'가 정의되지 않았습니다.`);
-  });
-}
-
-/**
- * migration-set.test.ts에서 사용할 엔티티들을 한 번에 모킹하는 헬퍼 함수
- */
-export function mockMigrationSetTestEntities() {
-  mockEntityManagerGetMultiple({
-    MigrationSetTest: MigrationSetTestEntity,
   });
 }
