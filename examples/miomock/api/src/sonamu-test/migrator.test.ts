@@ -1,12 +1,4 @@
-import {
-  type Entity,
-  type EntityJson,
-  EntityManager,
-  type GenMigrationCode,
-  Migrator,
-  Naite,
-  Sonamu,
-} from "sonamu";
+import { type Entity, type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGet } from "../testing/test-helpers";
@@ -137,15 +129,18 @@ describe("Migrator test", () => {
           },
         ],
       });
-
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
-      const alterCode = status.preparedCodes.find(
-        (code) => code.table === "users" && code.type === "normal",
-      );
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
+      expect(alterCode?.title).toBe("alter_users_add1");
+
+      // up
       expect(alterCode?.formatted).toContain('table.string("test_column", 256).notNullable()');
+
+      // down
+      expect(alterCode?.formatted).toContain('table.dropColumns("test_column")');
     });
 
     test("컬럼 삭제 감지", async () => {
@@ -159,54 +154,57 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.title.startsWith("alter_users_"));
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toContain("drop1");
+      expect(alterCode?.title).toBe("alter_users_drop1");
+
+      // up
       expect(alterCode?.formatted).toContain('table.dropColumns("deleted_at")');
+
+      // down
+      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
     });
 
     test("컬럼 속성 변경 감지", async () => {
-      // userEntity의 is_verified 컬럼의 nullable 속성을 false에서 true로 변경
+      // UserEntity.deleted_at nullable -> notNullable로 변경
       mockEntityManagerGet("User", {
-        props: EntityManager.get("User").props.map((p) =>
-          p.name === "is_verified" ? { ...p, nullable: true } : p,
-        ),
+        props: EntityManager.get("User").props.map((prop) => {
+          if (prop.name === "deleted_at") {
+            return {
+              ...prop,
+              nullable: false,
+            };
+          }
+          return prop;
+        }),
       });
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
-      const alterCode = status.preparedCodes.find(
-        (code) => code.table === "users" && code.type === "normal",
-      );
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.formatted).toContain('table.boolean("is_verified").nullable()');
+      expect(alterCode?.title).toBe("alter_users_alter1");
+
+      // up
+      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").notNullable()');
+      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
+
+      // down
+      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
+      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").notNullable()');
     });
 
     test("컬럼 이름 변경 감지 (Drop & Add)", async () => {
       // UserEntity의 username 컬럼을 full_name으로 변경
       mockEntityManagerGet("User", {
-        props: EntityManager.get("User").props.map((p) =>
-          p.name === "username" ? { ...p, name: "full_name" } : p,
-        ),
-      });
-
-      const status = await migrator.getStatus();
-
-      const alterCode = status.preparedCodes.find(
-        (code) => code.table === "users" && code.type === "normal",
-      );
-      expect(alterCode).toBeDefined();
-      expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
-      expect(alterCode?.formatted).toContain('table.dropColumns("username")');
-    });
-
-    test("인덱스 추가 감지 (Normal, Unique)", async () => {
-      // UserEntity에 인덱스 추가 (기존에 없는 인덱스)
-      mockEntityManagerGet("User", {
-        indexes: [
-          ...EntityManager.get("User").indexes,
-          { type: "index", columns: ["email", "username"] },
-          { type: "unique", columns: ["username"] },
-        ],
+        props: EntityManager.get("User").props.map((prop) => {
+          if (prop.name === "username") {
+            return {
+              ...prop,
+              name: "full_name",
+            };
+          }
+          return prop;
+        }),
       });
 
       const status = await migrator.getStatus();
@@ -216,8 +214,54 @@ describe("Migrator test", () => {
         (code) => code.table === "users" && code.type === "normal",
       );
       expect(alterCode).toBeDefined();
-      expect(alterCode?.formatted).toContain('table.index(["email", "username"])');
-      expect(alterCode?.formatted).toContain('table.unique(["username"])');
+      expect(alterCode?.title).toBe("alter_users_add1_drop1");
+
+      // up
+      expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
+      expect(alterCode?.formatted).toContain('table.dropColumns("username")');
+
+      // down
+      expect(alterCode?.formatted).toContain('table.dropColumns("full_name")');
+      expect(alterCode?.formatted).toContain('table.string("username", 255).notNullable()');
+    });
+
+    test("인덱스 추가 감지 (INDEX, UNIQUE, FULLTEXT)", async () => {
+      mockEntityManagerGet("Department", {
+        indexes: [
+          ...EntityManager.get("Department").indexes,
+          { type: "index", columns: ["name"] },
+          { type: "unique", columns: ["company_id"] },
+          { type: "fulltext", columns: ["parent_id"], parser: "ngram" },
+        ],
+      });
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "departments");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
+
+        export async function up(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (table) => {
+            table.index(["name"]);
+            table.unique(["company_id"]);
+          });
+          await knex.raw(
+            \`ALTER TABLE departments ADD FULLTEXT INDEX departments_parent_id_index (parent_id) WITH PARSER ngram\`,
+          );
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          return knex.schema.alterTable("departments", (table) => {
+            table.dropIndex(["parent_id"]);
+            table.dropIndex(["name"]);
+            table.dropUnique(["company_id"]);
+          });
+        }
+        "
+      `,
+      );
     });
 
     test("인덱스 삭제 감지", async () => {
@@ -227,13 +271,17 @@ describe("Migrator test", () => {
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
+      const preparedCodes = status.preparedCodes.find((code) => code.table === "users");
+      expect(preparedCodes).toBeDefined();
+      expect(preparedCodes?.title).toBe("alter_users");
 
-      const alterCode = status.preparedCodes.find(
-        (code) => code.table === "users" && code.type === "normal",
-      );
-      expect(alterCode).toBeDefined();
-      // fulltext index drop
-      expect(alterCode?.formatted).toContain('table.dropIndex(["bio"])');
+      // up
+      expect(preparedCodes?.formatted).toContain('table.dropIndex(["bio"])');
+      expect(preparedCodes?.formatted).toContain('table.dropUnique(["email"])');
+
+      // down
+      expect(preparedCodes?.formatted).toContain('table.index(["bio"], undefined, "FULLTEXT")');
+      expect(preparedCodes?.formatted).toContain('table.unique(["email"])');
     });
 
     test("인덱스 변경 감지", async () => {
@@ -242,19 +290,34 @@ describe("Migrator test", () => {
         indexes: [{ type: "fulltext", columns: ["bio", "username"] }],
       });
 
-      const status = await migrator.getStatus();
-      expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
+      await migrator.getStatus();
+      expect(Naite.get("getStatus:preparedCodes").first()).toMatchInlineSnapshot(`
+        [
+          {
+            "formatted": "import type { Knex } from "knex";
 
-      const alterCode = status.preparedCodes.find(
-        (code) => code.table === "users" && code.type === "normal",
-      );
-      expect(alterCode).toBeDefined();
-      // 이전 인덱스 drop
-      expect(alterCode?.formatted).toContain('table.dropIndex(["bio"])');
-      // 새로운 인덱스 추가
-      expect(alterCode?.formatted).toContain(
-        'table.index(["bio", "username"], undefined, "FULLTEXT")',
-      );
+        export async function up(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("users", (table) => {
+            table.index(["bio", "username"], undefined, "FULLTEXT");
+            table.dropIndex(["bio"]);
+            table.dropUnique(["email"]);
+          });
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          return knex.schema.alterTable("users", (table) => {
+            table.dropIndex(["bio", "username"]);
+            table.index(["bio"], undefined, "FULLTEXT");
+            table.unique(["email"]);
+          });
+        }
+        ",
+            "table": "users",
+            "title": "alter_users",
+            "type": "normal",
+          },
+        ]
+      `);
     });
 
     test("FK 추가 감지 (BelongsToOne)", async () => {
@@ -278,19 +341,18 @@ describe("Migrator test", () => {
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then
-      const addCompanyIdCode = status.preparedCodes[0];
-      const addCompanyFKConstraintCode = status.preparedCodes[1];
 
-      expect(status.preparedCodes).toHaveLength(2);
-      expect(addCompanyIdCode?.title).toBe("alter_users_add1");
-      expect(addCompanyIdCode?.formatted).toContain(
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.title).toBe("alter_users_add1");
+
+      // up
+      expect(alterCode?.formatted).toContain(
         'table.integer("company_id").unsigned().notNullable()',
       );
 
-      expect(addCompanyFKConstraintCode?.title).toBe("alter_users_foreigns");
-      expect(addCompanyFKConstraintCode?.formatted).toContain(
-        'table.foreign("company_id").references("companies.id").onUpdate("CASCADE").onDelete("CASCADE")',
-      );
+      // down
+      expect(alterCode?.formatted).toContain('table.dropColumns("company_id")');
     });
 
     test("FK 추가 감지 (OneToOne)", async () => {
@@ -316,20 +378,17 @@ describe("Migrator test", () => {
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // then
-      const addProfileIdCode = status.preparedCodes[0];
-      const addProfileFKConstraintCode = status.preparedCodes[1];
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.title).toBe("alter_users_add1");
 
-      expect(status.preparedCodes).toHaveLength(2);
-      expect(addProfileIdCode?.title).toBe("alter_users_add1");
-      expect(addProfileIdCode?.formatted).toContain(
+      // up
+      expect(alterCode?.formatted).toContain(
         'table.integer("profile_id").unsigned().notNullable()',
       );
 
-      expect(addProfileFKConstraintCode?.title).toBe("alter_users_foreigns");
-      expect(addProfileFKConstraintCode?.formatted).toContain(
-        'table.foreign("profile_id").references("profiles.id").onUpdate("CASCADE").onDelete("CASCADE")',
-      );
-
+      // down
+      expect(alterCode?.formatted).toContain('table.dropColumns("profile_id")');
       // unique constraint
       // expect(addProfileFKConstraintCode?.formatted).toContain('table.unique(["profile_id"])');
     });
@@ -354,7 +413,7 @@ describe("Migrator test", () => {
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // HasMany 관계는 마이그레이션 코드 생성 안함
-      expect(status.preparedCodes).toHaveLength(0);
+      expect(status.preparedCodes.length).toBe(0);
     });
 
     test("FK 추가 감지 (ManyToMany)", async () => {
@@ -537,7 +596,7 @@ describe("Migrator test", () => {
     });
 
     test("신규 엔티티 감지", async () => {
-      // 새 Entity 등록 → create 코드
+      // 새 Entity 등록 → create table 마이그레이션 코드 생성
       const newEntity = {
         id: "TestEntity",
         table: "test_entities",
@@ -568,12 +627,16 @@ describe("Migrator test", () => {
       );
 
       expect(createTableCode).toBeDefined();
-      expect(createTableCode?.type).toBe("normal");
-      expect(createTableCode?.table).toBe("test_entities");
+      expect(createTableCode?.title).toBe("create__test_entities");
+
+      // up
       expect(createTableCode?.formatted).toContain('knex.schema.createTable("test_entities"');
       expect(createTableCode?.formatted).toContain("table.increments().primary()");
       expect(createTableCode?.formatted).toContain('table.string("name", 255).notNullable()');
       expect(createTableCode?.formatted).toContain('table.text("description").nullable()');
+
+      // down
+      expect(createTableCode?.formatted).toContain('knex.schema.dropTable("test_entities")');
     });
 
     test("코드 정렬 순서", async () => {
@@ -632,82 +695,6 @@ describe("Migrator test", () => {
       );
 
       expect(createTableIndex).toBeLessThan(foreignIndex);
-    });
-
-    test("조인테이블 (ManyToMany)", async () => {
-      // given: User와 Label 간의 ManyToMany 관계 추가
-      // 1. Label 엔티티 생성
-      const labelEntity = {
-        id: "Label",
-        table: "labels",
-        title: "LABEL",
-        props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
-          { name: "name", desc: "라벨명", type: "string", length: 100 },
-        ],
-        indexes: [],
-        subsets: {},
-        enums: {},
-      } as EntityJson;
-      await EntityManager.register(labelEntity);
-
-      // 2. User 엔티티에 ManyToMany 관계 추가
-      const originalGet = EntityManager.get;
-      const originalUser = EntityManager.get("User");
-      const modifiedProps = [
-        ...originalUser.props,
-        {
-          type: "relation",
-          name: "labels",
-          with: "Label",
-          desc: "라벨",
-          relationType: "ManyToMany",
-          joinTable: "users__labels",
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        },
-      ];
-      vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-        if (entityId === "User") {
-          return {
-            ...originalUser,
-            props: modifiedProps,
-          } as Entity;
-        }
-        return originalGet.call(EntityManager, entityId);
-      });
-
-      // when
-      await migrator.getStatus();
-
-      // then
-      const preparedCodes: GenMigrationCode[] = Naite.get("getStatus:preparedCodes").first();
-      expect(preparedCodes).toMatchSnapshot();
-      expect(preparedCodes.length).toBe(3);
-
-      // Label 테이블 생성 코드
-      const labelCode = preparedCodes[0];
-      expect(labelCode).toBeDefined();
-      expect(labelCode?.title).toBe("create__labels");
-
-      // 조인테이블 (users__labels) 생성 코드
-      const userLabelsJoinTableCode = preparedCodes[1];
-      expect(userLabelsJoinTableCode).toBeDefined();
-      expect(userLabelsJoinTableCode?.title).toBe("create__users__labels");
-      // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
-      expect(userLabelsJoinTableCode?.formatted).toContain("user_id");
-      expect(userLabelsJoinTableCode?.formatted).toContain("label_id");
-      expect(userLabelsJoinTableCode?.formatted).toContain('table.uuid("uuid")');
-      expect(userLabelsJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
-
-      // 조인테이블 FK 생성 코드
-      const userLabelFKCode = preparedCodes[2];
-      expect(userLabelFKCode).toBeDefined();
-      expect(userLabelFKCode?.title).toBe("foreign__users__labels__user_id_label_id");
-      // FK가 users.id와 labels.id를 참조하는지 확인
-      expect(userLabelFKCode?.formatted).toContain('references("users.id")');
-      expect(userLabelFKCode?.formatted).toContain('references("labels.id")');
-      expect(userLabelFKCode?.formatted).toContain("CASCADE");
     });
   });
 

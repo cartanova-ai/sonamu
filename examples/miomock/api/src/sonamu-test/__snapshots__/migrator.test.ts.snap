@@ -300,34 +300,6 @@ export async function down(knex: Knex): Promise<void> {
 ]
 `;
 
-exports[`Migrator test > preparedCodes 생성 > 인덱스 변경 감지 1`] = `
-[
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.index(["bio", "username"], undefined, "FULLTEXT");
-    table.dropIndex(["bio"]);
-    table.dropUnique(["email"]);
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
-    table.dropIndex(["bio", "username"]);
-    table.index(["bio"], undefined, "FULLTEXT");
-    table.unique(["email"]);
-  });
-}
-",
-    "table": "users",
-    "title": "alter_users",
-    "type": "normal",
-  },
-]
-`;
-
 exports[`Migrator test > preparedCodes 생성 > 인덱스 삭제 감지 1`] = `
 [
   {
@@ -350,107 +322,6 @@ export async function down(knex: Knex): Promise<void> {
     "table": "users",
     "title": "alter_users",
     "type": "normal",
-  },
-]
-`;
-
-exports[`Migrator test > preparedCodes 생성 > 인덱스 추가 감지 (Normal, Unique) 1`] = `
-[
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.alterTable("users", (table) => {
-    table.index(["email", "username"]);
-    table.unique(["username"]);
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
-    table.dropIndex(["email", "username"]);
-    table.dropUnique(["username"]);
-  });
-}
-",
-    "table": "users",
-    "title": "alter_users",
-    "type": "normal",
-  },
-]
-`;
-
-exports[`Migrator test > preparedCodes 생성 > 조인테이블 (ManyToMany) 1`] = `
-[
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("labels", (table) => {
-    // columns
-    table.increments().primary();
-    table.string("name", 100).notNullable();
-    table.uuid("uuid").nullable();
-
-    // indexes
-    table.unique(["uuid"]);
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("labels");
-}
-",
-    "table": "labels",
-    "title": "create__labels",
-    "type": "normal",
-  },
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("users__labels", (table) => {
-    // columns
-    table.increments().primary();
-    table.integer("user_id").unsigned().notNullable();
-    table.integer("label_id").unsigned().notNullable();
-    table.uuid("uuid").nullable();
-
-    // indexes
-    table.unique(["uuid"]);
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("users__labels");
-}
-",
-    "table": "users__labels",
-    "title": "create__users__labels",
-    "type": "normal",
-  },
-  {
-    "formatted": "import type { Knex } from "knex";
-
-export async function up(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users__labels", (table) => {
-    // create fk
-    table.foreign("user_id").references("users.id").onUpdate("CASCADE").onDelete("CASCADE");
-    table.foreign("label_id").references("labels.id").onUpdate("CASCADE").onDelete("CASCADE");
-  });
-}
-
-export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users__labels", (table) => {
-    // drop fk
-    table.dropForeign(["user_id"]);
-    table.dropForeign(["label_id"]);
-  });
-}
-",
-    "table": "users__labels",
-    "title": "foreign__users__labels__user_id_label_id",
-    "type": "foreign",
   },
 ]
 `;
@@ -489,19 +360,49 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 속성 변경 감지 1`] 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // alter column
-    table.boolean("is_verified").nullable().defaultTo(knex.raw("0")).alter();
+    table.datetime("deleted_at").notNullable().alter();
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // rollback - alter column
-    table.boolean("is_verified").notNullable().defaultTo(knex.raw("0")).alter();
+    table.datetime("deleted_at").nullable().alter();
   });
 }
 ",
     "table": "users",
     "title": "alter_users_alter1",
+    "type": "normal",
+  },
+]
+`;
+
+exports[`Migrator test > preparedCodes 생성 > 컬럼 이름 변경 감지 (Drop & Add) 1`] = `
+[
+  {
+    "formatted": "import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // add
+    table.string("full_name", 255).notNullable();
+    // drop columns
+    table.dropColumns("username");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("users", (table) => {
+    // rollback - add
+    table.dropColumns("full_name");
+    // rollback - drop columns
+    table.string("username", 255).notNullable();
+  });
+}
+",
+    "table": "users",
+    "title": "alter_users_add1_drop1",
     "type": "normal",
   },
 ]
