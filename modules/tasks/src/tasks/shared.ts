@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Task 프로젝트 임시 조치 */
+
 import type { MatchedRoute } from "rou3";
 import type { z } from "zod";
 import { SonamuTaskError } from "../errors";

@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Task 프로젝트 임시 조치 */
+
 import assert from "node:assert";
 import { z } from "zod";
 import { createScheduler } from "../scheduler";

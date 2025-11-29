@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Task 프로젝트 임시 조치 */
+
 import { z } from "zod";
 import { createScheduler } from "../scheduler";
 import type { SchedulerConfig, TaskContext, TaskEvent } from "../types";
