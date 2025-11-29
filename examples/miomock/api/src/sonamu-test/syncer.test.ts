@@ -287,7 +287,7 @@ describe("Syncer", () => {
       const writeFile = Naite.get("fs/promises:writeFile:*").first().data;
       //console.log("writeFile", writeFile);
 
-      expect(writeFile).toMatchFileSnapshot(
+      await expect(writeFile).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/model.test.ts.snap",
       );
     });
