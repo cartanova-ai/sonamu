@@ -5,8 +5,19 @@ import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 describe("Puri Type Safety", () => {
-  describe("A. 존재하지 않는 컬럼/테이블", () => {
-    test("유효하지 않은 컬럼은 타입 에러가 발생해야 함", async () => {
+  describe("A. 기본", () => {
+    test("테이블 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 테이블
+      db.table("users");
+      db.table("employees");
+
+      // @ts-expect-error - 존재하지 않는 테이블
+      db.table("nonexistent_table");
+    });
+
+    test("컬럼 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
 
       // 유효한 컬럼
@@ -24,40 +35,20 @@ describe("Puri Type Safety", () => {
       db.table("users").select({ id: "invalid_table.id" });
     });
 
-    test("from - 존재하지 않는 테이블은 타입 에러가 발생해야 함", async () => {
+    test("기본 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
 
-      // 유효한 테이블
-      db.table("users");
-      db.table("employees");
-
-      // @ts-expect-error - 존재하지 않는 테이블
-      db.table("nonexistent_table");
-    });
-  });
-
-  describe("B. 타입 불일치", () => {
-    test("number 컬럼에 string 값 where", async () => {
-      const db = UserModel.getPuri("r");
-
-      // 유효한 타입
+      //유효한 타입
       db.table("users").where("id", 1);
 
-      // @ts-expect-error - id는 number인데 string 전달
+      // @ts-expect-error - number 컬럼에 string
       db.table("users").where("id", "문자열");
-    });
 
-    test("string 컬럼에 number 값 where", async () => {
-      const db = UserModel.getPuri("r");
-
-      // 유효한 타입
-      db.table("users").where("username", "홍길동");
-
-      // @ts-expect-error - username은 string인데 number 전달
+      // @ts-expect-error - string 컬럼에 number
       db.table("users").where("username", 123);
     });
 
-    test("enum에 잘못된 값", async () => {
+    test("ENUM 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
 
       // 유효한 enum 값
@@ -69,96 +60,25 @@ describe("Puri Type Safety", () => {
     });
   });
 
-  describe("C. JOIN 후 컬럼 경로 오류", () => {
-    test("join 후에는 테이블 prefix 필요", async () => {
+  describe("B. JOIN 타입 안전성", () => {
+    test("JOIN 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
 
       // join 전: prefix 없이 사용 가능
       db.table("users").where("id", 1);
 
       // join 후: prefix 필요
-      const joined = db.table("employees").join("users", "employees.user_id", "users.id");
-      joined.where("employees.id", 1);
-      joined.where("users.id", 1);
+      const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+      joinQuery.where("employees.id", 1);
+      joinQuery.where("users.id", 1);
 
       // @ts-expect-error - join 후에는 prefix 없이 사용 불가
-      joined.where("id", 1);
-    });
-
-    test("join 안한 테이블 컬럼 참조", async () => {
-      const db = UserModel.getPuri("r");
+      joinQuery.where("id", 1);
 
       // @ts-expect-error - departments는 join 안 했으므로 참조 불가
       db.table("users").where("departments.id", 1);
-    });
-  });
 
-  describe("D. NULL 처리", () => {
-    test("nullable 컬럼 타입 검증", async () => {
-      const db = UserModel.getPuri("r");
-      const result = await db.table("users").select({
-        birthDate: "birth_date",
-      });
-
-      type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem["birthDate"]>().toEqualTypeOf<string | null>();
-    });
-
-    test("nullable 컬럼에 null 값으로 where 가능", async () => {
-      const db = UserModel.getPuri("r");
-
-      // nullable 컬럼에서 null 값 허용
-      db.table("users").where("birth_date", null);
-      db.table("employees").where("department_id", null);
-
-      // @ts-expect-error - NOT NULL 컬럼에 null 불가
-      db.table("users").where("id", null);
-    });
-  });
-
-  describe("E. 타입 추론 검증", () => {
-    test("select 후 TResult 타입 정확도", async () => {
-      const db = UserModel.getPuri("r");
-      const result = await db.table("users").select({
-        id: "id",
-        username: "username",
-        role: "role",
-      });
-
-      // 타입 검증
-      expectTypeOf(result).toBeArray();
-
-      type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem>().toHaveProperty("id");
-      expectTypeOf<ResultItem>().toHaveProperty("username");
-      expectTypeOf<ResultItem>().toHaveProperty("role");
-
-      // 런타임 검증
-      expect(result.length).toBeGreaterThanOrEqual(0);
-      if (result[0]) {
-        expect(typeof result[0].id).toBe("number");
-        expect(typeof result[0].username).toBe("string");
-        expect(typeof result[0].role).toBe("string");
-      }
-    });
-
-    test("SQL 함수 반환 타입 (count → number)", async () => {
-      const db = UserModel.getPuri("r");
-      const result = await db.table("users").select({
-        total: Puri.count(),
-      });
-
-      // 타입 검증
-      type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem["total"]>().toEqualTypeOf<number>();
-
-      // 런타임 검증
-      expect(result[0]).toBeDefined();
-      expect(typeof result[0]?.total).toBe("number");
-    });
-
-    test("join 후 TTables 타입 확장", async () => {
-      const db = UserModel.getPuri("r");
+      // join 후 select에서 양쪽 테이블 컬럼 모두 접근 가능 여부 검증
       const result = await db
         .table("employees")
         .join("users", "employees.user_id", "users.id")
@@ -176,60 +96,45 @@ describe("Puri Type Safety", () => {
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      if (result[0]) {
-        expect(typeof result[0].empId).toBe("number");
-        expect(typeof result[0].userId).toBe("number");
-        expect(typeof result[0].username).toBe("string");
+      expect(typeof result[0]?.empId).toBe("number");
+      expect(typeof result[0]?.userId).toBe("number");
+      expect(typeof result[0]?.username).toBe("string");
+
+      // join 후 selectAll() 시 양쪽 테이블 컬럼 모두 포함 여부 검증
+      const selectAllResult = await db
+        .table("employees")
+        .join("users", "employees.user_id", "users.id")
+        .selectAll();
+
+      // NOTE: 런타임에는 양쪽 테이블 컬럼이 모두 반환되지만,
+      // 현재 타입 정의는 메인 테이블(employees) 컬럼만 포함함
+      // TODO: Puri 타입 개선 필요 - Puri.selectAll()
+      type SelectAllResultItem = (typeof selectAllResult)[number];
+
+      // employees 테이블 컬럼
+      expectTypeOf<SelectAllResultItem>().toHaveProperty("user_id");
+      expectTypeOf<SelectAllResultItem>().toHaveProperty("department_id");
+
+      // @ts-expect-error - users 테이블 컬럼
+      expectTypeOf<SelectAllResultItem>().toHaveProperty("username");
+      // @ts-expect-error - users 테이블 컬럼
+      expectTypeOf<SelectAllResultItem>().toHaveProperty("email");
+
+      // 런타임 검증
+      expect(selectAllResult.length).toBeGreaterThanOrEqual(0);
+      if (selectAllResult[0]) {
+        expect(typeof selectAllResult[0].user_id).toBe("number");
+        expect(typeof selectAllResult[0].department_id).toBe("number");
+        // @ts-expect-error - users 테이블 컬럼
+        expect(typeof selectAllResult[0].username).toBe("string");
+        expect(selectAllResult[0]).toHaveProperty("username");
       }
     });
 
-    test("alias 컬럼 타입 추론", async () => {
+    test("LEFT JOIN 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
-      const result = await db.table("users").select({
-        myId: "id",
-        myName: "username",
-      });
 
-      // 타입 검증
-      type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem["myId"]>().toEqualTypeOf<number>();
-      expectTypeOf<ResultItem["myName"]>().toEqualTypeOf<string>();
-
-      // 런타임 검증
-      if (result[0]) {
-        expect(typeof result[0].myId).toBe("number");
-        expect(typeof result[0].myName).toBe("string");
-      }
-    });
-
-    test("pluck 반환 타입 (배열)", async () => {
-      const db = UserModel.getPuri("r");
-      const result = await db.table("users").pluck("id");
-
-      // 타입 검증
-      expectTypeOf(result).toEqualTypeOf<number[]>();
-
-      // 런타임 검증
-      expect(Array.isArray(result)).toBe(true);
-      if (result[0]) {
-        expect(typeof result[0]).toBe("number");
-      }
-    });
-    test("first 반환 타입 (단일 객체)", async () => {
-      const db = UserModel.getPuri("r");
-      const result = await db.table("users").select({ id: "id" }).first();
-
-      // 타입 검증
-      expectTypeOf(result).toEqualTypeOf<{ id: number }>();
-
-      // 런타임 검증
-      expect(typeof result.id).toBe("number");
-    });
-  });
-
-  describe("F. ETC", () => {
-    test("LEFT JOIN 후 오른쪽 테이블 컬럼 타입", async () => {
-      const db = UserModel.getPuri("r");
+      // leftJoin 후 select
       const result = await db
         .table("employees")
         .leftJoin("departments", "employees.department_id", "departments.id")
@@ -238,19 +143,787 @@ describe("Puri Type Safety", () => {
           deptName: "departments.name",
         });
 
+      // leftJoin 조건 컬럼 타입 검증
+      db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
+      db.table("employees").leftJoin("users", "employees.user_id", "users.id");
+
+      // @ts-expect-error - employees 테이블에 존재하지 않는 컬럼으로 조인
+      db.table("employees").leftJoin("users", "employees.nonexistent", "users.id");
+
+      // @ts-expect-error - users 테이블에 존재하지 않는 컬럼으로 조인
+      db.table("employees").leftJoin("users", "employees.user_id", "users.nonexistent");
+
+      // @ts-expect-error - 양쪽 모두 존재하지 않는 컬럼
+      db.table("employees").leftJoin("users", "employees.bad_col", "users.bad_col");
+
+      // @ts-expect-error - 조인 대상 테이블이 아닌 다른 테이블 컬럼 참조
+      db.table("employees").leftJoin("users", "departments.id", "users.id");
+
       // 타입 검증
       type ResultItem = (typeof result)[number];
       expectTypeOf<ResultItem["empId"]>().toEqualTypeOf<number>();
-      // NOTE: 현재 Puri는 LEFT JOIN에서도 nullable 처리 안 함
+      // NOTE: 현재 Puri는 leftJoin에서도 nullable 처리 안 함
       // 이상적으로는 string | null 이어야 하지만, 현재는 string
+      // TODO: Puri 타입 개선 필요 - Puri.leftJoin()
       expectTypeOf<ResultItem["deptName"]>().toEqualTypeOf<string>();
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
-      if (result[0]) {
-        expect(typeof result[0].empId).toBe("number");
-        expect(result[0].deptName === null || typeof result[0].deptName === "string").toBe(true);
-      }
+      expect(typeof result[0]?.empId).toBe("number");
+      expect(result[0]?.deptName === null || typeof result[0]?.deptName === "string").toBe(true);
+    });
+
+    test("MULTIPLE JOIN 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // multi join 후 모든 테이블 컬럼 접근 가능 여부 검증
+      const joinQuery = db
+        .table("employees")
+        .leftJoin("departments", "employees.department_id", "departments.id")
+        .leftJoin("companies", "departments.company_id", "companies.id");
+
+      const result = await joinQuery.select({
+        empId: "employees.id",
+        deptName: "departments.name",
+        companyName: "companies.name",
+      });
+
+      // @ts-expect-error - join 안 한 테이블 참조 불가
+      joinQuery.where("users.id", 1);
+
+      // 타입 검증
+      type ResultItem = (typeof result)[number];
+      expectTypeOf<ResultItem>().toHaveProperty("empId");
+      expectTypeOf<ResultItem>().toHaveProperty("deptName");
+      expectTypeOf<ResultItem>().toHaveProperty("companyName");
+
+      // 런타임 검증
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      expect(typeof result[0]?.empId).toBe("number");
+      expect(typeof result[0]?.deptName).toBe("string");
+      expect(typeof result[0]?.companyName).toBe("string");
+
+      // alias 사용 시 alias로만 컬럼 접근 가능 검증 (self join)
+      const selfJoinQuery = db
+        .table({ child: "departments" })
+        .leftJoin({ parent: "departments" }, "child.parent_id", "parent.id");
+
+      const selfJoinResult = await selfJoinQuery.select({
+        childId: "child.id",
+        childName: "child.name",
+        parentId: "parent.id",
+        parentName: "parent.name",
+      });
+
+      // @ts-expect-error - 원본 테이블명(departments)으로는 접근 불가
+      selfJoinQuery.select({ id: "departments.id" });
+
+      // @ts-expect-error - alias 없이 접근 불가
+      selfJoinQuery.where("id", 1);
+
+      // 타입 검증
+      type SelfJoinResultItem = (typeof selfJoinResult)[number];
+      expectTypeOf<SelfJoinResultItem>().toHaveProperty("childId");
+      expectTypeOf<SelfJoinResultItem>().toHaveProperty("childName");
+      expectTypeOf<SelfJoinResultItem>().toHaveProperty("parentId");
+      expectTypeOf<SelfJoinResultItem>().toHaveProperty("parentName");
+
+      // 런타임 검증
+      expect(selfJoinResult.length).toBeGreaterThanOrEqual(0);
+      // child 테이블 컬럼 (항상 값 있음)
+      expect(typeof selfJoinResult[0]?.childId).toBe("number");
+      expect(typeof selfJoinResult[0]?.childName).toBe("string");
+      // parent 테이블 컬럼 (LEFT JOIN이므로 null 가능)
+      expect(
+        selfJoinResult[0]?.parentId === null || typeof selfJoinResult[0]?.parentId === "number",
+      ).toBe(true);
+    });
+
+    test("SUBQUERY JOIN 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 서브쿼리: employees에서 department_id만 select
+      const subquery = db
+        .table("employees")
+        .select({ department_id: "employees.department_id" })
+        .groupBy("employees.department_id");
+
+      // subquery join
+      const subqueryJoinQuery = db
+        .table("departments")
+        .leftJoin({ emp_stats: subquery }, "departments.id", "emp_stats.department_id");
+
+      const result = await subqueryJoinQuery.select({
+        deptId: "departments.id",
+        deptName: "departments.name",
+        statsDeptId: "emp_stats.department_id",
+      });
+
+      // @ts-expect-error - 서브쿼리에서 select하지 않은 컬럼은 접근 불가
+      subqueryJoinQuery.select({ salary: "emp_stats.salary" });
+
+      // @ts-expect-error - 서브쿼리 원본 테이블(employees)로 직접 접근 불가
+      subqueryJoinQuery.select({ empId: "employees.id" });
+
+      // 타입 검증
+      type ResultItem = (typeof result)[number];
+      expectTypeOf<ResultItem>().toHaveProperty("deptId");
+      expectTypeOf<ResultItem>().toHaveProperty("deptName");
+      expectTypeOf<ResultItem>().toHaveProperty("statsDeptId");
+
+      // 런타임 검증
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      expect(typeof result[0]?.deptId).toBe("number");
+      expect(typeof result[0]?.deptName).toBe("string");
+    });
+  });
+
+  describe("C. 결과 조회 메서드(SELECT, FIRST, PLUCK) 타입 안전성", () => {
+    test("SELECT 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+      const result = await db.table("users").select({
+        id: "id",
+        username: "username",
+        role: "role",
+      });
+
+      // @ts-expect-error - 존재하지 않는 컬럼
+      db.table("users").select({ bad: "nonexistent" });
+
+      // @ts-expect-error - 존재하지 않는 테이블 prefix
+      db.table("users").select({ id: "invalid_table.id" });
+
+      // @ts-expect-error - 컬럼명 오타
+      db.table("users").select({ id: "idd" });
+
+      // 타입 검증
+      expectTypeOf(result).toBeArray();
+      type ResultItem = (typeof result)[number];
+      expectTypeOf<ResultItem>().toHaveProperty("id");
+      expectTypeOf<ResultItem>().toHaveProperty("username");
+      expectTypeOf<ResultItem>().toHaveProperty("role");
+
+      // 런타임 검증
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      expect(typeof result[0]?.id).toBe("number");
+      expect(typeof result[0]?.username).toBe("string");
+      expect(typeof result[0]?.role).toBe("string");
+    });
+
+    test("FIRST 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // first()는 배열이 아닌 단일 객체를 반환
+      const result = await db.table("users").select({ id: "id" }).first();
+
+      // 타입 검증: 배열이 아닌 단일 객체
+      expectTypeOf(result).toEqualTypeOf<{ id: number }>();
+
+      // 런타임 검증
+      expect(typeof result.id).toBe("number");
+
+      // 여러 컬럼 select 후 first()
+      const multiResult = await db
+        .table("users")
+        .select({
+          id: "id",
+          username: "username",
+          role: "role",
+        })
+        .first();
+
+      // 타입 검증: 각 필드 타입이 정확히 추론되는지
+      expectTypeOf<typeof multiResult>().toEqualTypeOf<{
+        id: number;
+        username: string;
+        role: "admin" | "normal";
+      }>();
+
+      // 런타임 검증
+      expect(typeof multiResult.id).toBe("number");
+      expect(typeof multiResult.username).toBe("string");
+      expect(typeof multiResult.role).toBe("string");
+    });
+
+    test("PLUCK 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // pluck - 단일 컬럼 값의 배열을 반환
+      const idResult = await db.table("users").pluck("id");
+      expectTypeOf(idResult).toEqualTypeOf<number[]>();
+
+      // string 컬럼 pluck
+      const usernameResult = await db.table("users").pluck("username");
+      expectTypeOf(usernameResult).toEqualTypeOf<string[]>();
+
+      // enum 컬럼 pluck
+      const roleResult = await db.table("users").pluck("role");
+      expectTypeOf(roleResult).toEqualTypeOf<("admin" | "normal")[]>();
+
+      // nullable 컬럼 pluck
+      const birthDateResult = await db.table("users").pluck("birth_date");
+      expectTypeOf(birthDateResult).toEqualTypeOf<(string | null)[]>();
+
+      // @ts-expect-error - 존재하지 않는 컬럼
+      db.table("users").pluck("nonexistent");
+
+      // @ts-expect-error - 컬럼명 오타
+      db.table("users").pluck("usernme");
+
+      // 런타임 검증
+      expect(Array.isArray(idResult)).toBe(true);
+      expect(Array.isArray(usernameResult)).toBe(true);
+      idResult[0] && expect(typeof idResult[0]).toBe("number");
+      usernameResult[0] && expect(typeof usernameResult[0]).toBe("string");
+    });
+  });
+
+  describe("D. WHERE 확장 타입 안전성", () => {
+    test("whereIn / whereNotIn 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 whereIn 사용
+      db.table("users").whereIn("id", [1, 2, 3]);
+      db.table("users").whereIn("role", ["admin", "normal"]);
+      db.table("projects").whereIn("status", ["planning", "in_progress", "completed"]);
+
+      // 유효한 whereNotIn 사용
+      db.table("users").whereNotIn("id", [1, 2]);
+      db.table("users").whereNotIn("role", ["admin"]);
+
+      // @ts-expect-error - number 컬럼에 string 포함한 배열
+      db.table("users").whereIn("id", [1, "2", "3"]);
+
+      // @ts-expect-error - string 컬럼에 number 포함한 배열
+      db.table("users").whereIn("username", [1, "2", "3"]);
+
+      // @ts-expect-error - enum 컬럼에 잘못된 값 배열
+      db.table("users").whereIn("role", ["admin", "invalid_role"]);
+
+      // @ts-expect-error - whereNotIn에서도 동일한 타입 검증
+      db.table("users").whereNotIn("id", ["wrong", "type"]);
+
+      // @ts-expect-error - enum 컬럼 whereNotIn에 잘못된 값
+      db.table("projects").whereNotIn("status", ["planning", "wrong_status"]);
+    });
+
+    test("whereGroup / orWhereGroup 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 whereGroup / orWhereGroup 사용
+      db.table("users")
+        .whereGroup((g) => g.where("id", 1))
+        .orWhereGroup((g) => g.where("role", "admin"));
+
+      db.table("users").whereGroup((g) => g.where("id", 1).where("role", "normal"));
+
+      // 중첩 whereGroup 사용
+      db.table("users").whereGroup((g) =>
+        g
+          .where("role", "admin")
+          .whereGroup((nested) => nested.where("is_verified", true).orWhere("id", 1)),
+      );
+
+      // orWhere 체이닝
+      db.table("users").whereGroup((g) => g.where("id", 1).orWhere("id", 2).orWhere("id", 3));
+
+      // @ts-expect-error - whereGroup 내부에서 존재하지 않는 컬럼
+      db.table("users").whereGroup((g) => g.where("nonexistent", 1));
+
+      // @ts-expect-error - whereGroup 내부에서 타입 불일치
+      db.table("users").whereGroup((g) => g.where("id", "문자열"));
+
+      // @ts-expect-error - whereGroup 내부에서 enum 잘못된 값
+      db.table("users").whereGroup((g) => g.where("role", "invalid_role"));
+
+      // @ts-expect-error - orWhereGroup 내부에서 존재하지 않는 컬럼
+      db.table("users").orWhereGroup((g) => g.where("bad_column", 1));
+
+      // @ts-expect-error - orWhereGroup 내부에서 타입 불일치
+      db.table("users").orWhereGroup((g) => g.where("username", 123));
+
+      // @ts-expect-error - 중첩 whereGroup에서 타입 검증
+      db.table("users").whereGroup((g) => g.whereGroup((nested) => nested.where("id", "1")));
+
+      // @ts-expect-error - 중첩 orWhereGroup에서도 존재하지 않는 컬럼
+      db.table("users").whereGroup((g) => g.orWhereGroup((nested) => nested.where("bad_col", 1)));
+
+      // JOIN 후 whereGroup에서 테이블 prefix 필요
+      const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+
+      joinQuery.whereGroup((g) => g.where("employees.id", 1).where("users.id", 1));
+      joinQuery.orWhereGroup((g) =>
+        g.where("employees.salary", ">", "50000").orWhere("users.role", "admin"),
+      );
+
+      // @ts-expect-error - JOIN 후 prefix 없이 사용 불가
+      joinQuery.whereGroup((g) => g.where("id", 1));
+
+      // @ts-expect-error - JOIN 안 한 테이블 참조 불가
+      joinQuery.whereGroup((g) => g.where("departments.id", 1));
+    });
+
+    test("LIKE 연산자 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 LIKE 사용
+      db.table("users").where("username", "like", "%test%");
+      db.table("users").where("email", "like", "%@gmail.com");
+      db.table("users").where("bio", "like", "%소개%");
+
+      // 유효한 NOT LIKE 사용
+      db.table("users").where("username", "not like", "%admin%");
+      db.table("users").where("email", "not like", "%spam%");
+
+      // @ts-expect-error - LIKE 연산자 오타
+      db.table("users").where("username", "lik", "%test%");
+
+      // @ts-expect-error - LIKE 대문자 (소문자만 허용)
+      db.table("users").where("username", "LIKE", "%test%");
+
+      // @ts-expect-error - 존재하지 않는 컬럼에 like 사용
+      db.table("users").where("nonexistent", "like", "%test%");
+
+      // @ts-expect-error - 존재하지 않는 컬럼에 not like 사용
+      db.table("users").where("bad_column", "not like", "%test%");
+
+      // @ts-expect-error - number type 컬럼에 like 사용 시 string 패턴 불가
+      db.table("users").where("id", "like", "%1%");
+
+      // @ts-expect-error - number type 컬럼에 not like 사용 시 string 패턴 불가
+      db.table("employees").where("id", "not like", "%1%");
+
+      // JOIN 후 LIKE 사용
+      const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+
+      joinQuery.where("users.username", "like", "%test%");
+      joinQuery.where("users.email", "not like", "%spam%");
+
+      // @ts-expect-error - JOIN 후 prefix 없이 like 사용 불가
+      joinQuery.where("username", "like", "%test%");
+
+      // @ts-expect-error - JOIN 안 한 테이블에 like 사용 불가
+      joinQuery.where("departments.name", "like", "%dev%");
+
+      // TODO: Puri 타입 개선 필요 - whereGroup 내부 where / orWhere에 LIKE / NOT LIKE 사용 불가
+      db.table("users").whereGroup((g) =>
+        g
+          // @ts-expect-error - whereGroup 내부 where
+          .where("username", "like", "%admin%")
+          // @ts-expect-error - whereGroup 내부 orWhere
+          .orWhere("email", "like", "%@company.com"),
+      );
+
+      // Multiple join 후 LIKE 사용
+      const multiJoinQuery = db
+        .table("employees")
+        .join("users", "employees.user_id", "users.id")
+        .leftJoin("departments", "employees.department_id", "departments.id");
+
+      multiJoinQuery.where("users.username", "like", "%manager%");
+      multiJoinQuery.where("departments.name", "like", "%Engineering%");
+    });
+  });
+
+  describe("E. 집계함수(Aggregate) 타입 안전성", () => {
+    test("Puri.count() 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+      const result = await db.table("users").select({
+        total: Puri.count(),
+      });
+
+      // 타입 검증
+      type ResultItem = (typeof result)[number];
+      expectTypeOf<ResultItem["total"]>().toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(result[0]).toBeDefined();
+      expect(typeof result[0]?.total).toBe("number");
+    });
+
+    test("Puri.max() / Puri.min() 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 숫자 컬럼에 max/min 사용
+      const numResult = await db.table("employees").select({
+        maxSalary: Puri.max("employees.salary"),
+        minSalary: Puri.min("employees.salary"),
+      });
+
+      // 타입 검증: 숫자 컬럼의 max/min은 number 반환
+      type NumResultItem = (typeof numResult)[number];
+      expectTypeOf<NumResultItem["maxSalary"]>().toEqualTypeOf<number>();
+      expectTypeOf<NumResultItem["minSalary"]>().toEqualTypeOf<number>();
+
+      // 날짜 컬럼에 max/min 사용
+      const dateResult = await db.table("users").select({
+        latestLogin: Puri.max("users.last_login_at"),
+        earliestLogin: Puri.min("users.last_login_at"),
+      });
+
+      // 타입 검증: 날짜 컬럼의 max/min 반환 타입
+      type DateResultItem = (typeof dateResult)[number];
+      expectTypeOf<DateResultItem["latestLogin"]>().toEqualTypeOf<number>();
+      expectTypeOf<DateResultItem["earliestLogin"]>().toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(numResult.length).toBeGreaterThanOrEqual(0);
+      const maxSalary = numResult[0]?.maxSalary;
+      const minSalary = numResult[0]?.minSalary;
+      expect(typeof maxSalary === "number" || maxSalary === null).toBe(false);
+      expect(typeof minSalary === "number" || minSalary === null).toBe(false);
+    });
+
+    test("GROUP BY 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 단일 컬럼 groupBy
+      db.table("employees")
+        .select({
+          department_id: "employees.department_id",
+          count: Puri.count("employees.id"),
+        })
+        .groupBy("employees.department_id");
+
+      // 유효한 다중 컬럼 groupBy
+      db.table("projects")
+        .select({
+          status: "projects.status",
+          count: Puri.count("projects.id"),
+        })
+        .groupBy("projects.status", "projects.created_at");
+
+      // @ts-expect-error - 존재하지 않는 컬럼으로 groupBy
+      db.table("employees").groupBy("employees.nonexistent");
+
+      // @ts-expect-error - 다중 컬럼 중 하나가 존재하지 않는 경우
+      db.table("projects").groupBy("status", "bad_column");
+
+      // JOIN 후 groupBy
+      const joinQuery = db
+        .table("employees")
+        .join("departments", "employees.department_id", "departments.id");
+
+      joinQuery.groupBy("employees.department_id", "departments.name");
+
+      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 groupBy 허용됨
+      // joined.groupBy("employees.department_id"); // 정상 케이스
+      joinQuery.groupBy("department_id");
+
+      // @ts-expect-error - JOIN 안 한 테이블 컬럼으로 groupBy
+      joinQuery.groupBy("users.id");
+
+      const groupByResult = await db
+        .table("employees")
+        .select({
+          department_id: "employees.department_id",
+          count: Puri.count("employees.id"),
+        })
+        .groupBy("employees.department_id");
+
+      // 타입 검증
+      type GroupByResultItem = (typeof groupByResult)[number];
+      expectTypeOf<GroupByResultItem["department_id"]>().toEqualTypeOf<number | null>();
+      expectTypeOf<GroupByResultItem["count"]>().toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(Array.isArray(groupByResult)).toBe(true);
+      groupByResult[0] && expect(typeof groupByResult[0].count).toBe("number");
+    });
+
+    test("HAVING 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 공통 쿼리
+      const query = db
+        .table("employees")
+        .select({
+          department_id: "employees.department_id",
+          count: Puri.count("employees.id"),
+        })
+        .groupBy("employees.department_id");
+
+      // SELECT에서 정의한 alias 컬럼을 HAVING에서 참조
+      query.having("count", ">", 5);
+
+      // raw string 형태로 HAVING 사용
+      query.having("COUNT(*) > 5");
+
+      // 테이블 컬럼으로 HAVING 사용
+      query.having("employees.department_id", ">", 3);
+
+      // @ts-expect-error - SELECT에 없는 alias로 HAVING
+      query.having("nonexistent_alias", ">", 5);
+
+      // @ts-expect-error - 존재하지 않는 테이블 컬럼으로 HAVING
+      query.having("employees.bad_column", ">", 5);
+
+      const havingResult = await db
+        .table("employees")
+        .select({
+          department_id: "employees.department_id",
+          count: Puri.count("employees.id"),
+        })
+        .groupBy("employees.department_id")
+        .having("count", ">", 0);
+
+      // 타입 검증
+      type HavingResultItem = (typeof havingResult)[number];
+      expectTypeOf<HavingResultItem["department_id"]>().toEqualTypeOf<number | null>();
+      expectTypeOf<HavingResultItem["count"]>().toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(Array.isArray(havingResult)).toBe(true);
+      havingResult[0] && expect(typeof havingResult[0].count).toBe("number");
+      havingResult[0] && expect(havingResult[0].count).toBeGreaterThan(0);
+    });
+  });
+
+  describe("F. 정렬 및 페이지네이션 타입 안전성", () => {
+    test("ORDER BY 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 단일 orderBy
+      db.table("users").orderBy("id", "asc");
+      db.table("users").orderBy("username", "desc");
+
+      // 유효한 다중 orderBy 체이닝
+      db.table("users").orderBy("role", "asc").orderBy("created_at", "desc");
+
+      // SELECT alias로 orderBy
+      db.table("users")
+        .select({
+          id: "id",
+          name: "username",
+        })
+        .orderBy("name", "asc");
+
+      // @ts-expect-error - 존재하지 않는 컬럼
+      db.table("users").orderBy("nonexistent", "asc");
+
+      // @ts-expect-error - asc/desc가 아닌 값
+      db.table("users").orderBy("id", "ascending");
+
+      // @ts-expect-error - asc/desc가 아닌 값
+      db.table("users").orderBy("id", "DESC");
+
+      // JOIN 후 orderBy
+      const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+
+      joinQuery.orderBy("employees.id", "asc");
+      joinQuery.orderBy("users.username", "desc");
+
+      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 orderBy 허용됨
+      // (groupBy와 동일한 오버로드 문제)
+      joinQuery.orderBy("id", "asc");
+
+      // @ts-expect-error - JOIN 안 한 테이블 컬럼
+      joinQuery.orderBy("departments.id", "asc");
+    });
+
+    test("LIMIT / OFFSET 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // 유효한 limit / offset 사용
+      db.table("users").limit(10);
+      db.table("users").offset(20);
+      db.table("users").limit(10).offset(0);
+
+      // 체이닝과 함께 사용
+      db.table("users").select({ id: "id" }).orderBy("id", "asc").limit(5).offset(10);
+
+      // @ts-expect-error - limit에 string 전달
+      db.table("users").limit("10");
+
+      // @ts-expect-error - offset에 string 전달
+      db.table("users").offset("20");
+
+      // TODO: Puri 타입 개선 필요 - limit/offset에 음수 허용됨
+      // SQL 표준에서는 limit/offset에 음수를 허용하지 않음 (PostgreSQL은 허용하지만 음수를 0으로 처리)
+      // Knex에서는 offset에서만 음수 검증을 함
+      db.table("users").limit(-1);
+      // db.table("users").offset(-1);
+
+      // @ts-expect-error - limit에 undefined
+      db.table("users").limit(undefined);
+
+      // @ts-expect-error - offset에 null
+      db.table("users").offset(null);
+    });
+  });
+
+  describe("G. INSERT/UPDATE 타입 안전성", () => {
+    test("INSERT 타입 안전성", async () => {
+      const db = UserModel.getPuri("w");
+
+      const defaultUserData = {
+        email: "test@test.com",
+        username: "testuser",
+        password: "password123",
+        role: "normal" as const,
+        is_verified: false,
+      };
+
+      // 유효한 INSERT - default 컬럼
+      db.table("users").insert(defaultUserData);
+
+      // 유효한 INSERT - default + optional 컬럼
+      db.table("users").insert({
+        ...defaultUserData,
+        role: "admin",
+        birth_date: "1990-01-01",
+        bio: "테스트 유저입니다.",
+      });
+
+      // nullable 컬럼
+      db.table("users").insert({ ...defaultUserData, birth_date: null });
+      // TODO: Puri 타입 개선 필요 - 필수 컬럼 누락 시 에러 안 남
+      db.table("users").insert({ ...defaultUserData, email: undefined });
+
+      // @ts-expect-error - 존재하지 않는 컬럼
+      db.table("users").insert({ ...defaultUserData, nonexistent_column: "value" });
+
+      // @ts-expect-error - 타입 불일치 (email에 number)
+      db.table("users").insert({ ...defaultUserData, email: 123 });
+
+      // @ts-expect-error - enum 잘못된 값
+      db.table("users").insert({ ...defaultUserData, role: "invalid_role" });
+
+      const [insertedId] = await db.table("users").insert({
+        email: `insert-test-${Date.now()}@test.com`,
+        username: `inserttestuser${Date.now()}`,
+        password: "password123",
+        role: "normal" as const,
+        is_verified: false,
+      });
+
+      // 타입 검증: insert()는 [number] (inserted id 배열) 반환
+      expectTypeOf(insertedId).toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(typeof insertedId).toBe("number");
+      expect(insertedId).toBeGreaterThan(0);
+    });
+
+    test("UPDATE 타입 안전성", async () => {
+      const db = UserModel.getPuri("w");
+
+      const [insertedId] = await db.table("users").insert({
+        email: "update-test@test.com",
+        username: "updatetestuser",
+        password: "password123",
+        role: "normal" as const,
+        is_verified: false,
+      });
+
+      // enum 값 업데이트
+      db.table("users").where("id", 1).update({ role: "admin" });
+
+      // nullable 컬럼에 null 업데이트
+      db.table("users").where("id", 1).update({ birth_date: null });
+
+      // @ts-expect-error - 존재하지 않는 컬럼
+      db.table("users").where("id", 1).update({ nonexistent_column: "value" });
+
+      // @ts-expect-error - 타입 불일치 (email에 number)
+      db.table("users").where("id", 1).update({ email: 123 });
+
+      // @ts-expect-error - enum 잘못된 값
+      db.table("users").where("id", 1).update({ role: "invalid_role" });
+
+      // @ts-expect-error - NOT NULL 컬럼에 null 불가
+      db.table("users").where("id", 1).update({ email: null });
+
+      const updateCount = await db
+        .table("users")
+        .where("id", insertedId)
+        .update({ username: "updateduser", bio: "Updated bio" });
+
+      // 타입 검증: update는 affected rows 수를 반환
+      // TODO: Puri 타입 개선 필요 - update()가 TResult를 반환하도록 정의되어 있음, 의도적인 동작일지 확인 필요
+      // MySQL, PostgreSQL, Knex - number (affected rows) 반환함
+      // expectTypeOf(updateCount).toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(typeof updateCount).toBe("number");
+      expect(updateCount).toBe(1);
+    });
+
+    test("INCREMENT / DECREMENT 타입 안전성", async () => {
+      const db = UserModel.getPuri("w");
+
+      // 유효한 increment / decrement 사용
+      db.table("users").where("id", 1).increment("id", 1);
+      db.table("users").where("id", 1).decrement("id", 1);
+
+      // @ts-expect-error - 존재하지 않는 컬럼 increment
+      db.table("users").where("id", 1).increment("nonexistent", 1);
+      // @ts-expect-error - 존재하지 않는 컬럼 decrement
+      db.table("users").where("id", 1).decrement("bad_column", 1);
+
+      // @ts-expect-error - 증감값에 string 전달 (increment)
+      db.table("users").where("id", 1).increment("id", "1");
+      // @ts-expect-error - 증감값에 string 전달 (decrement)
+      db.table("users").where("id", 1).decrement("id", "5");
+
+      // TODO : Puri 타입 개선 필요 - increment / decrement에 undefined 전달 가능하며, 전달했을 때 런타임 에러 발생 x (NULL, 음수는 런타임 에러 발생)
+      // @ts-expect-error - 증감값에 undefined 전달
+      db.table("users").where("id", 1).increment("id", undefined);
+
+      // TODO: Puri 타입 개선 필요 - string 컬럼에 increment / decrement 허용됨
+      // 이상적으로는 숫자 타입 컬럼만 허용해야 함
+      db.table("users").where("id", 1).increment("username", 1);
+      db.table("users").where("id", 1).decrement("username", 1);
+
+      // JOIN 후 increment / decrement
+      const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+
+      joinQuery.where("employees.id", 1).increment("employees.user_id", 1);
+      joinQuery.where("users.id", 1).decrement("employees.department_id", 1);
+
+      // @ts-expect-error - JOIN 후 prefix 없이 사용 불가
+      joinQuery.where("employees.id", 1).increment("user_id", 1);
+
+      // @ts-expect-error - JOIN 안 한 테이블 컬럼
+      joinQuery.where("employees.id", 1).increment("departments.id", 1);
+
+      const incrementResult = await db.table("employees").where("id", 1).increment("user_id", 1);
+      const decrementResult = await db.table("employees").where("id", 1).decrement("user_id", 1);
+
+      // 타입 검증
+      expectTypeOf(incrementResult).toEqualTypeOf<number>();
+      expectTypeOf(decrementResult).toEqualTypeOf<number>();
+
+      // 런타임 검증
+      expect(typeof incrementResult).toBe("number");
+      expect(typeof decrementResult).toBe("number");
+    });
+  });
+
+  describe("I. NULL", () => {
+    test("NULLABLE 타입 안전성", async () => {
+      const db = UserModel.getPuri("r");
+
+      // select 결과에서 NULLABLE 타입 추론
+      const result = await db.table("users").select({
+        birthDate: "birth_date",
+      });
+
+      // NULLABLE 컬럼에서 null 값 허용
+      db.table("users").where("birth_date", null);
+      db.table("employees").where("department_id", null);
+
+      // @ts-expect-error - NOT NULL 컬럼에 null 불가
+      db.table("users").where("id", null);
+
+      // 타입 검증
+      type ResultItem = (typeof result)[number];
+      expectTypeOf<ResultItem["birthDate"]>().toEqualTypeOf<string | null>();
+
+      // 런타임 검증
+      expect(result.length).toBeGreaterThanOrEqual(0);
+      const birthDate = result[0]?.birthDate;
+      expect(birthDate === null || typeof birthDate === "string").toBe(true);
     });
   });
 });

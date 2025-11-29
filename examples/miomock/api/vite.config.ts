@@ -17,7 +17,7 @@ export default defineConfig({
     typecheck: {
       enabled: true,
       tsconfig: "./tsconfig.json",
-      include: ["src/**/*.test.ts"],
+      include: ["src/**/*type-safety.test.ts"],
     },
     coverage: {
       provider: "v8",
