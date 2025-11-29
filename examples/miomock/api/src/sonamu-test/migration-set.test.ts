@@ -14,11 +14,11 @@ bootstrap(vi);
 describe("migration-set.ts", () => {
   beforeEach(() => {
     mockEntityManagerGetMultiple({
-      MigrationSetTest: MigrationSetTestEntity,
-      Company: CompanyMigrationTestEntity,
-      Profile: ProfileMigrationTestEntity,
-      Tag: TagMigrationTestEntity,
-      Post: PostMigrationTestEntity,
+      MigrationSetTest: MigrationSetTestEntity(),
+      Company: CompanyMigrationTestEntity(),
+      Profile: ProfileMigrationTestEntity(),
+      Tag: TagMigrationTestEntity(),
+      Post: PostMigrationTestEntity(),
     });
   });
 
