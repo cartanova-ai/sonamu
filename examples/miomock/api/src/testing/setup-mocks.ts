@@ -1,9 +1,9 @@
 import type { MakeDirectoryOptions, Mode, PathLike } from "fs";
-import type { FileHandle, mkdir as fsMkdir } from "fs/promises";
+import type { FileHandle } from "fs/promises";
 import { Naite } from "sonamu";
 import { vi } from "vitest";
 
-// Proxy 방식 테스트
+// GlobalMock: fs/promises
 vi.mock("fs/promises", async (importOriginal) => {
   const actual = (await importOriginal()) as typeof import("fs/promises");
   return {
@@ -27,7 +27,7 @@ vi.mock("fs/promises", async (importOriginal) => {
         }
         return undefined;
       },
-    ) as typeof fsMkdir,
+    ),
     writeFile: vi.fn((path: PathLike | FileHandle, data: string | Buffer | Uint8Array) => {
       const filePath = typeof path === "string" ? path : path.toString();
 
