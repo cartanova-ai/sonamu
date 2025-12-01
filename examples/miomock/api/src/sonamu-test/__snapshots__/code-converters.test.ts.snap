@@ -1615,9 +1615,37 @@ ZodUnion {
 
 exports[`code-converters > getZodObjectFromApi > Generic 타입 파라미터 > Generic Union > 타입파라미터 타입 체크 1`] = `"union"`;
 
-exports[`code-converters > getZodObjectFromApi > Reference 처리 > 존재하지 않는 reference ID -> z.string() 폴백 > parameters 반영 확인 1`] = `"error"`;
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 다중 reference 의존성 (체인) > A 구조 1`] = `
+"z.object({
+a: z.string(),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 다중 reference 의존성 (체인) > B 구조 1`] = `
+"z.intersection(z.object({
+a: z.string(),
+}), z.object({
+b: z.string(),
+}))"
+`;
+
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 다중 reference 의존성 (체인) > C 구조 1`] = `
+"z.intersection(z.intersection(z.object({
+a: z.string(),
+}), z.object({
+b: z.string(),
+})), z.object({
+c: z.string(),
+}))"
+`;
+
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 다중 reference 의존성 (체인) > 반영 확인 1`] = `"error"`;
+
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 다중 reference 의존성 > 반영 확인 1`] = `"error"`;
 
 exports[`code-converters > getZodObjectFromApi > Reference 처리 > 존재하지 않는 reference ID -> z.string() 폴백 > typeParameters 반영 확인 1`] = `[]`;
+
+exports[`code-converters > getZodObjectFromApi > Reference 처리 > 존재하지 않는 reference ID -> z.string() 폴백 > 반영 확인 1`] = `"error"`;
 
 exports[`code-converters > getZodObjectFromApi > Reference 처리 > 존재하지 않는 reference ID -> z.string() 폴백 > 정의한 파라미터 타입 체크 1`] = `"string"`;
 
@@ -1653,179 +1681,28 @@ exports[`code-converters > getZodObjectFromApi > 기본 API > string 파라미�
 
 exports[`code-converters > getZodObjectFromApi > 기본 API > string 파라미터 > 타입파라미터 타입 체크 1`] = `"optional"`;
 
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Array인 경우 > 타입 확인 1`] = `"array"`;
-
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Intersection인 경우 > 타입 확인 1`] = `"intersection"`;
-
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Number인 경우 > 타입 확인 1`] = `"number"`;
-
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Object인 경우 > 타입 확인 1`] = `"object"`;
-
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic String인 경우 > 타입 확인 1`] = `"string"`;
-
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Tuple인 경우 > 요소 확인 1`] = `
-ZodTuple {
-  "and": [Function],
-  "array": [Function],
-  "brand": [Function],
-  "catch": [Function],
-  "check": [Function],
-  "clone": [Function],
-  "decode": [Function],
-  "decodeAsync": [Function],
-  "def": {
-    "items": [
-      ZodLiteral {
-        "and": [Function],
-        "array": [Function],
-        "brand": [Function],
-        "catch": [Function],
-        "check": [Function],
-        "clone": [Function],
-        "decode": [Function],
-        "decodeAsync": [Function],
-        "def": {
-          "type": "literal",
-          "values": [
-            "string",
-          ],
-        },
-        "default": [Function],
-        "describe": [Function],
-        "encode": [Function],
-        "encodeAsync": [Function],
-        "isNullable": [Function],
-        "isOptional": [Function],
-        "meta": [Function],
-        "nonoptional": [Function],
-        "nullable": [Function],
-        "nullish": [Function],
-        "optional": [Function],
-        "or": [Function],
-        "overwrite": [Function],
-        "parse": [Function],
-        "parseAsync": [Function],
-        "pipe": [Function],
-        "prefault": [Function],
-        "readonly": [Function],
-        "refine": [Function],
-        "register": [Function],
-        "safeDecode": [Function],
-        "safeDecodeAsync": [Function],
-        "safeEncode": [Function],
-        "safeEncodeAsync": [Function],
-        "safeParse": [Function],
-        "safeParseAsync": [Function],
-        "spa": [Function],
-        "superRefine": [Function],
-        "transform": [Function],
-        "type": "literal",
-        "values": Set {
-          "string",
-        },
-        "~standard": {
-          "validate": [Function],
-          "vendor": "zod",
-          "version": 1,
-        },
-      },
-      ZodLiteral {
-        "and": [Function],
-        "array": [Function],
-        "brand": [Function],
-        "catch": [Function],
-        "check": [Function],
-        "clone": [Function],
-        "decode": [Function],
-        "decodeAsync": [Function],
-        "def": {
-          "type": "literal",
-          "values": [
-            1,
-          ],
-        },
-        "default": [Function],
-        "describe": [Function],
-        "encode": [Function],
-        "encodeAsync": [Function],
-        "isNullable": [Function],
-        "isOptional": [Function],
-        "meta": [Function],
-        "nonoptional": [Function],
-        "nullable": [Function],
-        "nullish": [Function],
-        "optional": [Function],
-        "or": [Function],
-        "overwrite": [Function],
-        "parse": [Function],
-        "parseAsync": [Function],
-        "pipe": [Function],
-        "prefault": [Function],
-        "readonly": [Function],
-        "refine": [Function],
-        "register": [Function],
-        "safeDecode": [Function],
-        "safeDecodeAsync": [Function],
-        "safeEncode": [Function],
-        "safeEncodeAsync": [Function],
-        "safeParse": [Function],
-        "safeParseAsync": [Function],
-        "spa": [Function],
-        "superRefine": [Function],
-        "transform": [Function],
-        "type": "literal",
-        "values": Set {
-          1,
-        },
-        "~standard": {
-          "validate": [Function],
-          "vendor": "zod",
-          "version": 1,
-        },
-      },
-    ],
-    "rest": null,
-    "type": "tuple",
-  },
-  "default": [Function],
-  "describe": [Function],
-  "encode": [Function],
-  "encodeAsync": [Function],
-  "isNullable": [Function],
-  "isOptional": [Function],
-  "meta": [Function],
-  "nonoptional": [Function],
-  "nullable": [Function],
-  "nullish": [Function],
-  "optional": [Function],
-  "or": [Function],
-  "overwrite": [Function],
-  "parse": [Function],
-  "parseAsync": [Function],
-  "pipe": [Function],
-  "prefault": [Function],
-  "readonly": [Function],
-  "refine": [Function],
-  "register": [Function],
-  "rest": [Function],
-  "safeDecode": [Function],
-  "safeDecodeAsync": [Function],
-  "safeEncode": [Function],
-  "safeEncodeAsync": [Function],
-  "safeParse": [Function],
-  "safeParseAsync": [Function],
-  "spa": [Function],
-  "superRefine": [Function],
-  "transform": [Function],
-  "type": "tuple",
-  "~standard": {
-    "validate": [Function],
-    "vendor": "zod",
-    "version": 1,
-  },
-}
+exports[`code-converters > getZodObjectFromApi > 순환참조 처리 > Intersection + 순환 > Node Zod 코드 1`] = `
+"z.intersection(z.object({
+value: z.string(),
+}), z.object({
+next: z.string().optional(),
+}))"
 `;
 
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Tuple인 경우 > 타입 확인 1`] = `"tuple"`;
+exports[`code-converters > getZodObjectFromApi > 순환참조 처리 > Pick/Omit + 순환 > User Zod 코드 1`] = `
+"z.object({
+id: z.number(),
+name: z.string(),
+email: z.string(),
+friend: z.string().optional(),
+})"
+`;
 
-exports[`code-converters > getZodTypeFromApiParamType > 주요 primitive 타입 처리 > 타입 파라미터가 Generic Union인 경우 > 타입 확인 1`] = `"union"`;
+exports[`code-converters > getZodObjectFromApi > 순환참조 처리 > 재귀적 Union (JasonValue-like Union) > JsonValue Zod 코드 1`] = `"z.union([z.string(),z.number(),z.boolean(),z.unknown(),z.array(z.string())])"`;
+
+exports[`code-converters > getZodObjectFromApi > 순환참조 처리 > 재귀적 배열 구조 (Tree-like Array) > TreeNode Zod 코드 1`] = `
+"z.object({
+value: z.string(),
+children: z.array(z.string()),
+})"
+`;
