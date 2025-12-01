@@ -3,12 +3,14 @@ import { z } from "zod";
 import {
   getZodObjectFromApi,
   getZodTypeFromApiParamType,
+  propNodeToZodTypeDef,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
   ApiDecoratorOptions,
   ExtendedApi,
 } from "../../../../../modules/sonamu/dist/api/decorators";
+import type { EntityProp, EntityPropNode } from "../../../../../modules/sonamu/dist/types/types";
 
 describe("code-converters", () => {
   const options: ApiDecoratorOptions = {
@@ -1556,6 +1558,89 @@ describe("code-converters", () => {
           ),
         ).toThrow("잘못된 Omit");
       });
+    });
+  });
+
+  describe("propNodeToZodTypeDef", () => {
+    test("plain 노드 (integer)", async () => {
+      const propNode: EntityPropNode = {
+        nodeType: "plain",
+        prop: { name: "id", type: "integer" } as EntityProp,
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      expect(result).toContain("id:");
+      expect(result).toContain("z.int()");
+    });
+    test("array (with prop)", async () => {
+      const propNode: EntityPropNode = {
+        nodeType: "array",
+        prop: { name: "items" } as EntityProp,
+        children: [],
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      expect(result).toMatch(/^items:/); // "items:"로 시작
+      expect(result).toContain("z.array(z.object({");
+      expect(result).toContain("})),");
+    });
+    test("array 노드 (without prop)", () => {
+      const propNode: EntityPropNode = {
+        nodeType: "array",
+        prop: undefined,
+        children: [],
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      expect(result).not.toMatch(/^\w+:/); // 시작 부분에 "name:" 없음
+      expect(result).toContain("z.array(z.object({");
+      expect(result).toContain("})),");
+    });
+    test("object 노드 with nullable", () => {
+      const propNode: EntityPropNode = {
+        nodeType: "object",
+        prop: { name: "profile", nullable: true } as EntityProp,
+        children: [],
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      const normalized = result.replace(/\s+/g, ""); // 모든 공백/줄바꿈 제거
+      expect(normalized).toContain("profile:z.object({");
+      expect(normalized).toContain("}).nullable(),");
+    });
+    test("object 노드 without nullable", () => {
+      const propNode: EntityPropNode = {
+        nodeType: "object",
+        prop: { name: "user", nullable: false } as EntityProp,
+        children: [],
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      const normalized = result.replace(/\s+/g, ""); // 모든 공백/줄바꿈 제거
+      expect(normalized).toContain("user:z.object({");
+      expect(normalized).not.toContain(".nullable()");
+      expect(normalized).toContain("}),"); // nullable 없이 })로 끝남
+    });
+    test("중첩 구조 (object in array)", () => {
+      const propNode: EntityPropNode = {
+        nodeType: "array",
+        prop: { name: "users" } as EntityProp,
+        children: [
+          {
+            nodeType: "object",
+            prop: { name: "profile" } as EntityProp,
+            children: [],
+          },
+        ],
+      };
+      const result = propNodeToZodTypeDef(propNode, []);
+      const normalized = result.replace(/\s+/g, ""); // 모든 공백/줄바꿈 제거
+      expect(normalized).toContain("users:z.array(z.object({");
+      expect(normalized).toContain("profile:z.object({");
+    });
+    test("injectImportKeys 전달", () => {
+      const importKeys: string[] = [];
+      const propNode: EntityPropNode = {
+        nodeType: "plain",
+        prop: { name: "status", type: "enum" } as EntityProp, // enum은 import 필요
+      };
+      propNodeToZodTypeDef(propNode, importKeys);
+      expect(importKeys.length).toBeGreaterThan(0);
     });
   });
 });
