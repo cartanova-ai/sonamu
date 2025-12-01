@@ -1706,3 +1706,50 @@ value: z.string(),
 children: z.array(z.string()),
 })"
 `;
+
+exports[`code-converters > getZodObjectFromApiParams > references 전달 > references 전달 1`] = `
+"z.object({
+user: z.object({
+id: z.number(),
+}),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 다중 파라미터 (required + optional 혼합) > 다중 파라미터 (required + optional 혼합) 1`] = `
+"z.object({
+id: z.number(),
+name: z.string(),
+email: z.string().optional(),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 단일 optional 파라미터 > 단일 optional 파라미터 1`] = `
+"z.object({
+name: z.string().optional(),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 단일 required 파라미터 > 단일 required 파라미터 1`] = `
+"z.object({
+id: z.number(),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 복잡한 타입 (array) > 복잡한 타입 (array) 1`] = `
+"z.object({
+items: z.array(z.string()),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 복잡한 타입 (object) > 복잡한 타입 (object) 1`] = `
+"z.object({
+user: z.object({
+id: z.number(),
+}),
+})"
+`;
+
+exports[`code-converters > getZodObjectFromApiParams > 빈 배열 → 빈 ZodObject > 빈 ZodObject 1`] = `
+"z.object({
+})"
+`;

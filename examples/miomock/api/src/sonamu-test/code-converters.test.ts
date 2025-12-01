@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
   getZodObjectFromApi,
+  getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
   propNodeToZodTypeDef,
   zodTypeToZodCode,
@@ -10,7 +11,11 @@ import type {
   ApiDecoratorOptions,
   ExtendedApi,
 } from "../../../../../modules/sonamu/dist/api/decorators";
-import type { EntityProp, EntityPropNode } from "../../../../../modules/sonamu/dist/types/types";
+import type {
+  ApiParam,
+  EntityProp,
+  EntityPropNode,
+} from "../../../../../modules/sonamu/dist/types/types";
 
 describe("code-converters", () => {
   const options: ApiDecoratorOptions = {
@@ -856,7 +861,7 @@ describe("code-converters", () => {
 
         // 검증: UserEntity의 intersection이 모든 reference를 포함
         // (intersection의 left/right 구조를 재귀적으로 확인)
-        const userEntityType = references["UserEntity"];
+        const userEntityType = references["UserEntity"] as unknown as z.ZodObject;
         expect(userEntityType?.def.type).toBe("intersection");
       });
 
@@ -919,13 +924,13 @@ describe("code-converters", () => {
         expect(typeB.def.right.def.type).toBe("object"); // { b: string }
 
         // // B의 left는 A를 참조했으므로 'a' 필드가 있어야 함
-        const typeLeft = typeB.def.left as unknown as z.ZodObject<any>;
+        const typeLeft = typeB.def.left as unknown as z.ZodObject;
         expect(typeLeft.def.type).toBe("object");
         expect(typeLeft.shape.a).toBeDefined();
         expect(typeLeft.shape.a.def.type).toBe("string");
 
         // B의 right는 'b' 필드
-        const typeRight = typeB.def.right as unknown as z.ZodObject<any>;
+        const typeRight = typeB.def.right as unknown as z.ZodObject;
         expect(typeRight.shape.b).toBeDefined();
         expect(typeRight.shape.b.def.type).toBe("string");
 
@@ -941,7 +946,7 @@ describe("code-converters", () => {
         expect(typeLeftC.def.right.def.type).toBe("object"); // B에서 온 'b'
 
         // C의 right는 'c' 필드
-        const typeRightC = typeC.def.right as unknown as z.ZodObject<any>;
+        const typeRightC = typeC.def.right as unknown as z.ZodObject;
         expect(typeRightC.shape.c).toBeDefined();
         expect(typeRightC.shape.c.def.type).toBe("string");
 
@@ -1185,7 +1190,7 @@ describe("code-converters", () => {
         expect(unionOptions.length).toBe(5);
 
         // 검증: union에 primitive 타입들 포함
-        const optionTypes = unionOptions.map((opt: any) => opt.def.type);
+        const optionTypes = unionOptions.map((opt: z.ZodType<unknown>) => opt.def.type);
         expect(optionTypes).toContain("string");
         expect(optionTypes).toContain("number");
         expect(optionTypes).toContain("boolean");
@@ -1193,7 +1198,9 @@ describe("code-converters", () => {
         expect(optionTypes).toContain("array");
 
         // 검증: array의 element가 string (재귀 끊어짐)
-        const arrayOption = unionOptions.find((opt: any) => opt.def.type === "array");
+        const arrayOption = unionOptions.find(
+          (opt: z.ZodType<unknown>) => opt.def.type === "array",
+        );
         expect(arrayOption?.def.element.def.type).toBe("string");
       });
 
@@ -1641,6 +1648,99 @@ describe("code-converters", () => {
       };
       propNodeToZodTypeDef(propNode, importKeys);
       expect(importKeys.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("getZodObjectFromApiParams", () => {
+    test("빈 배열 → 빈 ZodObject", () => {
+      const apiParams: ApiParam[] = [];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(Object.keys(result.shape)).toHaveLength(0);
+      expectZodCodeSnapshot(result, "빈 ZodObject");
+    });
+
+    test("단일 required 파라미터", () => {
+      const apiParams: ApiParam[] = [{ name: "id", type: "number", optional: false }];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.id).toBeDefined();
+      expect(result.shape.id).toBeInstanceOf(z.ZodNumber);
+      expectZodCodeSnapshot(result, "단일 required 파라미터");
+    });
+
+    test("단일 optional 파라미터", () => {
+      const apiParams: ApiParam[] = [{ name: "name", type: "string", optional: true }];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.name).toBeDefined();
+      expect(result.shape.name).toBeInstanceOf(z.ZodOptional);
+      expectZodCodeSnapshot(result, "단일 optional 파라미터");
+    });
+
+    test("다중 파라미터 (required + optional 혼합)", () => {
+      const apiParams: ApiParam[] = [
+        { name: "id", type: "number", optional: false },
+        { name: "name", type: "string", optional: false },
+        { name: "email", type: "string", optional: true },
+      ];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.id).toBeInstanceOf(z.ZodNumber);
+      expect(result.shape.name).toBeInstanceOf(z.ZodString);
+      expect(result.shape.email).toBeInstanceOf(z.ZodOptional);
+      expectZodCodeSnapshot(result, "다중 파라미터 (required + optional 혼합)");
+    });
+
+    test("복잡한 타입 (object)", () => {
+      const apiParams: ApiParam[] = [
+        {
+          name: "user",
+          type: {
+            t: "object",
+            props: [{ name: "id", type: "number", optional: false }],
+          },
+          optional: false,
+        },
+      ];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.user).toBeInstanceOf(z.ZodObject);
+      expectZodCodeSnapshot(result, "복잡한 타입 (object)");
+    });
+
+    test("복잡한 타입 (array)", () => {
+      const apiParams: ApiParam[] = [
+        {
+          name: "items",
+          type: {
+            t: "array",
+            elementsType: "string",
+          },
+          optional: false,
+        },
+      ];
+      const result = getZodObjectFromApiParams(apiParams);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.items).toBeInstanceOf(z.ZodArray);
+      expectZodCodeSnapshot(result, "복잡한 타입 (array)");
+    });
+
+    test("references 전달", () => {
+      const references = {
+        User: z.object({ id: z.number() }),
+      };
+      const apiParams: ApiParam[] = [
+        {
+          name: "user",
+          type: { t: "ref", id: "User" },
+          optional: false,
+        },
+      ];
+      const result = getZodObjectFromApiParams(apiParams, references);
+      expect(result).toBeInstanceOf(z.ZodObject);
+      expect(result.shape.user).toBe(references.User); // 동일한 객체 참조
+      expectZodCodeSnapshot(result, "references 전달");
     });
   });
 });
