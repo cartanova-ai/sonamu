@@ -32,11 +32,10 @@ export default function FixtureIndex() {
 
   const [activeTab, setActiveTab] = useState(0);
 
-  const [mode, setMode] = useState<"table" | "graph">("table");
+  const [mode, setMode] = useState<"table" | "graph">("graph");
 
   // 중복 확인 컬럼 설정
   const [duplicateCheckColumns, setDuplicateCheckColumns] = useState<DuplicateCheckColumns>({});
-  const [showDuplicateCheckSettings, setShowDuplicateCheckSettings] = useState(true);
 
   // 중복 확인 설정용 임시 상태
   const [dupCheckEntityId, setDupCheckEntityId] = useState<string>("");
@@ -300,8 +299,9 @@ export default function FixtureIndex() {
 
   return (
     <div className="fixture-index">
-      <Segment className="fixture-header">
-        <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+      {/* 좌측: 설정 패널 */}
+      <div className="fixture-sidebar">
+        <Segment className="fixture-header">
           {/* 1. Search Section */}
           <div className="search-section">
             <div className="search-title">
@@ -343,7 +343,7 @@ export default function FixtureIndex() {
             </div>
 
             {searchEntity && (
-              <div className="search-field-group">
+              <>
                 <Dropdown
                   placeholder="컬럼 선택"
                   selection
@@ -363,7 +363,6 @@ export default function FixtureIndex() {
                       text: prop.name,
                     }))}
                   {...register("field")}
-                  style={{ flexBasis: "150px" }}
                 />
                 <Input placeholder="검색 값 입력" {...register("value")} style={{ flexGrow: 1 }} />
                 <Dropdown
@@ -373,9 +372,8 @@ export default function FixtureIndex() {
                     { key: "like", text: "Like", value: "like" },
                   ]}
                   {...register("searchType")}
-                  style={{ flexBasis: "100px" }}
                 />
-              </div>
+              </>
             )}
 
             <Button
@@ -389,134 +387,94 @@ export default function FixtureIndex() {
 
           {/* 2. Duplicate Check Settings */}
           <div className="duplicate-check-section">
-            <button
-              type="button"
-              className="duplicate-check-title"
-              style={{
-                cursor: "pointer",
-                background: "none",
-                border: "none",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                width: "100%",
-                textAlign: "left",
-              }}
-              onClick={() => setShowDuplicateCheckSettings(!showDuplicateCheckSettings)}
-            >
-              <Icon name={showDuplicateCheckSettings ? "chevron down" : "chevron right"} />
-              <Icon name="filter" style={{ marginRight: "5px" }} />
-              중복 확인 설정
-              {Object.keys(duplicateCheckColumns).length > 0 && (
-                <Label color="blue" size="tiny" style={{ marginLeft: "10px" }}>
-                  {Object.keys(duplicateCheckColumns).length}개 엔티티 설정됨
-                </Label>
-              )}
-            </button>
+            <p style={{ color: "#666", fontSize: "11px" }}>
+              엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. <br />
+              지정하지 않으면 unique index만 사용합니다.
+            </p>
 
-            {showDuplicateCheckSettings && (
-              <div className="duplicate-check-settings" style={{ marginTop: "10px" }}>
-                <p style={{ color: "#666", fontSize: "12px", marginBottom: "10px" }}>
-                  엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. 지정하지 않으면 unique index만
-                  사용합니다.
-                </p>
+            {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
+            <Dropdown
+              placeholder="엔티티 선택"
+              search
+              selection
+              clearable
+              loading={entitiesLoading}
+              options={
+                entitiesData?.entities
+                  ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
+                  .map((entity) => ({
+                    key: entity.id,
+                    value: entity.id,
+                    text: entity.id,
+                  })) || []
+              }
+              value={dupCheckEntityId}
+              onChange={(_, { value }) => setDupCheckEntityId(value as string)}
+            />
 
-                {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: "15px",
-                  }}
-                >
-                  <Dropdown
-                    placeholder="엔티티 선택"
-                    search
-                    selection
-                    clearable
-                    loading={entitiesLoading}
-                    options={
-                      entitiesData?.entities
-                        ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
-                        .map((entity) => ({
-                          key: entity.id,
-                          value: entity.id,
-                          text: entity.id,
-                        })) || []
+            <Dropdown
+              placeholder="중복 확인 컬럼 선택"
+              multiple
+              selection
+              disabled={!dupCheckEntity}
+              options={
+                dupCheckEntity?.props
+                  .filter((p) => {
+                    if (p.type === "virtual") return false;
+                    if (p.type === "relation") {
+                      if (p.relationType === "BelongsToOne") return true;
+                      if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
+                      return false;
                     }
-                    value={dupCheckEntityId}
-                    onChange={(_, { value }) => setDupCheckEntityId(value as string)}
-                    style={{ minWidth: "180px" }}
-                  />
+                    return true;
+                  })
+                  .map((prop) => ({
+                    key: prop.name,
+                    value: prop.name,
+                    text: prop.name,
+                  })) || []
+              }
+              value={dupCheckSelectedColumns}
+              onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
+            />
 
-                  <Dropdown
-                    placeholder="중복 확인 컬럼 선택"
-                    multiple
-                    selection
-                    disabled={!dupCheckEntity}
-                    options={
-                      dupCheckEntity?.props
-                        .filter((p) => {
-                          if (p.type === "virtual") return false;
-                          if (p.type === "relation") {
-                            if (p.relationType === "BelongsToOne") return true;
-                            if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
-                            return false;
-                          }
-                          return true;
-                        })
-                        .map((prop) => ({
-                          key: prop.name,
-                          value: prop.name,
-                          text: prop.name,
-                        })) || []
-                    }
-                    value={dupCheckSelectedColumns}
-                    onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
-                    style={{ minWidth: "250px", flexGrow: 1 }}
-                  />
+            <Button
+              icon="plus"
+              color="blue"
+              size="small"
+              disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
+              onClick={addDuplicateCheckSetting}
+            />
 
-                  <Button
-                    icon="plus"
-                    color="blue"
-                    size="small"
-                    disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
-                    onClick={addDuplicateCheckSetting}
-                  />
-                </div>
-
-                {/* 설정된 중복 확인 목록 */}
-                {Object.keys(duplicateCheckColumns).length > 0 && (
-                  <div
+            {/* 설정된 중복 확인 목록 */}
+            {Object.keys(duplicateCheckColumns).length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
+                  <Label
+                    key={entityId}
+                    size="medium"
                     style={{
                       display: "flex",
-                      flexWrap: "wrap",
-                      gap: "8px",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 12px",
                     }}
                   >
-                    {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
-                      <Label
-                        key={entityId}
-                        size="medium"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          padding: "8px 12px",
-                        }}
-                      >
-                        <span style={{ fontWeight: "bold" }}>{entityId}</span>
-                        <span style={{ color: "#666" }}>({columns.join(", ")})</span>
-                        <Icon
-                          name="delete"
-                          style={{ cursor: "pointer", marginLeft: "4px" }}
-                          onClick={() => removeDuplicateCheckSetting(entityId)}
-                        />
-                      </Label>
-                    ))}
-                  </div>
-                )}
+                    <span style={{ fontWeight: "bold" }}>{entityId}</span>
+                    <span style={{ color: "#666" }}>({columns.join(", ")})</span>
+                    <Icon
+                      name="delete"
+                      style={{ cursor: "pointer", marginLeft: "4px" }}
+                      onClick={() => removeDuplicateCheckSetting(entityId)}
+                    />
+                  </Label>
+                ))}
               </div>
             )}
           </div>
@@ -557,37 +515,35 @@ export default function FixtureIndex() {
                   });
 
                   return (
-                    <Label color="green" size="small" style={{ marginLeft: "10px" }}>
+                    <Label color="green" size="small" style={{ marginLeft: "auto" }}>
                       {saveTargets.length}개 저장 예정
                     </Label>
                   );
                 })()}
             </button>
 
-            <div className="search-field-group">
-              <div className="db-dropdown-wrapper">
-                <Dropdown
-                  fluid
-                  placeholder="저장할 대상 DB 선택"
-                  header="Fixture Target DB"
-                  selection
-                  options={DB_NAMES.map((db) => ({
-                    key: db,
-                    value: db,
-                    text: db,
-                  }))}
-                  value={targetDB}
-                  onChange={(_, { value }) => setTargetDB(value as string)}
-                />
-              </div>
-
-              <Button
-                onClick={saveFixture}
-                color="blue"
-                content="저장"
-                disabled={fixtureRecords.length === 0}
+            <div className="db-dropdown-wrapper">
+              <Dropdown
+                fluid
+                placeholder="저장할 대상 DB 선택"
+                header="Fixture Target DB"
+                selection
+                options={DB_NAMES.map((db) => ({
+                  key: db,
+                  value: db,
+                  text: db,
+                }))}
+                value={targetDB}
+                onChange={(_, { value }) => setTargetDB(value as string)}
               />
             </div>
+
+            <Button
+              onClick={saveFixture}
+              color="blue"
+              content="저장"
+              disabled={fixtureRecords.length === 0}
+            />
 
             {showSaveTargets &&
               fixtureRecords.length > 0 &&
@@ -623,7 +579,6 @@ export default function FixtureIndex() {
                         <div
                           key={entityId}
                           style={{
-                            marginBottom: "8px",
                             padding: "8px",
                             backgroundColor: "#f9f9f9",
                             borderRadius: "4px",
@@ -656,44 +611,47 @@ export default function FixtureIndex() {
                 );
               })()}
           </div>
-        </div>
-      </Segment>
+        </Segment>
 
-      {/* AI Chat Button */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button icon="comment" content="AI Chat" color="teal" onClick={() => chatWithAI()} />
+        {/* AI Chat Button */}
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "15px" }}>
+          <Button icon="comment" content="AI Chat" color="teal" onClick={() => chatWithAI()} />
+        </div>
       </div>
 
-      <div className="fixture-viewer">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginBottom: "15px",
-          }}
-        >
-          <Button
-            onClick={() => setMode(mode === "table" ? "graph" : "table")}
-            content={mode === "table" ? "그래프 보기" : "테이블 보기"}
-            icon={mode === "table" ? "sitemap" : "table"}
-            basic
-            color="grey"
+      {/* 우측: 뷰어 */}
+      <div className="fixture-main">
+        <div className="fixture-viewer">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: "15px",
+            }}
+          >
+            <Button
+              onClick={() => setMode(mode === "table" ? "graph" : "table")}
+              content={mode === "table" ? "그래프 보기" : "테이블 보기"}
+              icon={mode === "table" ? "sitemap" : "table"}
+              basic
+              color="grey"
+            />
+          </div>
+          <Tab
+            panes={panes}
+            activeIndex={activeTab}
+            onTabChange={(_, { activeIndex }) => {
+              if (typeof activeIndex === "number") {
+                setActiveTab(activeIndex);
+              }
+            }}
+            style={{
+              boxShadow: "0 5px 15px rgba(0, 0, 0, 0.08)",
+              borderRadius: "12px",
+              overflow: "hidden",
+            }}
           />
         </div>
-        <Tab
-          panes={panes}
-          activeIndex={activeTab}
-          onTabChange={(_, { activeIndex }) => {
-            if (typeof activeIndex === "number") {
-              setActiveTab(activeIndex);
-            }
-          }}
-          style={{
-            boxShadow: "0 5px 15px rgba(0, 0, 0, 0.08)",
-            borderRadius: "12px",
-            overflow: "hidden",
-          }}
-        />
       </div>
     </div>
   );

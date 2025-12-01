@@ -897,9 +897,24 @@ code {
 .fixture-index {
   padding: 20px;
   min-height: 100vh;
-  background-color: #f7f7f7; /* 배경색 */
+  background-color: #f7f7f7;
+  display: flex;
+  gap: 20px;
+
+  .fixture-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+  }
+
+  .fixture-main {
+    flex: 1;
+    min-width: 0; // flex item 오버플로우 방지
+  }
 
   .fixture-header.ui.segment {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     border-radius: 12px;
     margin-bottom: 25px;
@@ -907,59 +922,40 @@ code {
     border: none;
 
     button {
-      margin-left: auto;
-      min-width: 150px;
+      width: 100%;
     }
 
     /* Search Section Styling */
-    .search-section {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      padding: 15px;
-      background-color: #fcfcfc;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      margin-bottom: 15px;
-    }
-    .search-title {
-      min-width: 130px;
-      font-size: 1.1em;
-      font-weight: 700;
-      color: #1b1c1d;
-      display: flex;
-      align-items: center;
-    }
-
-    /* Save Section Styling (이전 Import Section) */
+    .search-section,
+    .duplicate-check-section,
     .save-section {
       display: flex;
       flex-wrap: wrap;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start; /* 왼쪽 정렬 */
-      align-items: flex-start;
-      gap: 10px;
+      gap: 5px;
       padding: 15px;
-      background-color: #e6f7ff; /* 라이트 블루 배경 */
-      border: 1px solid #99d8ff;
+      background-color: #fcfcfc;
+      border: 1px solid #e0e0e0;
       border-radius: 8px;
     }
+
+    .search-title {
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
+    /* Save Section Styling (이전 Import Section) */
+    .save-section {
+      background-color: #e6f7ff; /* 라이트 블루 배경 */
+      border: 1px solid #99d8ff;
+    }
+
     .save-title {
       min-width: 130px;
       font-size: 1.1em;
       font-weight: 700;
       color: #007bff;
       display: flex;
-      align-items: center;
-    }
-
-    .search-field-group {
-      display: flex;
-      flex-grow: 1;
-      min-width: 300px;
-      gap: 5px;
       align-items: center;
     }
 
@@ -970,6 +966,7 @@ code {
 
     .fixture-record-group {
       display: flex;
+      flex-direction: column;
       gap: 10px;
     }
 
