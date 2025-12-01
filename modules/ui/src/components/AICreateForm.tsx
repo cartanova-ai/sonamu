@@ -167,7 +167,7 @@ export function useAICreateForm<T extends ResponseType>({ type }: { type: "entit
 
     if (!state.prevMessageId?.[type]) return;
 
-    SonamuUIService.getMessage(state.prevMessageId[type] as string)
+    SonamuUIService.getMessages(state.prevMessageId[type] as string)
       .then((message) => {
         setState((prev) => ({
           ...prev,

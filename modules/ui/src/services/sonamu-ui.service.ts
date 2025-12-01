@@ -341,13 +341,13 @@ export namespace SonamuUIService {
     });
   }
 
-  export function getMessage(id: string): Promise<{
+  export function getMessages(id: string): Promise<{
     id: string;
     content: string;
   }> {
     return fetch({
       method: "GET",
-      url: `/api/openai/message`,
+      url: `/api/openai/messages`,
       params: { id },
     });
   }

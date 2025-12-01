@@ -1,3 +1,5 @@
+import { anthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
 import chalk from "chalk";
 import { execSync } from "child_process";
 import fastify from "fastify";
@@ -27,14 +29,13 @@ import {
   type SonamuDBConfig,
   TemplateKey,
 } from "sonamu";
-// 얘 모듈 이름은 왜 ./openai가 아니고 ./openai-client인가?
+
 // esm을 지원하기 위해 빌드 타임에 import 경로의 확장자를 resolve 해주는 resolveFully 옵션을 사용중입니다.
 // 얘는 "./openai" 같은 이름으로 import하면 그걸 알아서 "./openai.js" 같은 확장자가 붙은 경로로 변환해줍니다.
 // 아니 근데 여기서 문제상황: "openai"라는 이름의 패키지를 import했는데,
 // swc는 같은 디렉토리에 "openai.ts" 파일이 있다는 이유만으로 이걸 "./openai.js"로 만들어버립니다.
 // 즉 "같은 디렉토리 내에 패키지 이름과 같은 이름의 모듈 파일이 있으면 안 되는 문제"입니다.
-// 이를 피하기 위해 "openai"를 사용하는 쪽 모듈 이름은 openai-client.ts로 변경하였습니다.
-import { openai } from "./openai-client";
+import { aiClient } from "./ai-client";
 
 export async function createServer(options: {
   projectName: string;
@@ -114,12 +115,10 @@ export async function createServer(options: {
   }
 
   if (Sonamu.secrets) {
-    await openai.init();
+    await aiClient.init();
 
-    server.get("/api/openai/message", async (request) => {
-      const { id } = request.query as { id: string };
-
-      return openai.getMessage(id);
+    server.get("/api/openai/messages", async () => {
+      return aiClient.getMessages();
     });
 
     server.post("/api/openai/chat", async (request) => {
@@ -127,40 +126,54 @@ export async function createServer(options: {
         message: string;
       };
 
-      await openai.createMessage(message);
-      const run = await openai.runStatus();
+      await aiClient.generate(message);
+      const messages = aiClient.getMessages();
 
-      return (await openai.getMessages({ run_id: run.id }))[0];
+      return messages[messages.length - 1];
     });
 
-    server.get("/api/openai/chat/stream", async (_request, reply) => {
-      const runner = openai.getRunner();
+    server.post("/api/openai/chat/stream", async (request, reply) => {
+      const { messages } = request.body as {
+        messages: {
+          role: "user" | "assistant";
+          content: string;
+          parts?: { type: string; text?: string }[];
+        }[];
+      };
 
-      reply.raw.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "Access-Control-Allow-Origin": `http://localhost:${listen.port}`,
-        "Access-Control-Allow-Credentials": "true",
+      // v5에서는 messages를 model messages로 변환 필요
+      const modelMessages = messages.map((m) => ({
+        role: m.role,
+        content: m.parts?.find((p) => p.type === "text")?.text ?? m.content ?? "",
+      }));
+
+      const result = streamText({
+        model: anthropic("claude-sonnet-4-20250514"),
+        messages: modelMessages,
       });
 
-      for await (const message of runner) {
-        if (message.event === "thread.message.delta" && message.data.delta.content?.length) {
-          const data =
-            (message.data.delta.content[0].type === "text"
-              ? message.data.delta.content[0].text?.value
-              : ""
-            )?.replace(/\n/g, "\\n") ?? "";
-          reply.raw.write(`data: ${data}\n\n`);
+      // v5: toUIMessageStreamResponse() 사용
+      const response = result.toUIMessageStreamResponse();
+
+      // Fastify에서 Web Response를 처리
+      reply.raw.writeHead(response.status, Object.fromEntries(response.headers.entries()));
+
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          reply.raw.write(value);
         }
       }
 
-      reply.raw.write("event: end\n");
-      reply.raw.write("data: Stream end\n\n");
+      reply.raw.end();
+      return reply;
     });
 
-    server.post("/api/openai/clearThread", async () => {
-      return openai.clearThread();
+    server.post("/api/openai/clear", async () => {
+      aiClient.clearMessages();
+      return { success: true };
     });
   }
 

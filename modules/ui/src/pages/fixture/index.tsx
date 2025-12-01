@@ -1,8 +1,11 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
 import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
+import ChatComponent from "../../components/ChatComponent";
+import { useCommonModal } from "../../components/core/CommonModal";
 import FixtureGraph from "../../components/fixture/ErdGraph";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
@@ -41,6 +44,25 @@ export default function FixtureIndex() {
 
   // 저장 대상 상세 보기
   const [showSaveTargets, setShowSaveTargets] = useState(false);
+
+  // AI Chat 모달
+  const navigate = useNavigate();
+  const { openModal } = useCommonModal();
+  const chatWithAI = () => {
+    openModal(<ChatComponent />, {
+      onControlledOpen: () => {
+        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
+        if (focusInput) {
+          focusInput.focus();
+        }
+      },
+      onCompleted: () => {
+        setTimeout(() => {
+          navigate("/fixture");
+        }, 200);
+      },
+    });
+  };
 
   const { form, register } = useTypeForm(
     z.object({
@@ -636,6 +658,11 @@ export default function FixtureIndex() {
           </div>
         </div>
       </Segment>
+
+      {/* AI Chat Button */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button icon="comment" content="AI Chat" color="teal" onClick={() => chatWithAI()} />
+      </div>
 
       <div className="fixture-viewer">
         <div
