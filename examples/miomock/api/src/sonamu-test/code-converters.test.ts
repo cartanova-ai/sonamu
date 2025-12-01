@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
   getZodObjectFromApi,
+  getZodTypeFromApiParamType,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
@@ -1352,451 +1353,211 @@ describe("code-converters", () => {
     });
   });
 
-  // describe("getZodTypeFromApiParamType", () => {
-  //   describe("주요 primitive 타입 처리", () => {
-  //     test("타입 파라미터가 Generic String인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: "string",
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: "string",
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "void" }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //     });
+  describe("getZodTypeFromApiParamType", () => {
+    describe("Primitive 타입", () => {
+      test("String", async () => {
+        const zodType = getZodTypeFromApiParamType("string", {});
+        expect(zodType).toBeInstanceOf(z.ZodString);
+      });
+      test("Number", async () => {
+        const zodType = getZodTypeFromApiParamType("number", {});
+        expect(zodType).toBeInstanceOf(z.ZodNumber);
+      });
+      test("Boolean", async () => {
+        const zodType = getZodTypeFromApiParamType("boolean", {});
+        expect(zodType).toBeInstanceOf(z.ZodBoolean);
+      });
+    });
+    describe("Literal 타입", () => {
+      test("string-literal", async () => {
+        const zodType = getZodTypeFromApiParamType({ t: "string-literal", value: "test" }, {});
+        expect(zodType).toBeInstanceOf(z.ZodLiteral);
+      });
+      test("numeric-literal", async () => {
+        const zodType = getZodTypeFromApiParamType({ t: "numeric-literal", value: 1 }, {});
+        expect(zodType).toBeInstanceOf(z.ZodLiteral);
+      });
+    });
+    describe("Array 타입", () => {
+      test("array", async () => {
+        const zodType = getZodTypeFromApiParamType({ t: "array", elementsType: "string" }, {});
+        expect(zodType).toBeInstanceOf(z.ZodArray);
+      });
+    });
+    describe("Object 타입", () => {
+      test("object", async () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "object", props: [{ name: "test", type: "string", optional: false }] },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodObject);
+      });
+    });
+    describe("Union 타입", () => {
+      test("union", async () => {
+        const zodType = getZodTypeFromApiParamType({ t: "union", types: ["string", "number"] }, {});
+        expect(zodType).toBeInstanceOf(z.ZodUnion);
+      });
+    });
+    describe("Intersection 타입", () => {
+      test("intersection", async () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "intersection", types: ["string", "number"] },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodIntersection);
+      });
+    });
+    test("tuple-type", async () => {
+      const zodType = getZodTypeFromApiParamType(
+        {
+          t: "tuple-type",
+          elements: ["string", "number"],
+        },
+        {},
+      );
+      expect(zodType).toBeInstanceOf(z.ZodTuple);
+    });
 
-  //     test("타입 파라미터가 Generic Number인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: "number",
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: "number",
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "void" }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //     });
+    describe("Ref 타입", () => {
+      test("ref", async () => {
+        const zodType = getZodTypeFromApiParamType({ t: "ref", id: "test" }, {});
+        expect(zodType).toBeInstanceOf(z.ZodType);
+      });
+      test("Date", () => {
+        const zodType = getZodTypeFromApiParamType({ t: "ref", id: "Date" }, {});
+        expect(zodType).toBeInstanceOf(z.ZodDate);
+      });
 
-  //     test("타입 파라미터가 Generic Array인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: {
-  //               t: "array",
-  //               elementsType: "number",
-  //             },
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: {
-  //               t: "array",
-  //               elementsType: "number",
-  //             },
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "void" }] }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //     });
+      test("Partial", () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "ref",
+            id: "Partial",
+            args: [
+              {
+                t: "object",
+                props: [
+                  { name: "id", type: "number", optional: false },
+                  { name: "name", type: "string", optional: false },
+                ],
+              },
+            ],
+          },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodObject);
+        expect((zodType as z.ZodObject).shape.id).toBeDefined();
+        expect((zodType as z.ZodObject).shape.name).toBeDefined();
+      });
+    });
 
-  //     test("타입 파라미터가 Generic Object인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: {
-  //               t: "object",
-  //               props: [
-  //                 {
-  //                   name: "id",
-  //                   type: "number",
-  //                   optional: false,
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: {
-  //               t: "object",
-  //               props: [
-  //                 {
-  //                   name: "id",
-  //                   type: "number",
-  //                   optional: false,
-  //                 },
-  //               ],
-  //             },
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "object" }] }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type.toString()).toMatchSnapshot("타입 확인");
-  //     });
-
-  //     test("타입 파라미터가 Generic Union인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: {
-  //           httpMethod: "POST",
-  //           description: "testApi",
-  //           clients: ["axios", "swr"],
-  //           contentType: "application/json",
-  //         },
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: {
-  //               t: "union",
-  //               types: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "a",
-  //                 },
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "b",
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: {
-  //               t: "union",
-  //               types: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "a",
-  //                 },
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "b",
-  //                 },
-  //               ],
-  //             },
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "union" }] }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //     });
-
-  //     test("타입 파라미터가 Generic Intersection인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: {
-  //               t: "intersection",
-  //               types: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "a",
-  //                 },
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "b",
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: {
-  //               t: "intersection",
-  //               types: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "a",
-  //                 },
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "b",
-  //                 },
-  //               ],
-  //             },
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "intersection" }] }],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //     });
-
-  //     test("타입 파라미터가 Generic Tuple인 경우", async () => {
-  //       const testApi: ExtendedApi = {
-  //         modelName: "PracticeModel",
-  //         methodName: "testApi",
-  //         path: "/practice/testApi",
-  //         options: options,
-  //         typeParameters: [
-  //           {
-  //             t: "type-param",
-  //             id: "T",
-  //             constraint: {
-  //               t: "tuple-type",
-  //               elements: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "string",
-  //                 },
-  //                 {
-  //                   t: "numeric-literal",
-  //                   value: 1,
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //         ],
-  //         parameters: [
-  //           {
-  //             name: "param",
-  //             type: {
-  //               t: "tuple-type",
-  //               elements: [
-  //                 {
-  //                   t: "string-literal",
-  //                   value: "string",
-  //                 },
-  //                 {
-  //                   t: "numeric-literal",
-  //                   value: 1,
-  //                 },
-  //               ],
-  //             },
-  //             optional: false,
-  //           },
-  //         ],
-  //         returnType: {
-  //           t: "tuple-type",
-  //           elements: [
-  //             {
-  //               t: "string-literal",
-  //               value: "string",
-  //             },
-  //             {
-  //               t: "numeric-literal",
-  //               value: 1,
-  //             },
-  //           ],
-  //         },
-  //       };
-  //       const references: Record<string, z.ZodObject> = {};
-  //       const zodType = getZodTypeFromApiParamType(
-  //         testApi.parameters[0]?.type as unknown as ApiParamType,
-  //         references,
-  //       );
-  //       expect(zodType).toBeDefined();
-  //       expect(zodType.type).toMatchSnapshot("타입 확인");
-  //       expect(zodType).toMatchSnapshot("요소 확인");
-  //     });
-  //   });
-
-  //   describe("Pick/Omit 유틸리티 처리", () => {
-  //     test("Pick + ZodUnion keys", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("Pick + single ZodLiteral key", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("Omit + multiple keys", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("잘못된 인자 개수 에러 처리", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //   });
-  //   describe("Partial 유틸리티 처리", () => {
-  //     test("Partial + nested object", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("잘못된 인자 에러 처리", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //   });
-  //   describe("복합 케이스 처리", () => {
-  //     test("다중 intersection", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("nested union in array", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("tuple + optional elements", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //     test("record types", async () => {
-  //       // const testApi: ExtendedApi = {
-  //       //   modelName: "PracticeModel",
-  //       //   methodName: "testApi",
-  //       //   path: "/practice/testApi",
-  //       //   options: options,
-  //       // };
-  //     });
-  //   });
-  // });
+    describe("Pick/Omit 유틸리티 처리", () => {
+      test("Pick + ZodUnion keys", async () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "ref",
+            id: "Pick",
+            args: [
+              {
+                t: "object",
+                props: [
+                  { name: "id", type: "number", optional: false },
+                  { name: "name", type: "string", optional: false },
+                  { name: "age", type: "number", optional: false },
+                ],
+              },
+              {
+                t: "union",
+                types: [
+                  { t: "string-literal", value: "id" },
+                  { t: "string-literal", value: "name" },
+                ],
+              },
+            ],
+          },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodObject);
+        expect((zodType as z.ZodObject).shape.id).toBeDefined();
+        expect((zodType as z.ZodObject).shape.name).toBeDefined();
+        expect((zodType as z.ZodObject).shape.age).toBeUndefined();
+      });
+      test("Pick + single ZodLiteral key", async () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "ref",
+            id: "Pick",
+            args: [
+              {
+                t: "object",
+                props: [
+                  { name: "id", type: "number", optional: false },
+                  { name: "name", type: "string", optional: false },
+                ],
+              },
+              { t: "string-literal", value: "id" },
+            ],
+          },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodObject);
+        expect((zodType as z.ZodObject).shape.id).toBeDefined();
+        expect((zodType as z.ZodObject).shape.name).toBeUndefined();
+      });
+      test("Omit + multiple keys", async () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "ref",
+            id: "Omit",
+            args: [
+              {
+                t: "object",
+                props: [
+                  { name: "id", type: "number", optional: false },
+                  { name: "name", type: "string", optional: false },
+                  { name: "password", type: "string", optional: false },
+                ],
+              },
+              {
+                t: "union",
+                types: [{ t: "string-literal", value: "password" }],
+              },
+            ],
+          },
+          {},
+        );
+        expect(zodType).toBeInstanceOf(z.ZodObject);
+        expect((zodType as z.ZodObject).shape.id).toBeDefined();
+        expect((zodType as z.ZodObject).shape.name).toBeDefined();
+        expect((zodType as z.ZodObject).shape.password).toBeUndefined();
+      });
+      test("잘못된 인자 개수 에러 처리 Pick", async () => {
+        expect(() =>
+          getZodTypeFromApiParamType(
+            {
+              t: "ref",
+              id: "Pick",
+              args: [{ t: "object", props: [] }],
+            },
+            {},
+          ),
+        ).toThrow("잘못된 Pick");
+      });
+      test("잘못된 인자 개수 에러 처리 Omit", async () => {
+        expect(() =>
+          getZodTypeFromApiParamType(
+            {
+              t: "ref",
+              id: "Omit",
+              args: [{ t: "object", props: [] }],
+            },
+            {},
+          ),
+        ).toThrow("잘못된 Omit");
+      });
+    });
+  });
 });
 
 // === Test Helpers ===
