@@ -24,6 +24,7 @@ describe("Syncer", () => {
     syncer = Sonamu.syncer;
     expect(syncer).toBeDefined();
   });
+
   // ============================================
   // 1. 파일 변경 감지 워크플로우
   // ============================================
@@ -285,7 +286,6 @@ describe("Syncer", () => {
       await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
 
       const writeFile = Naite.get("fs/promises:writeFile:*").first().data;
-      //console.log("writeFile", writeFile);
 
       await expect(writeFile).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/model.test.ts.snap",
@@ -780,12 +780,422 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 유틸리티 (TODO)
+  // 13. syncFromWatcher - Watcher 이벤트 처리
+  // sonamu 패키지 내부에서 import하므로 vi.mock 적용 안됨 skip 처리
   // ============================================
-  describe("유틸리티", () => {
-    test.todo("checkExistsGenCode - 생성된 코드 존재 확인");
-    test.todo("autoloadTypes - types 로드");
-    test.todo("autoloadModels - models 로드");
-    test.todo("autoloadApis - apis 로드");
+  describe("syncFromWatcher", () => {
+    test.skip("change 이벤트 → 정상 처리", async () => {
+      const modelPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.model.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("change", modelPath);
+
+      const steps = Naite.get("step").result();
+      expect(steps).toBeDefined();
+      expect(steps).toContain("doSyncActions");
+      expect(steps).toContain("autoloadTypes");
+      expect(steps).toContain("autoloadModels");
+      expect(steps).toContain("autoloadApis");
+    });
+
+    test.skip("add 이벤트 → 새 파일 처리", async () => {
+      const newTypesPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.types.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("add", newTypesPath);
+
+      const steps = Naite.get("step").result();
+      expect(steps).toBeDefined();
+      expect(steps).toContain("doSyncActions");
+    });
+
+    test.skip("unlink 이벤트 → 파일 삭제 처리", async () => {
+      const deletedPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.types.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("unlink", deletedPath);
+
+      const steps = Naite.get("step").result();
+      expect(steps).toBeDefined();
+    });
+  });
+
+  // ============================================
+  // 14. removeInvalidatedRegisteredApis
+  // ============================================
+  describe("removeInvalidatedRegisteredApis", () => {
+    test("model 파일 무효화 → 해당 모델의 API들 제거", async () => {
+      // 먼저 API 로드
+      await syncer.autoloadApis();
+
+      const modelPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.model.ts",
+      ) as AbsolutePath;
+
+      const removed = syncer.removeInvalidatedRegisteredApis(modelPath);
+
+      expect(Array.isArray(removed)).toBe(true);
+      //console.log("********** removed **********", removed);
+      for (const api of removed) {
+        expect(api.modelName).toBe("SyncFixtureModel");
+      }
+    });
+
+    test("model 파일이 아닌 경우 → 빈 배열 반환", async () => {
+      const typesPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.types.ts",
+      ) as AbsolutePath;
+
+      const removed = syncer.removeInvalidatedRegisteredApis(typesPath);
+
+      expect(removed).toEqual([]);
+    });
+
+    test("entity.json 파일 → 빈 배열 반환", async () => {
+      const entityPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.entity.json",
+      ) as AbsolutePath;
+
+      const removed = syncer.removeInvalidatedRegisteredApis(entityPath);
+
+      expect(removed).toEqual([]);
+    });
+
+    test("frame 파일 → 빈 배열 반환", async () => {
+      const framePath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.frame.ts",
+      ) as AbsolutePath;
+
+      const removed = syncer.removeInvalidatedRegisteredApis(framePath);
+
+      expect(removed).toEqual([]);
+    });
+  });
+
+  // ============================================
+  // 15. copySharedToTargets
+  // ============================================
+  describe("copySharedToTargets", () => {
+    test("정상 복사", async () => {
+      const targets = Sonamu.config.sync.targets;
+
+      await syncer.copySharedToTargets(targets);
+
+      // 파일이 동일하면 복사 스킵될 수 있으므로 에러 없이 완료되면 성공
+    });
+
+    test("shared 소스 파일 미존재 → early return (에러 없음)", async () => {
+      // nonexistent-target.shared.ts.txt가 sonamu에 없으므로 early return
+      await expect(syncer.copySharedToTargets(["nonexistent-target"])).resolves.not.toThrow();
+    });
+
+    test("빈 타겟 배열 → 정상 처리", async () => {
+      await syncer.copySharedToTargets([]);
+      // 에러 없이 완료되어야 함
+    });
+  });
+
+  // ============================================
+  // 17. entity-operations
+  // ============================================
+  describe("entity-operations", () => {
+    describe("createEntity", () => {
+      test("유효한 CamelCase entityId → 성공", async () => {
+        await syncer.createEntity({
+          entityId: "ValidTestEntity",
+          title: "Valid Test Entity",
+          table: "valid_test_entities",
+        });
+
+        const writeFiles = Naite.get("fs/promises:writeFile").result();
+        const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
+
+        const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
+          f.path.includes("valid-test-entity.entity.json"),
+        );
+        expect(entityFile).toBeDefined();
+      });
+
+      test("잘못된 entityId - snake_case → BadRequestException", async () => {
+        await expect(
+          syncer.createEntity({
+            entityId: "invalid_entity",
+            title: "Invalid",
+            table: "invalid",
+          }),
+        ).rejects.toThrow("CamelCase");
+      });
+
+      test("잘못된 entityId - camelCase (소문자 시작) → BadRequestException", async () => {
+        await expect(
+          syncer.createEntity({
+            entityId: "invalidEntity",
+            title: "Invalid",
+            table: "invalid",
+          }),
+        ).rejects.toThrow("CamelCase");
+      });
+
+      test("잘못된 entityId - kebab-case → BadRequestException", async () => {
+        await expect(
+          syncer.createEntity({
+            entityId: "invalid-entity",
+            title: "Invalid",
+            table: "invalid",
+          }),
+        ).rejects.toThrow("CamelCase");
+      });
+
+      test("잘못된 entityId - 숫자로 시작 → BadRequestException", async () => {
+        await expect(
+          syncer.createEntity({
+            entityId: "123Entity",
+            title: "Invalid",
+            table: "invalid",
+          }),
+        ).rejects.toThrow("CamelCase");
+      });
+
+      test("숫자 포함 CamelCase → 성공", async () => {
+        await syncer.createEntity({
+          entityId: "Entity2Test",
+          title: "Entity 2 Test",
+          table: "entity2_tests",
+        });
+
+        const writeFiles = Naite.get("fs/promises:writeFile").result();
+        const writeFilesArray = Array.isArray(writeFiles) ? writeFiles : [writeFiles];
+
+        const entityFile = writeFilesArray.find((f: WriteFileRecord) =>
+          f.path.includes("entity2-test.entity.json"),
+        );
+        expect(entityFile).toBeDefined();
+      });
+    });
+
+    describe("delEntity", () => {
+      test("루트 엔티티 삭제 → 디렉토리 전체 삭제", async () => {
+        const result = await syncer.delEntity("SyncFixture");
+
+        expect(result.delPaths).toBeDefined();
+        expect(result.delPaths.length).toBeGreaterThan(0);
+
+        // rm 호출 확인
+        const rmCalls = Naite.get("fs/promises:rm").result();
+        const rmCallsArray = Array.isArray(rmCalls) ? rmCalls : [rmCalls];
+
+        expect(rmCallsArray.some((r) => r.path.includes("sync-fixture"))).toBe(true);
+      });
+
+      test("존재하지 않는 엔티티 → 에러", async () => {
+        await expect(syncer.delEntity("NonExistentEntity")).rejects.toThrow();
+      });
+    });
+  });
+
+  // ============================================
+  // 18. checkExistsGenCode
+  // ============================================
+  describe("checkExistsGenCode", () => {
+    test("존재하는 entity 템플릿 확인", async () => {
+      const result = await syncer.checkExistsGenCode("SyncFixture", "entity");
+
+      expect(result).toBeDefined();
+      expect(result.subPath).toBeDefined();
+      expect(result.fullPath).toBeDefined();
+      expect(result.isExists).toBe(true); // 실제로 존재하므로 true
+    });
+
+    test("존재하는 model 템플릿 확인", async () => {
+      const result = await syncer.checkExistsGenCode("SyncFixture", "model");
+
+      expect(result).toBeDefined();
+      expect(result.subPath).toContain("sync-fixture");
+      expect(result.isExists).toBe(true); // 실제로 존재하므로 true
+    });
+
+    test("존재하지 않는 entityId → isExists: false 반환", async () => {
+      const result = await syncer.checkExistsGenCode("NonExistentEntity", "entity");
+
+      expect(result).toBeDefined();
+      expect(result.isExists).toBe(false); // 에러가 아니라 false 반환
+      expect(result.subPath).toContain("non-existent-entity");
+    });
+
+    test("다양한 템플릿 키", async () => {
+      const templateKeys = ["entity", "model", "init_types", "service"] as const;
+
+      for (const key of templateKeys) {
+        const result = await syncer.checkExistsGenCode("SyncFixture", key);
+        expect(result).toBeDefined();
+        expect(typeof result.isExists).toBe("boolean");
+      }
+    });
+  });
+
+  // ============================================
+  // 20. autoload 유틸리티
+  // ============================================
+  describe("autoload 유틸리티", () => {
+    describe("autoloadTypes", () => {
+      test("types 로드 후 syncer.types에 저장", async () => {
+        await syncer.autoloadTypes();
+
+        expect(syncer.types).toBeDefined();
+        expect(typeof syncer.types).toBe("object");
+      });
+
+      test("로드된 types는 ZodObject 형태", async () => {
+        await syncer.autoloadTypes();
+
+        for (const [_key, value] of Object.entries(syncer.types)) {
+          expect(value).toBeDefined();
+          // Zod 스키마는 _def 속성을 가짐
+          expect("_def" in (value as object)).toBe(true);
+        }
+      });
+    });
+
+    describe("autoloadModels", () => {
+      test("models 로드 후 syncer.models에 저장", async () => {
+        await syncer.autoloadModels();
+
+        expect(syncer.models).toBeDefined();
+        expect(typeof syncer.models).toBe("object");
+      });
+
+      test("로드된 models는 Model/Frame 클래스 인스턴스", async () => {
+        await syncer.autoloadModels();
+
+        for (const [key, _value] of Object.entries(syncer.models)) {
+          expect(key.endsWith("Model") || key.endsWith("Frame")).toBe(true);
+        }
+      });
+    });
+
+    describe("autoloadApis", () => {
+      /*
+       * autoloadApis는 @api 데코레이터가 실행된 후에만 동작함.
+       * 테스트 환경에서 모듈 캐싱으로 인해 데코레이터가 재실행되지 않아 직접 테스트 불가.
+       *
+       * 간접 테스트:
+       * - "handleModelOrFrameChange > autoload 순서: models → types → apis"
+       * - "handleModelOrFrameChange > actionGenerateServices 파라미터 확인"
+       */
+      test.skip("apis 로드 후 syncer.apis에 저장 (handleModelOrFrameChange에서 간접 검증)", async () => {});
+      test.skip("로드된 apis는 LoadedApis 형태 (handleModelOrFrameChange에서 간접 검증)", async () => {});
+    });
+  });
+
+  // ============================================
+  // 21. 파일 스냅샷 테스트 확장
+  // ============================================
+  describe("파일 스냅샷", () => {
+    test("generated.ts 전체 출력", async () => {
+      await syncer.generateTemplate("generated", {}, { overwrite: true });
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.ts"));
+
+      if (writeFile) {
+        await expect(writeFile.data).toMatchFileSnapshot(
+          "../testing-data/snapshots/syncer.test.ts.snapshots/generated.ts.snap",
+        );
+      }
+    });
+
+    test("entity.json 구조", async () => {
+      await syncer.generateTemplate(
+        "entity",
+        {
+          entityId: "SnapshotTest",
+          title: "스냅샷 테스트용",
+          table: "snapshot_tests",
+        },
+        { overwrite: true },
+      );
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("snapshot-test.entity.json"));
+
+      if (writeFile) {
+        await expect(writeFile.data).toMatchFileSnapshot(
+          "../testing-data/snapshots/syncer.test.ts.snapshots/entity.json.snap",
+        );
+      }
+    });
+
+    test("init_types.ts 생성", async () => {
+      await syncer.generateTemplate("init_types", { entityId: "SyncFixture" }, { overwrite: true });
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("sync-fixture.types.ts"));
+
+      if (writeFile) {
+        await expect(writeFile.data).toMatchFileSnapshot(
+          "../testing-data/snapshots/syncer.test.ts.snapshots/init_types.ts.snap",
+        );
+      }
+    });
+
+    test("generated.http 출력", async () => {
+      await syncer.generateTemplate(
+        "generated_http",
+        { entityId: "SyncFixture" },
+        { overwrite: true },
+      );
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.http"));
+
+      if (writeFile) {
+        await expect(writeFile.data).toMatchFileSnapshot(
+          "../testing-data/snapshots/syncer.test.ts.snapshots/generated.http.snap",
+        );
+      }
+    });
+
+    test("generated_sso.ts 출력", async () => {
+      await syncer.generateTemplate("generated_sso", {}, { overwrite: true });
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.sso.ts"));
+
+      if (writeFile) {
+        await expect(writeFile.data).toMatchFileSnapshot(
+          "../testing-data/snapshots/syncer.test.ts.snapshots/generated_sso.ts.snap",
+        );
+      }
+    });
+
+    test("types.ts 복사 후 import 변환", async () => {
+      const tsPaths = [
+        join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts") as AbsolutePath,
+      ];
+
+      await syncer.actionSyncFilesToTargets(tsPaths);
+
+      const writeFile = Naite.get("fs/promises:writeFile:*")
+        .result()
+        .find((f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes(".types.ts"));
+      await expect(writeFile.data).toMatchFileSnapshot(
+        "../testing-data/snapshots/syncer.test.ts.snapshots/copied-types.ts.snap",
+      );
+    });
   });
 });

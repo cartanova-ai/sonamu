@@ -1,4 +1,4 @@
-import type { MakeDirectoryOptions, Mode, PathLike } from "fs";
+import type { MakeDirectoryOptions, Mode, PathLike, RmOptions } from "fs";
 import type { FileHandle } from "fs/promises";
 import { Naite } from "sonamu";
 import { vi } from "vitest";
@@ -32,6 +32,13 @@ vi.mock("fs/promises", async (importOriginal) => {
       const filePath = typeof path === "string" ? path : path.toString();
 
       Naite.t(`fs/promises:writeFile`, { path: filePath, data });
+    }),
+    rm: vi.fn(async (path: PathLike, options?: RmOptions) => {
+      const filePath = typeof path === "string" ? path : path.toString();
+
+      Naite.t(`fs/promises:rm`, { path: filePath, options });
+      // 실제 삭제하지 않고 기록만 함
+      return Promise.resolve();
     }),
   };
 });

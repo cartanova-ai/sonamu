@@ -1,0 +1,20 @@
+{
+  "id": "SnapshotTest",
+  "title": "스냅샷 테스트용",
+  "table": "snapshot_tests",
+  "props": [
+    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    {
+      "name": "created_at",
+      "type": "timestamp",
+      "desc": "등록일시",
+      "dbDefault": "CURRENT_TIMESTAMP"
+    }
+  ],
+  "indexes": [],
+  "subsets": { "A": ["id", "created_at"] },
+  "enums": {
+    "SnapshotTestOrderBy": { "id-desc": "ID최신순" },
+    "SnapshotTestSearchField": { "id": "ID" }
+  }
+}

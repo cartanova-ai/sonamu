@@ -72,6 +72,72 @@ exports[`Syncer > overwrite 옵션 > overwrite: true - 항상 파일 생성 1`] 
 ]
 `;
 
+exports[`Syncer > 기본 기능 > 에러 처리 > 빈 배열 입력 → 정상 처리 1`] = `
+[
+  "doSyncActions",
+]
+`;
+
+exports[`Syncer > 기본 기능 > 에러 처리 > 알 수 없는 파일 타입 → unknown 분류 1`] = `
+[
+  "doSyncActions",
+]
+`;
+
+exports[`Syncer > 기본 기능 > 파일 타입 분류 > 지원하는 파일 타입 분류 1`] = `
+[
+  "doSyncActions",
+]
+`;
+
+exports[`Syncer > 동기화 액션 > actionGenerateSchemas > generated 파일 생성 1`] = `
+[
+  "actionGenerateSchemas",
+  "generateTemplate",
+  "renderTemplate",
+  "generateTemplate",
+  "renderTemplate",
+  "Template__generated:render",
+  "resolveRenderedTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 변경 감지 핸들러 > handleEntityChange > step 검증 > step 1`] = `
+[
+  "handleEntityChange",
+  "actionGenerateSchemas",
+  "generateTemplate",
+  "renderTemplate",
+  "generateTemplate",
+  "renderTemplate",
+  "Template__generated:render",
+  "resolveRenderedTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 변경 감지 핸들러 > handleModelOrFrameChange > 여러 model 동시 처리 1`] = `
+[
+  "handleModelOrFrameChange",
+  "autoloadModels",
+  "autoloadTypes",
+  "autoloadApis",
+  "actionGenerateServices",
+  "generateTemplate",
+  "renderTemplate",
+  "render",
+  "generateTemplate",
+  "renderTemplate",
+  "render",
+  "resolveRenderedTemplate",
+  "resolveRenderedTemplate",
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
 exports[`Syncer > 에러 처리 > 빈 배열 입력 → 정상 처리 1`] = `
 [
   "doSyncActions",
@@ -81,6 +147,93 @@ exports[`Syncer > 에러 처리 > 빈 배열 입력 → 정상 처리 1`] = `
 exports[`Syncer > 에러 처리 > 알 수 없는 파일 타입 → unknown 분류 1`] = `
 [
   "doSyncActions",
+]
+`;
+
+exports[`Syncer > 워크플로우 테스트 > doSyncActions > config 파일 변경 → .sonamu.env 재생성 1`] = `
+[
+  "doSyncActions",
+  "actionSyncConfig",
+]
+`;
+
+exports[`Syncer > 워크플로우 테스트 > doSyncActions > generated 파일 변경 → 타겟에 복사 1`] = `
+[
+  "doSyncActions",
+  "handleTypesOrFunctionsOrGeneratedChange",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > overwrite 옵션 > entity 템플릿 - parentId 옵션 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > overwrite 옵션 > overwrite: false + 파일 미존재 → 정상 생성 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > overwrite 옵션 > overwrite: true → 항상 파일 생성 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > entity 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > generated 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "Template__generated:render",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > generated_http 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > generated_sso 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > init_types 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
+]
+`;
+
+exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > model_test 템플릿 1`] = `
+[
+  "generateTemplate",
+  "renderTemplate",
+  "resolveRenderedTemplate",
 ]
 `;
 
@@ -121,15 +274,6 @@ exports[`Syncer > 템플릿 타입 > init_types 템플릿 1`] = `
 [
   "generateTemplate",
   "renderTemplate",
-  "resolveRenderedTemplate",
-]
-`;
-
-exports[`Syncer > 템플릿 타입 > model 템플릿 > step 1`] = `
-[
-  "generateTemplate",
-  "renderTemplate",
-  "render:model",
   "resolveRenderedTemplate",
 ]
 `;
