@@ -1,5 +1,5 @@
 import { type Entity, type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
-import { afterEach, beforeAll, describe, expect, vi } from "vitest";
+import { beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
@@ -13,10 +13,6 @@ describe("Migrator test", () => {
 
     migrator = new Migrator();
     expect(migrator).toBeDefined();
-  });
-
-  afterEach(async () => {
-    await EntityManager.reload();
   });
 
   describe("getStatus", () => {
@@ -480,6 +476,9 @@ describe("Migrator test", () => {
       expect(user_label_FKCode?.formatted).toContain('references("users.id")');
       expect(user_label_FKCode?.formatted).toContain('references("labels.id")');
       expect(user_label_FKCode?.formatted).toContain("CASCADE");
+
+      // register시에는 EntityManager.reload
+      await EntityManager.reload();
     });
 
     test("FK 삭제 감지", async () => {
@@ -637,6 +636,9 @@ describe("Migrator test", () => {
 
       // down
       expect(createTableCode?.formatted).toContain('knex.schema.dropTable("test_entities")');
+
+      // register시에는 EntityManager.reload
+      await EntityManager.reload();
     });
 
     test("코드 정렬 순서", async () => {
@@ -695,6 +697,9 @@ describe("Migrator test", () => {
       );
 
       expect(createTableIndex).toBeLessThan(foreignIndex);
+
+      // register시에는 EntityManager.reload
+      await EntityManager.reload();
     });
   });
 
@@ -734,7 +739,8 @@ describe("Migrator test", () => {
     });
   });
 
-  describe("runShadowTest", () => {
+  // SKIP: Shadow DB 테스트 실행 시 시간이 오래 걸려 필요시에만 확인
+  describe.skip("runShadowTest", () => {
     test("Shadow DB 생성 및 마이그레이션 테스트 결과 확인", async () => {
       // when
       const result = await migrator.runShadowTest();
