@@ -1,4 +1,4 @@
-import { Puri } from "sonamu";
+import { Naite, Puri } from "sonamu";
 import { describe, expect, expectTypeOf, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
@@ -722,6 +722,11 @@ describe("Puri Type Safety", () => {
     });
 
     test("LIMIT / OFFSET 타입 안전성", async () => {
+      // console.log를 차단하기 위해 spyOn
+      vi.spyOn(console, "log").mockImplementation((message: string) => {
+        Naite.t("console:log", message);
+      });
+
       const db = UserModel.getPuri("r");
 
       // 유효한 limit / offset 사용
@@ -746,6 +751,7 @@ describe("Puri Type Safety", () => {
 
       // @ts-expect-error - limit에 undefined
       db.table("users").limit(undefined);
+      expect(Naite.get("console:log").first()).toBe(`A valid integer must be provided to limit`);
 
       // @ts-expect-error - offset에 null
       db.table("users").offset(null);
