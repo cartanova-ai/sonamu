@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import type { Knex } from "knex";
 import { group, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
+import { Naite } from "../naite/naite";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 
@@ -88,18 +89,21 @@ export class UpsertBuilder {
       .filter(nonNullable);
 
     // uuid 생성 로직
-    const uuid: string = (() => {
+    const { uuid, isReused } = (() => {
       // 키를 순회하여 이미 존재하는 키가 있는지 확인
       if (uniqueKeys.length > 0) {
         for (const uniqueKey of uniqueKeys) {
           if (table.uniquesMap.has(uniqueKey)) {
-            return assertDefined(table.uniquesMap.get(uniqueKey), "Unique key not found");
+            return {
+              uuid: assertDefined(table.uniquesMap.get(uniqueKey), "Unique key not found"),
+              isReused: true,
+            };
           }
         }
       }
 
       // 찾을 수 없는 경우 생성
-      return randomUUID();
+      return { uuid: randomUUID(), isReused: false };
     })();
 
     // 모든 유니크키에 대해 유니크맵에 uuid 저장
@@ -131,10 +135,19 @@ export class UpsertBuilder {
       ...row,
     });
 
-    return {
+    const result: UBRef = {
       of: tableName,
       uuid: (row as { uuid?: string }).uuid ?? uuid,
     };
+
+    Naite.t("puri:ub-register", {
+      tableName,
+      uuid: result.uuid,
+      isUuidReused: isReused,
+      row,
+    });
+
+    return result;
   }
 
   async upsert(wdb: Knex, tableName: string, chunkSize?: number): Promise<number[]> {
@@ -228,7 +241,15 @@ export class UpsertBuilder {
               console.error(prop);
               throw new Error(`존재하지 않는 uuid ${prop.uuid} -- in ${tableName}`);
             }
-            row[key] = (parent as Record<string, unknown>)[prop.use ?? "id"];
+            const resolvedValue = (parent as Record<string, unknown>)[prop.use ?? "id"];
+            row[key] = resolvedValue;
+
+            Naite.t("puri:ub-ref-resolved", {
+              tableName,
+              field: key,
+              from: { of: prop.of, uuid: prop.uuid, use: prop.use ?? "id" },
+              to: resolvedValue,
+            });
           }
         }
         return row;
@@ -251,6 +272,13 @@ export class UpsertBuilder {
       table.references.clear();
       table.uniquesMap.clear();
     }
+
+    Naite.t("puri:ub-upserted", {
+      tableName,
+      mode,
+      rowCount: normalRows.length + selfRefRows.length,
+      returnedIds: allIds,
+    });
 
     return allIds;
   }
@@ -286,6 +314,12 @@ export class UpsertBuilder {
     });
 
     await batchUpdate(wdb, tableName, whereColumns, rows, options.chunkSize);
+
+    Naite.t("puri:ub-batch-updated", {
+      tableName,
+      rowCount: rows.length,
+      whereColumns,
+    });
 
     // updateBatch 완료 후 처리된 데이터 제거
     table.rows = [];
