@@ -14,6 +14,7 @@ import type {
   FulltextColumns,
   InsertData,
   InsertResult,
+  LeftJoinedMarker,
   OnConflictAction,
   ParseSelectObject,
   ResultAvailableColumns,
@@ -243,11 +244,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
     left: AvailableColumns<TTables>,
     right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`,
-  ): Puri<
-    TSchema,
-    TTables & Record<TJoinAlias, TSubResult>, // 서브쿼리의 TResult
-    TResult
-  >;
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult & LeftJoinedMarker>, TResult>; // 서브쿼리의 TResult
   // LEFT JOIN: 테이블 + Alias
   leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
@@ -255,7 +252,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinAlias, TSchema[TJoinTable]>, // TTables 확장!
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinedMarker>, // TTables 확장!
     TResult
   >;
   // LEFT JOIN: 테이블명
@@ -265,24 +262,24 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinTable, TSchema[TJoinTable]>, // 테이블명이 키
+    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, // 테이블명이 키
     TResult
   >;
   // LEFT JOIN: 서브쿼리 + Alias + 콜백
   leftJoin<TJoinAlias extends string, TSubResult>(
     tableSpec: { [K in TJoinAlias]: Puri<TSchema, any, TSubResult> },
     callback: (j: JoinClauseGroup<TTables, Record<TJoinAlias, TSubResult>>) => void,
-  ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult>, TResult>;
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult & LeftJoinedMarker>, TResult>;
   // LEFT JOIN: 테이블 + Alias + 콜백
   leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
     callback: (j: JoinClauseGroup<TTables, Record<TJoinAlias, TSchema[TJoinTable]>>) => void,
-  ): Puri<TSchema, TTables & Record<TJoinAlias, TSchema[TJoinTable]>, TResult>;
+  ): Puri<TSchema, TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinedMarker>, TResult>;
   // LEFT JOIN: 테이블명 + 콜백
   leftJoin<TJoinTable extends keyof TSchema>(
     tableName: TJoinTable,
     callback: (j: JoinClauseGroup<TTables, Record<TJoinTable, TSchema[TJoinTable]>>) => void,
-  ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable]>, TResult>;
+  ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, TResult>;
   // LEFT JOIN 실제 구현
   leftJoin(tableNameOrSpec: any, ...args: any[]): any {
     return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);

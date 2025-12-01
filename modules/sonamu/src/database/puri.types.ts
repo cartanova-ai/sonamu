@@ -5,26 +5,39 @@ import type { DatabaseForeignKeys, DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
 
+// ============================================
+// 내부 타입 키
+// ============================================
+type FulltextKey = "__fulltext__";
+type VirtualKey = "__virtual__";
+type LeftJoinedKey = "__leftJoined__";
+
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey;
+
+// ============================================
+// 타입 유틸리티
+// ============================================
+
 // 테이블명 타입
 export type TableName<TSchema> = keyof TSchema & string;
 
-// 메타데이터 컬럼 유틸
-type MetadataColumns = "__fulltext__" | "__virtual__";
-
 // virtual 컬럼 타입 추출
-type VirtualKeys<T> = T extends { __virtual__: readonly (infer V)[] } ? V & string : never;
+type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V & string : never;
 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
 
+// LEFT JOIN 마커
+export type LeftJoinedMarker = { [K in LeftJoinedKey]: true };
+
 // 메타데이터 필드 제외한 실제 엔티티 컬럼
-export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, MetadataColumns> & string;
+export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, InternalTypeKeys> & string;
 
-// virtual 컬럼 제거 후 __fulltext__ 메타데이터 유지
-export type PuriTable<T> = Omit<StripVirtual<T>, "__virtual__">;
+// virtual 컬럼 제거 후 __fulltext__ 유지
+export type PuriTable<T> = Omit<StripVirtual<T>, VirtualKey>;
 
-// 메타데이터 컬럼 제외 타입 정의
-export type OmitMetadataColumns<T> = Omit<T, MetadataColumns>;
+// 내부 타입 키 제외 (실제 컬럼만 남김)
+export type OmitInternalTypeKeys<T> = Omit<T, InternalTypeKeys>;
 
 // TTables의 모든 테이블에서 사용 가능한 컬럼 경로
 export type AvailableColumns<TTables extends Record<string, any>> =
@@ -76,7 +89,9 @@ export type ExtractColumnType<
 > = Path extends `${infer TAlias}.${infer TColumn}`
   ? TAlias extends keyof TTables
     ? TColumn extends keyof TTables[TAlias]
-      ? TTables[TAlias][TColumn]
+      ? TTables[TAlias] extends LeftJoinedMarker
+        ? TTables[TAlias][TColumn] | null // LEFT JOIN → nullable
+        : TTables[TAlias][TColumn] // INNER JOIN → non-nullable
       : never
     : never
   : IsSingleKey<TTables> extends true // 추가
@@ -93,7 +108,7 @@ export type WhereCondition<TTables extends Record<string, any>> = {
 // Fulltext index 컬럼 추출 타입
 export type FulltextColumns<TTables extends Record<string, any>> = {
   [TAlias in keyof TTables]: TTables[TAlias] extends {
-    __fulltext__: readonly (infer Col)[];
+    [K in FulltextKey]: readonly (infer Col)[];
   }
     ? Col extends string
       ? `${TAlias & string}.${Col}`
@@ -138,7 +153,7 @@ type NullableToOptional<T> = {
 
 // Insert 타입: id, created_at 제외
 export type InsertData<T> = NullableToOptional<
-  Omit<PuriTable<T>, "id" | "created_at" | MetadataColumns>
+  Omit<PuriTable<T>, "id" | "created_at" | InternalTypeKeys>
 >;
 
 // Insert Result 타입

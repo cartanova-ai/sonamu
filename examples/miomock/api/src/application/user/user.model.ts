@@ -109,11 +109,29 @@ class UserModelClass extends BaseModelClass<
       }
     }
 
+    const enhancers = this.createEnhancers({
+      A: (row) => row,
+      P: (row) => ({
+        ...row,
+        employee:
+          row.employee?.department?.name !== null
+            ? {
+                department: {
+                  name: row.employee.department.name,
+                },
+                salary: row.employee.salary,
+              }
+            : null,
+      }),
+      SS: (row) => row,
+    });
+
     Naite.t("esq-query", qb.toQuery());
     return this.executeSubsetQuery({
       subset,
       qb,
       params,
+      enhancers,
       debug: true,
     });
   }

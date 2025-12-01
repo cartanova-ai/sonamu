@@ -5,8 +5,10 @@ import type { Knex } from "knex";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { DBPreset } from "./db";
 import { Puri } from "./puri";
-import type { ColumnKeys, OmitMetadataColumns, PuriTable, TableName } from "./puri.types";
+import type { ColumnKeys, OmitInternalTypeKeys, PuriTable } from "./puri.types";
 import type { InsertOnlyOptions, UBRef, UpsertBuilder, UpsertOptions } from "./upsert-builder";
+
+type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
 
 export type TransactionalOptions = {
   isolation?: Exclude<Knex.IsolationLevels, "snapshot">; // snapshot: mssql only
@@ -30,7 +32,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TTable, PuriTable<TSchema[TTable]>>,
-    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+    OmitInternalTypeKeys<PuriTable<TSchema[TTable]>>
   >;
   // 테이블명 + Alias로 시작
   from<TTable extends keyof TSchema, TAlias extends string>(
@@ -40,7 +42,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TAlias, PuriTable<TSchema[TTable]>>,
-    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+    OmitInternalTypeKeys<PuriTable<TSchema[TTable]>>
   >;
   // 서브쿼리로 시작
   from<TAlias extends string, TSubResult>(
@@ -50,7 +52,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TAlias, PuriTable<TSubResult>>,
-    OmitMetadataColumns<PuriTable<TSubResult>>
+    OmitInternalTypeKeys<PuriTable<TSubResult>>
   >;
   from(spec: any): any {
     return new Puri(this.knex, spec);
@@ -62,7 +64,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TTable, PuriTable<TSchema[TTable]>>,
-    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+    OmitInternalTypeKeys<PuriTable<TSchema[TTable]>>
   >;
   // 테이블명 + Alias로 시작
   table<TTable extends keyof TSchema, TAlias extends string>(
@@ -72,7 +74,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TAlias, PuriTable<TSchema[TTable]>>,
-    OmitMetadataColumns<PuriTable<TSchema[TTable]>>
+    OmitInternalTypeKeys<PuriTable<TSchema[TTable]>>
   >;
   // 서브쿼리로 시작
   table<TAlias extends string, TSubResult>(
@@ -82,7 +84,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   ): Puri<
     TSchema,
     Record<TAlias, PuriTable<TSubResult>>,
-    OmitMetadataColumns<PuriTable<TSubResult>>
+    OmitInternalTypeKeys<PuriTable<TSubResult>>
   >;
   table(spec: any): any {
     return new Puri(this.knex, spec);

@@ -109,9 +109,32 @@ class ProjectModelClass extends BaseModelClass<
     }
 
     const enhancers = this.createEnhancers({
-      A: (row) => ({ ...row, virtual_test: 1 }),
+      A: (row) => ({
+        ...row,
+        virtual_test: 1,
+        employee: row.employee.map((emp) => ({
+          ...emp,
+          department:
+            emp.department?.name !== null
+              ? {
+                  name: emp.department.name,
+                }
+              : null,
+        })),
+      }),
       // A: (row) => ({ ...row }), // virtual_test를 추가하지 않았으므로 오류 발생!
-      P: (row) => row,
+      P: (row) => ({
+        ...row,
+        employee: row.employee.map((emp) => ({
+          ...emp,
+          department:
+            emp.department?.name !== null
+              ? {
+                  name: emp.department.name,
+                }
+              : null,
+        })),
+      }),
     });
 
     return this.executeSubsetQuery({

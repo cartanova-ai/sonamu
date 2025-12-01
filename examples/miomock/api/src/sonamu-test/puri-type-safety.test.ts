@@ -161,11 +161,10 @@ describe("Puri Type Safety", () => {
 
       // 타입 검증
       type ResultItem = (typeof result)[number];
+      // 왼쪽 테이블 컬럼 - non-nullable
       expectTypeOf<ResultItem["empId"]>().toEqualTypeOf<number>();
-      // NOTE: 현재 Puri는 leftJoin에서도 nullable 처리 안 함
-      // 이상적으로는 string | null 이어야 하지만, 현재는 string
-      // TODO: Puri 타입 개선 필요 - Puri.leftJoin()
-      expectTypeOf<ResultItem["deptName"]>().toEqualTypeOf<string>();
+      // 오른쪽 테이블 컬럼 - nullable
+      expectTypeOf<ResultItem["deptName"]>().toEqualTypeOf<string | null>();
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);

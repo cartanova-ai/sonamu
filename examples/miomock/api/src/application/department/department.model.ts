@@ -109,10 +109,12 @@ class DepartmentModelClass extends BaseModelClass<
       A: (row) => ({
         ...row,
         employee_count: row.employees?.length ?? 0,
+        parent: row.parent?.id !== null ? { id: row.parent.id, name: row.parent.name ?? "" } : null,
       }),
       P: (row) => ({
         ...row,
         employee_count: 0,
+        parent: row.parent?.id !== null ? { id: row.parent.id, name: row.parent.name ?? "" } : null,
       }),
     });
 
