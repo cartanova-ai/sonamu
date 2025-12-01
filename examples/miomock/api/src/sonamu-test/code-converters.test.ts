@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
+  getTextTypeLength,
   getZodObjectFromApi,
   getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
@@ -1741,6 +1742,26 @@ describe("code-converters", () => {
       expect(result).toBeInstanceOf(z.ZodObject);
       expect(result.shape.user).toBe(references.User); // 동일한 객체 참조
       expectZodCodeSnapshot(result, "references 전달");
+    });
+  });
+
+  describe("getTextTypeLength", () => {
+    test("text → 65535 (64KB - 1)", () => {
+      const result = getTextTypeLength("text");
+      expect(result).toBe(65535);
+      expect(result).toBe(1024 * 64 - 1);
+    });
+
+    test("mediumtext → 16777215 (16MB - 1)", () => {
+      const result = getTextTypeLength("mediumtext");
+      expect(result).toBe(16777215);
+      expect(result).toBe(1024 * 1024 * 16 - 1);
+    });
+
+    test("longtext → 4294967295 (4GB - 1)", () => {
+      const result = getTextTypeLength("longtext");
+      expect(result).toBe(4294967295);
+      expect(result).toBe(1024 * 1024 * 1024 * 4 - 1);
     });
   });
 });
