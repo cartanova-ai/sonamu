@@ -158,7 +158,7 @@ export function getZodTypeFromApiParamType(
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
               keys = literalOrUnion.def.options.map(
-                (option: { def: { value: string } }) => option.def.value,
+                (option: { def: { values: string[] } }) => option.def.values[0],
               );
             } else {
               keys = (literalOrUnion as z.ZodLiteral<string>).def.values;
