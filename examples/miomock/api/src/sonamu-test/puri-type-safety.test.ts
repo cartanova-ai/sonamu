@@ -751,7 +751,9 @@ describe("Puri Type Safety", () => {
 
       // @ts-expect-error - limit에 undefined
       db.table("users").limit(undefined);
-      expect(Naite.get("console:log").first()).toBe(`A valid integer must be provided to limit`);
+      expect(Naite.get("console:log").first()).toContain(
+        "A valid integer must be provided to limit",
+      ); // knex에서 컬러값을 사용하므로 toContain 사용
 
       // @ts-expect-error - offset에 null
       db.table("users").offset(null);
