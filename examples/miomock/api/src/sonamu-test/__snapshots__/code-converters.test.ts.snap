@@ -1753,3 +1753,19 @@ exports[`code-converters > getZodObjectFromApiParams > 빈 배열 → 빈 ZodObj
 "z.object({
 })"
 `;
+
+exports[`code-converters > propToZodTypeDef > injectImportKeys - enum prop > enum prop with import 1`] = `"status: StatusEnum,"`;
+
+exports[`code-converters > propToZodTypeDef > modifier - nullable > nullable modifier 1`] = `"email: z.string().max(255).nullable(),"`;
+
+exports[`code-converters > propToZodTypeDef > modifier - unsigned + nullable 조합 > unsigned + nullable 1`] = `"count: z.int().nonnegative().nullable(),"`;
+
+exports[`code-converters > propToZodTypeDef > modifier - unsigned > unsigned modifier 1`] = `"age: z.int().nonnegative(),"`;
+
+exports[`code-converters > propToZodTypeDef > relation prop - 주석 처리 (HasMany) > relation 주석 처리 1`] = `"// posts: HasMany Post"`;
+
+exports[`code-converters > propToZodTypeDef > 출력 형식 - prop name 포함 > prop name 포함 1`] = `"testField: z.int(),"`;
+
+exports[`code-converters > propToZodTypeDef > 출력 형식 - unable to resolve > unable to resolve 1`] = `"// unable to resolve"`;
+
+exports[`code-converters > propToZodTypeDef > 출력 형식 - 기본 (쉼표로 끝남) > 기본 출력 형식 1`] = `"id: z.int(),"`;

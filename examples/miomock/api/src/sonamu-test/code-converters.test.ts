@@ -6,6 +6,7 @@ import {
   getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
   propNodeToZodTypeDef,
+  propToZodTypeDef,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
@@ -16,6 +17,8 @@ import type {
   ApiParam,
   EntityProp,
   EntityPropNode,
+  HasManyRelationProp,
+  RelationProp,
 } from "../../../../../modules/sonamu/dist/types/types";
 
 describe("code-converters", () => {
@@ -1762,6 +1765,106 @@ describe("code-converters", () => {
       const result = getTextTypeLength("longtext");
       expect(result).toBe(4294967295);
       expect(result).toBe(1024 * 1024 * 1024 * 4 - 1);
+    });
+  });
+
+  describe("propToZodTypeDef", () => {
+    test("출력 형식 - 기본 (쉼표로 끝남)", () => {
+      const prop = { name: "id", type: "integer" } as EntityProp;
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toMatch(/,$/); // 쉼표로 끝남
+      expect(result).toContain("id:");
+      expect(result).toMatchSnapshot("기본 출력 형식");
+    });
+
+    test("출력 형식 - unable to resolve", () => {
+      const prop = { name: "unknown", relationType: "unknown" } as unknown as RelationProp;
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toBe("// unable to resolve");
+      expect(result).toMatchSnapshot("unable to resolve");
+    });
+
+    test("출력 형식 - prop name 포함", () => {
+      const prop = { name: "testField", type: "integer" } as unknown as EntityProp;
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toContain("testField:");
+      expect(result).toMatchSnapshot("prop name 포함");
+    });
+
+    test("injectImportKeys - enum prop", () => {
+      const importKeys: string[] = [];
+      const prop: EntityProp = {
+        name: "status",
+        type: "enum",
+        length: 50,
+        id: "StatusEnum",
+        nullable: false,
+      };
+      const result = propToZodTypeDef(prop, importKeys);
+
+      // enum은 import가 필요하므로 importKeys에 추가됨
+      expect(importKeys).toContain("StatusEnum");
+      expect(importKeys.length).toBe(1);
+
+      // 출력 형식 검증
+      expect(result).toContain("status:");
+      expect(result).toContain("StatusEnum");
+      expect(result).toMatch(/,$/);
+
+      expect(result).toMatchSnapshot("enum prop with import");
+    });
+    test("modifier - unsigned", () => {
+      const prop: EntityProp = {
+        name: "age",
+        type: "integer",
+        unsigned: true,
+        nullable: false,
+      };
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toContain(".nonnegative()");
+      expect(result).toMatchSnapshot("unsigned modifier");
+    });
+
+    test("modifier - nullable", () => {
+      const prop: EntityProp = {
+        name: "email",
+        type: "string",
+        length: 255,
+        nullable: true,
+      };
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toContain(".nullable()");
+      expect(result).toMatchSnapshot("nullable modifier");
+    });
+
+    test("modifier - unsigned + nullable 조합", () => {
+      const prop: EntityProp = {
+        name: "count",
+        type: "integer",
+        unsigned: true,
+        nullable: true,
+      };
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toContain(".nonnegative()");
+      expect(result).toContain(".nullable()");
+      expect(result).toMatchSnapshot("unsigned + nullable");
+    });
+
+    test("relation prop - 주석 처리 (HasMany)", () => {
+      const prop: HasManyRelationProp = {
+        name: "posts",
+        type: "relation",
+        relationType: "HasMany",
+        with: "Post",
+        nullable: false,
+        joinColumn: "post_id",
+      };
+      const result = propToZodTypeDef(prop, []);
+      expect(result).toMatch(/^\/\//); // 주석으로 시작
+      expect(result).toContain("posts:");
+      expect(result).toContain("HasMany");
+      expect(result).toContain("Post");
+      expect(result).toMatchSnapshot("relation 주석 처리");
     });
   });
 });
