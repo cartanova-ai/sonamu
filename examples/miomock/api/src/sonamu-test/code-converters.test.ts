@@ -1867,6 +1867,195 @@ describe("code-converters", () => {
       expect(result).toMatchSnapshot("relation 주석 처리");
     });
   });
+
+  describe("zodTypeToZodCode", () => {
+    describe("Primitive 타입", () => {
+      test("string", () => {
+        const zodType = z.string();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.string()");
+      });
+
+      test("number", () => {
+        const zodType = z.number();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.number()");
+      });
+
+      test("bigint", () => {
+        const zodType = z.bigint();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.bigint()");
+      });
+
+      test("boolean", () => {
+        const zodType = z.boolean();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.boolean()");
+      });
+
+      test("date", () => {
+        const zodType = z.date();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.date()");
+      });
+    });
+
+    describe("Special 타입", () => {
+      test("null", () => {
+        const zodType = z.null();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.null()");
+      });
+
+      test("undefined", () => {
+        const zodType = z.undefined();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.undefined()");
+      });
+
+      test("any", () => {
+        const zodType = z.any();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.any()");
+      });
+
+      test("unknown", () => {
+        const zodType = z.unknown();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.unknown()");
+      });
+
+      test("never", () => {
+        const zodType = z.never();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.never()");
+      });
+    });
+
+    describe("Modifier 타입", () => {
+      test("nullable", () => {
+        const zodType = z.string().nullable();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.string().nullable()");
+      });
+
+      test("optional", () => {
+        const zodType = z.string().optional();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.string().optional()");
+      });
+
+      test("default", () => {
+        const zodType = z.string().default("test");
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.string().default(test)");
+      });
+    });
+
+    describe("Literal 타입", () => {
+      test("string literal", () => {
+        const zodType = z.literal("test");
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe('z.literal("test")');
+      });
+
+      test("number literal", () => {
+        const zodType = z.literal(123);
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.literal(123)");
+      });
+
+      test("null literal", () => {
+        const zodType = z.literal(null);
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.literal(null)");
+      });
+    });
+
+    describe("Complex 타입", () => {
+      test("array", () => {
+        const zodType = z.array(z.string());
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.array(z.string())");
+      });
+
+      test("object", () => {
+        const zodType = z.object({
+          id: z.number(),
+          name: z.string(),
+        });
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toContain("z.object({");
+        expect(result).toContain("id: z.number(),");
+        expect(result).toContain("name: z.string(),");
+        expect(result).toContain("})");
+      });
+
+      test("union", () => {
+        const zodType = z.union([z.string(), z.number()]);
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.union([z.string(),z.number()])");
+      });
+
+      test("record", () => {
+        const zodType = z.record(z.string(), z.number());
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.record(z.string(), z.number())");
+      });
+
+      test("intersection", () => {
+        const zodType = z.intersection(z.object({ a: z.string() }), z.object({ b: z.number() }));
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toContain("z.intersection(");
+        expect(result).toContain("z.object({");
+      });
+    });
+
+    describe("중첩 구조", () => {
+      test("nested object", () => {
+        const zodType = z.object({
+          user: z.object({
+            id: z.number(),
+          }),
+        });
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toContain("user: z.object({");
+        expect(result).toContain("id: z.number(),");
+      });
+
+      test("array of objects", () => {
+        const zodType = z.array(z.object({ id: z.number() }));
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toContain("z.array(z.object({");
+      });
+
+      test("nullable optional", () => {
+        const zodType = z.string().nullable().optional();
+        const result = zodTypeToZodCode(zodType);
+        expect(result).toBe("z.string().nullable().optional()");
+      });
+    });
+
+    describe("에러 케이스", () => {
+      test("처리되지 않은 타입", () => {
+        const fakeZodType = {
+          def: {
+            type: "nonexistent_type" as z.ZodType["def"]["type"],
+          },
+        } as unknown as z.ZodType<unknown>;
+
+        try {
+          zodTypeToZodCode(fakeZodType);
+          // 에러가 안 나면 테스트 실패
+          expect(true).toBe(false);
+        } catch (error) {
+          // 에러 메시지 스냅샷
+          expect((error as Error).message).toMatchSnapshot("처리되지 않은 타입 에러 메시지");
+        }
+      });
+    });
+  });
 });
 
 // === Test Helpers ===

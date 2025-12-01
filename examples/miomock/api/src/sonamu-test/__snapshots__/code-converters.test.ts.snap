@@ -1769,3 +1769,5 @@ exports[`code-converters > propToZodTypeDef > 출력 형식 - prop name 포함 >
 exports[`code-converters > propToZodTypeDef > 출력 형식 - unable to resolve > unable to resolve 1`] = `"// unable to resolve"`;
 
 exports[`code-converters > propToZodTypeDef > 출력 형식 - 기본 (쉼표로 끝남) > 기본 출력 형식 1`] = `"id: z.int(),"`;
+
+exports[`code-converters > zodTypeToZodCode > 에러 케이스 > 처리되지 않은 타입 > 처리되지 않은 타입 에러 메시지 1`] = `"처리되지 않은 ZodType nonexistent_type"`;
