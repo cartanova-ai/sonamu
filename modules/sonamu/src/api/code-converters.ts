@@ -1,7 +1,19 @@
+/**
+ * code-converters 구성
+ * 1. api 시리즈들: ExtendedApi, ApiParam, ApiParamType
+ * 2. ZodObject
+ *  - API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들입니다.
+ *  - getZodTypeFromApiParamType -> getZodObjectFromApiParams -> getZodObjectFromApi
+ * 3. ZodTypeDef (Zod선언 코드)
+ *  - ZodObject를 통해 ZodTypeDef를 생성하기 위한 함수들입니다.
+ *  - propNodeToZodTypeDef, propToZodTypeDef
+ * 4. TsTypeDef (TS 선언 코드)
+ *  - ZodTypeDef를 통해 TSTypeDef를 생성하기 위한 함수들입니다.
+ *  - zodTypeToTsTypeDef, apiParamToTsCode, apiParamToTsCodeAsObject, apiParamTypeToTsType
+ */
 import { z } from "zod";
 import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
-import { Naite } from "../naite/naite";
 import {
   type ApiParam,
   ApiParamType,
@@ -41,69 +53,9 @@ type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 
 /*
-  ExtendedApi 에서 ZodObject 리턴
+API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들입니다.
 */
-export function getZodObjectFromApi(
-  api: ExtendedApi,
-  references: {
-    [id: string]: AnyZodObject;
-  } = {},
-) {
-  if (api.typeParameters?.length > 0) {
-    for (const typeParam of api.typeParameters) {
-      if (typeParam.constraint) {
-        const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
-        // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
-        (references[typeParam.id] as z.ZodType<any>) = zodType;
-      }
-    }
-  }
-
-  const ReqType = getZodObjectFromApiParams(
-    // api parsing한 결과가 api params
-    api.parameters.filter(
-      (param) =>
-        !ApiParamType.isContext(param.type) &&
-        !ApiParamType.isRefKnex(param.type) &&
-        !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
-    ),
-    references,
-  );
-
-  Naite.t(
-    "ApiParamType",
-    api.parameters[0]
-      ?.type /*file.model.ts의 upload 메소드 같은 경우는 파라미터가 0개라서 api.parameters[0]가 undefined로 나옵니다. 이에 대응하기 위해 ?. 연산자를 사용합니다.*/,
-  );
-
-  return ReqType;
-}
-
-/*
-  ZodObject를 통해 ApiParam 리턴
-*/
-export function getZodObjectFromApiParams(
-  apiParams: ApiParam[],
-  references: {
-    [id: string]: AnyZodObject;
-  } = {},
-): z.ZodObject {
-  return z.object(
-    Object.fromEntries(
-      apiParams.map((param) => {
-        let zodType = getZodTypeFromApiParamType(param.type, references);
-        if (param.optional) {
-          zodType = zodType.optional();
-        }
-        return [param.name, zodType];
-      }),
-    ),
-  );
-}
-
-/*
-  ApiParamType으로 ZodType 컨버팅
-*/
+// ApiParamType으로 ZodType 컨버팅
 export function getZodTypeFromApiParamType(
   paramType: ApiParamType,
   references: {
@@ -238,6 +190,57 @@ export function getZodTypeFromApiParamType(
       return z.unknown();
     }
   }
+}
+
+// ZodObject를 통해 ApiParam 리턴
+export function getZodObjectFromApiParams(
+  apiParams: ApiParam[],
+  references: {
+    [id: string]: AnyZodObject;
+  } = {},
+): z.ZodObject {
+  return z.object(
+    Object.fromEntries(
+      apiParams.map((param) => {
+        let zodType = getZodTypeFromApiParamType(param.type, references);
+        if (param.optional) {
+          zodType = zodType.optional();
+        }
+        return [param.name, zodType];
+      }),
+    ),
+  );
+}
+
+// ExtendedApi 에서 ZodObject 리턴
+export function getZodObjectFromApi(
+  api: ExtendedApi,
+  references: {
+    [id: string]: AnyZodObject;
+  } = {},
+) {
+  if (api.typeParameters?.length > 0) {
+    for (const typeParam of api.typeParameters) {
+      if (typeParam.constraint) {
+        const zodType = getZodTypeFromApiParamType(typeParam.constraint, references);
+        // biome-ignore lint/suspicious/noExplicitAny: 레퍼런스 타입 캐스팅
+        (references[typeParam.id] as z.ZodType<any>) = zodType;
+      }
+    }
+  }
+
+  const ReqType = getZodObjectFromApiParams(
+    // api parsing한 결과가 api params
+    api.parameters.filter(
+      (param) =>
+        !ApiParamType.isContext(param.type) &&
+        !ApiParamType.isRefKnex(param.type) &&
+        !(param.optional === true && param.name.startsWith("_")), // _로 시작하는 파라미터는 제외
+    ),
+    references,
+  );
+
+  return ReqType;
 }
 
 export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys: string[]): string {
