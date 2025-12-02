@@ -4,6 +4,7 @@ import {
   afterEach,
   beforeAll,
   beforeEach,
+  type TestFunction,
   type VitestUtils,
   test as vitestTest,
 } from "vitest";
@@ -75,71 +76,78 @@ declare module "vitest" {
 }
 
 export const test = Object.assign(
-  async (title: string, fn: () => Promise<void>) => {
-    return vitestTest(title, async ({ task }) => {
+  async (title: string, fn: TestFunction<object>) => {
+    return vitestTest(title, async (context) => {
       await runWithMockContext(async () => {
-        const result = await fn();
-        task.meta.traces = Naite.getAllTraces(); // 테스트 케이스 끝나면 컨텍스트 살아있을 때 잘 담아둡니다.
-        return result;
+        await fn(context);
+        context.task.meta.traces = Naite.getAllTraces(); // 테스트 케이스 끝나면 컨텍스트 살아있을 때 잘 담아둡니다.
       });
     });
   },
   {
-    skip: async (title: string, fn: () => Promise<void>) => {
-      return vitestTest.skip(title, async () => {
-        await runWithMockContext(fn);
+    skip: async (title: string, fn: TestFunction<object>) => {
+      return vitestTest.skip(title, async (context) => {
+        await runWithMockContext(async () => {
+          await fn(context);
+          context.task.meta.traces = Naite.getAllTraces();
+        });
       });
     },
-    only: async (title: string, fn: () => Promise<void>) => {
-      return vitestTest.only(title, async () => {
-        await runWithMockContext(fn);
+    only: async (title: string, fn: TestFunction<object>) => {
+      return vitestTest.only(title, async (context) => {
+        await runWithMockContext(async () => {
+          await fn(context);
+          context.task.meta.traces = Naite.getAllTraces();
+        });
       });
     },
     todo: (title: string) => {
       return vitestTest.todo(title);
     },
+    each: vitestTest.each.bind(vitestTest),
   },
 );
 
 export const testAs = Object.assign(
-  async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
-    return vitestTest(title, async ({ task }) => {
+  async (user: UserSubsetSS, title: string, fn: TestFunction<object>) => {
+    return vitestTest(title, async (context) => {
       await runWithContext(
         {
           ...getMockContext(),
           user,
         },
         async () => {
-          const result = await fn();
-          task.meta.traces = Naite.getAllTraces();
-          return result;
+          await fn(context);
+          context.task.meta.traces = Naite.getAllTraces();
         },
       );
     });
   },
   {
-    skip: async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
-      return vitestTest.skip(title, async () => {
-        await runWithContext(
-          {
-            ...getMockContext(),
-            user,
-          },
-          fn,
-        );
-      });
-    },
-    only: async (user: UserSubsetSS, title: string, fn: () => Promise<void>) => {
-      return vitestTest.only(title, async ({ task }) => {
+    skip: async (user: UserSubsetSS, title: string, fn: TestFunction<object>) => {
+      return vitestTest.skip(title, async (context) => {
         await runWithContext(
           {
             ...getMockContext(),
             user,
           },
           async () => {
-            const result = await fn();
-            task.meta.traces = Naite.getAllTraces();
-            return result;
+            await fn(context);
+            context.task.meta.traces = Naite.getAllTraces();
+          },
+        );
+      });
+    },
+    only: async (user: UserSubsetSS, title: string, fn: TestFunction<object>) => {
+      return vitestTest.only(title, async (context) => {
+        await runWithContext(
+          {
+            ...getMockContext(),
+            user,
+          },
+          async () => {
+            await fn(context);
+            context.task.meta.traces = Naite.getAllTraces();
           },
         );
       });
