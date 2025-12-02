@@ -30,6 +30,20 @@ export function setupBiome(path: string) {
         },
         correctness: {
           useParseIntRadix: "off",
+          noEmptyPattern: "off",
+          noUnusedImports: {
+            level: "warn",
+            fix: "safe",
+          },
+        },
+        a11y: {
+          noLabelWithoutControl: "off",
+        },
+        complexity: {
+          noBannedTypes: "off",
+        },
+        suspicious: {
+          noArrayIndexKey: "off",
         },
       },
     },

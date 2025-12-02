@@ -558,7 +558,7 @@ export class Syncer {
     key: T,
     templateOptions: TemplateOptions[T],
     _generateOptions?: GenerateOptions,
-  ) {
+  ): Promise<AbsolutePath[]> {
     return await generateTemplate(key, templateOptions, _generateOptions);
   }
 
