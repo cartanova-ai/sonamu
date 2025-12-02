@@ -1,14 +1,14 @@
 
 
 GET {{baseUrl}}/api/user/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/user/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&rawParams[num]=24
 	&rawParams[page]=1
 	&rawParams[search]=id
@@ -112,14 +112,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/tag/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/tag/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -158,14 +158,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/syncFixture/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/syncFixture/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -211,14 +211,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/project/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/project/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -268,14 +268,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/file/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/file/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -330,14 +330,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/employee/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/employee/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -381,14 +381,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/department/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/department/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id
@@ -430,14 +430,14 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/company/findById
-	?subset=SUBSET
+	?subset=unknown
 	&id=0
 Content-Type: application/json
 
 ###
 
 GET {{baseUrl}}/api/company/findMany
-	?subset=SUBSET
+	?subset=unknown
 	&params[num]=24
 	&params[page]=1
 	&params[search]=id

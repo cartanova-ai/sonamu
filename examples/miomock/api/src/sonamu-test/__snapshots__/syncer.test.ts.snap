@@ -237,14 +237,6 @@ exports[`Syncer > 템플릿 생성 > 템플릿 타입별 테스트 > model_test 
 ]
 `;
 
-exports[`Syncer > 템플릿 타입 > entity 템플릿 1`] = `
-[
-  "generateTemplate",
-  "renderTemplate",
-  "resolveRenderedTemplate",
-]
-`;
-
 exports[`Syncer > 템플릿 타입 > generated 템플릿 1`] = `
 [
   "generateTemplate",
