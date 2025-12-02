@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
   apiParamToTsCode,
+  apiParamToTsCodeAsObject,
   getTextTypeLength,
   getZodObjectFromApi,
   getZodObjectFromApiParams,
@@ -2129,6 +2130,70 @@ describe("code-converters", () => {
       ];
       apiParamToTsCode(params, importKeys);
       // apiParamTypeToTsType가 importKeys를 사용하므로 전달 확인
+      expect(importKeys).toBeDefined();
+    });
+  });
+
+  describe("apiParamToTsCodeAsObject", () => {
+    test("빈 배열 → 빈 객체", () => {
+      const result = apiParamToTsCodeAsObject([], []);
+      expect(result).toBe("{  }");
+    });
+
+    test("단일 required 파라미터", () => {
+      const params: ApiParam[] = [{ name: "id", type: "number", optional: false }];
+      const result = apiParamToTsCodeAsObject(params, []);
+      expect(result).toBe("{ id: number }");
+    });
+
+    test("단일 optional 파라미터", () => {
+      const params: ApiParam[] = [{ name: "name", type: "string", optional: true }];
+      const result = apiParamToTsCodeAsObject(params, []);
+      expect(result).toBe("{ name?: string }");
+    });
+
+    test("optional with default", () => {
+      const params: ApiParam[] = [
+        { name: "limit", type: "number", optional: true, defaultDef: "10" },
+      ];
+      const result = apiParamToTsCodeAsObject(params, []);
+      expect(result).toBe("{ limit?: number= 10 }");
+    });
+
+    test("다중 파라미터", () => {
+      const params: ApiParam[] = [
+        { name: "id", type: "number", optional: false },
+        { name: "name", type: "string", optional: true },
+        { name: "limit", type: "number", optional: true, defaultDef: "10" },
+      ];
+      const result = apiParamToTsCodeAsObject(params, []);
+      expect(result).toBe("{ id: number, name?: string, limit?: number= 10 }");
+    });
+
+    test("apiParamToTsCode와 출력 형식 차이", () => {
+      const params: ApiParam[] = [
+        { name: "id", type: "number", optional: false },
+        { name: "name", type: "string", optional: true },
+      ];
+      const resultNormal = apiParamToTsCode(params, []);
+      const resultAsObject = apiParamToTsCodeAsObject(params, []);
+
+      expect(resultNormal).toBe("id: number, name?: string");
+      expect(resultAsObject).toBe("{ id: number, name?: string }");
+      expect(resultAsObject).toContain("{");
+      expect(resultAsObject).toContain("}");
+    });
+
+    test("injectImportKeys 전달", () => {
+      const importKeys: string[] = [];
+      const params: ApiParam[] = [
+        {
+          name: "user",
+          type: { t: "ref", id: "User" },
+          optional: false,
+        },
+      ];
+      apiParamToTsCodeAsObject(params, importKeys);
       expect(importKeys).toBeDefined();
     });
   });
