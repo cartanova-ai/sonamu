@@ -1,61 +1,71 @@
 /**
- * code-converters 구성
- * 1. api 시리즈들: ExtendedApi, ApiParam, ApiParamType
- * 2. ZodObject
- *  - API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들입니다.
- *  - getZodTypeFromApiParamType -> getZodObjectFromApiParams -> getZodObjectFromApi
- * 3. ZodTypeDef (Zod선언 코드)
- *  - ZodObject를 통해 ZodTypeDef를 생성하기 위한 함수들입니다.
- *  - propNodeToZodTypeDef, propToZodTypeDef
- * 4. TsTypeDef (TS 선언 코드)
- *  - ZodTypeDef를 통해 TSTypeDef를 생성하기 위한 함수들입니다.
- *  - zodTypeToTsTypeDef, apiParamToTsCode, apiParamToTsCodeAsObject, apiParamTypeToTsType
+ * code-converters는 API 타입 정의들을 Zod 객체나 TypeScript 코드로 변환하는 함수들을 제공합니다.
+ *
+ * 1. API 시리즈들:
+ *  - ExtendedApi, ApiParam, ApiParamType
+ *  - API 메타데이터를 표현하는 타입 정의들
+ *
+ * 2. ZodObject 변환
+ *  - API 타입 정의 → Zod 타입 인스턴스 (런타임 밸리데이션용)
+ *  - getZodTypeFromApiParamType → getZodObjectFromApiParams → getZodObjectFromApi
+ *
+ * 3. TsTypeDef 변환
+ *  - API 타입 정의 → TypeScript 타입 코드 문자열 (코드 생성용)
+ *  - apiParamTypeToTsType → apiParamToTsCode, apiParamToTsCodeAsObject
+ *
+ * 참고:
+ *  - ZodTypeDef 생성 (Zod 코드 문자열): zod-converter.ts의 zodTypeToZodCode 사용
+ *  - EntityProp 변환: zod-converter.ts 참조
  */
+
 import { z } from "zod";
 import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
-import {
-  type ApiParam,
-  ApiParamType,
-  type EntityProp,
-  type EntityPropNode,
-  isBelongsToOneRelationProp,
-  isBigIntegerProp,
-  isBooleanProp,
-  isDateProp,
-  isDateTimeProp,
-  isDecimalProp,
-  isDoubleProp,
-  isEnumProp,
-  isFloatProp,
-  isIntegerProp,
-  isJsonProp,
-  isOneToOneRelationProp,
-  isRelationProp,
-  isStringProp,
-  isTextProp,
-  isTimeProp,
-  isTimestampProp,
-  isUuidProp,
-  isVirtualProp,
-  type TextProp,
-} from "../types/types";
+import { type ApiParam, ApiParamType, type TextProp } from "../types/types";
 import type { ExtendedApi } from "./decorators";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
-type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
 type AnyZodObject = z.ZodObject<$ZodLooseShape>;
-type AnyZodArray = z.ZodArray<z.ZodType>;
-type AnyZodNullable = z.ZodNullable<z.ZodType>;
-type AnyZodOptional = z.ZodOptional<z.ZodType>;
-type AnyZodDefault = z.ZodDefault<z.ZodType>;
 type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
-type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 
 /*
-API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들입니다.
-*/
-// ApiParamType으로 ZodType 컨버팅
+ * 유틸리티 함수들입니다.
+ */
+/**
+ * TextProp의 textType에 따른 최대 길이(bytes)를 반환합니다.
+ */
+export function getTextTypeLength(textType: TextProp["textType"]): number {
+  switch (textType) {
+    case "text":
+      return 1024 * 64 - 1;
+    case "mediumtext":
+      return 1024 * 1024 * 16 - 1;
+    case "longtext":
+      return 1024 * 1024 * 1024 * 4 - 1;
+  }
+}
+
+/**
+ * Promise 타입을 한 번 언래핑하여 내부 타입을 반환합니다.
+ * Promise가 아닌 경우 원본 타입을 그대로 반환합니다.
+ */
+export function unwrapPromiseOnce(paramType: ApiParamType) {
+  if (ApiParamType.isPromise(paramType)) {
+    return paramType.args?.[0];
+  } else {
+    return paramType;
+  }
+}
+
+/*
+ * API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들
+ */
+
+/**
+ * ApiParamType을 Zod 타입 인스턴스로 변환합니다.
+ * string, number, array, union 등 모든 ApiParamType을 처리하며,
+ * 순환참조가 발생하는 경우 z.unknown()으로 fallback합니다.
+ */
 export function getZodTypeFromApiParamType(
   paramType: ApiParamType,
   references: {
@@ -192,7 +202,10 @@ export function getZodTypeFromApiParamType(
   }
 }
 
-// ZodObject를 통해 ApiParam 리턴
+/**
+ * ApiParam 배열을 ZodObject로 변환합니다.
+ * 각 파라미터의 optional 여부를 반영하여 Zod 스키마를 생성합니다.
+ */
 export function getZodObjectFromApiParams(
   apiParams: ApiParam[],
   references: {
@@ -212,7 +225,11 @@ export function getZodObjectFromApiParams(
   );
 }
 
-// ExtendedApi 에서 ZodObject 리턴
+/**
+ * ExtendedApi를 ZodObject로 변환합니다.
+ * TypeParameter와 일반 파라미터를 처리하며,
+ * Context, RefKnex, _로 시작하는 optional 파라미터는 제외합니다.
+ */
 export function getZodObjectFromApi(
   api: ExtendedApi,
   references: {
@@ -243,214 +260,15 @@ export function getZodObjectFromApi(
   return ReqType;
 }
 
-export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys: string[]): string {
-  if (propNode.nodeType === "plain") {
-    return propToZodTypeDef(propNode.prop, injectImportKeys);
-  } else if (propNode.nodeType === "array") {
-    return [
-      propNode.prop ? `${propNode.prop.name}: ` : "",
-      "z.array(z.object({",
-      propNode.children
-        .map((childPropNode) => propNodeToZodTypeDef(childPropNode, injectImportKeys))
-        .join("\n"),
-      "",
-      "})),",
-    ].join("\n");
-  } else if (propNode.nodeType === "object") {
-    return [
-      propNode.prop ? `${propNode.prop.name}: ` : "",
-      "z.object({",
-      propNode.children
-        .map((childPropNode) => propNodeToZodTypeDef(childPropNode, injectImportKeys))
-        .join("\n"),
-      "",
-      `})${propNode.prop?.nullable ? ".nullable()" : ""},`,
-    ].join("\n");
-  } else {
-    throw Error;
-  }
-}
+/*
+ * API 타입 정의를 TypeScript 코드 문자열로 변환하기 위한 함수들
+ */
 
-export function getTextTypeLength(textType: TextProp["textType"]): number {
-  switch (textType) {
-    case "text":
-      return 1024 * 64 - 1;
-    case "mediumtext":
-      return 1024 * 1024 * 16 - 1;
-    case "longtext":
-      return 1024 * 1024 * 1024 * 4 - 1;
-  }
-}
-
-export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): string {
-  let stmt: string;
-  if (isIntegerProp(prop)) {
-    stmt = `${prop.name}: z.int()`;
-  } else if (isBigIntegerProp(prop)) {
-    stmt = `${prop.name}: z.bigint()`;
-  } else if (isTextProp(prop)) {
-    stmt = `${prop.name}: z.string().max(${getTextTypeLength(prop.textType)})`;
-  } else if (isEnumProp(prop)) {
-    stmt = `${prop.name}: ${prop.id}`;
-    injectImportKeys.push(prop.id);
-  } else if (isStringProp(prop)) {
-    stmt = `${prop.name}: z.string().max(${prop.length})`;
-  } else if (isDecimalProp(prop)) {
-    stmt = `${prop.name}: z.string()`;
-  } else if (isFloatProp(prop) || isDoubleProp(prop)) {
-    stmt = `${prop.name}: z.number()`;
-  } else if (isBooleanProp(prop)) {
-    stmt = `${prop.name}: z.boolean()`;
-  } else if (isDateProp(prop)) {
-    stmt = `${prop.name}: z.string().length(10)`;
-  } else if (isTimeProp(prop)) {
-    stmt = `${prop.name}: z.string().length(8)`;
-  } else if (isDateTimeProp(prop)) {
-    stmt = `${prop.name}: z.date()`;
-  } else if (isTimestampProp(prop)) {
-    stmt = `${prop.name}: z.date()`;
-  } else if (isJsonProp(prop)) {
-    stmt = `${prop.name}: ${prop.id}`;
-    injectImportKeys.push(prop.id);
-  } else if (isUuidProp(prop)) {
-    stmt = `${prop.name}: z.uuid()`;
-  } else if (isVirtualProp(prop)) {
-    stmt = `${prop.name}: ${prop.id}`;
-    injectImportKeys.push(prop.id);
-  } else if (isRelationProp(prop)) {
-    if (isBelongsToOneRelationProp(prop) || (isOneToOneRelationProp(prop) && prop.hasJoinColumn)) {
-      stmt = `${prop.name}_id: z.int()`;
-    } else {
-      // 그외 relation 케이스 제외
-      return `// ${prop.name}: ${prop.relationType} ${prop.with}`;
-    }
-  } else {
-    return "// unable to resolve";
-  }
-
-  if ((prop as { unsigned?: boolean }).unsigned) {
-    stmt += ".nonnegative()";
-  }
-  if (prop.nullable) {
-    stmt += ".nullable()";
-  }
-
-  return `${stmt},`;
-}
-
-// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
-export function zodTypeToZodCode(zt: z.ZodType): string {
-  switch (zt.def.type) {
-    case "string":
-      return "z.string()";
-    case "number":
-      return "z.number()";
-    case "bigint":
-      return "z.bigint()";
-    case "boolean":
-      return "z.boolean()";
-    case "date":
-      return "z.date()";
-    case "null":
-      return "z.null()";
-    case "undefined":
-      return "z.undefined()";
-    case "any":
-      return "z.any()";
-    case "unknown":
-      return "z.unknown()";
-    case "never":
-      return "z.never()";
-    case "nullable":
-      return `${zodTypeToZodCode((zt as AnyZodNullable).def.innerType)}.nullable()`;
-    case "default": {
-      const zDefaultDef = (zt as AnyZodDefault).def;
-      return `${zodTypeToZodCode(zDefaultDef.innerType)}.default(${zDefaultDef.defaultValue})`;
-    }
-    case "record": {
-      const zRecordDef = (zt as AnyZodRecord).def;
-      return `z.record(${zodTypeToZodCode(zRecordDef.keyType)}, ${zodTypeToZodCode(
-        zRecordDef.valueType,
-      )})`;
-    }
-    case "literal": {
-      const items = Array.from((zt as z.ZodLiteral<string | number>).values).map((value) => {
-        if (typeof value === "string") {
-          return `"${value}"`;
-        }
-
-        if (value === null) {
-          return `null`;
-        }
-
-        if (value === undefined) {
-          return `undefined`;
-        }
-
-        return `${value}`;
-      });
-
-      if (items.length === 1) {
-        return `z.literal(${items[0]})`;
-      }
-      return `z.literal([${items.join(", ")}])`;
-    }
-    case "union":
-      return `z.union([${(zt as AnyZodUnion).def.options
-        .map((option: z.ZodType) => zodTypeToZodCode(option))
-        .join(",")}])`;
-    case "enum":
-      // NOTE: z.enum(["A", "B"])도 z.enum({ A: "A", B: "B" })로 처리됨.
-      return `z.enum({${Object.entries((zt as z.ZodEnum).def.entries)
-        .map(([key, val]) => (typeof val === "string" ? `${key}: "${val}"` : `${key}: ${val}`))
-        .join(", ")}})`;
-    case "array":
-      return `z.array(${zodTypeToZodCode((zt as z.ZodArray<z.ZodType>).def.element)})`;
-    case "object": {
-      const shape = (zt as AnyZodObject).shape;
-      return [
-        "z.object({",
-        ...Object.keys(shape).map((key) => `${key}: ${zodTypeToZodCode(shape[key])},`),
-        "})",
-      ].join("\n");
-    }
-    case "optional":
-      return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType)}.optional()`;
-    case "file":
-      return `z.file()`;
-    case "intersection": {
-      const zIntersectionDef = (zt as z.ZodIntersection<z.ZodType, z.ZodType>).def;
-      return `z.intersection(${zodTypeToZodCode(zIntersectionDef.left)}, ${zodTypeToZodCode(zIntersectionDef.right)})`;
-    }
-    default:
-      throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
-  }
-}
-
-export function apiParamToTsCode(params: ApiParam[], injectImportKeys: string[]): string {
-  return params
-    .map((param) => {
-      return `${param.name}${
-        param.optional && !param.defaultDef ? "?" : ""
-      }: ${apiParamTypeToTsType(param.type, injectImportKeys)}${
-        param.defaultDef ? `= ${param.defaultDef}` : ""
-      }`;
-    })
-    .join(", ");
-}
-
-export function apiParamToTsCodeAsObject(params: ApiParam[], injectImportKeys: string[]): string {
-  return `{ ${params
-    .map(
-      (param) =>
-        `${param.name}${param.optional ? "?" : ""}: ${apiParamTypeToTsType(
-          param.type,
-          injectImportKeys,
-        )}${param.defaultDef ? `= ${param.defaultDef}` : ""}`,
-    )
-    .join(", ")} }`;
-}
-
+/**
+ * ApiParamType을 TypeScript 타입 문자열로 변환합니다.
+ * union, intersection, array, ref 등 모든 타입을 TS 문법으로 표현하며,
+ * import가 필요한 타입 ID는 injectImportKeys에 수집합니다.
+ */
 export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: string[]): string {
   if (
     [
@@ -509,79 +327,34 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
   }
 }
 
-export function unwrapPromiseOnce(paramType: ApiParamType) {
-  if (ApiParamType.isPromise(paramType)) {
-    return paramType.args?.[0];
-  } else {
-    return paramType;
-  }
+/**
+ * ApiParam 배열을 TypeScript 함수 파라미터 코드로 변환합니다.
+ * 예: "name: string, age?: number, active: boolean = true"
+ */
+export function apiParamToTsCode(params: ApiParam[], injectImportKeys: string[]): string {
+  return params
+    .map((param) => {
+      return `${param.name}${
+        param.optional && !param.defaultDef ? "?" : ""
+      }: ${apiParamTypeToTsType(param.type, injectImportKeys)}${
+        param.defaultDef ? `= ${param.defaultDef}` : ""
+      }`;
+    })
+    .join(", ");
 }
 
-// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
-export function zodTypeToTsTypeDef(zt: z.ZodType): string {
-  switch (zt.def.type) {
-    case "string":
-    case "number":
-    case "boolean":
-    case "bigint":
-    case "date":
-    case "null":
-    case "undefined":
-    case "any":
-    case "unknown":
-    case "never":
-      return zt.def.type;
-    case "nullable":
-      return `${zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType)} | null`;
-    case "default":
-      return zodTypeToTsTypeDef((zt as AnyZodDefault).def.innerType);
-    case "record": {
-      const recordType = zt as AnyZodRecord;
-      return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
-    }
-    case "literal":
-      return Array.from((zt as z.ZodLiteral).values)
-        .map((value) => {
-          if (typeof value === "string") {
-            return `"${value}"`;
-          }
-
-          if (value === null) {
-            return `null`;
-          }
-
-          if (value === undefined) {
-            return `undefined`;
-          }
-
-          return `${value}`;
-        })
-        .join(" | ");
-    case "union":
-      return `${(zt as AnyZodUnion).options
-        .map((option) => zodTypeToTsTypeDef(option))
-        .join(" | ")}`;
-    case "enum":
-      return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
-    case "array":
-      return `${zodTypeToTsTypeDef((zt as AnyZodArray).element)}[]`;
-    case "object": {
-      const shape = (zt as AnyZodObject).shape;
-      return [
-        "{",
-        ...Object.keys(shape).map((key) => {
-          if (shape[key].def.type === "optional") {
-            return `${key}?: ${zodTypeToTsTypeDef(shape[key].def.innerType)},`;
-          } else {
-            return `${key}: ${zodTypeToTsTypeDef(shape[key])},`;
-          }
-        }),
-        "}",
-      ].join("\n");
-    }
-    case "optional":
-      return `${zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType)} | undefined`;
-    default:
-      throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
-  }
+/**
+ * ApiParam 배열을 TypeScript 객체 타입 코드로 변환합니다.
+ * 예: "{ name: string, age?: number, active: boolean = true }"
+ */
+export function apiParamToTsCodeAsObject(params: ApiParam[], injectImportKeys: string[]): string {
+  return `{ ${params
+    .map(
+      (param) =>
+        `${param.name}${param.optional ? "?" : ""}: ${apiParamTypeToTsType(
+          param.type,
+          injectImportKeys,
+        )}${param.defaultDef ? `= ${param.defaultDef}` : ""}`,
+    )
+    .join(", ")} }`;
 }
