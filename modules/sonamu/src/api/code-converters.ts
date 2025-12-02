@@ -2,20 +2,20 @@
  * code-converters는 API 타입 정의들을 Zod 객체나 TypeScript 코드로 변환하는 함수들을 제공합니다.
  *
  * 1. API 시리즈들:
- *  - ExtendedApi, ApiParam, ApiParamType
- *  - API 메타데이터를 표현하는 타입 정의들
+ * - ExtendedApi, ApiParam, ApiParamType
+ * - API 메타데이터를 표현하는 타입 정의들
  *
  * 2. ZodObject 변환
- *  - API 타입 정의 → Zod 타입 인스턴스 (런타임 밸리데이션용)
- *  - getZodTypeFromApiParamType → getZodObjectFromApiParams → getZodObjectFromApi
+ * - API 타입 정의 → Zod 타입 인스턴스 (런타임 밸리데이션용)
+ * - getZodTypeFromApiParamType → getZodObjectFromApiParams → getZodObjectFromApi
  *
  * 3. TsTypeDef 변환
- *  - API 타입 정의 → TypeScript 타입 코드 문자열 (코드 생성용)
- *  - apiParamTypeToTsType → apiParamToTsCode, apiParamToTsCodeAsObject
+ * - API 타입 정의 → TypeScript 타입 코드 문자열 (코드 생성용)
+ * - apiParamTypeToTsType → apiParamToTsCode, apiParamToTsCodeAsObject
  *
  * 참고:
- *  - ZodTypeDef 생성 (Zod 코드 문자열): zod-converter.ts의 zodTypeToZodCode 사용
- *  - EntityProp 변환: zod-converter.ts 참조
+ * - ZodTypeDef 생성 (Zod 코드 문자열): zod-converter.ts의 zodTypeToZodCode 사용
+ * - EntityProp 변환: zod-converter.ts 참조
  */
 
 import { z } from "zod";
@@ -31,6 +31,7 @@ type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
 /*
  * 유틸리티 함수들입니다.
  */
+
 /**
  * TextProp의 textType에 따른 최대 길이(bytes)를 반환합니다.
  */
@@ -102,12 +103,10 @@ export function getZodTypeFromApiParamType(
             id: string;
             args?: ApiParamType[];
           };
-
           // Date 타입 처리
           if (refType.id === "Date") {
             return z.date();
           }
-
           // 객체 키 관리 유틸리티
           if (["Pick", "Omit"].includes(refType.id)) {
             if (refType.args?.length !== 2) {
@@ -117,6 +116,7 @@ export function getZodTypeFromApiParamType(
               (arg) => getZodTypeFromApiParamType(arg, references),
               // biome-ignore lint/suspicious/noExplicitAny: 생성되는 ZodUnion의 타입을 추적하기 어려움
             ) as [AnyZodObject, z.ZodUnion<any> | AnyZodLiteral];
+
             let keys: string[] = [];
             if (literalOrUnion instanceof z.ZodUnion) {
               keys = literalOrUnion.def.options.map(
@@ -126,7 +126,6 @@ export function getZodTypeFromApiParamType(
               keys = (literalOrUnion as z.ZodLiteral<string>).def.values;
             }
             const keyRecord = Object.fromEntries(keys.map((key) => [key, true as const]));
-
             if (refType.id === "Pick") {
               if (obj.pick) {
                 return obj.pick(keyRecord);
@@ -145,7 +144,6 @@ export function getZodTypeFromApiParamType(
             // biome-ignore lint/suspicious/noExplicitAny: Partial 인수 타입 캐스팅
             return (obj as z.ZodObject<any>).partial();
           }
-
           const reference = references[refType.id];
           if (reference === undefined) {
             return z.unknown();
@@ -166,7 +164,6 @@ export function getZodTypeFromApiParamType(
               return getZodTypeFromApiParamType(unionType.types[0], references).nullable();
             }
           }
-
           // 일반 유니온
           return z.union(
             unionType.types.map((type) => getZodTypeFromApiParamType(type, references)),
@@ -245,7 +242,6 @@ export function getZodObjectFromApi(
       }
     }
   }
-
   const ReqType = getZodObjectFromApiParams(
     // api parsing한 결과가 api params
     api.parameters.filter(
@@ -256,7 +252,6 @@ export function getZodObjectFromApi(
     ),
     references,
   );
-
   return ReqType;
 }
 
@@ -347,6 +342,7 @@ export function apiParamToTsCode(params: ApiParam[], injectImportKeys: string[])
  * ApiParam 배열을 TypeScript 객체 타입 코드로 변환합니다.
  * 예: "{ name: string, age?: number, active: boolean = true }"
  */
+
 export function apiParamToTsCodeAsObject(params: ApiParam[], injectImportKeys: string[]): string {
   return `{ ${params
     .map(

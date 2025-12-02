@@ -6,7 +6,6 @@ import {
   apiParamToTsCodeAsObject,
   apiParamTypeToTsType,
   unwrapPromiseOnce,
-  zodTypeToTsTypeDef,
 } from "../../api/code-converters";
 import type { ExtendedApi } from "../../api/decorators";
 import { Sonamu } from "../../api/sonamu";
@@ -16,6 +15,7 @@ import type { TemplateOptions } from "../../types/types";
 import { type ApiParam, ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";
+import { zodTypeToTsTypeDef } from "../zod-converter";
 
 export class Template__service extends Template {
   constructor() {

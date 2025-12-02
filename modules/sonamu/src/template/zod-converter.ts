@@ -57,6 +57,8 @@ type AnyZodObject = z.ZodObject<$ZodLooseShape>;
 type AnyZodNullable = z.ZodNullable<z.ZodType>;
 type AnyZodDefault = z.ZodDefault<z.ZodType>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
+type AnyZodArray = z.ZodArray<z.ZodType>;
+type AnyZodOptional = z.ZodOptional<z.ZodType>;
 
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
@@ -216,6 +218,75 @@ export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys:
     ].join("\n");
   } else {
     throw Error;
+  }
+}
+
+// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
+export function zodTypeToTsTypeDef(zt: z.ZodType): string {
+  switch (zt.def.type) {
+    case "string":
+    case "number":
+    case "boolean":
+    case "bigint":
+    case "date":
+    case "null":
+    case "undefined":
+    case "any":
+    case "unknown":
+    case "never":
+      return zt.def.type;
+    case "nullable":
+      return `${zodTypeToTsTypeDef((zt as AnyZodNullable).def.innerType)} | null`;
+    case "default":
+      return zodTypeToTsTypeDef((zt as AnyZodDefault).def.innerType);
+    case "record": {
+      const recordType = zt as AnyZodRecord;
+      return `{ [ key: ${zodTypeToTsTypeDef(recordType.def.keyType)} ]: ${zodTypeToTsTypeDef(recordType.def.valueType)}}`;
+    }
+    case "literal":
+      return Array.from((zt as z.ZodLiteral).values)
+        .map((value) => {
+          if (typeof value === "string") {
+            return `"${value}"`;
+          }
+
+          if (value === null) {
+            return `null`;
+          }
+
+          if (value === undefined) {
+            return `undefined`;
+          }
+
+          return `${value}`;
+        })
+        .join(" | ");
+    case "union":
+      return `${(zt as AnyZodUnion).options
+        .map((option) => zodTypeToTsTypeDef(option))
+        .join(" | ")}`;
+    case "enum":
+      return `${(zt as z.ZodEnum).options.map((val) => `"${val}"`).join(" | ")}`;
+    case "array":
+      return `${zodTypeToTsTypeDef((zt as AnyZodArray).element)}[]`;
+    case "object": {
+      const shape = (zt as AnyZodObject).shape;
+      return [
+        "{",
+        ...Object.keys(shape).map((key) => {
+          if (shape[key].def.type === "optional") {
+            return `${key}?: ${zodTypeToTsTypeDef(shape[key].def.innerType)},`;
+          } else {
+            return `${key}: ${zodTypeToTsTypeDef(shape[key])},`;
+          }
+        }),
+        "}",
+      ].join("\n");
+    }
+    case "optional":
+      return `${zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType)} | undefined`;
+    default:
+      throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
   }
 }
 

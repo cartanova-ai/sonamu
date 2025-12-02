@@ -1,13 +1,13 @@
 import assert from "assert";
 import { unique } from "radashi";
 import { Sonamu } from "../../api";
-import { propNodeToZodTypeDef, zodTypeToZodCode } from "../../api/code-converters";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
 import { type EntityPropNode, isVirtualProp } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
+import { propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
 
 export type SourceCode = {
   label: string;
@@ -21,13 +21,11 @@ export class Template__generated extends Template {
 
   getTargetAndPath() {
     const { dir } = Sonamu.config.api;
-
     return {
       target: `${dir}/src/application`,
       path: `sonamu.generated.ts`,
     };
   }
-
   render() {
     Naite.t("step", "Template__generated:render");
     const entityIds = EntityManager.getAllIds();
