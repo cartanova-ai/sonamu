@@ -1,7 +1,7 @@
 /**
  * NaiteReporter
  *
- * Naite.t 호출 정보를 Unix Socket으로 VS Code extension에 전달합니다.
+ * 테스트 결과와 Trace 정보를 Unix Socket으로 VS Code extension에 전달합니다.
  * extension이 ~/.sonamu/naite.sock에 소켓 서버를 열어둡니다.
  *
  * fs mock 충돌을 피하기 위해 net 모듈만 사용합니다.
@@ -12,22 +12,32 @@ import { connect, type Socket } from "net";
 import { homedir } from "os";
 import { join } from "path";
 
-export interface TestInfo {
-  suite?: string;
-  name?: string;
-  filePath?: string; // 테스트 파일 경로
-  line?: number; // 테스트 케이스 라인 번호
+export interface TestResult {
+  suiteName: string;
+  suiteFilePath?: string;
+  testName: string;
+  testFilePath: string;
+  testLine: number;
+  status: string;
+  duration: number;
+  error?: { message: string; stack?: string };
+  traces: {
+    key: string;
+    value: any;
+    filePath: string;
+    lineNumber: number;
+    at: string;
+  }[];
 }
 
-export interface NaiteTraceEntry {
-  key: string;
-  value: any;
-  filePath: string;
-  lineNumber: number;
-  at: string;
-  runId: string;
-  testSuite?: string;
-  testName?: string;
+export interface RunSummary {
+  startedAt: string;
+  endedAt: string;
+  duration: number;
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
 }
 
 // 소켓 경로
@@ -36,7 +46,6 @@ const SOCKET_PATH =
 
 class NaiteReporterClass {
   private currentRunId: string | null = null;
-  private currentTestInfo: TestInfo | null = null;
   private socket: Socket | null = null;
   private connected = false;
   private buffer: string[] = [];
@@ -93,7 +102,7 @@ class NaiteReporterClass {
 
   /**
    * beforeAll에서 호출합니다.
-   * 테스트 run 시작을 알립니다.
+   * 테스트 run 시작을 알립니다 (데이터 클리어 신호).
    */
   startTestRun(): void {
     if (process.env.CI) {
@@ -110,54 +119,27 @@ class NaiteReporterClass {
   }
 
   /**
-   * beforeEach에서 호출합니다.
-   * 현재 테스트 정보를 설정합니다.
+   * afterEach에서 호출합니다.
+   * 테스트 케이스 결과를 traces와 함께 전송합니다.
    */
-  setCurrentTest(info: TestInfo): void {
+  reportTestResult(result: TestResult): void {
     if (process.env.CI) {
       return;
     }
-
-    this.currentTestInfo = info;
 
     this.send({
-      type: "test/start",
-      runId: this.currentRunId,
-      suite: info.suite,
-      name: info.name,
-      testFilePath: info.filePath,
-      testLine: info.line,
-      at: new Date().toISOString(),
+      type: "test/result",
+      runId: this.currentRunId ?? "unknown",
+      ...result,
+      receivedAt: new Date().toISOString(),
     });
-  }
-
-  /**
-   * afterEach에서 호출합니다.
-   * 현재 테스트 정보를 초기화합니다.
-   */
-  clearCurrentTest(): void {
-    if (process.env.CI) {
-      return;
-    }
-
-    if (this.currentTestInfo) {
-      this.send({
-        type: "test/end",
-        runId: this.currentRunId,
-        suite: this.currentTestInfo.suite,
-        name: this.currentTestInfo.name,
-        at: new Date().toISOString(),
-      });
-    }
-
-    this.currentTestInfo = null;
   }
 
   /**
    * afterAll에서 호출합니다.
    * 테스트 run 종료를 알립니다.
    */
-  endTestRun(): void {
+  endTestRun(summary?: RunSummary): void {
     if (process.env.CI) {
       return;
     }
@@ -166,6 +148,7 @@ class NaiteReporterClass {
       type: "run/end",
       runId: this.currentRunId,
       endedAt: new Date().toISOString(),
+      summary,
     });
 
     this.currentRunId = null;
@@ -176,27 +159,6 @@ class NaiteReporterClass {
       this.socket = null;
       this.connected = false;
     }
-  }
-
-  /**
-   * Naite.t에서 호출됩니다.
-   * trace 항목을 extension에 전달합니다.
-   * 워커에서 실행될 수 있으므로 runId 체크 없이 항상 전송합니다.
-   */
-  appendTrace(entry: Omit<NaiteTraceEntry, "runId" | "testSuite" | "testName">): void {
-    if (process.env.CI) {
-      return;
-    }
-
-    this.send({
-      type: "trace",
-      ...entry,
-      runId: this.currentRunId ?? "unknown",
-      testSuite: this.currentTestInfo?.suite,
-      testName: this.currentTestInfo?.name,
-      testFilePath: this.currentTestInfo?.filePath,
-      testLine: this.currentTestInfo?.line,
-    });
   }
 }
 

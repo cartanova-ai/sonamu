@@ -3,7 +3,6 @@
 import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import type { ComparisonOperator } from "../database/puri.types";
-import { NaiteReporter } from "./naite-reporter";
 
 // StackFrame 타입
 interface StackFrame {
@@ -265,17 +264,6 @@ export class NaiteClass {
       // 항상 배열로 관리
       const existing = store.get(name) ?? [];
       store.set(name, [...existing, trace]);
-
-      // 외부에서 Naite.t의 호출 정보를 알 수 있도록 NaiteReporter로 전달
-      if (stack[0]?.filePath && stack[0]?.lineNumber > 0) {
-        NaiteReporter.appendTrace({
-          key: name,
-          value,
-          filePath: stack[0].filePath,
-          lineNumber: stack[0].lineNumber,
-          at: new Date().toISOString(),
-        });
-      }
     } catch {
       // Context 없는 상황에서 Naite.t 호출
     }
@@ -328,6 +316,33 @@ export class NaiteClass {
       }
     }
     return result;
+  }
+
+  /**
+   * 스토어에 들어있던 트레이스를 고대로 꺼내옵니다.
+   * 테스트 정보와 함께 extensions에 보낼 용도로 만들었습니다.
+   * @returns
+   */
+  getAllTraces(): {
+    key: string;
+    value: any;
+    filePath: string;
+    lineNumber: number;
+    at: string;
+  }[] {
+    const context = Sonamu.getContext();
+    if (!context?.naiteStore) {
+      return [];
+    }
+    return Array.from(context.naiteStore.values())
+      .flat()
+      .map((trace) => ({
+        key: trace.key,
+        value: JSON.parse(JSON.stringify(trace.data)), // 직렬화 가능한 것만 남기려는 눈물겨운 노력,, 안그러면 task.meta에 안 들어가그든요
+        filePath: trace.stack[0]?.filePath ?? "",
+        lineNumber: trace.stack[0]?.lineNumber ?? 0,
+        at: trace.at.toISOString(),
+      }));
   }
 
   // 특정 키 삭제하기

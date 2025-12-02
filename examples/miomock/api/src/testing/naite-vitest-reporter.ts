@@ -1,5 +1,5 @@
-import type { Reporter } from "vitest/reporters";
 import { NaiteReporter } from "sonamu";
+import type { Reporter } from "vitest/reporters";
 
 /**
  * Naite Vitest Reporter

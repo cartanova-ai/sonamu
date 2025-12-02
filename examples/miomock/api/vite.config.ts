@@ -8,7 +8,7 @@ export default defineConfig({
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
-    setupFiles: ["./src/testing/setup-mocks.ts", "./src/testing/setup-naite-trace.ts"],
+    setupFiles: ["./src/testing/setup-mocks.ts"],
     reporters: ["default", NaiteVitestReporter],
     pool: "forks",
     maxWorkers: 1,
