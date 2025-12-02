@@ -138,7 +138,7 @@ export function getZodTypeFromApiParamType(
 
           const reference = references[refType.id];
           if (reference === undefined) {
-            return z.string();
+            return z.unknown();
             // throw new Error(`ref 참조 불가 ${refType.id}`);
           }
           return reference;
