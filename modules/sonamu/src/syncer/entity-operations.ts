@@ -4,6 +4,7 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
 import type { TemplateOptions } from "../types/types";
+import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateTemplate } from "./code-generator";
 
@@ -50,10 +51,10 @@ export async function delEntity(entityId: string): Promise<{ delPaths: string[] 
 
   for await (const delPath of delPaths) {
     if (await exists(delPath)) {
-      console.log(chalk.red(`DELETE ${delPath}`));
+      !isTest() && console.log(chalk.red(`DELETE ${delPath}`));
       await rm(delPath, { recursive: true, force: true });
     } else {
-      console.log(chalk.yellow(`NOT_EXISTS ${delPath}`));
+      !isTest() && console.log(chalk.yellow(`NOT_EXISTS ${delPath}`));
     }
   }
 

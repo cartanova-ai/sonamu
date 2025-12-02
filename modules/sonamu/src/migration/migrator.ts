@@ -275,7 +275,7 @@ export class Migrator {
     const res = await Promise.all(
       delFiles.map(async (delFile) => {
         if (await exists(delFile)) {
-          console.log(chalk.red(`DELETE: ${delFile}`));
+          !isTest() && console.log(chalk.red(`DELETE: ${delFile}`));
           await unlink(delFile);
           return delFiles.includes(".ts") ? 1 : 0;
         }
