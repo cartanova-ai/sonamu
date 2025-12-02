@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
+  apiParamTypeToTsType,
   getZodObjectFromApi,
   getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
@@ -415,6 +416,43 @@ describe("code-converters", () => {
         expectToPass(zodType, 123);
         expectToPass(zodType, { any: "value" });
       });
+
+      test("상호 참조 (A↔B) → unknown fallback", () => {
+        // A는 B를 참조, B는 A를 참조 (둘 다 references에 없음)
+        const zodTypeA = getZodTypeFromApiParamType({ t: "ref", id: "B" }, {});
+        const zodTypeB = getZodTypeFromApiParamType({ t: "ref", id: "A" }, {});
+
+        // A와 B 모두 unknown으로 fallback
+        expectToPass(zodTypeA, "anything");
+        expectToPass(zodTypeB, 123);
+        expectToPass(zodTypeB, { any: "object" });
+      });
+
+      test("Pick + 순환참조 → unknown fallback", () => {
+        // User 타입이 Pick<User, "id" | "name">을 포함 (자기 자신 참조)
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "ref",
+            id: "Pick",
+            args: [
+              { t: "ref", id: "User" }, // User는 references에 없음
+              {
+                t: "union",
+                types: [
+                  { t: "string-literal", value: "id" },
+                  { t: "string-literal", value: "name" },
+                ],
+              },
+            ],
+          },
+          {},
+        );
+
+        // Pick의 대상(User)이 없어서 unknown으로 fallback
+        expectToPass(zodType, "anything");
+        expectToPass(zodType, { any: "value" });
+        expectToPass(zodType, [1, 2, 3]);
+      });
     });
 
     test("처리되지 않는 타입 → z.unknown()", () => {
@@ -646,6 +684,299 @@ describe("code-converters", () => {
   });
 
   ///
+  describe("apiParamTypeToTsType", () => {
+    describe("Primitive 타입", () => {
+      test.each([
+        ["string", "string"],
+        ["number", "number"],
+        ["boolean", "boolean"],
+        ["null", "null"],
+        ["undefined", "undefined"],
+        ["void", "void"],
+        ["any", "any"],
+        ["unknown", "unknown"],
+      ])("%s → %s", (input, expected) => {
+        const result = apiParamTypeToTsType(input as unknown as ApiParamType, []);
+        expect(result).toBe(expected);
+      });
+    });
+
+    describe("Literal 타입", () => {
+      test.each([
+        ["string-literal", { t: "string-literal", value: "test" }, '"test"'],
+        ["numeric-literal", { t: "numeric-literal", value: 123 }, "123"],
+      ])("%s", (_name, input, expected) => {
+        const result = apiParamTypeToTsType(input as unknown as ApiParamType, []);
+        expect(result).toBe(expected);
+      });
+    });
+
+    describe("Object 타입", () => {
+      test("object", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "object",
+            props: [
+              { name: "id", type: "number", optional: false },
+              { name: "name", type: "string", optional: true },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("{ ");
+        expect(result).toContain("id: number");
+        expect(result).toContain("name?: string");
+        expect(result).toContain(" }");
+      });
+    });
+
+    describe("Union/Intersection 타입", () => {
+      test("union", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "union",
+            types: ["string", "number"],
+          },
+          [],
+        );
+        expect(result).toBe("string | number");
+      });
+
+      test("intersection", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "intersection",
+            types: ["string", "number"],
+          },
+          [],
+        );
+        expect(result).toBe("string & number");
+      });
+    });
+
+    describe("Array 타입", () => {
+      test("array", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: "string",
+          },
+          [],
+        );
+        expect(result).toBe("string[]");
+      });
+
+      test("nested array", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: {
+              t: "array",
+              elementsType: "number",
+            },
+          },
+          [],
+        );
+        expect(result).toBe("number[][]");
+      });
+    });
+
+    describe("Ref 타입 - importKeys 인젝션", () => {
+      test("ref without args", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType({ t: "ref", id: "User" }, importKeys);
+        expect(result).toBe("User");
+        expect(importKeys).toContain("User");
+      });
+
+      test("ref with args", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType(
+          {
+            t: "ref",
+            id: "Promise",
+            args: ["string"],
+          },
+          importKeys,
+        );
+        expect(result).toBe("Promise<string>");
+        expect(importKeys).not.toContain("Promise"); // Promise는 import 불필요
+      });
+
+      test("ref - built-in types (no import)", () => {
+        const importKeys: string[] = [];
+        ["Pick", "Omit", "Promise", "Partial", "Date"].forEach((id) => {
+          apiParamTypeToTsType({ t: "ref", id }, importKeys);
+        });
+        expect(importKeys.length).toBe(0); // 모두 import 불필요
+      });
+
+      test("ref - custom types (with import)", () => {
+        const importKeys: string[] = [];
+        apiParamTypeToTsType({ t: "ref", id: "CustomType" }, importKeys);
+        expect(importKeys).toContain("CustomType");
+      });
+
+      test("Promise with complex type", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType(
+          {
+            t: "ref",
+            id: "Promise",
+            args: [
+              {
+                t: "array",
+                elementsType: { t: "ref", id: "User" },
+              },
+            ],
+          },
+          importKeys,
+        );
+
+        expect(result).toBe("Promise<User[]>");
+        expect(importKeys).toContain("User"); // User는 custom 타입
+        expect(importKeys).not.toContain("Promise"); // Promise는 built-in
+      });
+
+      test("중복 import - 같은 타입 여러 번", () => {
+        const importKeys: string[] = [];
+
+        apiParamTypeToTsType(
+          {
+            t: "intersection",
+            types: [
+              { t: "ref", id: "BaseEntity" },
+              { t: "ref", id: "Timestamped" },
+              { t: "ref", id: "BaseEntity" }, // 중복
+            ],
+          },
+          importKeys,
+        );
+
+        // 현재 구현은 중복을 허용 (push만 함)
+        expect(importKeys).toEqual(["BaseEntity", "Timestamped", "BaseEntity"]);
+
+        // 중복 제거는 호출자가 해야 함 (Set 사용)
+        expect(new Set(importKeys).size).toBe(2);
+      });
+
+      test("복잡한 중첩 - import 수집 확인", () => {
+        const importKeys: string[] = [];
+
+        // Object 안에 여러 ref 타입
+        apiParamTypeToTsType(
+          {
+            t: "object",
+            props: [
+              {
+                name: "user",
+                type: { t: "ref", id: "UserSaveParams" },
+                optional: false,
+              },
+              {
+                name: "posts",
+                type: {
+                  t: "array",
+                  elementsType: { t: "ref", id: "PostSaveParams" },
+                },
+                optional: true,
+              },
+              {
+                name: "tags",
+                type: {
+                  t: "union",
+                  types: [
+                    { t: "ref", id: "TagA" },
+                    { t: "ref", id: "TagB" },
+                  ],
+                },
+                optional: true,
+              },
+            ],
+          },
+          importKeys,
+        );
+
+        // 모든 custom 타입이 수집되어야 함
+        expect(importKeys).toContain("UserSaveParams");
+        expect(importKeys).toContain("PostSaveParams");
+        expect(importKeys).toContain("TagA");
+        expect(importKeys).toContain("TagB");
+        expect(importKeys.length).toBe(4);
+      });
+    });
+
+    describe("IndexedAccess 타입", () => {
+      test("indexed-access", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "indexed-access",
+            object: { t: "ref", id: "User" },
+            index: { t: "string-literal", value: "id" },
+          },
+          [],
+        );
+        expect(result).toBe('User["id"]');
+      });
+    });
+
+    describe("TupleType", () => {
+      test("tuple-type", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "tuple-type",
+            elements: ["string", "number"],
+          },
+          [],
+        );
+        expect(result).toContain("[ ");
+        expect(result).toContain("string");
+        expect(result).toContain("number");
+        expect(result).toContain(" ]");
+      });
+    });
+
+    describe("TypeParam", () => {
+      test("type-param without constraint", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "type-param",
+            id: "T",
+          },
+          [],
+        );
+        expect(result).toBe("<T>");
+      });
+
+      test("type-param with constraint", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "type-param",
+            id: "T",
+            constraint: "string",
+          },
+          [],
+        );
+        expect(result).toBe("<T extends string>");
+      });
+    });
+
+    describe("에러 케이스", () => {
+      test("resolve 불가 타입", () => {
+        const fakeParamType = { t: "unknown_type" } as unknown as ApiParamType;
+
+        let errorMessage = "";
+        try {
+          apiParamTypeToTsType(fakeParamType, []);
+        } catch (error) {
+          errorMessage = (error as Error).message;
+        }
+
+        expect(errorMessage).toContain("resolve 불가 ApiParamType");
+      });
+    });
+  });
+
   // describe("apiParamToTsCode", () => {
   //   test("빈 배열 → 빈 문자열", () => {
   //     const result = apiParamToTsCode([], []);
@@ -720,6 +1051,7 @@ describe("code-converters", () => {
   //     expect(importKeys).toBeDefined();
   //   });
   // });
+
   // describe("apiParamToTsCodeAsObject", () => {
   //   test("빈 배열 → 빈 객체", () => {
   //     const result = apiParamToTsCodeAsObject([], []);
@@ -781,238 +1113,6 @@ describe("code-converters", () => {
   //     ];
   //     apiParamToTsCodeAsObject(params, importKeys);
   //     expect(importKeys).toBeDefined();
-  //   });
-  // });
-  // describe("apiParamTypeToTsType", () => {
-  //   describe("Primitive 타입", () => {
-  //     test("string", () => {
-  //       const result = apiParamTypeToTsType("string", []);
-  //       expect(result).toBe("string");
-  //     });
-
-  //     test("number", () => {
-  //       const result = apiParamTypeToTsType("number", []);
-  //       expect(result).toBe("number");
-  //     });
-
-  //     test("boolean", () => {
-  //       const result = apiParamTypeToTsType("boolean", []);
-  //       expect(result).toBe("boolean");
-  //     });
-
-  //     test("null", () => {
-  //       const result = apiParamTypeToTsType("null", []);
-  //       expect(result).toBe("null");
-  //     });
-
-  //     test("undefined", () => {
-  //       const result = apiParamTypeToTsType("undefined", []);
-  //       expect(result).toBe("undefined");
-  //     });
-
-  //     test("void", () => {
-  //       const result = apiParamTypeToTsType("void", []);
-  //       expect(result).toBe("void");
-  //     });
-
-  //     test("any", () => {
-  //       const result = apiParamTypeToTsType("any", []);
-  //       expect(result).toBe("any");
-  //     });
-
-  //     test("unknown", () => {
-  //       const result = apiParamTypeToTsType("unknown", []);
-  //       expect(result).toBe("unknown");
-  //     });
-  //   });
-
-  //   describe("Literal 타입", () => {
-  //     test("string-literal", () => {
-  //       const result = apiParamTypeToTsType({ t: "string-literal", value: "test" }, []);
-  //       expect(result).toBe('"test"');
-  //     });
-
-  //     test("numeric-literal", () => {
-  //       const result = apiParamTypeToTsType({ t: "numeric-literal", value: 123 }, []);
-  //       expect(result).toBe("123");
-  //     });
-  //   });
-
-  //   describe("Object 타입", () => {
-  //     test("object", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "object",
-  //           props: [
-  //             { name: "id", type: "number", optional: false },
-  //             { name: "name", type: "string", optional: true },
-  //           ],
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toContain("{ ");
-  //       expect(result).toContain("id: number");
-  //       expect(result).toContain("name?: string");
-  //       expect(result).toContain(" }");
-  //     });
-  //   });
-
-  //   describe("Union/Intersection 타입", () => {
-  //     test("union", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "union",
-  //           types: ["string", "number"],
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("string | number");
-  //     });
-
-  //     test("intersection", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "intersection",
-  //           types: ["string", "number"],
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("string & number");
-  //     });
-  //   });
-
-  //   describe("Array 타입", () => {
-  //     test("array", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "array",
-  //           elementsType: "string",
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("string[]");
-  //     });
-
-  //     test("nested array", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "array",
-  //           elementsType: {
-  //             t: "array",
-  //             elementsType: "number",
-  //           },
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("number[][]");
-  //     });
-  //   });
-
-  //   describe("Ref 타입", () => {
-  //     test("ref without args", () => {
-  //       const importKeys: string[] = [];
-  //       const result = apiParamTypeToTsType({ t: "ref", id: "User" }, importKeys);
-  //       expect(result).toBe("User");
-  //       expect(importKeys).toContain("User");
-  //     });
-
-  //     test("ref with args", () => {
-  //       const importKeys: string[] = [];
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "ref",
-  //           id: "Promise",
-  //           args: ["string"],
-  //         },
-  //         importKeys,
-  //       );
-  //       expect(result).toBe("Promise<string>");
-  //       expect(importKeys).not.toContain("Promise"); // Promise는 import 불필요
-  //     });
-
-  //     test("ref - built-in types (no import)", () => {
-  //       const importKeys: string[] = [];
-  //       ["Pick", "Omit", "Promise", "Partial", "Date"].forEach((id) => {
-  //         apiParamTypeToTsType({ t: "ref", id }, importKeys);
-  //       });
-  //       expect(importKeys.length).toBe(0); // 모두 import 불필요
-  //     });
-
-  //     test("ref - custom types (with import)", () => {
-  //       const importKeys: string[] = [];
-  //       apiParamTypeToTsType({ t: "ref", id: "CustomType" }, importKeys);
-  //       expect(importKeys).toContain("CustomType");
-  //     });
-  //   });
-
-  //   describe("IndexedAccess 타입", () => {
-  //     test("indexed-access", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "indexed-access",
-  //           object: { t: "ref", id: "User" },
-  //           index: { t: "string-literal", value: "id" },
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe('User["id"]');
-  //     });
-  //   });
-
-  //   describe("TupleType", () => {
-  //     test("tuple-type", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "tuple-type",
-  //           elements: ["string", "number"],
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toContain("[ ");
-  //       expect(result).toContain("string");
-  //       expect(result).toContain("number");
-  //       expect(result).toContain(" ]");
-  //     });
-  //   });
-
-  //   describe("TypeParam", () => {
-  //     test("type-param without constraint", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "type-param",
-  //           id: "T",
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("<T>");
-  //     });
-
-  //     test("type-param with constraint", () => {
-  //       const result = apiParamTypeToTsType(
-  //         {
-  //           t: "type-param",
-  //           id: "T",
-  //           constraint: "string",
-  //         },
-  //         [],
-  //       );
-  //       expect(result).toBe("<T extends string>");
-  //     });
-  //   });
-
-  //   describe("에러 케이스", () => {
-  //     test("resolve 불가 타입", () => {
-  //       const fakeParamType = { t: "unknown_type" } as unknown as ApiParamType;
-
-  //       let errorMessage = "";
-  //       try {
-  //         apiParamTypeToTsType(fakeParamType, []);
-  //       } catch (error) {
-  //         errorMessage = (error as Error).message;
-  //       }
-
-  //       expect(errorMessage).toContain("resolve 불가 ApiParamType");
-  //     });
   //   });
   // });
 
@@ -1474,10 +1574,3 @@ describe("code-converters", () => {
   //   });
   // });
 });
-
-// === Test Helpers ===
-// safe parse zod object
-// async function parseZodObject(zodObject: z.ZodObject): Promise<string> {
-//   const result = await zodObject.safeParse({});
-//   return result.success ? JSON.stringify(result) : "error";
-// }
