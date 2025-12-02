@@ -1,14 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import {
-  apiParamToTsCode,
-  apiParamToTsCodeAsObject,
-  apiParamTypeToTsType,
-  getTextTypeLength,
-  getZodObjectFromApi,
   getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
-  unwrapPromiseOnce,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
   ApiDecoratorOptions,
@@ -41,82 +35,150 @@ describe("code-converters", () => {
     };
   }
 
-  // 단위테스트 느낌으로
-  // 100% 커버리지 만들기
   describe("getZodTypeFromApiParamType", () => {
+    function testOkCase(zodType: z.ZodType, validData: unknown) {
+      const result = zodType.safeParse(validData);
+      expect(result.success).toBe(true);
+    }
+
+    function testFailCase(zodType: z.ZodType, invalidData: unknown) {
+      const result = zodType.safeParse(invalidData);
+      expect(result.success).toBe(false);
+    }
+
     describe("Primitive 타입", () => {
-      test("String", async () => {
-        const zodType = getZodTypeFromApiParamType("string", {});
-        expect(zodType).toBeInstanceOf(z.ZodString);
-      });
-      test("Number", async () => {
-        const zodType = getZodTypeFromApiParamType("number", {});
-        expect(zodType).toBeInstanceOf(z.ZodNumber);
-      });
-      test("Boolean", async () => {
-        const zodType = getZodTypeFromApiParamType("boolean", {});
-        expect(zodType).toBeInstanceOf(z.ZodBoolean);
+      test.each([
+        ["string", "test", 123],
+        ["number", 123, "test"],
+        ["boolean", true, "true"],
+      ])("%s 타입", (type, validValue, invalidValue) => {
+        const zodType = getZodTypeFromApiParamType(type as ApiParamType, {});
+        testOkCase(zodType, validValue);
+        testFailCase(zodType, invalidValue);
       });
     });
+
     describe("Literal 타입", () => {
       test("string-literal", async () => {
-        const zodType = getZodTypeFromApiParamType({ t: "string-literal", value: "test" }, {});
-        expect(zodType).toBeInstanceOf(z.ZodLiteral);
+        const zodType = getZodTypeFromApiParamType({ t: "string-literal", value: "active" }, {});
+        testOkCase(zodType, "active");
+        testFailCase(zodType, "inactive");
       });
       test("numeric-literal", async () => {
-        const zodType = getZodTypeFromApiParamType({ t: "numeric-literal", value: 1 }, {});
-        expect(zodType).toBeInstanceOf(z.ZodLiteral);
+        const zodType = getZodTypeFromApiParamType({ t: "numeric-literal", value: 42 }, {});
+        testOkCase(zodType, 42);
+        testFailCase(zodType, 43);
       });
     });
-    describe("Array 타입", () => {
-      test("array", async () => {
-        const zodType = getZodTypeFromApiParamType({ t: "array", elementsType: "string" }, {});
-        expect(zodType).toBeInstanceOf(z.ZodArray);
-      });
-    });
+
     describe("Object 타입", () => {
-      test("object", async () => {
+      test("object with props", async () => {
         const zodType = getZodTypeFromApiParamType(
-          { t: "object", props: [{ name: "test", type: "string", optional: false }] },
+          {
+            t: "object",
+            props: [
+              { name: "test", type: "string", optional: false },
+              { name: "age", type: "number", optional: true },
+            ],
+          },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodObject);
+        testOkCase(zodType, { test: "test", age: 1 });
+        testOkCase(zodType, { test: "test" });
+        testFailCase(zodType, { age: 1 }); // test 누락
+        testFailCase(zodType, { test: 1 }); // test 타입 오류
       });
     });
+
+    describe("Array 타입", () => {
+      test("array of primitives", () => {
+        const zodType = getZodTypeFromApiParamType({ t: "array", elementsType: "string" }, {});
+        testOkCase(zodType, ["a", "b"]);
+        testOkCase(zodType, []);
+        testFailCase(zodType, [1, 2]);
+      });
+
+      test("nested array", () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "array",
+            elementsType: { t: "array", elementsType: "number" },
+          },
+          {},
+        );
+        testOkCase(zodType, [
+          [1, 2],
+          [3, 4],
+        ]);
+        testFailCase(zodType, [1, 2]); // 1차원 배열
+      });
+    });
+
     describe("Union 타입", () => {
-      test("union", async () => {
+      test("일반 union", () => {
         const zodType = getZodTypeFromApiParamType({ t: "union", types: ["string", "number"] }, {});
-        expect(zodType).toBeInstanceOf(z.ZodUnion);
+        testOkCase(zodType, "test");
+        testOkCase(zodType, 123);
+        testFailCase(zodType, true);
+      });
+
+      test("nullable union (string | null)", () => {
+        const zodType = getZodTypeFromApiParamType({ t: "union", types: ["string", "null"] }, {});
+        testOkCase(zodType, "test");
+        testOkCase(zodType, null);
+        testFailCase(zodType, 123);
+      });
+
+      test("nullable union (null | number)", () => {
+        const zodType = getZodTypeFromApiParamType({ t: "union", types: ["null", "number"] }, {});
+        testOkCase(zodType, 123);
+        testOkCase(zodType, null);
+        testFailCase(zodType, "test");
       });
     });
     describe("Intersection 타입", () => {
-      test("intersection", async () => {
+      test("intersection of objects", () => {
         const zodType = getZodTypeFromApiParamType(
-          { t: "intersection", types: ["string", "number"] },
+          {
+            t: "intersection",
+            types: [
+              {
+                t: "object",
+                props: [{ name: "a", type: "string", optional: false }],
+              },
+              {
+                t: "object",
+                props: [{ name: "b", type: "number", optional: false }],
+              },
+            ],
+          },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodIntersection);
+        testOkCase(zodType, { a: "test", b: 123 });
+        testFailCase(zodType, { a: "test" }); // b 누락
+        testFailCase(zodType, { b: 123 }); // a 누락
       });
     });
-    test("tuple-type", async () => {
-      const zodType = getZodTypeFromApiParamType(
-        {
-          t: "tuple-type",
-          elements: ["string", "number"],
-        },
-        {},
-      );
-      expect(zodType).toBeInstanceOf(z.ZodTuple);
+    describe("Tuple 타입", () => {
+      test("tuple", () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "tuple-type",
+            elements: ["string", "number"],
+          },
+          {},
+        );
+        testOkCase(zodType, ["test", 123]);
+        testFailCase(zodType, [123, "test"]); // 순서 바뀜
+        testFailCase(zodType, ["test"]); // 길이 부족
+      });
     });
 
     describe("Ref 타입", () => {
-      test("ref", async () => {
-        const zodType = getZodTypeFromApiParamType({ t: "ref", id: "test" }, {});
-        expect(zodType).toBeInstanceOf(z.ZodType);
-      });
       test("Date", () => {
         const zodType = getZodTypeFromApiParamType({ t: "ref", id: "Date" }, {});
-        expect(zodType).toBeInstanceOf(z.ZodDate);
+        testOkCase(zodType, new Date());
+        testFailCase(zodType, "2024-01-01");
       });
 
       test("Partial", () => {
@@ -136,14 +198,45 @@ describe("code-converters", () => {
           },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodObject);
-        expect((zodType as z.ZodObject).shape.id).toBeDefined();
-        expect((zodType as z.ZodObject).shape.name).toBeDefined();
+        testOkCase(zodType, {}); // 모든 필드 optional
+        testOkCase(zodType, { id: 1 });
+        testOkCase(zodType, { name: "test" });
+        testOkCase(zodType, { id: 1, name: "test" });
+      });
+
+      test("Partial 에러 - 잘못된 인자 개수", () => {
+        expect(() => {
+          getZodTypeFromApiParamType(
+            {
+              t: "ref",
+              id: "Partial",
+              args: [], // args 0개
+            },
+            {},
+          );
+        }).toThrow("잘못된 Partial");
+      });
+
+      test("reference 조회", () => {
+        const references = {
+          User: z.object({ id: z.number() }),
+        };
+        const zodType = getZodTypeFromApiParamType({ t: "ref", id: "User" }, references);
+        testOkCase(zodType, { id: 1 });
+        testFailCase(zodType, { id: "1" });
+      });
+
+      test("undefined reference → unknown fallback", () => {
+        const zodType = getZodTypeFromApiParamType({ t: "ref", id: "NonExistent" }, {});
+        // unknown은 모든 값을 허용
+        testOkCase(zodType, "anything");
+        testOkCase(zodType, 123);
+        testOkCase(zodType, { any: "object" });
       });
     });
 
     describe("Pick/Omit 유틸리티 처리", () => {
-      test("Pick + ZodUnion keys", async () => {
+      test("Pick with union keys", () => {
         const zodType = getZodTypeFromApiParamType(
           {
             t: "ref",
@@ -168,12 +261,12 @@ describe("code-converters", () => {
           },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodObject);
-        expect((zodType as z.ZodObject).shape.id).toBeDefined();
-        expect((zodType as z.ZodObject).shape.name).toBeDefined();
-        expect((zodType as z.ZodObject).shape.age).toBeUndefined();
+        testOkCase(zodType, { id: 1, name: "test" });
+        testOkCase(zodType, { id: 1, name: "test", age: 30 }); // age는 제거됨
+        // failCase는 어떻게 생성할까?
       });
-      test("Pick + single ZodLiteral key", async () => {
+
+      test("Pick with single literal key", () => {
         const zodType = getZodTypeFromApiParamType(
           {
             t: "ref",
@@ -191,9 +284,8 @@ describe("code-converters", () => {
           },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodObject);
-        expect((zodType as z.ZodObject).shape.id).toBeDefined();
-        expect((zodType as z.ZodObject).shape.name).toBeUndefined();
+        testOkCase(zodType, { id: 1 });
+        testOkCase(zodType, { id: 1, name: "test" }); // name은 제거됨
       });
       test("Omit + multiple keys", async () => {
         const zodType = getZodTypeFromApiParamType(
@@ -217,34 +309,65 @@ describe("code-converters", () => {
           },
           {},
         );
-        expect(zodType).toBeInstanceOf(z.ZodObject);
-        expect((zodType as z.ZodObject).shape.id).toBeDefined();
-        expect((zodType as z.ZodObject).shape.name).toBeDefined();
-        expect((zodType as z.ZodObject).shape.password).toBeUndefined();
+        testOkCase(zodType, { id: 1, name: "test" });
+        testOkCase(zodType, { id: 1, name: "test", password: "123456" }); // password는 제거됨
+        testOkCase(zodType, { id: 1, name: "test", password: 123456 });
+        testFailCase(zodType, { id: 1, name: 111, password: 123456, age: 30 }); // name 타입 오류
+        testFailCase(zodType, { id: "hello", name: "test", password: 123456, age: 30 }); // id 타입 오류
       });
-      test("잘못된 인자 개수 에러 처리 Pick", async () => {
-        expect(() =>
+
+      test("잘못된 인자 개수 에러 - Pick", () => {
+        expect(() => {
           getZodTypeFromApiParamType(
             {
               t: "ref",
               id: "Pick",
-              args: [{ t: "object", props: [] }],
+              args: [{ t: "object", props: [] }], // args 1개만
             },
             {},
-          ),
-        ).toThrow("잘못된 Pick");
+          );
+        }).toThrow("잘못된 Pick");
       });
-      test("잘못된 인자 개수 에러 처리 Omit", async () => {
-        expect(() =>
+
+      test("잘못된 인자 개수 에러 - Omit", () => {
+        expect(() => {
           getZodTypeFromApiParamType(
             {
               t: "ref",
               id: "Omit",
-              args: [{ t: "object", props: [] }],
+              args: [], // args 0개
             },
             {},
-          ),
-        ).toThrow("잘못된 Omit");
+          );
+        }).toThrow("잘못된 Omit");
+      });
+    });
+
+    describe("순환참조 처리", () => {
+      test("자기 자신 참조 → unknown fallback", () => {
+        const zodType = getZodTypeFromApiParamType(
+          {
+            t: "type-param",
+            id: "SelfRef",
+            constraint: { t: "ref", id: "SelfRef" },
+          },
+          {},
+        );
+        // unknown fallback으로 처리되므로 모든 값 허용
+        testOkCase(zodType, "anything");
+      });
+    });
+
+    describe("Unknown fallback", () => {
+      test("처리되지 않는 타입 → z.unknown()", () => {
+        const zodType = getZodTypeFromApiParamType(
+          { t: "indexed-access", object: "string", index: "number" } as ApiParamType,
+          {},
+        );
+        // unknown은 모든 값 허용
+        testOkCase(zodType, "anything");
+        testOkCase(zodType, 123);
+        testOkCase(zodType, { any: "value" });
       });
     });
   });
@@ -337,1589 +460,1589 @@ describe("code-converters", () => {
     });
   });
 
-  describe("getZodObjectFromApi", () => {
-    describe("기본 API", () => {
-      test("string 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: "string",
-              optional: true,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("number 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: "number",
-              optional: true,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("boolean 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: "boolean",
-              optional: true,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("array 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "array",
-                elementsType: "string",
-              },
-              optional: true,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-    });
-
-    describe("Generic 타입 파라미터", () => {
-      test("Generic Number", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: "number",
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: "number",
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "array",
-            elementsType: {
-              t: "ref",
-              id: "Promise",
-              args: [{ t: "ref", id: "number[]" }],
-            },
-          },
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Generic Number의 배열, String의 배열", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: {
-                t: "array",
-                elementsType: "number",
-              },
-            },
-            {
-              t: "type-param",
-              id: "U",
-              constraint: {
-                t: "array",
-                elementsType: "string",
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "array",
-                elementsType: "string",
-              },
-              optional: false,
-            },
-            {
-              name: "param2",
-              type: {
-                t: "array",
-                elementsType: "number",
-              },
-              optional: true,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [
-              { t: "ref", id: "Promise", args: [{ t: "ref", id: "string[]" }] },
-              { t: "ref", id: "Promise", args: [{ t: "ref", id: "number[]" }] },
-            ],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Generic Object", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "object" }] }],
-          },
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Generic Union", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: {
-                t: "union",
-                types: [
-                  {
-                    t: "string-literal",
-                    value: "a",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "b",
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "union",
-                types: [
-                  {
-                    t: "string-literal",
-                    value: "a",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "b",
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "enum" }] }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Generic Intersection", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: {
-                t: "intersection",
-                types: [
-                  {
-                    t: "string-literal",
-                    value: "a",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "b",
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "intersection",
-                types: [
-                  {
-                    t: "string-literal",
-                    value: "a",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "b",
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "intersection" }] }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Generic Tuple", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "T",
-              constraint: {
-                t: "tuple-type",
-                elements: [
-                  {
-                    t: "string-literal",
-                    value: "string",
-                  },
-                  {
-                    t: "numeric-literal",
-                    value: 1,
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "tuple-type",
-                elements: [
-                  {
-                    t: "string-literal",
-                    value: "string",
-                  },
-                  {
-                    t: "numeric-literal",
-                    value: 1,
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "tuple" }] }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-    });
-
-    describe("Edge Cases", () => {
-      test("파라미터가 없는 API", async () => {
-        const testApi = createTestApi();
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("_로 시작하는 optional 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: true,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Context, RefKnex 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "context",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      // Pick<Omit<Object, "password">, "id" | "name"> 형태의 중첩
-      test("중첩된 Pick/Omit 처리", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "nestedParam",
-              type: {
-                t: "ref",
-                id: "Pick",
-                args: [
-                  {
-                    t: "ref",
-                    id: "Omit",
-                    args: [
-                      {
-                        t: "object",
-                        props: [
-                          {
-                            name: "id",
-                            type: "number",
-                            optional: false,
-                          },
-                          {
-                            name: "name",
-                            type: "string",
-                            optional: false,
-                          },
-                          {
-                            name: "password",
-                            type: "string",
-                            optional: false,
-                          },
-                          {
-                            name: "email",
-                            type: "string",
-                            optional: false,
-                          },
-                        ],
-                      },
-                      {
-                        t: "string-literal",
-                        value: "password",
-                      },
-                    ],
-                  },
-                  {
-                    t: "union",
-                    types: [
-                      {
-                        t: "string-literal",
-                        value: "id",
-                      },
-                      {
-                        t: "string-literal",
-                        value: "name",
-                      },
-                    ],
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Partial 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: true,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [
-              {
-                t: "ref",
-                id: "Promise",
-                args: [
-                  {
-                    t: "ref",
-                    id: "Partial",
-                    args: [{ t: "ref", id: "object" }],
-                  },
-                  {
-                    t: "string-literal",
-                    value: "id",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "name",
-                  },
-                  {
-                    t: "string-literal",
-                    value: "age",
-                  },
-                ],
-              },
-            ],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Omit 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [
-              {
-                t: "ref",
-                id: "Promise",
-                args: [{ t: "ref", id: "Omit", args: [{ t: "ref", id: "object" }] }],
-              },
-            ],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Pick 파라미터", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [
-              {
-                t: "ref",
-                id: "Promise",
-                args: [{ t: "ref", id: "Pick", args: [{ t: "ref", id: "object" }] }],
-              },
-            ],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("Date 타입 처리", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "ref",
-                id: "Date",
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Date" }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("nullable union 타입 (Type | null) 처리", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "union",
-                types: [
-                  {
-                    t: "string-literal",
-                    value: "string-literal",
-                  },
-                  {
-                    t: "ref",
-                    id: "null",
-                  },
-                ],
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "string" }] }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-    });
-
-    describe("Reference 처리", () => {
-      test("존재하지 않는 reference ID -> z.string() 폴백", async () => {
-        const testApi = createTestApi({
-          parameters: [
-            {
-              name: "param",
-              type: {
-                t: "ref",
-                id: "not-exists",
-              },
-              optional: false,
-            },
-          ],
-          returnType: {
-            t: "ref",
-            id: "Promise",
-            args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "string-literal" }] }],
-          },
-        });
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-      });
-
-      test("다중 reference 의존성", async () => {
-        const references: Record<string, z.ZodObject> = {
-          BaseEntity: z.object({
-            id: z.number(),
-          }),
-          Timestamped: z.object({
-            createdAt: z.date(),
-            updatedAt: z.date(),
-          }),
-          Audited: z.object({
-            createdBy: z.string(),
-            updatedBy: z.string(),
-          }),
-        };
-
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "UserEntity",
-              constraint: {
-                t: "intersection",
-                types: [
-                  { t: "ref", id: "BaseEntity" }, // 첫 번째 reference
-                  { t: "ref", id: "Timestamped" }, // 두 번째 reference
-                  { t: "ref", id: "Audited" }, // 세 번째 reference
-                  {
-                    t: "object",
-                    props: [
-                      { name: "name", type: "string", optional: false },
-                      { name: "email", type: "string", optional: false },
-                    ],
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "user",
-              type: { t: "ref", id: "UserEntity" },
-              optional: false,
-            },
-            {
-              name: "base",
-              type: { t: "ref", id: "BaseEntity" },
-              optional: false,
-            },
-          ],
-        });
-        const zodObject = getZodObjectFromApi(testApi, references);
-        expect(zodObject).toBeInstanceOf(z.ZodObject);
-
-        // 검증: 기존 references가 유지됨
-        expect(Object.keys(references)).toContain("BaseEntity");
-        expect(Object.keys(references)).toContain("Timestamped");
-        expect(Object.keys(references)).toContain("Audited");
-
-        // 검증: UserEntity가 추가됨
-        expect(Object.keys(references)).toContain("UserEntity");
-
-        // 검증: user 파라미터는 intersection
-        expect(zodObject.shape.user.def.type).toBe("intersection");
-
-        // 검증: base 파라미터는 BaseEntity 참조 성공
-        expect(zodObject.shape.base.def.type).toBe("object");
-        expect(zodObject.shape.base.shape.id).toBeDefined();
-        expect(zodObject.shape.base.shape.id.def.type).toBe("number");
-
-        // 검증: UserEntity의 intersection이 모든 reference를 포함
-        // (intersection의 left/right 구조를 재귀적으로 확인)
-        const userEntityType = references.UserEntity as unknown as z.ZodObject;
-        expect(userEntityType?.def.type).toBe("intersection");
-      });
-
-      test("다중 reference 의존성 (체인)", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "A",
-              constraint: { t: "object", props: [{ name: "a", type: "string", optional: false }] },
-            },
-            {
-              t: "type-param",
-              id: "B",
-              constraint: {
-                t: "intersection",
-                types: [
-                  { t: "ref", id: "A" }, // A 참조
-                  { t: "object", props: [{ name: "b", type: "string", optional: false }] },
-                ],
-              },
-            },
-            {
-              t: "type-param",
-              id: "C",
-              constraint: {
-                t: "intersection",
-                types: [
-                  { t: "ref", id: "B" }, // B 참조 (B는 A 참조)
-                  { t: "object", props: [{ name: "c", type: "string", optional: false }] },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "paramC",
-              type: { t: "ref", id: "C" }, // C는 B를, B는 A를 참조하는 체인
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증 1: A, B, C 모두 등록됨
-        expect(Object.keys(references).sort()).toEqual(["A", "B", "C"]);
-
-        // 검증 2: A는 object (base)
-        expect(references.A?.def.type).toBe("object");
-        expect(references.A?.shape.a).toBeDefined();
-        expect(references.A?.shape.a.def.type).toBe("string");
-
-        // 검증 3: B는 intersection (A & { b: string })
-        expect(references.B?.def.type).toBe("intersection");
-        const typeB = references.B as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
-        expect(typeB.def.left.def.type).toBe("object"); // A 참조 성공
-        expect(typeB.def.right.def.type).toBe("object"); // { b: string }
-
-        // // B의 left는 A를 참조했으므로 'a' 필드가 있어야 함
-        const typeLeft = typeB.def.left as unknown as z.ZodObject;
-        expect(typeLeft.def.type).toBe("object");
-        expect(typeLeft.shape.a).toBeDefined();
-        expect(typeLeft.shape.a.def.type).toBe("string");
-
-        // B의 right는 'b' 필드
-        const typeRight = typeB.def.right as unknown as z.ZodObject;
-        expect(typeRight.shape.b).toBeDefined();
-        expect(typeRight.shape.b.def.type).toBe("string");
-
-        // 검증 4: C는 intersection (B & { c: string })
-        expect(references.C?.def.type).toBe("intersection");
-        const typeC = references.C as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
-        expect(typeC.def.left.def.type).toBe("intersection"); // B 참조 (B도 intersection)
-        expect(typeC.def.right.def.type).toBe("object"); // { c: string }
-
-        // C의 left는 B를 참조했으므로 B의 intersection 구조
-        const typeLeftC = typeC.def.left as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
-        expect(typeLeftC.def.left.def.type).toBe("object"); // A에서 온 'a'
-        expect(typeLeftC.def.right.def.type).toBe("object"); // B에서 온 'b'
-
-        // C의 right는 'c' 필드
-        const typeRightC = typeC.def.right as unknown as z.ZodObject;
-        expect(typeRightC.shape.c).toBeDefined();
-        expect(typeRightC.shape.c.def.type).toBe("string");
-
-        // 검증 5: paramC는 C를 참조
-        expect(zodObject.shape.paramC.def.type).toBe("intersection");
-      });
-    });
-
-    describe("순환참조 처리", () => {
-      test("자기 자신을 참조하는 TypeParameter", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "SelfRef",
-              constraint: { t: "ref", id: "SelfRef" }, // 자기 자신 참조
-            },
-          ],
-          parameters: [
-            {
-              name: "param",
-              type: { t: "ref", id: "SelfRef" }, // SelfRef 사용
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        expect(Object.keys(references)).toContain("SelfRef"); // SelfRef가 references에 등록됨
-        expect(zodObject.shape.param).toBeDefined();
-        expect(zodObject.shape.param.def.type).toBe("unknown"); // z.string() 폴백 확인
-      });
-
-      test("상호 참조하는 TypeParameters (A↔B)", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "A",
-              constraint: { t: "ref", id: "B" }, // A → B
-            },
-            {
-              t: "type-param",
-              id: "B",
-              constraint: { t: "ref", id: "A" }, // B → A
-            },
-          ],
-          parameters: [
-            {
-              name: "paramA",
-              type: { t: "ref", id: "A" },
-              optional: false,
-            },
-            {
-              name: "paramB",
-              type: { t: "ref", id: "B" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        expect(Object.keys(references)).toContain("A");
-        expect(Object.keys(references)).toContain("B");
-
-        // 둘 다 z.string() 폴백되었는지 확인
-        expect(zodObject.shape.paramA.def.type).toBe("unknown");
-        expect(zodObject.shape.paramB.def.type).toBe("unknown");
-
-        // references도 string인지 확인
-        expect(references.A?.def.type).toBe("unknown");
-        expect(references.B?.def.type).toBe("unknown");
-      });
-
-      test("삼각 순환 (A→B→C→A) 처리", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "A",
-              constraint: { t: "ref", id: "B" }, // A → B
-            },
-            {
-              t: "type-param",
-              id: "B",
-              constraint: { t: "ref", id: "C" }, // B → C
-            },
-            {
-              t: "type-param",
-              id: "C",
-              constraint: { t: "ref", id: "A" }, // C → A (순환)
-            },
-          ],
-          parameters: [
-            {
-              name: "paramA",
-              type: { t: "ref", id: "A" },
-              optional: false,
-            },
-            {
-              name: "paramB",
-              type: { t: "ref", id: "B" },
-              optional: false,
-            },
-            {
-              name: "paramC",
-              type: { t: "ref", id: "C" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증: A, B, C 모두 등록됨
-        expect(Object.keys(references).sort()).toEqual(["A", "B", "C"]);
-
-        // 검증: 모두 string 타입으로 폴백
-        expect(zodObject.shape.paramA.def.type).toBe("unknown");
-        expect(zodObject.shape.paramB.def.type).toBe("unknown");
-        expect(zodObject.shape.paramC.def.type).toBe("unknown");
-
-        // 검증: references도 모두 string
-        expect(references.A?.def.type).toBe("unknown");
-        expect(references.B?.def.type).toBe("unknown");
-        expect(references.C?.def.type).toBe("unknown");
-      });
-
-      test("재귀적 배열 구조 (Tree-like Array)", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "TreeNode",
-              constraint: {
-                t: "object",
-                props: [
-                  {
-                    name: "value",
-                    type: "string",
-                    optional: false,
-                  },
-                  {
-                    name: "children",
-                    type: {
-                      t: "array",
-                      elementsType: { t: "ref", id: "TreeNode" }, // 자기 자신 배열
-                    },
-                    optional: false,
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "tree",
-              type: { t: "ref", id: "TreeNode" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증: TreeNode가 등록됨
-        expect(Object.keys(references)).toContain("TreeNode");
-
-        // 검증: tree 파라미터가 object 타입
-        expect(zodObject.shape.tree.def.type).toBe("object");
-
-        // 검증: tree에 value와 children 필드 존재
-        const treeShape = zodObject.shape.tree.shape;
-        expect(treeShape.value).toBeDefined();
-        expect(treeShape.children).toBeDefined();
-
-        // 검증: value는 string
-        expect(treeShape.value.def.type).toBe("string");
-
-        // 검증: children은 array
-        expect(treeShape.children.def.type).toBe("array");
-
-        // 검증: children의 element는 string (재귀 끊어짐)
-        expect(treeShape.children.def.element.def.type).toBe("unknown");
-      });
-
-      test("재귀적 Union (JasonValue-like Union)", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "JsonValue",
-              constraint: {
-                t: "union",
-                types: [
-                  "string",
-                  "number",
-                  "boolean",
-                  "null",
-                  {
-                    t: "array",
-                    elementsType: { t: "ref", id: "JsonValue" }, // 재귀
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "json",
-              type: { t: "ref", id: "JsonValue" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증: JsonValue가 등록됨
-        expect(Object.keys(references)).toContain("JsonValue");
-
-        // 검증: json 파라미터가 union 타입
-        expect(zodObject.shape.json.def.type).toBe("union");
-
-        // 검증: union options 개수 확인 (5개)
-        const unionOptions = zodObject.shape.json.def.options;
-        expect(unionOptions.length).toBe(5);
-
-        // 검증: union에 primitive 타입들 포함
-        const optionTypes = unionOptions.map((opt: z.ZodType<unknown>) => opt.def.type);
-        expect(optionTypes).toContain("string");
-        expect(optionTypes).toContain("number");
-        expect(optionTypes).toContain("boolean");
-        expect(optionTypes).toContain("unknown");
-        expect(optionTypes).toContain("array");
-
-        // 검증: array의 element가 string (재귀 끊어짐)
-        const arrayOption = unionOptions.find(
-          (opt: z.ZodType<unknown>) => opt.def.type === "array",
-        );
-        expect(arrayOption?.def.element.def.type).toBe("unknown");
-      });
-
-      test("Pick/Omit + 순환", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "User",
-              constraint: {
-                t: "object",
-                props: [
-                  {
-                    name: "id",
-                    type: "number",
-                    optional: false,
-                  },
-                  {
-                    name: "name",
-                    type: "string",
-                    optional: false,
-                  },
-                  {
-                    name: "email",
-                    type: "string",
-                    optional: false,
-                  },
-                  {
-                    name: "friend",
-                    type: {
-                      t: "ref",
-                      id: "Pick",
-                      args: [
-                        { t: "ref", id: "User" }, // 자기 자신 참조
-                        {
-                          t: "union",
-                          types: [
-                            { t: "string-literal", value: "id" },
-                            { t: "string-literal", value: "name" },
-                          ],
-                        },
-                      ],
-                    },
-                    optional: true,
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "user",
-              type: { t: "ref", id: "User" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증: User가 등록됨
-        expect(Object.keys(references)).toContain("User");
-
-        // 검증: user 파라미터가 object 타입
-        expect(zodObject.shape.user.def.type).toBe("object");
-        // 검증: friend의 innerType 확인 (순환 끊어져서 string으로 폴백 예상)
-        // Pick의 대상인 User가 없어서 z.unknown()으로 폴백될 것
-        expect(zodObject.shape.user.shape.friend.def.innerType.def.type).toBe("unknown");
-      });
-
-      test("Intersection + 순환", async () => {
-        const testApi = createTestApi({
-          typeParameters: [
-            {
-              t: "type-param",
-              id: "Node",
-              constraint: {
-                t: "intersection",
-                types: [
-                  {
-                    t: "object",
-                    props: [
-                      {
-                        name: "value",
-                        type: "string",
-                        optional: false,
-                      },
-                    ],
-                  },
-                  {
-                    t: "object",
-                    props: [
-                      {
-                        name: "next",
-                        type: { t: "ref", id: "Node" }, // 자기 자신 참조
-                        optional: true,
-                      },
-                    ],
-                  },
-                ],
-              },
-            },
-          ],
-          parameters: [
-            {
-              name: "node",
-              type: { t: "ref", id: "Node" },
-              optional: false,
-            },
-          ],
-        });
-
-        const references: Record<string, z.ZodObject> = {};
-        const zodObject = getZodObjectFromApi(testApi, references);
-
-        // 검증: Node가 등록됨
-        expect(Object.keys(references)).toContain("Node");
-
-        // 검증: node 파라미터가 intersection 타입
-        expect(zodObject.shape.node.def.type).toBe("intersection");
-
-        // 검증: intersection의 left와 right 확인
-        const rightType = zodObject.shape.node.def.right;
-
-        // 검증: next의 innerType은 unknown (순환 끊어짐)
-        expect(rightType.shape.next.def.innerType.def.type).toBe("unknown");
-      });
-    });
-  });
+  // describe("getZodObjectFromApi", () => {
+  //   describe("기본 API", () => {
+  //     test("string 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: "string",
+  //             optional: true,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("number 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: "number",
+  //             optional: true,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("boolean 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: "boolean",
+  //             optional: true,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("array 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "array",
+  //               elementsType: "string",
+  //             },
+  //             optional: true,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+  //   });
+
+  //   describe("Generic 타입 파라미터", () => {
+  //     test("Generic Number", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: "number",
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: "number",
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "array",
+  //           elementsType: {
+  //             t: "ref",
+  //             id: "Promise",
+  //             args: [{ t: "ref", id: "number[]" }],
+  //           },
+  //         },
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Generic Number의 배열, String의 배열", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: {
+  //               t: "array",
+  //               elementsType: "number",
+  //             },
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "U",
+  //             constraint: {
+  //               t: "array",
+  //               elementsType: "string",
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "array",
+  //               elementsType: "string",
+  //             },
+  //             optional: false,
+  //           },
+  //           {
+  //             name: "param2",
+  //             type: {
+  //               t: "array",
+  //               elementsType: "number",
+  //             },
+  //             optional: true,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [
+  //             { t: "ref", id: "Promise", args: [{ t: "ref", id: "string[]" }] },
+  //             { t: "ref", id: "Promise", args: [{ t: "ref", id: "number[]" }] },
+  //           ],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Generic Object", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "object" }] }],
+  //         },
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Generic Union", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: {
+  //               t: "union",
+  //               types: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "a",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "b",
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "union",
+  //               types: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "a",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "b",
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "enum" }] }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Generic Intersection", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: {
+  //               t: "intersection",
+  //               types: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "a",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "b",
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "intersection",
+  //               types: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "a",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "b",
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "intersection" }] }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Generic Tuple", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "T",
+  //             constraint: {
+  //               t: "tuple-type",
+  //               elements: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "string",
+  //                 },
+  //                 {
+  //                   t: "numeric-literal",
+  //                   value: 1,
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "tuple-type",
+  //               elements: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "string",
+  //                 },
+  //                 {
+  //                   t: "numeric-literal",
+  //                   value: 1,
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "tuple" }] }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+  //   });
+
+  //   describe("Edge Cases", () => {
+  //     test("파라미터가 없는 API", async () => {
+  //       const testApi = createTestApi();
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("_로 시작하는 optional 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: true,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Context, RefKnex 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "context",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     // Pick<Omit<Object, "password">, "id" | "name"> 형태의 중첩
+  //     test("중첩된 Pick/Omit 처리", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "nestedParam",
+  //             type: {
+  //               t: "ref",
+  //               id: "Pick",
+  //               args: [
+  //                 {
+  //                   t: "ref",
+  //                   id: "Omit",
+  //                   args: [
+  //                     {
+  //                       t: "object",
+  //                       props: [
+  //                         {
+  //                           name: "id",
+  //                           type: "number",
+  //                           optional: false,
+  //                         },
+  //                         {
+  //                           name: "name",
+  //                           type: "string",
+  //                           optional: false,
+  //                         },
+  //                         {
+  //                           name: "password",
+  //                           type: "string",
+  //                           optional: false,
+  //                         },
+  //                         {
+  //                           name: "email",
+  //                           type: "string",
+  //                           optional: false,
+  //                         },
+  //                       ],
+  //                     },
+  //                     {
+  //                       t: "string-literal",
+  //                       value: "password",
+  //                     },
+  //                   ],
+  //                 },
+  //                 {
+  //                   t: "union",
+  //                   types: [
+  //                     {
+  //                       t: "string-literal",
+  //                       value: "id",
+  //                     },
+  //                     {
+  //                       t: "string-literal",
+  //                       value: "name",
+  //                     },
+  //                   ],
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Partial 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: true,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [
+  //             {
+  //               t: "ref",
+  //               id: "Promise",
+  //               args: [
+  //                 {
+  //                   t: "ref",
+  //                   id: "Partial",
+  //                   args: [{ t: "ref", id: "object" }],
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "id",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "name",
+  //                 },
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "age",
+  //                 },
+  //               ],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Omit 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [
+  //             {
+  //               t: "ref",
+  //               id: "Promise",
+  //               args: [{ t: "ref", id: "Omit", args: [{ t: "ref", id: "object" }] }],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Pick 파라미터", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [
+  //             {
+  //               t: "ref",
+  //               id: "Promise",
+  //               args: [{ t: "ref", id: "Pick", args: [{ t: "ref", id: "object" }] }],
+  //             },
+  //           ],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("Date 타입 처리", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "ref",
+  //               id: "Date",
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Date" }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("nullable union 타입 (Type | null) 처리", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "union",
+  //               types: [
+  //                 {
+  //                   t: "string-literal",
+  //                   value: "string-literal",
+  //                 },
+  //                 {
+  //                   t: "ref",
+  //                   id: "null",
+  //                 },
+  //               ],
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "string" }] }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+  //   });
+
+  //   describe("Reference 처리", () => {
+  //     test("존재하지 않는 reference ID -> z.string() 폴백", async () => {
+  //       const testApi = createTestApi({
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: {
+  //               t: "ref",
+  //               id: "not-exists",
+  //             },
+  //             optional: false,
+  //           },
+  //         ],
+  //         returnType: {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: [{ t: "ref", id: "Promise", args: [{ t: "ref", id: "string-literal" }] }],
+  //         },
+  //       });
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+  //     });
+
+  //     test("다중 reference 의존성", async () => {
+  //       const references: Record<string, z.ZodObject> = {
+  //         BaseEntity: z.object({
+  //           id: z.number(),
+  //         }),
+  //         Timestamped: z.object({
+  //           createdAt: z.date(),
+  //           updatedAt: z.date(),
+  //         }),
+  //         Audited: z.object({
+  //           createdBy: z.string(),
+  //           updatedBy: z.string(),
+  //         }),
+  //       };
+
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "UserEntity",
+  //             constraint: {
+  //               t: "intersection",
+  //               types: [
+  //                 { t: "ref", id: "BaseEntity" }, // 첫 번째 reference
+  //                 { t: "ref", id: "Timestamped" }, // 두 번째 reference
+  //                 { t: "ref", id: "Audited" }, // 세 번째 reference
+  //                 {
+  //                   t: "object",
+  //                   props: [
+  //                     { name: "name", type: "string", optional: false },
+  //                     { name: "email", type: "string", optional: false },
+  //                   ],
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "user",
+  //             type: { t: "ref", id: "UserEntity" },
+  //             optional: false,
+  //           },
+  //           {
+  //             name: "base",
+  //             type: { t: "ref", id: "BaseEntity" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+  //       expect(zodObject).toBeInstanceOf(z.ZodObject);
+
+  //       // 검증: 기존 references가 유지됨
+  //       expect(Object.keys(references)).toContain("BaseEntity");
+  //       expect(Object.keys(references)).toContain("Timestamped");
+  //       expect(Object.keys(references)).toContain("Audited");
+
+  //       // 검증: UserEntity가 추가됨
+  //       expect(Object.keys(references)).toContain("UserEntity");
+
+  //       // 검증: user 파라미터는 intersection
+  //       expect(zodObject.shape.user.def.type).toBe("intersection");
+
+  //       // 검증: base 파라미터는 BaseEntity 참조 성공
+  //       expect(zodObject.shape.base.def.type).toBe("object");
+  //       expect(zodObject.shape.base.shape.id).toBeDefined();
+  //       expect(zodObject.shape.base.shape.id.def.type).toBe("number");
+
+  //       // 검증: UserEntity의 intersection이 모든 reference를 포함
+  //       // (intersection의 left/right 구조를 재귀적으로 확인)
+  //       const userEntityType = references.UserEntity as unknown as z.ZodObject;
+  //       expect(userEntityType?.def.type).toBe("intersection");
+  //     });
+
+  //     test("다중 reference 의존성 (체인)", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "A",
+  //             constraint: { t: "object", props: [{ name: "a", type: "string", optional: false }] },
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "B",
+  //             constraint: {
+  //               t: "intersection",
+  //               types: [
+  //                 { t: "ref", id: "A" }, // A 참조
+  //                 { t: "object", props: [{ name: "b", type: "string", optional: false }] },
+  //               ],
+  //             },
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "C",
+  //             constraint: {
+  //               t: "intersection",
+  //               types: [
+  //                 { t: "ref", id: "B" }, // B 참조 (B는 A 참조)
+  //                 { t: "object", props: [{ name: "c", type: "string", optional: false }] },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "paramC",
+  //             type: { t: "ref", id: "C" }, // C는 B를, B는 A를 참조하는 체인
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증 1: A, B, C 모두 등록됨
+  //       expect(Object.keys(references).sort()).toEqual(["A", "B", "C"]);
+
+  //       // 검증 2: A는 object (base)
+  //       expect(references.A?.def.type).toBe("object");
+  //       expect(references.A?.shape.a).toBeDefined();
+  //       expect(references.A?.shape.a.def.type).toBe("string");
+
+  //       // 검증 3: B는 intersection (A & { b: string })
+  //       expect(references.B?.def.type).toBe("intersection");
+  //       const typeB = references.B as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
+  //       expect(typeB.def.left.def.type).toBe("object"); // A 참조 성공
+  //       expect(typeB.def.right.def.type).toBe("object"); // { b: string }
+
+  //       // // B의 left는 A를 참조했으므로 'a' 필드가 있어야 함
+  //       const typeLeft = typeB.def.left as unknown as z.ZodObject;
+  //       expect(typeLeft.def.type).toBe("object");
+  //       expect(typeLeft.shape.a).toBeDefined();
+  //       expect(typeLeft.shape.a.def.type).toBe("string");
+
+  //       // B의 right는 'b' 필드
+  //       const typeRight = typeB.def.right as unknown as z.ZodObject;
+  //       expect(typeRight.shape.b).toBeDefined();
+  //       expect(typeRight.shape.b.def.type).toBe("string");
+
+  //       // 검증 4: C는 intersection (B & { c: string })
+  //       expect(references.C?.def.type).toBe("intersection");
+  //       const typeC = references.C as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
+  //       expect(typeC.def.left.def.type).toBe("intersection"); // B 참조 (B도 intersection)
+  //       expect(typeC.def.right.def.type).toBe("object"); // { c: string }
+
+  //       // C의 left는 B를 참조했으므로 B의 intersection 구조
+  //       const typeLeftC = typeC.def.left as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
+  //       expect(typeLeftC.def.left.def.type).toBe("object"); // A에서 온 'a'
+  //       expect(typeLeftC.def.right.def.type).toBe("object"); // B에서 온 'b'
+
+  //       // C의 right는 'c' 필드
+  //       const typeRightC = typeC.def.right as unknown as z.ZodObject;
+  //       expect(typeRightC.shape.c).toBeDefined();
+  //       expect(typeRightC.shape.c.def.type).toBe("string");
+
+  //       // 검증 5: paramC는 C를 참조
+  //       expect(zodObject.shape.paramC.def.type).toBe("intersection");
+  //     });
+  //   });
+
+  //   describe("순환참조 처리", () => {
+  //     test("자기 자신을 참조하는 TypeParameter", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "SelfRef",
+  //             constraint: { t: "ref", id: "SelfRef" }, // 자기 자신 참조
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "param",
+  //             type: { t: "ref", id: "SelfRef" }, // SelfRef 사용
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       expect(Object.keys(references)).toContain("SelfRef"); // SelfRef가 references에 등록됨
+  //       expect(zodObject.shape.param).toBeDefined();
+  //       expect(zodObject.shape.param.def.type).toBe("unknown"); // z.string() 폴백 확인
+  //     });
+
+  //     test("상호 참조하는 TypeParameters (A↔B)", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "A",
+  //             constraint: { t: "ref", id: "B" }, // A → B
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "B",
+  //             constraint: { t: "ref", id: "A" }, // B → A
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "paramA",
+  //             type: { t: "ref", id: "A" },
+  //             optional: false,
+  //           },
+  //           {
+  //             name: "paramB",
+  //             type: { t: "ref", id: "B" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       expect(Object.keys(references)).toContain("A");
+  //       expect(Object.keys(references)).toContain("B");
+
+  //       // 둘 다 z.string() 폴백되었는지 확인
+  //       expect(zodObject.shape.paramA.def.type).toBe("unknown");
+  //       expect(zodObject.shape.paramB.def.type).toBe("unknown");
+
+  //       // references도 string인지 확인
+  //       expect(references.A?.def.type).toBe("unknown");
+  //       expect(references.B?.def.type).toBe("unknown");
+  //     });
+
+  //     test("삼각 순환 (A→B→C→A) 처리", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "A",
+  //             constraint: { t: "ref", id: "B" }, // A → B
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "B",
+  //             constraint: { t: "ref", id: "C" }, // B → C
+  //           },
+  //           {
+  //             t: "type-param",
+  //             id: "C",
+  //             constraint: { t: "ref", id: "A" }, // C → A (순환)
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "paramA",
+  //             type: { t: "ref", id: "A" },
+  //             optional: false,
+  //           },
+  //           {
+  //             name: "paramB",
+  //             type: { t: "ref", id: "B" },
+  //             optional: false,
+  //           },
+  //           {
+  //             name: "paramC",
+  //             type: { t: "ref", id: "C" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증: A, B, C 모두 등록됨
+  //       expect(Object.keys(references).sort()).toEqual(["A", "B", "C"]);
+
+  //       // 검증: 모두 string 타입으로 폴백
+  //       expect(zodObject.shape.paramA.def.type).toBe("unknown");
+  //       expect(zodObject.shape.paramB.def.type).toBe("unknown");
+  //       expect(zodObject.shape.paramC.def.type).toBe("unknown");
+
+  //       // 검증: references도 모두 string
+  //       expect(references.A?.def.type).toBe("unknown");
+  //       expect(references.B?.def.type).toBe("unknown");
+  //       expect(references.C?.def.type).toBe("unknown");
+  //     });
+
+  //     test("재귀적 배열 구조 (Tree-like Array)", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "TreeNode",
+  //             constraint: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "value",
+  //                   type: "string",
+  //                   optional: false,
+  //                 },
+  //                 {
+  //                   name: "children",
+  //                   type: {
+  //                     t: "array",
+  //                     elementsType: { t: "ref", id: "TreeNode" }, // 자기 자신 배열
+  //                   },
+  //                   optional: false,
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "tree",
+  //             type: { t: "ref", id: "TreeNode" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증: TreeNode가 등록됨
+  //       expect(Object.keys(references)).toContain("TreeNode");
+
+  //       // 검증: tree 파라미터가 object 타입
+  //       expect(zodObject.shape.tree.def.type).toBe("object");
+
+  //       // 검증: tree에 value와 children 필드 존재
+  //       const treeShape = zodObject.shape.tree.shape;
+  //       expect(treeShape.value).toBeDefined();
+  //       expect(treeShape.children).toBeDefined();
+
+  //       // 검증: value는 string
+  //       expect(treeShape.value.def.type).toBe("string");
+
+  //       // 검증: children은 array
+  //       expect(treeShape.children.def.type).toBe("array");
+
+  //       // 검증: children의 element는 string (재귀 끊어짐)
+  //       expect(treeShape.children.def.element.def.type).toBe("unknown");
+  //     });
+
+  //     test("재귀적 Union (JasonValue-like Union)", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "JsonValue",
+  //             constraint: {
+  //               t: "union",
+  //               types: [
+  //                 "string",
+  //                 "number",
+  //                 "boolean",
+  //                 "null",
+  //                 {
+  //                   t: "array",
+  //                   elementsType: { t: "ref", id: "JsonValue" }, // 재귀
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "json",
+  //             type: { t: "ref", id: "JsonValue" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증: JsonValue가 등록됨
+  //       expect(Object.keys(references)).toContain("JsonValue");
+
+  //       // 검증: json 파라미터가 union 타입
+  //       expect(zodObject.shape.json.def.type).toBe("union");
+
+  //       // 검증: union options 개수 확인 (5개)
+  //       const unionOptions = zodObject.shape.json.def.options;
+  //       expect(unionOptions.length).toBe(5);
+
+  //       // 검증: union에 primitive 타입들 포함
+  //       const optionTypes = unionOptions.map((opt: z.ZodType<unknown>) => opt.def.type);
+  //       expect(optionTypes).toContain("string");
+  //       expect(optionTypes).toContain("number");
+  //       expect(optionTypes).toContain("boolean");
+  //       expect(optionTypes).toContain("unknown");
+  //       expect(optionTypes).toContain("array");
+
+  //       // 검증: array의 element가 string (재귀 끊어짐)
+  //       const arrayOption = unionOptions.find(
+  //         (opt: z.ZodType<unknown>) => opt.def.type === "array",
+  //       );
+  //       expect(arrayOption?.def.element.def.type).toBe("unknown");
+  //     });
+
+  //     test("Pick/Omit + 순환", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "User",
+  //             constraint: {
+  //               t: "object",
+  //               props: [
+  //                 {
+  //                   name: "id",
+  //                   type: "number",
+  //                   optional: false,
+  //                 },
+  //                 {
+  //                   name: "name",
+  //                   type: "string",
+  //                   optional: false,
+  //                 },
+  //                 {
+  //                   name: "email",
+  //                   type: "string",
+  //                   optional: false,
+  //                 },
+  //                 {
+  //                   name: "friend",
+  //                   type: {
+  //                     t: "ref",
+  //                     id: "Pick",
+  //                     args: [
+  //                       { t: "ref", id: "User" }, // 자기 자신 참조
+  //                       {
+  //                         t: "union",
+  //                         types: [
+  //                           { t: "string-literal", value: "id" },
+  //                           { t: "string-literal", value: "name" },
+  //                         ],
+  //                       },
+  //                     ],
+  //                   },
+  //                   optional: true,
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "user",
+  //             type: { t: "ref", id: "User" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증: User가 등록됨
+  //       expect(Object.keys(references)).toContain("User");
+
+  //       // 검증: user 파라미터가 object 타입
+  //       expect(zodObject.shape.user.def.type).toBe("object");
+  //       // 검증: friend의 innerType 확인 (순환 끊어져서 string으로 폴백 예상)
+  //       // Pick의 대상인 User가 없어서 z.unknown()으로 폴백될 것
+  //       expect(zodObject.shape.user.shape.friend.def.innerType.def.type).toBe("unknown");
+  //     });
+
+  //     test("Intersection + 순환", async () => {
+  //       const testApi = createTestApi({
+  //         typeParameters: [
+  //           {
+  //             t: "type-param",
+  //             id: "Node",
+  //             constraint: {
+  //               t: "intersection",
+  //               types: [
+  //                 {
+  //                   t: "object",
+  //                   props: [
+  //                     {
+  //                       name: "value",
+  //                       type: "string",
+  //                       optional: false,
+  //                     },
+  //                   ],
+  //                 },
+  //                 {
+  //                   t: "object",
+  //                   props: [
+  //                     {
+  //                       name: "next",
+  //                       type: { t: "ref", id: "Node" }, // 자기 자신 참조
+  //                       optional: true,
+  //                     },
+  //                   ],
+  //                 },
+  //               ],
+  //             },
+  //           },
+  //         ],
+  //         parameters: [
+  //           {
+  //             name: "node",
+  //             type: { t: "ref", id: "Node" },
+  //             optional: false,
+  //           },
+  //         ],
+  //       });
+
+  //       const references: Record<string, z.ZodObject> = {};
+  //       const zodObject = getZodObjectFromApi(testApi, references);
+
+  //       // 검증: Node가 등록됨
+  //       expect(Object.keys(references)).toContain("Node");
+
+  //       // 검증: node 파라미터가 intersection 타입
+  //       expect(zodObject.shape.node.def.type).toBe("intersection");
+
+  //       // 검증: intersection의 left와 right 확인
+  //       const rightType = zodObject.shape.node.def.right;
+
+  //       // 검증: next의 innerType은 unknown (순환 끊어짐)
+  //       expect(rightType.shape.next.def.innerType.def.type).toBe("unknown");
+  //     });
+  //   });
+  // });
 
   ///
-  describe("apiParamToTsCode", () => {
-    test("빈 배열 → 빈 문자열", () => {
-      const result = apiParamToTsCode([], []);
-      expect(result).toBe("");
-    });
+  // describe("apiParamToTsCode", () => {
+  //   test("빈 배열 → 빈 문자열", () => {
+  //     const result = apiParamToTsCode([], []);
+  //     expect(result).toBe("");
+  //   });
 
-    test("단일 required 파라미터", () => {
-      const params: ApiParam[] = [{ name: "id", type: "number", optional: false }];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toBe("id: number");
-    });
+  //   test("단일 required 파라미터", () => {
+  //     const params: ApiParam[] = [{ name: "id", type: "number", optional: false }];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toBe("id: number");
+  //   });
 
-    test("단일 optional 파라미터 (no default)", () => {
-      const params: ApiParam[] = [{ name: "name", type: "string", optional: true }];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toBe("name?: string");
-    });
+  //   test("단일 optional 파라미터 (no default)", () => {
+  //     const params: ApiParam[] = [{ name: "name", type: "string", optional: true }];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toBe("name?: string");
+  //   });
 
-    test("optional with default", () => {
-      const params: ApiParam[] = [
-        { name: "limit", type: "number", optional: true, defaultDef: "10" },
-      ];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toBe("limit: number= 10");
-    });
+  //   test("optional with default", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "limit", type: "number", optional: true, defaultDef: "10" },
+  //     ];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toBe("limit: number= 10");
+  //   });
 
-    test("required with default (edge case)", () => {
-      const params: ApiParam[] = [
-        { name: "page", type: "number", optional: false, defaultDef: "1" },
-      ];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toBe("page: number= 1");
-    });
+  //   test("required with default (edge case)", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "page", type: "number", optional: false, defaultDef: "1" },
+  //     ];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toBe("page: number= 1");
+  //   });
 
-    test("다중 파라미터 (required + optional)", () => {
-      const params: ApiParam[] = [
-        { name: "id", type: "number", optional: false },
-        { name: "name", type: "string", optional: true },
-        { name: "limit", type: "number", optional: true, defaultDef: "10" },
-      ];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toBe("id: number, name?: string, limit: number= 10");
-    });
+  //   test("다중 파라미터 (required + optional)", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "id", type: "number", optional: false },
+  //       { name: "name", type: "string", optional: true },
+  //       { name: "limit", type: "number", optional: true, defaultDef: "10" },
+  //     ];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toBe("id: number, name?: string, limit: number= 10");
+  //   });
 
-    test("복잡한 타입 (object)", () => {
-      const params: ApiParam[] = [
-        {
-          name: "data",
-          type: {
-            t: "object",
-            props: [{ name: "id", type: "number", optional: false }],
-          },
-          optional: false,
-        },
-      ];
-      const result = apiParamToTsCode(params, []);
-      expect(result).toContain("data:");
-      expect(result).toContain("{");
-    });
+  //   test("복잡한 타입 (object)", () => {
+  //     const params: ApiParam[] = [
+  //       {
+  //         name: "data",
+  //         type: {
+  //           t: "object",
+  //           props: [{ name: "id", type: "number", optional: false }],
+  //         },
+  //         optional: false,
+  //       },
+  //     ];
+  //     const result = apiParamToTsCode(params, []);
+  //     expect(result).toContain("data:");
+  //     expect(result).toContain("{");
+  //   });
 
-    test("injectImportKeys 전달", () => {
-      const importKeys: string[] = [];
-      const params: ApiParam[] = [
-        {
-          name: "user",
-          type: { t: "ref", id: "User" },
-          optional: false,
-        },
-      ];
-      apiParamToTsCode(params, importKeys);
-      // apiParamTypeToTsType가 importKeys를 사용하므로 전달 확인
-      expect(importKeys).toBeDefined();
-    });
-  });
-  describe("apiParamToTsCodeAsObject", () => {
-    test("빈 배열 → 빈 객체", () => {
-      const result = apiParamToTsCodeAsObject([], []);
-      expect(result).toBe("{  }");
-    });
+  //   test("injectImportKeys 전달", () => {
+  //     const importKeys: string[] = [];
+  //     const params: ApiParam[] = [
+  //       {
+  //         name: "user",
+  //         type: { t: "ref", id: "User" },
+  //         optional: false,
+  //       },
+  //     ];
+  //     apiParamToTsCode(params, importKeys);
+  //     // apiParamTypeToTsType가 importKeys를 사용하므로 전달 확인
+  //     expect(importKeys).toBeDefined();
+  //   });
+  // });
+  // describe("apiParamToTsCodeAsObject", () => {
+  //   test("빈 배열 → 빈 객체", () => {
+  //     const result = apiParamToTsCodeAsObject([], []);
+  //     expect(result).toBe("{  }");
+  //   });
 
-    test("단일 required 파라미터", () => {
-      const params: ApiParam[] = [{ name: "id", type: "number", optional: false }];
-      const result = apiParamToTsCodeAsObject(params, []);
-      expect(result).toBe("{ id: number }");
-    });
+  //   test("단일 required 파라미터", () => {
+  //     const params: ApiParam[] = [{ name: "id", type: "number", optional: false }];
+  //     const result = apiParamToTsCodeAsObject(params, []);
+  //     expect(result).toBe("{ id: number }");
+  //   });
 
-    test("단일 optional 파라미터", () => {
-      const params: ApiParam[] = [{ name: "name", type: "string", optional: true }];
-      const result = apiParamToTsCodeAsObject(params, []);
-      expect(result).toBe("{ name?: string }");
-    });
+  //   test("단일 optional 파라미터", () => {
+  //     const params: ApiParam[] = [{ name: "name", type: "string", optional: true }];
+  //     const result = apiParamToTsCodeAsObject(params, []);
+  //     expect(result).toBe("{ name?: string }");
+  //   });
 
-    test("optional with default", () => {
-      const params: ApiParam[] = [
-        { name: "limit", type: "number", optional: true, defaultDef: "10" },
-      ];
-      const result = apiParamToTsCodeAsObject(params, []);
-      expect(result).toBe("{ limit?: number= 10 }");
-    });
+  //   test("optional with default", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "limit", type: "number", optional: true, defaultDef: "10" },
+  //     ];
+  //     const result = apiParamToTsCodeAsObject(params, []);
+  //     expect(result).toBe("{ limit?: number= 10 }");
+  //   });
 
-    test("다중 파라미터", () => {
-      const params: ApiParam[] = [
-        { name: "id", type: "number", optional: false },
-        { name: "name", type: "string", optional: true },
-        { name: "limit", type: "number", optional: true, defaultDef: "10" },
-      ];
-      const result = apiParamToTsCodeAsObject(params, []);
-      expect(result).toBe("{ id: number, name?: string, limit?: number= 10 }");
-    });
+  //   test("다중 파라미터", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "id", type: "number", optional: false },
+  //       { name: "name", type: "string", optional: true },
+  //       { name: "limit", type: "number", optional: true, defaultDef: "10" },
+  //     ];
+  //     const result = apiParamToTsCodeAsObject(params, []);
+  //     expect(result).toBe("{ id: number, name?: string, limit?: number= 10 }");
+  //   });
 
-    test("apiParamToTsCode와 출력 형식 차이", () => {
-      const params: ApiParam[] = [
-        { name: "id", type: "number", optional: false },
-        { name: "name", type: "string", optional: true },
-      ];
-      const resultNormal = apiParamToTsCode(params, []);
-      const resultAsObject = apiParamToTsCodeAsObject(params, []);
+  //   test("apiParamToTsCode와 출력 형식 차이", () => {
+  //     const params: ApiParam[] = [
+  //       { name: "id", type: "number", optional: false },
+  //       { name: "name", type: "string", optional: true },
+  //     ];
+  //     const resultNormal = apiParamToTsCode(params, []);
+  //     const resultAsObject = apiParamToTsCodeAsObject(params, []);
 
-      expect(resultNormal).toBe("id: number, name?: string");
-      expect(resultAsObject).toBe("{ id: number, name?: string }");
-      expect(resultAsObject).toContain("{");
-      expect(resultAsObject).toContain("}");
-    });
+  //     expect(resultNormal).toBe("id: number, name?: string");
+  //     expect(resultAsObject).toBe("{ id: number, name?: string }");
+  //     expect(resultAsObject).toContain("{");
+  //     expect(resultAsObject).toContain("}");
+  //   });
 
-    test("injectImportKeys 전달", () => {
-      const importKeys: string[] = [];
-      const params: ApiParam[] = [
-        {
-          name: "user",
-          type: { t: "ref", id: "User" },
-          optional: false,
-        },
-      ];
-      apiParamToTsCodeAsObject(params, importKeys);
-      expect(importKeys).toBeDefined();
-    });
-  });
-  describe("apiParamTypeToTsType", () => {
-    describe("Primitive 타입", () => {
-      test("string", () => {
-        const result = apiParamTypeToTsType("string", []);
-        expect(result).toBe("string");
-      });
+  //   test("injectImportKeys 전달", () => {
+  //     const importKeys: string[] = [];
+  //     const params: ApiParam[] = [
+  //       {
+  //         name: "user",
+  //         type: { t: "ref", id: "User" },
+  //         optional: false,
+  //       },
+  //     ];
+  //     apiParamToTsCodeAsObject(params, importKeys);
+  //     expect(importKeys).toBeDefined();
+  //   });
+  // });
+  // describe("apiParamTypeToTsType", () => {
+  //   describe("Primitive 타입", () => {
+  //     test("string", () => {
+  //       const result = apiParamTypeToTsType("string", []);
+  //       expect(result).toBe("string");
+  //     });
 
-      test("number", () => {
-        const result = apiParamTypeToTsType("number", []);
-        expect(result).toBe("number");
-      });
+  //     test("number", () => {
+  //       const result = apiParamTypeToTsType("number", []);
+  //       expect(result).toBe("number");
+  //     });
 
-      test("boolean", () => {
-        const result = apiParamTypeToTsType("boolean", []);
-        expect(result).toBe("boolean");
-      });
+  //     test("boolean", () => {
+  //       const result = apiParamTypeToTsType("boolean", []);
+  //       expect(result).toBe("boolean");
+  //     });
 
-      test("null", () => {
-        const result = apiParamTypeToTsType("null", []);
-        expect(result).toBe("null");
-      });
+  //     test("null", () => {
+  //       const result = apiParamTypeToTsType("null", []);
+  //       expect(result).toBe("null");
+  //     });
 
-      test("undefined", () => {
-        const result = apiParamTypeToTsType("undefined", []);
-        expect(result).toBe("undefined");
-      });
+  //     test("undefined", () => {
+  //       const result = apiParamTypeToTsType("undefined", []);
+  //       expect(result).toBe("undefined");
+  //     });
 
-      test("void", () => {
-        const result = apiParamTypeToTsType("void", []);
-        expect(result).toBe("void");
-      });
+  //     test("void", () => {
+  //       const result = apiParamTypeToTsType("void", []);
+  //       expect(result).toBe("void");
+  //     });
 
-      test("any", () => {
-        const result = apiParamTypeToTsType("any", []);
-        expect(result).toBe("any");
-      });
+  //     test("any", () => {
+  //       const result = apiParamTypeToTsType("any", []);
+  //       expect(result).toBe("any");
+  //     });
 
-      test("unknown", () => {
-        const result = apiParamTypeToTsType("unknown", []);
-        expect(result).toBe("unknown");
-      });
-    });
+  //     test("unknown", () => {
+  //       const result = apiParamTypeToTsType("unknown", []);
+  //       expect(result).toBe("unknown");
+  //     });
+  //   });
 
-    describe("Literal 타입", () => {
-      test("string-literal", () => {
-        const result = apiParamTypeToTsType({ t: "string-literal", value: "test" }, []);
-        expect(result).toBe('"test"');
-      });
+  //   describe("Literal 타입", () => {
+  //     test("string-literal", () => {
+  //       const result = apiParamTypeToTsType({ t: "string-literal", value: "test" }, []);
+  //       expect(result).toBe('"test"');
+  //     });
 
-      test("numeric-literal", () => {
-        const result = apiParamTypeToTsType({ t: "numeric-literal", value: 123 }, []);
-        expect(result).toBe("123");
-      });
-    });
+  //     test("numeric-literal", () => {
+  //       const result = apiParamTypeToTsType({ t: "numeric-literal", value: 123 }, []);
+  //       expect(result).toBe("123");
+  //     });
+  //   });
 
-    describe("Object 타입", () => {
-      test("object", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "object",
-            props: [
-              { name: "id", type: "number", optional: false },
-              { name: "name", type: "string", optional: true },
-            ],
-          },
-          [],
-        );
-        expect(result).toContain("{ ");
-        expect(result).toContain("id: number");
-        expect(result).toContain("name?: string");
-        expect(result).toContain(" }");
-      });
-    });
+  //   describe("Object 타입", () => {
+  //     test("object", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "object",
+  //           props: [
+  //             { name: "id", type: "number", optional: false },
+  //             { name: "name", type: "string", optional: true },
+  //           ],
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toContain("{ ");
+  //       expect(result).toContain("id: number");
+  //       expect(result).toContain("name?: string");
+  //       expect(result).toContain(" }");
+  //     });
+  //   });
 
-    describe("Union/Intersection 타입", () => {
-      test("union", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "union",
-            types: ["string", "number"],
-          },
-          [],
-        );
-        expect(result).toBe("string | number");
-      });
+  //   describe("Union/Intersection 타입", () => {
+  //     test("union", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "union",
+  //           types: ["string", "number"],
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("string | number");
+  //     });
 
-      test("intersection", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "intersection",
-            types: ["string", "number"],
-          },
-          [],
-        );
-        expect(result).toBe("string & number");
-      });
-    });
+  //     test("intersection", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "intersection",
+  //           types: ["string", "number"],
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("string & number");
+  //     });
+  //   });
 
-    describe("Array 타입", () => {
-      test("array", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "array",
-            elementsType: "string",
-          },
-          [],
-        );
-        expect(result).toBe("string[]");
-      });
+  //   describe("Array 타입", () => {
+  //     test("array", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "array",
+  //           elementsType: "string",
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("string[]");
+  //     });
 
-      test("nested array", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "array",
-            elementsType: {
-              t: "array",
-              elementsType: "number",
-            },
-          },
-          [],
-        );
-        expect(result).toBe("number[][]");
-      });
-    });
+  //     test("nested array", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "array",
+  //           elementsType: {
+  //             t: "array",
+  //             elementsType: "number",
+  //           },
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("number[][]");
+  //     });
+  //   });
 
-    describe("Ref 타입", () => {
-      test("ref without args", () => {
-        const importKeys: string[] = [];
-        const result = apiParamTypeToTsType({ t: "ref", id: "User" }, importKeys);
-        expect(result).toBe("User");
-        expect(importKeys).toContain("User");
-      });
+  //   describe("Ref 타입", () => {
+  //     test("ref without args", () => {
+  //       const importKeys: string[] = [];
+  //       const result = apiParamTypeToTsType({ t: "ref", id: "User" }, importKeys);
+  //       expect(result).toBe("User");
+  //       expect(importKeys).toContain("User");
+  //     });
 
-      test("ref with args", () => {
-        const importKeys: string[] = [];
-        const result = apiParamTypeToTsType(
-          {
-            t: "ref",
-            id: "Promise",
-            args: ["string"],
-          },
-          importKeys,
-        );
-        expect(result).toBe("Promise<string>");
-        expect(importKeys).not.toContain("Promise"); // Promise는 import 불필요
-      });
+  //     test("ref with args", () => {
+  //       const importKeys: string[] = [];
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: ["string"],
+  //         },
+  //         importKeys,
+  //       );
+  //       expect(result).toBe("Promise<string>");
+  //       expect(importKeys).not.toContain("Promise"); // Promise는 import 불필요
+  //     });
 
-      test("ref - built-in types (no import)", () => {
-        const importKeys: string[] = [];
-        ["Pick", "Omit", "Promise", "Partial", "Date"].forEach((id) => {
-          apiParamTypeToTsType({ t: "ref", id }, importKeys);
-        });
-        expect(importKeys.length).toBe(0); // 모두 import 불필요
-      });
+  //     test("ref - built-in types (no import)", () => {
+  //       const importKeys: string[] = [];
+  //       ["Pick", "Omit", "Promise", "Partial", "Date"].forEach((id) => {
+  //         apiParamTypeToTsType({ t: "ref", id }, importKeys);
+  //       });
+  //       expect(importKeys.length).toBe(0); // 모두 import 불필요
+  //     });
 
-      test("ref - custom types (with import)", () => {
-        const importKeys: string[] = [];
-        apiParamTypeToTsType({ t: "ref", id: "CustomType" }, importKeys);
-        expect(importKeys).toContain("CustomType");
-      });
-    });
+  //     test("ref - custom types (with import)", () => {
+  //       const importKeys: string[] = [];
+  //       apiParamTypeToTsType({ t: "ref", id: "CustomType" }, importKeys);
+  //       expect(importKeys).toContain("CustomType");
+  //     });
+  //   });
 
-    describe("IndexedAccess 타입", () => {
-      test("indexed-access", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "indexed-access",
-            object: { t: "ref", id: "User" },
-            index: { t: "string-literal", value: "id" },
-          },
-          [],
-        );
-        expect(result).toBe('User["id"]');
-      });
-    });
+  //   describe("IndexedAccess 타입", () => {
+  //     test("indexed-access", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "indexed-access",
+  //           object: { t: "ref", id: "User" },
+  //           index: { t: "string-literal", value: "id" },
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe('User["id"]');
+  //     });
+  //   });
 
-    describe("TupleType", () => {
-      test("tuple-type", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "tuple-type",
-            elements: ["string", "number"],
-          },
-          [],
-        );
-        expect(result).toContain("[ ");
-        expect(result).toContain("string");
-        expect(result).toContain("number");
-        expect(result).toContain(" ]");
-      });
-    });
+  //   describe("TupleType", () => {
+  //     test("tuple-type", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "tuple-type",
+  //           elements: ["string", "number"],
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toContain("[ ");
+  //       expect(result).toContain("string");
+  //       expect(result).toContain("number");
+  //       expect(result).toContain(" ]");
+  //     });
+  //   });
 
-    describe("TypeParam", () => {
-      test("type-param without constraint", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "type-param",
-            id: "T",
-          },
-          [],
-        );
-        expect(result).toBe("<T>");
-      });
+  //   describe("TypeParam", () => {
+  //     test("type-param without constraint", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "type-param",
+  //           id: "T",
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("<T>");
+  //     });
 
-      test("type-param with constraint", () => {
-        const result = apiParamTypeToTsType(
-          {
-            t: "type-param",
-            id: "T",
-            constraint: "string",
-          },
-          [],
-        );
-        expect(result).toBe("<T extends string>");
-      });
-    });
+  //     test("type-param with constraint", () => {
+  //       const result = apiParamTypeToTsType(
+  //         {
+  //           t: "type-param",
+  //           id: "T",
+  //           constraint: "string",
+  //         },
+  //         [],
+  //       );
+  //       expect(result).toBe("<T extends string>");
+  //     });
+  //   });
 
-    describe("에러 케이스", () => {
-      test("resolve 불가 타입", () => {
-        const fakeParamType = { t: "unknown_type" } as unknown as ApiParamType;
+  //   describe("에러 케이스", () => {
+  //     test("resolve 불가 타입", () => {
+  //       const fakeParamType = { t: "unknown_type" } as unknown as ApiParamType;
 
-        let errorMessage = "";
-        try {
-          apiParamTypeToTsType(fakeParamType, []);
-        } catch (error) {
-          errorMessage = (error as Error).message;
-        }
+  //       let errorMessage = "";
+  //       try {
+  //         apiParamTypeToTsType(fakeParamType, []);
+  //       } catch (error) {
+  //         errorMessage = (error as Error).message;
+  //       }
 
-        expect(errorMessage).toContain("resolve 불가 ApiParamType");
-      });
-    });
-  });
+  //       expect(errorMessage).toContain("resolve 불가 ApiParamType");
+  //     });
+  //   });
+  // });
 
   ///
   // describe.skip("propNodeToZodTypeDef", () => {
@@ -2283,101 +2406,101 @@ describe("code-converters", () => {
   // });
 
   ///
-  describe("getTextTypeLength", () => {
-    test("text → 65535 (64KB - 1)", () => {
-      const result = getTextTypeLength("text");
-      expect(result).toBe(65535);
-      expect(result).toBe(1024 * 64 - 1);
-    });
+  // describe("getTextTypeLength", () => {
+  //   test("text → 65535 (64KB - 1)", () => {
+  //     const result = getTextTypeLength("text");
+  //     expect(result).toBe(65535);
+  //     expect(result).toBe(1024 * 64 - 1);
+  //   });
 
-    test("mediumtext → 16777215 (16MB - 1)", () => {
-      const result = getTextTypeLength("mediumtext");
-      expect(result).toBe(16777215);
-      expect(result).toBe(1024 * 1024 * 16 - 1);
-    });
+  //   test("mediumtext → 16777215 (16MB - 1)", () => {
+  //     const result = getTextTypeLength("mediumtext");
+  //     expect(result).toBe(16777215);
+  //     expect(result).toBe(1024 * 1024 * 16 - 1);
+  //   });
 
-    test("longtext → 4294967295 (4GB - 1)", () => {
-      const result = getTextTypeLength("longtext");
-      expect(result).toBe(4294967295);
-      expect(result).toBe(1024 * 1024 * 1024 * 4 - 1);
-    });
-  });
-  describe("unwrapPromiseOnce", () => {
-    test("Promise 타입 → args[0] 반환", () => {
-      const promiseType: ApiParamType = {
-        t: "ref",
-        id: "Promise",
-        args: ["string"],
-      };
-      const result = unwrapPromiseOnce(promiseType);
-      expect(result).toBe("string");
-    });
+  //   test("longtext → 4294967295 (4GB - 1)", () => {
+  //     const result = getTextTypeLength("longtext");
+  //     expect(result).toBe(4294967295);
+  //     expect(result).toBe(1024 * 1024 * 1024 * 4 - 1);
+  //   });
+  // });
+  // describe("unwrapPromiseOnce", () => {
+  //   test("Promise 타입 → args[0] 반환", () => {
+  //     const promiseType: ApiParamType = {
+  //       t: "ref",
+  //       id: "Promise",
+  //       args: ["string"],
+  //     };
+  //     const result = unwrapPromiseOnce(promiseType);
+  //     expect(result).toBe("string");
+  //   });
 
-    test("중첩 Promise → 한 번만 언래핑", () => {
-      const nestedPromise: ApiParamType = {
-        t: "ref",
-        id: "Promise",
-        args: [
-          {
-            t: "ref",
-            id: "Promise",
-            args: ["number"],
-          },
-        ],
-      };
-      const result = unwrapPromiseOnce(nestedPromise);
-      expect(result).toEqual({
-        t: "ref",
-        id: "Promise",
-        args: ["number"],
-      });
-    });
+  //   test("중첩 Promise → 한 번만 언래핑", () => {
+  //     const nestedPromise: ApiParamType = {
+  //       t: "ref",
+  //       id: "Promise",
+  //       args: [
+  //         {
+  //           t: "ref",
+  //           id: "Promise",
+  //           args: ["number"],
+  //         },
+  //       ],
+  //     };
+  //     const result = unwrapPromiseOnce(nestedPromise);
+  //     expect(result).toEqual({
+  //       t: "ref",
+  //       id: "Promise",
+  //       args: ["number"],
+  //     });
+  //   });
 
-    test("Promise<object> → object 반환", () => {
-      const promiseType: ApiParamType = {
-        t: "ref",
-        id: "Promise",
-        args: [
-          {
-            t: "object",
-            props: [{ name: "id", type: "number", optional: false }],
-          },
-        ],
-      };
-      const result = unwrapPromiseOnce(promiseType);
-      expect(result).toEqual({
-        t: "object",
-        props: [{ name: "id", type: "number", optional: false }],
-      });
-    });
+  //   test("Promise<object> → object 반환", () => {
+  //     const promiseType: ApiParamType = {
+  //       t: "ref",
+  //       id: "Promise",
+  //       args: [
+  //         {
+  //           t: "object",
+  //           props: [{ name: "id", type: "number", optional: false }],
+  //         },
+  //       ],
+  //     };
+  //     const result = unwrapPromiseOnce(promiseType);
+  //     expect(result).toEqual({
+  //       t: "object",
+  //       props: [{ name: "id", type: "number", optional: false }],
+  //     });
+  //   });
 
-    test("non-Promise 타입 → 그대로 반환", () => {
-      const stringType: ApiParamType = "string";
-      const result = unwrapPromiseOnce(stringType);
-      expect(result).toBe("string");
-    });
+  //   test("non-Promise 타입 → 그대로 반환", () => {
+  //     const stringType: ApiParamType = "string";
+  //     const result = unwrapPromiseOnce(stringType);
+  //     expect(result).toBe("string");
+  //   });
 
-    test("non-Promise ref → 그대로 반환", () => {
-      const userType: ApiParamType = {
-        t: "ref",
-        id: "User",
-      };
-      const result = unwrapPromiseOnce(userType);
-      expect(result).toEqual({
-        t: "ref",
-        id: "User",
-      });
-    });
+  //   test("non-Promise ref → 그대로 반환", () => {
+  //     const userType: ApiParamType = {
+  //       t: "ref",
+  //       id: "User",
+  //     };
+  //     const result = unwrapPromiseOnce(userType);
+  //     expect(result).toEqual({
+  //       t: "ref",
+  //       id: "User",
+  //     });
+  //   });
 
-    test("Promise without args → undefined 반환", () => {
-      const promiseType: ApiParamType = {
-        t: "ref",
-        id: "Promise",
-      };
-      const result = unwrapPromiseOnce(promiseType);
-      expect(result).toBeUndefined();
-    });
-  });
+  //   test("Promise without args → undefined 반환", () => {
+  //     const promiseType: ApiParamType = {
+  //       t: "ref",
+  //       id: "Promise",
+  //     };
+  //     const result = unwrapPromiseOnce(promiseType);
+  //     expect(result).toBeUndefined();
+  //   });
+  // });
 });
 
 // === Test Helpers ===

@@ -59,7 +59,7 @@ export function unwrapPromiseOnce(paramType: ApiParamType) {
 }
 
 /*
- * API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들
+ * API를 구성하는 요소들을 ZodObject로 변환하기 위한 함수들입니다.
  */
 
 /**
@@ -256,7 +256,7 @@ export function getZodObjectFromApi(
 }
 
 /*
- * API 타입 정의를 TypeScript 코드 문자열로 변환하기 위한 함수들
+ * API 타입 정의를 TypeScript 코드 문자열로 변환하기 위한 함수들입니다.
  */
 
 /**
@@ -342,7 +342,6 @@ export function apiParamToTsCode(params: ApiParam[], injectImportKeys: string[])
  * ApiParam 배열을 TypeScript 객체 타입 코드로 변환합니다.
  * 예: "{ name: string, age?: number, active: boolean = true }"
  */
-
 export function apiParamToTsCodeAsObject(params: ApiParam[], injectImportKeys: string[]): string {
   return `{ ${params
     .map(
