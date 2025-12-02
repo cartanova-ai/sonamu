@@ -11,7 +11,7 @@ import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import { Template } from "../template/template";
-import type { GenerateOptions } from "../types/types";
+import type { GenerateOptions, PathAndCode } from "../types/types";
 import { TemplateKey, type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
@@ -236,7 +236,6 @@ export class Syncer {
   }
 
   calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
-    Naite.t("step", "doSyncActions");
     return group(diffFiles, (r) => {
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
       return matched?.[1] ?? "unknown";
@@ -244,7 +243,6 @@ export class Syncer {
   }
 
   async handleEntityChange(diffGroups: DiffGroups, diffTypes: string[]): Promise<void> {
-    Naite.t("step", "handleEntityChange");
     Naite.t("handleEntityChange", { diffGroups, diffTypes });
 
     await EntityManager.reload();
@@ -280,7 +278,6 @@ export class Syncer {
       ...(diffGroups.functions ?? []),
       ...(diffGroups.generated ?? []),
     ]);
-    Naite.t("step", "handleTypesOrFunctionsOrGeneratedChange");
     Naite.t("handleTypesOrFunctionsOrGeneratedChange", { diffGroups });
 
     // console.log(
@@ -295,7 +292,6 @@ export class Syncer {
   }
 
   async handleModelOrFrameChange(diffGroups: DiffGroups): Promise<void> {
-    Naite.t("step", "handleModelOrFrameChange");
     Naite.t("handleModelOrFrameChange", { diffGroups });
     const mergedGroup = [...(diffGroups.model ?? []), ...(diffGroups.frame ?? [])];
 
@@ -307,11 +303,8 @@ export class Syncer {
 
     // generated_http.template.ts에서 syncer.types를 씁니다.
     // service.template.ts에서 syncer.apis를 씁니다.
-    Naite.t("step", "autoloadModels");
     await this.autoloadModels();
-    Naite.t("step", "autoloadTypes");
     await this.autoloadTypes();
-    Naite.t("step", "autoloadApis");
     await this.autoloadApis();
 
     const params: {
@@ -340,7 +333,6 @@ export class Syncer {
 
   // web/.sonamu.env 에 현재 설정값 저장
   async actionSyncConfig() {
-    Naite.t("step", "actionSyncConfig");
     const { host, port } = Sonamu.config.server.listen ?? {};
     const content = `API_HOST=${host ?? "localhost"}\nAPI_PORT=${port ?? 3000}`;
 
@@ -357,7 +349,6 @@ export class Syncer {
    * @returns 생성된 파일 경로 배열.
    */
   async actionGenerateSchemas(): Promise<AbsolutePath[]> {
-    Naite.t("step", "actionGenerateSchemas");
     return (
       await Promise.all([
         generateTemplate("generated_sso", {}, { overwrite: true }),
@@ -378,7 +369,6 @@ export class Syncer {
       namesRecord: EntityNamesRecord;
     }[],
   ): Promise<string[]> {
-    Naite.t("step", "actionGenerateServices");
     Naite.t("actionGenerateServices", paramsArray);
     return (
       await Promise.all(
@@ -568,7 +558,7 @@ export class Syncer {
   async renderTemplate<T extends keyof TemplateOptions>(
     key: T,
     templateOptions: TemplateOptions[T],
-  ) {
+  ): Promise<PathAndCode[]> {
     return await renderTemplate(key, templateOptions);
   }
 
