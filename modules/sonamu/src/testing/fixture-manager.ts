@@ -288,7 +288,9 @@ export class FixtureManagerClass {
     const fixtures: FixtureRecord[] = [];
     for (const row of rows) {
       const initialRecordsLength = fixtures.length;
-      const newRecords = await this.createFixtureRecord(entity, row);
+      const newRecords = await this.createFixtureRecord(entity, row, {
+        _db: sourceDB,
+      });
       fixtures.push(...newRecords);
       const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
 
