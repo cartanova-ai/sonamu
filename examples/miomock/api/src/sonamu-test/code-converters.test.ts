@@ -10,6 +10,7 @@ import {
   getZodTypeFromApiParamType,
   propNodeToZodTypeDef,
   propToZodTypeDef,
+  unwrapPromiseOnce,
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
@@ -2431,6 +2432,84 @@ describe("code-converters", () => {
         expect(errorMessage).toContain("resolve 불가 ApiParamType");
         expect(errorMessage).toMatchSnapshot("resolve 불가 에러");
       });
+    });
+  });
+
+  describe("unwrapPromiseOnce", () => {
+    test("Promise 타입 → args[0] 반환", () => {
+      const promiseType: ApiParamType = {
+        t: "ref",
+        id: "Promise",
+        args: ["string"],
+      };
+      const result = unwrapPromiseOnce(promiseType);
+      expect(result).toBe("string");
+    });
+
+    test("중첩 Promise → 한 번만 언래핑", () => {
+      const nestedPromise: ApiParamType = {
+        t: "ref",
+        id: "Promise",
+        args: [
+          {
+            t: "ref",
+            id: "Promise",
+            args: ["number"],
+          },
+        ],
+      };
+      const result = unwrapPromiseOnce(nestedPromise);
+      expect(result).toEqual({
+        t: "ref",
+        id: "Promise",
+        args: ["number"],
+      });
+    });
+
+    test("Promise<object> → object 반환", () => {
+      const promiseType: ApiParamType = {
+        t: "ref",
+        id: "Promise",
+        args: [
+          {
+            t: "object",
+            props: [{ name: "id", type: "number", optional: false }],
+          },
+        ],
+      };
+      const result = unwrapPromiseOnce(promiseType);
+      expect(result).toEqual({
+        t: "object",
+        props: [{ name: "id", type: "number", optional: false }],
+      });
+    });
+
+    test("non-Promise 타입 → 그대로 반환", () => {
+      const stringType: ApiParamType = "string";
+      const result = unwrapPromiseOnce(stringType);
+      expect(result).toBe("string");
+    });
+
+    test("non-Promise ref → 그대로 반환", () => {
+      const userType: ApiParamType = {
+        t: "ref",
+        id: "User",
+      };
+      const result = unwrapPromiseOnce(userType);
+      expect(result).toEqual({
+        t: "ref",
+        id: "User",
+      });
+    });
+
+    test("Promise without args → undefined 반환", () => {
+      const promiseType: ApiParamType = {
+        t: "ref",
+        id: "Promise",
+      };
+      const result = unwrapPromiseOnce(promiseType);
+      expect(result).toBeUndefined();
+      expect(result).toMatchSnapshot("Promise without args → undefined 반환");
     });
   });
 });
