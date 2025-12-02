@@ -62,7 +62,7 @@ export class Migrator {
       }))
       .sort((a, b) => (a.name < b.name ? 1 : -1)); // 이름 내림차순 정렬(최신순)
 
-    Naite.t("getMigrationCodes:results", codes);
+    Naite.t("migrator:getMigrationCodes:results", codes);
     return codes;
   }
 
@@ -114,7 +114,7 @@ export class Migrator {
             return "error";
           }
         })();
-        Naite.t("getStatus:status", status);
+        Naite.t("migrator:getStatus:status", status);
 
         const connection = knexOptions.connection as Knex.MySql2ConnectionConfig;
 
@@ -133,7 +133,7 @@ export class Migrator {
       }),
     );
 
-    Naite.t("getStatus:conns", statuses);
+    Naite.t("migrator:getStatus:conns", statuses);
 
     const preparedCodes: GenMigrationCode[] = await (async () => {
       const status0conn = statuses.find((status) => status.status === 0);
@@ -154,7 +154,7 @@ export class Migrator {
       return genCodes;
     })();
 
-    Naite.t("getStatus:preparedCodes", preparedCodes);
+    Naite.t("migrator:getStatus:preparedCodes", preparedCodes);
 
     return {
       conns: statuses,
@@ -183,8 +183,8 @@ export class Migrator {
       applied: string[];
     }[]
   > {
-    Naite.t("runAction:action", action);
-    Naite.t("runAction:targets", targets);
+    Naite.t("migrator:runAction:action", action);
+    Naite.t("migrator:runAction:targets", targets);
 
     // get uniq knex configs
     const configs = unique(
@@ -207,7 +207,7 @@ export class Migrator {
         knex: knex(config.options),
       })),
     );
-    Naite.t("runAction:conns", conns);
+    Naite.t("migrator:runAction:conns", conns);
 
     // action
     const result = await (async () => {
@@ -244,7 +244,7 @@ export class Migrator {
       }),
     );
 
-    Naite.t("runAction:result", result);
+    Naite.t("migrator:runAction:result", result);
 
     return result;
   }
@@ -307,7 +307,7 @@ export class Migrator {
    */
   async generatePreparedCodes(): Promise<number> {
     const { preparedCodes } = await this.getStatus();
-    Naite.t("generatePreparedCodes:preparedCodes", preparedCodes);
+    Naite.t("migrator:generatePreparedCodes:preparedCodes", preparedCodes);
     if (preparedCodes.length === 0) {
       console.log(chalk.green("\n현재 모두 싱크된 상태입니다."));
       return 0;
@@ -321,7 +321,7 @@ export class Migrator {
         const dateTag = this.genDateTag(index);
         const filePath = `${migrationsDir}/${dateTag}_${pcode.title}.ts`;
         await writeFile(filePath, pcode.formatted);
-        console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
+        !isTest() && console.log(chalk.green(`MIGRTAION CREATED ${filePath}`));
       }
     }
 
@@ -406,7 +406,7 @@ export class Migrator {
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
-    Naite.t("runShadowTest:tmpSqlPath", tmpSqlPath);
+    Naite.t("migrator:runShadowTest:tmpSqlPath", tmpSqlPath);
 
     // 테스트DB 덤프 후 Database명 치환
     !isTest() && console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
