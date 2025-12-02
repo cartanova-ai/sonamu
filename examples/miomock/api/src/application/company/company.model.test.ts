@@ -1,5 +1,5 @@
-import { describe, expect, test, vi } from "vitest";
-import { bootstrap } from "../../testing/bootstrap";
+import { describe, expect, vi } from "vitest";
+import { bootstrap, test } from "../../testing/bootstrap";
 
 bootstrap(vi);
 describe.skip("CompanyModelTest", () => {

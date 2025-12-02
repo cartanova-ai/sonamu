@@ -1,5 +1,9 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, vi } from "vitest";
 import { z } from "zod";
+import { bootstrap, test } from "../testing/bootstrap";
+
+bootstrap(vi);
+
 import {
   apiParamTypeToTsType,
   getZodObjectFromApi,

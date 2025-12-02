@@ -1,6 +1,6 @@
 import { EntityManager, getMigrationSetFromEntity, resolveDBColType } from "sonamu";
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { bootstrap } from "../testing/bootstrap";
+import { beforeEach, describe, expect, vi } from "vitest";
+import { bootstrap, test } from "../testing/bootstrap";
 import {
   CompanyMigrationTestEntity,
   MigrationSetTestEntity,
