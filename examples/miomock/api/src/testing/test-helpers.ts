@@ -1,22 +1,21 @@
 import { Entity, type EntityJson, EntityManager } from "sonamu";
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 
 /**
  * EntityManager.get을 모킹하여 특정 엔티티만 override하고 나머지는 원본을 반환합니다.
  * @param targetEntityId override할 엔티티 ID
  * @param override override할 Entity 속성
  */
-export function mockEntityManagerGet(targetEntityId: string, override: Partial<Entity>) {
+export function mockEntityManagerGet(
+  targetEntityId: string,
+  overrideCallback: (original: EntityJson) => EntityJson,
+): Mock<typeof EntityManager.get> {
   const originalEntityJson = EntityManager.get(targetEntityId).toJson();
   const originalGet = EntityManager.get;
-  vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
+  return vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
     if (entityId === targetEntityId) {
-      return new Entity({
-        ...originalEntityJson,
-        ...override,
-      } as EntityJson);
+      return new Entity(overrideCallback(originalEntityJson));
     }
-
     return originalGet.call(EntityManager, entityId);
   });
 }

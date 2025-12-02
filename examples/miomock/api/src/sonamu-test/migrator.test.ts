@@ -1,5 +1,5 @@
-import { type Entity, type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
-import { beforeAll, describe, expect, vi } from "vitest";
+import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
+import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
@@ -112,11 +112,17 @@ describe("Migrator test", () => {
   });
 
   describe("preparedCodes 생성", () => {
+    // 테스트 실행 후 EntityManager 초기화
+    afterEach(async () => {
+      await EntityManager.reload();
+    });
+
     test("컬럼 추가 감지", async () => {
       // given: UserEntity에 test_column 컬럼 추가
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         props: [
-          ...EntityManager.get("User").props,
+          ...original.props,
           {
             name: "test_column",
             type: "string",
@@ -124,7 +130,7 @@ describe("Migrator test", () => {
             length: 256,
           },
         ],
-      });
+      }));
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
@@ -141,9 +147,10 @@ describe("Migrator test", () => {
 
     test("컬럼 삭제 감지", async () => {
       // Entity에서 props 제거 → alter_drop 코드
-      mockEntityManagerGet("User", {
-        props: EntityManager.get("User").props.filter((prop) => prop.name !== "deleted_at"),
-      });
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: original.props.filter((prop) => prop.name !== "deleted_at"),
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -161,17 +168,15 @@ describe("Migrator test", () => {
 
     test("컬럼 속성 변경 감지", async () => {
       // UserEntity.deleted_at nullable -> notNullable로 변경
-      mockEntityManagerGet("User", {
-        props: EntityManager.get("User").props.map((prop) => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: original.props.map((prop) => {
           if (prop.name === "deleted_at") {
-            return {
-              ...prop,
-              nullable: false,
-            };
+            return { ...prop, nullable: false };
           }
           return prop;
         }),
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -191,8 +196,9 @@ describe("Migrator test", () => {
 
     test("컬럼 이름 변경 감지 (Drop & Add)", async () => {
       // UserEntity의 username 컬럼을 full_name으로 변경
-      mockEntityManagerGet("User", {
-        props: EntityManager.get("User").props.map((prop) => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: original.props.map((prop) => {
           if (prop.name === "username") {
             return {
               ...prop,
@@ -201,7 +207,7 @@ describe("Migrator test", () => {
           }
           return prop;
         }),
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -222,14 +228,15 @@ describe("Migrator test", () => {
     });
 
     test("인덱스 추가 감지 (INDEX, UNIQUE, FULLTEXT)", async () => {
-      mockEntityManagerGet("Department", {
+      mockEntityManagerGet("Department", (original) => ({
+        ...original,
         indexes: [
-          ...EntityManager.get("Department").indexes,
+          ...original.indexes,
           { type: "index", columns: ["name"] },
           { type: "unique", columns: ["company_id"] },
           { type: "fulltext", columns: ["parent_id"], parser: "ngram" },
         ],
-      });
+      }));
       const status = await migrator.getStatus();
 
       const alterCode = status.preparedCodes.find((code) => code.table === "departments");
@@ -261,9 +268,10 @@ describe("Migrator test", () => {
     });
 
     test("인덱스 삭제 감지", async () => {
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         indexes: [],
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -282,9 +290,10 @@ describe("Migrator test", () => {
 
     test("인덱스 변경 감지", async () => {
       // UserEntity의 fulltext 인덱스 컬럼 변경
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         indexes: [{ type: "fulltext", columns: ["bio", "username"] }],
-      });
+      }));
 
       await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchInlineSnapshot(`
@@ -318,9 +327,10 @@ describe("Migrator test", () => {
 
     test("FK 추가 감지 (BelongsToOne)", async () => {
       // UserEntity에 Company에 대한 BelongsToOne relation 추가
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         props: [
-          ...EntityManager.get("User").props,
+          ...original.props,
           {
             type: "relation",
             name: "company",
@@ -331,7 +341,7 @@ describe("Migrator test", () => {
             onDelete: "CASCADE",
           },
         ],
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -353,9 +363,10 @@ describe("Migrator test", () => {
 
     test("FK 추가 감지 (OneToOne)", async () => {
       // UserEntity에 Profile에 대한 OneToOne relation 추가
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         props: [
-          ...EntityManager.get("User").props,
+          ...original.props,
           {
             type: "relation",
             name: "profile",
@@ -368,7 +379,7 @@ describe("Migrator test", () => {
             onDelete: "CASCADE",
           },
         ],
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -391,9 +402,10 @@ describe("Migrator test", () => {
 
     test("FK 추가 감지 (HasMany)", async () => {
       // CompanyEntity에 Department에 대한 HasMany relation 추가
-      mockEntityManagerGet("Company", {
+      mockEntityManagerGet("Company", (original) => ({
+        ...original,
         props: [
-          ...EntityManager.get("Company").props,
+          ...original.props,
           {
             type: "relation",
             name: "departments",
@@ -403,7 +415,7 @@ describe("Migrator test", () => {
             relationType: "HasMany",
           },
         ],
-      });
+      }));
 
       const status = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
@@ -430,9 +442,10 @@ describe("Migrator test", () => {
       await EntityManager.register(labelEntity);
 
       // 2. User 엔티티에 ManyToMany 관계 추가
-      mockEntityManagerGet("User", {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
         props: [
-          ...EntityManager.get("User").props,
+          ...original.props,
           {
             type: "relation",
             name: "labels",
@@ -444,7 +457,7 @@ describe("Migrator test", () => {
             onDelete: "CASCADE",
           },
         ],
-      });
+      }));
 
       // when
       const status = await migrator.getStatus();
@@ -476,118 +489,86 @@ describe("Migrator test", () => {
       expect(user_label_FKCode?.formatted).toContain('references("users.id")');
       expect(user_label_FKCode?.formatted).toContain('references("labels.id")');
       expect(user_label_FKCode?.formatted).toContain("CASCADE");
-
-      // register시에는 EntityManager.reload
-      await EntityManager.reload();
     });
 
     test("FK 삭제 감지", async () => {
       // UserEntity에 FK 추가
-      const originalGet = EntityManager.get;
-      const originalUser = EntityManager.get("User");
-      const propsWithFK = [
-        ...originalUser.props,
-        {
-          type: "relation",
-          name: "company",
-          with: "Company",
-          desc: "회사",
-          relationType: "BelongsToOne",
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        },
-      ];
-      vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-        if (entityId === "User") {
-          return {
-            ...originalUser,
-            props: propsWithFK,
-          } as Entity;
-        }
-        return originalGet.call(EntityManager, entityId);
-      });
+      const mock = mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            type: "relation",
+            name: "company",
+            with: "Company",
+            desc: "회사",
+            relationType: "BelongsToOne",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+      }));
 
       // FK 추가 후 상태 확인
-      let status = await migrator.getStatus();
-      expect(status.preparedCodes.length).toBeGreaterThan(0);
+      const statusAfterFK = await migrator.getStatus();
+      expect(statusAfterFK.preparedCodes.length).toBeGreaterThan(0);
 
-      // FK 제거
-      const propsWithoutFK = originalUser.props.filter((p) => p.name !== "company");
-      vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-        if (entityId === "User") {
-          return {
-            ...originalUser,
-            props: propsWithoutFK,
-          } as Entity;
-        }
-        return originalGet.call(EntityManager, entityId);
-      });
+      // mock 초기화
+      mock.mockRestore();
 
-      status = await migrator.getStatus();
+      const statusRestored = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // company_id 컬럼이 삭제되는 것을 확인 (FK도 함께 삭제됨)
-      expect(status.preparedCodes.length).toBe(0); // 이미 DB에 추가된 적이 없으므로 코드가 생성되지 않음
+      expect(statusRestored.preparedCodes.length).toBe(0); // 이미 DB에 추가된 적이 없으므로 코드가 생성되지 않음
     });
 
     test("FK 변경 감지 (onUpdate/onDelete)", async () => {
-      // UserEntity에 FK 추가 (RESTRICT)
-      const originalGet = EntityManager.get;
-      const originalUser = EntityManager.get("User");
-      const propsWithRESTRICT = [
-        ...originalUser.props,
-        {
-          type: "relation",
-          name: "company",
-          with: "Company",
-          desc: "회사",
-          relationType: "BelongsToOne",
-          onUpdate: "RESTRICT",
-          onDelete: "RESTRICT",
-        },
-      ];
-      vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-        if (entityId === "User") {
-          return {
-            ...originalUser,
-            props: propsWithRESTRICT,
-          } as Entity;
-        }
-        return originalGet.call(EntityManager, entityId);
-      });
+      // UserEntity에 RESTRICT FK 추가
+      const mock = mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            type: "relation",
+            name: "company",
+            with: "Company",
+            desc: "회사",
+            relationType: "BelongsToOne",
+            onUpdate: "RESTRICT",
+            onDelete: "RESTRICT",
+          },
+        ],
+      }));
 
-      // 먼저 이 상태로 코드 생성
-      let status = await migrator.getStatus();
-      expect(status.preparedCodes.length).toBeGreaterThan(0);
+      // FK 추가 상태 확인
+      const statusAfterRESTRICT = await migrator.getStatus();
+      expect(statusAfterRESTRICT.preparedCodes.length).toBeGreaterThan(0);
 
-      // onUpdate/onDelete를 CASCADE로 변경
-      const propsWithCASCADE = [
-        ...originalUser.props.filter((p) => p.name !== "company"),
-        {
-          type: "relation",
-          name: "company",
-          with: "Company",
-          desc: "회사",
-          relationType: "BelongsToOne",
-          onUpdate: "CASCADE",
-          onDelete: "CASCADE",
-        },
-      ];
-      vi.spyOn(EntityManager, "get").mockImplementation((entityId: string) => {
-        if (entityId === "User") {
-          return {
-            ...originalUser,
-            props: propsWithCASCADE,
-          } as Entity;
-        }
-        return originalGet.call(EntityManager, entityId);
-      });
+      // mock 초기화 후 onUpdate/onDelete를 CASCADE로 변경
+      mock.mockRestore();
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        props: [
+          ...original.props,
+          {
+            type: "relation",
+            name: "company",
+            with: "Company",
+            desc: "회사",
+            relationType: "BelongsToOne",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+          },
+        ],
+      }));
 
-      status = await migrator.getStatus();
+      // FK 변경 상태 확인
+      const statusAfterCASCADE = await migrator.getStatus();
       expect(Naite.get("getStatus:preparedCodes").first()).toMatchSnapshot();
 
       // FK 변경 코드 확인
-      const foreignCode = status.preparedCodes.find(
+      const foreignCode = statusAfterCASCADE.preparedCodes.find(
         (code) => code.table === "users" && code.title.includes("foreigns"),
       );
       expect(foreignCode).toBeDefined();
@@ -636,9 +617,6 @@ describe("Migrator test", () => {
 
       // down
       expect(createTableCode?.formatted).toContain('knex.schema.dropTable("test_entities")');
-
-      // register시에는 EntityManager.reload
-      await EntityManager.reload();
     });
 
     test("코드 정렬 순서", async () => {
@@ -697,9 +675,6 @@ describe("Migrator test", () => {
       );
 
       expect(createTableIndex).toBeLessThan(foreignIndex);
-
-      // register시에는 EntityManager.reload
-      await EntityManager.reload();
     });
   });
 
