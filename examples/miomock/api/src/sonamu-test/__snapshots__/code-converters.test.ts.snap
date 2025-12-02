@@ -1,5 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`code-converters > apiParamTypeToTsType > 에러 케이스 > resolve 불가 타입 > resolve 불가 에러 1`] = `"resolve 불가 ApiParamType [object Object]"`;
+
 exports[`code-converters > getZodObjectFromApi > Edge Cases > _로 시작하는 optional 파라미터 > parameters 반영 확인 1`] = `"{"success":true,"data":{}}"`;
 
 exports[`code-converters > getZodObjectFromApi > Edge Cases > _로 시작하는 optional 파라미터 > typeParameters 반영 확인 1`] = `[]`;
