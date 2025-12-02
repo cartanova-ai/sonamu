@@ -870,7 +870,7 @@ describe("code-converters", () => {
 
         // 검증: UserEntity의 intersection이 모든 reference를 포함
         // (intersection의 left/right 구조를 재귀적으로 확인)
-        const userEntityType = references["UserEntity"] as unknown as z.ZodObject;
+        const userEntityType = references.UserEntity as unknown as z.ZodObject;
         expect(userEntityType?.def.type).toBe("intersection");
       });
 
@@ -922,13 +922,13 @@ describe("code-converters", () => {
         expect(Object.keys(references).sort()).toEqual(["A", "B", "C"]);
 
         // 검증 2: A는 object (base)
-        expect(references["A"]?.def.type).toBe("object");
-        expect(references["A"]?.shape.a).toBeDefined();
-        expect(references["A"]?.shape.a.def.type).toBe("string");
+        expect(references.A?.def.type).toBe("object");
+        expect(references.A?.shape.a).toBeDefined();
+        expect(references.A?.shape.a.def.type).toBe("string");
 
         // 검증 3: B는 intersection (A & { b: string })
-        expect(references["B"]?.def.type).toBe("intersection");
-        const typeB = references["B"] as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
+        expect(references.B?.def.type).toBe("intersection");
+        const typeB = references.B as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
         expect(typeB.def.left.def.type).toBe("object"); // A 참조 성공
         expect(typeB.def.right.def.type).toBe("object"); // { b: string }
 
@@ -944,8 +944,8 @@ describe("code-converters", () => {
         expect(typeRight.shape.b.def.type).toBe("string");
 
         // 검증 4: C는 intersection (B & { c: string })
-        expect(references["C"]?.def.type).toBe("intersection");
-        const typeC = references["C"] as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
+        expect(references.C?.def.type).toBe("intersection");
+        const typeC = references.C as unknown as z.ZodIntersection<z.ZodType, z.ZodType>;
         expect(typeC.def.left.def.type).toBe("intersection"); // B 참조 (B도 intersection)
         expect(typeC.def.right.def.type).toBe("object"); // { c: string }
 
@@ -963,9 +963,9 @@ describe("code-converters", () => {
         expect(zodObject.shape.paramC.def.type).toBe("intersection");
 
         // 검증 6: 체인 전체 구조 스냅샷
-        expectZodCodeSnapshot(references["A"] as z.ZodObject, "A 구조");
-        expectZodCodeSnapshot(references["B"] as z.ZodObject, "B 구조");
-        expectZodCodeSnapshot(references["C"] as z.ZodObject, "C 구조");
+        expectZodCodeSnapshot(references.A as z.ZodObject, "A 구조");
+        expectZodCodeSnapshot(references.B as z.ZodObject, "B 구조");
+        expectZodCodeSnapshot(references.C as z.ZodObject, "C 구조");
       });
     });
 
@@ -1035,8 +1035,8 @@ describe("code-converters", () => {
         expect(zodObject.shape.paramB.def.type).toBe("string");
 
         // references도 string인지 확인
-        expect(references["A"]?.def.type).toBe("string");
-        expect(references["B"]?.def.type).toBe("string");
+        expect(references.A?.def.type).toBe("string");
+        expect(references.B?.def.type).toBe("string");
       });
 
       test("삼각 순환 (A→B→C→A) 처리", async () => {
@@ -1089,9 +1089,9 @@ describe("code-converters", () => {
         expect(zodObject.shape.paramC.def.type).toBe("string");
 
         // 검증: references도 모두 string
-        expect(references["A"]?.def.type).toBe("string");
-        expect(references["B"]?.def.type).toBe("string");
-        expect(references["C"]?.def.type).toBe("string");
+        expect(references.A?.def.type).toBe("string");
+        expect(references.B?.def.type).toBe("string");
+        expect(references.C?.def.type).toBe("string");
       });
 
       test("재귀적 배열 구조 (Tree-like Array)", async () => {
@@ -1134,7 +1134,7 @@ describe("code-converters", () => {
 
         // 검증: TreeNode가 등록됨
         expect(Object.keys(references)).toContain("TreeNode");
-        expectZodCodeSnapshot(references["TreeNode"] as z.ZodObject, "TreeNode Zod 코드");
+        expectZodCodeSnapshot(references.TreeNode as z.ZodObject, "TreeNode Zod 코드");
 
         // 검증: tree 파라미터가 object 타입
         expect(zodObject.shape.tree.def.type).toBe("object");
@@ -1189,7 +1189,7 @@ describe("code-converters", () => {
 
         // 검증: JsonValue가 등록됨
         expect(Object.keys(references)).toContain("JsonValue");
-        expectZodCodeSnapshot(references["JsonValue"] as z.ZodObject, "JsonValue Zod 코드");
+        expectZodCodeSnapshot(references.JsonValue as z.ZodObject, "JsonValue Zod 코드");
 
         // 검증: json 파라미터가 union 타입
         expect(zodObject.shape.json.def.type).toBe("union");
@@ -1273,7 +1273,7 @@ describe("code-converters", () => {
 
         // 검증: User가 등록됨
         expect(Object.keys(references)).toContain("User");
-        expectZodCodeSnapshot(references["User"] as z.ZodObject, "User Zod 코드");
+        expectZodCodeSnapshot(references.User as z.ZodObject, "User Zod 코드");
 
         // 검증: user 파라미터가 object 타입
         expect(zodObject.shape.user.def.type).toBe("object");
@@ -1345,7 +1345,7 @@ describe("code-converters", () => {
 
         // 검증: Node가 등록됨
         expect(Object.keys(references)).toContain("Node");
-        expectZodCodeSnapshot(references["Node"] as z.ZodObject, "Node Zod 코드");
+        expectZodCodeSnapshot(references.Node as z.ZodObject, "Node Zod 코드");
 
         // 검증: node 파라미터가 intersection 타입
         expect(zodObject.shape.node.def.type).toBe("intersection");
