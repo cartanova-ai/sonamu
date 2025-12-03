@@ -25,13 +25,20 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
       api: "/api/openai/chat/stream",
     }),
     onError: (error) => {
-      if (error.message) {
-        const parsedErr = JSON.parse(error.message) as { statusCode: number };
-        if (parsedErr.statusCode === 404) {
-          setErrorMessage(
-            "API Key 설정이 필요합니다. process.env.ANTHROPIC_API_KEY 설정 후 다시 시도하세요.",
-          );
+      const err = (() => {
+        try {
+          return JSON.parse(error.message);
+        } catch {
+          return error;
         }
+      })();
+
+      if ("statusCode" in err && err.statusCode === 404) {
+        setErrorMessage(
+          "API Key 설정이 필요합니다. process.env.ANTHROPIC_API_KEY 설정 후 다시 시도하세요.",
+        );
+      } else {
+        setErrorMessage(err.message);
       }
     },
   });
