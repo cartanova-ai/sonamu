@@ -720,7 +720,7 @@ describe("Migrator test", () => {
       // when
       const result = await migrator.runShadowTest();
 
-      expect(Naite.get("runShadowTest:tmpSqlPath").first()).toBe(
+      expect(Naite.get("migrator:runShadowTest:tmpSqlPath").first()).toBe(
         "/tmp/miomock_test__migration_shadow.sql",
       );
       expect(result[0]).toMatchObject({
