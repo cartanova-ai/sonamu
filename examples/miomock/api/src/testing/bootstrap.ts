@@ -67,6 +67,7 @@ declare module "vitest" {
   interface TaskMeta {
     traces: {
       key: string;
+      // biome-ignore lint/suspicious/noExplicitAny: expect와 호응하도록 any를 허용함.
       value: any;
       filePath: string;
       lineNumber: number;
