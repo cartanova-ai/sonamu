@@ -526,9 +526,11 @@ export class Syncer {
   syncUI() {
     const uiPort = Sonamu.config.ui?.port ?? 57000;
 
-    fetch(`http://127.0.0.1:${uiPort}/api/reload`, {
-      method: "GET",
-    }).catch((e) => console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`)));
+    if (!isTest()) {
+      fetch(`http://127.0.0.1:${uiPort}/api/reload`, {
+        method: "GET",
+      }).catch((e) => console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`)));
+    }
   }
 
   /**

@@ -27,7 +27,6 @@ export class Template__generated extends Template {
     };
   }
   render() {
-    Naite.t("step", "Template__generated:render");
     const entityIds = EntityManager.getAllIds();
     const entities = entityIds.map((id) => EntityManager.get(id));
 
