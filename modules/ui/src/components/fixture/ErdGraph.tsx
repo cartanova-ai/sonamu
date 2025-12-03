@@ -71,7 +71,8 @@ function makeEdges(fixtures: FixtureRecord[]): Edge[] {
   for (const fixture of fixtures) {
     for (const [, col] of Object.entries(fixture.columns)) {
       if (col.prop.type !== "relation") continue;
-      if (col.prop.relationType !== "BelongsToOne") continue;
+      if (col.prop.relationType !== "BelongsToOne" && col.prop.relationType !== "OneToOne")
+        continue;
       if (col.value === null) continue;
 
       const relatedEntityId = col.prop.with;
@@ -86,7 +87,8 @@ function makeEdges(fixtures: FixtureRecord[]): Edge[] {
       if (source === target) continue;
 
       const key = `${source}->${target}`;
-      if (seen.has(key)) continue;
+      const reverseKey = `${target}->${source}`;
+      if (seen.has(key) || seen.has(reverseKey)) continue;
       seen.add(key);
 
       edges.push({
