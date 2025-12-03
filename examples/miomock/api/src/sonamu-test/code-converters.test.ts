@@ -140,6 +140,25 @@ describe("code-converters", () => {
         // 1차원 배열
         expectToFail(zodType, [1, 2]);
       });
+
+      test("array의 elements가 object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: {
+              t: "object",
+              props: [
+                { name: "id", type: "number", optional: false },
+                { name: "name", type: "string", optional: false },
+              ],
+            },
+          },
+          [],
+        );
+        expect(result).toContain("{ id: number");
+        expect(result).toContain("name: string");
+        expect(result).toContain("}[]");
+      });
     });
 
     describe("Union 타입", () => {
@@ -214,6 +233,23 @@ describe("code-converters", () => {
         expectToFail(zodType, [123, "test"]);
         // 길이 부족
         expectToFail(zodType, ["test"]);
+      });
+
+      test("tuple의 elements가 object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "tuple-type",
+            elements: [
+              "string",
+              { t: "array", elementsType: "number" },
+              { t: "object", props: [{ name: "id", type: "number", optional: false }] },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("string");
+        expect(result).toContain("number[]");
+        expect(result).toContain("{ id: number }");
       });
     });
 
@@ -709,7 +745,7 @@ describe("code-converters", () => {
 
     describe("Literal 타입", () => {
       test.each([
-        // [ 입력값, 입력 객체, 기대값 ]
+        // [ 입력값, {입력 객체}, 기대값 ]
         ["string-literal", { t: "string-literal", value: "test" }, '"test"'],
         ["numeric-literal", { t: "numeric-literal", value: 123 }, "123"],
       ])("%s", (_name, input, expected) => {
@@ -719,7 +755,7 @@ describe("code-converters", () => {
     });
 
     describe("Object 타입", () => {
-      test("object", () => {
+      test("object 타입", () => {
         const result = apiParamTypeToTsType(
           {
             t: "object",
@@ -732,13 +768,41 @@ describe("code-converters", () => {
         );
         expect(result).toContain("{ ");
         expect(result).toContain("id: number");
+        // optional 확인
         expect(result).toContain("name?: string");
         expect(result).toContain(" }");
       });
+
+      test("object 안에 object가 있는 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "object",
+            props: [
+              { name: "id", type: "number", optional: false },
+              {
+                name: "profile",
+                type: {
+                  t: "object",
+                  props: [
+                    { name: "nickname", type: "string", optional: false },
+                    { name: "avatar", type: "string", optional: true },
+                  ],
+                },
+                optional: false,
+              },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("profile:");
+        expect(result).toContain("nickname: string");
+        // optional 확인
+        expect(result).toContain("avatar?: string");
+      });
     });
 
-    describe("Union/Intersection 타입", () => {
-      test("union", () => {
+    describe("Union/Intersection 타입 - elements가 object, array 등인 경우", () => {
+      test("union 타입", () => {
         const result = apiParamTypeToTsType(
           {
             t: "union",
@@ -749,7 +813,25 @@ describe("code-converters", () => {
         expect(result).toBe("string | number");
       });
 
-      test("intersection", () => {
+      test("union 타입의 elements가 object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "union",
+            types: [
+              "string",
+              { t: "array", elementsType: "number" },
+              { t: "object", props: [{ name: "id", type: "number", optional: false }] },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("string");
+        expect(result).toContain("number[]");
+        expect(result).toContain("{ id: number }");
+        expect(result).toContain(" | ");
+      });
+
+      test("intersection 타입", () => {
         const result = apiParamTypeToTsType(
           {
             t: "intersection",
@@ -759,10 +841,26 @@ describe("code-converters", () => {
         );
         expect(result).toBe("string & number");
       });
+
+      test("intersection 타입의 elements가 object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "intersection",
+            types: [
+              { t: "object", props: [{ name: "id", type: "number", optional: false }] },
+              { t: "object", props: [{ name: "name", type: "string", optional: false }] },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("{ id: number }");
+        expect(result).toContain("{ name: string }");
+        expect(result).toContain(" & ");
+      });
     });
 
     describe("Array 타입", () => {
-      test("array", () => {
+      test("array 타입", () => {
         const result = apiParamTypeToTsType(
           {
             t: "array",
@@ -773,7 +871,7 @@ describe("code-converters", () => {
         expect(result).toBe("string[]");
       });
 
-      test("nested array", () => {
+      test("array 타입의 elements가 array인 경우", () => {
         const result = apiParamTypeToTsType(
           {
             t: "array",
@@ -788,15 +886,15 @@ describe("code-converters", () => {
       });
     });
 
-    describe("Ref 타입 - importKeys 인젝션", () => {
-      test("ref without args", () => {
+    describe("Ref 타입", () => {
+      test("ref 타입 (args가 없는 경우)", () => {
         const importKeys: string[] = [];
         const result = apiParamTypeToTsType({ t: "ref", id: "User" }, importKeys);
         expect(result).toBe("User");
         expect(importKeys).toContain("User");
       });
 
-      test("ref with args", () => {
+      test("ref 타입 (args가 있는 경우)", () => {
         const importKeys: string[] = [];
         const result = apiParamTypeToTsType(
           {
@@ -810,7 +908,7 @@ describe("code-converters", () => {
         expect(importKeys).not.toContain("Promise"); // Promise는 import 불필요
       });
 
-      test("ref - built-in types (no import)", () => {
+      test("ref 타입 (TS built-in types)", () => {
         const importKeys: string[] = [];
         ["Pick", "Omit", "Promise", "Partial", "Date"].forEach((id) => {
           apiParamTypeToTsType({ t: "ref", id }, importKeys);
@@ -818,9 +916,54 @@ describe("code-converters", () => {
         expect(importKeys.length).toBe(0); // 모두 import 불필요
       });
 
-      test("ref - custom types (with import)", () => {
+      test("TS built-in 타입의 args에서 custom 타입 import 수집 - Pick", () => {
         const importKeys: string[] = [];
-        apiParamTypeToTsType({ t: "ref", id: "CustomType" }, importKeys);
+        const result = apiParamTypeToTsType(
+          {
+            t: "ref",
+            id: "Pick",
+            args: [
+              { t: "ref", id: "User" },
+              { t: "string-literal", value: "id" },
+            ],
+          },
+          importKeys,
+        );
+
+        expect(result).toBe('Pick<User,"id">');
+        expect(importKeys).toContain("User"); // User는 import 해야 함
+        expect(importKeys).not.toContain("Pick"); // Pick은 TS built-in
+        expect(importKeys.length).toBe(1);
+      });
+
+      test("TS built-in 타입의 args에서 custom 타입 import 수집 - Omit", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType(
+          {
+            t: "ref",
+            id: "Omit",
+            args: [
+              { t: "ref", id: "UserSaveParams" },
+              { t: "string-literal", value: "password" },
+            ],
+          },
+          importKeys,
+        );
+
+        expect(result).toBe('Omit<UserSaveParams,"password">');
+        expect(importKeys).toContain("UserSaveParams");
+        expect(importKeys).not.toContain("Omit");
+      });
+
+      test("ref 타입 (custom types)", () => {
+        const importKeys: string[] = [];
+        apiParamTypeToTsType(
+          {
+            t: "ref",
+            id: "CustomType",
+          },
+          importKeys,
+        );
         expect(importKeys).toContain("CustomType");
       });
 
@@ -842,7 +985,7 @@ describe("code-converters", () => {
 
         expect(result).toBe("Promise<User[]>");
         expect(importKeys).toContain("User"); // User는 custom 타입
-        expect(importKeys).not.toContain("Promise"); // Promise는 built-in
+        expect(importKeys).not.toContain("Promise"); // Promise는 TS built-in
       });
 
       test("중복 import - 같은 타입 여러 번", () => {
@@ -941,10 +1084,27 @@ describe("code-converters", () => {
         expect(result).toContain("number");
         expect(result).toContain(" ]");
       });
+
+      test("tuple의 elements가 object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "tuple-type",
+            elements: [
+              "string",
+              { t: "array", elementsType: "number" },
+              { t: "object", props: [{ name: "id", type: "number", optional: false }] },
+            ],
+          },
+          [],
+        );
+        expect(result).toContain("string");
+        expect(result).toContain("number[]");
+        expect(result).toContain("{ id: number }");
+      });
     });
 
     describe("TypeParam", () => {
-      test("type-param without constraint", () => {
+      test("type-param의 constraint가 없는 경우", () => {
         const result = apiParamTypeToTsType(
           {
             t: "type-param",
@@ -955,7 +1115,7 @@ describe("code-converters", () => {
         expect(result).toBe("<T>");
       });
 
-      test("type-param with constraint", () => {
+      test("type-param의 constraint가 string인 경우", () => {
         const result = apiParamTypeToTsType(
           {
             t: "type-param",
@@ -965,6 +1125,57 @@ describe("code-converters", () => {
           [],
         );
         expect(result).toBe("<T extends string>");
+      });
+
+      test("type-param의 constraint가 union/object인 경우", () => {
+        const result = apiParamTypeToTsType(
+          {
+            t: "type-param",
+            id: "T",
+            constraint: {
+              t: "object",
+              props: [
+                { name: "id", type: "number", optional: false },
+                { name: "name", type: "string", optional: false },
+              ],
+            },
+          },
+          [],
+        );
+        expect(result).toContain("<T extends {");
+        expect(result).toContain("id: number");
+        expect(result).toContain("name: string");
+      });
+
+      test("type-param의 constraint가 ref인 경우 - importKeys 수집", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType(
+          {
+            t: "type-param",
+            id: "T",
+            constraint: { t: "ref", id: "BaseEntity" },
+          },
+          importKeys,
+        );
+        expect(result).toBe("<T extends BaseEntity>");
+        expect(importKeys).toContain("BaseEntity");
+      });
+
+      test("type-param의 constraint가 ref[] 배열인 경우 - importKeys 수집", () => {
+        const importKeys: string[] = [];
+        const result = apiParamTypeToTsType(
+          {
+            t: "type-param",
+            id: "T",
+            constraint: {
+              t: "array",
+              elementsType: { t: "ref", id: "PracticeModel" },
+            },
+          },
+          importKeys,
+        );
+        expect(result).toBe("<T extends PracticeModel[]>");
+        expect(importKeys).toContain("PracticeModel");
       });
     });
 
