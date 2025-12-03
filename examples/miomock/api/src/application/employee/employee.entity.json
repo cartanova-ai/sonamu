@@ -30,12 +30,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "SET NULL"
     },
-    {
-      "name": "employee_number",
-      "desc": "사번",
-      "type": "string",
-      "length": 32
-    },
+    { "name": "employee_number", "desc": "사번", "type": "string", "length": 32 },
     {
       "name": "salary",
       "nullable": true,
@@ -44,19 +39,8 @@
       "precision": 10,
       "scale": 2
     },
-    {
-      "name": "hire_date",
-      "type": "date",
-      "nullable": true,
-      "desc": "입사일"
-    },
-    {
-      "name": "notes",
-      "type": "text",
-      "textType": "text",
-      "nullable": true,
-      "desc": "비고"
-    },
+    { "name": "hire_date", "type": "date", "nullable": true, "desc": "입사일" },
+    { "name": "notes", "type": "text", "textType": "text", "nullable": true, "desc": "비고" },
     {
       "type": "relation",
       "name": "projs",
@@ -69,7 +53,7 @@
       "onDelete": "CASCADE"
     }
   ],
-  "indexes": [],
+  "indexes": [{ "type": "unique", "columns": ["user_id", "employee_number"] }],
   "subsets": {
     "A": [
       "id",
@@ -107,8 +91,5 @@
       "projs.description"
     ]
   },
-  "enums": {
-    "EmployeeOrderBy": { "id-desc": "ID최신순" },
-    "EmployeeSearchField": { "id": "ID" }
-  }
+  "enums": { "EmployeeOrderBy": { "id-desc": "ID최신순" }, "EmployeeSearchField": { "id": "ID" } }
 }

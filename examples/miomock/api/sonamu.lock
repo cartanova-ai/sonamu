@@ -29,7 +29,7 @@
   },
   {
     "path": "src/application/employee/employee.entity.json",
-    "checksum": "7e3d8648fedf7fe9c18a70ab90d35d111cfc8c19"
+    "checksum": "443a589a69d2cdc95075018051dd3b1c40d9ed30"
   },
   {
     "path": "src/application/employee/employee.model.ts",
