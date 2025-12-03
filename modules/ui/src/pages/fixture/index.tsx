@@ -1,11 +1,9 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
+import { Button, Checkbox, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
 import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
 import ChatComponent from "../../components/ChatComponent";
-import { useCommonModal } from "../../components/core/CommonModal";
 import FixtureGraph from "../../components/fixture/ErdGraph";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
@@ -32,7 +30,7 @@ export default function FixtureIndex() {
 
   const [activeTab, setActiveTab] = useState(0);
 
-  const [mode, setMode] = useState<"table" | "graph">("graph");
+  const [view, setView] = useState<"table" | "graph">("table");
 
   // 중복 확인 컬럼 설정
   const [duplicateCheckColumns, setDuplicateCheckColumns] = useState<DuplicateCheckColumns>({});
@@ -44,24 +42,8 @@ export default function FixtureIndex() {
   // 저장 대상 상세 보기
   const [showSaveTargets, setShowSaveTargets] = useState(false);
 
-  // AI Chat 모달
-  const navigate = useNavigate();
-  const { openModal } = useCommonModal();
-  const chatWithAI = () => {
-    openModal(<ChatComponent />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: () => {
-        setTimeout(() => {
-          navigate("/fixture");
-        }, 200);
-      },
-    });
-  };
+  // AI Chat or Manual Mode
+  const [mode, setMode] = useState<"chat" | "manual">("chat");
 
   const { form, register } = useTypeForm(
     z.object({
@@ -263,7 +245,7 @@ export default function FixtureIndex() {
       menuItem: "Fixture Record Viewer",
       render: () => (
         <Tab.Pane>
-          {mode === "table" ? (
+          {view === "table" ? (
             <FixtureRecordViewer
               fixtureRecords={fixtureRecords}
               onRelationToggle={fetchRelatedRecord}
@@ -385,99 +367,131 @@ export default function FixtureIndex() {
             />
           </div>
 
-          {/* 2. Duplicate Check Settings */}
-          <div className="duplicate-check-section">
-            <p style={{ color: "#666", fontSize: "11px" }}>
-              엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. <br />
-              지정하지 않으면 unique index만 사용합니다.
-            </p>
-
-            {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
-            <Dropdown
-              placeholder="엔티티 선택"
-              search
-              selection
-              clearable
-              loading={entitiesLoading}
-              options={
-                entitiesData?.entities
-                  ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
-                  .map((entity) => ({
-                    key: entity.id,
-                    value: entity.id,
-                    text: entity.id,
-                  })) || []
-              }
-              value={dupCheckEntityId}
-              onChange={(_, { value }) => setDupCheckEntityId(value as string)}
+          {/* 2. AI Chat or Duplicate Check Settings */}
+          <div className="mode-toggle-section">
+            <Checkbox
+              toggle
+              label="AI Chat"
+              checked={mode === "chat"}
+              onChange={(_, { checked }) => {
+                if (checked) {
+                  setMode("chat");
+                } else {
+                  setMode("manual");
+                }
+              }}
             />
-
-            <Dropdown
-              placeholder="중복 확인 컬럼 선택"
-              multiple
-              selection
-              disabled={!dupCheckEntity}
-              options={
-                dupCheckEntity?.props
-                  .filter((p) => {
-                    if (p.type === "virtual") return false;
-                    if (p.type === "relation") {
-                      if (p.relationType === "BelongsToOne") return true;
-                      if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map((prop) => ({
-                    key: prop.name,
-                    value: prop.name,
-                    text: prop.name,
-                  })) || []
-              }
-              value={dupCheckSelectedColumns}
-              onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
-            />
-
-            <Button
-              icon="plus"
-              color="blue"
-              size="small"
-              disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
-              onClick={addDuplicateCheckSetting}
-            />
-
-            {/* 설정된 중복 확인 목록 */}
-            {Object.keys(duplicateCheckColumns).length > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "8px",
-                }}
-              >
-                {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
-                  <Label
-                    key={entityId}
-                    size="medium"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "8px 12px",
-                    }}
-                  >
-                    <span style={{ fontWeight: "bold" }}>{entityId}</span>
-                    <span style={{ color: "#666" }}>({columns.join(", ")})</span>
-                    <Icon
-                      name="delete"
-                      style={{ cursor: "pointer", marginLeft: "4px" }}
-                      onClick={() => removeDuplicateCheckSetting(entityId)}
-                    />
-                  </Label>
-                ))}
-              </div>
-            )}
           </div>
+          {mode === "chat" ? (
+            <ChatComponent
+              fixtureRecords={fixtureRecords}
+              onUpdateFixtures={(updatedRecords) => {
+                setFixtureRecords(updatedRecords);
+
+                // 새로 추가된 레코드들을 selectedIds에 추가
+                const currentIds = new Set(fixtureRecords.map((r) => r.fixtureId));
+                const newIds = updatedRecords
+                  .filter((r) => !currentIds.has(r.fixtureId))
+                  .map((r) => r.fixtureId);
+                if (newIds.length > 0) {
+                  setSelectedIds((prev) => new Set([...prev, ...newIds]));
+                }
+              }}
+            />
+          ) : (
+            <div className="duplicate-check-section">
+              <p style={{ color: "#666", fontSize: "11px" }}>
+                엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. <br />
+                지정하지 않으면 unique index만 사용합니다.
+              </p>
+
+              {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
+              <Dropdown
+                placeholder="엔티티 선택"
+                search
+                selection
+                clearable
+                loading={entitiesLoading}
+                options={
+                  entitiesData?.entities
+                    ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
+                    .map((entity) => ({
+                      key: entity.id,
+                      value: entity.id,
+                      text: entity.id,
+                    })) || []
+                }
+                value={dupCheckEntityId}
+                onChange={(_, { value }) => setDupCheckEntityId(value as string)}
+              />
+
+              <Dropdown
+                placeholder="중복 확인 컬럼 선택"
+                multiple
+                selection
+                disabled={!dupCheckEntity}
+                options={
+                  dupCheckEntity?.props
+                    .filter((p) => {
+                      if (p.type === "virtual") return false;
+                      if (p.type === "relation") {
+                        if (p.relationType === "BelongsToOne") return true;
+                        if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((prop) => ({
+                      key: prop.name,
+                      value: prop.name,
+                      text: prop.name,
+                    })) || []
+                }
+                value={dupCheckSelectedColumns}
+                onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
+              />
+
+              <Button
+                icon="plus"
+                color="blue"
+                size="small"
+                disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
+                onClick={addDuplicateCheckSetting}
+              />
+
+              {/* 설정된 중복 확인 목록 */}
+              {Object.keys(duplicateCheckColumns).length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}
+                >
+                  {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
+                    <Label
+                      key={entityId}
+                      size="medium"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "8px 12px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "bold" }}>{entityId}</span>
+                      <span style={{ color: "#666" }}>({columns.join(", ")})</span>
+                      <Icon
+                        name="delete"
+                        style={{ cursor: "pointer", marginLeft: "4px" }}
+                        onClick={() => removeDuplicateCheckSetting(entityId)}
+                      />
+                    </Label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 3. Save Section */}
           <div className="save-section">
@@ -612,14 +626,7 @@ export default function FixtureIndex() {
               })()}
           </div>
         </Segment>
-
-        {/* AI Chat Button */}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "15px" }}>
-          <Button icon="comment" content="AI Chat" color="teal" onClick={() => chatWithAI()} />
-        </div>
       </div>
-
-      {/* 우측: 뷰어 */}
       <div className="fixture-main">
         <div className="fixture-viewer">
           <div
@@ -630,9 +637,9 @@ export default function FixtureIndex() {
             }}
           >
             <Button
-              onClick={() => setMode(mode === "table" ? "graph" : "table")}
-              content={mode === "table" ? "그래프 보기" : "테이블 보기"}
-              icon={mode === "table" ? "sitemap" : "table"}
+              onClick={() => setView(view === "table" ? "graph" : "table")}
+              content={view === "table" ? "그래프 보기" : "테이블 보기"}
+              icon={view === "table" ? "sitemap" : "table"}
               basic
               color="grey"
             />

@@ -61,23 +61,31 @@ function makeNodes(
 
 /**
  * FixtureRecord 배열을 기반으로 React Flow 엣지 배열을 생성합니다.
- * FixtureRecord의 belongsRecords를 분석하여 관계(Belongs To)를 엣지로 표현합니다.
+ * BelongsToOne relation 컬럼을 분석하여 관계를 엣지로 표현합니다.
  */
 function makeEdges(fixtures: FixtureRecord[]): Edge[] {
   const seen = new Set<string>();
   const edges: Edge[] = [];
+  const fixtureIds = new Set(fixtures.map((f) => f.fixtureId));
 
   for (const fixture of fixtures) {
-    for (const targetFixtureId of fixture.belongsRecords) {
-      const targetEntity = targetFixtureId.split("#")[0]; // "Entity#id" 형태이므로 #을 기준으로 엔티티 ID만 추출
-      const source = fixture.entityId;
-      const target = targetEntity;
+    for (const [, col] of Object.entries(fixture.columns)) {
+      if (col.prop.type !== "relation") continue;
+      if (col.prop.relationType !== "BelongsToOne") continue;
+      if (col.value === null) continue;
 
-      // 소스와 타겟이 같으면 건너뛰기
+      const relatedEntityId = col.prop.with;
+      const relatedFixtureId = `${relatedEntityId}#${col.value}`;
+
+      // 관련 fixture가 현재 fixtures에 있는 경우에만 엣지 생성
+      if (!fixtureIds.has(relatedFixtureId)) continue;
+
+      const source = fixture.entityId;
+      const target = relatedEntityId;
+
       if (source === target) continue;
 
       const key = `${source}->${target}`;
-      // 이미 처리된 엣지(소스->타겟)는 건너뛰기
       if (seen.has(key)) continue;
       seen.add(key);
 

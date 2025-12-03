@@ -1,12 +1,24 @@
 // components/ChatComponent.tsx
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
-import { Button, Form, Segment, TextArea } from "semantic-ui-react";
+import { useEffect, useState } from "react";
+import { Button, Form, Icon, Input } from "semantic-ui-react";
+import type { FixtureRecord } from "sonamu";
 
-export default function ChatComponent() {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+type ToolState = "idle" | "running" | "success" | "error";
+
+type ChatComponentProps = {
+  fixtureRecords: FixtureRecord[];
+  onUpdateFixtures?: (records: FixtureRecord[]) => void;
+};
+
+export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: ChatComponentProps) {
   const [input, setInput] = useState("");
+  const [processedToolCallIds, setProcessedToolCallIds] = useState<Set<string>>(new Set());
+  const [toolState, setToolState] = useState<ToolState>("idle");
+  const [toolName, setToolName] = useState<string | null>(null);
+  const [summaryMessage, setSummaryMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { messages, status, sendMessage, setMessages, stop } = useChat({
     transport: new DefaultChatTransport({
@@ -14,84 +26,158 @@ export default function ChatComponent() {
     }),
   });
 
+  // messages에서 tool result 감시
+  useEffect(() => {
+    let hasError = false;
+    let errorText: string | null = null;
+    let lastAssistantText: string | null = null;
+
+    for (const msg of messages) {
+      for (const part of msg.parts) {
+        if (part.type === "step-start") {
+          setToolState("running");
+        }
+
+        // "tool-"로 시작하는 모든 part 처리
+        if (part.type.startsWith("tool-") && "state" in part && "toolCallId" in part) {
+          const name = part.type.slice(5); // "tool-" 제거
+          setToolName(name);
+
+          if (part.state === "output-available" && !processedToolCallIds.has(part.toolCallId)) {
+            // updateFixtures 또는 createFixtures 도구인 경우 결과 처리
+            if (
+              (part.type === "tool-updateFixtures" || part.type === "tool-createFixtures") &&
+              "output" in part
+            ) {
+              const result = part.output as { success: boolean; updatedRecords: FixtureRecord[] };
+              if (result?.success && result?.updatedRecords && onUpdateFixtures) {
+                onUpdateFixtures(result.updatedRecords);
+              }
+            }
+            setProcessedToolCallIds((prev) => new Set([...prev, part.toolCallId]));
+            setToolState("success");
+          } else if (part.state === "output-error") {
+            hasError = true;
+            errorText = ("errorText" in part ? part.errorText : null) ?? "알 수 없는 오류";
+          }
+        }
+
+        // assistant의 text 메시지 캡처
+        if (msg.role === "assistant" && part.type === "text" && part.text.trim()) {
+          lastAssistantText = part.text;
+        }
+      }
+    }
+
+    if (hasError) {
+      setToolState("error");
+      setErrorMessage(errorText);
+    }
+
+    setSummaryMessage(lastAssistantText);
+  }, [messages, onUpdateFixtures, processedToolCallIds]);
+
+  // status 변경 감시
+  useEffect(() => {
+    if (status === "ready" && toolState === "running") {
+      // streaming 완료 후에도 running이면 성공으로 처리
+      setToolState("success");
+    }
+  }, [status, toolState]);
+
   const isLoading = status === "streaming" || status === "submitted";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    sendMessage({ text: input });
+    if (!fixtureRecords || fixtureRecords.length === 0) {
+      setErrorMessage("픽스쳐 레코드가 없습니다. 픽스쳐 조회 후 시도하세요.");
+      return;
+    }
+
+    setToolState("idle");
+    setErrorMessage(null);
+    sendMessage({ text: input }, { body: { fixtureRecords } });
     setInput("");
   };
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const handleClear = () => {
+    setMessages([]);
+    setToolState("idle");
+    setToolName(null);
+    setSummaryMessage(null);
+    setErrorMessage(null);
+    setProcessedToolCallIds(new Set());
+  };
 
-  // messages 변경 시 스크롤 (별도 useEffect)
-  const messagesLength = messages.length;
-  useEffect(() => {
-    console.log(messagesLength);
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messagesLength]);
+  const renderStatus = () => {
+    if (toolState === "idle") return null;
+
+    const displayName = toolName ?? "tool";
+
+    const statusConfig = {
+      running: { icon: "spinner", color: "#f59e0b", bg: "#fef3c7", text: "처리 중" },
+      success: { icon: "check", color: "#10b981", bg: "#d1fae5", text: "완료" },
+      error: { icon: "warning", color: "#ef4444", bg: "#fee2e2", text: "오류" },
+    } as const;
+
+    const config = statusConfig[toolState];
+
+    return (
+      <div className="chat-status">
+        <div
+          className="chat-status-badge"
+          style={{
+            backgroundColor: config.bg,
+            color: config.color,
+            ...(toolState === "running" && { alignItems: "center" }),
+          }}
+        >
+          <Icon name={config.icon} loading={toolState === "running"} />
+          <span className="chat-status-tool">{displayName}</span>
+          <span className="chat-status-text">{config.text}</span>
+        </div>
+        {summaryMessage && toolState === "success" && (
+          <div className="chat-summary">{summaryMessage}</div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="chat-container">
-      <div className="messages-container">
-        {messages.map((msg) => (
-          <Segment key={msg.id} className={`message ${msg.role}`}>
-            <strong>{msg.role === "user" ? "You" : "Assistant"}</strong>
-            <div style={{ whiteSpace: "pre-wrap" }}>
-              {msg.parts.map((part, index) => {
-                switch (part.type) {
-                  case "text":
-                    return <span key={index}>{part.text}</span>;
-                  case "reasoning":
-                    return (
-                      <details key={index} className="reasoning">
-                        <summary>Thinking...</summary>
-                        <p>{part.text}</p>
-                      </details>
-                    );
-                  default:
-                    return null;
-                }
-              })}
-            </div>
-          </Segment>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <Form onSubmit={handleSubmit} className="input-form">
-        <TextArea
+    <div className="chat-compact">
+      <Form onSubmit={handleSubmit} className="chat-input-form">
+        <Input
+          fluid
+          action
+          placeholder="픽스쳐 수정 요청을 입력하세요..."
           value={input}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
-          onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-          placeholder="메시지를 입력하세요..."
+          onChange={(e) => setInput(e.target.value)}
           disabled={isLoading}
-          rows={2}
         />
-        <div className="button-group">
-          <Button type="button" onClick={() => setMessages([])}>
-            Clear
+        {isLoading ? (
+          <Button type="button" color="red" onClick={stop}>
+            Stop
           </Button>
-          {isLoading ? (
-            <Button type="button" color="red" onClick={stop}>
-              Stop
-            </Button>
-          ) : (
-            <Button type="submit" primary disabled={!input.trim()}>
-              Send
-            </Button>
-          )}
-        </div>
+        ) : (
+          <Button type="submit" primary disabled={!input.trim()}>
+            Send
+          </Button>
+        )}
+        <Button type="button" basic onClick={handleClear}>
+          Clear
+        </Button>
       </Form>
+
+      {renderStatus()}
+
+      {errorMessage && (
+        <div className="chat-error-message">
+          <Icon name="warning circle" color="red" />
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 }
