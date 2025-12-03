@@ -72,6 +72,22 @@ export type ExtendedApi = {
 };
 type DecoratorTarget = { constructor: { name: string } };
 
+const DECORATOR_TYPES = {
+  API: Symbol("api"),
+  STREAM: Symbol("stream"),
+} as const;
+
+function checkSingleDecorator(target: DecoratorTarget, propertyKey: string, decoratorType: symbol) {
+  const method = target[propertyKey as keyof typeof target] as { __decoratorType?: symbol };
+  if (method?.__decoratorType && method?.__decoratorType !== decoratorType) {
+    throw new Error(
+      `@${String(decoratorType)} decorator can only be used once on ${target.constructor.name}.${propertyKey}. You can use only one of @api or @stream decorator on the same method.`,
+    );
+  } else {
+    method.__decoratorType = decoratorType;
+  }
+}
+
 export function api(options: ApiDecoratorOptions = {}) {
   options = {
     httpMethod: "GET",
@@ -87,6 +103,9 @@ export function api(options: ApiDecoratorOptions = {}) {
       `modelName is required on @api decorator on ${target.constructor.name}.${propertyKey}`,
     );
     const methodName = propertyKey;
+
+    // 메서드에 걸린 데코레이터 중복 체크
+    checkSingleDecorator(target, propertyKey, DECORATOR_TYPES.API);
 
     const defaultPath = `/${inflection.camelize(
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
@@ -128,6 +147,9 @@ export function stream(options: StreamDecoratorOptions) {
       `modelName is required on @stream decorator on ${target.constructor.name}.${propertyKey}`,
     );
     const methodName = propertyKey;
+
+    // 메서드에 걸린 데코레이터 중복 체크
+    checkSingleDecorator(target, propertyKey, DECORATOR_TYPES.STREAM);
 
     const defaultPath = `/${inflection.camelize(
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),

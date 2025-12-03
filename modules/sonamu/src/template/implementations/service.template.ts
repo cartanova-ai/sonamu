@@ -112,10 +112,10 @@ export class Template__service extends Template {
             // 기본 URL
             const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
-            assert(api.options.clients, "api.options.clients is undefined");
+            const clients = api.options.clients ?? [];
             return [
               // 클라이언트별로 생성
-              ...sort(api.options.clients, (client) => (client === "swr" ? 0 : 1)).map((client) => {
+              ...sort(clients, (client) => (client === "swr" ? 0 : 1)).map((client) => {
                 switch (client) {
                   case "axios":
                     return this.renderAxios(
