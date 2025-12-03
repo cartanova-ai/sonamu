@@ -2,7 +2,10 @@
   "search.exclude": {
     "**/.yarn": true,
     "**/.pnp.*": true,
-    "**/node_modules": true
+    "**/node_modules": true,
+    "**/modules/loader/**/*": true,
+    "**/modules/create-sonamu/**/*": true,
+    "**/modules/hot-hook/**/*": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
@@ -39,5 +42,6 @@
   },
   "files.readonlyInclude": {
     "examples/**/web/src/services/**/*": true
-  }
+  },
+  "typescript.experimental.useTsgo": true
 }
