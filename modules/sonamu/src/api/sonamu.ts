@@ -2,7 +2,6 @@ import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { readFile } from "fs/promises";
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import path from "path";
 import type { ZodObject } from "zod";
@@ -17,7 +16,7 @@ import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 
 export type SonamuSecrets = {
-  [key: string]: string;
+  anthropic_api_key?: string;
 };
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -156,10 +155,10 @@ class SonamuClass {
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "mysql";
 
-    const secretsPath = path.join(this.apiRootPath, "sonamu.secrets.json");
-    const { exists } = await import("../utils/fs-utils");
-    if (await exists(secretsPath)) {
-      this.secrets = JSON.parse((await readFile(secretsPath)).toString()) as SonamuSecrets;
+    if (process.env.ANTHROPIC_API_KEY) {
+      this.secrets = {
+        anthropic_api_key: process.env.ANTHROPIC_API_KEY,
+      };
     }
 
     // DB 로드

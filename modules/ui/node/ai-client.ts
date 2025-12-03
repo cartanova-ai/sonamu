@@ -12,25 +12,25 @@ class AIClient {
   public isInit = false;
 
   constructor() {
-    if (!Sonamu.secrets || !Sonamu.secrets.openai_api_key) {
+    if (!Sonamu.secrets || !Sonamu.secrets.anthropic_api_key) {
       return;
     }
 
     this.llm = createAnthropic({
-      apiKey: Sonamu.secrets.openai_api_key,
+      apiKey: Sonamu.secrets.anthropic_api_key,
     });
   }
 
   async init() {
     if (this.isInit) return;
 
-    if (!Sonamu.secrets || !Sonamu.secrets.openai_api_key) {
-      throw new Error("OpenAI API key is not defined in Sonamu.secrets");
+    if (!Sonamu.secrets || !Sonamu.secrets.anthropic_api_key) {
+      throw new Error("Anthropic API key is not defined in Sonamu.secrets");
     }
 
     if (!this.llm) {
       this.llm = createAnthropic({
-        apiKey: Sonamu.secrets.openai_api_key,
+        apiKey: Sonamu.secrets.anthropic_api_key,
       });
     }
 
@@ -38,7 +38,7 @@ class AIClient {
     this.instructions = readFileSync(instructionsPath, "utf-8");
 
     this.isInit = true;
-    console.log("OpenAI client initialized with AI SDK");
+    console.log("AI client initialized with AI SDK");
   }
 
   clearMessages() {
