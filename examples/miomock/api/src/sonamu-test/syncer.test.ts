@@ -253,7 +253,7 @@ describe("Syncer", () => {
     test("model 템플릿", async () => {
       await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const writeFile = Naite.get("fs/promises:writeFile:*").first().data;
+      const writeFile = Naite.get("fs/promises:writeFile").first().data;
 
       await expect(writeFile).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/model.test.ts.snap",
@@ -949,7 +949,7 @@ describe("Syncer", () => {
     test("generated.ts 전체 출력", async () => {
       await syncer.generateTemplate("generated", {}, { overwrite: true });
 
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.ts"));
 
@@ -971,7 +971,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("snapshot-test.entity.json"));
 
@@ -985,7 +985,7 @@ describe("Syncer", () => {
     test("init_types.ts 생성", async () => {
       await syncer.generateTemplate("init_types", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sync-fixture.types.ts"));
 
@@ -1003,7 +1003,7 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.http"));
 
@@ -1017,7 +1017,7 @@ describe("Syncer", () => {
     test("generated_sso.ts 출력", async () => {
       await syncer.generateTemplate("generated_sso", {}, { overwrite: true });
 
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("sonamu.generated.sso.ts"));
 
@@ -1038,7 +1038,7 @@ describe("Syncer", () => {
       await syncer.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 찾기 (web 디렉토리의 types.ts 파일)
-      const writeFile = Naite.get("fs/promises:writeFile:*")
+      const writeFile = Naite.get("fs/promises:writeFile")
         .result()
         .find((f: WriteFileRecord) => f.path.includes("/web/") && f.path.includes(".types.ts"));
 
