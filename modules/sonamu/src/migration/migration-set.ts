@@ -4,7 +4,6 @@ import type { Knex } from "knex";
 import { group } from "radashi";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
-import { Naite } from "../naite/naite";
 import {
   isBelongsToOneRelationProp,
   isDecimalProp,
@@ -261,7 +260,7 @@ export function resolveDBColType(
 export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTable {
   const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
     (r, prop) => {
-      Naite.t("getMSFromEntity:prop", { entity: entity.id, prop: prop.name });
+      // Naite.t("getMSFromEntity:prop", { entity: entity.id, prop: prop.name });
       // virtual 필드 제외
       if (isVirtualProp(prop)) {
         return r;
