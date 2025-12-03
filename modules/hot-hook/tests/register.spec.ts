@@ -82,6 +82,7 @@ test.group("Register", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
     );
@@ -175,6 +176,7 @@ test.group("Register", () => {
     await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.path.includes(".restart-file"),
     );
@@ -217,6 +219,7 @@ test.group("Register", () => {
     await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) => message?.type === "hot-hook:full-reload" && message.path.includes(".env"),
     );
   });
@@ -284,6 +287,7 @@ test.group("Register", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:file-changed" && message.path === join(fs.basePath, "app.js"),
     );
@@ -307,6 +311,7 @@ test.group("Register", () => {
     await server.waitForOutput("Server is running");
 
     await fs.remove("app.js");
+    // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => {
       return (
         message?.type === "hot-hook:file-changed" &&
@@ -337,6 +342,7 @@ test.group("Register", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:file-changed" &&
         message.path === join(fs.basePath, "app2.js") &&

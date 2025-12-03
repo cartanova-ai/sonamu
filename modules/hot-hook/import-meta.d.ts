@@ -3,6 +3,7 @@ interface ImportMeta {
   readonly hot?: {
     dispose(callback: () => Promise<void> | void): void;
     decline(): void;
+    // biome-ignore lint/suspicious/noExplicitAny: HMR boundary 옵션은 사용자 정의 값을 허용해야 함
     boundary: Record<string, any>;
   };
 }

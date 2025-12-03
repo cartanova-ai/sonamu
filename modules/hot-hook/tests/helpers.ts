@@ -26,6 +26,7 @@ export async function fakeInstall(destination: string) {
   } else {
     for (const [binName, binPath] of Object.entries(bin)) {
       await fs.ensureSymlink(
+        // biome-ignore lint/suspicious/noExplicitAny: package.json bin 필드는 런타임에 string으로 보장됨
         path.resolve(projectRoot, binPath as any),
         path.resolve(destination, "node_modules", ".bin", binName),
       );
@@ -63,7 +64,9 @@ export function runProcess(scriptPath: string, options?: NodeOptions) {
     child,
     async waitForOutput(output: string, timeout = 10_000) {
       const waitUntilOutput = async () => {
-        await pEvent(child.stdout!, "data", (value) => value.toString().includes(output));
+        // 린트 리팩토링: execa로 생성된 child는 항상 stdout 존재
+        if (!child.stdout) throw new Error("stdout not available");
+        await pEvent(child.stdout, "data", (value) => value.toString().includes(output));
       };
 
       return await pTimeout(waitUntilOutput(), {

@@ -51,9 +51,9 @@ await describe("outDir", async () => {
     const { evaluate } = makeTestLoader({
       "tsconfig.json": JSON.stringify({
         compilerOptions: {
-          // eslint-disable-next-line no-template-curly-in-string
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
           outDir: "${configDir}/dist",
-          // eslint-disable-next-line no-template-curly-in-string
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: tsconfig.json의 ${configDir} 테스트용 문자열
           rootDir: "${configDir}",
         },
       }),

@@ -89,6 +89,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.path === join(fs.basePath, "app.js"),
     );
@@ -178,6 +179,7 @@ test.group("Loader", () => {
     await server.waitForOutput("Server is running");
     await setTimeout(100);
 
+    // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => message?.type === "ok");
     assert.isDefined(result);
   });
@@ -222,6 +224,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:invalidated" &&
         message.paths.includes(join(fs.basePath, "config/test.js")),
@@ -317,6 +320,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) => message?.type === "hot-hook:full-reload",
     );
     assert.isDefined(result);
@@ -362,6 +366,7 @@ test.group("Loader", () => {
     const result = await pEvent(
       server.child,
       "message",
+      // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
       (message: any) =>
         message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true,
     );
@@ -416,6 +421,7 @@ test.group("Loader", () => {
 
     await setTimeout(100);
 
+    // biome-ignore lint/suspicious/noExplicitAny: IPC message는 런타임에 타입이 결정됨
     const result = await pEvent(server.child, "message", (message: any) => {
       console.log(message);
       return message?.type === "hot-hook:full-reload" && message.shouldBeReloadable === true;
@@ -457,6 +463,8 @@ test.group("Loader", () => {
       nodeOptions: ["--import=hot-hook/register"],
     });
 
-    await assert.rejects(async () => await server.child!);
+    // 린트 리팩토링: runProcess 직후이므로 child 항상 존재
+    if (!server.child) throw new Error("child not started");
+    await assert.rejects(async () => await server.child);
   }).disableTimeout();
 });

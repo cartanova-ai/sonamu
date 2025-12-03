@@ -13,8 +13,10 @@ export class DynamicImportChecker {
 
   async ensureFileIsImportedDynamicallyFromParent(parentPath: string, specifier: string) {
     const cacheKey = parentPath;
-    if (this.cache.has(cacheKey) && this.cache.get(cacheKey)!.has(specifier)) {
-      return this.cache.get(cacheKey)!.get(specifier)!;
+    const cached = this.cache.get(cacheKey);
+    if (cached?.has(specifier)) {
+      // 린트 리팩토링: has() 검사 통과했으므로 값 항상 존재
+      return cached.get(specifier) ?? false;
     }
 
     const parentCode = await readFile(parentPath, "utf-8");

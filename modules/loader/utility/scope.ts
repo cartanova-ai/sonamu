@@ -115,7 +115,7 @@ const replaceFragmentSlashes = (location: string) => location.replaceAll("\\", "
 
 // Replace path separators, ensuring the result represents a directory (ends with "/")
 const replaceFragmentDirectorySlashes = (location: string) =>
-  replaceFragmentSlashes(location).replace(/\/+$/, "") + "/";
+  `${replaceFragmentSlashes(location).replace(/\/+$/, "")}/`;
 
 /**
  * `package.json` locator. Returns the location and content of the nearest `package.json` file.
@@ -143,14 +143,14 @@ export async function resolvePackage(fs: FileSystemAsync, fileOrDirectory: URL) 
  */
 export function makeResolveTypeScriptPackage(fs: LoaderFileSystem) {
   const makeLocation = (fragment: string, relativeToFile: URL) => {
-    // eslint-disable-next-line no-template-curly-in-string
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: 의도적으로 문자열 비교에 사용
     if (fragment.startsWith("${configDir}")) {
       // Inject `tsconfig.json` location
       // Replace slashes, and ensure template fragment ends in a slash
       const template = replaceFragmentDirectorySlashes(fragment);
       // Remove final slash from replacement, which we know exists
       const replacement = new URL(".", relativeToFile).href.slice(0, -1);
-      // eslint-disable-next-line no-template-curly-in-string
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: 의도적으로 문자열 치환에 사용
       return new URL(template.replace("${configDir}", replacement));
     } else {
       // Returns a directory file:// URL ending in one "/"
@@ -183,7 +183,10 @@ export function makeResolveTypeScriptPackage(fs: LoaderFileSystem) {
           : undefined;
       const sourceBase = (() => {
         if (compilerOptions.rootDirs) {
-          return makeLocation(compilerOptions.rootDirs[0]!, configPath);
+          const firstRootDir = compilerOptions.rootDirs[0];
+          // 린트 리팩토링: rootDirs가 있으면 항상 첫 번째 요소도 존재함
+          if (!firstRootDir) return configPath;
+          return makeLocation(firstRootDir, configPath);
         } else if (compilerOptions.rootDir === undefined) {
           return configPath;
         } else {

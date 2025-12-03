@@ -130,7 +130,9 @@ export default class DependencyTree {
     const invalidatedFiles = new Set<string>();
     const queue = [filePath];
     while (queue.length > 0) {
-      const currentPath = queue.pop()!;
+      const currentPath = queue.pop();
+      // 린트 리팩토링: while 조건에서 length > 0 보장하므로 실제 발생 안 함
+      if (!currentPath) break;
       if (!invalidatedFiles.has(currentPath)) {
         const node = this.#pathMap.get(currentPath);
         if (!node) continue;

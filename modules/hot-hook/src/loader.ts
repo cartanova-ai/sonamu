@@ -33,7 +33,8 @@ export class HotHookLoader {
   constructor(options: InitializeHookOptions) {
     this.#options = options;
     this.#messagePort = options.messagePort;
-    this.#projectRoot = options.rootDirectory!;
+    // 린트 리팩토링: rootDirectory는 register.ts에서 항상 설정됨
+    this.#projectRoot = options.rootDirectory ?? "";
 
     if (options.root) this.#initialize(options.root);
 
@@ -78,6 +79,7 @@ export class HotHookLoader {
   /**
    * When a message is received from the main thread
    */
+  // biome-ignore lint/suspicious/noExplicitAny: worker thread message는 런타임에 타입이 결정됨
   async #onMessage(message: any) {
     if (message.type === "hot-hook:dump") {
       return this.#messagePort?.postMessage({
@@ -108,7 +110,9 @@ export class HotHookLoader {
       for (const { nodePath } of pathsToInvalidate) {
         this.#dynamicImportChecker.invalidateCache(nodePath);
         const dependentPaths = this.#dependencyTree.invalidateFileAndDependents(nodePath);
-        dependentPaths.forEach((p) => invalidatedPaths.add(p));
+        for (const p of dependentPaths) {
+          invalidatedPaths.add(p);
+        }
       }
 
       debug("Invalidated all reloadable files (%d files).", pathsToInvalidate.length);
