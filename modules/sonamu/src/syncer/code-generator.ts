@@ -29,8 +29,6 @@ export async function generateTemplate<T extends TemplateKey>(
   templateOptions: TemplateOptions[T],
   _generateOptions?: GenerateOptions,
 ): Promise<AbsolutePath[]> {
-  Naite.t("step", "generateTemplate");
-
   const generateOptions = {
     overwrite: false,
     ..._generateOptions,
@@ -84,7 +82,6 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
   key: T,
   options: TemplateOptions[T],
 ): Promise<PathAndCode[]> {
-  Naite.t("step", "renderTemplate");
   Naite.t("renderTemplate", { key, options });
 
   const template = Template.find(key);
@@ -110,7 +107,6 @@ async function resolveRenderedTemplate(
   key: TemplateKey,
   result: RenderedTemplate,
 ): Promise<PathAndCode> {
-  Naite.t("step", "resolveRenderedTemplate");
   Naite.t(`resolveRenderedTemplate${key}`, { key, result });
 
   const { target, path: filePath, body, importKeys, customHeaders } = result;
@@ -147,7 +143,6 @@ async function resolveRenderedTemplate(
     )
     // 셀프 참조 방지
     .filter((importDef) => filePath.endsWith(`${importDef.from.replace("./", "")}.ts`) === false);
-  Naite.t("resolveRenderedTemplate:importDefs", importDefs);
 
   // 커스텀 헤더 포함하여 헤더 생성
   const header = [
@@ -156,7 +151,6 @@ async function resolveRenderedTemplate(
       (importDef) => `import { ${importDef.keys.join(", ")} } from '${importDef.from}'`,
     ),
   ].join("\n");
-  Naite.t("resolveRenderedTemplate:header", header);
 
   const formatted = await (async () => {
     if (key === "generated_http") {
