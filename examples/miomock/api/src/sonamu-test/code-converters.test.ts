@@ -5,6 +5,7 @@ import { bootstrap, test } from "../testing/bootstrap";
 bootstrap(vi);
 
 import {
+  apiParamToTsCode,
   apiParamTypeToTsType,
   getZodObjectFromApi,
   getZodObjectFromApiParams,
@@ -1192,6 +1193,52 @@ describe("code-converters", () => {
 
         expect(errorMessage).toContain("resolve 불가 ApiParamType");
       });
+    });
+  });
+
+  describe("apiParamToTsCode", () => {
+    // injectImportKeys가 있을 경우는 apiParamTypeToTsType 테스트에서 확인하실 수 있습니다.
+    test("빈 배열 → 빈 문자열", () => {
+      const result = apiParamToTsCode([], []);
+      expect(result).toBe("");
+    });
+
+    test("단일 required 파라미터", () => {
+      const result = apiParamToTsCode([{ name: "id", type: "number", optional: false }], []);
+      expect(result).toBe("id: number");
+    });
+
+    test("단일 optional 파라미터 (defaultDef 없음) → ?", () => {
+      const result = apiParamToTsCode([{ name: "name", type: "string", optional: true }], []);
+      expect(result).toBe("name?: string");
+    });
+
+    test("단일 optional 파라미터 (defaultDef 있음) → ? 없음", () => {
+      const result = apiParamToTsCode(
+        [{ name: "page", type: "number", optional: true, defaultDef: "1" }],
+        [],
+      );
+      expect(result).toBe("page: number= 1");
+    });
+
+    test("required 파라미터 (defaultDef 있음)", () => {
+      const result = apiParamToTsCode(
+        [{ name: "limit", type: "number", optional: false, defaultDef: "10" }],
+        [],
+      );
+      expect(result).toBe("limit: number= 10");
+    });
+
+    test("여러 파라미터 연결", () => {
+      const result = apiParamToTsCode(
+        [
+          { name: "id", type: "number", optional: false },
+          { name: "name", type: "string", optional: true },
+          { name: "page", type: "number", optional: true, defaultDef: "1" },
+        ],
+        [],
+      );
+      expect(result).toBe("id: number, name?: string, page: number= 1");
     });
   });
 
