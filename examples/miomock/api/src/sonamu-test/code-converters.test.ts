@@ -687,13 +687,15 @@ describe("code-converters", () => {
     });
   });
 
-  ///
   describe("apiParamTypeToTsType", () => {
     describe("Primitive 타입", () => {
       test.each([
+        // [ 입력값, 기대값 ] 형식으로 테스트 케이스 정의
         ["string", "string"],
         ["number", "number"],
         ["boolean", "boolean"],
+        ["true", "true"],
+        ["false", "false"],
         ["null", "null"],
         ["undefined", "undefined"],
         ["void", "void"],
@@ -707,6 +709,7 @@ describe("code-converters", () => {
 
     describe("Literal 타입", () => {
       test.each([
+        // [ 입력값, 입력 객체, 기대값 ]
         ["string-literal", { t: "string-literal", value: "test" }, '"test"'],
         ["numeric-literal", { t: "numeric-literal", value: 123 }, "123"],
       ])("%s", (_name, input, expected) => {
