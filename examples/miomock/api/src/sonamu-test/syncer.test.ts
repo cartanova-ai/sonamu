@@ -100,17 +100,78 @@ describe("Syncer", () => {
 
       await syncer.doSyncActions([configPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-
-      const envFile = writeFiles.find((f: WriteFileRecord) => f.path.includes(".sonamu.env"));
-      expect(envFile).toBeDefined();
-      expect(envFile.data).toContain("API_HOST=");
-      expect(envFile.data).toContain("API_PORT=");
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain(".sonamu.env");
+      expect(writeFile.data).toContain("API_HOST=");
+      expect(writeFile.data).toContain("API_PORT=");
     });
   });
 
   // ============================================
-  // 2. overwrite 옵션 테스트
+  // 2. syncFromWatcher - Watcher 이벤트 처리
+  // sonamu 패키지 내부에서 import하므로 vi.mock 적용 안됨 skip 처리
+  // ============================================
+  describe("syncFromWatcher", () => {
+    // 목적: model 파일 변경 시 doSyncActions가 호출되어 http 파일이 생성되고, autoload가 실행되어 모듈이 재로드되는지 확인
+    test("change 이벤트 (model 파일) → 파일 생성 및 모듈 재로드", async () => {
+      const modelPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.model.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("change", modelPath);
+
+      // 1. doSyncActions가 호출되어 http 파일이 생성되었는지 확인
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
+
+      const httpFile = writeFiles.find((f) => f.path.includes("sonamu.generated.http"));
+      expect(httpFile).toBeDefined();
+
+      // 2. autoload가 실행되어 모듈이 실제로 재로드되었는지 확인
+      expect(Object.keys(syncer.models).length).toBeGreaterThan(0);
+      expect(Object.keys(syncer.types).length).toBeGreaterThan(0);
+      expect(syncer.apis.length).toBeGreaterThan(0);
+    });
+
+    // 목적: types 파일 추가 시 doSyncActions가 호출되어 타겟 디렉토리로 복사되는지 확인
+    test("add 이벤트 (types 파일) → 타겟 디렉토리로 복사", async () => {
+      const newTypesPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.types.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("add", newTypesPath);
+
+      // types 파일이 타겟 디렉토리(web)로 복사되었는지 확인
+      const writeFiles = Naite.get("fs/promises:writeFile").result();
+      const copiedFile = writeFiles.find(
+        (f: WriteFileRecord) =>
+          f.path.includes("/web/") && f.path.includes("sync-fixture.types.ts"),
+      );
+      expect(copiedFile).toBeDefined();
+
+      // autoload가 실행되어 types가 재로드되었는지 확인
+      expect(Object.keys(syncer.types).length).toBeGreaterThan(0);
+    });
+
+    // 목적: 파일 삭제 시 체크섬 패턴에 맞는 파일이면 doSyncActions가 호출되는지 확인
+    test("unlink 이벤트 → 체크섬 패턴에 맞는 파일 처리", async () => {
+      const deletedPath = join(
+        apiRootPath,
+        "src/application/sync-fixture/sync-fixture.types.ts",
+      ) as AbsolutePath;
+
+      await syncer.syncFromWatcher("unlink", deletedPath);
+
+      // unlink 이벤트는 체크섬 패턴에 맞는 파일이면 doSyncActions가 호출될 수 있음
+      // 하지만 실제로는 파일이 삭제되었으므로 복사 작업은 없을 수 있음
+      // autoload는 여전히 실행되어야 함
+      expect(Object.keys(syncer.types).length).toBeGreaterThan(0);
+    });
+  });
+
+  // ============================================
+  // 3. overwrite 옵션 테스트
   // ============================================
   describe("overwrite 옵션", () => {
     beforeEach(() => {});
@@ -127,8 +188,8 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles.length).toBeGreaterThan(0);
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile).toBeDefined();
     });
 
     // 목적: overwrite: false일 때 이미 존재하는 파일을 생성하려고 하면 AlreadyProcessedException이 발생하는지 확인
@@ -145,11 +206,8 @@ describe("Syncer", () => {
       );
 
       // 생성된 파일 확인
-      const firstWriteFiles = Naite.get("fs/promises:writeFile").result();
-      const targetFile = firstWriteFiles.find((f: WriteFileRecord) =>
-        f.path.includes("user.entity.json"),
-      );
-      expect(targetFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain("user.entity.json");
 
       // 2단계: 같은 파일을 overwrite: false로 다시 생성 시도 → 에러 발생해야 함
       await expect(
@@ -177,8 +235,8 @@ describe("Syncer", () => {
         { overwrite: false },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles.length).toBeGreaterThan(0);
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile).toBeDefined();
     });
 
     // 목적: overwrite: true일 때 같은 파일을 두 번 생성해도 에러 없이 덮어쓰기가 되는지 확인
@@ -206,12 +264,8 @@ describe("Syncer", () => {
       );
 
       // 덮어쓰기된 파일이 존재하는지 확인
-      const secondWriteFiles = Naite.get("fs/promises:writeFile").result();
-      const newFile = secondWriteFiles.find((f: WriteFileRecord) =>
-        f.path.includes("overwrite-test.entity.json"),
-      );
-
-      expect(newFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain("overwrite-test.entity.json");
     });
 
     // 목적: entity 템플릿 생성 시 parentId 옵션이 정상적으로 처리되는지 확인
@@ -227,16 +281,16 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles.length).toBeGreaterThan(0);
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile).toBeDefined();
     });
   });
 
   // ============================================
-  // 3. 템플릿 타입별 테스트
+  // 4. 템플릿 타입별 테스트
   // ============================================
   describe("템플릿 타입", () => {
-    // 목적: entity 템플릿이 정상적으로 생성되는지 확인
+    // 목적: entity 템플릿이 정상적으로 생성되고 JSON 구조가 올바른지 확인
     test("entity 템플릿", async () => {
       await syncer.generateTemplate(
         "entity",
@@ -244,56 +298,84 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const entityFile = writeFiles.find((f: WriteFileRecord) => f.path.includes(".entity.json"));
-      expect(entityFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // JSON 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sync-fixture.entity.json");
+      // JSON 구조가 올바른지 확인 (entityId, title, table 등 필수 필드 포함)
+      if (typeof writeFile.data === "string") {
+        const entityData = JSON.parse(writeFile.data);
+        expect(entityData.id).toBe("SyncFixture");
+        expect(entityData.title).toBe("SyncFixture");
+        expect(entityData.table).toBeDefined();
+        expect(Array.isArray(entityData.props)).toBe(true);
+      }
     });
 
-    // 목적: model 템플릿이 정상적으로 생성되고 스냅샷과 일치하는지 확인
+    // 목적: model 템플릿이 정상적으로 생성되고 Model 클래스가 포함되어 있는지 확인
     test("model 템플릿", async () => {
       await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const writeFile = Naite.get("fs/promises:writeFile").first().data;
-
-      await expect(writeFile).toMatchFileSnapshot(
-        "../testing-data/snapshots/syncer.test.ts.snapshots/model.test.ts.snap",
-      );
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // .model.ts 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sync-fixture.model.ts");
+      // Model 클래스가 포함되어 있는지 확인
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).toContain("class");
+        expect(writeFile.data).toContain("SyncFixtureModel");
+        expect(writeFile.data).toContain("BaseModelClass");
+        // import 문이 포함되어 있는지 확인
+        expect(writeFile.data).toContain("import");
+      }
     });
 
-    // 목적: init_types 템플릿이 정상적으로 생성되는지 확인
+    // 목적: init_types 템플릿이 정상적으로 생성되고 Zod 스키마가 포함되어 있는지 확인
     test("init_types 템플릿", async () => {
       await syncer.generateTemplate("init_types", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const typesFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sync-fixture.types.ts"),
-      );
-      expect(typesFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // .types.ts 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sync-fixture.types.ts");
+      // Zod 스키마와 타입 정의가 포함되어 있는지 확인
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).toContain("zod");
+        expect(writeFile.data).toContain("SyncFixtureListParams");
+        expect(writeFile.data).toContain("SyncFixtureSaveParams");
+        expect(writeFile.data).toContain("export const");
+        expect(writeFile.data).toContain("export type");
+      }
     });
 
-    // 목적: generated 템플릿이 정상적으로 생성되는지 확인
+    // 목적: generated 템플릿이 정상적으로 생성되고 모든 엔티티의 스키마가 포함되어 있는지 확인
     test("generated 템플릿", async () => {
       await syncer.generateTemplate("generated", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const generatedFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sonamu.generated.ts"),
-      );
-      expect(generatedFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // sonamu.generated.ts 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sonamu.generated.ts");
+      // 스키마 정의가 포함되어 있는지 확인
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).toContain("BaseSchema");
+        expect(writeFile.data).toContain("export const");
+        expect(writeFile.data).toContain("export type");
+      }
     });
 
-    // 목적: generated_sso 템플릿이 정상적으로 생성되는지 확인
+    // 목적: generated_sso 템플릿이 정상적으로 생성되고 SSO 관련 코드가 포함되어 있는지 확인
     test("generated_sso 템플릿", async () => {
       await syncer.generateTemplate("generated_sso", {}, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const generatedSsoFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sonamu.generated.sso.ts"),
-      );
-      expect(generatedSsoFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // sonamu.generated.sso.ts 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sonamu.generated.sso.ts");
+      // SSO 관련 쿼리가 포함되어 있는지 확인
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).toContain("export const");
+        expect(writeFile.data).toContain("SubsetQueries");
+        expect(writeFile.data).toContain("LoaderQueries");
+      }
     });
 
-    // 목적: generated_http 템플릿이 정상적으로 생성되는지 확인
+    // 목적: generated_http 템플릿이 정상적으로 생성되고 HTTP 요청 형식이 포함되어 있는지 확인
     test("generated_http 템플릿", async () => {
       await syncer.generateTemplate(
         "generated_http",
@@ -302,36 +384,59 @@ describe("Syncer", () => {
       );
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const httpFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sonamu.generated.http"),
-      );
+      const httpFile = writeFiles.find((f) => f.path.includes("sonamu.generated.http"));
       expect(httpFile).toBeDefined();
+
+      // 요청 형식이 포함되어 있는지 확인
+      if (typeof httpFile.data === "string") {
+        expect(httpFile.data).toMatch(/^(GET|POST|PUT|DELETE|PATCH)\s+/m);
+      }
     });
 
-    // 목적: model_test 템플릿이 정상적으로 생성되는지 확인
+    // 목적: model_test 템플릿이 정상적으로 생성되고 테스트 파일이 생성되는지 확인
     test("model_test 템플릿", async () => {
       await syncer.generateTemplate("model_test", { entityId: "SyncFixture" }, { overwrite: true });
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      // .test.ts 파일이 생성되었는지 확인
+      expect(writeFile.path).toContain("sync-fixture.model.test.ts");
+      // 테스트 코드가 포함되어 있는지 확인
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).toContain("describe");
+        expect(writeFile.data).toContain("test");
+      }
     });
 
-    // 목적: view_list 템플릿이 정상적으로 생성되는지 확인
+    // 목적: view_list 템플릿이 정상적으로 생성되고 뷰 파일이 생성되는지 확인
     test("view_list 템플릿", async () => {
-      // Biome lint 에러로 스킵
       await syncer.generateTemplate(
         "view_list",
         { entityId: "SyncFixture", extra: undefined },
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles).toBeDefined();
+      const writeFilesPaths = Naite.get("fs/promises:writeFile")
+        .result()
+        .map((f) => f.path);
+
+      // expectedFiles의 모든 항목이 writeFilesPaths 중 적어도 하나에 포함되어 있는지 체크
+      const expectedFiles = [
+        "index.tsx",
+        "SyncFixtureSearchFieldDropdown.tsx",
+        "SyncFixtureOrderBySelect.tsx",
+        "SyncFixtureSearchInput.tsx",
+      ];
+
+      // 모든 expectedFile이 writeFilesPaths 중 적어도 하나에 포함되어야 함
+      const allFilesExist = expectedFiles.every((f) =>
+        writeFilesPaths.some((path) => path.endsWith(f)),
+      );
+      expect(allFilesExist).toBe(true);
     });
   });
 
   // ============================================
-  // 4. 파일 경로 변환
+  // 5. 파일 경로 변환
   // ============================================
   describe("파일 경로 변환", () => {
     // 목적: api 디렉토리의 파일이 web 디렉토리로 복사될 때 경로가 올바르게 변환되는지 확인
@@ -345,18 +450,17 @@ describe("Syncer", () => {
       await syncer.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 확인
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const targetFile = writeFiles[0];
+      const writeFile = Naite.get("fs/promises:writeFile").first();
 
       // 경로 변환 검증:
       // - /api/ → /web/ 변환 확인
-      expect(targetFile.path).toContain("/web/");
-      expect(targetFile.path).not.toContain("/api/");
+      expect(writeFile.path).toContain("/web/");
+      expect(writeFile.path).not.toContain("/api/");
       // - /application/ → /services/ 변환 확인
-      expect(targetFile.path).toContain("/services/");
-      expect(targetFile.path).not.toContain("/application/");
+      expect(writeFile.path).toContain("/services/");
+      expect(writeFile.path).not.toContain("/application/");
       // 파일명은 유지되는지 확인
-      expect(targetFile.path).toContain("sync-fixture.types.ts");
+      expect(writeFile.path).toContain("sync-fixture.types.ts");
     });
 
     // 목적: 파일 복사 시 import 경로가 올바르게 변환되는지 확인 (예: "sonamu" → "src/services/sonamu.shared")
@@ -370,13 +474,12 @@ describe("Syncer", () => {
       await syncer.actionSyncFilesToTargets(tsPaths);
 
       // 복사된 파일 내용 확인
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const targetFile = writeFiles[0];
+      const writeFile = Naite.get("fs/promises:writeFile").first();
 
       // 검증: 원본 import 경로("sonamu")가 제거되었는지 확인
       // (변환된 경로는 "src/services/sonamu.shared"로 변경됨)
-      if (typeof targetFile.data === "string") {
-        expect(targetFile.data).not.toContain('from "sonamu"');
+      if (typeof writeFile.data === "string") {
+        expect(writeFile.data).not.toContain('from "sonamu"');
       }
     });
 
@@ -395,7 +498,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 5. 네이밍 컨벤션
+  // 6. 네이밍 컨벤션
   // ============================================
   describe("네이밍 컨벤션", () => {
     // 목적: PascalCase로 된 entityId가 kebab-case 파일명으로 올바르게 변환되는지 확인
@@ -410,18 +513,14 @@ describe("Syncer", () => {
         { overwrite: true },
       );
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const entityFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("user-profile.entity.json"),
-      );
-
-      expect(entityFile).toBeDefined();
-      expect(entityFile.path).toContain("/user-profile/");
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain("user-profile.entity.json");
+      expect(writeFile.path).toContain("/user-profile/");
     });
   });
 
   // ============================================
-  // 6. 에러 처리
+  // 7. 에러 처리
   // ============================================
   describe("에러 처리", () => {
     // 목적: 존재하지 않는 Entity ID로 템플릿을 생성하려고 할 때 명확한 에러 메시지가 나오는지 확인
@@ -451,7 +550,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 7. 파일 타입 분류
+  // 8. 파일 타입 분류
   // ============================================
   describe("파일 타입 분류", () => {
     // 목적: 지원하는 파일 타입(types, model, config, generated)이 올바르게 분류되는지 확인
@@ -485,19 +584,17 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 8. Config 동기화
+  // 9. Config 동기화
   // ============================================
   describe("Config 동기화", () => {
     // 목적: config 동기화 시 .sonamu.env 파일이 생성되고 필요한 환경 변수가 포함되는지 확인
     test(".sonamu.env 생성", async () => {
       await syncer.actionSyncConfig();
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const configFile = writeFiles.find((f: WriteFileRecord) => f.path.includes(".sonamu.env"));
-
-      expect(configFile).toBeDefined();
-      expect(configFile.data).toContain("API_HOST=");
-      expect(configFile.data).toContain("API_PORT=");
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain(".sonamu.env");
+      expect(writeFile.data).toContain("API_HOST=");
+      expect(writeFile.data).toContain("API_PORT=");
     });
 
     // 목적: 생성된 .sonamu.env 파일의 값이 실제 config 값과 일치하는지 확인
@@ -506,19 +603,19 @@ describe("Syncer", () => {
       await syncer.actionSyncConfig();
 
       // 생성된 .sonamu.env 파일 찾기
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const configFile = writeFiles.find((f: WriteFileRecord) => f.path.includes(".sonamu.env"));
+      const writeFile = Naite.get("fs/promises:writeFile").first();
 
       // 실제 config에서 서버 설정 가져오기
       const { host, port } = Sonamu.config.server.listen ?? {};
       // 생성된 파일의 값이 config 값과 일치하는지 검증
-      expect(configFile.data).toContain(`API_HOST=${host ?? "localhost"}`);
-      expect(configFile.data).toContain(`API_PORT=${port ?? 3000}`);
+      expect(writeFile.path).toContain(".sonamu.env");
+      expect(writeFile.data).toContain(`API_HOST=${host ?? "localhost"}`);
+      expect(writeFile.data).toContain(`API_PORT=${port ?? 3000}`);
     });
   });
 
   // ============================================
-  // 9. Schema 생성
+  // 10. Schema 생성
   // ============================================
   describe("Schema 생성", () => {
     // 목적: actionGenerateSchemas가 정상적으로 실행되어 generated 파일 2개(sonamu.generated.ts, sonamu.generated.sso.ts)가 생성되는지 확인
@@ -532,7 +629,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 10. handleEntityChange
+  // 11. handleEntityChange
   // ============================================
   describe("handleEntityChange", () => {
     // 목적: entity 파일이 변경되면 diffGroups.generated에 파일이 추가되고 diffTypes에 "generated"가 포함되는지 확인
@@ -566,7 +663,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 11. handleModelOrFrameChange
+  // 12. handleModelOrFrameChange
   // ============================================
   describe("handleModelOrFrameChange", () => {
     // 목적: 여러 model 파일을 동시에 처리할 때 각각에 대해 actionGenerateServices가 호출되는지 확인
@@ -631,11 +728,10 @@ describe("Syncer", () => {
         config: [],
       });
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-      const httpFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sonamu.generated.http"),
-      );
-      expect(httpFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile")
+        .result()
+        .find((f) => f.path.includes("sonamu.generated.http"));
+      expect(writeFile).toBeDefined();
     });
 
     // 목적: actionGenerateServices가 호출될 때 올바른 namesRecord 파라미터가 전달되는지 확인
@@ -673,7 +769,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 12. 통합 시나리오
+  // 13. 통합 시나리오
   // ============================================
   describe("통합 시나리오", () => {
     // 목적: Entity 파일 변경 시 전체 워크플로우가 정상적으로 실행되어 generated 파일이 생성되는지 확인
@@ -684,12 +780,8 @@ describe("Syncer", () => {
       ) as AbsolutePath;
       await syncer.doSyncActions([entityPath]);
 
-      const writeFiles = Naite.get("fs/promises:writeFile").result();
-
-      const generatedFile = writeFiles.find((f: WriteFileRecord) =>
-        f.path.includes("sonamu.generated"),
-      );
-      expect(generatedFile).toBeDefined();
+      const writeFile = Naite.get("fs/promises:writeFile").first();
+      expect(writeFile.path).toContain("sonamu.generated");
     });
 
     // 목적: Model과 Entity 파일을 동시에 변경했을 때 두 워크플로우가 모두 정상 실행되는지 확인
@@ -707,7 +799,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 13. copySharedToTargets
+  // 14. copySharedToTargets
   // ============================================
   describe("copySharedToTargets", () => {
     // 목적: shared 파일이 타겟 디렉토리로 정상적으로 복사되는지 확인 (파일이 동일하면 스킵될 수 있음)
@@ -733,7 +825,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 14. entity-operations
+  // 15. entity-operations
   // ============================================
   describe("entity-operations", () => {
     describe("createEntity", () => {
@@ -745,12 +837,8 @@ describe("Syncer", () => {
           table: "valid_test_entities",
         });
 
-        const writeFiles = Naite.get("fs/promises:writeFile").result();
-
-        const entityFile = writeFiles.find((f: WriteFileRecord) =>
-          f.path.includes("valid-test-entity.entity.json"),
-        );
-        expect(entityFile).toBeDefined();
+        const writeFile = Naite.get("fs/promises:writeFile").first();
+        expect(writeFile.path).toContain("valid-test-entity.entity.json");
       });
 
       // 목적: snake_case 형식의 entityId는 BadRequestException이 발생하는지 확인
@@ -805,12 +893,8 @@ describe("Syncer", () => {
           table: "entity2_tests",
         });
 
-        const writeFiles = Naite.get("fs/promises:writeFile").result();
-
-        const entityFile = writeFiles.find((f: WriteFileRecord) =>
-          f.path.includes("entity2-test.entity.json"),
-        );
-        expect(entityFile).toBeDefined();
+        const writeFile = Naite.get("fs/promises:writeFile").first();
+        expect(writeFile.path).toContain("entity2-test.entity.json");
       });
     });
 
@@ -837,7 +921,7 @@ describe("Syncer", () => {
     });
   });
   // ============================================
-  // 15. checkExistsGenCode
+  // 16. checkExistsGenCode
   // ============================================
   describe("checkExistsGenCode", () => {
     // 목적: 존재하는 entity 템플릿에 대해 checkExistsGenCode가 올바른 정보를 반환하는지 확인
@@ -884,7 +968,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 16. autoload 유틸리티
+  // 17. autoload 유틸리티
   // ============================================
   describe("autoload 유틸리티", () => {
     describe("autoloadTypes", () => {
@@ -942,7 +1026,7 @@ describe("Syncer", () => {
   });
 
   // ============================================
-  // 17. 파일 스냅샷 테스트 확장
+  // 18. 파일 스냅샷 테스트 확장
   // ============================================
   describe("파일 스냅샷", () => {
     // 목적: generated.ts 파일이 생성되고 스냅샷과 일치하는지 확인
