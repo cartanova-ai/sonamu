@@ -1,4 +1,4 @@
-import { api, registeredApis, stream, upload } from "sonamu";
+import { api, registeredApis, stream, transactional, upload } from "sonamu";
 import { beforeEach, describe, expect, vi } from "vitest";
 import z from "zod";
 import { bootstrap, test } from "../testing/bootstrap";
@@ -191,6 +191,33 @@ describe("decorators", () => {
       expect(registeredApis[0]?.uploadOptions).toEqual({
         mode: "single",
       }); // 유지
+    });
+  });
+
+  describe("@transactional", () => {
+    test("descriptor.value가 교체됨", () => {
+      const target = createMockTarget("PracticeModel", "save");
+      const originalFn = async () => "original";
+      const descriptor = { value: originalFn };
+
+      transactional()(target, "save", descriptor);
+
+      expect(descriptor.value).not.toBe(originalFn);
+      expect(typeof descriptor.value).toBe("function");
+    });
+
+    test("options 전달 확인 (isolation, readOnly, dbPreset)", () => {
+      const target = createMockTarget("PracticeModel", "save");
+      const descriptor = { value: async () => {} };
+
+      // 에러 없이 옵션이 전달되는지만 확인
+      expect(() => {
+        transactional({ isolation: "serializable", readOnly: true, dbPreset: "w" })(
+          target,
+          "save",
+          descriptor,
+        );
+      }).not.toThrow();
     });
   });
 });
