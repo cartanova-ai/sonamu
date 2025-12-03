@@ -77,7 +77,7 @@ describe("Upsert Builder", () => {
       expect(traces[1].uuid).toBe(ref2.uuid);
     });
 
-    test("register() 시 객체/배열 필드 JSON 문자열 변환 / null은 유지", async () => {
+    test("register() 시 객체/배열 필드 JSON 문자열 변환/null은 유지", async () => {
       const ub = new UpsertBuilder();
 
       const imageUrls = ["https://example.com/1.png", "https://example.com/2.png"];
@@ -110,7 +110,7 @@ describe("Upsert Builder", () => {
   });
 
   describe("B. 테이블 관리 (getTable/hasTable)", () => {
-    test("getTable()과 hasTable() - 기본 동작(테이블 생성 및 관리)", async () => {
+    test("getTable()/hasTable() - 기본 동작", async () => {
       const ub = new UpsertBuilder();
 
       // 초기 상태 - 테이블이 없음
@@ -169,7 +169,7 @@ describe("Upsert Builder", () => {
       await Sonamu.init(true, false, undefined, false);
     });
 
-    test("같은 unique 값 등록 시 동일한 uuid 반환 (isUuidReused: true)", async () => {
+    test("같은 unique 값 등록 시 동일한 uuid 반환", async () => {
       const ub = new UpsertBuilder();
 
       // 첫 번째 등록
@@ -221,7 +221,7 @@ describe("Upsert Builder", () => {
       expect(uniquesMap.get("test@test.com")).toBe(ref1.uuid);
     });
 
-    test("다른 unique 값 등록 시 다른 uuid 반환 (isUuidReused: false)", async () => {
+    test("다른 unique 값 등록 시 다른 uuid 반환", async () => {
       const ub = new UpsertBuilder();
 
       // 첫 번째 등록
@@ -271,7 +271,7 @@ describe("Upsert Builder", () => {
       expect(uniquesMap.get("user2@test.com")).toBe(ref2.uuid);
     });
 
-    test("Composite unique index (복합 유니크 키) 처리", async () => {
+    test("복합 유니크 키 처리", async () => {
       const ub = new UpsertBuilder();
 
       // 첫 번째 등록 - user_id: 1, employee_number: "EMP001"
@@ -318,7 +318,7 @@ describe("Upsert Builder", () => {
       expect(uniquesMap.get("2---delimiter--EMP001")).toBe(ref4.uuid);
     });
 
-    test("unique 인덱스 없는 테이블은 매번 새 uuid 생성", async () => {
+    test("unique 인덱스 없는 테이블 매번 새 uuid 생성", async () => {
       const ub = new UpsertBuilder();
 
       // 같은 name으로 3번 등록 - tags 테이블은 uuid 외에 unique 인덱스가 없음
@@ -386,7 +386,7 @@ describe("Upsert Builder", () => {
       });
     });
 
-    test("UBRef의 use 필드 커스텀 값 (예: 'uuid')", async () => {
+    test("UBRef의 use 필드 커스텀 값", async () => {
       const ub = new UpsertBuilder();
 
       // users 테이블 등록
@@ -507,7 +507,7 @@ describe("Upsert Builder", () => {
       });
     });
 
-    test("upsert() - 기존 row 업데이트 (ON DUPLICATE KEY)", async () => {
+    test("upsert() - 기존 row 업데이트", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
@@ -711,7 +711,7 @@ describe("Upsert Builder", () => {
       });
     });
 
-    test("자기 참조 (self-reference) - 1단계 (UBRef 자동 처리)", async () => {
+    test("자기 참조 - 1단계 (UBRef 자동 처리)", async () => {
       // console.log를 차단하기 위해 spyOn
       vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -772,7 +772,7 @@ describe("Upsert Builder", () => {
     });
 
     // TODO: 자기 참조 2단계 이상은 단계별 upsert를 했지만, 한번에 가능하도록 upsert-builder.ts 로직 수정 여부 논의
-    test("자기 참조 (self-reference) - 2단계 이상 (단계별 upsert)", async () => {
+    test("자기 참조 - 2단계 이상 (단계별 upsert)", async () => {
       // console.log를 차단하기 위해 spyOn
       vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -842,7 +842,7 @@ describe("Upsert Builder", () => {
       expect(deptTraces).toHaveLength(3); // 단계별 upsert
     });
 
-    test("청크 단위 처리 (chunkSize 옵션)", async () => {
+    test("청크 단위 처리", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
@@ -1054,7 +1054,7 @@ describe("Upsert Builder", () => {
       });
     });
 
-    test("부분 업데이트 (일부 필드만 변경)", async () => {
+    test("부분 업데이트", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
@@ -1218,7 +1218,7 @@ describe("Upsert Builder", () => {
   });
 
   describe("H. 복합 시나리오", () => {
-    test("upsert + updateBatch 조합 사용", async () => {
+    test("upsert + updateBatch 조합", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
