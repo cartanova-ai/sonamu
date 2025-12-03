@@ -11,6 +11,7 @@ import {
   getZodObjectFromApi,
   getZodObjectFromApiParams,
   getZodTypeFromApiParamType,
+  unwrapPromiseOnce,
 } from "../../../../../modules/sonamu/dist/api/code-converters";
 import type {
   ApiDecoratorOptions,
@@ -1290,6 +1291,24 @@ describe("code-converters", () => {
         [],
       );
       expect(result).toBe("{ id: number, name?: string }");
+    });
+  });
+
+  describe("unwrapPromiseOnce", () => {
+    test("Promise 타입 → 내부 타입 추출", () => {
+      const promiseType: ApiParamType = {
+        t: "ref",
+        id: "Promise",
+        args: ["string"],
+      };
+      const result = unwrapPromiseOnce(promiseType);
+      expect(result).toBe("string");
+    });
+
+    test("Promise가 아닌 타입 → 그대로 반환", () => {
+      const plainType: ApiParamType = "number";
+      const result = unwrapPromiseOnce(plainType);
+      expect(result).toBe("number");
     });
   });
 });
