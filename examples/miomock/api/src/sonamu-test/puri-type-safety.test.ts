@@ -817,8 +817,8 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("w");
 
       const [insertedId] = await db.table("users").insert({
-        email: "update-test@test.com",
-        username: "updatetestuser",
+        email: `update-test-${Date.now()}@test.com`,
+        username: `updatetestuser${Date.now()}`,
         password: "password123",
         role: "normal" as const,
         is_verified: false,
@@ -860,43 +860,62 @@ describe("Puri Type Safety", () => {
     test("INCREMENT / DECREMENT 타입 안전성", async () => {
       const db = UserModel.getPuri("w");
 
+      // users와 employees 레코드 생성
+      const [userId] = await db.table("users").insert({
+        email: `increment-test-${Date.now()}@test.com`,
+        username: `increment_test_${Date.now()}`,
+        password: "pw",
+        role: "normal",
+      });
+
+      const [employeeId] = await db.table("employees").insert({
+        user_id: userId,
+        employee_number: `INC-${Date.now()}`,
+      });
+
       // 유효한 increment / decrement 사용
-      db.table("users").where("id", 1).increment("id", 1);
-      db.table("users").where("id", 1).decrement("id", 1);
+      db.table("users").where("id", userId).increment("id", 1);
+      db.table("users").where("id", userId).decrement("id", 1);
 
       // @ts-expect-error - 존재하지 않는 컬럼 increment
-      db.table("users").where("id", 1).increment("nonexistent", 1);
+      db.table("users").where("id", userId).increment("nonexistent", 1);
       // @ts-expect-error - 존재하지 않는 컬럼 decrement
-      db.table("users").where("id", 1).decrement("bad_column", 1);
+      db.table("users").where("id", userId).decrement("bad_column", 1);
 
       // @ts-expect-error - 증감값에 string 전달 (increment)
-      db.table("users").where("id", 1).increment("id", "1");
+      db.table("users").where("id", userId).increment("id", "1");
       // @ts-expect-error - 증감값에 string 전달 (decrement)
-      db.table("users").where("id", 1).decrement("id", "5");
+      db.table("users").where("id", userId).decrement("id", "5");
 
       // TODO : Puri 타입 개선 필요 - increment / decrement에 undefined 전달 가능하며, 전달했을 때 런타임 에러 발생 x (NULL, 음수는 런타임 에러 발생)
       // @ts-expect-error - 증감값에 undefined 전달
-      db.table("users").where("id", 1).increment("id", undefined);
+      db.table("users").where("id", userId).increment("id", undefined);
 
       // TODO: Puri 타입 개선 필요 - string 컬럼에 increment / decrement 허용됨
       // 이상적으로는 숫자 타입 컬럼만 허용해야 함
-      db.table("users").where("id", 1).increment("username", 1);
-      db.table("users").where("id", 1).decrement("username", 1);
+      db.table("users").where("id", userId).increment("username", 1);
+      db.table("users").where("id", userId).decrement("username", 1);
 
       // JOIN 후 increment / decrement
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
 
-      joinQuery.where("employees.id", 1).increment("employees.user_id", 1);
-      joinQuery.where("users.id", 1).decrement("employees.department_id", 1);
+      joinQuery.where("employees.id", employeeId).increment("employees.user_id", 1);
+      joinQuery.where("users.id", userId).decrement("employees.department_id", 1);
 
       // @ts-expect-error - JOIN 후 prefix 없이 사용 불가
-      joinQuery.where("employees.id", 1).increment("user_id", 1);
+      joinQuery.where("employees.id", employeeId).increment("user_id", 1);
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼
-      joinQuery.where("employees.id", 1).increment("departments.id", 1);
+      joinQuery.where("employees.id", employeeId).increment("departments.id", 1);
 
-      const incrementResult = await db.table("employees").where("id", 1).increment("user_id", 1);
-      const decrementResult = await db.table("employees").where("id", 1).decrement("user_id", 1);
+      const incrementResult = await db
+        .table("employees")
+        .where("id", employeeId)
+        .increment("department_id", 1);
+      const decrementResult = await db
+        .table("employees")
+        .where("id", employeeId)
+        .decrement("department_id", 1);
 
       // 타입 검증
       expectTypeOf(incrementResult).toEqualTypeOf<number>();

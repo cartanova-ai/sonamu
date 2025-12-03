@@ -625,14 +625,14 @@ describe("Upsert Builder", () => {
 
       // 부모(users) 테이블 등록
       const userRef = ub.register("users", {
-        email: "parent@test.com",
+        email: `parent-${Date.now()}@test.com`,
         username: "부모유저",
         password: "pw",
         role: "normal",
       });
 
       // 자식(employees) 테이블 등록
-      ub.register("employees", { user_id: userRef, employee_number: "EMP001" });
+      ub.register("employees", { user_id: userRef, employee_number: `EMP-REF-${Date.now()}` });
 
       // [expectUB] 치환 전: UBRef 그대로 저장
       const empRowBefore = ub.getTable("employees").rows[0];
@@ -670,9 +670,11 @@ describe("Upsert Builder", () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      // 부모(users)와 자식(employees) 모두 register
+      // 부모(users)와 자식(employees) 모두 register (unique 값 사용)
+      const employeeNumber = `EMP-ORD-${Date.now()}`;
+
       const userRef = ub.register("users", {
-        email: "order@test.com",
+        email: `order-${Date.now()}@test.com`,
         username: "순서테스트",
         password: "pw",
         role: "normal",
@@ -680,7 +682,7 @@ describe("Upsert Builder", () => {
 
       ub.register("employees", {
         user_id: userRef,
-        employee_number: "EMP999",
+        employee_number: employeeNumber,
       });
 
       // 잘못된 순서: 자식 테이블을 먼저 upsert 시도 → 에러
@@ -707,7 +709,7 @@ describe("Upsert Builder", () => {
       expect(employee).toMatchObject({
         id: empId,
         user_id: userId, // ← 올바른 참조
-        employee_number: "EMP999",
+        employee_number: employeeNumber,
       });
     });
 
@@ -976,10 +978,11 @@ describe("Upsert Builder", () => {
     test("updateBatch() - 복합 키로 매칭", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
+      const timestamp = Date.now();
 
       // 1단계: user 생성 (employee가 참조할 user_id를 얻기 위함)
       ub.register("users", {
-        email: "emp-test@test.com",
+        email: `emp-test-${timestamp}@test.com`,
         username: "직원테스트",
         password: "pw",
         role: "normal",
@@ -988,9 +991,9 @@ describe("Upsert Builder", () => {
 
       // 2단계: employees 3개 생성
       const initialEmployees = [
-        { user_id: userId, employee_number: "EMP001", salary: 50000 },
-        { user_id: userId, employee_number: "EMP002", salary: 60000 },
-        { user_id: userId, employee_number: "EMP003", salary: 70000 },
+        { user_id: userId, employee_number: `EMP-BATCH1-${timestamp}`, salary: 50000 },
+        { user_id: userId, employee_number: `EMP-BATCH2-${timestamp}`, salary: 60000 },
+        { user_id: userId, employee_number: `EMP-BATCH3-${timestamp}`, salary: 70000 },
       ];
 
       for (const emp of initialEmployees) {
@@ -1014,9 +1017,9 @@ describe("Upsert Builder", () => {
 
       // 3단계: 복합 키(user_id, employee_number)로 수정할 데이터 register
       const employeesToUpdate = [
-        { user_id: userId, employee_number: "EMP001", salary: 55000 },
-        { user_id: userId, employee_number: "EMP002", salary: 65000 },
-        { user_id: userId, employee_number: "EMP003", salary: 75000 },
+        { user_id: userId, employee_number: `EMP-BATCH1-${timestamp}`, salary: 55000 },
+        { user_id: userId, employee_number: `EMP-BATCH2-${timestamp}`, salary: 65000 },
+        { user_id: userId, employee_number: `EMP-BATCH3-${timestamp}`, salary: 75000 },
       ];
 
       for (const emp of employeesToUpdate) {
