@@ -246,24 +246,24 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
     // Try as TypeScript resolution
     return (async () => {
       if (!specifier.startsWith(".")) {
-      // Fully-qualified imports (패키지 import)인 경우입니다.
-      // 먼저 Node.js의 기본 resolver를 사용하여 실제 패키지 엔트리 포인트를 찾은 뒤,
-      // 그것이 /build/ 또는 /dist/ 또는 /node_modules/ 디렉토리를 포함하는지 확인하여,
-      // 만약 빌드된 .js 파일이라는 확신이 들면 그대로 사용하고, 아니라면 TypeScript resolution을 시도합니다.
-      //
-      // 배경:
-      // - workspace 패키지(예: @sonamu-kit/hot-hook)는 node_modules에 없고 modules/ 디렉토리에 있습니다
-      // - pnpm workspace에서는 node_modules에 심볼릭 링크를 만들지만, Node.js의 nextResolve는
-      //   심볼릭 링크를 따라가서 실제 경로(예: /Users/.../modules/hot-hook/build/src/hot.js)를 반환합니다
-      // - 따라서 node_modules 체크(335줄)에 걸리지 않아서 TypeScript resolution까지 들어옵니다
-      // - 하지만 workspace 패키지는 이미 빌드된 파일(build/, dist/)을 사용해야 하므로,
-      //   소스 파일(src/)을 찾으려고 시도하면 안 됩니다
-      //
-      // 해결 방법:
-      // - 패키지 import는 먼저 nextResolve를 호출해서 Node.js 기본 resolver가 처리하게 합니다
-      // - Node.js 기본 resolver는 package.json의 exports를 보고 빌드된 파일을 찾아줍니다
-      // - 결과 경로가 build/, dist/, node_modules/ 중 하나를 포함하면 그대로 사용합니다
-      // - 이렇게 하면 workspace 패키지의 빌드된 파일을 사용하고, 소스 파일을 찾으려 하지 않습니다
+        // Fully-qualified imports (패키지 import)인 경우입니다.
+        // 먼저 Node.js의 기본 resolver를 사용하여 실제 패키지 엔트리 포인트를 찾은 뒤,
+        // 그것이 /build/ 또는 /dist/ 또는 /node_modules/ 디렉토리를 포함하는지 확인하여,
+        // 만약 빌드된 .js 파일이라는 확신이 들면 그대로 사용하고, 아니라면 TypeScript resolution을 시도합니다.
+        //
+        // 배경:
+        // - workspace 패키지(예: @sonamu-kit/hot-hook)는 node_modules에 없고 modules/ 디렉토리에 있습니다
+        // - pnpm workspace에서는 node_modules에 심볼릭 링크를 만들지만, Node.js의 nextResolve는
+        //   심볼릭 링크를 따라가서 실제 경로(예: /Users/.../modules/hot-hook/build/src/hot.js)를 반환합니다
+        // - 따라서 node_modules 체크(335줄)에 걸리지 않아서 TypeScript resolution까지 들어옵니다
+        // - 하지만 workspace 패키지는 이미 빌드된 파일(build/, dist/)을 사용해야 하므로,
+        //   소스 파일(src/)을 찾으려고 시도하면 안 됩니다
+        //
+        // 해결 방법:
+        // - 패키지 import는 먼저 nextResolve를 호출해서 Node.js 기본 resolver가 처리하게 합니다
+        // - Node.js 기본 resolver는 package.json의 exports를 보고 빌드된 파일을 찾아줍니다
+        // - 결과 경로가 build/, dist/, node_modules/ 중 하나를 포함하면 그대로 사용합니다
+        // - 이렇게 하면 workspace 패키지의 빌드된 파일을 사용하고, 소스 파일을 찾으려 하지 않습니다
         const nextResult = await nextResolve(specifier, context);
         const nextResultUrl = new URL(nextResult.url);
 
