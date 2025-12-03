@@ -21,7 +21,6 @@ export class Template__model extends Template {
   }
 
   async render({ entityId }: TemplateOptions["model"]) {
-    Naite.t("step", "render:model");
     Naite.t("render", { entityId });
 
     const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);

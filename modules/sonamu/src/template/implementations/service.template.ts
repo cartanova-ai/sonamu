@@ -30,7 +30,6 @@ export class Template__service extends Template {
   }
 
   render({ namesRecord }: TemplateOptions["service"]) {
-    Naite.t("step", "render");
     Naite.t("render", { namesRecord });
 
     const {
