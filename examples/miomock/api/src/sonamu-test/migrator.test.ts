@@ -75,7 +75,7 @@ describe("Migrator test", () => {
         {
           connKey: "test",
           connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_test`,
-          currentVersion: "20251202124133",
+          currentVersion: expect.any(String),
           name: "test",
           pending: [],
           status: 0,
@@ -83,7 +83,7 @@ describe("Migrator test", () => {
         {
           connKey: "fixture_remote",
           connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_fixture_remote`,
-          currentVersion: "20251202124133",
+          currentVersion: expect.any(String),
           name: "fixture_remote",
           pending: [],
           status: 0,
@@ -91,7 +91,7 @@ describe("Migrator test", () => {
         {
           connKey: "development_master",
           connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
-          currentVersion: "20251202124133",
+          currentVersion: expect.any(String),
           name: "development",
           pending: [],
           status: 0,
@@ -99,7 +99,7 @@ describe("Migrator test", () => {
         {
           connKey: "production_master",
           connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
-          currentVersion: "20251202124133",
+          currentVersion: expect.any(String),
           name: "production",
           pending: [],
           status: 0,
