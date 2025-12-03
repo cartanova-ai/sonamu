@@ -2,7 +2,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import { Button, Form, Icon, Input } from "semantic-ui-react";
+import { Button, Form, Icon, TextArea } from "semantic-ui-react";
 import type { FixtureRecord } from "sonamu";
 
 type ToolState = "idle" | "running" | "success" | "error";
@@ -148,13 +148,17 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
   return (
     <div className="chat-compact">
       <Form onSubmit={handleSubmit} className="chat-input-form">
-        <Input
-          fluid
-          action
+        <TextArea
           placeholder="픽스쳐 수정 요청을 입력하세요..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={isLoading}
+          onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+            if (e.key === "Enter" && e.metaKey) {
+              e.preventDefault();
+              handleSubmit(e);
+            }
+          }}
         />
         {isLoading ? (
           <Button type="button" color="red" onClick={stop}>
