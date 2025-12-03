@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Task 프로젝트 임시 조치 */
+
 import type { Knex } from "knex";
 import { findRoute, type RouterContext } from "rou3";
 import { isSonamuTaskError } from "../errors";
