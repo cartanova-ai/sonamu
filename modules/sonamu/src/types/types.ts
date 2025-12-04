@@ -602,16 +602,199 @@ export type RenderingNode = {
   nullable?: boolean;
 };
 
+const basePropFields = {
+  name: z.string(),
+  desc: z.string().optional(),
+  nullable: z.boolean().optional(),
+  toFilter: z.literal(true).optional(),
+  dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
+};
+
+// 부가 필드가 필요없는 prop
+const basePropFieldsWithoutAdditional = z.object({
+  ...basePropFields,
+  type: z.union([
+    z.literal("boolean"),
+    z.literal("date"),
+    z.literal("datetime"),
+    z.literal("time"),
+    z.literal("timestamp"),
+    z.literal("uuid"),
+  ]),
+});
+
+// 숫자 타입 공통 (unsigned)
+const numericFields = {
+  unsigned: z.boolean().optional(),
+};
+
+// precision/scale 필드
+const precisionScaleFields = {
+  precision: z.number(),
+  scale: z.number(),
+};
+
+// 각 타입별 스키마 정의
+const integerPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("integer"),
+  ...numericFields,
+});
+
+const bigIntegerPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("bigInteger"),
+  ...numericFields,
+});
+
+const stringPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("string"),
+  length: z.number(),
+});
+
+const textPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("text"),
+  textType: z.enum(["text", "mediumtext", "longtext"]),
+});
+
+const enumPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("enum"),
+  id: z.string(),
+  length: z.number(),
+});
+
+const floatPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("float"),
+  ...numericFields,
+  ...precisionScaleFields,
+});
+
+const doublePropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("double"),
+  ...numericFields,
+  ...precisionScaleFields,
+});
+
+const decimalPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("decimal"),
+  ...numericFields,
+  ...precisionScaleFields,
+});
+
+const jsonPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("json"),
+  id: z.string(),
+});
+
+const virtualPropSchema = z.object({
+  ...basePropFields,
+  type: z.literal("virtual"),
+  id: z.string(),
+});
+
+// Relation 타입은 relationType에 따라 세분화
+const baseRelationFields = {
+  ...basePropFields,
+  type: z.literal("relation"),
+  with: z.string(),
+};
+
+// RelationOn 타입
+const relationOnSchema = z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]);
+
+const belongsToOneRelationPropSchema = z.object({
+  ...baseRelationFields,
+  relationType: z.literal("BelongsToOne"),
+  customJoinClause: z.string().optional(),
+  useConstraint: z.boolean().optional(),
+  onUpdate: relationOnSchema.optional(),
+  onDelete: relationOnSchema.optional(),
+});
+
+const hasManyRelationPropSchema = z.object({
+  ...baseRelationFields,
+  relationType: z.literal("HasMany"),
+  joinColumn: z.string(),
+  fromColumn: z.string().optional(),
+});
+
+const manyToManyRelationPropSchema = z.object({
+  ...baseRelationFields,
+  relationType: z.literal("ManyToMany"),
+  joinTable: z.string(),
+  onUpdate: relationOnSchema,
+  onDelete: relationOnSchema,
+});
+
+const oneToOneRelationPropSchema = z
+  .object({
+    ...baseRelationFields,
+    relationType: z.literal("OneToOne"),
+    customJoinClause: z.string().optional(),
+    hasJoinColumn: z.literal(true),
+    useConstraint: z.boolean().optional(),
+    onUpdate: relationOnSchema.optional(),
+    onDelete: relationOnSchema.optional(),
+  })
+  .or(
+    z.object({
+      ...baseRelationFields,
+      relationType: z.literal("OneToOne"),
+      customJoinClause: z.string().optional(),
+      hasJoinColumn: z.literal(false),
+    }),
+  );
+
+const relationPropSchema = z.union([
+  belongsToOneRelationPropSchema,
+  hasManyRelationPropSchema,
+  manyToManyRelationPropSchema,
+  oneToOneRelationPropSchema,
+]);
+
+// discriminatedUnion으로 합치기
+const entityPropSchema = z
+  .discriminatedUnion("type", [
+    basePropFieldsWithoutAdditional,
+    integerPropSchema,
+    bigIntegerPropSchema,
+    stringPropSchema,
+    textPropSchema,
+    enumPropSchema,
+    floatPropSchema,
+    doublePropSchema,
+    decimalPropSchema,
+    jsonPropSchema,
+    virtualPropSchema,
+    // relation은 discriminatedUnion이 아닌 union이므로 별도 처리 필요
+  ])
+  .or(relationPropSchema);
+
+// EntityIndex 스키마 정의
+const entityIndexSchema = z.object({
+  type: z.enum(["index", "unique", "fulltext"]),
+  columns: z.array(z.string()),
+  name: z.string().optional(),
+  parser: z.enum(["built-in", "ngram"]).optional(),
+});
+
 export const TemplateOptions = z.object({
   entity: z.object({
-    entityId: z.string(),
-    parentId: z.string().optional(),
-    title: z.string(),
-    table: z.string().optional(),
-    props: z.array(z.object({})).optional(),
-    indexes: z.array(z.object({})).optional(),
-    subsets: z.object({}).optional(),
-    enums: z.object({}).optional(),
+    id: z.string().describe("PascalCase로 된 Entity ID"),
+    title: z.string().describe("Entity 이름"),
+    table: z.string().describe("snake_case로 된 테이블명").optional(),
+    parentId: z.string().optional().describe("부모 Entity ID"),
+    props: z.array(entityPropSchema).optional(),
+    indexes: z.array(entityIndexSchema).optional(),
+    subsets: z.record(z.string(), z.array(z.string())).optional(),
+    enums: z.record(z.string(), z.record(z.string(), z.string())).optional(),
   }),
   init_types: z.object({
     entityId: z.string(),
