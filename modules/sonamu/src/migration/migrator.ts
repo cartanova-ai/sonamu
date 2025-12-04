@@ -14,7 +14,8 @@ import type { GenMigrationCode, MigrationSet } from "../types/types";
 import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
-import { getMigrationSetFromDB, getMigrationSetFromEntity } from "./migration-set";
+import { getMigrationSetFromEntity } from "./migration-set";
+import { MySQLSchemaReader } from "./mysql-schema-reader";
 import type { ConnString, MigrationCode, MigrationStatus } from "./types";
 
 export class Migrator {
@@ -360,7 +361,7 @@ export class Migrator {
     const codes: GenMigrationCode[] = (
       await Promise.all(
         entitySets.map(async (entitySet) => {
-          const dbSet = await getMigrationSetFromDB(compareDB, entitySet.table);
+          const dbSet = await MySQLSchemaReader.getMigrationSetFromDB(compareDB, entitySet.table);
 
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
