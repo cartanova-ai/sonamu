@@ -3,7 +3,7 @@
 import chalk from "chalk";
 import type { Knex } from "knex";
 import type { DatabaseSchemaExtend } from "../types/types";
-import type { DBPreset } from "./db";
+import type { DBClass, DBPreset } from "./db";
 import { Puri } from "./puri";
 import type { ColumnKeys, OmitMetadataColumns, PuriTable } from "./puri.types";
 import type { UBRef, UpsertBuilder } from "./upsert-builder";
@@ -21,6 +21,10 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     public knex: Knex,
     public upsertBuilder: UpsertBuilder,
   ) {}
+
+  // ============================================================================
+  // Public API
+  // ============================================================================
 
   raw(sql: string): Knex.Raw {
     return this.knex.raw(sql);
@@ -105,22 +109,13 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
       knex: Knex | Knex.Transaction,
       upsertBuilder: UpsertBuilder,
     ) => {
-      return knex.transaction(
-        async (trx) => {
-          const trxWrapper = new PuriTransactionWrapper(trx, upsertBuilder);
-
-          // TransactionContext에 트랜잭션 저장
-          DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
-
-          try {
-            return await callback(trxWrapper);
-          } finally {
-            // 트랜잭션 제거
-            DB.getTransactionContext().deleteTransaction(dbPreset);
-          }
-        },
-        { isolationLevel: isolation, readOnly },
-      );
+      if (readOnly) {
+        // Knex의 readOnly 옵션이 MySQL에서 작동하지 않으므로 직접 구현
+        return this._startReadOnlyTrx(knex, upsertBuilder, isolation, dbPreset, callback, DB);
+      } else {
+        // 일반 트랜잭션은 Knex의 기본 기능 사용
+        return this._startNormalTrx(knex, upsertBuilder, isolation, dbPreset, callback, DB);
+      }
     };
 
     // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
@@ -131,6 +126,8 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     // 해당 preset의 트랜잭션이 이미 있으면 SAVEPOINT로 중첩 트랜잭션 생성
     const existingTrx = existingContext.getTransaction(dbPreset);
     if (existingTrx) {
+      // 중첩 트랜잭션에서는 READ ONLY를 적용할 수 없음
+      if (readOnly) throw new Error("Nested READ ONLY transaction not supported");
       return startTransaction(existingTrx.trx, existingTrx.upsertBuilder);
     } else {
       // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
@@ -170,10 +167,186 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     return this.upsertBuilder.updateBatch(this.knex, tableName, options);
   }
 
-  // 트랜잭션 연결 테스트용
   async debugTransaction() {
     const info = await this.getTransactionInfo();
     console.log(`${chalk.cyan("[Puri Transaction]")} ${chalk.magenta(info)}`);
+  }
+
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+
+  /**
+   * 일반 트랜잭션 시작 (Knex 기본 기능 사용)
+   */
+  private async _startNormalTrx<T>(
+    knex: Knex | Knex.Transaction,
+    upsertBuilder: UpsertBuilder,
+    isolation: TransactionalOptions["isolation"],
+    dbPreset: DBPreset,
+    callback: (trx: PuriTransactionWrapper) => Promise<T>,
+    DB: DBClass,
+  ): Promise<T> {
+    return knex.transaction(
+      async (trx) => {
+        const trxWrapper = new PuriTransactionWrapper(trx, upsertBuilder);
+
+        // TransactionContext에 트랜잭션 저장
+        DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
+
+        try {
+          return await callback(trxWrapper);
+        } finally {
+          // 트랜잭션 제거
+          DB.getTransactionContext().deleteTransaction(dbPreset);
+        }
+      },
+      { isolationLevel: isolation },
+    );
+  }
+
+  /**
+   * READ ONLY 트랜잭션 시작 (MySQL 전용)
+   *
+   * Knex의 readOnly 옵션이 MySQL에서 제대로 작동하지 않는 문제를 우회하기 위해
+   * 직접 START TRANSACTION READ ONLY SQL을 실행
+   *
+   * - DB connection을 명시적으로 획득하여 같은 연결에서 모든 쿼리 실행
+   * - Proxy를 사용하여 Knex API와 호환되는 트랜잭션 객체 생성
+   * - 수동 커밋/롤백 구현
+   *
+   * NOTE: PostgreSQL 지원이 필요한 경우 PosgreSQL 호환되도록 메소드 분리 필요
+   */
+  private async _startReadOnlyTrx<T>(
+    knex: Knex | Knex.Transaction,
+    upsertBuilder: UpsertBuilder,
+    isolation: TransactionalOptions["isolation"],
+    dbPreset: DBPreset,
+    callback: (trx: PuriTransactionWrapper) => Promise<T>,
+    DB: DBClass,
+  ): Promise<T> {
+    const client: Knex.Client = knex.client;
+    let connection: any;
+    // connection 해제 여부 추적 (Proxy commit/rollback과 cleanup이 상태를 공유)
+    const state = { released: false };
+
+    try {
+      // Step 1: DB 연결 획득 (같은 연결을 계속 사용해야 트랜잭션이 유지됨)
+      connection = await client.acquireConnection();
+
+      // Step 2: START TRANSACTION READ ONLY 실행 (MySQL)
+      let sql = "START TRANSACTION";
+      if (isolation) {
+        sql += ` ISOLATION LEVEL ${isolation.replace(/\s+/g, " ").toUpperCase()}`;
+      }
+      sql += " READ ONLY";
+      await client.query(connection, { sql });
+
+      // Step 3: Knex 호환 트랜잭션 Proxy 객체 생성
+      const manualTrx = this._createManualTrx(knex, client, connection, state);
+
+      // Step 4: TransactionContext에 트랜잭션 등록
+      const trxWrapper = new PuriTransactionWrapper(manualTrx, upsertBuilder);
+      DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
+
+      try {
+        // Step 5: 콜백 실행 및 자동 커밋
+        const result = await callback(trxWrapper);
+        await manualTrx.commit();
+        return result;
+      } catch (error) {
+        // Step 6: 에러 시 롤백
+        await manualTrx.rollback();
+        throw error;
+      } finally {
+        // Step 7: TransactionContext에서 제거
+        DB.getTransactionContext().deleteTransaction(dbPreset);
+      }
+    } catch (error) {
+      // 예외 발생 시 연결 정리
+      if (connection && !state.released) {
+        try {
+          await client.query(connection, { sql: "ROLLBACK" });
+          await client.releaseConnection(connection);
+        } catch {
+          // 원래 에러 전파
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 수동으로 시작한 트랜잭션용 Knex 호환 Proxy 객체 생성
+   *
+   * 직접 SQL로 트랜잭션을 시작한 경우 모든 후속 쿼리가 같은 DB connection에서 실행되도록 보장
+   * Proxy를 사용하여 Knex의 connection pooling을 우회하고 트랜잭션 일관성을 유지
+   *
+   * 사용 사례:
+   * - READ ONLY 트랜잭션
+   * - 특수 isolation level 설정
+   * - Knex가 지원하지 않는 트랜잭션 옵션
+   */
+  private _createManualTrx(
+    knex: Knex | Knex.Transaction,
+    client: Knex.Client,
+    connection: any,
+    state: { released: boolean },
+  ): Knex.Transaction {
+    return new Proxy(
+      (tableName: string) => {
+        return (knex as Knex)(tableName).connection(connection);
+      },
+      {
+        get(_target: unknown, prop: string | symbol) {
+          switch (prop) {
+            case "commit":
+              return async () => {
+                if (!state.released) {
+                  await client.query(connection, { sql: "COMMIT" });
+                  await client.releaseConnection(connection);
+                  state.released = true;
+                }
+              };
+
+            case "rollback":
+              return async (err?: Error) => {
+                if (!state.released) {
+                  await client.query(connection, { sql: "ROLLBACK" });
+                  await client.releaseConnection(connection);
+                  state.released = true;
+                }
+                if (err) throw err;
+              };
+
+            case "isTransaction":
+              return true;
+
+            case "client":
+              return Object.assign(Object.create(client), {
+                acquireConnection: async () => connection,
+              });
+
+            case "raw":
+              return (sql: string, bindings?: any) => {
+                const queryObj = (knex as any).raw(sql, bindings);
+                queryObj.client = {
+                  ...queryObj.client,
+                  acquireConnection: async () => connection,
+                };
+                return queryObj;
+              };
+
+            default:
+              // 나머지 속성은 원본 knex 객체에서 가져옴
+              return (knex as any)[prop];
+          }
+        },
+        apply(target: any, _thisArg: unknown, argArray: any[]) {
+          return target(...argArray);
+        },
+      },
+    );
   }
 
   private async getTransactionInfo(): Promise<string> {

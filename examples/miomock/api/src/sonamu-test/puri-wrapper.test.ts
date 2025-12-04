@@ -1,5 +1,6 @@
 import assert from "assert";
 import type { Knex } from "knex";
+import { Puri } from "sonamu";
 import { describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
@@ -430,7 +431,7 @@ describe("Puri Wrapper", () => {
     describe("B-3. 트랜잭션 옵션", () => {
       // 실제 isolation level 동작 검증(Dirty Read 등)은 두 개의 독립적인 DB 연결이 필요
       // isolation level 옵션 전달과 기본 동작만 확인
-      test("isolation 옵션 전달 확인", async () => {
+      test("isolation 옵션", async () => {
         const wdb = UserModel.getPuri("w");
         const isolationLevels: Array<Exclude<Knex.IsolationLevels, "snapshot">> = [
           "read uncommitted",
@@ -467,14 +468,9 @@ describe("Puri Wrapper", () => {
         }
       });
 
-      /**
-       *  TODO: readOnly: true 옵션이 전달되고 트랜잭션이 정상 동작하는지 확인 필요
-       *  참고: MySQL의 readOnly 트랜잭션은 트랜잭션 시작 전에 SET TRANSACTION READ ONLY를 실행해야 하는데,
-       *  Knex의 transaction() 메서드는 트랜잭션 시작 후 콜백을 실행하므로 완벽한 지원이 어렵습니다.
-       */
-      test("readOnly 옵션- true", async () => {
+      test("readOnly:true - SELECT 정상", async () => {
         const wdb = UserModel.getPuri("w");
-        const testEmail = "readonly-test@test.com";
+        const testEmail = `readonly-test-${Date.now()}@test.com`;
 
         // readOnly 트랜잭션 외부에서 user 생성
         const [userId] = await wdb.table("users").insert({
@@ -504,7 +500,94 @@ describe("Puri Wrapper", () => {
         );
       });
 
-      test.todo("readOnly 옵션- false");
+      test("readOnly:true - INSERT 차단", async () => {
+        const wdb = UserModel.getPuri("w");
+        const testEmail = `readonly-insert-block-${Date.now()}@test.com`;
+
+        // readOnly: true 트랜잭션에서 INSERT 시도
+        const insertPromise = wdb.transaction(
+          async (trx) => {
+            await trx.table("users").insert({
+              email: testEmail,
+              username: "should_fail",
+              password: "pw",
+              role: "normal",
+            });
+          },
+          { readOnly: true },
+        );
+
+        // INSERT 차단되어야 함
+        await expect(insertPromise).rejects.toThrow();
+
+        // 데이터가 생성되지 않았는지 확인
+        const rdb = UserModel.getPuri("r");
+        const user = await rdb.table("users").where("email", testEmail).first();
+        expect(user).toBeUndefined();
+      });
+
+      test("readOnly:true - UPDATE 차단", async () => {
+        const wdb = UserModel.getPuri("w");
+        const testEmail = `readonly-update-block-${Date.now()}@test.com`;
+
+        // 먼저 데이터 생성
+        const [userId] = await wdb.table("users").insert({
+          email: testEmail,
+          username: "original_name",
+          password: "pw",
+          role: "normal",
+        });
+
+        assert(userId);
+
+        // readOnly: true 트랜잭션에서 UPDATE 시도
+        const updatePromise = wdb.transaction(
+          async (trx) => {
+            await trx.table("users").where("id", userId).update({ username: "modified_name" });
+          },
+          { readOnly: true },
+        );
+
+        // UPDATE가 차단되어야 함
+        await expect(updatePromise).rejects.toThrow();
+
+        // 데이터가 변경되지 않았는지 확인
+        const rdb = UserModel.getPuri("r");
+        const user = await rdb.table("users").where("id", userId).first();
+        expect(user).toMatchObject({ username: "original_name" });
+      });
+
+      test("readOnly:true - DELETE 차단", async () => {
+        const wdb = UserModel.getPuri("w");
+        const testEmail = `readonly-delete-block-${Date.now()}@test.com`;
+
+        // 먼저 데이터 생성
+        const [userId] = await wdb.table("users").insert({
+          email: testEmail,
+          username: "to_be_deleted",
+          password: "pw",
+          role: "normal",
+        });
+
+        assert(userId);
+
+        // readOnly: true 트랜잭션에서 DELETE 시도
+        const deletePromise = wdb.transaction(
+          async (trx) => {
+            await trx.table("users").where("id", userId).delete();
+          },
+          { readOnly: true },
+        );
+
+        // DELETE 차단되어야 함
+        await expect(deletePromise).rejects.toThrow();
+
+        // 데이터가 삭제되지 않았는지 확인
+        const rdb = UserModel.getPuri("r");
+        const user = await rdb.table("users").where("id", userId).first();
+        expect(user).toBeDefined();
+        expect(user).toMatchObject({ email: testEmail });
+      });
     });
 
     describe("B-4. PuriTransactionWrapper", () => {
