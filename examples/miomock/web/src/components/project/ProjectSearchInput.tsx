@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { ProjectSearchFieldDropdown } from "src/components/project/ProjectSearchFieldDropdown";
+import { ProjectSearchFieldDropdown } from "../../components/project/ProjectSearchFieldDropdown";
 
 export function ProjectSearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

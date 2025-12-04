@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { TagSearchFieldDropdown } from "src/components/tag/TagSearchFieldDropdown";
+import { TagSearchFieldDropdown } from "../../components/tag/TagSearchFieldDropdown";
 
 export function TagSearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

@@ -2,16 +2,16 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { DepartmentIdAsyncSelect } from "src/components/department/DepartmentIdAsyncSelect";
-import { UserIdAsyncSelect } from "src/components/user/UserIdAsyncSelect";
-import { EmployeeService } from "src/services/employee/employee.service";
-import { EmployeeSaveParams } from "src/services/employee/employee.types";
-import type { EmployeeSubsetA } from "src/services/sonamu.generated";
+import { DepartmentIdAsyncSelect } from "../../../components/department/DepartmentIdAsyncSelect";
+import { UserIdAsyncSelect } from "../../../components/user/UserIdAsyncSelect";
+import { EmployeeService } from "../../../services/employee/employee.service";
+import { EmployeeSaveParams } from "../../../services/employee/employee.types";
+import type { EmployeeSubsetA } from "../../../services/sonamu.generated";
 
 export default function EmployeesFormPage() {
   // 라우팅 searchParams

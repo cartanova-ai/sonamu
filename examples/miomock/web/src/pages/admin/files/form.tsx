@@ -2,14 +2,14 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { FileService } from "src/services/file/file.service";
-import { FileSaveParams } from "src/services/file/file.types";
-import type { FileSubsetA } from "src/services/sonamu.generated";
+import { FileService } from "../../../services/file/file.service";
+import { FileSaveParams } from "../../../services/file/file.types";
+import type { FileSubsetA } from "../../../services/sonamu.generated";
 
 export default function FilesFormPage() {
   // 라우팅 searchParams

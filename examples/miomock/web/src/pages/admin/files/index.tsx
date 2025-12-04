@@ -26,15 +26,14 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { ApiLogViewer } from "src/admin-common/ApiLogViewer";
-import { ImageUploader } from "src/admin-common/ImageUploader";
-import { FileOrderBySelect } from "src/components/file/FileOrderBySelect";
-
-import { FileSearchInput } from "src/components/file/FileSearchInput";
-import { FileService } from "src/services/file/file.service";
-import { FileListParams, FileSaveParams } from "src/services/file/file.types";
-import type { FileSubsetA } from "src/services/sonamu.generated";
 import z from "zod";
+import { ApiLogViewer } from "../../../admin-common/ApiLogViewer";
+import { ImageUploader } from "../../../admin-common/ImageUploader";
+import { FileOrderBySelect } from "../../../components/file/FileOrderBySelect";
+import { FileSearchInput } from "../../../components/file/FileSearchInput";
+import { FileService } from "../../../services/file/file.service";
+import { FileListParams, FileSaveParams } from "../../../services/file/file.types";
+import type { FileSubsetA } from "../../../services/sonamu.generated";
 
 type FileListProps = {};
 export default function FileList({}: FileListProps) {

@@ -2,14 +2,14 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { CompanyService } from "src/services/company/company.service";
-import { CompanySaveParams } from "src/services/company/company.types";
-import type { CompanySubsetA } from "src/services/sonamu.generated";
+import { CompanyService } from "../../../services/company/company.service";
+import { CompanySaveParams } from "../../../services/company/company.types";
+import type { CompanySubsetA } from "../../../services/sonamu.generated";
 
 export default function CompaniesFormPage() {
   // 라우팅 searchParams

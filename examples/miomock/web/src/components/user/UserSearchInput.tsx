@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { UserSearchFieldDropdown } from "src/components/user/UserSearchFieldDropdown";
+import { UserSearchFieldDropdown } from "../../components/user/UserSearchFieldDropdown";
 
 export function UserSearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { CompanySearchFieldDropdown } from "src/components/company/CompanySearchFieldDropdown";
+import { CompanySearchFieldDropdown } from "../../components/company/CompanySearchFieldDropdown";
 
 export function CompanySearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

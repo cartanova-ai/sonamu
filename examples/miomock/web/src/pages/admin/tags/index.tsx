@@ -21,11 +21,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { TagOrderBySelect } from "src/components/tag/TagOrderBySelect";
-import { TagSearchInput } from "src/components/tag/TagSearchInput";
-import type { TagSubsetA } from "src/services/sonamu.generated";
-import { TagService } from "src/services/tag/tag.service";
-import { TagListParams } from "src/services/tag/tag.types";
+import { TagOrderBySelect } from "../../../components/tag/TagOrderBySelect";
+import { TagSearchInput } from "../../../components/tag/TagSearchInput";
+import type { TagSubsetA } from "../../../services/sonamu.generated";
+import { TagService } from "../../../services/tag/tag.service";
+import { TagListParams } from "../../../services/tag/tag.types";
 
 type TagListProps = {};
 export default function TagList({}: TagListProps) {

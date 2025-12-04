@@ -5,9 +5,9 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
-import { ProjectService } from "src/services/project/project.service";
-import type { ProjectListParams } from "src/services/project/project.types";
-import type { ProjectSubsetKey, ProjectSubsetMapping } from "src/services/sonamu.generated";
+import { ProjectService } from "../../services/project/project.service";
+import type { ProjectListParams } from "../../services/project/project.types";
+import type { ProjectSubsetKey, ProjectSubsetMapping } from "../../services/sonamu.generated";
 
 export function ProjectIdAsyncSelect<T extends ProjectSubsetKey>({
   subset,

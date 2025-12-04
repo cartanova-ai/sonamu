@@ -5,9 +5,9 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
-import type { TagSubsetKey, TagSubsetMapping } from "src/services/sonamu.generated";
-import { TagService } from "src/services/tag/tag.service";
-import type { TagListParams } from "src/services/tag/tag.types";
+import type { TagSubsetKey, TagSubsetMapping } from "../../services/sonamu.generated";
+import { TagService } from "../../services/tag/tag.service";
+import type { TagListParams } from "../../services/tag/tag.types";
 
 export function TagIdAsyncSelect<T extends TagSubsetKey>({
   subset,

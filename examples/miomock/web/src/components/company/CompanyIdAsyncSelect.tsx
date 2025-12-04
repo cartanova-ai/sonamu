@@ -5,9 +5,9 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
-import { CompanyService } from "src/services/company/company.service";
-import type { CompanyListParams } from "src/services/company/company.types";
-import type { CompanySubsetKey, CompanySubsetMapping } from "src/services/sonamu.generated";
+import { CompanyService } from "../../services/company/company.service";
+import type { CompanyListParams } from "../../services/company/company.types";
+import type { CompanySubsetKey, CompanySubsetMapping } from "../../services/sonamu.generated";
 
 export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   subset,

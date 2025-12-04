@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, Form, Grid, Header, Message, Segment } from "semantic-ui-react";
-import { useAuth } from "src/admin-common/auth";
+import { useAuth } from "../../admin-common/auth";
 
 export default function LoginTestPage() {
   const [email, setEmail] = React.useState("");

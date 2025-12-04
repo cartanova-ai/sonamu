@@ -1,6 +1,6 @@
 import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
-import { UserRole, UserRoleLabel } from "src/services/sonamu.generated";
+import { UserRole, UserRoleLabel } from "../../services/sonamu.generated";
 
 export type UserRoleSelectProps = {
   placeholder?: string;

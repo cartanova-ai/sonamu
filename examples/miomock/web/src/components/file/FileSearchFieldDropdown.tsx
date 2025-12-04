@@ -1,6 +1,6 @@
 import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
-import { FileSearchFieldLabel } from "src/services/sonamu.generated";
+import { FileSearchFieldLabel } from "../../services/sonamu.generated";
 
 export function FileSearchFieldDropdown(props: DropdownProps) {
   const options = Object.entries(FileSearchFieldLabel).map(([key, label]) => {

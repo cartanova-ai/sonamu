@@ -1,6 +1,6 @@
 import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
-import { TagSearchFieldLabel } from "src/services/sonamu.generated";
+import { TagSearchFieldLabel } from "../../services/sonamu.generated";
 
 export function TagSearchFieldDropdown(props: DropdownProps) {
   const options = Object.entries(TagSearchFieldLabel).map(([key, label]) => {

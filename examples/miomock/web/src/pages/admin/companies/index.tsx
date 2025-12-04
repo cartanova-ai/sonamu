@@ -21,11 +21,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { CompanyOrderBySelect } from "src/components/company/CompanyOrderBySelect";
-import { CompanySearchInput } from "src/components/company/CompanySearchInput";
-import { CompanyService } from "src/services/company/company.service";
-import { CompanyListParams } from "src/services/company/company.types";
-import type { CompanySubsetA } from "src/services/sonamu.generated";
+import { CompanyOrderBySelect } from "../../../components/company/CompanyOrderBySelect";
+import { CompanySearchInput } from "../../../components/company/CompanySearchInput";
+import { CompanyService } from "../../../services/company/company.service";
+import { CompanyListParams } from "../../../services/company/company.types";
+import type { CompanySubsetA } from "../../../services/sonamu.generated";
 
 type CompanyListProps = {};
 export default function CompanyList({}: CompanyListProps) {

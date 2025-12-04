@@ -2,18 +2,18 @@ import { BackLink, formatDateTime, upload, useGoBack, useTypeForm } from "@sonam
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { ImageUploader } from "src/admin-common/ImageUploader";
-import { ProjectStatusSelect } from "src/components/project/ProjectStatusSelect";
-import { TagIdAsyncSelect } from "src/components/tag/TagIdAsyncSelect";
-import { ProjectService } from "src/services/project/project.service";
-import { ProjectSaveParams } from "src/services/project/project.types";
-import type { ProjectSubsetA } from "src/services/sonamu.generated";
+import { ImageUploader } from "../../../admin-common/ImageUploader";
 import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
+import { ProjectStatusSelect } from "../../../components/project/ProjectStatusSelect";
+import { TagIdAsyncSelect } from "../../../components/tag/TagIdAsyncSelect";
+import { ProjectService } from "../../../services/project/project.service";
+import { ProjectSaveParams } from "../../../services/project/project.types";
+import type { ProjectSubsetA } from "../../../services/sonamu.generated";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams

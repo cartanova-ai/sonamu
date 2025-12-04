@@ -1,7 +1,7 @@
 import classNames from "classnames";
 import { Link, useLocation } from "react-router-dom";
 import { Button, Icon, type IconProps, Menu } from "semantic-ui-react";
-import { useAuth } from "src/admin-common/auth";
+import { useAuth } from "../admin-common/auth";
 
 interface SidebarProps {
   className?: string;

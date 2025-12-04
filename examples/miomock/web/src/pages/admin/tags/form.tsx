@@ -2,14 +2,14 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import type { TagSubsetA } from "src/services/sonamu.generated";
-import { TagService } from "src/services/tag/tag.service";
-import { TagSaveParams } from "src/services/tag/tag.types";
+import type { TagSubsetA } from "../../../services/sonamu.generated";
+import { TagService } from "../../../services/tag/tag.service";
+import { TagSaveParams } from "../../../services/tag/tag.types";
 
 export default function TagsFormPage() {
   // 라우팅 searchParams

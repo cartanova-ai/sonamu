@@ -2,16 +2,16 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "src/services/sonamu.shared";
+import { defaultCatch } from "../../../services/sonamu.shared";
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+// import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { CompanyIdAsyncSelect } from "src/components/company/CompanyIdAsyncSelect";
-import { DepartmentIdAsyncSelect } from "src/components/department/DepartmentIdAsyncSelect";
-import { DepartmentService } from "src/services/department/department.service";
-import { DepartmentSaveParams } from "src/services/department/department.types";
-import type { DepartmentSubsetA } from "src/services/sonamu.generated";
+import { CompanyIdAsyncSelect } from "../../../components/company/CompanyIdAsyncSelect";
+import { DepartmentIdAsyncSelect } from "../../../components/department/DepartmentIdAsyncSelect";
+import { DepartmentService } from "../../../services/department/department.service";
+import { DepartmentSaveParams } from "../../../services/department/department.types";
+import type { DepartmentSubsetA } from "../../../services/sonamu.generated";
 
 export default function DepartmentsFormPage() {
   // 라우팅 searchParams

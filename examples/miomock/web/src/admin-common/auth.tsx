@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { UserSubsetSS } from "src/services/sonamu.generated";
-import { UserService } from "src/services/user/user.service";
-import type { UserLoginParams } from "src/services/user/user.types";
+import type { UserSubsetSS } from "../services/sonamu.generated";
+import { UserService } from "../services/user/user.service";
+import type { UserLoginParams } from "../services/user/user.types";
 
 interface AuthContextType {
   user: UserSubsetSS | null;

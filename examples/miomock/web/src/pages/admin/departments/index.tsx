@@ -22,11 +22,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { DepartmentOrderBySelect } from "src/components/department/DepartmentOrderBySelect";
-import { DepartmentSearchInput } from "src/components/department/DepartmentSearchInput";
-import { DepartmentService } from "src/services/department/department.service";
-import { DepartmentListParams } from "src/services/department/department.types";
-import type { DepartmentSubsetA } from "src/services/sonamu.generated";
+import { DepartmentOrderBySelect } from "../../../components/department/DepartmentOrderBySelect";
+import { DepartmentSearchInput } from "../../../components/department/DepartmentSearchInput";
+import { DepartmentService } from "../../../services/department/department.service";
+import { DepartmentListParams } from "../../../services/department/department.types";
+import type { DepartmentSubsetA } from "../../../services/sonamu.generated";
 
 type DepartmentListProps = {};
 export default function DepartmentList({}: DepartmentListProps) {

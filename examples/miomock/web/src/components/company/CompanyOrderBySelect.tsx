@@ -1,6 +1,6 @@
 import { Dropdown, type DropdownProps } from "semantic-ui-react";
 
-import { CompanyOrderBy, CompanyOrderByLabel } from "src/services/sonamu.generated";
+import { CompanyOrderBy, CompanyOrderByLabel } from "../../services/sonamu.generated";
 
 export type CompanyOrderBySelectProps = {
   placeholder?: string;

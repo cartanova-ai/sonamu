@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { FileSearchFieldDropdown } from "src/components/file/FileSearchFieldDropdown";
+import { FileSearchFieldDropdown } from "../../components/file/FileSearchFieldDropdown";
 
 export function FileSearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

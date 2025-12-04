@@ -9,13 +9,7 @@ import {
   type SWRError,
   type SwrOptions,
 } from "../sonamu.shared";
-import type {
-  UserListParams,
-  UserLoginParams,
-  UserRegisterParams,
-  UserSaveParams,
-  UserSearchParams,
-} from "./user.types";
+import type { UserListParams, UserLoginParams, UserRegisterParams, UserSaveParams } from "./user.types";
 
 export namespace UserService {
   export function useUser<T extends UserSubsetKey>(
@@ -115,13 +109,6 @@ export namespace UserService {
       method: "POST",
       url: `/api/user/register`,
       data: { params },
-    });
-  }
-
-  export async function search(params: UserSearchParams): Promise<UserSubsetMapping["A"][]> {
-    return fetch({
-      method: "GET",
-      url: `/api/user/search?${qs.stringify({ params })}`,
     });
   }
 
