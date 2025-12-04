@@ -7,7 +7,7 @@ import { EntityManager } from "../entity/entity-manager";
 import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import type { RenderedTemplate } from "../template/template";
-import { Template } from "../template/template";
+import { TemplateManager } from "../template/template-manager";
 import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
@@ -84,7 +84,7 @@ export async function renderTemplate<T extends keyof TemplateOptions>(
 ): Promise<PathAndCode[]> {
   Naite.t("renderTemplate", { key, options });
 
-  const template = Template.find(key);
+  const template = TemplateManager.get(key);
 
   const rendered = await template.render(options);
   const resolved = await resolveRenderedTemplate(key, rendered);
