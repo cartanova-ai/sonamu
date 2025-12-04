@@ -18,8 +18,8 @@ export class Template__entity extends Template {
   }
 
   render(options: TemplateOptions["entity"]) {
-    const { entityId, title, parentId, table } = options;
-    const names = EntityManager.getNamesFromId(entityId);
+    const { id, title, parentId, table } = options;
+    const names = EntityManager.getNamesFromId(id);
 
     const parent = (() => {
       if (parentId) {
@@ -35,8 +35,8 @@ export class Template__entity extends Template {
     return {
       ...this.getTargetAndPath(names, parent?.names ?? names),
       body: JSON.stringify({
-        id: entityId,
-        title: title ?? entityId,
+        id,
+        title: title ?? id,
         parentId,
         table: table ?? names.fsPlural.replace(/-/g, "_"),
         props: options.props?.length
