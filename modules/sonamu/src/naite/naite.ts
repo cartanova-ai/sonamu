@@ -338,7 +338,7 @@ export class NaiteClass {
       .flat()
       .map((trace) => ({
         key: trace.key,
-        value: JSON.parse(JSON.stringify(trace.data)), // 직렬화 가능한 것만 남기려는 눈물겨운 노력,, 안그러면 task.meta에 안 들어가그든요
+        value: JSON.parse(JSON.stringify(trace.data ?? "")), // 직렬화 가능한 것만 남기려는 눈물겨운 노력,, 안그러면 task.meta에 안 들어가그든요, (undefined 처리 추가)
         filePath: trace.stack[0]?.filePath ?? "",
         lineNumber: trace.stack[0]?.lineNumber ?? 0,
         at: trace.at.toISOString(),

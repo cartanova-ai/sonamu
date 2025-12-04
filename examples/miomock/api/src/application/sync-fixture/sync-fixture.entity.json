@@ -3,21 +3,59 @@
   "table": "sync_fixtures",
   "title": "Syncer 테스트 픽스처",
   "props": [
-    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
       "name": "created_at",
-      "type": "timestamp",
+      "type": "date",
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP"
     },
-    { "name": "updated_at", "type": "timestamp", "nullable": true, "desc": "수정일시" },
+    {
+      "name": "updated_at",
+      "type": "date",
+      "nullable": true,
+      "desc": "수정일시"
+    },
     { "name": "name", "type": "string", "length": 128, "desc": "이름" },
-    { "name": "code", "type": "string", "length": 32, "nullable": true, "desc": "코드" },
-    { "name": "status", "type": "enum", "length": 32, "id": "SyncFixtureStatus", "desc": "상태" },
-    { "name": "priority", "type": "integer", "nullable": true, "desc": "우선순위" },
-    { "name": "is_active", "type": "boolean", "desc": "활성여부", "dbDefault": "1" },
-    { "name": "description", "type": "text", "textType": "text", "nullable": true, "desc": "설명" },
-    { "name": "tags", "type": "json", "id": "StringArray", "nullable": true, "desc": "태그목록" }
+    {
+      "name": "code",
+      "type": "string",
+      "length": 32,
+      "nullable": true,
+      "desc": "코드"
+    },
+    {
+      "name": "status",
+      "type": "enum",
+      "length": 32,
+      "id": "SyncFixtureStatus",
+      "desc": "상태"
+    },
+    {
+      "name": "priority",
+      "type": "integer",
+      "nullable": true,
+      "desc": "우선순위"
+    },
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "desc": "활성여부",
+      "dbDefault": "false"
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "nullable": true,
+      "desc": "설명"
+    },
+    {
+      "name": "tags",
+      "type": "json",
+      "id": "StringArray",
+      "nullable": true,
+      "desc": "태그목록"
+    }
   ],
   "indexes": [],
   "subsets": {

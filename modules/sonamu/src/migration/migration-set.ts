@@ -2,20 +2,18 @@ import inflection from "inflection";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
+  type EntityProp,
   isBelongsToOneRelationProp,
-  isDecimalProp,
-  isEnumProp,
-  isFloatProp,
   isHasManyRelationProp,
-  isIntegerProp,
   isManyToManyRelationProp,
+  isNumberProp,
+  isNumericProp,
   isOneToOneRelationProp,
   isRelationProp,
   isStringProp,
-  isTextProp,
   isVirtualProp,
-  type KnexColumnType,
   type MigrationColumn,
+  type MigrationColumnType,
   type MigrationForeign,
   type MigrationIndex,
   type MigrationJoinTable,
@@ -30,7 +28,6 @@ import {
 export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTable {
   const migrationSet: MigrationSetAndJoinTable = entity.props.reduce(
     (r, prop) => {
-      // Naite.t("getMSFromEntity:prop", { entity: entity.id, prop: prop.name });
       // virtual 필드 제외
       if (isVirtualProp(prop)) {
         return r;
@@ -42,23 +39,9 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
 
       // 일반 컬럼
       if (!isRelationProp(prop)) {
-        // type resolve
-        let type: KnexColumnType;
-        if (isTextProp(prop)) {
-          type = prop.textType;
-        } else if (isEnumProp(prop)) {
-          type = "string";
-        } else {
-          type = prop.type as KnexColumnType;
-        }
-
         const column = {
           name: prop.name,
-          type,
-          ...(isIntegerProp(prop) && { unsigned: prop.unsigned === true }),
-          ...((isStringProp(prop) || isEnumProp(prop)) && {
-            length: prop.length,
-          }),
+          type: resolveEntityPropTypeToMigrationColumnType(prop),
           nullable: prop.nullable === true,
           ...(() => {
             if (prop.dbDefault !== undefined) {
@@ -68,11 +51,16 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
             }
             return {};
           })(),
-          // FIXME: float(N, M) deprecated
-          // Decimal, Float 타입의 경우 precision, scale 추가
-          ...((isDecimalProp(prop) || isFloatProp(prop)) && {
-            precision: prop.precision ?? 8,
-            scale: prop.scale ?? 2,
+          // String 타입에 length 있는 경우 추가
+          ...(isStringProp(prop) &&
+            prop.length !== undefined && {
+              length: prop.length,
+            }),
+          // Number/Numeric 타입의 경우 precision, scale 추가
+          ...((isNumberProp(prop) || isNumericProp(prop)) && {
+            precision: prop.precision,
+            scale: prop.scale,
+            numberType: isNumberProp(prop) ? (prop.numberType ?? "numeric") : "numeric",
           }),
         };
 
@@ -116,14 +104,12 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
               name: "id",
               type: "integer",
               nullable: false,
-              unsigned: true,
             },
             ...fields.map((field) => {
               return {
                 name: field.split(".")[1],
                 type: "integer",
                 nullable: false,
-                unsigned: true,
               } as MigrationColumn;
             }),
             {
@@ -160,7 +146,6 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
         r.columns.push({
           name: idColumnName,
           type: "integer",
-          unsigned: true,
           nullable: prop.nullable ?? false,
         });
         if ((prop.useConstraint ?? true) === true) {
@@ -201,4 +186,36 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
   } as MigrationIndex);
 
   return migrationSet;
+}
+
+function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): MigrationColumnType {
+  if (prop.type === "relation" || prop.type === "virtual") {
+    throw new Error(`Unresolved column type: ${prop.type}`);
+  }
+
+  switch (prop.type) {
+    case "string":
+      return "string";
+    case "number":
+      return "numberOrNumeric";
+    case "numeric":
+      return "numberOrNumeric";
+    case "enum":
+      return "string";
+    case "bigInteger":
+      return "bigInteger";
+    case "boolean":
+      return "boolean";
+    case "date":
+      return "date";
+    case "integer":
+      return "integer";
+    case "json":
+      return "json";
+    case "uuid":
+      return "uuid";
+    default:
+      // exhaustive(prop.type);
+      throw new Error(`Unknown entity prop type: ${(prop as { type: string }).type}`);
+  }
 }

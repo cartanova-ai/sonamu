@@ -7,7 +7,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "name": "id",
       "nullable": false,
       "type": "integer",
-      "unsigned": true,
     },
     {
       "length": 255,
@@ -19,7 +18,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "name": "test_integer_nullable",
       "nullable": true,
       "type": "integer",
-      "unsigned": false,
     },
     {
       "name": "test_boolean_col",
@@ -29,12 +27,12 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
     {
       "name": "test_text_long",
       "nullable": false,
-      "type": "longtext",
+      "type": "text",
     },
     {
       "name": "test_datetime_col",
       "nullable": false,
-      "type": "datetime",
+      "type": "timestamp",
     },
     {
       "name": "test_json_col",
@@ -47,10 +45,9 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "type": "uuid",
     },
     {
-      "length": 32,
       "name": "test_enum_status",
       "nullable": false,
-      "type": "string",
+      "type": "text",
     },
     {
       "defaultTo": "CURRENT_TIMESTAMP",
@@ -122,13 +119,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       ],
       "name": "uq_test_enum_status",
       "type": "unique",
-    },
-    {
-      "columns": [
-        "test_text_long",
-      ],
-      "name": "ft_test_text_long",
-      "type": "fulltext",
     },
     {
       "columns": [

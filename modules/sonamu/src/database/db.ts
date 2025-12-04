@@ -93,7 +93,7 @@ class DBClass {
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
     const defaultKnexConfig: Partial<DatabaseConfig> = assign(
       {
-        client: "mysql2",
+        client: "pg",
         pool: {
           min: 1,
           max: 5,

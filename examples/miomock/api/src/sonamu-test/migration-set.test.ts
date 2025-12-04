@@ -1,4 +1,4 @@
-import { EntityManager, getMigrationSetFromEntity, MySQLSchemaReader } from "sonamu";
+import { EntityManager, getMigrationSetFromEntity } from "sonamu";
 import { beforeEach, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import {
@@ -50,7 +50,7 @@ describe("migration-set.ts", () => {
       expect(booleanCol).toMatchObject({ type: "boolean", nullable: false });
 
       const datetimeCol = result.columns.find((c) => c.name === "test_datetime_col");
-      expect(datetimeCol).toMatchObject({ type: "datetime" });
+      expect(datetimeCol).toMatchObject({ type: "timestamp" });
 
       const jsonCol = result.columns.find((c) => c.name === "test_json_col");
       expect(jsonCol).toMatchObject({ type: "json" });
@@ -65,7 +65,7 @@ describe("migration-set.ts", () => {
       const belongsToOneFK = result.columns.find(
         (c) => c.name === "test_belongs_to_one_company_id",
       );
-      expect(belongsToOneFK).toMatchObject({ type: "integer", unsigned: true, nullable: true });
+      expect(belongsToOneFK).toMatchObject({ type: "integer", nullable: true });
 
       const belongsToOneFKRelation = result.foreigns.find((f) =>
         f.columns.includes("test_belongs_to_one_company_id"),
@@ -84,7 +84,7 @@ describe("migration-set.ts", () => {
 
       // then
       const oneToOneFK = result.columns.find((c) => c.name === "test_one_to_one_profile_id");
-      expect(oneToOneFK).toMatchObject({ type: "integer", unsigned: true, nullable: false });
+      expect(oneToOneFK).toMatchObject({ type: "integer", nullable: false });
 
       const oneToOneFKRelation = result.foreigns.find((f) =>
         f.columns.includes("test_one_to_one_profile_id"),
@@ -137,7 +137,6 @@ describe("migration-set.ts", () => {
         expect.arrayContaining([
           { type: "index", columns: ["test_string_col"], name: "idx_test_string_col" },
           { type: "unique", columns: ["test_enum_status"], name: "uq_test_enum_status" },
-          { type: "fulltext", columns: ["test_text_long"], name: "ft_test_text_long" },
           {
             type: "index",
             columns: ["test_string_col", "test_integer_nullable"],
@@ -158,85 +157,68 @@ describe("migration-set.ts", () => {
   });
 
   describe("resolveDBColType", () => {
-    test("MySQL의 컬럼 타입들을 표준 MigrationColumn 타입으로 정확히 변환", () => {
-      // varchar
-      expect(MySQLSchemaReader.resolveDBColType("varchar(100)", "name")).toEqual({
-        type: "string",
-        length: 100,
-      });
-
-      // int unsigned
-      expect(MySQLSchemaReader.resolveDBColType("int unsigned", "age")).toEqual({
-        type: "integer",
-        unsigned: true,
-      });
-
-      // tinyint(1)
-      expect(MySQLSchemaReader.resolveDBColType("tinyint(1)", "is_active")).toEqual({
-        type: "boolean",
-      });
-
-      // tinyint unsigned
-      expect(MySQLSchemaReader.resolveDBColType("tinyint unsigned", "is_active")).toEqual({
-        type: "boolean",
-      });
-
-      // longtext
-      expect(MySQLSchemaReader.resolveDBColType("longtext", "description")).toEqual({
-        type: "longtext",
-      });
-
-      // datetime
-      expect(MySQLSchemaReader.resolveDBColType("datetime", "created_at")).toEqual({
-        type: "datetime",
-      });
-
-      // decimal(12,2)
-      expect(MySQLSchemaReader.resolveDBColType("decimal(12,2)", "price")).toEqual({
-        type: "decimal",
-        precision: 12,
-        scale: 2,
-      });
-
-      // char(36)
-      expect(MySQLSchemaReader.resolveDBColType("char(36)", "uuid")).toEqual({ type: "uuid" });
-
-      // text
-      expect(MySQLSchemaReader.resolveDBColType("text", "any_field")).toEqual({ type: "text" });
-
-      // mediumtext
-      expect(MySQLSchemaReader.resolveDBColType("mediumtext", "any_field")).toEqual({
-        type: "mediumtext",
-      });
-
-      // timestamp
-      expect(MySQLSchemaReader.resolveDBColType("timestamp", "any_field")).toEqual({
-        type: "timestamp",
-      });
-
-      // json
-      expect(MySQLSchemaReader.resolveDBColType("json", "any_field")).toEqual({ type: "json" });
-
-      // date
-      expect(MySQLSchemaReader.resolveDBColType("date", "any_field")).toEqual({ type: "date" });
-
-      // time
-      expect(MySQLSchemaReader.resolveDBColType("time", "any_field")).toEqual({ type: "time" });
-
-      // float(8,4)
-      expect(MySQLSchemaReader.resolveDBColType("float(8,4)", "any_field")).toEqual({
-        type: "float",
-        precision: 8,
-        scale: 4,
-      });
-    });
-
-    test("알 수 없는 DB 컬럼 타입은 에러를 발생시켜야 한다", () => {
-      // given & when
-      const fn = () => MySQLSchemaReader.resolveDBColType("unknown_type", "any_field");
-
-      // then
-      expect(fn).toThrow("resolve 불가능한 DB컬럼 타입 unknown_type unknown_type");
-    });
+    // test.skip("MySQL의 컬럼 타입들을 표준 MigrationColumn 타입으로 정확히 변환", () => {
+    //   // varchar
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("varchar(100)").toEqual({
+    //     type: "string",
+    //     length: 100,
+    //   });
+    //   // int unsigned
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("int unsigned", "age")).toEqual({
+    //     type: "integer",
+    //   });
+    //   // tinyint(1)
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("tinyint(1)", "is_active")).toEqual({
+    //     type: "boolean",
+    //   });
+    //   // tinyint unsigned
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("tinyint unsigned", "is_active")).toEqual({
+    //     type: "boolean",
+    //   });
+    //   // longtext
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("longtext", "description")).toEqual({
+    //     type: "longtext",
+    //   });
+    //   // datetime
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("datetime", "created_at")).toEqual({
+    //     type: "datetime",
+    //   });
+    //   // decimal(12,2)
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("decimal(12,2)", "price")).toEqual({
+    //     type: "decimal",
+    //     precision: 12,
+    //     scale: 2,
+    //   });
+    //   // char(36)
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("char(36)", "uuid")).toEqual({ type: "uuid" });
+    //   // text
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("text", "any_field")).toEqual({ type: "text" });
+    //   // mediumtext
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("mediumtext", "any_field")).toEqual({
+    //     type: "mediumtext",
+    //   });
+    //   // timestamp
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("timestamp", "any_field")).toEqual({
+    //     type: "timestamp",
+    //   });
+    //   // json
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("json", "any_field")).toEqual({ type: "json" });
+    //   // date
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("date", "any_field")).toEqual({ type: "date" });
+    //   // time
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("time", "any_field")).toEqual({ type: "time" });
+    //   // float(8,4)
+    //   expect(PostgreSQLSchemaReader.resolveDBColType("float(8,4)", "any_field")).toEqual({
+    //     type: "float",
+    //     precision: 8,
+    //     scale: 4,
+    //   });
+    // });
+    // test("알 수 없는 DB 컬럼 타입은 에러를 발생시켜야 한다", () => {
+    //   // given & when
+    //   const fn = () => PostgreSQLSchemaReader.resolveDBColType("unknown_type", "any_field");
+    //   // then
+    //   expect(fn).toThrow("resolve 불가능한 DB컬럼 타입 unknown_type unknown_type");
+    // });
   });
 });

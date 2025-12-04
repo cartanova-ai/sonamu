@@ -3,13 +3,8 @@
   "title": "스냅샷 테스트용",
   "table": "snapshot_tests",
   "props": [
-    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "timestamp",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    }
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
   ],
   "indexes": [],
   "subsets": { "A": ["id", "created_at"] },

@@ -1,5 +1,6 @@
 import equal from "fast-deep-equal";
 import { alphabetical, diff, fork, omit } from "radashi";
+import { Naite } from "..";
 import type {
   GenMigrationCode,
   MigrationColumn,
@@ -62,25 +63,33 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
       return `table.increments().primary();`;
     }
 
-    // FIXME: float(M,D) deprecated -> decimal(M,D) 이용하도록 하고, float/double 처리 추가
-    if (column.type === "float" || column.type === "decimal") {
-      chains.push(`${column.type}('${column.name}', ${column.precision}, ${column.scale})`);
+    // number
+    if (column.type === "numberOrNumeric") {
+      if (column.numberType === "real") {
+        chains.push(`float('${column.name}')`);
+      } else if (column.numberType === "double precision") {
+        chains.push(`double('${column.name}')`);
+      } else if ((column.numberType ?? "numeric") === "numeric") {
+        chains.push(`decimal('${column.name}', ${column.precision}, ${column.scale})`);
+      }
+    } else if (column.type === "string") {
+      if (column.length !== undefined) {
+        chains.push(`string('${column.name}', ${column.length})`);
+      } else {
+        chains.push(`text('${column.name}')`);
+      }
+    } else if (column.type === "date") {
+      chains.push(`timestamp('${column.name}', { useTz: true })`);
+    } else if (column.type === "json") {
+      chains.push(`jsonb('${column.name}')`);
     } else {
       // type, length
-      let columnType = column.type;
       let extraType: string | undefined;
-      if (columnType.includes("text") && columnType !== "text") {
-        extraType = columnType;
-        columnType = "text";
-      }
       chains.push(
-        `${columnType}('${column.name}'${
+        `${column.type}('${column.name}'${
           column.length ? `, ${column.length}` : ""
         }${extraType ? `, '${extraType}'` : ""})`,
       );
-    }
-    if (column.unsigned) {
-      chains.push("unsigned()");
     }
 
     // nullable
@@ -245,6 +254,33 @@ async function generateAlterCode_ColumnAndIndexes(
         alterColumnsTo.drop.map((col) => col.name).includes(colName),
       ) === false,
   );
+
+  // 빈 코드 생성 방지
+  if (
+    alterColumnLinesTo.add.up.length === 0 &&
+    alterColumnLinesTo.drop.up.length === 0 &&
+    alterColumnLinesTo.alter.up.length === 0 &&
+    standardIndexes.length === 0 &&
+    indexNeedsToDrop.length === 0
+  ) {
+    Naite.t("migrator:generateAlterCode_ColumnAndIndexes:emptyCodeGenerationError", {
+      entityColumns,
+      dbColumns,
+      entityIndexes,
+      dbIndexes,
+    });
+    // throw new Error("컬럼/인덱스 변경 코드 생성 오류");
+  }
+  Naite.t("migrator:generateAlterCode_ColumnAndIndexes:debug", {
+    "alterColumnsTo.add.length": alterColumnsTo.add.length,
+    "alterColumnsTo.drop.length": alterColumnsTo.drop.length,
+    "alterColumnsTo.alter.length": alterColumnsTo.alter.length,
+    "alterIndexesTo.add.length": alterIndexesTo.add.length,
+    "alterIndexesTo.drop.length": alterIndexesTo.drop.length,
+    "standardIndexes.length": standardIndexes.length,
+    "indexNeedsToDrop.length": indexNeedsToDrop.length,
+  });
+  // Naite.t("migrator:generateAlterCode_ColumnAndIndexes:alterColumnsTo", alterColumnsTo);
 
   const lines: string[] = [
     'import { Knex } from "knex";',
@@ -544,6 +580,20 @@ async function generateAlterCode_Foreigns(
     return [];
   }
 
+  if (
+    linesTo.add.up.length === 0 &&
+    linesTo.drop.up.length === 0 &&
+    linesTo.alterSrc.up.length === 0 &&
+    linesTo.alterDst.up.length === 0
+  ) {
+    Naite.t("migrator:generateAlterCode_Foreigns:fkChangeCodeGenerationError", {
+      table,
+      entityForeigns,
+      dbForeigns,
+    });
+    throw new Error("FK 변경 코드 생성 오류");
+  }
+
   const lines: string[] = [
     'import { Knex } from "knex";',
     "",
@@ -612,22 +662,24 @@ export async function generateAlterCode(
 ): Promise<GenMigrationCode[]> {
   const replaceColumnDefaultTo = (col: MigrationColumn) => {
     // float인 경우 기본값을 0으로 지정하는 경우 "0.00"으로 변환되는 케이스 대응
-    if (col.type === "float" && col.defaultTo && String(col.defaultTo).includes('"') === false) {
-      col.defaultTo = `"${Number(col.defaultTo).toFixed(col.scale ?? 2)}"`;
-    }
-    // string인 경우 기본값이 빈 스트링인 경우 대응
-    if (col.type === "string" && col.defaultTo === "") {
-      col.defaultTo = '""';
-    }
-    // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
-    // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
-    if (col.type === "boolean" && col.defaultTo !== undefined) {
-      if (col.defaultTo === "0" || col.defaultTo.toLowerCase() === "false") {
-        col.defaultTo = "0";
-      } else if (col.defaultTo === "1" || col.defaultTo.toLowerCase() === "true") {
-        col.defaultTo = "1";
-      }
-    }
+    // if (col.type === "float" && col.defaultTo && String(col.defaultTo).includes('"') === false) {
+    //   col.defaultTo = `"${Number(col.defaultTo).toFixed(col.scale ?? 2)}"`;
+    // }
+    // // string인 경우 기본값이 빈 스트링인 경우 대응
+    // if (col.type === "string" && col.defaultTo === "") {
+    //   col.defaultTo = '""';
+    // }
+    // // boolean인 경우 기본값 정규화 (MySQL에서는 TINYINT(1)로 저장되므로 0 또는 1로 정규화)
+    // // TODO: db.ts에 typeCase 설정 확인하여 처리하도록 수정 필요
+    // if (col.type === "boolean" && col.defaultTo !== undefined) {
+    //   if (col.defaultTo === "0" || col.defaultTo.toLowerCase() === "false") {
+    //     col.defaultTo = "0";
+    //   } else if (col.defaultTo === "1" || col.defaultTo.toLowerCase() === "true") {
+    //     col.defaultTo = "1";
+    //   }
+    // }
+
+    // FIXME: 일단 MySQL 상황에서 발생했던 이슈의 workaround 이므로 Pg에서 재확인 후 대응 추가
     return col;
   };
   const entityColumns = alphabetical(entitySet.columns, (a) => a.name).map(replaceColumnDefaultTo);

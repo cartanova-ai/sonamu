@@ -5,7 +5,7 @@ export const CompanyMigrationTestEntity = () =>
   new Entity({
     id: "Company",
     table: "companies",
-    props: [{ name: "id", type: "integer", unsigned: true, desc: "회사 ID" }],
+    props: [{ name: "id", type: "integer", desc: "회사 ID" }],
     indexes: [],
     subsets: {},
     enums: {},
@@ -15,7 +15,7 @@ export const ProfileMigrationTestEntity = () =>
   new Entity({
     id: "Profile",
     table: "profiles",
-    props: [{ name: "id", type: "integer", unsigned: true, desc: "프로필 ID" }],
+    props: [{ name: "id", type: "integer", desc: "프로필 ID" }],
     indexes: [],
     subsets: {},
     enums: {},
@@ -25,7 +25,7 @@ export const PostMigrationTestEntity = () =>
   new Entity({
     id: "Post",
     table: "posts",
-    props: [{ name: "id", type: "integer", unsigned: true, desc: "게시글 ID" }],
+    props: [{ name: "id", type: "integer", desc: "게시글 ID" }],
     indexes: [],
     subsets: {},
     enums: {},
@@ -35,7 +35,7 @@ export const TagMigrationTestEntity = () =>
   new Entity({
     id: "Tag",
     table: "tags",
-    props: [{ name: "id", type: "integer", unsigned: true, desc: "태그 ID" }],
+    props: [{ name: "id", type: "integer", desc: "태그 ID" }],
     indexes: [],
     subsets: {},
     enums: {},
@@ -49,7 +49,7 @@ export const MigrationSetTestEntity = () =>
     title: "마이그레이션셋 테스트 엔티티",
     props: [
       // 1. 기본 타입 컬럼 테스트
-      { name: "id", type: "integer", unsigned: true, desc: "기본 ID" },
+      { name: "id", type: "integer", desc: "기본 ID" },
       { name: "test_string_col", type: "string", length: 255, desc: "테스트 문자열 컬럼" },
       {
         name: "test_integer_nullable",
@@ -58,8 +58,8 @@ export const MigrationSetTestEntity = () =>
         desc: "테스트 Nullable 정수",
       },
       { name: "test_boolean_col", type: "boolean", desc: "테스트 불리언" },
-      { name: "test_text_long", type: "text", textType: "longtext", desc: "긴 텍스트 컬럼" },
-      { name: "test_datetime_col", type: "datetime", desc: "날짜시간 컬럼" },
+      { name: "test_text_long", type: "string", desc: "긴 텍스트 컬럼" },
+      { name: "test_datetime_col", type: "date", desc: "날짜시간 컬럼" },
       { name: "test_json_col", type: "json", id: "TestJson", desc: "JSON 컬럼" },
       { name: "test_uuid_col", type: "uuid", desc: "UUID 컬럼" },
 
@@ -69,22 +69,28 @@ export const MigrationSetTestEntity = () =>
         type: "enum",
         id: "MigrationSetTestStatusEnum",
         desc: "테스트 Enum 상태",
-        length: 32,
       },
       {
         name: "test_timestamp_default",
-        type: "timestamp",
+        type: "date",
         dbDefault: "CURRENT_TIMESTAMP",
         desc: "기본값 타임스탬프",
       },
       {
         name: "test_decimal_precision",
-        type: "decimal",
+        type: "numeric",
         precision: 10,
         scale: 2,
         desc: "정밀 소수점",
       },
-      { name: "test_float_precision", type: "float", precision: 8, scale: 4, desc: "부동 소수점" },
+      {
+        name: "test_float_precision",
+        type: "number",
+        numberType: "real",
+        precision: 8,
+        scale: 4,
+        desc: "부동 소수점",
+      },
 
       // 3. relation 테스트
       {
@@ -137,7 +143,6 @@ export const MigrationSetTestEntity = () =>
     indexes: [
       { type: "index", columns: ["test_string_col"], name: "idx_test_string_col" },
       { type: "unique", columns: ["test_enum_status"], name: "uq_test_enum_status" },
-      { type: "fulltext", columns: ["test_text_long"], name: "ft_test_text_long" },
       {
         type: "index",
         columns: ["test_string_col", "test_integer_nullable"],

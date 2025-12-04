@@ -4,27 +4,6 @@ import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
 import type { GuardKey } from "./../api/decorators";
 
 /*
-  Enums
-*/
-export type EnumsLabel<T extends string, L extends "ko" | "en"> = {
-  [key in T]: { [lang in L]: string };
-};
-export type EnumsLabelKo<T extends string> = EnumsLabel<T, "ko">;
-
-/*
-  Custom Scalars
-*/
-export const SQLDateTimeString = z
-  .string()
-  .regex(/([0-9]{4}-[0-9]{2}-[0-9]{2}( [0-9]{2}:[0-9]{2}:[0-9]{2})*)$/, {
-    message: "잘못된 SQLDate 타입",
-  })
-  .min(10)
-  .max(19)
-  .describe("SQLDateTimeString");
-export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
-
-/*
   Utility Types
 */
 export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
@@ -45,69 +24,46 @@ export type CommonProp = {
 };
 export type IntegerProp = CommonProp & {
   type: "integer";
-  unsigned?: true;
-};
+}; // PG: integer / TS: number / JSON: number
 export type BigIntegerProp = CommonProp & {
   type: "bigInteger";
-  unsigned?: true;
-};
-export type TextProp = CommonProp & {
-  type: "text";
-  textType: "text" | "mediumtext" | "longtext";
-};
+}; // PG: bigint / TS: bigint / JSON: bigint
 export type StringProp = CommonProp & {
   type: "string";
-  length: number;
-};
+  length?: number; // PG: varchar(n), text / TS: string / JSON: string
+}; // PG: text / TS: string / JSON: string
 export type EnumProp = CommonProp & {
   type: "enum";
-  length: number;
   id: string;
-};
-export type FloatProp = CommonProp & {
-  type: "float";
-  unsigned?: true;
-  precision: number;
-  scale: number;
-};
-export type DoubleProp = CommonProp & {
-  type: "double";
-  unsigned?: true;
-  precision: number;
-  scale: number;
-};
-export type DecimalProp = CommonProp & {
-  type: "decimal";
-  unsigned?: true;
-  precision: number;
-  scale: number;
-};
+}; // PG: text / TS: string / JSON: string
+export type NumberProp = CommonProp & {
+  type: "number";
+  precision?: number; // PG: numeric(p, s) / TS: number / JSON: number
+  scale?: number; // PG: numeric(p, s) / TS: number / JSON: number
+  numberType?: "real" | "double precision" | "numeric"; // 기본값: numeric
+}; // PG: numeric(p, s) / TS: number / JSON: number
+export type NumericProp = CommonProp & {
+  type: "numeric";
+  precision?: number;
+  scale?: number;
+}; // PG: numeric(p, s) / TS: string / JSON: string
 export type BooleanProp = CommonProp & {
   type: "boolean";
-};
+}; // PG: boolean / TS: boolean / JSON: boolean
 export type DateProp = CommonProp & {
   type: "date";
-};
-export type DateTimeProp = CommonProp & {
-  type: "datetime";
-};
-export type TimeProp = CommonProp & {
-  type: "time";
-};
-export type TimestampProp = CommonProp & {
-  type: "timestamp";
-};
+}; // PG: timestampz / TS: Date / JSON: string(ISOString)
 export type JsonProp = CommonProp & {
   type: "json";
   id: string;
-};
+}; // PG: json / TS: any(id) / JSON: any
 export type UuidProp = CommonProp & {
   type: "uuid";
-};
+}; // PG: uuid / TS: string / JSON: string
 export type VirtualProp = CommonProp & {
   type: "virtual";
   id: string;
-};
+}; // PG: none / TS: any(id) / JSON: any
 
 export type RelationType = "HasMany" | "BelongsToOne" | "ManyToMany" | "OneToOne";
 export type RelationOn = "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT" | "RESTRICT";
@@ -160,16 +116,11 @@ export type RelationProp =
 export type EntityProp =
   | IntegerProp
   | BigIntegerProp
-  | TextProp
   | StringProp
-  | FloatProp
-  | DoubleProp
-  | DecimalProp
+  | NumberProp
+  | NumericProp
   | BooleanProp
   | DateProp
-  | DateTimeProp
-  | TimeProp
-  | TimestampProp
   | JsonProp
   | UuidProp
   | EnumProp
@@ -209,19 +160,6 @@ export type EntitySubsetRow = {
   isOpen?: boolean;
 };
 export type FlattenSubsetRow = Omit<EntitySubsetRow, "children">;
-
-// SMD Legacy
-export type SMDInput<T extends string> = {
-  id: string;
-  parentId?: string;
-  table?: string;
-  title?: string;
-  props?: EntityProp[];
-  indexes?: EntityIndex[];
-  subsets?: {
-    [subset: string]: T[];
-  };
-};
 
 /*
   PropNode
@@ -263,38 +201,23 @@ export function isIntegerProp(p: unknown): p is IntegerProp {
 export function isBigIntegerProp(p: unknown): p is BigIntegerProp {
   return (p as BigIntegerProp)?.type === "bigInteger";
 }
-export function isTextProp(p: unknown): p is TextProp {
-  return (p as TextProp)?.type === "text";
-}
 export function isStringProp(p: unknown): p is StringProp {
   return (p as StringProp)?.type === "string";
 }
 export function isEnumProp(p: unknown): p is EnumProp {
   return (p as EnumProp)?.type === "enum";
 }
-export function isFloatProp(p: unknown): p is FloatProp {
-  return (p as FloatProp)?.type === "float";
+export function isNumberProp(p: unknown): p is NumberProp {
+  return (p as NumberProp)?.type === "number";
 }
-export function isDoubleProp(p: unknown): p is DoubleProp {
-  return (p as DoubleProp)?.type === "double";
-}
-export function isDecimalProp(p: unknown): p is DecimalProp {
-  return (p as DecimalProp)?.type === "decimal";
+export function isNumericProp(p: unknown): p is NumericProp {
+  return (p as NumericProp)?.type === "numeric";
 }
 export function isBooleanProp(p: unknown): p is BooleanProp {
   return (p as BooleanProp)?.type === "boolean";
 }
 export function isDateProp(p: unknown): p is DateProp {
   return (p as DateProp)?.type === "date";
-}
-export function isDateTimeProp(p: unknown): p is DateTimeProp {
-  return (p as DateTimeProp)?.type === "datetime";
-}
-export function isTimeProp(p: unknown): p is TimeProp {
-  return (p as TimeProp)?.type === "time";
-}
-export function isTimestampProp(p: unknown): p is TimestampProp {
-  return (p as TimestampProp)?.type === "timestamp";
 }
 export function isJsonProp(p: unknown): p is JsonProp {
   return (p as JsonProp)?.type === "json";
@@ -332,41 +255,6 @@ type JoinClause =
 export function isCustomJoinClause(p: unknown): p is { custom: string } {
   return !!(p as { custom: string })?.custom;
 }
-
-/* 서브셋 */
-// type SubsetLoader = {
-//   as: string;
-//   table: string;
-//   manyJoin: {
-//     fromTable: string;
-//     fromCol: string;
-//     idField: string;
-//     toTable: string;
-//     toCol: string;
-//     through?: {
-//       table: string;
-//       fromCol: string;
-//       toCol: string;
-//     };
-//   };
-//   oneJoins: ({
-//     as: string;
-//     join: "inner" | "outer";
-//     table: string;
-//   } & JoinClause)[];
-//   select: (string | Knex.Raw)[];
-//   loaders?: SubsetLoader[];
-// };
-// export type SubsetQuery = {
-//   select: (string | Knex.Raw)[];
-//   virtual: string[];
-//   joins: ({
-//     as: string;
-//     join: "inner" | "outer";
-//     table: string;
-//   } & JoinClause)[];
-//   loaders: SubsetLoader[];
-// };
 
 type SubsetLoader = {
   as: string;
@@ -437,11 +325,20 @@ export type KnexColumnType =
   | "date"
   | "time"
   | "datetime";
+export type MigrationColumnType =
+  | "string"
+  | "integer"
+  | "bigInteger"
+  | "numberOrNumeric"
+  | "boolean"
+  | "date"
+  | "uuid"
+  | "json";
 export type MigrationColumn = {
   name: string;
-  type: KnexColumnType;
+  type: MigrationColumnType;
   nullable: boolean;
-  unsigned?: boolean;
+  numberType?: "real" | "double precision" | "numeric";
   length?: number;
   defaultTo?: string;
   precision?: number;

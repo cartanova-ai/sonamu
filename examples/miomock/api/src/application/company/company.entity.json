@@ -3,14 +3,14 @@
   "table": "companies",
   "title": "COMPANY",
   "props": [
-    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
       "name": "created_at",
-      "type": "timestamp",
+      "type": "date",
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP"
     },
-    { "name": "name", "desc": "회사명", "type": "string", "length": 255 }
+    { "name": "name", "desc": "회사명", "type": "string" }
   ],
   "indexes": [],
   "subsets": { "A": ["id", "created_at", "name"] },

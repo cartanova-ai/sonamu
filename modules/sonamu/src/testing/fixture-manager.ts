@@ -1,5 +1,6 @@
 import assert from "assert";
 import chalk from "chalk";
+import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import inflection from "inflection";
 import knex, { type Knex } from "knex";
@@ -77,8 +78,8 @@ export class FixtureManagerClass {
         port?: number;
       };
       if (
-        `${tConn.host ?? "localhost"}:${tConn.port ?? 3306}/${tConn.database}` ===
-        `${pConn.host ?? "localhost"}:${pConn.port ?? 3306}/${pConn.database}`
+        `${tConn.host ?? "localhost"}:${tConn.port ?? 5432}/${tConn.database}` ===
+        `${pConn.host ?? "localhost"}:${pConn.port ?? 5432}/${pConn.database}`
       ) {
         throw new Error(`테스트DB와 프로덕션DB에 동일한 데이터베이스가 사용되었습니다.`);
       }
@@ -93,57 +94,38 @@ export class FixtureManagerClass {
     return checksumRow.Checksum;
   }
 
+  /**
+    이제 FixtureManager.sync() 는 checksum 비교 없이 create database template 으로 수행합니다.
+  */
   async sync() {
-    const [tables] = await this.fdb.raw("SHOW TABLE STATUS WHERE Engine IS NOT NULL");
-    const tableNames: string[] = tables.map((table: { Name: string }) => table.Name);
+    const fixtureConn = Sonamu.dbConfig.fixture_remote.connection as Knex.PgConnectionConfig;
+    const testConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
 
-    console.log(chalk.magenta("SYNC..."));
-    await Promise.all(
-      tableNames.map(async (tableName) => {
-        if (tableName.startsWith("knex_migrations")) {
-          return;
-        }
+    // PostgreSQL 패스워드 환경변수 설정
+    const pgEnv = { PGPASSWORD: testConn.password || "" };
 
-        const remoteChecksum = await this.getChecksum(this.fdb, tableName); // fixture_remote
-        const localChecksum = await this.getChecksum(this.tdb, tableName); // test
-
-        if (remoteChecksum !== localChecksum) {
-          await this.tdb.transaction(async (transaction) => {
-            await transaction.raw(`SET FOREIGN_KEY_CHECKS = 0`);
-            await transaction(tableName).truncate();
-
-            const rows = await this.fdb(tableName);
-            if (rows.length === 0) {
-              return;
-            }
-
-            console.log(chalk.blue(tableName), rows.length);
-            await transaction
-              .insert(
-                rows.map((row: Record<string, string | number | boolean | null | object>) => {
-                  return Object.fromEntries(
-                    Object.entries(row).map(([key, value]) => {
-                      if (value === null) {
-                        return [key, null];
-                      } else if (typeof value === "boolean") {
-                        return [key, value ? 1 : 0];
-                      } else if (typeof value === "object" && !(value instanceof Date)) {
-                        return [key, JSON.stringify(value)];
-                      } else {
-                        return [key, value];
-                      }
-                    }),
-                  );
-                }),
-              )
-              .into(tableName);
-            console.log("OK");
-            await transaction.raw(`SET FOREIGN_KEY_CHECKS = 1`);
-          });
-        }
-      }),
+    // 1. 연결 강제 종료
+    execSync(
+      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE datname = '${testConn.database}'
+        AND pid <> pg_backend_pid();
+    "`,
+      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
-    console.log(chalk.magenta("DONE!"));
+
+    // 2. DROP DATABASE (별도 실행!)
+    execSync(
+      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`,
+      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+    );
+
+    // 3. CREATE DATABASE
+    execSync(
+      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "CREATE DATABASE \\"${testConn.database}\\" TEMPLATE \\"${fixtureConn.database}\\""`,
+      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+    );
   }
 
   private visitedRecords = new Set<string>();
@@ -650,8 +632,7 @@ export class FixtureManagerClass {
         // UpsertBuilder.register에서 JSON.stringify 처리하므로 object 그대로 전달
         return value;
 
-      case "timestamp":
-      case "datetime":
+      case "date":
         if (typeof value === "string" || typeof value === "number") {
           return new Date(value);
         }

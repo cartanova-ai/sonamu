@@ -20,12 +20,13 @@ export default defineConfig({
     port: 60000,
   },
   database: {
+    database: "postgresql",
     name: "miomock",
     defaultOptions: {
       connection: {
         host: process.env.MIOMOCK_DB_HOST ?? "0.0.0.0",
-        port: Number(process.env.MIOMOCK_DB_PORT ?? 3306),
-        user: process.env.MIOMOCK_DB_USER ?? "root",
+        port: Number(process.env.MIOMOCK_DB_PORT ?? 54321),
+        user: process.env.MIOMOCK_DB_USER ?? "postgres",
         password: process.env.MIOMOCK_DB_PASSWORD ?? "miomock123",
       },
     },

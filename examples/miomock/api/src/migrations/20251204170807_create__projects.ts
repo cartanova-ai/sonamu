@@ -4,13 +4,16 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("projects", (table) => {
     // columns
     table.increments().primary();
-    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table
+      .timestamp("created_at", { useTz: true })
+      .notNullable()
+      .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
-    table.string("status", 32).notNullable();
-    table.text("description", "longtext").nullable();
+    table.text("status").notNullable();
+    table.text("description").nullable();
     table.decimal("budget", 12, 2).nullable();
-    table.datetime("deadline").nullable();
-    table.json("image_urls").nullable();
+    table.timestamp("deadline", { useTz: true }).nullable();
+    table.jsonb("image_urls").nullable();
     table.uuid("uuid").nullable();
 
     // indexes

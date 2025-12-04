@@ -15,7 +15,7 @@ import { isTest } from "../utils/controller";
 import { exists } from "../utils/fs-utils";
 import { generateAlterCode, generateCreateCode } from "./code-generation";
 import { getMigrationSetFromEntity } from "./migration-set";
-import { MySQLSchemaReader } from "./mysql-schema-reader";
+import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
 import type { ConnString, MigrationCode, MigrationStatus } from "./types";
 
 export class Migrator {
@@ -31,10 +31,10 @@ export class Migrator {
     const testDB = knex(dbConfig.test);
     const applyDBs = [devDB, testDB];
     if (
-      (dbConfig.test.connection as Knex.MySql2ConnectionConfig).host !==
-        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).host ||
-      (dbConfig.test.connection as Knex.MySql2ConnectionConfig).database !==
-        (dbConfig.fixture_remote.connection as Knex.MySql2ConnectionConfig).database
+      (dbConfig.test.connection as Knex.PgConnectionConfig).host !==
+        (dbConfig.fixture_remote.connection as Knex.PgConnectionConfig).host ||
+      (dbConfig.test.connection as Knex.PgConnectionConfig).database !==
+        (dbConfig.fixture_remote.connection as Knex.PgConnectionConfig).database
     ) {
       const fixtureRemoteDB = knex(dbConfig.fixture_remote);
       applyDBs.push(fixtureRemoteDB);
@@ -78,6 +78,7 @@ export class Migrator {
    */
   async getStatus(): Promise<MigrationStatus> {
     const codes = await this.getMigrationCodes();
+    Naite.t("migrator:getStatus:codes", codes);
 
     const connKeys = Object.keys(Sonamu.dbConfig).filter(
       (key) => key.endsWith("_slave") === false,
@@ -117,14 +118,14 @@ export class Migrator {
         })();
         Naite.t("migrator:getStatus:status", status);
 
-        const connection = knexOptions.connection as Knex.MySql2ConnectionConfig;
+        const connection = knexOptions.connection as Knex.PgConnectionConfig;
 
         await tConn.destroy();
 
         return {
           name: connKey.replace("_master", ""),
           connKey,
-          connString: `mysql2://${connection.user ?? ""}@${connection.host}:${
+          connString: `pg://${connection.user ?? ""}@${connection.host}:${
             connection.port
           }/${connection.database}` as ConnString,
           currentVersion,
@@ -196,9 +197,9 @@ export class Migrator {
         }))
         .filter((c) => c.options !== undefined),
       ({ options }) =>
-        `${(options.connection as Knex.MySql2ConnectionConfig).host}:${
-          (options.connection as Knex.MySql2ConnectionConfig).port ?? 3306
-        }/${(options.connection as Knex.MySql2ConnectionConfig).database}`,
+        `${(options.connection as Knex.PgConnectionConfig).host}:${
+          (options.connection as Knex.PgConnectionConfig).port ?? 5432
+        }/${(options.connection as Knex.PgConnectionConfig).database}`,
     );
 
     // get connections
@@ -329,7 +330,7 @@ export class Migrator {
     return preparedCodes.length;
   }
 
-  private async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
+  async compareMigrations(compareDB: Knex): Promise<GenMigrationCode[]> {
     // Entity 순회하여 싱크
     const entityIds = EntityManager.getAllIds();
 
@@ -361,7 +362,12 @@ export class Migrator {
     const codes: GenMigrationCode[] = (
       await Promise.all(
         entitySets.map(async (entitySet) => {
-          const dbSet = await MySQLSchemaReader.getMigrationSetFromDB(compareDB, entitySet.table);
+          const dbSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(
+            compareDB,
+            entitySet.table,
+          );
+          Naite.t(`migrator:compareMigrations:entitySet:${entitySet.table}`, entitySet);
+          Naite.t(`migrator:compareMigrations:dbSet:${entitySet.table}`, dbSet);
 
           if (dbSet === null) {
             // 기존 테이블 없음, 새로 테이블 생성
@@ -404,29 +410,33 @@ export class Migrator {
   > {
     // ShadowDB 생성 후 테스트 진행
     const tdb = knex(Sonamu.dbConfig.test);
-    const tdbConn = Sonamu.dbConfig.test.connection as Knex.MySql2ConnectionConfig;
+    const tdbConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
     const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
     Naite.t("migrator:runShadowTest:tmpSqlPath", tmpSqlPath);
 
-    // 테스트DB 덤프 후 Database명 치환
+    // PostgreSQL 비밀번호를 환경변수로 설정
+    const pgEnv = {
+      PGPASSWORD: tdbConn.password || "",
+    };
+
+    // 테스트DB 덤프
     !isTest() && console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
     execSync(
-      `mysqldump -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${tdbConn.database} --single-transaction --no-create-db --triggers > ${tmpSqlPath};`,
-      { stdio: "ignore" },
+      `pg_dump -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} ${tdbConn.database} --no-owner --no-privileges > ${tmpSqlPath}`,
+      { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
-    execSync(`sed -i'' -e 's/\`${tdbConn.database}\`/\`${shadowDatabase}\`/g' ${tmpSqlPath};`);
 
     // 기존 ShadowDB 리셋
     !isTest() && console.log(chalk.magenta(`${shadowDatabase} 리셋`));
-    await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
-    await tdb.raw(`CREATE DATABASE \`${shadowDatabase}\`;`);
+    await tdb.raw(`DROP DATABASE IF EXISTS "${shadowDatabase}"`);
+    await tdb.raw(`CREATE DATABASE "${shadowDatabase}"`);
 
     // ShadowDB 테이블 + 데이터 생성
     !isTest() && console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
     execSync(
-      `mysql -h${tdbConn.host} -P${tdbConn.port ?? 3306} -u${tdbConn.user} -p'${tdbConn.password}' ${shadowDatabase} < ${tmpSqlPath};`,
-      { stdio: "ignore" },
+      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d ${shadowDatabase} -f ${tmpSqlPath}`,
+      { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
 
     // shadow db 테스트 진행
@@ -448,8 +458,11 @@ export class Migrator {
           applied,
         });
 
+      // drop 전에 커넥션 종료
+      await sdb.destroy();
+
       // 생성한 Shadow DB 삭제
-      await tdb.raw(`DROP DATABASE IF EXISTS \`${shadowDatabase}\`;`);
+      await tdb.raw(`DROP DATABASE IF EXISTS "${shadowDatabase}"`);
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
 
       return [

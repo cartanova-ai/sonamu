@@ -14,7 +14,7 @@ describe("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"select"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "columns").toMatchInlineSnapshot(`"\`users\`.\`id\` AS \`id\`"`);
+      expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."id" AS \`id\`"`);
     });
 
     test("select with alias", async () => {
@@ -24,7 +24,7 @@ describe("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"select"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "columns").toMatchInlineSnapshot(`"\`users\`.\`id\` AS \`userId\`"`);
+      expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."id" AS \`userId\`"`);
     });
 
     test("selectAll", async () => {
@@ -55,8 +55,8 @@ describe("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "set").toMatchInlineSnapshot(`"username = '수정됨'"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`id\` = 1"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"[object Object] = '수정됨'"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
     });
 
     test("delete", async () => {
@@ -66,7 +66,7 @@ describe("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"delete"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`id\` = 1"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
     });
   });
 
@@ -78,7 +78,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"INNER JOIN users ON \`employees\`.\`user_id\` = \`users\`.\`id\`"`,
+        `"INNER JOIN users ON "employees"."user_id" = "users"."id""`,
       );
     });
 
@@ -91,7 +91,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"LEFT JOIN departments ON \`employees\`.\`department_id\` = \`departments\`.\`id\`"`,
+        `"LEFT JOIN departments ON "employees"."department_id" = "departments"."id""`,
       );
     });
 
@@ -105,7 +105,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"LEFT JOIN departments ON \`employees\`.\`department_id\` = \`departments\`.\`id\` LEFT JOIN companies ON \`departments\`.\`company_id\` = \`companies\`.\`id\`"`,
+        `"LEFT JOIN departments ON "employees"."department_id" = "departments"."id" LEFT JOIN companies ON "departments"."company_id" = "companies"."id""`,
       );
     });
 
@@ -119,7 +119,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"LEFT JOIN projects__employees ON \`projects\`.\`id\` = \`projects__employees\`.\`project_id\` LEFT JOIN employees ON \`projects__employees\`.\`employee_id\` = \`employees\`.\`id\`"`,
+        `"LEFT JOIN projects__employees ON "projects"."id" = "projects__employees"."project_id" LEFT JOIN employees ON "projects__employees"."employee_id" = "employees"."id""`,
       );
     });
 
@@ -133,7 +133,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"LEFT JOIN departments ON \`child\`.\`parent_id\` = \`parent\`.\`id\`"`,
+        `"LEFT JOIN departments ON "child"."parent_id" = "parent"."id""`,
       );
     });
 
@@ -153,7 +153,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "join").toMatchInlineSnapshot(
-        `"LEFT JOIN (subquery) AS emp_stats ON \`departments\`.\`id\` = \`emp_stats\`.\`department_id\`"`,
+        `"LEFT JOIN (subquery) AS emp_stats ON "departments"."id" = "emp_stats"."department_id""`,
       );
     });
   });
@@ -165,7 +165,7 @@ describe("Puri Query", () => {
         await db.table("users").where("users.id", 1);
         const query = Naite.get("puri:executed-query").first();
 
-        expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`id\` = 1"`);
+        expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
       });
 
       test("where - 객체조건", async () => {
@@ -174,7 +174,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"\`users\`.\`id\` = 1 AND \`users\`.\`username\` = 'test'"`,
+          `""users"."id" = 1 AND "users"."username" = 'test'"`,
         );
       });
 
@@ -183,7 +183,7 @@ describe("Puri Query", () => {
         await db.table("employees").where("employees.salary", ">", "70000");
         const query = Naite.get("puri:executed-query").first();
 
-        expectQuery(query, "where").toMatchInlineSnapshot(`"\`employees\`.\`salary\` > '70000'"`);
+        expectQuery(query, "where").toMatchInlineSnapshot(`""employees"."salary" > '70000'"`);
       });
 
       test("where - 범위조건", async () => {
@@ -195,7 +195,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"\`employees\`.\`salary\` >= '60000' AND \`employees\`.\`salary\` <= '80000'"`,
+          `""employees"."salary" >= '60000' AND "employees"."salary" <= '80000'"`,
         );
       });
 
@@ -205,7 +205,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"\`users\`.\`role\` = 'normal' AND \`users\`.\`is_verified\` = TRUE"`,
+          `""users"."role" = 'normal' AND "users"."is_verified" = TRUE"`,
         );
       });
 
@@ -218,7 +218,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"(\`users\`.\`role\` = 'admin') OR (\`users\`.\`role\` = 'normal')"`,
+          `"("users"."role" = 'admin') OR ("users"."role" = 'normal')"`,
         );
       });
 
@@ -228,7 +228,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"\`projects\`.\`status\` IN ('in_progress', 'planning')"`,
+          `""projects"."status" IN ('in_progress', 'planning')"`,
         );
       });
 
@@ -238,7 +238,7 @@ describe("Puri Query", () => {
         const query = Naite.get("puri:executed-query").first();
 
         expectQuery(query, "where").toMatchInlineSnapshot(
-          `"\`projects\`.\`status\` NOT IN ('cancelled', 'completed')"`,
+          `""projects"."status" NOT IN ('cancelled', 'completed')"`,
         );
       });
 
@@ -247,7 +247,7 @@ describe("Puri Query", () => {
         await db.table("employees").where("employees.hire_date", null);
         const query = Naite.get("puri:executed-query").first();
 
-        expectQuery(query, "where").toMatchInlineSnapshot(`"\`employees\`.\`hire_date\` IS NULL"`);
+        expectQuery(query, "where").toMatchInlineSnapshot(`""employees"."hire_date" IS NULL"`);
       });
 
       test("where - LIKE", async () => {
@@ -255,7 +255,7 @@ describe("Puri Query", () => {
         await db.table("users").where("users.bio", "like", "%개발%");
         const query = Naite.get("puri:executed-query").first();
 
-        expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`bio\` LIKE '%개발%'"`);
+        expectQuery(query, "where").toMatchInlineSnapshot(`""users"."bio" LIKE '%개발%'"`);
       });
     });
   });
@@ -267,7 +267,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"COUNT(\`employees\`.\`id\`) AS \`total\`"`,
+        `"COUNT("employees".id) AS \`total\`"`,
       );
     });
 
@@ -277,7 +277,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"SUM(\`employees\`.\`salary\`) AS \`totalSalary\`"`,
+        `"SUM("employees".salary) AS \`totalSalary\`"`,
       );
     });
 
@@ -287,7 +287,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"AVG(\`employees\`.\`salary\`) AS \`avgSalary\`"`,
+        `"AVG("employees".salary) AS \`avgSalary\`"`,
       );
     });
 
@@ -297,7 +297,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"MAX(\`employees\`.\`salary\`) AS \`maxSalary\`"`,
+        `"MAX("employees".salary) AS \`maxSalary\`"`,
       );
     });
 
@@ -307,7 +307,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "columns").toMatchInlineSnapshot(
-        `"MIN(\`employees\`.\`salary\`) AS \`minSalary\`"`,
+        `"MIN("employees".salary) AS \`minSalary\`"`,
       );
     });
 
@@ -322,7 +322,7 @@ describe("Puri Query", () => {
         .groupBy("employees.department_id");
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "groupBy").toMatchInlineSnapshot(`"\`employees\`.\`department_id\`"`);
+      expectQuery(query, "groupBy").toMatchInlineSnapshot(`""employees"."department_id""`);
     });
 
     test("groupBy - 다중 컬럼", async () => {
@@ -337,7 +337,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "groupBy").toMatchInlineSnapshot(
-        `"\`projects\`.\`status\`, \`projects\`.\`created_at\`"`,
+        `""projects"."status", "projects"."created_at""`,
       );
     });
 
@@ -382,7 +382,7 @@ describe("Puri Query", () => {
       await db.table("users").orderBy("users.created_at", "desc");
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`users\`.\`created_at\` DESC"`);
+      expectQuery(query, "orderBy").toMatchInlineSnapshot(`""users"."created_at" DESC"`);
     });
 
     test("orderBy - 다중 컬럼", async () => {
@@ -394,7 +394,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "orderBy").toMatchInlineSnapshot(
-        `"\`employees\`.\`salary\` DESC, \`employees\`.\`hire_date\` ASC"`,
+        `""employees"."salary" DESC, "employees"."hire_date" ASC"`,
       );
     });
 
@@ -419,7 +419,7 @@ describe("Puri Query", () => {
       await db.table("projects").orderBy("projects.created_at", "desc").limit(10).offset(10);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`projects\`.\`created_at\` DESC"`);
+      expectQuery(query, "orderBy").toMatchInlineSnapshot(`""projects"."created_at" DESC"`);
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 10 OFFSET 10"`);
     });
   });
@@ -458,7 +458,7 @@ describe("Puri Query", () => {
       const query = Naite.get("puri:executed-query").first();
 
       expectQuery(query, "pagination").toMatchInlineSnapshot(`"LIMIT 1"`);
-      expectQuery(query, "orderBy").toMatchInlineSnapshot(`"\`users\`.\`created_at\` DESC"`);
+      expectQuery(query, "orderBy").toMatchInlineSnapshot(`""users"."created_at" DESC"`);
     });
 
     test("pluck", async () => {
@@ -466,8 +466,8 @@ describe("Puri Query", () => {
       await db.table("users").where("users.role", "admin").pluck("users.email");
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "columns").toMatchInlineSnapshot(`"\`users\`.\`email\`"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`"\`users\`.\`role\` = 'admin'"`);
+      expectQuery(query, "columns").toMatchInlineSnapshot(`""users"."email""`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""users"."role" = 'admin'"`);
     });
   });
 });

@@ -3,10 +3,10 @@
   "table": "users",
   "title": "USER",
   "props": [
-    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
       "name": "created_at",
-      "type": "timestamp",
+      "type": "date",
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP"
     },
@@ -25,14 +25,13 @@
       "name": "last_login_at",
       "nullable": true,
       "desc": "LASTLOGIN일시",
-      "type": "datetime"
+      "type": "date"
     },
     {
       "name": "bio",
       "nullable": true,
       "desc": "BIO",
-      "type": "text",
-      "textType": "text"
+      "type": "string"
     },
     {
       "name": "is_verified",
@@ -44,7 +43,7 @@
       "name": "deleted_at",
       "nullable": true,
       "desc": "삭제일시",
-      "type": "datetime"
+      "type": "date"
     },
     {
       "type": "relation",
@@ -55,10 +54,7 @@
       "relationType": "OneToOne"
     }
   ],
-  "indexes": [
-    { "type": "fulltext", "columns": ["bio"], "parser": "ngram" },
-    { "type": "unique", "columns": ["email"] }
-  ],
+  "indexes": [{ "type": "unique", "columns": ["email"] }],
   "subsets": {
     "A": [
       "id",

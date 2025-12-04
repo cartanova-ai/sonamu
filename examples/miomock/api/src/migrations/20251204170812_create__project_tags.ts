@@ -1,11 +1,11 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("projects__employees", (table) => {
+  await knex.schema.createTable("project_tags", (table) => {
     // columns
     table.increments().primary();
-    table.integer("employee_id").unsigned().notNullable();
-    table.integer("project_id").unsigned().notNullable();
+    table.integer("project_id").notNullable();
+    table.integer("tag_id").notNullable();
     table.uuid("uuid").nullable();
 
     // indexes
@@ -14,5 +14,5 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("projects__employees");
+  return knex.schema.dropTable("project_tags");
 }

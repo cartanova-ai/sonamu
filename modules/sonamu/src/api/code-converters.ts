@@ -21,30 +21,12 @@
 import { z } from "zod";
 import type { core } from "zod/v4";
 import type { $ZodLooseShape } from "zod/v4/core";
-import { type ApiParam, ApiParamType, type TextProp } from "../types/types";
+import { type ApiParam, ApiParamType } from "../types/types";
 import type { ExtendedApi } from "./decorators";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodObject = z.ZodObject<$ZodLooseShape>;
 type AnyZodLiteral = z.ZodLiteral<core.util.Literal>;
-
-/*
- * 유틸리티 함수들입니다.
- */
-
-/**
- * TextProp의 textType에 따른 최대 길이(bytes)를 반환합니다.
- */
-export function getTextTypeLength(textType: TextProp["textType"]): number {
-  switch (textType) {
-    case "text":
-      return 1024 * 64 - 1;
-    case "mediumtext":
-      return 1024 * 1024 * 16 - 1;
-    case "longtext":
-      return 1024 * 1024 * 1024 * 4 - 1;
-  }
-}
 
 /**
  * Promise 타입을 한 번 언래핑하여 내부 타입을 반환합니다.

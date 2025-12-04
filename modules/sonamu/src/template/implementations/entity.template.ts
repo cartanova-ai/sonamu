@@ -42,7 +42,7 @@ export class Template__entity extends Template {
         props: options.props?.length
           ? options.props
           : [
-              { name: "id", type: "integer", unsigned: true, desc: "ID" },
+              { name: "id", type: "integer", desc: "ID" },
               ...(parent
                 ? [
                     {
@@ -58,7 +58,7 @@ export class Template__entity extends Template {
                 : []),
               {
                 name: "created_at",
-                type: "timestamp",
+                type: "date",
                 desc: "등록일시",
                 dbDefault: "CURRENT_TIMESTAMP",
               },

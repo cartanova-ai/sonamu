@@ -12,7 +12,7 @@ import type { Driver } from "../file-storage/driver";
 import type { SonamuFastifyConfig } from "../types/types";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
-  connection?: Knex.MySql2ConnectionConfig;
+  connection?: Knex.PgConnectionConfig;
 };
 
 export type SonamuConfig = {
@@ -34,7 +34,7 @@ export type SonamuConfig = {
 
   database: {
     // 데이터베이스
-    database?: "mysql" | "postgresql";
+    database?: "postgresql";
     // 기본 데이터베이스 이름
     name: string;
     // 모든 환경에 적용될 기본 Knex 옵션

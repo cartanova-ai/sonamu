@@ -54,6 +54,9 @@
     "@fastify/passport": "^2.2.0",
     "@fastify/secure-session": "^7",
     "@fastify/static": "^7",
+    "@sonamu-kit/hot-hook": "workspace:^",
+    "@sonamu-kit/hot-runner": "workspace:^",
+    "@sonamu-kit/loader": "workspace:^",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
     "chokidar": "^4.0.3",
@@ -65,19 +68,16 @@
     "fastify-sse-v2": "^4.2.1",
     "inflection": "^1.13.2",
     "knex": "^3.1.0",
-    "radashi": "^12.2.0",
     "mime-types": "^3.0.1",
     "minimatch": "^10.0.3",
-    "mysql2": "^3.6.1",
     "node-sql-parser": "^5.2.0",
+    "pg": "^8.16.3",
     "prompts": "^2.4.2",
     "qs": "^6.11.0",
+    "radashi": "^12.2.0",
     "tsicli": "^1.0.5",
     "vitest": "^4.0.10",
-    "zod": "^4.1.12",
-    "@sonamu-kit/loader": "workspace:^",
-    "@sonamu-kit/hot-hook": "workspace:^",
-    "@sonamu-kit/hot-runner": "workspace:^"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
@@ -87,16 +87,15 @@
     "@types/node": "^22",
     "@types/prompts": "^2.0.14",
     "@types/qs": "^6.9.7",
+    "nodemon": "3.1.10",
     "tsup": "^8.1.0",
-    "typescript": "^5.9.3",
-    "nodemon": "3.1.10"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.13.5",
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
-    "mysql2": "^3.6.1",
     "typescript": "^5.9.3"
   }
 }

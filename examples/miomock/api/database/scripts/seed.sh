@@ -13,17 +13,17 @@ DUMP_FILE="database/dumps/miomock_test_latest.sql"
 
 # sonamu.config.ts의 DB 설정 사용
 DB_HOST="${MIOMOCK_DB_HOST:-0.0.0.0}"
-DB_PORT="${MIOMOCK_DB_PORT:-3306}"
-DB_USER="${MIOMOCK_DB_USER:-root}"
+DB_PORT="${MIOMOCK_DB_PORT:-54321}"
+DB_USER="${MIOMOCK_DB_USER:-postgres}"
 DB_PASSWORD="${MIOMOCK_DB_PASSWORD:-miomock123}"
 
-# MySQL 패스워드 환경변수 설정 (warning 방지)
-export MYSQL_PWD="${DB_PASSWORD}"
+# PostgreSQL 패스워드 환경변수 설정
+export PGPASSWORD="${DB_PASSWORD}"
 
 if [ ! -f "${DUMP_FILE}" ]; then
   echo "❌ Dump file not found: ${DUMP_FILE}"
   echo "💡 Run 'pnpm dump:fixture' first!"
-  unset MYSQL_PWD
+  unset PGPASSWORD
   exit 1
 fi
 
@@ -32,22 +32,25 @@ echo "🔗 Target: ${DB_USER}@${DB_HOST}:${DB_PORT}"
 
 # 1. fixture DB 초기화
 echo "🗑️  Recreating ${FIXTURE_DB}..."
-mysql \
-  --host="${DB_HOST}" \
-  --port="${DB_PORT}" \
-  --user="${DB_USER}" \
-  -e "DROP DATABASE IF EXISTS ${FIXTURE_DB}; CREATE DATABASE ${FIXTURE_DB};"
+psql \
+  -h "${DB_HOST}" \
+  -p "${DB_PORT}" \
+  -U "${DB_USER}" \
+  -d postgres \
+  -c "DROP DATABASE IF EXISTS \"${FIXTURE_DB}\";" \
+  -c "CREATE DATABASE \"${FIXTURE_DB}\";"
 
-# 2. 덤프를 적용하면서 DB 이름 변환
+# 2. 덤프를 적용하면서 DB 이름 변환 (PostgreSQL은 덤프에 DB 이름 없어서 sed 불필요)
 echo "📝 Applying dump file to ${FIXTURE_DB}..."
-sed "s/\`${SOURCE_DB}\`/\`${FIXTURE_DB}\`/g; s/USE \`${SOURCE_DB}\`/USE \`${FIXTURE_DB}\`/g" ${DUMP_FILE} | \
-  mysql \
-    --host="${DB_HOST}" \
-    --port="${DB_PORT}" \
-    --user="${DB_USER}"
+psql \
+  -h "${DB_HOST}" \
+  -p "${DB_PORT}" \
+  -U "${DB_USER}" \
+  -d "${FIXTURE_DB}" \
+  -f "${DUMP_FILE}"
 
 # 환경변수 정리
-unset MYSQL_PWD
+unset PGPASSWORD
 
 echo "✅ Dump applied to ${FIXTURE_DB}"
 echo "🎉 Seed completed!"

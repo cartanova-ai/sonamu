@@ -153,7 +153,7 @@ class SonamuClass {
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
-    this.config.database.database = this.config.database.database ?? "mysql";
+    this.config.database.database = this.config.database.database ?? "postgresql";
 
     if (process.env.ANTHROPIC_API_KEY) {
       this.secrets = {

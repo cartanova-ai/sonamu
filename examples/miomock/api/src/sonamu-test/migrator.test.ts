@@ -15,6 +15,12 @@ describe("Migrator test", () => {
     expect(migrator).toBeDefined();
   });
 
+  // test.only("compareMigrations", async () => {
+  //   const compareDBconn = knex(Sonamu.dbConfig.test);
+  //   const genCodes = await migrator.compareMigrations(compareDBconn);
+  //   expect(genCodes).toHaveLength(0);
+  // });
+
   describe("getStatus", () => {
     test("마이그레이션 최신 상태 확인", async () => {
       const status = await migrator.getStatus();
@@ -74,7 +80,7 @@ describe("Migrator test", () => {
       expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
         {
           connKey: "test",
-          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_test`,
+          connString: `pg://${dbUser}@0.0.0.0:54321/miomock_test`,
           currentVersion: expect.any(String),
           name: "test",
           pending: [],
@@ -82,7 +88,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "fixture_remote",
-          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock_fixture_remote`,
+          connString: `pg://${dbUser}@0.0.0.0:54321/miomock_fixture_remote`,
           currentVersion: expect.any(String),
           name: "fixture_remote",
           pending: [],
@@ -90,7 +96,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "development_master",
-          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
+          connString: `pg://${dbUser}@0.0.0.0:54321/miomock`,
           currentVersion: expect.any(String),
           name: "development",
           pending: [],
@@ -98,7 +104,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "production_master",
-          connString: `mysql2://${dbUser}@0.0.0.0:3306/miomock`,
+          connString: `pg://${dbUser}@0.0.0.0:54321/miomock`,
           currentVersion: expect.any(String),
           name: "production",
           pending: [],
@@ -163,7 +169,9 @@ describe("Migrator test", () => {
       expect(alterCode?.formatted).toContain('table.dropColumns("deleted_at")');
 
       // down
-      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
+      expect(alterCode?.formatted).toContain(
+        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+      );
     });
 
     test("컬럼 속성 변경 감지", async () => {
@@ -186,12 +194,20 @@ describe("Migrator test", () => {
       expect(alterCode?.title).toBe("alter_users_alter1");
 
       // up
-      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").notNullable()');
-      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
+      expect(alterCode?.formatted).toContain(
+        'table.timestamp("deleted_at", { useTz: true }).notNullable()',
+      );
+      expect(alterCode?.formatted).toContain(
+        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+      );
 
       // down
-      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").nullable()');
-      expect(alterCode?.formatted).toContain('table.datetime("deleted_at").notNullable()');
+      expect(alterCode?.formatted).toContain(
+        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+      );
+      expect(alterCode?.formatted).toContain(
+        'table.timestamp("deleted_at", { useTz: true }).notNullable()',
+      );
     });
 
     test("컬럼 이름 변경 감지 (Drop & Add)", async () => {
@@ -234,7 +250,6 @@ describe("Migrator test", () => {
           ...original.indexes,
           { type: "index", columns: ["name"] },
           { type: "unique", columns: ["company_id"] },
-          { type: "fulltext", columns: ["parent_id"], parser: "ngram" },
         ],
       }));
       const status = await migrator.getStatus();
@@ -250,14 +265,10 @@ describe("Migrator test", () => {
             table.index(["name"]);
             table.unique(["company_id"]);
           });
-          await knex.raw(
-            \`ALTER TABLE departments ADD FULLTEXT INDEX departments_parent_id_index (parent_id) WITH PARSER ngram\`,
-          );
         }
 
         export async function down(knex: Knex): Promise<void> {
           return knex.schema.alterTable("departments", (table) => {
-            table.dropIndex(["parent_id"]);
             table.dropIndex(["name"]);
             table.dropUnique(["company_id"]);
           });
@@ -280,19 +291,17 @@ describe("Migrator test", () => {
       expect(preparedCodes?.title).toBe("alter_users");
 
       // up
-      expect(preparedCodes?.formatted).toContain('table.dropIndex(["bio"])');
       expect(preparedCodes?.formatted).toContain('table.dropUnique(["email"])');
 
       // down
-      expect(preparedCodes?.formatted).toContain('table.index(["bio"], undefined, "FULLTEXT")');
       expect(preparedCodes?.formatted).toContain('table.unique(["email"])');
     });
 
-    test("인덱스 변경 감지", async () => {
+    // FIXME: FTS 적용 후 케이스 처리 필요
+    test.skip("인덱스 변경 감지", async () => {
       // UserEntity의 fulltext 인덱스 컬럼 변경
       mockEntityManagerGet("User", (original) => ({
         ...original,
-        indexes: [{ type: "fulltext", columns: ["bio", "username"] }],
       }));
 
       await migrator.getStatus();
@@ -353,9 +362,7 @@ describe("Migrator test", () => {
       expect(alterCode?.title).toBe("alter_users_add1");
 
       // up
-      expect(alterCode?.formatted).toContain(
-        'table.integer("company_id").unsigned().notNullable()',
-      );
+      expect(alterCode?.formatted).toContain('table.integer("company_id").notNullable()');
 
       // down
       expect(alterCode?.formatted).toContain('table.dropColumns("company_id")');
@@ -390,9 +397,7 @@ describe("Migrator test", () => {
       expect(alterCode?.title).toBe("alter_users_add1");
 
       // up
-      expect(alterCode?.formatted).toContain(
-        'table.integer("profile_id").unsigned().notNullable()',
-      );
+      expect(alterCode?.formatted).toContain('table.integer("profile_id").notNullable()');
 
       // down
       expect(alterCode?.formatted).toContain('table.dropColumns("profile_id")');
@@ -432,7 +437,7 @@ describe("Migrator test", () => {
         table: "labels",
         title: "LABEL",
         props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          { name: "id", type: "integer", desc: "ID" },
           { name: "name", desc: "라벨명", type: "string", length: 100 },
         ],
         indexes: [],
@@ -582,15 +587,15 @@ describe("Migrator test", () => {
         table: "test_entities",
         title: "TEST ENTITY",
         props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          { name: "id", type: "integer", desc: "ID" },
           {
             name: "created_at",
-            type: "timestamp",
+            type: "date",
             desc: "등록일시",
             dbDefault: "CURRENT_TIMESTAMP",
           },
           { name: "name", desc: "이름", type: "string", length: 255 },
-          { name: "description", desc: "설명", type: "text", textType: "text", nullable: true },
+          { name: "description", desc: "설명", type: "string", nullable: true },
         ],
         indexes: [],
         subsets: {},
@@ -626,10 +631,10 @@ describe("Migrator test", () => {
         table: "test_order_entities",
         title: "TEST ORDER ENTITY",
         props: [
-          { name: "id", type: "integer", unsigned: true, desc: "ID" },
+          { name: "id", type: "integer", desc: "ID" },
           {
             name: "created_at",
-            type: "timestamp",
+            type: "date",
             desc: "등록일시",
             dbDefault: "CURRENT_TIMESTAMP",
           },

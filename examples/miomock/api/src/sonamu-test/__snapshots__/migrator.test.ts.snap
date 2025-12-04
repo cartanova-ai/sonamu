@@ -17,7 +17,7 @@ exports[`Migrator test > preparedCodes 생성 > FK 변경 감지 (onUpdate/onDel
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // add
-    table.integer("company_id").unsigned().notNullable();
+    table.integer("company_id").notNullable();
   });
 }
 
@@ -66,7 +66,7 @@ exports[`Migrator test > preparedCodes 생성 > FK 삭제 감지 1`] = `
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // add
-    table.integer("company_id").unsigned().notNullable();
+    table.integer("company_id").notNullable();
   });
 }
 
@@ -111,7 +111,7 @@ exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (BelongsToOne) 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // add
-    table.integer("company_id").unsigned().notNullable();
+    table.integer("company_id").notNullable();
   });
 }
 
@@ -182,8 +182,8 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("users__labels", (table) => {
     // columns
     table.increments().primary();
-    table.integer("user_id").unsigned().notNullable();
-    table.integer("label_id").unsigned().notNullable();
+    table.integer("user_id").notNullable();
+    table.integer("label_id").notNullable();
     table.uuid("uuid").nullable();
 
     // indexes
@@ -233,7 +233,7 @@ exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (OneToOne) 1`] 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // add
-    table.integer("profile_id").unsigned().notNullable();
+    table.integer("profile_id").notNullable();
   });
 }
 
@@ -279,7 +279,10 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_entities", (table) => {
     // columns
     table.increments().primary();
-    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table
+      .timestamp("created_at", { useTz: true })
+      .notNullable()
+      .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
     table.text("description").nullable();
     table.uuid("uuid").nullable();
@@ -307,14 +310,12 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 삭제 감지 1`] = `
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.dropIndex(["bio"]);
     table.dropUnique(["email"]);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
-    table.index(["bio"], undefined, "FULLTEXT");
     table.unique(["email"]);
   });
 }
@@ -341,7 +342,7 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // rollback - drop columns
-    table.datetime("deleted_at").nullable();
+    table.timestamp("deleted_at", { useTz: true }).nullable();
   });
 }
 ",
@@ -360,14 +361,14 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 속성 변경 감지 1`] 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // alter column
-    table.datetime("deleted_at").notNullable().alter();
+    table.timestamp("deleted_at", { useTz: true }).notNullable().alter();
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // rollback - alter column
-    table.datetime("deleted_at").nullable().alter();
+    table.timestamp("deleted_at", { useTz: true }).nullable().alter();
   });
 }
 ",
@@ -443,9 +444,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_order_entities", (table) => {
     // columns
     table.increments().primary();
-    table.timestamp("created_at").notNullable().defaultTo(knex.raw("CURRENT_TIMESTAMP"));
+    table
+      .timestamp("created_at", { useTz: true })
+      .notNullable()
+      .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
-    table.integer("company_id").unsigned().notNullable();
+    table.integer("company_id").notNullable();
     table.uuid("uuid").nullable();
 
     // indexes

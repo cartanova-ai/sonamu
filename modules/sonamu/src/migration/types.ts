@@ -5,7 +5,7 @@ export type MigrationCode = {
   name: string;
   path: string;
 };
-export type ConnString = `${"mysql2"}://${string}@${string}:${number}/${string}`; // mysql2://account@host:port/database
+export type ConnString = `${"pg"}://${string}@${string}:${number}/${string}`; // pg://account@host:port/database
 export type MigrationStatus = {
   codes: MigrationCode[];
   conns: {

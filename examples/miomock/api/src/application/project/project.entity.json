@@ -3,10 +3,10 @@
   "table": "projects",
   "title": "PROJECT",
   "props": [
-    { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
+    { "name": "id", "type": "integer", "desc": "ID" },
     {
       "name": "created_at",
-      "type": "timestamp",
+      "type": "date",
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP"
     },
@@ -32,12 +32,11 @@
       "name": "description",
       "nullable": true,
       "desc": "설명",
-      "type": "text",
-      "textType": "longtext"
+      "type": "string"
     },
     {
       "name": "budget",
-      "type": "decimal",
+      "type": "numeric",
       "precision": 12,
       "scale": 2,
       "nullable": true,
@@ -45,7 +44,7 @@
     },
     {
       "name": "deadline",
-      "type": "datetime",
+      "type": "date",
       "nullable": true,
       "desc": "마감일시"
     },

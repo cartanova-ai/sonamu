@@ -49,7 +49,7 @@ GENERATED  api/src/application/user/user.types.ts
     { "name": "id", "type": "integer", "unsigned": true, "desc": "ID" },
     {
       "name": "created_at",
-      "type": "timestamp",
+      "type": "date",
       "desc": "등록일시",
       "dbDefault": "CURRENT_TIMESTAMP"
     }

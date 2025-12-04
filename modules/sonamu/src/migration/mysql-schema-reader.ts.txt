@@ -1,3 +1,7 @@
+// 일단 참고자료로 남겨두었으나, PG 전환 완료 이후 삭제 예정
+
+
+
 import assert from "assert";
 import type { Knex } from "knex";
 import { group } from "radashi";

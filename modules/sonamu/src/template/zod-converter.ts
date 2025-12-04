@@ -22,7 +22,6 @@ import inflection from "inflection";
 import path from "path";
 import { z } from "zod";
 import type { $ZodLooseShape } from "zod/v4/core";
-import { getTextTypeLength } from "../api";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
@@ -32,19 +31,14 @@ import {
   isBigIntegerProp,
   isBooleanProp,
   isDateProp,
-  isDateTimeProp,
-  isDecimalProp,
-  isDoubleProp,
   isEnumProp,
-  isFloatProp,
   isIntegerProp,
   isJsonProp,
+  isNumberProp,
+  isNumericProp,
   isOneToOneRelationProp,
   isRelationProp,
   isStringProp,
-  isTextProp,
-  isTimeProp,
-  isTimestampProp,
   isUuidProp,
   isVirtualProp,
   type RenderingNode,
@@ -86,25 +80,21 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     zodType = z.number().int();
   } else if (isBigIntegerProp(prop)) {
     zodType = z.bigint();
-  } else if (isTextProp(prop)) {
-    zodType = z.string().max(getTextTypeLength(prop.textType));
   } else if (isEnumProp(prop)) {
     zodType = await getZodTypeById(prop.id);
   } else if (isStringProp(prop)) {
-    zodType = z.string().max(prop.length);
-  } else if (isFloatProp(prop) || isDoubleProp(prop)) {
+    if (prop.length) {
+      zodType = z.string().max(prop.length);
+    } else {
+      zodType = z.string();
+    }
+  } else if (isNumberProp(prop)) {
     zodType = z.number();
-  } else if (isDecimalProp(prop)) {
+  } else if (isNumericProp(prop)) {
     zodType = z.string();
   } else if (isBooleanProp(prop)) {
     zodType = z.boolean();
   } else if (isDateProp(prop)) {
-    zodType = z.string().length(10);
-  } else if (isTimeProp(prop)) {
-    zodType = z.string().length(8);
-  } else if (isDateTimeProp(prop)) {
-    zodType = z.date();
-  } else if (isTimestampProp(prop)) {
     zodType = z.date();
   } else if (isJsonProp(prop)) {
     zodType = await getZodTypeById(prop.id);
@@ -139,27 +129,21 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt = `${prop.name}: z.int()`;
   } else if (isBigIntegerProp(prop)) {
     stmt = `${prop.name}: z.bigint()`;
-  } else if (isTextProp(prop)) {
-    stmt = `${prop.name}: z.string().max(${getTextTypeLength(prop.textType)})`;
   } else if (isEnumProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
   } else if (isStringProp(prop)) {
-    stmt = `${prop.name}: z.string().max(${prop.length})`;
-  } else if (isDecimalProp(prop)) {
-    stmt = `${prop.name}: z.string()`;
-  } else if (isFloatProp(prop) || isDoubleProp(prop)) {
+    if (prop.length) {
+      stmt = `${prop.name}: z.string().max(${prop.length})`;
+    } else {
+      stmt = `${prop.name}: z.string()`;
+    }
+  } else if (isNumberProp(prop)) {
     stmt = `${prop.name}: z.number()`;
+  } else if (isNumericProp(prop)) {
+    stmt = `${prop.name}: z.string()`;
   } else if (isBooleanProp(prop)) {
     stmt = `${prop.name}: z.boolean()`;
-  } else if (isDateProp(prop)) {
-    stmt = `${prop.name}: z.string().length(10)`;
-  } else if (isTimeProp(prop)) {
-    stmt = `${prop.name}: z.string().length(8)`;
-  } else if (isDateTimeProp(prop)) {
-    stmt = `${prop.name}: z.date()`;
-  } else if (isTimestampProp(prop)) {
-    stmt = `${prop.name}: z.date()`;
   } else if (isJsonProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);

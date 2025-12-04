@@ -48,13 +48,28 @@
    }
    ```
 
-3. **Float**
+3. **Number**
 
    ```json
    {
-     "name": "float_prop",
-     "type": "float",
-     "desc": "Example Float Property",
+     "name": "number_prop",
+     "type": "number",
+     "desc": "Example Number Property",
+     "colType": "real", // "real" | "double precision" | "numeric"
+     "precision": 8, // RequiredOnly(numeric)
+     "scale": 2, // RequiredOnly(numeric)
+     "nullable": true, // Optional
+     "dbDefault": 0.0 // Optional
+   }
+   ```
+
+4. **Numeric**
+
+   ```json
+   {
+     "name": "numeric_prop",
+     "type": "numeric",
+     "desc": "Example Numeric Property",
      "precision": 8,
      "scale": 2,
      "nullable": true, // Optional
@@ -62,49 +77,20 @@
    }
    ```
 
-4. **Decimal**
-
-   ```json
-   {
-     "name": "decimal_prop",
-     "type": "decimal",
-     "desc": "Example Decimal Property",
-     "precision": 8,
-     "scale": 2,
-     "nullable": true, // Optional
-     "dbDefault": 0.0 // Optional
-   }
-   ```
-
-5. **Double**
-
-   ```json
-   {
-     "name": "double_prop",
-     "type": "double",
-     "desc": "Example Double Property",
-     "precision": 8,
-     "scale": 2,
-     "unsigned": true, // Optional
-     "nullable": true, // Optional
-     "dbDefault": 0.0 // Optional
-   }
-   ```
-
-6. **String**
+5. **String**
 
    ```json
    {
      "name": "string_prop",
      "type": "string",
      "desc": "Example String Property",
-     "length": 256,
+     "length": 256, // Optional
      "nullable": true, // Optional
      "dbDefault": "\"default_string\"" // Optional
    }
    ```
 
-7. **Boolean**
+6. **Boolean**
 
    ```json
    {
@@ -116,7 +102,7 @@
    }
    ```
 
-8. **Date**
+7. **Date**
 
    ```json
    {
@@ -128,73 +114,33 @@
    }
    ```
 
-9. **DateTime**
+8. **JSON**
 
    ```json
    {
-     "name": "date_time_prop",
-     "type": "dateTime",
-     "desc": "Example DateTime Property",
+     "name": "json_prop",
+     "type": "json",
+     "id": "StringArray",
+     "desc": "Example JSON Property",
      "nullable": true, // Optional
-     "dbDefault": "\"1970-01-01 00:00:00\"" // Optional
+     "dbDefault": "[]" // Optional
    }
    ```
 
-10. **Timestamp**
+9. **Enum**
 
-    ```json
-    {
-      "name": "timestamp_prop",
-      "type": "timestamp",
-      "desc": "Example Timestamp Property",
-      "dbDefault": "CURRENT_TIMESTAMP", // Optional
-      "nullable": true // Optional
-    }
-    ```
+   ```json
+   {
+     "name": "enum_prop",
+     "type": "enum",
+     "id": "EntityNameExampleEnum",
+     "desc": "Example Enum Property",
+     "nullable": true, // Optional
+     "dbDefault": "\"default_enum\"" // Optional
+   }
+   ```
 
-11. **Text**
-
-    ```json
-    {
-      "name": "text_prop",
-      "type": "text",
-      "textType": "text",
-      "desc": "Example Text Property",
-      "nullable": true, // Optional
-      "dbDefault": "\"default_text\"" // Optional
-    }
-    ```
-
-    Note: `textType` can be "text", "mediumtext", or "longtext"
-
-12. **JSON**
-
-    ```json
-    {
-      "name": "json_prop",
-      "type": "json",
-      "id": "StringArray",
-      "desc": "Example JSON Property",
-      "nullable": true, // Optional
-      "dbDefault": "[]" // Optional
-    }
-    ```
-
-13. **Enum**
-
-    ```json
-    {
-      "name": "enum_prop",
-      "type": "enum",
-      "id": "EntityNameExampleEnum",
-      "desc": "Example Enum Property",
-      "length": 16,
-      "nullable": true, // Optional
-      "dbDefault": "\"default_enum\"" // Optional
-    }
-    ```
-
-14. **Relation (BelongsToOne)**
+10. **Relation (BelongsToOne)**
 
     ```json
     {
@@ -209,7 +155,7 @@
     }
     ```
 
-15. **Relation (HasMany)**
+11. **Relation (HasMany)**
 
     ```json
     {
@@ -223,7 +169,7 @@
     }
     ```
 
-16. **Relation (ManyToMany)**
+12. **Relation (ManyToMany)**
 
     ```json
     {
@@ -239,7 +185,7 @@
     }
     ```
 
-17. **Relation (OneToOne)**
+13. **Relation (OneToOne)**
     ```json
     {
       "name": "relation_one_to_one_prop",
