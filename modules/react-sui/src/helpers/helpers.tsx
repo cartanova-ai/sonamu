@@ -1,12 +1,15 @@
-import React, { ReactElement } from "react";
-import { useEffect, useState } from "react";
-import { isObject, unique, get,  set } from "radashi";
-import { z } from "zod";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
+/** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: 훅이므로 필요 시 사용 */
+
+import { format } from "date-fns";
 import equal from "fast-deep-equal";
 import qs from "qs";
-import { format } from "date-fns";
+import { get, isObject, set, unique } from "radashi";
+import type React from "react";
+import { type ReactElement, useEffect, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import type { PaginationProps, SemanticWIDTHS } from "semantic-ui-react";
+import { z } from "zod";
 import { caster } from "./caster";
 
 export function hidden(condition: boolean | undefined): string {
@@ -15,7 +18,7 @@ export function hidden(condition: boolean | undefined): string {
 
 export function searchParamsToParams<T extends z.ZodType<any>>(
   searchParams: URLSearchParams,
-  paramsSchema: T
+  paramsSchema: T,
 ): z.infer<T> {
   const obj = qs.parse(searchParams.toString());
   return caster(paramsSchema, obj);
@@ -25,25 +28,23 @@ export function paramsToSearchParams<T>(params: T): {
   [key in string]: string | string[];
 } {
   return Object.fromEntries(
+    // biome-ignore lint/complexity/useFlatMap: 여기는 flatMap 사용하면 깨짐
     Object.entries(params as any)
       .filter(([, value]) => {
         return value !== undefined;
       })
       .map(([key, value]) => {
         if (Array.isArray(value)) {
-          return [[key + "[]", value]];
+          return [[`${key}[]`, value]];
         } else if (isObject(value)) {
           return Object.keys(value).map((subKey) => {
-            return [
-              `${key}[${subKey}]`,
-              String(value[subKey as keyof typeof value]),
-            ];
+            return [`${key}[${subKey}]`, String(value[subKey as keyof typeof value])];
           });
         } else {
           return [[key, String(value)]];
         }
       })
-      .flat()
+      .flat(),
   );
 }
 
@@ -51,17 +52,14 @@ type ErrorObj = {
   content: string;
   pointing?: "above" | "below" | "left" | "right";
 };
-export function useTypeForm<
-  T extends z.ZodObject<any> | z.ZodArray<any>,
-  U extends z.infer<T>,
->(zType: T, defaultValue: U) {
+export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
+  zType: T,
+  defaultValue: U,
+) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
 
-  function getEmptyStringTo(
-    zType: T,
-    objPath: string
-  ): "normal" | "nullable" | "optional" {
+  function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
       .replace(/\./g, ".shape.")
       .replace(/\[[^\]]+\]/g, ".element")
@@ -87,10 +85,7 @@ export function useTypeForm<
   return {
     form,
     setForm,
-    register: (
-      objPath: string,
-      _emptyStringTo?: "normal" | "nullable" | "optional"
-    ): any => {
+    register: (objPath: string, _emptyStringTo?: "normal" | "nullable" | "optional"): any => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
       const srcValue = get(form, objPath) as unknown;
 
@@ -98,7 +93,7 @@ export function useTypeForm<
         if (value === undefined || value === null) {
           return "";
         }
-        if (value instanceof Date && !isNaN(value.getTime())) {
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
           return format(value, "yyyy-MM-dd'T'HH:mm");
         }
         return value as string;
@@ -132,9 +127,7 @@ export function useTypeForm<
         const newP = new Map(p);
         newP.set(
           objPath,
-          typeof errorMessage === "string"
-            ? { content: errorMessage }
-            : errorMessage
+          typeof errorMessage === "string" ? { content: errorMessage } : errorMessage,
         );
         return newP;
       });
@@ -160,7 +153,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
   defaultValue: T,
   options?: {
     disableSearchParams: boolean;
-  }
+  },
 ) {
   // 라우팅 searchParams
   const [searchParams, setSearchParams] = useSearchParams();
@@ -210,7 +203,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
           activePage: listParams.page ?? 1,
           onPageChange: (
             _event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-            data: PaginationProps
+            data: PaginationProps,
           ) => {
             setListParams({
               ...listParams,
@@ -221,9 +214,7 @@ export function useListParams<U extends z.ZodType<any>, T extends z.infer<U>>(
       } else {
         return {
           value:
-            listParams[name] === undefined || listParams[name] === null
-              ? ""
-              : listParams[name],
+            listParams[name] === undefined || listParams[name] === null ? "" : listParams[name],
           onChange: (_e: any, prop: any) => {
             setListParams({
               ...listParams,
@@ -253,22 +244,21 @@ export function useGoBack() {
 
 export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
   const [selection, setSelection] = useState<Map<T, boolean>>(
-    new Map(allKeys.map((key) => [key, defaultSelectedKeys.includes(key)]))
+    new Map(allKeys.map((key) => [key, defaultSelectedKeys.includes(key)])),
   );
   const [lastIndex, setLastIndex] = useState<number>(0);
 
   // 전체 키가 바뀔 때마다 validation하여 갱신된 전체 키에 포함된 키만 유지
   useEffect(() => {
     const selectionKeys = Array.from(selection.keys());
-    if (allKeys.concat(selectionKeys.filter(key => !allKeys.includes(key))).length === allKeys.length) {
+    if (
+      allKeys.concat(selectionKeys.filter((key) => !allKeys.includes(key))).length ===
+      allKeys.length
+    ) {
       return;
     }
 
-    setSelection(
-      new Map(
-        Array.from(selection).filter(([key, _value]) => allKeys.includes(key))
-      )
-    );
+    setSelection(new Map(Array.from(selection).filter(([key, _value]) => allKeys.includes(key))));
   }, [allKeys, selection]);
 
   const selectedKeys = Array.from(selection)
@@ -283,14 +273,10 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
       });
     },
     selectedKeys,
-    deselectAll: () =>
-      setSelection(new Map(allKeys.map((key) => [key, false]))),
+    deselectAll: () => setSelection(new Map(allKeys.map((key) => [key, false]))),
     selectAll: () => setSelection(new Map(allKeys.map((key) => [key, true]))),
     isAllSelected: selectedKeys.length === allKeys.length,
-    handleCheckboxClick: (
-      e: React.MouseEvent<HTMLInputElement, MouseEvent>,
-      index: number
-    ) => {
+    handleCheckboxClick: (e: React.MouseEvent<HTMLInputElement, MouseEvent>, index: number) => {
       const input = e.currentTarget.getElementsByTagName("input");
       if (e.shiftKey && input[0]?.checked === false) {
         const [begin, end] = (() => {
@@ -301,12 +287,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
           }
         })();
         setSelection(
-          new Map(
-            unique([...selectedKeys, ...allKeys.slice(begin, end)]).map((k) => [
-              k,
-              true,
-            ])
-          )
+          new Map(unique([...selectedKeys, ...allKeys.slice(begin, end)]).map((k) => [k, true])),
         );
       } else {
         setLastIndex(index);
@@ -323,15 +304,11 @@ export function sqlDateToDateString(sqlDateString: string | null) {
   }
 }
 
-export function numF(
-  num: number | null | undefined
-): string | number | undefined | null {
+export function numF(num: number | null | undefined): string | number | undefined | null {
   return num && new Intl.NumberFormat().format(num);
 }
 
-export function dateF(
-  sqlDateStringOrDate: Date | string | null | undefined
-): string | null {
+export function dateF(sqlDateStringOrDate: Date | string | null | undefined): string | null {
   if (sqlDateStringOrDate === null || sqlDateStringOrDate === undefined) {
     return null;
   } else if (sqlDateStringOrDate instanceof Date) {
@@ -340,9 +317,7 @@ export function dateF(
     return sqlDateStringOrDate.slice(0, 10);
   }
 }
-export function datetimeF(
-  sqlDateStringOrDate: Date | string | null | undefined
-): string | null {
+export function datetimeF(sqlDateStringOrDate: Date | string | null | undefined): string | null {
   if (sqlDateStringOrDate === null || sqlDateStringOrDate === undefined) {
     return null;
   } else if (sqlDateStringOrDate instanceof Date) {
@@ -367,7 +342,7 @@ export function formatDateTime(date: Date | null | undefined): string | null {
 }
 
 export function arrayableToArray<T extends number | string | boolean>(
-  val: T | T[] | undefined
+  val: T | T[] | undefined,
 ): T[] {
   return val ? (Array.isArray(val) ? val : [val]) : [];
 }
@@ -378,7 +353,7 @@ export type ControlledModalProps = {
 };
 export function useModal<T extends object>(
   ModalComponent: (props: T & ControlledModalProps) => JSX.Element,
-  defaultProps: T
+  defaultProps: T,
 ) {
   const [modalProps, setModalProps] = useState<T & { open: boolean }>({
     ...defaultProps,
@@ -435,6 +410,4 @@ export type SonamuCol<T> = {
   parentLabel?: string;
 };
 
-export type DistributiveOmit<T, K extends keyof any> = T extends any
-  ? Omit<T, K>
-  : never;
+export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
