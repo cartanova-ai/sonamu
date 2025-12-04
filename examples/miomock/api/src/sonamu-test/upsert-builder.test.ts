@@ -542,7 +542,7 @@ describe("Upsert Builder", () => {
 
       const [secondId] = await ub.upsert(wdb, "users");
 
-      // [expect] 같은 ID 반환ㄴ
+      // [expect] 같은 ID 반환
       expect(secondId).toBe(firstId);
 
       // [expect] DB 검증: 데이터가 업데이트되었는지 확인
@@ -623,46 +623,43 @@ describe("Upsert Builder", () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      // 부모(users) 테이블 등록
-      const userRef = ub.register("users", {
-        email: `parent-${Date.now()}@test.com`,
-        username: "부모유저",
-        password: "pw",
-        role: "normal",
+      // 부모(companies) 테이블 등록
+      const companyRef = ub.register("companies", {
+        name: `테스트회사-${Date.now()}`,
       });
 
-      // 자식(employees) 테이블 등록
-      ub.register("employees", { user_id: userRef, employee_number: `EMP-REF-${Date.now()}` });
+      // 자식(departments) 테이블 등록 - company_id FK 참조
+      ub.register("departments", { company_id: companyRef, name: `테스트부서-${Date.now()}` });
 
       // [expectUB] 치환 전: UBRef 그대로 저장
-      const empRowBefore = ub.getTable("employees").rows[0];
-      expect(isRefField(empRowBefore?.user_id)).toBe(true);
-      expect(empRowBefore?.user_id).toMatchObject({ of: "users", uuid: userRef.uuid });
+      const deptRowBefore = ub.getTable("departments").rows[0];
+      expect(isRefField(deptRowBefore?.company_id)).toBe(true);
+      expect(deptRowBefore?.company_id).toMatchObject({ of: "companies", uuid: companyRef.uuid });
 
       // 부모 → 자식 순서로 upsert
-      const [userId] = await ub.upsert(wdb, "users");
+      const [companyId] = await ub.upsert(wdb, "companies");
 
-      // [expectUB] 부모 upsert 후: employees.rows의 UBRef가 실제 ID로 치환됨
-      const empRowAfter = ub.getTable("employees").rows[0];
-      expect(isRefField(empRowAfter?.user_id)).toBe(false);
-      expect(empRowAfter?.user_id).toBe(userId);
+      // [expectUB] 부모 upsert 후: departments.rows의 UBRef가 실제 ID로 치환됨
+      const deptRowAfter = ub.getTable("departments").rows[0];
+      expect(isRefField(deptRowAfter?.company_id)).toBe(false);
+      expect(deptRowAfter?.company_id).toBe(companyId);
 
-      const [empId] = await ub.upsert(wdb, "employees");
+      const [deptId] = await ub.upsert(wdb, "departments");
 
       // [expect] DB 검증: 치환 후 DB에 실제 ID 저장됨
-      const insertedEmployee = await wdb("employees")
-        .select("user_id")
-        .where({ id: empId })
+      const insertedDept = await wdb("departments")
+        .select("company_id")
+        .where({ id: deptId })
         .first();
 
-      expect(insertedEmployee?.user_id).toBe(userId);
+      expect(insertedDept?.company_id).toBe(companyId);
 
       // [Naite] 참조 치환 추적
       const refResolvedTrace = Naite.get("puri:ub-ref-resolved").first();
       expect(refResolvedTrace).toMatchObject({
-        tableName: "users",
-        from: { of: "users", uuid: userRef.uuid },
-        to: userId,
+        tableName: "companies",
+        from: { of: "companies", uuid: companyRef.uuid },
+        to: companyId,
       });
     });
 
@@ -670,46 +667,43 @@ describe("Upsert Builder", () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      // 부모(users)와 자식(employees) 모두 register (unique 값 사용)
-      const employeeNumber = `EMP-ORD-${Date.now()}`;
+      // 부모(companies)와 자식(departments) 모두 register
+      const deptName = `부서-ORD-${Date.now()}`;
 
-      const userRef = ub.register("users", {
-        email: `order-${Date.now()}@test.com`,
-        username: "순서테스트",
-        password: "pw",
-        role: "normal",
+      const companyRef = ub.register("companies", {
+        name: `순서테스트회사-${Date.now()}`,
       });
 
-      ub.register("employees", {
-        user_id: userRef,
-        employee_number: employeeNumber,
+      ub.register("departments", {
+        company_id: companyRef,
+        name: deptName,
       });
 
       // 잘못된 순서: 자식 테이블을 먼저 upsert 시도 → 에러
-      await expect(ub.upsert(wdb, "employees")).rejects.toThrow(/해결되지 않은 참조가 있습니다/);
+      await expect(ub.upsert(wdb, "departments")).rejects.toThrow(/해결되지 않은 참조가 있습니다/);
 
       // [expectUB] upsert 실패 - register한 데이터가 초기화되지 않고 유지됨
-      expectUB(ub, "rowCount", "employees").toBe(1);
-      expect(isRefField(ub.getTable("employees").rows[0]?.user_id)).toBe(true);
+      expectUB(ub, "rowCount", "departments").toBe(1);
+      expect(isRefField(ub.getTable("departments").rows[0]?.company_id)).toBe(true);
 
       // 올바른 순서: 부모 테이블 먼저 upsert
-      const [userId] = await ub.upsert(wdb, "users");
-      expect(userId).toBeGreaterThan(0);
+      const [companyId] = await ub.upsert(wdb, "companies");
+      expect(companyId).toBeGreaterThan(0);
 
-      // [expectUB] users.rows는 초기화됨
-      expectUB(ub, "rowCount", "users").toBe(0);
+      // [expectUB] companies.rows는 초기화됨
+      expectUB(ub, "rowCount", "companies").toBe(0);
 
       // 이제 자식 테이블 upsert 가능 (참조가 치환되었으므로)
-      const [empId] = await ub.upsert(wdb, "employees");
-      expect(empId).toBeGreaterThan(0);
+      const [deptId] = await ub.upsert(wdb, "departments");
+      expect(deptId).toBeGreaterThan(0);
 
       // [expect] DB 검증: 정상적으로 참조 관계가 설정되었는지 확인
-      const employee = await wdb("employees").select("*").where({ id: empId }).first();
+      const dept = await wdb("departments").select("*").where({ id: deptId }).first();
 
-      expect(employee).toMatchObject({
-        id: empId,
-        user_id: userId, // ← 올바른 참조
-        employee_number: employeeNumber,
+      expect(dept).toMatchObject({
+        id: deptId,
+        company_id: companyId, // ← 올바른 참조
+        name: deptName,
       });
     });
 
@@ -1033,16 +1027,10 @@ describe("Upsert Builder", () => {
       const wdb = DB.getDB("w");
       const timestamp = Date.now();
 
-      // 1단계: user 생성 (employee가 참조할 user_id를 얻기 위함)
-      ub.register("users", {
-        email: `emp-test-${timestamp}@test.com`,
-        username: "직원테스트",
-        password: "pw",
-        role: "normal",
-      });
-      const [userId] = await ub.upsert(wdb, "users");
+      // fixture에 존재하는 user_id 사용
+      const userId = 1;
 
-      // 2단계: employees 3개 생성
+      // 1단계: employees 3개 생성
       const initialEmployees = [
         { user_id: userId, employee_number: `EMP-BATCH1-${timestamp}`, salary: 50000 },
         { user_id: userId, employee_number: `EMP-BATCH2-${timestamp}`, salary: 60000 },

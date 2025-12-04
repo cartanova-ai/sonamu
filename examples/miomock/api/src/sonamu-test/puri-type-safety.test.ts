@@ -860,18 +860,9 @@ describe("Puri Type Safety", () => {
     test("INCREMENT / DECREMENT 타입 안전성", async () => {
       const db = UserModel.getPuri("w");
 
-      // users와 employees 레코드 생성
-      const [userId] = await db.table("users").insert({
-        email: `increment-test-${Date.now()}@test.com`,
-        username: `increment_test_${Date.now()}`,
-        password: "pw",
-        role: "normal",
-      });
-
-      const [employeeId] = await db.table("employees").insert({
-        user_id: userId,
-        employee_number: `INC-${Date.now()}`,
-      });
+      // fixture에 존재하는 데이터 사용
+      const userId = 1;
+      const employeeId = 1;
 
       // 유효한 increment / decrement 사용
       db.table("users").where("id", userId).increment("id", 1);
@@ -899,23 +890,24 @@ describe("Puri Type Safety", () => {
       // JOIN 후 increment / decrement
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
 
-      joinQuery.where("employees.id", employeeId).increment("employees.user_id", 1);
-      joinQuery.where("users.id", userId).decrement("employees.department_id", 1);
+      joinQuery.where("employees.id", employeeId).increment("employees.salary", 1);
+      joinQuery.where("users.id", userId).decrement("employees.salary", 1);
 
       // @ts-expect-error - JOIN 후 prefix 없이 사용 불가
-      joinQuery.where("employees.id", employeeId).increment("user_id", 1);
+      joinQuery.where("employees.id", employeeId).increment("salary", 1);
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼
       joinQuery.where("employees.id", employeeId).increment("departments.id", 1);
 
+      // salary 컬럼으로 실제 increment/decrement 실행
       const incrementResult = await db
         .table("employees")
         .where("id", employeeId)
-        .increment("department_id", 1);
+        .increment("salary", 1);
       const decrementResult = await db
         .table("employees")
         .where("id", employeeId)
-        .decrement("department_id", 1);
+        .decrement("salary", 1);
 
       // 타입 검증
       expectTypeOf(incrementResult).toEqualTypeOf<number>();
