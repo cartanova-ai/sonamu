@@ -366,7 +366,7 @@ export async function createServer(options: {
     };
   }>("/api/entity/create", async (request) => {
     const { form } = request.body;
-    await Sonamu.syncer.createEntity({ ...form, entityId: form.id });
+    await Sonamu.syncer.createEntity(form);
 
     return 1;
   });
