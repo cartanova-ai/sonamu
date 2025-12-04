@@ -192,8 +192,8 @@ class SonamuClass {
     await this.syncer.autoloadModels();
     await this.syncer.autoloadApis();
 
-    const { Template } = await import("../template");
-    await Template.autoload();
+    const { TemplateManager } = await import("../template");
+    await TemplateManager.autoload();
 
     const { isLocal, isTest } = await import("../utils/controller");
     if (isLocal()) {
@@ -353,7 +353,10 @@ class SonamuClass {
     }
   }
 
-  getApiHandler(api: ExtendedApi, config: SonamuFastifyConfig) {
+  getApiHandler(
+    api: ExtendedApi,
+    config: SonamuFastifyConfig,
+  ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
     return async (request: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
       (api.options.guards ?? []).every((guard) => config.guardHandler(guard, request, api));
 
