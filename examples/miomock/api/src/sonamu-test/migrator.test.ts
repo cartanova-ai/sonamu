@@ -15,12 +15,6 @@ describe("Migrator test", () => {
     expect(migrator).toBeDefined();
   });
 
-  // test.only("compareMigrations", async () => {
-  //   const compareDBconn = knex(Sonamu.dbConfig.test);
-  //   const genCodes = await migrator.compareMigrations(compareDBconn);
-  //   expect(genCodes).toHaveLength(0);
-  // });
-
   describe("getStatus", () => {
     test("마이그레이션 최신 상태 확인", async () => {
       const status = await migrator.getStatus();
@@ -693,7 +687,7 @@ describe("Migrator test", () => {
 
         // then
         expect(result[0]?.connKey).toBe("test");
-        expect(result[0]?.batchNo).toBeGreaterThan(1);
+        expect(result[0]?.batchNo).toBe(2);
       });
 
       test("다중 DB 동시 적용", async () => {

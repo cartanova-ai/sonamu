@@ -27,12 +27,12 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
     {
       "name": "test_text_long",
       "nullable": false,
-      "type": "text",
+      "type": "string",
     },
     {
       "name": "test_datetime_col",
       "nullable": false,
-      "type": "timestamp",
+      "type": "date",
     },
     {
       "name": "test_json_col",
@@ -47,39 +47,39 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
     {
       "name": "test_enum_status",
       "nullable": false,
-      "type": "text",
+      "type": "string",
     },
     {
       "defaultTo": "CURRENT_TIMESTAMP",
       "name": "test_timestamp_default",
       "nullable": false,
-      "type": "timestamp",
+      "type": "date",
     },
     {
       "name": "test_decimal_precision",
       "nullable": false,
+      "numberType": "numeric",
       "precision": 10,
       "scale": 2,
-      "type": "decimal",
+      "type": "numberOrNumeric",
     },
     {
       "name": "test_float_precision",
       "nullable": false,
+      "numberType": "real",
       "precision": 8,
       "scale": 4,
-      "type": "float",
+      "type": "numberOrNumeric",
     },
     {
       "name": "test_belongs_to_one_company_id",
       "nullable": true,
       "type": "integer",
-      "unsigned": true,
     },
     {
       "name": "test_one_to_one_profile_id",
       "nullable": false,
       "type": "integer",
-      "unsigned": true,
     },
     {
       "name": "uuid",
@@ -142,19 +142,16 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
           "name": "id",
           "nullable": false,
           "type": "integer",
-          "unsigned": true,
         },
         {
           "name": "migration_set_test_id",
           "nullable": false,
           "type": "integer",
-          "unsigned": true,
         },
         {
           "name": "tag_id",
           "nullable": false,
           "type": "integer",
-          "unsigned": true,
         },
         {
           "name": "uuid",
