@@ -29,12 +29,12 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Setup MySQL
+      - name: Setup PostgreSQL
         run: |
-          sudo systemctl start mysql.service
-          mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY 'miomock123';"
-          mysql -u root -pmiomock123 -e "CREATE DATABASE IF NOT EXISTS miomock;"
-          mysql -u root -pmiomock123 < examples/miomock/api/database/fixtures/init.sql
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'miomock123';"
+          sudo -u postgres psql -c "CREATE DATABASE miomock;"
+          PGPASSWORD=miomock123 psql -U postgres -d miomock -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
 
       # sonamu.lock 지우고 sync가 잘 되는지 봅니다.
       - name: Miomock sync test
