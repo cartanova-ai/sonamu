@@ -22,20 +22,20 @@ echo -e "${YELLOW}📁 API 루트: ${API_ROOT}${NC}"
 
 # 1. Docker 상태 확인
 echo -e "\n${BLUE}🐳 Docker 컨테이너 상태 확인 중...${NC}"
-if docker ps --format "table {{.Names}}" | grep -q "miomock-mysql"; then
-    echo -e "${GREEN}✅ miomock-mysql 컨테이너가 이미 실행 중입니다.${NC}"
+if docker ps --format "table {{.Names}}" | grep -q "miomock-pg"; then
+    echo -e "${GREEN}✅ miomock-pg 컨테이너가 이미 실행 중입니다.${NC}"
 else
-    echo -e "${YELLOW}⚠️  miomock-mysql 컨테이너가 실행되지 않았습니다.${NC}"
+    echo -e "${YELLOW}⚠️  miomock-pg 컨테이너가 실행되지 않았습니다.${NC}"
 
     # Docker Compose로 데이터베이스 시작
-    echo -e "\n${BLUE}🚀 MySQL 데이터베이스 컨테이너 시작 중...${NC}"
+    echo -e "\n${BLUE}🚀 PostgreSQL 데이터베이스 컨테이너 시작 중...${NC}"
     cd "${DATABASE_DIR}"
     docker compose up -d
 
     # 데이터베이스 준비 대기
     echo -e "\n${YELLOW}⏳ 데이터베이스 준비 대기 중... (최대 30초)${NC}"
     for i in {1..30}; do
-        if docker exec miomock-mysql mysqladmin ping -h localhost -u root -pmiomock123 --silent; then
+        if docker exec miomock-pg pg_isready -U postgres -h localhost > /dev/null 2>&1; then
             echo -e "${GREEN}✅ 데이터베이스가 준비되었습니다!${NC}"
             break
         fi
@@ -45,37 +45,37 @@ else
 
     if [ $i -eq 30 ]; then
         echo -e "${RED}❌ 데이터베이스 연결 시간 초과입니다.${NC}"
-        echo -e "${YELLOW}수동으로 확인해주세요: docker logs miomock-mysql${NC}"
+        echo -e "${YELLOW}수동으로 확인해주세요: docker logs miomock-pg${NC}"
         exit 1
     fi
 fi
 
-# 2. Yarn Berry PnP 상태 확인
-echo -e "\n${BLUE}📦 Yarn Berry PnP 상태 확인 중...${NC}"
+# 2. pnpm 의존성 확인
+echo -e "\n${BLUE}📦 pnpm 의존성 상태 확인 중...${NC}"
 cd "${API_ROOT}"
-if [ -f ".pnp.cjs" ]; then
-    echo -e "${GREEN}✅ PnP 파일이 존재합니다. (Zero Install 준비됨)${NC}"
+if [ -d "node_modules" ]; then
+    echo -e "${GREEN}✅ node_modules가 존재합니다.${NC}"
 else
-    echo -e "${YELLOW}⚠️  PnP 파일이 없습니다. yarn install을 실행합니다...${NC}"
-    yarn install
+    echo -e "${YELLOW}⚠️  node_modules가 없습니다. pnpm install을 실행합니다...${NC}"
+    pnpm install
 fi
 
-# 3. sonamu 모듈 portal 연결 상태 확인
+# 3. sonamu 모듈 연결 상태 확인
 echo -e "\n${BLUE}🔗 Sonamu 모듈 연결 상태 확인 중...${NC}"
-if yarn list sonamu 2>/dev/null | grep -q "portal:"; then
-    echo -e "${GREEN}✅ sonamu 모듈이 portal로 연결되어 있습니다.${NC}"
+if pnpm list sonamu 2>/dev/null | grep -q "link:"; then
+    echo -e "${GREEN}✅ sonamu 모듈이 workspace로 연결되어 있습니다.${NC}"
 else
     echo -e "${YELLOW}⚠️  sonamu 모듈 연결에 문제가 있을 수 있습니다.${NC}"
-    echo -e "${YELLOW}필요시 yarn install을 수동으로 실행해주세요.${NC}"
+    echo -e "${YELLOW}필요시 pnpm install을 수동으로 실행해주세요.${NC}"
 fi
 
 # 4. API 서버 시작
 echo -e "\n${BLUE}🔧 API 서버 시작 중... (포트: 19000)${NC}"
 echo -e "${GREEN}🎉 서버가 시작되었습니다!${NC}"
 echo -e "${YELLOW}API 서버: http://localhost:19000${NC}"
-echo -e "${YELLOW}MySQL DB: localhost:33061${NC}"
+echo -e "${YELLOW}PostgreSQL DB: localhost:54321${NC}"
 echo -e "${YELLOW}  - Database: miomock${NC}"
-echo -e "${YELLOW}  - User: root${NC}"
+echo -e "${YELLOW}  - User: postgres${NC}"
 echo -e "${YELLOW}  - Password: miomock123${NC}"
 echo -e "\n${BLUE}종료하려면 Ctrl+C를 누르세요.${NC}"
 
@@ -90,4 +90,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # API 서버 실행
-yarn workspace miomock-api sonamu dev:serve
+pnpm --filter miomock-api sonamu dev
