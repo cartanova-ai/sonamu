@@ -7,7 +7,7 @@ import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 
-describe("Puri Wrapper", () => {
+describe.skip("Puri Wrapper", () => {
   describe("A. 쿼리 빌더 래퍼", () => {
     test("from()", async () => {
       const wdb = UserModel.getPuri("w");

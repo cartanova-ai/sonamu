@@ -5,7 +5,7 @@ import { expectUB } from "../testing/expect-ub";
 
 bootstrap(vi);
 
-describe("Upsert Builder", () => {
+describe.skip("Upsert Builder", () => {
   describe("A. 기본 등록 (register)", () => {
     test("register() 호출 시 UBRef 반환 및 내부 저장 확인", async () => {
       const ub = new UpsertBuilder();

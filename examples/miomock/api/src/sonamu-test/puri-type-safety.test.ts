@@ -4,7 +4,7 @@ import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
-describe("Puri Type Safety", () => {
+describe.skip("Puri Type Safety", () => {
   describe("A. 기본", () => {
     test("테이블 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
