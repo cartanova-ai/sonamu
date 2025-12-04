@@ -29,8 +29,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       toFilter: z.boolean().optional(),
       dbDefault: z.string().optional(),
       length: z.number().optional(),
-      unsigned: z.boolean().optional(),
-      textType: z.enum(["text", "mediumtext", "longtext"]).optional(),
+      numberType: z.enum(["real", "double precision", "numeric"]).optional(),
       precision: z.number().optional(),
       scale: z.number().optional(),
       id: z.string().optional(),
@@ -57,17 +56,12 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   const typeOptions = [
     "string",
     "enum",
-    "text",
     "integer",
     "bigInteger",
+    "number",
+    "numeric",
     "boolean",
-    "float",
-    "double",
-    "decimal",
-    // "date",
-    // "time",
-    "datetime",
-    "timestamp",
+    "date",
     "json",
     "virtual",
     "relation",
@@ -212,10 +206,12 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               <Divider />
               {(form.type === "string" || form.type === "enum") && (
                 <Form.Group widths="equal">
-                  <Form.Field required>
-                    <label>Length</label>
-                    <FormNumberInput {...register("length")} />
-                  </Form.Field>
+                  {form.type === "string" && (
+                    <Form.Field>
+                      <label>Length</label>
+                      <FormNumberInput {...register("length", "nullable")} />
+                    </Form.Field>
+                  )}
                   {form.type === "enum" ? (
                     <Form.Field required>
                       <label>Enum ID</label>
@@ -233,36 +229,30 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                   )}
                 </Form.Group>
               )}
-              {form.type === "text" && (
-                <Form.Group widths="equal">
-                  <Form.Field required>
-                    <label>Text Type</label>
-                    <Form.Dropdown
-                      {...register("textType")}
-                      search
-                      selection
-                      options={["text", "mediumtext", "longtext"].map((k) => ({
-                        key: k,
-                        value: k,
-                        text: k.toUpperCase(),
-                      }))}
-                    />
-                  </Form.Field>
-                </Form.Group>
-              )}
               {(form.type === "integer" ||
                 form.type === "bigInteger" ||
-                form.type === "float" ||
+                form.type === "number" ||
+                form.type === "numeric" ||
                 form.type === "double" ||
                 form.type === "decimal") && (
                 <Form.Group widths="equal">
-                  {form.type !== "decimal" && (
+                  {form.type === "number" && (
                     <Form.Field>
-                      <label>Unsigned</label>
-                      <BooleanToggle {...register("unsigned")} />
+                      <label>Number Type</label>
+                      <Form.Dropdown
+                        {...register("numberType")}
+                        search
+                        selection
+                        options={["real", "double precision", "numeric"].map((k) => ({
+                          key: k,
+                          value: k,
+                          text: k,
+                        }))}
+                      />
                     </Form.Field>
                   )}
-                  {(form.type === "float" || form.type === "double" || form.type === "decimal") && (
+                  {(form.type === "numeric" ||
+                    (form.type === "number" && form.numberType === "numeric")) && (
                     <>
                       <Form.Field required>
                         <label>Precision</label>

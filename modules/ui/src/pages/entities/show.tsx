@@ -724,17 +724,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Table.Cell {...regCell("props", propIndex, 0)}>{prop.name}</Table.Cell>
                       <Table.Cell {...regCell("props", propIndex, 1)}>{prop.desc}</Table.Cell>
                       <Table.Cell {...regCell("props", propIndex, 2)} collapsing>
-                        {prop.type}{" "}
-                        {(prop.type === "integer" ||
-                          prop.type === "bigInteger" ||
-                          prop.type === "float" ||
-                          prop.type === "double" ||
-                          prop.type === "decimal") &&
-                          prop.unsigned && <>unsigned </>}
-                        {(prop.type === "string" || prop.type === "enum") && <>({prop.length}) </>}
-                        {(prop.type === "float" ||
-                          prop.type === "double" ||
-                          prop.type === "decimal") && (
+                        {prop.type} {prop.type === "string" && prop.length && <>({prop.length}) </>}
+                        {(prop.type === "numeric" ||
+                          (prop.type === "number" && prop.numberType === "numeric")) && (
                           <>
                             ({prop.precision},{prop.scale}){" "}
                           </>

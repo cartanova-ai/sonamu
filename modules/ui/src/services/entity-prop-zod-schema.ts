@@ -24,49 +24,30 @@ export namespace EntityPropZodSchema {
     type: z.literal("bigInteger"),
     unsigned: z.boolean().optional(),
   });
-  export const TextProp = CommonProp.extend({
-    type: z.literal("text"),
-    textType: z.enum(["text", "mediumtext", "longtext"]),
-  });
   export const StringProp = CommonProp.extend({
     type: z.literal("string"),
-    length: z.number(),
+    length: z.number().optional(),
   });
   export const EnumProp = CommonProp.extend({
     type: z.literal("enum"),
-    length: z.number(),
     id: z.string(),
   });
-  export const FloatProp = CommonProp.extend({
-    type: z.literal("float"),
-    unsigned: z.boolean().optional(),
-    precision: z.number(),
-    scale: z.number(),
+  export const NumberProp = CommonProp.extend({
+    type: z.literal("number"),
+    precision: z.number().optional(),
+    scale: z.number().optional(),
+    numberType: z.enum(["real", "double precision", "numeric"]).optional(),
   });
-  export const DoubleProp = CommonProp.extend({
-    type: z.literal("double"),
-    unsigned: z.boolean().optional(),
-  });
-  export const DecimalProp = CommonProp.extend({
-    type: z.literal("decimal"),
-    unsigned: z.boolean().optional(),
-    precision: z.number(),
-    scale: z.number(),
+  export const NumericProp = CommonProp.extend({
+    type: z.literal("numeric"),
+    precision: z.number().optional(),
+    scale: z.number().optional(),
   });
   export const BooleanProp = CommonProp.extend({
     type: z.literal("boolean"),
   });
   export const DateProp = CommonProp.extend({
     type: z.literal("date"),
-  });
-  export const DateTimeProp = CommonProp.extend({
-    type: z.literal("datetime"),
-  });
-  export const TimeProp = CommonProp.extend({
-    type: z.literal("time"),
-  });
-  export const TimestampProp = CommonProp.extend({
-    type: z.literal("timestamp"),
   });
   export const JsonProp = CommonProp.extend({
     type: z.literal("json"),
@@ -123,6 +104,7 @@ export namespace EntityPropZodSchema {
   export function safeParse(form: {
     type: string;
     relationType?: string;
+    length?: number;
     // biome-ignore lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용
   }): z.ZodSafeParseSuccess<any> | z.ZodSafeParseError<any> {
     const zodSchema = (() => {
@@ -131,26 +113,16 @@ export namespace EntityPropZodSchema {
           return EntityPropZodSchema.StringProp;
         case "enum":
           return EntityPropZodSchema.EnumProp;
-        case "text":
-          return EntityPropZodSchema.TextProp;
         case "integer":
           return EntityPropZodSchema.IntegerProp;
         case "bigInteger":
           return EntityPropZodSchema.BigIntegerProp;
-        case "float":
-          return EntityPropZodSchema.FloatProp;
-        case "double":
-          return EntityPropZodSchema.DoubleProp;
-        case "decimal":
-          return EntityPropZodSchema.DecimalProp;
+        case "number":
+          return EntityPropZodSchema.NumberProp;
+        case "numeric":
+          return EntityPropZodSchema.NumericProp;
         case "date":
           return EntityPropZodSchema.DateProp;
-        case "time":
-          return EntityPropZodSchema.TimeProp;
-        case "datetime":
-          return EntityPropZodSchema.DateTimeProp;
-        case "timestamp":
-          return EntityPropZodSchema.TimestampProp;
         case "json":
           return EntityPropZodSchema.JsonProp;
         case "virtual":
@@ -175,7 +147,21 @@ export namespace EntityPropZodSchema {
       }
       return z.any();
     })();
+    if (form.type === "string" && form.length === null) {
+      delete form.length;
+    }
     const result = zodSchema.safeParse(form);
+
+    if (result.success) {
+      if (
+        result.data.type === "number" &&
+        result.data.numberType !== "numeric" &&
+        (result.data.precision || result.data.scale)
+      ) {
+        delete result.data.precision;
+        delete result.data.scale;
+      }
+    }
     return result;
   }
 }
