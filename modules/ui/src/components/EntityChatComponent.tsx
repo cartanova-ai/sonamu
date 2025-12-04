@@ -23,7 +23,7 @@ export default function EntityChatComponent({
 
   const { messages, status, sendMessage, setMessages, stop } = useChat({
     transport: new DefaultChatTransport({
-      api: "/api/entity/chat/stream",
+      api: "/api/ai/entity/chat",
     }),
     onError: (error) => {
       const err = (() => {

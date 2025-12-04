@@ -12,7 +12,6 @@ import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { AICreateEnumForm } from "./_ai_create_enum_form";
 import { EntitySelector } from "./_entity_selector";
 import { EntityIndexForm } from "./_index_form";
 import { EntityPropForm } from "./_prop_form";
@@ -623,24 +622,6 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
-  const openCreateNewEnumWithAI = () => {
-    if (!entity) {
-      return;
-    }
-
-    openModal(<AICreateEnumForm entityId={entity.id} enumLables={entity.enumLabels} />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: () => {
-        mutate();
-      },
-    });
-  };
-
   // Props Drag&Drop
   const dragStartPropIndex = useRef<number | null>();
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
@@ -843,12 +824,6 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                     icon="plus"
                     color="blue"
                     onClick={() => openCreateNewEnum()}
-                  />
-                  <Button
-                    size="mini"
-                    icon="comment alternate outline"
-                    color="blue"
-                    onClick={() => openCreateNewEnumWithAI()}
                   />
                 </h3>
                 <div className="enums-list">

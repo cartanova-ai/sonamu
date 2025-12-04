@@ -6,7 +6,7 @@ import { aiClient } from "./ai-client";
 export async function setAiApi(server: FastifyInstance) {
   await aiClient.init();
 
-  server.post("/api/openai/chat/stream", async (request, reply) => {
+  server.post("/api/ai/fixture/chat", async (request, reply) => {
     const { messages, fixtureRecords } = request.body as {
       messages: UIMessage[];
       fixtureRecords?: FixtureRecord[];
@@ -35,7 +35,7 @@ export async function setAiApi(server: FastifyInstance) {
   });
 
   // Entity/Enum 생성용 AI Chat Stream
-  server.post("/api/entity/chat/stream", async (request, reply) => {
+  server.post("/api/ai/entity/chat", async (request, reply) => {
     const { messages } = request.body as {
       messages: UIMessage[];
     };
