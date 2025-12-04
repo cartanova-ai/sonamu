@@ -1,9 +1,10 @@
 import classnames from "classnames";
+import { useState } from "react";
 import { Link, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Divider } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
+import EntityChatComponent from "../../components/EntityChatComponent";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { AICreateEntityForm } from "./_ai_create_entity_form";
 import { EntityCreateForm } from "./_create_form";
 
 type EntitiesLayoutProps = {};
@@ -17,6 +18,9 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const params = useParams<{ entityId: string }>();
 
   const navigate = useNavigate();
+
+  // AI Chat 토글 상태
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // useCommonModal
   const { openModal } = useCommonModal();
@@ -40,21 +44,15 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
     });
   };
 
-  const createEntityWithAI = () => {
-    openModal(<AICreateEntityForm />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: (newEntityId) => {
-        mutate();
-        setTimeout(() => {
-          navigate(`/entities/${newEntityId}`);
-        }, 200);
-      },
-    });
+  const handleEntityCreated = (entityId: string) => {
+    mutate();
+    setTimeout(() => {
+      navigate(`/entities/${entityId}`);
+    }, 200);
+  };
+
+  const handleEntityUpdated = (_entityId: string, _updatedFields: string[]) => {
+    mutate();
   };
 
   return (
@@ -88,13 +86,19 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
             onClick={() => createEntity()}
           />
           <Button
-            icon="comment alternate outline"
+            icon={showAIChat ? "chevron down" : "comment alternate outline"}
             size="mini"
-            content="Create Entity With AI"
-            color="blue"
-            onClick={() => createEntityWithAI()}
+            content="AI"
+            color={showAIChat ? "grey" : "blue"}
+            onClick={() => setShowAIChat(!showAIChat)}
           />
         </div>
+        {showAIChat && (
+          <EntityChatComponent
+            onEntityCreated={handleEntityCreated}
+            onEntityUpdated={handleEntityUpdated}
+          />
+        )}
       </div>
       <Outlet context={context} />
       <Button
