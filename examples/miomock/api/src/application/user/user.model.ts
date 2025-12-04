@@ -19,7 +19,6 @@ import type {
   UserLoginParams,
   UserRegisterParams,
   UserSaveParams,
-  UserSearchParams,
 } from "./user.types";
 
 /*
@@ -239,16 +238,16 @@ class UserModelClass extends BaseModelClass<
     return { user: await this.findById("SS", userId) };
   }
 
-  @api({ httpMethod: "GET" })
-  async search(params: UserSearchParams): Promise<UserSubsetMapping["A"][]> {
-    const rdb = this.getPuri("r");
-    const users = await rdb
-      .table("users")
-      .selectAll()
-      .whereMatch("users.bio", params.keyword) // ngram index
-      .debug();
-    return users;
-  }
+  // @api({ httpMethod: "GET" })
+  // async search(params: UserSearchParams): Promise<UserSubsetMapping["A"][]> {
+  //   const rdb = this.getPuri("r");
+  //   const users = await rdb
+  //     .table("users")
+  //     .selectAll()
+  //     .whereMatch("users.bio", params.keyword) // ngram index
+  //     .debug();
+  //   return users;
+  // }
 
   @api({ httpMethod: "GET" })
   @transactional({ readOnly: true })

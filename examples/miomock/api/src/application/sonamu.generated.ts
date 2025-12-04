@@ -112,15 +112,15 @@ export const UserRoleLabel = { normal: "노멀", admin: "관리자" };
 
 // BaseSchema: Company
 export const CompanyBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
-  name: z.string().max(255),
+  name: z.string(),
 });
 export type CompanyBaseSchema = z.infer<typeof CompanyBaseSchema>;
 
 // BaseSchema: Department
 export const DepartmentBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(128),
   company_id: z.int(),
@@ -134,21 +134,21 @@ export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
 
 // BaseSchema: Employee
 export const EmployeeBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   user_id: z.int(),
   department_id: z.int().nullable(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
-  hire_date: z.string().length(10).nullable(),
-  notes: z.string().max(65535).nullable(),
+  hire_date: z.date().nullable(),
+  notes: z.string().nullable(),
   // projs: ManyToMany Project
 });
 export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
 
 // BaseSchema: File
 export const FileBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   mime_type: z.string().max(128),
   name: z.string().max(128),
@@ -158,12 +158,12 @@ export type FileBaseSchema = z.infer<typeof FileBaseSchema>;
 
 // BaseSchema: Project
 export const ProjectBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   // employee: ManyToMany Employee
   name: z.string().max(255),
   status: ProjectStatus,
-  description: z.string().max(4294967295).nullable(),
+  description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
   // tags: ManyToMany Tag
@@ -176,7 +176,7 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
 
 // BaseSchema: SyncFixture
 export const SyncFixtureBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   updated_at: z.date().nullable(),
   name: z.string().max(128),
@@ -184,37 +184,35 @@ export const SyncFixtureBaseSchema = z.object({
   status: SyncFixtureStatus,
   priority: z.int().nullable(),
   is_active: z.boolean(),
-  description: z.string().max(65535).nullable(),
+  description: z.string().nullable(),
   tags: StringArray.nullable(),
 });
 export type SyncFixtureBaseSchema = z.infer<typeof SyncFixtureBaseSchema>;
 
 // BaseSchema: Tag
 export const TagBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
-  name: z.string().max(30),
+  name: z.string(),
 });
 export type TagBaseSchema = z.infer<typeof TagBaseSchema>;
 
 // BaseSchema: User
 export const UserBaseSchema = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
   password: z.string().max(255),
-  birth_date: z.string().length(10).nullable(),
+  birth_date: z.date().nullable(),
   role: UserRole,
   last_login_at: z.date().nullable(),
-  bio: z.string().max(65535).nullable(),
+  bio: z.string().nullable(),
   is_verified: z.boolean(),
   deleted_at: z.date().nullable(),
   // employee: OneToOne Employee
 });
-export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
-  readonly __fulltext__: readonly ["bio"];
-};
+export type UserBaseSchema = z.infer<typeof UserBaseSchema>;
 
 // BaseListParams: Company
 export const CompanyBaseListParams = z
@@ -330,9 +328,9 @@ export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
 
 // Subsets: Company
 export const CompanySubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
-  name: z.string().max(255),
+  name: z.string(),
 });
 export type CompanySubsetA = z.infer<typeof CompanySubsetA>;
 export type CompanySubsetMapping = {
@@ -343,27 +341,27 @@ export type CompanySubsetKey = z.infer<typeof CompanySubsetKey>;
 
 // Subsets: Department
 export const DepartmentSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(128),
   employee_count: NumberType,
   company: z.object({
-    id: z.int().nonnegative(),
-    name: z.string().max(255),
+    id: z.int(),
+    name: z.string(),
   }),
   parent: z
     .object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       name: z.string().max(128),
     })
     .nullable(),
   employees: z.array(
     z.object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       employee_number: z.string().max(32),
       salary: z.string().nullable(),
       user: z.object({
-        id: z.int().nonnegative(),
+        id: z.int(),
         email: z.string().max(255),
       }),
     }),
@@ -371,29 +369,29 @@ export const DepartmentSubsetA = z.object({
 });
 export type DepartmentSubsetA = z.infer<typeof DepartmentSubsetA>;
 export const DepartmentSubsetP = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(128),
   employee_count: NumberType,
   company: z.object({
-    id: z.int().nonnegative(),
-    name: z.string().max(255),
+    id: z.int(),
+    name: z.string(),
   }),
   parent: z
     .object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       name: z.string().max(128),
     })
     .nullable(),
 });
 export type DepartmentSubsetP = z.infer<typeof DepartmentSubsetP>;
 export const DepartmentSubsetP2 = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(128),
   company: z.object({
-    id: z.int().nonnegative(),
-    name: z.string().max(255),
+    id: z.int(),
+    name: z.string(),
   }),
 });
 export type DepartmentSubsetP2 = z.infer<typeof DepartmentSubsetP2>;
@@ -407,39 +405,39 @@ export type DepartmentSubsetKey = z.infer<typeof DepartmentSubsetKey>;
 
 // Subsets: Employee
 export const EmployeeSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   employee_number: z.string().max(32),
   salary: z.string().nullable(),
-  hire_date: z.string().length(10).nullable(),
-  notes: z.string().max(65535).nullable(),
+  hire_date: z.date().nullable(),
+  notes: z.string().nullable(),
   user: z.object({
-    id: z.int().nonnegative(),
+    id: z.int(),
     username: z.string().max(255),
   }),
   department: z
     .object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       name: z.string().max(128),
       employee_count: NumberType,
       company: z.object({
-        name: z.string().max(255),
+        name: z.string(),
       }),
     })
     .nullable(),
 });
 export type EmployeeSubsetA = z.infer<typeof EmployeeSubsetA>;
 export const EmployeeSubsetP = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   user: z.object({
-    id: z.int().nonnegative(),
+    id: z.int(),
     username: z.string().max(255),
     employee: z
       .object({
         department: z
           .object({
-            id: z.int().nonnegative(),
+            id: z.int(),
             employee_count: NumberType,
           })
           .nullable(),
@@ -450,14 +448,14 @@ export const EmployeeSubsetP = z.object({
   }),
   department: z
     .object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       employees: z.array(
         z.object({
-          id: z.int().nonnegative(),
+          id: z.int(),
           salary: z.string().nullable(),
           projs: z.array(
             z.object({
-              id: z.int().nonnegative(),
+              id: z.int(),
               name: z.string().max(255),
               status: ProjectStatus,
               virtual_test: NumberType.nullable(),
@@ -469,10 +467,10 @@ export const EmployeeSubsetP = z.object({
     .nullable(),
   projs: z.array(
     z.object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       name: z.string().max(255),
       status: ProjectStatus,
-      description: z.string().max(4294967295).nullable(),
+      description: z.string().nullable(),
     }),
   ),
 });
@@ -486,7 +484,7 @@ export type EmployeeSubsetKey = z.infer<typeof EmployeeSubsetKey>;
 
 // Subsets: File
 export const FileSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   mime_type: z.string().max(128),
   name: z.string().max(128),
@@ -501,18 +499,18 @@ export type FileSubsetKey = z.infer<typeof FileSubsetKey>;
 
 // Subsets: Project
 export const ProjectSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(255),
   status: ProjectStatus,
-  description: z.string().max(4294967295).nullable(),
+  description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
   image_urls: StringArray.nullable(),
   virtual_test: NumberType.nullable(),
   employee: z.array(
     z.object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       employee_number: z.string().max(32),
       salary: z.string().nullable(),
       user: z.object({
@@ -528,24 +526,24 @@ export const ProjectSubsetA = z.object({
   ),
   tags: z.array(
     z.object({
-      id: z.int().nonnegative(),
-      name: z.string().max(30),
+      id: z.int(),
+      name: z.string(),
     }),
   ),
 });
 export type ProjectSubsetA = z.infer<typeof ProjectSubsetA>;
 export const ProjectSubsetP = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   name: z.string().max(255),
   status: ProjectStatus,
-  description: z.string().max(4294967295).nullable(),
+  description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
   image_urls: StringArray.nullable(),
   employee: z.array(
     z.object({
-      id: z.int().nonnegative(),
+      id: z.int(),
       employee_number: z.string().max(32),
       user: z.object({
         email: z.string().max(255),
@@ -560,8 +558,8 @@ export const ProjectSubsetP = z.object({
   ),
   tags: z.array(
     z.object({
-      id: z.int().nonnegative(),
-      name: z.string().max(30),
+      id: z.int(),
+      name: z.string(),
     }),
   ),
 });
@@ -575,7 +573,7 @@ export type ProjectSubsetKey = z.infer<typeof ProjectSubsetKey>;
 
 // Subsets: SyncFixture
 export const SyncFixtureSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   updated_at: z.date().nullable(),
   name: z.string().max(128),
@@ -583,7 +581,7 @@ export const SyncFixtureSubsetA = z.object({
   status: SyncFixtureStatus,
   priority: z.int().nullable(),
   is_active: z.boolean(),
-  description: z.string().max(65535).nullable(),
+  description: z.string().nullable(),
   tags: StringArray.nullable(),
 });
 export type SyncFixtureSubsetA = z.infer<typeof SyncFixtureSubsetA>;
@@ -595,9 +593,9 @@ export type SyncFixtureSubsetKey = z.infer<typeof SyncFixtureSubsetKey>;
 
 // Subsets: Tag
 export const TagSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
-  name: z.string().max(30),
+  name: z.string(),
 });
 export type TagSubsetA = z.infer<typeof TagSubsetA>;
 export type TagSubsetMapping = {
@@ -608,24 +606,24 @@ export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
-  birth_date: z.string().length(10).nullable(),
+  birth_date: z.date().nullable(),
   role: UserRole,
   last_login_at: z.date().nullable(),
-  bio: z.string().max(65535).nullable(),
+  bio: z.string().nullable(),
   is_verified: z.boolean(),
   deleted_at: z.date().nullable(),
 });
 export type UserSubsetA = z.infer<typeof UserSubsetA>;
 export const UserSubsetP = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   email: z.string().max(255),
   username: z.string().max(255),
   role: UserRole,
-  bio: z.string().max(65535).nullable(),
+  bio: z.string().nullable(),
   is_verified: z.boolean(),
   employee: z
     .object({
@@ -640,13 +638,13 @@ export const UserSubsetP = z.object({
 });
 export type UserSubsetP = z.infer<typeof UserSubsetP>;
 export const UserSubsetSS = z.object({
-  id: z.int().nonnegative(),
+  id: z.int(),
   created_at: z.date(),
   email: z.string().max(255),
   username: z.string().max(255),
   role: UserRole,
   last_login_at: z.date().nullable(),
-  bio: z.string().max(65535).nullable(),
+  bio: z.string().nullable(),
   is_verified: z.boolean(),
 });
 export type UserSubsetSS = z.infer<typeof UserSubsetSS>;

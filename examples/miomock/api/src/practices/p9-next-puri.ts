@@ -101,12 +101,12 @@ Sonamu.runScript(async () => {
     cc: Puri.rawBoolean("users.is_active"),
   });
 
-  // test: where match
-  const test12 = puri.from({ users: "users" }).whereMatch("users.bio", "test");
-  expectAndLog(
-    "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where MATCH (`users`.`bio`) AGAINST ('test')",
-    test12.toQuery(),
-  );
+  // // test: where match
+  // const test12 = puri.from({ users: "users" }).whereMatch("users.bio", "test");
+  // expectAndLog(
+  //   "select `users`.`id` as `id`, `users`.`name` as `name` from `users` where MATCH (`users`.`bio`) AGAINST ('test')",
+  //   test12.toQuery(),
+  // );
 
   // test: order by (ResultAvailableColumns)
   const test13 = puri

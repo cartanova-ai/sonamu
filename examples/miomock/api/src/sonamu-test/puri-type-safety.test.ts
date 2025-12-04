@@ -362,7 +362,7 @@ describe.skip("Puri Type Safety", () => {
 
       // nullable 컬럼 pluck
       const birthDateResult = await db.table("users").pluck("birth_date");
-      expectTypeOf(birthDateResult).toEqualTypeOf<(string | null)[]>();
+      expectTypeOf(birthDateResult).toEqualTypeOf<(Date | null)[]>();
 
       // @ts-expect-error - 존재하지 않는 컬럼
       db.table("users").pluck("nonexistent");
@@ -779,7 +779,7 @@ describe.skip("Puri Type Safety", () => {
       db.table("users").insert({
         ...defaultUserData,
         role: "admin",
-        birth_date: "1990-01-01",
+        birth_date: new Date("1990-01-01"),
         bio: "테스트 유저입니다.",
       });
 
@@ -937,7 +937,7 @@ describe.skip("Puri Type Safety", () => {
 
       // 타입 검증
       type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem["birthDate"]>().toEqualTypeOf<string | null>();
+      expectTypeOf<ResultItem["birthDate"]>().toEqualTypeOf<Date | null>();
 
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
