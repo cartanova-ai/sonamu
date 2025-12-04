@@ -73,7 +73,7 @@ fi
 echo -e "\n${BLUE}🔧 API 서버 시작 중... (포트: 19000)${NC}"
 echo -e "${GREEN}🎉 서버가 시작되었습니다!${NC}"
 echo -e "${YELLOW}API 서버: http://localhost:19000${NC}"
-echo -e "${YELLOW}PostgreSQL DB: localhost:54321${NC}"
+echo -e "${YELLOW}PostgreSQL DB: localhost:5432${NC}"
 echo -e "${YELLOW}  - Database: miomock${NC}"
 echo -e "${YELLOW}  - User: postgres${NC}"
 echo -e "${YELLOW}  - Password: miomock123${NC}"

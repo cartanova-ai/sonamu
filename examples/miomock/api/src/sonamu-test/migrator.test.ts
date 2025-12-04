@@ -74,7 +74,7 @@ describe("Migrator test", () => {
       expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
         {
           connKey: "test",
-          connString: `pg://${dbUser}@0.0.0.0:54321/miomock_test`,
+          connString: `pg://${dbUser}@0.0.0.0:5432/miomock_test`,
           currentVersion: expect.any(String),
           name: "test",
           pending: [],
@@ -82,7 +82,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "fixture_remote",
-          connString: `pg://${dbUser}@0.0.0.0:54321/miomock_fixture_remote`,
+          connString: `pg://${dbUser}@0.0.0.0:5432/miomock_fixture_remote`,
           currentVersion: expect.any(String),
           name: "fixture_remote",
           pending: [],
@@ -90,7 +90,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "development_master",
-          connString: `pg://${dbUser}@0.0.0.0:54321/miomock`,
+          connString: `pg://${dbUser}@0.0.0.0:5432/miomock`,
           currentVersion: expect.any(String),
           name: "development",
           pending: [],
@@ -98,7 +98,7 @@ describe("Migrator test", () => {
         },
         {
           connKey: "production_master",
-          connString: `pg://${dbUser}@0.0.0.0:54321/miomock`,
+          connString: `pg://${dbUser}@0.0.0.0:5432/miomock`,
           currentVersion: expect.any(String),
           name: "production",
           pending: [],

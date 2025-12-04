@@ -13,7 +13,7 @@ DUMP_FILE="database/dumps/miomock_test_latest.sql"
 
 # sonamu.config.ts의 DB 설정 사용
 DB_HOST="${MIOMOCK_DB_HOST:-0.0.0.0}"
-DB_PORT="${MIOMOCK_DB_PORT:-54321}"
+DB_PORT="${MIOMOCK_DB_PORT:-5432}"
 DB_USER="${MIOMOCK_DB_USER:-postgres}"
 DB_PASSWORD="${MIOMOCK_DB_PASSWORD:-miomock123}"
 

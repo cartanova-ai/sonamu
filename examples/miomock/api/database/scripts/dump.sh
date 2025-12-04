@@ -18,7 +18,7 @@ echo "📦 Dumping ${DB_NAME}..."
 # pg_dump 실행
 pg_dump \
   --host=0.0.0.0 \
-  --port=54321 \
+  --port=5432 \
   --username=postgres \
   --dbname=${DB_NAME} \
   --no-owner \

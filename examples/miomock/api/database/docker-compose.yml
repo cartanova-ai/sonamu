@@ -13,4 +13,4 @@ services:
       POSTGRES_PASSWORD: miomock123
       TZ: Asia/Seoul
     ports:
-      - "54321:5432"
+      - "5432:5432"
