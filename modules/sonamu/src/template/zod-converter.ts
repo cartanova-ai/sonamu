@@ -142,6 +142,8 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt = `${prop.name}: z.number()`;
   } else if (isNumericProp(prop)) {
     stmt = `${prop.name}: z.string()`;
+  } else if (isDateProp(prop)) {
+    stmt = `${prop.name}: z.date()`;
   } else if (isBooleanProp(prop)) {
     stmt = `${prop.name}: z.boolean()`;
   } else if (isJsonProp(prop)) {
