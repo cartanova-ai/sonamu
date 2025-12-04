@@ -8,9 +8,84 @@ bootstrap(vi);
 
 describe("Puri Wrapper", () => {
   describe("A. 쿼리 빌더 래퍼", () => {
-    test.todo("from()");
-    test.todo("table()");
-    test.todo("raw()");
+    test("from()", async () => {
+      const wdb = UserModel.getPuri("w");
+      const rdb = UserModel.getPuri("r");
+      const testEmail = "from-test@test.com";
+
+      const [userId] = await wdb.table("users").insert({
+        email: testEmail,
+        username: "from_test_user",
+        password: "pw",
+        role: "normal",
+      });
+
+      assert(userId);
+
+      // from()이 Puri 객체를 반환하는지 확인
+      const puriQuery = rdb.from("users");
+      expect(puriQuery).toBeInstanceOf(Puri);
+
+      // Puri 메서드 체이닝 확인
+      const users = await puriQuery
+        .select({ email: "users.email", username: "users.username" })
+        .where("users.id", userId)
+        .orderBy("users.id", "asc")
+        .limit(1);
+
+      expect(users).toHaveLength(1);
+      expect(users[0]).toMatchObject({ email: testEmail, username: "from_test_user" });
+      expect(users[0]).not.toHaveProperty("password");
+    });
+
+    test("table()", async () => {
+      const wdb = UserModel.getPuri("w");
+      const rdb = UserModel.getPuri("r");
+      const testEmail = "table-test@test.com";
+
+      const [userId] = await wdb.table("users").insert({
+        email: testEmail,
+        username: "table_test_user",
+        password: "pw",
+        role: "admin",
+      });
+
+      assert(userId);
+
+      // table()이 Puri 객체를 반환하는지 확인
+      const puriQuery = rdb.table("users");
+      expect(puriQuery).toBeInstanceOf(Puri);
+
+      // Puri 메서드 체이닝 확인
+      const users = await puriQuery
+        .selectAll()
+        .where("users.id", userId)
+        .orderBy("users.id", "desc");
+
+      expect(users).toHaveLength(1);
+      expect(users[0]).toMatchObject({ email: testEmail, username: "table_test_user" });
+    });
+
+    test("raw()", async () => {
+      const wdb = UserModel.getPuri("w");
+      const rdb = UserModel.getPuri("r");
+      const testEmail = "raw-test@test.com";
+
+      // raw SQL로 INSERT 실행
+      await wdb.knex.raw(
+        `INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)`,
+        [testEmail, "raw_user", "pw", "normal"],
+      );
+
+      // PuriWrapper가 Knex를 감싸고 있음을 확인
+      const [users] = await rdb.knex.raw(`SELECT * FROM users WHERE email = ?`, [testEmail]);
+
+      expect(users).toHaveLength(1);
+      expect(users[0]).toMatchObject({
+        email: testEmail,
+        username: "raw_user",
+      });
+    });
   });
 
   describe("B. 트랜잭션 관리", () => {
