@@ -713,7 +713,7 @@ describe("Upsert Builder", () => {
       });
     });
 
-    test("자기 참조 - 1단계 (UBRef 자동 처리)", async () => {
+    test("자기 참조 - 1단계", async () => {
       // console.log를 차단하기 위해 spyOn
       vi.spyOn(console, "log").mockImplementation(() => {});
 
@@ -767,61 +767,57 @@ describe("Upsert Builder", () => {
       const sales = departments.find((d) => d.name === "영업팀");
       expect(sales?.parent_id).toBe(hq?.id);
 
-      // [Naite] 재귀 호출 확인
+      // [Naite] 단일 upsert 호출 확인
       const traces = Naite.get("puri:ub-upserted").result();
       const deptTraces = traces.filter((t) => t.tableName === "departments");
-      expect(deptTraces.length).toBe(2); // 자동 재귀
+      expect(deptTraces.length).toBe(1); // 단일 upsert 호출
     });
 
-    // TODO: 자기 참조 2단계 이상은 단계별 upsert를 했지만, 한번에 가능하도록 upsert-builder.ts 로직 수정 여부 논의
-    test("자기 참조 - 2단계 이상 (단계별 upsert)", async () => {
+    test("자기 참조 - 2단계 이상 (한 번의 upsert로 처리)", async () => {
       // console.log를 차단하기 위해 spyOn
       vi.spyOn(console, "log").mockImplementation(() => {});
 
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      // company 생성
       const [companyId] = await wdb("companies")
         .insert({ name: "테스트회사", created_at: new Date() })
         .returning("id");
 
-      // 1단계: 본사
-      ub.register("departments", {
+      const hqRef = ub.register("departments", {
         company_id: companyId,
         name: "본사",
       });
-      const [hqId] = await ub.upsert(wdb, "departments");
 
-      // 2단계: 개발팀
-      ub.register("departments", {
+      const devRef = ub.register("departments", {
         company_id: companyId,
         name: "개발팀",
-        parent_id: hqId,
+        parent_id: hqRef, // Level 1: 본사 참조
       });
-      const [devId] = await ub.upsert(wdb, "departments");
 
-      // 3단계: 프론트엔드팀
       ub.register("departments", {
         company_id: companyId,
         name: "프론트엔드팀",
-        parent_id: devId,
+        parent_id: devRef, // Level 2: 개발팀 참조
       });
-      const [frontendId] = await ub.upsert(wdb, "departments");
 
-      // [expect] 모든 ID 생성됨
-      expect(hqId).toBeGreaterThan(0);
-      expect(devId).toBeGreaterThan(0);
-      expect(frontendId).toBeGreaterThan(0);
+      // [expectUB] 3개 등록됨
+      expectUB(ub, "rowCount", "departments").toBe(3);
+
+      // 한 번의 upsert 호출로 3단계 모두 처리
+      const ids = await ub.upsert(wdb, "departments");
+
+      // [expect] 모든 ID 반환
+      expect(ids).toHaveLength(3);
+      const [hqId, devId, frontendId] = ids;
 
       // [expect] 3단계 계층 구조 확인
       const hq = await wdb("departments").where({ id: hqId }).first();
-      expect(hq?.parent_id).toBeNull();
-
       const dev = await wdb("departments").where({ id: devId }).first();
-      expect(dev?.parent_id).toBe(hqId);
-
       const frontend = await wdb("departments").where({ id: frontendId }).first();
+
+      expect(hq?.parent_id).toBeNull();
+      expect(dev?.parent_id).toBe(hqId);
       expect(frontend?.parent_id).toBe(devId);
 
       // [expect] JOIN으로 전체 계층 검증
@@ -838,10 +834,67 @@ describe("Upsert Builder", () => {
         grandparent: "본사",
       });
 
-      // [Naite] 3번의 개별 upsert 확인
+      // [Naite] 단일 upsert 호출 확인
       const traces = Naite.get("puri:ub-upserted").result();
       const deptTraces = traces.filter((t) => t.tableName === "departments");
-      expect(deptTraces).toHaveLength(3); // 단계별 upsert
+      expect(deptTraces).toHaveLength(1); // 한 번의 upsert 호출
+      expect(deptTraces[0]).toMatchObject({
+        tableName: "departments",
+        mode: "upsert",
+        rowCount: 3,
+      });
+    });
+
+    // 트리 구조:
+    //        본사 (L0)
+    //       /       \
+    //   개발팀(L1)  영업팀(L1)
+    //    /    \
+    // FE(L2)  BE(L2)
+    test("자기 참조 - 트리 구조", async () => {
+      vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const ub = new UpsertBuilder();
+      const wdb = DB.getDB("w");
+
+      const [companyId] = await wdb("companies")
+        .insert({ name: "테스트회사", created_at: new Date() })
+        .returning("id");
+
+      const 본사Ref = ub.register("departments", {
+        company_id: companyId,
+        name: "본사",
+      });
+
+      const 개발팀Ref = ub.register("departments", {
+        company_id: companyId,
+        name: "개발팀",
+        parent_id: 본사Ref,
+      });
+
+      ub.register("departments", { company_id: companyId, name: "영업팀", parent_id: 본사Ref });
+      ub.register("departments", { company_id: companyId, name: "FE팀", parent_id: 개발팀Ref });
+      ub.register("departments", { company_id: companyId, name: "BE팀", parent_id: 개발팀Ref });
+
+      const ids = await ub.upsert(wdb, "departments");
+      expect(ids).toHaveLength(5);
+
+      // 계층 구조 검증 - 반환된 id로 조회
+      const departments = await wdb("departments")
+        .select("id", "name", "parent_id")
+        .whereIn("id", ids);
+
+      const 본사 = departments.find((d) => d.name === "본사");
+      const 개발팀 = departments.find((d) => d.name === "개발팀");
+      const 영업팀 = departments.find((d) => d.name === "영업팀");
+      const FE팀 = departments.find((d) => d.name === "FE팀");
+      const BE팀 = departments.find((d) => d.name === "BE팀");
+
+      expect(본사.parent_id).toBeNull();
+      expect(개발팀.parent_id).toBe(본사.id);
+      expect(영업팀.parent_id).toBe(본사.id);
+      expect(FE팀.parent_id).toBe(개발팀.id);
+      expect(BE팀.parent_id).toBe(개발팀.id);
     });
 
     test("청크 단위 처리", async () => {

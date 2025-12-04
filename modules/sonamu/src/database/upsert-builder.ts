@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
-import { group, unique } from "radashi";
+import { unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
@@ -202,31 +202,60 @@ export class UpsertBuilder {
     );
     const extractFields = unique(references).map((reference) => reference.split(".")[1]);
 
-    // 내부 참조 있는 경우 필터하여 분리
-    const groups = group(table.rows, (row) =>
-      Object.entries(row).some(([, value]) => isRefField(value)) ? "selfRef" : "normal",
-    );
-    const normalRows = groups.normal ?? [];
-    const selfRefRows = groups.selfRef ?? [];
+    // 의존성 순서에 따라 레벨별 그룹화 (자기 참조가 없으면 Level 0 하나)
+    const { levels, hasCircular } = this.buildInsertLevels(table.rows, tableName);
 
-    const chunks = chunkSize ? chunk(normalRows, chunkSize) : [normalRows];
+    if (hasCircular) {
+      throw new Error(`${tableName}에 순환 자기 참조가 있습니다.`);
+    }
+
     const uuidMap = new Map<string, unknown>();
+    const allIds: number[] = [];
 
-    for (const chunk of chunks) {
-      const q = wdb.insert(chunk).into(tableName);
-      if (mode === "insert") {
-        await q;
-      } else if (mode === "upsert") {
-        await q.onDuplicateUpdate.apply(q, Object.keys(normalRows[0]));
-      }
+    // 레벨별로 순차 처리
+    for (const levelRows of levels) {
+      // 이전 레벨에서 얻은 ID로 자기 참조 해결
+      const resolvedRows = levelRows.map((row) => {
+        const resolved = { ...row };
+        for (const [key, value] of Object.entries(row)) {
+          if (isRefField(value) && value.of === tableName) {
+            const parent = uuidMap.get(value.uuid);
 
-      // upsert된 row들을 다시 조회하여 uuidMap에 저장
-      const uuids = chunk.map((row) => row.uuid);
-      const upsertedRows = await wdb(tableName)
-        .select(unique(["uuid", "id", ...extractFields]))
-        .whereIn("uuid", uuids as readonly string[]);
-      for (const row of upsertedRows) {
-        uuidMap.set(row.uuid, row);
+            if (!parent) throw new Error(`존재하지 않는 uuid ${value.uuid} -- in ${tableName}`);
+
+            resolved[key] = (parent as Record<string, unknown>)[value.use ?? "id"];
+
+            Naite.t("puri:ub-ref-resolved", {
+              tableName,
+              field: key,
+              from: { of: value.of, uuid: value.uuid, use: value.use ?? "id" },
+              to: resolved[key],
+            });
+          }
+        }
+        return resolved;
+      });
+
+      // 현재 레벨 upsert
+      const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
+      for (const chunk of levelChunks) {
+        const q = wdb.insert(chunk).into(tableName);
+        if (mode === "insert") {
+          await q;
+        } else if (mode === "upsert") {
+          await q.onDuplicateUpdate.apply(q, Object.keys(chunk[0]));
+        }
+
+        // upsert된 row들을 다시 조회하여 uuidMap에 저장
+        const uuids = chunk.map((r) => r.uuid);
+        const upsertedRows = await wdb(tableName)
+          .select(unique(["uuid", "id", ...extractFields]))
+          .whereIn("uuid", uuids as readonly string[]);
+
+        for (const row of upsertedRows) {
+          uuidMap.set(row.uuid, row);
+          allIds.push(row.id);
+        }
       }
     }
 
@@ -256,27 +285,15 @@ export class UpsertBuilder {
       });
     }
 
-    const allIds = Array.from(uuidMap.values()).map(
-      (row) => (row as { id: number }).id,
-    ) as number[];
-
-    // 자기 참조가 있는 경우 재귀적으로 upsert
-    if (selfRefRows.length > 0) {
-      // 처리된 데이터를 제외하고 다시 upsert
-      table.rows = selfRefRows;
-      const selfRefIds = await this.upsert(wdb, tableName, chunkSize);
-      allIds.push(...selfRefIds);
-    } else {
-      // 자기 참조가 없으면 해당 테이블의 데이터 초기화
-      table.rows = [];
-      table.references.clear();
-      table.uniquesMap.clear();
-    }
+    // 해당 테이블의 데이터 초기화
+    table.rows = [];
+    table.references.clear();
+    table.uniquesMap.clear();
 
     Naite.t("puri:ub-upserted", {
       tableName,
       mode,
-      rowCount: normalRows.length + selfRefRows.length,
+      rowCount: allIds.length,
       returnedIds: allIds,
     });
 
@@ -325,5 +342,77 @@ export class UpsertBuilder {
     table.rows = [];
     table.references.clear();
     table.uniquesMap.clear();
+  }
+
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
+
+  /**
+   * rows를 의존성 순서에 따라 레벨별로 그룹화
+   * - 자기 참조 없는 경우 : 모든 rows가 Level 0
+   * - 자기 참조 있는 경우 : 자기 참조 관계를 위상 정렬하여 레벨별로 그룹화
+   */
+  private buildInsertLevels(
+    rows: Record<string, unknown>[],
+    tableName: string,
+  ): { levels: Record<string, unknown>[][]; hasCircular: boolean } {
+    // 1. 자기 참조가 없으면 한 레벨로 처리
+    const hasSelfRef = rows
+      .flatMap((row) => Object.values(row))
+      .some((value) => isRefField(value) && value.of === tableName);
+    if (!hasSelfRef) return { levels: [rows], hasCircular: false };
+
+    // 2. uuid → row 매핑 (중복 uuid 방지)
+    const rowByUuid = new Map<string, Record<string, unknown>>();
+    for (const row of rows) {
+      const uuid = row.uuid as string | undefined;
+      if (!uuid) throw new Error(`buildInsertLevels: uuid가 없는 row -- in ${tableName}`);
+      rowByUuid.set(uuid, row);
+    }
+
+    let pending = Array.from(rowByUuid.values());
+    const levels: Record<string, unknown>[][] = [];
+    const inserted = new Set<string>();
+
+    // 3. 레벨별 분류
+    while (pending.length > 0) {
+      const currentLevel: Record<string, unknown>[] = [];
+      const nextPending: Record<string, unknown>[] = [];
+
+      for (const row of pending) {
+        // 이 row가 참조하는 자기 참조들
+        const selfRefs = Object.values(row).filter(
+          (value) => isRefField(value) && value.of === tableName,
+        ) as UBRef[];
+
+        // 참조하는 모든 uuid가 이미 inserted에 있어야 이번 레벨에 포함
+        const canInsert = selfRefs.every((ref) => {
+          if (!rowByUuid.has(ref.uuid)) {
+            throw new Error(`존재하지 않는 uuid ${ref.uuid} -- in ${tableName}`);
+          }
+          return inserted.has(ref.uuid);
+        });
+
+        if (canInsert) {
+          currentLevel.push(row);
+        } else {
+          nextPending.push(row);
+        }
+      }
+
+      // 순환 참조 감지
+      if (currentLevel.length === 0) return { levels: [], hasCircular: true };
+
+      // 레벨 확정 + inserted 갱신
+      levels.push(currentLevel);
+      for (const row of currentLevel) {
+        inserted.add(row.uuid as string);
+      }
+
+      pending = nextPending;
+    }
+
+    return { levels, hasCircular: false };
   }
 }
