@@ -1,17 +1,69 @@
 import assert from "assert";
 import { join } from "path";
-import { Naite, Sonamu } from "sonamu";
+import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonamu";
+import { Naite, Sonamu, Template } from "sonamu";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
+import type { EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
 import {
   AlreadyProcessedException,
   BadRequestException,
 } from "../../../../../modules/sonamu/dist/exceptions/so-exceptions";
+import type { RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
+import { TemplateManager } from "../../../../../modules/sonamu/dist/template/template-manager";
 import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
 import { bootstrap, test } from "../testing/bootstrap";
+import { mockTemplateManagerGet } from "../testing/test-helpers";
 
 interface WriteFileRecord {
   path: string;
   data: unknown;
+}
+
+// 테스트용 타입 정의
+type CustomTemplateKey = string & {};
+
+type EntityData = EntityJson;
+
+type WriteFile = {
+  path: string;
+  data: string;
+};
+
+// Mock Template 클래스 (테스트용)
+class MockTemplateClass extends Template {
+  constructor(
+    key: TemplateKey | CustomTemplateKey,
+    private mockRender: (
+      options: TemplateOptions[TemplateKey] | Record<string, unknown>,
+      ...extra: unknown[]
+    ) => RenderedTemplate | Promise<RenderedTemplate>,
+    private mockGetTargetAndPath: (
+      names?: EntityNamesRecord,
+      ...extra: unknown[]
+    ) => {
+      target: string;
+      path: string;
+    },
+  ) {
+    super(key as TemplateKey);
+  }
+
+  render(
+    options: TemplateOptions[TemplateKey],
+    ...extra: unknown[]
+  ): RenderedTemplate | Promise<RenderedTemplate> {
+    return this.mockRender(options, ...extra);
+  }
+
+  getTargetAndPath(
+    names?: EntityNamesRecord,
+    ...extra: unknown[]
+  ): {
+    target: string;
+    path: string;
+  } {
+    return this.mockGetTargetAndPath(names, ...extra);
+  }
 }
 
 bootstrap(vi);
@@ -1131,6 +1183,355 @@ describe("Syncer", () => {
       await expect(writeFile.data).toMatchFileSnapshot(
         "../testing-data/snapshots/syncer.test.ts.snapshots/copied-types.ts.snap",
       );
+    });
+  });
+  // ============================================
+  // 19. TemplateManager 통합 테스트
+  // Syncer의 generateTemplate과 TemplateManager가 연동되는지 확인
+  // ============================================
+  describe("TemplateManager 통합", () => {
+    describe("mockTemplateManagerGet을 통한 템플릿 모킹", () => {
+      // 목적: mockTemplateManagerGet으로 템플릿을 교체하면 generateTemplate 결과가 변경되는지 확인
+      test("mockTemplateManagerGet - generateTemplate 결과 변경", async () => {
+        const mockRender = vi.fn().mockReturnValue({
+          target: `${Sonamu.config.api.dir}/src/application`,
+          path: "mock-entity/mock-entity.entity.json",
+          body: JSON.stringify({
+            id: "MockEntity",
+            title: "Mock 엔티티",
+            table: "mock_entities",
+            props: [{ name: "id", type: "integer", desc: "ID" }],
+            indexes: [],
+            subsets: {},
+            enums: {},
+          }),
+          importKeys: [],
+        });
+
+        const spy = mockTemplateManagerGet(
+          "entity",
+          new MockTemplateClass("entity", mockRender, vi.fn()),
+        );
+
+        try {
+          await syncer.generateTemplate(
+            "entity",
+            { entityId: "MockEntity", title: "Mock 엔티티" },
+            { overwrite: true },
+          );
+
+          // mock render가 호출되었는지 확인
+          expect(mockRender).toHaveBeenCalledWith(
+            expect.objectContaining({
+              entityId: "MockEntity",
+              title: "Mock 엔티티",
+            }),
+          );
+
+          // 생성된 파일이 mock 결과인지 확인
+          const writeFile = Naite.get("fs/promises:writeFile").first();
+          expect(writeFile.path).toContain("mock-entity.entity.json");
+        } finally {
+          spy.mockRestore();
+        }
+      });
+
+      // 목적: mockRestore()하면 원본 템플릿으로 복원되는지 확인
+      test("mockTemplateManagerGet - mockRestore 후 원본 복원", async () => {
+        const originalEntity = TemplateManager.get("entity");
+
+        const mockTemplate = new MockTemplateClass("entity", vi.fn(), vi.fn());
+        const spy = mockTemplateManagerGet("entity", mockTemplate);
+
+        // mock 적용 확인
+        expect(TemplateManager.get("entity")).toBe(mockTemplate);
+
+        // 복원
+        spy.mockRestore();
+
+        // 원본 복원 확인
+        expect(TemplateManager.get("entity")).toBe(originalEntity);
+      });
+
+      // 목적: 빠른 테스트 실행 (무거운 model 템플릿 → 가벼운 mock)
+      test("mockTemplateManagerGet - 빠른 테스트를 위한 경량 mock", async () => {
+        const lightweightMock = new MockTemplateClass(
+          "model",
+          vi.fn().mockReturnValue({
+            target: `${Sonamu.config.api.dir}/src/application`,
+            path: "sync-fixture/sync-fixture.model.ts",
+            body: "// Mocked model for fast testing\nexport class MockModel {}",
+            importKeys: [],
+          }),
+          vi.fn().mockReturnValue({
+            target: `${Sonamu.config.api.dir}/src/application`,
+            path: "sync-fixture/sync-fixture.model.ts",
+          }),
+        );
+
+        const renderSpy = vi.spyOn(lightweightMock, "render");
+        const spy = mockTemplateManagerGet("model", lightweightMock);
+
+        try {
+          await syncer.generateTemplate("model", { entityId: "SyncFixture" }, { overwrite: true });
+
+          expect(renderSpy).toHaveBeenCalled();
+
+          const writeFile = Naite.get("fs/promises:writeFile").first();
+          expect(writeFile.data).toContain("// Mocked model for fast testing");
+        } finally {
+          spy.mockRestore();
+        }
+      });
+    });
+
+    describe("register() - 커스텀 템플릿과 Syncer 연동", () => {
+      // 목적: 커스텀 템플릿을 등록하고 사용할 수 있는지 확인
+      test("register() - 커스텀 템플릿 등록 후 사용", async () => {
+        // 커스텀 감사 엔티티 템플릿
+        class AuditEntityTemplate extends Template {
+          constructor() {
+            super("audit-entity" as TemplateKey);
+          }
+
+          render(options: { entityId: string; title: string; table?: string }) {
+            const { entityId, title, table } = options;
+            const kebabCase = entityId.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+
+            return {
+              target: `${Sonamu.config.api.dir}/src/application`,
+              path: `${kebabCase}/${kebabCase}.entity.json`,
+              body: JSON.stringify({
+                id: entityId,
+                title,
+                table: table ?? `${kebabCase.replace(/-/g, "_")}s`,
+                props: [
+                  { name: "id", type: "integer", unsigned: true, desc: "ID" },
+                  {
+                    name: "created_at",
+                    type: "timestamp",
+                    desc: "생성일시",
+                    dbDefault: "CURRENT_TIMESTAMP",
+                  },
+                  { name: "created_by", type: "integer", unsigned: true, desc: "생성자" },
+                  { name: "updated_at", type: "timestamp", desc: "수정일시" },
+                  { name: "updated_by", type: "integer", unsigned: true, desc: "수정자" },
+                  { name: "deleted_at", type: "timestamp", nullable: true, desc: "삭제일시" },
+                ],
+                indexes: [],
+                subsets: { A: ["id", "created_at", "created_by"] },
+                enums: {
+                  [`${entityId}OrderBy`]: { "id-desc": "ID최신순", "created_at-desc": "최신순" },
+                  [`${entityId}SearchField`]: { id: "ID" },
+                },
+              }),
+              importKeys: [],
+            };
+          }
+
+          getTargetAndPath() {
+            return {
+              target: `${Sonamu.config.api.dir}/src/application`,
+              path: "entity.json",
+            };
+          }
+        }
+
+        TemplateManager.register(new AuditEntityTemplate());
+
+        expect(TemplateManager.exists("audit-entity")).toBe(true);
+
+        // 커스텀 템플릿 사용
+        const template = TemplateManager.get("audit-entity");
+        const result = await template.render({
+          entityId: "AuditTest",
+          title: "감사 테스트",
+        });
+
+        const entityData = JSON.parse(result.body) as EntityData;
+
+        // 감사 필드 포함 확인
+        expect(entityData.props.some((p: EntityProp) => p.name === "created_by")).toBe(true);
+        expect(entityData.props.some((p: EntityProp) => p.name === "updated_by")).toBe(true);
+        expect(entityData.props.some((p: EntityProp) => p.name === "deleted_at")).toBe(true);
+        expect(entityData.enums?.AuditTestOrderBy?.["created_at-desc"]).toBe("최신순");
+      });
+
+      // 목적: 플러그인 방식으로 여러 템플릿을 일괄 등록
+      test("registerAll() - 플러그인 방식 템플릿 일괄 등록", async () => {
+        // Admin 플러그인
+        function adminPlugin() {
+          class AdminDashboardTemplate extends Template {
+            constructor() {
+              super("admin-dashboard" as TemplateKey);
+            }
+            render(options: TemplateOptions[TemplateKey] | { entities: string[] }) {
+              const opts = options as { entities: string[] };
+              return {
+                target: ":target/src/admin",
+                path: "Dashboard.tsx",
+                body: `// Admin Dashboard\n// Entities: ${opts.entities.join(", ")}`,
+                importKeys: [],
+              };
+            }
+            getTargetAndPath() {
+              return { target: ":target/src/admin", path: "Dashboard.tsx" };
+            }
+          }
+
+          class AdminCrudTemplate extends Template {
+            constructor() {
+              super("admin-crud" as TemplateKey);
+            }
+            render(options: { entityId: string }) {
+              return {
+                target: ":target/src/admin",
+                path: `${options.entityId}Admin.tsx`,
+                body: `// ${options.entityId} CRUD Admin`,
+                importKeys: [],
+              };
+            }
+            getTargetAndPath() {
+              return { target: ":target/src/admin", path: "Admin.tsx" };
+            }
+          }
+
+          TemplateManager.registerAll([new AdminDashboardTemplate(), new AdminCrudTemplate()]);
+        }
+
+        // 플러그인 적용
+        adminPlugin();
+
+        expect(TemplateManager.exists("admin-dashboard")).toBe(true);
+        expect(TemplateManager.exists("admin-crud")).toBe(true);
+
+        // 플러그인 템플릿 사용
+        const dashboardTemplate = TemplateManager.get("admin-dashboard");
+        const dashboardResult = await (
+          dashboardTemplate.render as unknown as (options: {
+            entities: string[];
+          }) => Promise<RenderedTemplate>
+        )({
+          entities: ["SyncFixture", "Company", "Project"],
+        });
+        expect(dashboardResult.body).toContain("SyncFixture, Company, Project");
+
+        const crudTemplate = TemplateManager.get("admin-crud");
+        const crudResult = await crudTemplate.render({
+          entityId: "SyncFixture",
+        } as TemplateOptions[TemplateKey]);
+        expect(crudResult.body).toContain("SyncFixture CRUD Admin");
+      });
+    });
+
+    describe("handleEntityChange / handleModelOrFrameChange와 통합", () => {
+      // 목적: handleEntityChange에서 모킹된 템플릿이 사용되는지 확인
+      test("handleEntityChange - 모킹된 템플릿 적용", async () => {
+        const originalGenerated = TemplateManager.get("generated");
+
+        class CustomGeneratedTemplate extends Template {
+          constructor() {
+            super("generated");
+          }
+
+          async render(options: TemplateOptions["generated"]) {
+            const result = await originalGenerated.render(options);
+            return {
+              ...result,
+              body: `// Custom Generated Header\n// Generated at: ${new Date().toISOString()}\n\n${result.body}`,
+            };
+          }
+
+          getTargetAndPath() {
+            return originalGenerated.getTargetAndPath();
+          }
+        }
+
+        const spy = mockTemplateManagerGet("generated", new CustomGeneratedTemplate());
+
+        try {
+          const diffGroups = {
+            entity: [
+              join(
+                apiRootPath,
+                "src/application/sync-fixture/sync-fixture.entity.json",
+              ) as AbsolutePath,
+            ],
+            types: [],
+            functions: [],
+            generated: [],
+            model: [],
+            frame: [],
+            config: [],
+          };
+          const diffTypes: string[] = ["entity"];
+
+          await syncer.handleEntityChange(diffGroups, diffTypes);
+
+          // generated 파일에 커스텀 헤더가 추가되었는지 확인
+          const writeFiles = Naite.get("fs/promises:writeFile").result();
+          const generatedFile = writeFiles.find((f: WriteFile) =>
+            f.path.includes("sonamu.generated.ts"),
+          );
+
+          if (generatedFile) {
+            expect(generatedFile.data).toContain("// Custom Generated Header");
+          }
+        } finally {
+          spy.mockRestore();
+        }
+      });
+
+      // 목적: handleModelOrFrameChange에서 모킹된 service 템플릿 적용 확인
+      test("handleModelOrFrameChange - 모킹된 service 템플릿", async () => {
+        const originalService = TemplateManager.get("service");
+
+        class CustomServiceTemplate extends Template {
+          constructor() {
+            super("service");
+          }
+
+          async render(options: TemplateOptions["service"]) {
+            const result = await originalService.render(options);
+            return {
+              ...result,
+              body: `// Custom Service Header\n${result.body}`,
+            };
+          }
+
+          getTargetAndPath(names?: EntityNamesRecord) {
+            return originalService.getTargetAndPath(names);
+          }
+        }
+
+        const spy = mockTemplateManagerGet("service", new CustomServiceTemplate());
+
+        try {
+          await syncer.handleModelOrFrameChange({
+            model: [
+              join(
+                apiRootPath,
+                "src/application/sync-fixture/sync-fixture.model.ts",
+              ) as AbsolutePath,
+            ],
+            frame: [],
+            types: [],
+            functions: [],
+            generated: [],
+            entity: [],
+            config: [],
+          });
+
+          const writeFiles = Naite.get("fs/promises:writeFile").result();
+          const serviceFile = writeFiles.find((f: WriteFile) => f.path.includes(".service.ts"));
+
+          if (serviceFile) {
+            expect(serviceFile.data).toContain("// Custom Service Header");
+          }
+        } finally {
+          spy.mockRestore();
+        }
+      });
     });
   });
 });
