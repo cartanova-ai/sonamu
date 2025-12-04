@@ -17,6 +17,7 @@ export * from "./exceptions/so-exceptions";
 export * from "./file-storage/driver";
 export * from "./migration/migration-set";
 export * from "./migration/migrator";
+export * from "./migration/mysql-schema-reader";
 export * from "./migration/types";
 export * from "./naite/naite";
 export * from "./naite/naite-reporter";

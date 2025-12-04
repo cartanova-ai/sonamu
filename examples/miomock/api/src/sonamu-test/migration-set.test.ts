@@ -1,4 +1,4 @@
-import { EntityManager, getMigrationSetFromEntity, resolveDBColType } from "sonamu";
+import { EntityManager, getMigrationSetFromEntity, MySQLSchemaReader } from "sonamu";
 import { beforeEach, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import {
@@ -160,58 +160,71 @@ describe("migration-set.ts", () => {
   describe("resolveDBColType", () => {
     test("MySQL의 컬럼 타입들을 표준 MigrationColumn 타입으로 정확히 변환", () => {
       // varchar
-      expect(resolveDBColType("varchar(100)", "name")).toEqual({ type: "string", length: 100 });
+      expect(MySQLSchemaReader.resolveDBColType("varchar(100)", "name")).toEqual({
+        type: "string",
+        length: 100,
+      });
 
       // int unsigned
-      expect(resolveDBColType("int unsigned", "age")).toEqual({
+      expect(MySQLSchemaReader.resolveDBColType("int unsigned", "age")).toEqual({
         type: "integer",
         unsigned: true,
       });
 
       // tinyint(1)
-      expect(resolveDBColType("tinyint(1)", "is_active")).toEqual({ type: "boolean" });
+      expect(MySQLSchemaReader.resolveDBColType("tinyint(1)", "is_active")).toEqual({
+        type: "boolean",
+      });
 
       // tinyint unsigned
-      expect(resolveDBColType("tinyint unsigned", "is_active")).toEqual({
+      expect(MySQLSchemaReader.resolveDBColType("tinyint unsigned", "is_active")).toEqual({
         type: "boolean",
       });
 
       // longtext
-      expect(resolveDBColType("longtext", "description")).toEqual({ type: "longtext" });
+      expect(MySQLSchemaReader.resolveDBColType("longtext", "description")).toEqual({
+        type: "longtext",
+      });
 
       // datetime
-      expect(resolveDBColType("datetime", "created_at")).toEqual({ type: "datetime" });
+      expect(MySQLSchemaReader.resolveDBColType("datetime", "created_at")).toEqual({
+        type: "datetime",
+      });
 
       // decimal(12,2)
-      expect(resolveDBColType("decimal(12,2)", "price")).toEqual({
+      expect(MySQLSchemaReader.resolveDBColType("decimal(12,2)", "price")).toEqual({
         type: "decimal",
         precision: 12,
         scale: 2,
       });
 
       // char(36)
-      expect(resolveDBColType("char(36)", "uuid")).toEqual({ type: "uuid" });
+      expect(MySQLSchemaReader.resolveDBColType("char(36)", "uuid")).toEqual({ type: "uuid" });
 
       // text
-      expect(resolveDBColType("text", "any_field")).toEqual({ type: "text" });
+      expect(MySQLSchemaReader.resolveDBColType("text", "any_field")).toEqual({ type: "text" });
 
       // mediumtext
-      expect(resolveDBColType("mediumtext", "any_field")).toEqual({ type: "mediumtext" });
+      expect(MySQLSchemaReader.resolveDBColType("mediumtext", "any_field")).toEqual({
+        type: "mediumtext",
+      });
 
       // timestamp
-      expect(resolveDBColType("timestamp", "any_field")).toEqual({ type: "timestamp" });
+      expect(MySQLSchemaReader.resolveDBColType("timestamp", "any_field")).toEqual({
+        type: "timestamp",
+      });
 
       // json
-      expect(resolveDBColType("json", "any_field")).toEqual({ type: "json" });
+      expect(MySQLSchemaReader.resolveDBColType("json", "any_field")).toEqual({ type: "json" });
 
       // date
-      expect(resolveDBColType("date", "any_field")).toEqual({ type: "date" });
+      expect(MySQLSchemaReader.resolveDBColType("date", "any_field")).toEqual({ type: "date" });
 
       // time
-      expect(resolveDBColType("time", "any_field")).toEqual({ type: "time" });
+      expect(MySQLSchemaReader.resolveDBColType("time", "any_field")).toEqual({ type: "time" });
 
       // float(8,4)
-      expect(resolveDBColType("float(8,4)", "any_field")).toEqual({
+      expect(MySQLSchemaReader.resolveDBColType("float(8,4)", "any_field")).toEqual({
         type: "float",
         precision: 8,
         scale: 4,
@@ -220,7 +233,7 @@ describe("migration-set.ts", () => {
 
     test("알 수 없는 DB 컬럼 타입은 에러를 발생시켜야 한다", () => {
       // given & when
-      const fn = () => resolveDBColType("unknown_type", "any_field");
+      const fn = () => MySQLSchemaReader.resolveDBColType("unknown_type", "any_field");
 
       // then
       expect(fn).toThrow("resolve 불가능한 DB컬럼 타입 unknown_type unknown_type");
