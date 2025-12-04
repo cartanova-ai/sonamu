@@ -1,6 +1,6 @@
 import { describe, expect } from "vitest";
 import z from "zod";
-import { caster } from "../../../../../modules/sonamu/dist/api/caster";
+import { caster, fastifyCaster } from "../../../../../modules/sonamu/dist/api/caster";
 import { test } from "../testing/bootstrap";
 
 describe("caster", () => {
@@ -416,6 +416,63 @@ describe("caster", () => {
         const result = caster(schema, raw);
         expect(result).toBe(123.456);
       });
+    });
+  });
+
+  describe("fastifyCaster", () => {
+    test("z.preprocess를 통해 변환 후 검증 성공", () => {
+      const schema = z.object({
+        id: z.number(),
+        name: z.string(),
+      });
+      const wrappedSchema = fastifyCaster(schema);
+
+      const raw = { id: "123", name: "test" };
+      const result = wrappedSchema.parse(raw);
+
+      expect(result).toEqual({ id: 123, name: "test" });
+    });
+
+    test("변환 후 스키마 검증 실패 시 ZodError 발생", () => {
+      const schema = z.object({
+        id: z.number(),
+        name: z.string(),
+      });
+      const wrappedSchema = fastifyCaster(schema);
+
+      // "abc"는 NaN이 되어 z.number() 검증 실패
+      const raw = { id: "abc", name: "test" };
+
+      expect(() => wrappedSchema.parse(raw)).toThrow();
+    });
+
+    test("safeParse: 검증 실패 시 에러 객체 반환", () => {
+      const schema = z.object({
+        id: z.number(),
+        name: z.string(),
+      });
+      const wrappedSchema = fastifyCaster(schema);
+
+      const raw = { id: "abc", name: "test" };
+      const result = wrappedSchema.safeParse(raw);
+
+      expect(result.success).toBe(false);
+    });
+
+    test("safeParse: 검증 성공 시 data 반환", () => {
+      const schema = z.object({
+        id: z.number(),
+        name: z.string(),
+      });
+      const wrappedSchema = fastifyCaster(schema);
+
+      const raw = { id: "123", name: "test" };
+      const result = wrappedSchema.safeParse(raw);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ id: 123, name: "test" });
+      }
     });
   });
 });
