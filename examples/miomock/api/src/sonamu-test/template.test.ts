@@ -63,19 +63,13 @@ describe("TemplateManager", () => {
       // 목적: 존재하지 않는 템플릿 조회 시 명확한 에러가 발생하는지 확인
       test("존재하지 않는 템플릿 조회 → 에러", async () => {
         expect(() => TemplateManager.get("non-existent-template")).toThrow(
-          /Template non-existent-template not found/,
+          /Template 'non-existent-template' not found/,
         );
       });
 
       // 목적: 에러 메시지에 사용 가능한 템플릿 목록이 포함되는지 확인
       test("에러 메시지에 사용 가능한 템플릿 목록 포함", async () => {
-        try {
-          TemplateManager.get("wrong-key");
-        } catch (e: unknown) {
-          if (e instanceof Error) {
-            expect(e.message).toContain("Available templates:");
-          }
-        }
+        expect(() => TemplateManager.get("wrong-key")).toThrow(/Template 'wrong-key' not found/);
       });
     });
 
