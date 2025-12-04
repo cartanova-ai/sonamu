@@ -29,7 +29,7 @@
     "build",
     "node",
     "vite.config.ts",
-    "openai.instructions.md"
+    "entity.instructions.md"
   ],
   "license": "MIT",
   "author": {

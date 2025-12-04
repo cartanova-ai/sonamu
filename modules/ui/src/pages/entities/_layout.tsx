@@ -1,9 +1,10 @@
 import classnames from "classnames";
+import { useState } from "react";
 import { Link, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { Button, Divider } from "semantic-ui-react";
+import { Button, Icon } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
+import EntityChatComponent from "../../components/EntityChatComponent";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { AICreateEntityForm } from "./_ai_create_entity_form";
 import { EntityCreateForm } from "./_create_form";
 
 type EntitiesLayoutProps = {};
@@ -17,6 +18,9 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const params = useParams<{ entityId: string }>();
 
   const navigate = useNavigate();
+
+  // AI Chat 토글 상태
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // useCommonModal
   const { openModal } = useCommonModal();
@@ -40,60 +44,69 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
     });
   };
 
-  const createEntityWithAI = () => {
-    openModal(<AICreateEntityForm />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(".create-ai-form textarea") as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: (newEntityId) => {
-        mutate();
-        setTimeout(() => {
-          navigate(`/entities/${newEntityId}`);
-        }, 200);
-      },
-    });
+  const handleEntityCreated = (entityId: string) => {
+    mutate();
+    setTimeout(() => {
+      navigate(`/entities/${entityId}`);
+    }, 200);
+  };
+
+  const handleEntityUpdated = (_entityId: string, _updatedFields: string[]) => {
+    mutate();
   };
 
   return (
     <div className="entities-layout" id="scroller">
       <div className="sidemenu">
-        {isLoading && <div>Loading...</div>}
-        {error && <div>Error: {error.message}</div>}
-        {entities?.map((entity) => (
-          <Link
-            key={entity.id}
-            className={classnames("entity-list-item", {
-              selected: entity.id === params.entityId,
-            })}
-            to={`/entities/${entity.id}`}
-          >
-            {entity.parentId && (
-              <span style={{ color: "silver" }}>
-                {entity.parentId} {"> "}
-              </span>
-            )}
-            {entity.id}
-          </Link>
-        ))}
-        <Divider />
-        <div className="text-center footer-buttons">
-          <Button
-            icon="plus"
-            size="mini"
-            content="Entity"
-            color="green"
-            onClick={() => createEntity()}
-          />
-          <Button
-            icon="comment alternate outline"
-            size="mini"
-            content="Create Entity With AI"
-            color="blue"
-            onClick={() => createEntityWithAI()}
-          />
+        <div className="entity-list-container">
+          {isLoading && <div className="loading-state">Loading...</div>}
+          {error && <div className="error-state">Error: {error.message}</div>}
+          {entities?.map((entity) => (
+            <Link
+              key={entity.id}
+              className={classnames("entity-list-item", {
+                selected: entity.id === params.entityId,
+              })}
+              to={`/entities/${entity.id}`}
+            >
+              {entity.parentId && <span className="parent-prefix">{entity.parentId}</span>}
+              <span className="entity-name">{entity.id}</span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="action-buttons-row">
+            <Button
+              fluid
+              basic
+              inverted
+              size="small"
+              className="footer-btn"
+              onClick={() => createEntity()}
+            >
+              <Icon name="plus" /> New Entity
+            </Button>
+            <Button
+              icon
+              basic
+              inverted
+              size="small"
+              className={`ai-toggle-btn ${showAIChat ? "active" : ""}`}
+              onClick={() => setShowAIChat(!showAIChat)}
+            >
+              <Icon name="comment alternate outline" />
+            </Button>
+          </div>
+
+          {showAIChat && (
+            <div className="ai-chat-container">
+              <EntityChatComponent
+                onEntityCreated={handleEntityCreated}
+                onEntityUpdated={handleEntityUpdated}
+              />
+            </div>
+          )}
         </div>
       </div>
       <Outlet context={context} />

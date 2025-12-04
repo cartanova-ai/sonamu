@@ -16,7 +16,7 @@ export type SonamuDBConfig = {
   production_slave: Knex.Config;
 };
 
-class DBClass {
+export class DBClass {
   private wdb?: Knex;
   private rdb?: Knex;
 

@@ -22,7 +22,7 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
 
   const { messages, status, sendMessage, setMessages, stop } = useChat({
     transport: new DefaultChatTransport({
-      api: "/api/openai/chat/stream",
+      api: "/api/ai/fixture/chat",
     }),
     onError: (error) => {
       const err = (() => {

@@ -10,7 +10,7 @@ import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import { Template } from "../template/template";
+import { TemplateManager } from "../template/template-manager";
 import type { GenerateOptions, PathAndCode } from "../types/types";
 import { TemplateKey, type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
@@ -461,7 +461,7 @@ export class Syncer {
     templateKey: TemplateKey,
     enumId?: string,
   ): Promise<{ subPath: string; fullPath: string; isExists: boolean }> {
-    const { target, path: genPath } = Template.find(templateKey).getTargetAndPath(
+    const { target, path: genPath } = TemplateManager.get(templateKey).getTargetAndPath(
       EntityManager.getNamesFromId(entityId),
       enumId,
     );
@@ -494,7 +494,7 @@ export class Syncer {
     return await reduceAsync(
       keys,
       async (result, key) => {
-        const tpl = Template.find(key);
+        const tpl = TemplateManager.get(key);
         if (key.startsWith("view_enums")) {
           await mapAsync(enumsKeys, async (componentId) => {
             const { target, path: p } = tpl.getTargetAndPath(names, componentId);

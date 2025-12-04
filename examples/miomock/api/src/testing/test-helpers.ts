@@ -1,4 +1,4 @@
-import { Entity, type EntityJson, EntityManager } from "sonamu";
+import { Entity, type EntityJson, EntityManager, type Template, TemplateManager } from "sonamu";
 import { type Mock, vi } from "vitest";
 
 /**
@@ -30,5 +30,39 @@ export function mockEntityManagerGetMultiple(entities: Record<string, Entity>) {
       return entities[entityId];
     }
     throw new Error(`테스트용 EntityManager.get 모의 구현에 '${entityId}'가 정의되지 않았습니다.`);
+  });
+}
+
+/**
+ * TemplateManager.get을 모킹하여 특정 템플릿만 교체하고 나머지는 원본을 반환합니다.
+ * @param templateKey 교체할 템플릿 키
+ * @param mockTemplate 교체할 Template 인스턴스
+ */
+export function mockTemplateManagerGet(
+  templateKey: string,
+  mockTemplate: Template,
+): Mock<typeof TemplateManager.get> {
+  const originalGet = TemplateManager.get.bind(TemplateManager);
+  return vi.spyOn(TemplateManager, "get").mockImplementation((key: string) => {
+    if (key === templateKey) {
+      return mockTemplate;
+    }
+    return originalGet(key);
+  });
+}
+
+/**
+ * TemplateManager.get을 모킹하여 여러 템플릿을 교체합니다.
+ * @param templates 템플릿 키와 Template 인스턴스의 매핑
+ */
+export function mockTemplateManagerGetMultiple(
+  templates: Record<string, Template>,
+): Mock<typeof TemplateManager.get> {
+  const originalGet = TemplateManager.get.bind(TemplateManager);
+  return vi.spyOn(TemplateManager, "get").mockImplementation((key: string) => {
+    if (templates[key]) {
+      return templates[key];
+    }
+    return originalGet(key);
   });
 }
