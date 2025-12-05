@@ -15,7 +15,7 @@ import { generateTemplate } from "./code-generator";
 export async function createEntity(
   form: Omit<TemplateOptions["entity"], "title"> & { title: string },
 ) {
-  if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.id)) {
+  if (!/^[A-Z][a-zA-Z0-9]*$/.test(form.entityId)) {
     throw new BadRequestException("entityId는 CamelCase 형식이어야 합니다.");
   }
 

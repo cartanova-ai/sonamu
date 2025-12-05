@@ -454,7 +454,7 @@ async function stub_practice(name: string) {
 }
 
 async function stub_entity(entityId: string) {
-  await Sonamu.syncer.createEntity({ id: entityId, title: entityId });
+  await Sonamu.syncer.createEntity({ entityId, title: entityId });
 }
 
 async function scaffold_model(entityId: string) {

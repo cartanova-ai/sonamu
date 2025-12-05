@@ -331,7 +331,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               if (validationErrors.length > 0) {
                 return {
                   success: false,
-                  entityId: entity.id,
+                  entityId: entity.entityId,
                   error: `검증 오류: ${validationErrors.map((e) => `[${e.field}] ${e.message}`).join(", ")}`,
                   validationErrors,
                 };
@@ -346,10 +346,10 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               // EntityManager 리로드
               await EntityManager.reload();
 
-              return { success: true, entityId: entity.id };
+              return { success: true, entityId: entity.entityId };
             } catch (e) {
               const error = e instanceof Error ? e.message : "Unknown error";
-              return { success: false, entityId: entity.id, error };
+              return { success: false, entityId: entity.entityId, error };
             }
           },
         }),
@@ -422,6 +422,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               // 저장 전 검증
               const validationErrors = validateEntityJson({
                 ...entity,
+                entityId: entity.id,
                 enums: entity.enumLabels,
               });
 
@@ -453,7 +454,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
  */
 function validateEntityJson(input: TemplateOptions["entity"]): ValidationError[] {
   const errors: ValidationError[] = [];
-  const { id, props, enums } = input;
+  const { entityId, props, enums } = input;
 
   // 1. id, created_at prop 필수
   const hasIdProp = props?.some((p) => p.name === "id");
@@ -466,8 +467,8 @@ function validateEntityJson(input: TemplateOptions["entity"]): ValidationError[]
   }
 
   // 2. 필수 enum 검증: EntityNameOrderBy, EntityNameSearchField
-  const orderByEnumId = `${id}OrderBy`;
-  const searchFieldEnumId = `${id}SearchField`;
+  const orderByEnumId = `${entityId}OrderBy`;
+  const searchFieldEnumId = `${entityId}SearchField`;
 
   if (!enums?.[orderByEnumId]) {
     errors.push({
