@@ -40,7 +40,7 @@ psql \
   -c "DROP DATABASE IF EXISTS \"${FIXTURE_DB}\";" \
   -c "CREATE DATABASE \"${FIXTURE_DB}\";"
 
-# 2. 덤프를 적용하면서 DB 이름 변환 (PostgreSQL은 덤프에 DB 이름 없어서 sed 불필요)
+# 2. 덤프를 적용하면서 DB 이름 변환 (PostgreSQL은 덤프에 DB 이름 없어서 seed 불필요)
 echo "📝 Applying dump file to ${FIXTURE_DB}..."
 psql \
   -h "${DB_HOST}" \
