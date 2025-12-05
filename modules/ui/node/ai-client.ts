@@ -4,12 +4,12 @@ import assert from "assert";
 import fs from "fs";
 import path from "path";
 import {
-  type EntityIndex,
   EntityManager,
   type EntityProp,
   type FixtureRecord,
   nonNullable,
   Sonamu,
+  TemplateOptions,
 } from "sonamu";
 import { z } from "zod";
 
@@ -315,7 +315,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
         createEntity: tool({
           description:
             "새로운 Entity를 생성합니다. 사용자가 새로운 엔티티나 테이블 생성을 요청할 때 사용하세요.",
-          inputSchema: entityInputSchema,
+          inputSchema: TemplateOptions.shape.entity,
           execute: async (
             entity,
           ): Promise<{
@@ -341,7 +341,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
                 subsets: { A: ["id"] },
                 enums: {},
                 ...entity,
-              } as unknown as Parameters<typeof Sonamu.syncer.createEntity>[0]);
+              });
 
               // EntityManager 리로드
               await EntityManager.reload();
@@ -358,7 +358,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
             "기존 Entity를 수정합니다. Enum 추가, props 추가/수정, indexes 수정, subsets 수정 등 모든 엔티티 수정 작업에 사용하세요.",
           inputSchema: z.object({
             entityId: z.string().describe("수정할 Entity ID"),
-            updates: entityInputSchema.partial().describe("수정할 필드들"),
+            updates: TemplateOptions.shape.entity.partial().describe("수정할 필드들"),
             mode: z
               .enum(["merge", "replace"])
               .optional()
@@ -405,9 +405,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
               // indexes: merge 시 추가, replace 시 교체
               if (updates.indexes !== undefined) {
                 entity.indexes =
-                  mode === "replace"
-                    ? (updates.indexes as EntityIndex[])
-                    : [...entity.indexes, ...(updates.indexes as EntityIndex[])];
+                  mode === "replace" ? updates.indexes : [...entity.indexes, ...updates.indexes];
               }
 
               // subsets, enumLabels: assign으로 병합 또는 교체
@@ -451,65 +449,10 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
   }
 }
 
-// EntityProp 스키마 정의 (createEntity, updateEntity에서 재사용)
-const entityPropSchema = z.object({
-  // CommonProp
-  name: z.string(),
-  type: z.string(),
-  desc: z.string().optional(),
-  nullable: z.boolean().optional(),
-  toFilter: z.literal(true).optional(),
-  dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
-  // IntegerProp, BigIntegerProp, FloatProp, DoubleProp, DecimalProp
-  unsigned: z.boolean().optional(),
-  // FloatProp, DoubleProp, DecimalProp
-  precision: z.number().optional(),
-  scale: z.number().optional(),
-  // StringProp, EnumProp
-  length: z.number().optional(),
-  // TextProp
-  textType: z.enum(["text", "mediumtext", "longtext"]).optional(),
-  // EnumProp, JsonProp, VirtualProp
-  id: z.string().optional(),
-  // RelationProp
-  with: z.string().optional(),
-  relationType: z.enum(["BelongsToOne", "HasMany", "ManyToMany", "OneToOne"]).optional(),
-  customJoinClause: z.string().optional(),
-  useConstraint: z.boolean().optional(),
-  onUpdate: z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]).optional(),
-  onDelete: z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]).optional(),
-  // HasManyRelationProp
-  joinColumn: z.string().optional(),
-  fromColumn: z.string().optional(),
-  // ManyToManyRelationProp
-  joinTable: z.string().optional(),
-  // OneToOneRelationProp
-  hasJoinColumn: z.boolean().optional(),
-});
-
-// EntityIndex 스키마 정의
-const entityIndexSchema = z.object({
-  type: z.enum(["index", "unique", "fulltext"]),
-  columns: z.array(z.string()),
-  name: z.string().optional(),
-  parser: z.enum(["built-in", "ngram"]).optional(),
-});
-
-const entityInputSchema = z.object({
-  entityId: z.string().describe("PascalCase로 된 Entity ID"),
-  title: z.string().describe("한글 제목"),
-  table: z.string().describe("snake_case로 된 테이블명"),
-  parentId: z.string().optional().describe("부모 Entity ID"),
-  props: z.array(entityPropSchema).describe("프로퍼티 배열"),
-  indexes: z.array(entityIndexSchema).optional().describe("인덱스 배열"),
-  subsets: z.record(z.string(), z.array(z.string())).optional().describe("서브셋 정의"),
-  enums: z.record(z.string(), z.record(z.string(), z.string())).optional().describe("Enum 정의"),
-});
-
 /**
  * Entity JSON이 entity.instructions.md의 규칙을 따르는지 검증합니다.
  */
-function validateEntityJson(input: z.infer<typeof entityInputSchema>): ValidationError[] {
+function validateEntityJson(input: TemplateOptions["entity"]): ValidationError[] {
   const errors: ValidationError[] = [];
   const { entityId, props, enums } = input;
 
@@ -540,111 +483,13 @@ function validateEntityJson(input: z.infer<typeof entityInputSchema>): Validatio
     });
   }
 
-  // 3. 타입별 필수 필드 검증
+  // 3. enum prop의 id가 enums에 정의되어 있는지 확인 (cross-field 검증)
   for (const prop of props ?? []) {
-    const propPrefix = `props.${prop.name}`;
-
-    switch (prop.type) {
-      case "string":
-        if (prop.length === undefined) {
-          errors.push({ field: propPrefix, message: "string 타입은 length가 필수입니다." });
-        }
-        break;
-
-      case "enum":
-        if (!prop.id) {
-          errors.push({ field: propPrefix, message: "enum 타입은 id가 필수입니다." });
-        }
-        if (prop.length === undefined) {
-          errors.push({ field: propPrefix, message: "enum 타입은 length가 필수입니다." });
-        }
-        // enum id가 enums에 정의되어 있는지 확인
-        if (prop.id && !enums?.[prop.id]) {
-          errors.push({
-            field: propPrefix,
-            message: `enum id "${prop.id}"가 enums에 정의되어 있지 않습니다.`,
-          });
-        }
-        break;
-
-      case "json":
-        if (!prop.id) {
-          errors.push({ field: propPrefix, message: "json 타입은 id가 필수입니다." });
-        }
-        break;
-
-      case "text":
-        if (!prop.textType) {
-          errors.push({ field: propPrefix, message: "text 타입은 textType이 필수입니다." });
-        } else if (!["text", "mediumtext", "longtext"].includes(prop.textType)) {
-          errors.push({
-            field: propPrefix,
-            message: `textType은 "text", "mediumtext", "longtext" 중 하나여야 합니다.`,
-          });
-        }
-        break;
-
-      case "float":
-      case "decimal":
-      case "double":
-        if (prop.precision === undefined) {
-          errors.push({
-            field: propPrefix,
-            message: `${prop.type} 타입은 precision이 필수입니다.`,
-          });
-        }
-        if (prop.scale === undefined) {
-          errors.push({ field: propPrefix, message: `${prop.type} 타입은 scale이 필수입니다.` });
-        }
-        break;
-
-      case "relation":
-        if (!prop.with) {
-          errors.push({ field: propPrefix, message: "relation 타입은 with가 필수입니다." });
-        }
-        if (!prop.relationType) {
-          errors.push({ field: propPrefix, message: "relation 타입은 relationType이 필수입니다." });
-        } else {
-          // OneToOne에서 hasJoinColumn이 false인 경우만 onUpdate/onDelete 불필요
-          const needsOnUpdateOnDelete = !(
-            prop.relationType === "OneToOne" && prop.hasJoinColumn === false
-          );
-
-          if (needsOnUpdateOnDelete) {
-            if (!prop.onUpdate) {
-              errors.push({
-                field: propPrefix,
-                message: `${prop.relationType} 관계는 onUpdate가 필수입니다.`,
-              });
-            }
-            if (!prop.onDelete) {
-              errors.push({
-                field: propPrefix,
-                message: `${prop.relationType} 관계는 onDelete가 필수입니다.`,
-              });
-            }
-          }
-
-          switch (prop.relationType) {
-            case "HasMany":
-              if (!prop.joinColumn) {
-                errors.push({
-                  field: propPrefix,
-                  message: "HasMany 관계는 joinColumn이 필수입니다.",
-                });
-              }
-              break;
-            case "ManyToMany":
-              if (!prop.joinTable) {
-                errors.push({
-                  field: propPrefix,
-                  message: "ManyToMany 관계는 joinTable이 필수입니다.",
-                });
-              }
-              break;
-          }
-        }
-        break;
+    if (prop.type === "enum" && !enums?.[prop.id]) {
+      errors.push({
+        field: `props.${prop.name}`,
+        message: `enum id "${prop.id}"가 enums에 정의되어 있지 않습니다.`,
+      });
     }
   }
 

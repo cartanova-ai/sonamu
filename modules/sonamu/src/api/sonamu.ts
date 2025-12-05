@@ -201,7 +201,7 @@ class SonamuClass {
       (await import("../utils/formatter")).setupBiome(this.apiRootPath);
     }
 
-    const { isHotReloadServer } = await import("../utils/esm-utils");
+    const { isHotReloadServer } = await import("../utils/controller");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
 

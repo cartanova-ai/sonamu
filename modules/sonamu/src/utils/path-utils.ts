@@ -1,4 +1,4 @@
-import { isHotReloadServer } from "./esm-utils.js";
+import { isHotReloadServer, isTest } from "./controller.js";
 
 /**
  * API 패키지 내부 상대 경로 (src/ 또는 dist/로 시작)
@@ -90,7 +90,7 @@ export type AbsolutePath = `/${string}`;
  * @param anyPath
  * @returns
  */
-export function runtimePath(anyPath: string, isDev: boolean = isHotReloadServer()): string {
+export function runtimePath(anyPath: string, isDev: boolean = isHotReloadServer() || isTest()): string {
   if (isDev) {
     return anyPath.replace(/dist\//, "src/").replace(/\.js/, ".ts");
   } else {

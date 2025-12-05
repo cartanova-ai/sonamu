@@ -22,3 +22,6 @@ export function isProduction(): boolean {
 export function isTest(): boolean {
   return isLocal() && process.env.NODE_ENV === "test";
 }
+export function isHotReloadServer(): boolean {
+  return process.env.HOT === "yes";
+}

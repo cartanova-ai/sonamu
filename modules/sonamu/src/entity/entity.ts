@@ -22,9 +22,10 @@ import {
   type StringProp,
   type SubsetQuery,
 } from "../types/types";
-import { createImportUrl } from "../utils/esm-utils";
+import { importMembers } from "../utils/esm-utils";
 import { formatCode } from "../utils/formatter";
 import { exists } from "../utils/fs-utils";
+import { runtimePath } from "../utils/path-utils";
 import { assertDefined, nonNullable } from "../utils/utils";
 import { EntityManager } from "./entity-manager";
 
@@ -657,18 +658,17 @@ export class Entity {
 
     // types
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
-    const typesFileDistPath = path.join(
+    const typesFilePath = path.join(
       Sonamu.apiRootPath,
-      `dist/application/${typesModulePath}.js`,
+      runtimePath(`dist/application/${typesModulePath}.js`),
     );
 
-    if (await exists(typesFileDistPath)) {
-      const importUrl = createImportUrl(typesFileDistPath);
-      const t = await import(importUrl);
+    if (await exists(typesFilePath)) {
+      const importedMembers = await importMembers<z.ZodTypeAny>(typesFilePath);
       this.types = Object.fromEntries(
-        Object.entries(t).map(([key, value]) => {
-          EntityManager.setModulePath(key, typesModulePath);
-          return [key, value];
+        importedMembers.map(({ name, value }) => {
+          EntityManager.setModulePath(name, typesModulePath);
+          return [name, value];
         }),
       ) as { [name: string]: z.ZodTypeAny };
     }
