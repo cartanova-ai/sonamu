@@ -35,6 +35,7 @@ export type StringProp = CommonProp & {
 export type EnumProp = CommonProp & {
   type: "enum";
   id: string;
+  length?: number;
 }; // PG: text / TS: string / JSON: string
 export type NumberProp = CommonProp & {
   type: "number";
@@ -632,8 +633,8 @@ const NumericFields = {
 
 // precision/scale 필드
 const PrecisionScaleFields = {
-  precision: z.number(),
-  scale: z.number(),
+  precision: z.number().optional(),
+  scale: z.number().optional(),
 };
 
 // 각 타입별 스키마 정의
@@ -657,7 +658,7 @@ const StringPropSchema = z
   .object({
     ...BasePropFields,
     type: z.literal("string"),
-    length: z.number(),
+    length: z.number().optional(),
   })
   .strict();
 
@@ -674,7 +675,7 @@ const EnumPropSchema = z
     ...BasePropFields,
     type: z.literal("enum"),
     id: z.string(),
-    length: z.number(),
+    length: z.number().optional(),
   })
   .strict();
 
@@ -701,6 +702,23 @@ const DecimalPropSchema = z
     ...BasePropFields,
     type: z.literal("decimal"),
     ...NumericFields,
+    ...PrecisionScaleFields,
+  })
+  .strict();
+
+const NumberPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("number"),
+    ...PrecisionScaleFields,
+    numberType: z.enum(["real", "double precision", "numeric"]).optional(),
+  })
+  .strict();
+
+const NumericPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("numeric"),
     ...PrecisionScaleFields,
   })
   .strict();
@@ -803,6 +821,8 @@ const NormalPropTypes = [
   "float",
   "double",
   "decimal",
+  "number",
+  "numeric",
   "json",
   "virtual",
 ] as const;
@@ -818,6 +838,8 @@ export const NormalPropSchema = z.discriminatedUnion(
     FloatPropSchema,
     DoublePropSchema,
     DecimalPropSchema,
+    NumberPropSchema,
+    NumericPropSchema,
     JsonPropSchema,
     VirtualPropSchema,
   ],
