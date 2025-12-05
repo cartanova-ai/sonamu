@@ -879,13 +879,17 @@ export const EntityJsonSchema = z
   .strict();
 
 export const TemplateOptions = z.object({
-  entity: EntityJsonSchema.partial({
-    table: true,
-    props: true,
-    indexes: true,
-    subsets: true,
-    enums: true,
-  }),
+  entity: EntityJsonSchema.omit({ id: true })
+    .extend({
+      entityId: z.string(),
+    })
+    .partial({
+      table: true,
+      props: true,
+      indexes: true,
+      subsets: true,
+      enums: true,
+    }),
   init_types: z.object({
     entityId: z.string(),
   }),
