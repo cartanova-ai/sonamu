@@ -115,6 +115,16 @@ export class FixtureManagerClass {
       { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
 
+    execSync(
+      `psql -h ${fixtureConn.host} -p ${fixtureConn.port ?? 5432} -U ${fixtureConn.user} -d postgres -c "
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE datname = '${fixtureConn.database}'
+          AND pid <> pg_backend_pid();
+      "`,
+      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+    );
+
     // 2. DROP DATABASE (별도 실행!)
     execSync(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`,
