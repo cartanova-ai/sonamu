@@ -5,6 +5,7 @@ import {
   beforeAll,
   beforeEach,
   type TestFunction,
+  type TestOptions,
   type VitestUtils,
   test as vitestTest,
 } from "vitest";
@@ -77,8 +78,8 @@ declare module "vitest" {
 }
 
 export const test = Object.assign(
-  async (title: string, fn: TestFunction<object>) => {
-    return vitestTest(title, async (context) => {
+  async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+    return vitestTest(title, options, async (context) => {
       await runWithMockContext(async () => {
         try {
           await fn(context);
@@ -91,9 +92,10 @@ export const test = Object.assign(
     });
   },
   {
-    skip: async (title: string, _fn: TestFunction<object>) => vitestTest.skip(title),
-    only: async (title: string, fn: TestFunction<object>) => {
-      return vitestTest.only(title, async (context) => {
+    skip: async (title: string, fn: TestFunction<object>, options?: TestOptions) =>
+      vitestTest.skip(title, options, fn),
+    only: async (title: string, fn: TestFunction<object>, options?: TestOptions) => {
+      return vitestTest.only(title, options, async (context) => {
         await runWithMockContext(async () => {
           try {
             await fn(context);
@@ -111,8 +113,8 @@ export const test = Object.assign(
 );
 
 export const testAs = Object.assign(
-  async (user: UserSubsetSS, title: string, fn: TestFunction<object>) => {
-    return vitestTest(title, async (context) => {
+  async (user: UserSubsetSS, title: string, fn: TestFunction<object>, options?: TestOptions) => {
+    return vitestTest(title, options, async (context) => {
       await runWithContext(
         {
           ...getMockContext(),
@@ -131,9 +133,19 @@ export const testAs = Object.assign(
     });
   },
   {
-    skip: async (_user: UserSubsetSS, title: string) => vitestTest.skip(title),
-    only: async (user: UserSubsetSS, title: string, fn: TestFunction<object>) => {
-      return vitestTest.only(title, async (context) => {
+    skip: async (
+      _user: UserSubsetSS,
+      title: string,
+      fn: TestFunction<object>,
+      options?: TestOptions,
+    ) => vitestTest.skip(title, options, fn),
+    only: async (
+      user: UserSubsetSS,
+      title: string,
+      fn: TestFunction<object>,
+      options?: TestOptions,
+    ) => {
+      return vitestTest.only(title, options, async (context) => {
         await runWithContext(
           {
             ...getMockContext(),
