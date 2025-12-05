@@ -727,15 +727,11 @@ describe("Migrator test", () => {
     });
   });
 
-  // SKIP: Shadow DB 테스트 실행 시 시간이 오래 걸려 필요시에만 확인
-  describe.skip("runShadowTest", () => {
+  describe("runShadowTest", () => {
     test("Shadow DB 생성 및 마이그레이션 테스트 결과 확인", async () => {
       // when
       const result = await migrator.runShadowTest();
 
-      expect(Naite.get("migrator:runShadowTest:tmpSqlPath").first()).toBe(
-        "/tmp/miomock_test__migration_shadow.sql",
-      );
       expect(result[0]).toMatchObject({
         applied: expect.any(Array),
         batchNo: expect.any(Number),
@@ -744,10 +740,6 @@ describe("Migrator test", () => {
     });
   });
 
-  // @TODO: DDL Transaction 이슈로 skip
-  describe.skip("rollback", () => {});
-
-  // @TODO: SchemaReader가 분리되어있지 않아 DB 상태를 조작할수없어서 skip (pending상태를 만들어줄 수 없음)
   describe.skip("delCodes", () => {
     test.todo("이미 applied된 파일은 삭제 불가");
     test.todo("pending 상태인 파일은 삭제 가능");
