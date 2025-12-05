@@ -3,8 +3,8 @@ import {
   createImportUrl,
   getDirname,
   getFilename,
-  isHotReloadServer,
 } from "../../../../../modules/sonamu/dist/utils/esm-utils";
+import { isHotReloadServer } from "../../../../../modules/sonamu/dist/utils/controller";
 
 describe("esm-utils", () => {
   describe("getFilename 테스트", () => {

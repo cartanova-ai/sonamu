@@ -37,15 +37,6 @@ export function createImportUrl(absolutePath: string): string {
 }
 
 /**
- * HMR 환경 감지
- *
- * @returns hot reload 환경인지 여부
- */
-export function isHotReloadServer(): boolean {
-  return process.env.HOT === "yes";
-}
-
-/**
  * 캐시를 무시하고 새로 임포트(cache busting)하는데, 이때 가져온 모듈의 exported members들을 배열로 가져옵니다.
  *
  * 가령 모듈에서 `export const user = { id: number; name: string; }` 이렇게 정의했다면,

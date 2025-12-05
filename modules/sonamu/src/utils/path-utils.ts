@@ -1,5 +1,4 @@
-import { isTest } from "./controller.js";
-import { isHotReloadServer } from "./esm-utils.js";
+import { isHotReloadServer, isTest } from "./controller.js";
 
 /**
  * API 패키지 내부 상대 경로 (src/ 또는 dist/로 시작)
