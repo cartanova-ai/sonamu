@@ -417,19 +417,20 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 추가 감지 1`] = `
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // add
-    table.string("test_column", 256).notNullable();
+    table.specificType("test_column_numeric_array", "numeric(10, 2)[]").notNullable();
+    table.specificType("test_column_string_array", "varchar(256)[]").notNullable();
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   return knex.schema.alterTable("users", (table) => {
     // rollback - add
-    table.dropColumns("test_column");
+    table.dropColumns("test_column_numeric_array", "test_column_string_array");
   });
 }
 ",
     "table": "users",
-    "title": "alter_users_add1",
+    "title": "alter_users_add2",
     "type": "normal",
   },
 ]

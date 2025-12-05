@@ -63,8 +63,13 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
       return `table.increments().primary();`;
     }
 
-    // number
-    if (column.type === "numberOrNumeric") {
+    // 배열 타입 처리
+    if (column.type.endsWith("[]")) {
+      const elementType = column.type.slice(0, -2); // "integer[]" -> "integer"
+      const pgType = getPgArrayType(column, elementType);
+      chains.push(`specificType('${column.name}', '${pgType}')`);
+    } else if (column.type === "numberOrNumeric") {
+      // number
       if (column.numberType === "real") {
         chains.push(`float('${column.name}')`);
       } else if (column.numberType === "double precision") {
@@ -73,14 +78,17 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
         chains.push(`decimal('${column.name}', ${column.precision}, ${column.scale})`);
       }
     } else if (column.type === "string") {
+      // string
       if (column.length !== undefined) {
         chains.push(`string('${column.name}', ${column.length})`);
       } else {
         chains.push(`text('${column.name}')`);
       }
     } else if (column.type === "date") {
+      // date
       chains.push(`timestamp('${column.name}', { useTz: true })`);
     } else if (column.type === "json") {
+      // json
       chains.push(`jsonb('${column.name}')`);
     } else {
       // type, length
@@ -106,6 +114,25 @@ function genColumnDefinitions(columns: MigrationColumn[]): string[] {
 
     return `table.${chains.join(".")};`;
   });
+}
+
+function getPgArrayType(column: MigrationColumn, elementType: string): string {
+  if (elementType === "numberOrNumeric") {
+    if (column.numberType === "real") return "real[]";
+    if (column.numberType === "double precision") return "double precision[]";
+    return `numeric(${column.precision}, ${column.scale})[]`;
+  }
+  if (elementType === "string") {
+    return column.length ? `varchar(${column.length})[]` : "text[]";
+  }
+  if (elementType === "date") return "timestamptz[]";
+  if (elementType === "integer") return "integer[]";
+  if (elementType === "bigInteger") return "bigint[]";
+  if (elementType === "boolean") return "boolean[]";
+  if (elementType === "uuid") return "uuid[]";
+  if (elementType === "enum") return "text[]";
+
+  throw new Error(`Unknown array element type: ${elementType}`);
 }
 
 /**

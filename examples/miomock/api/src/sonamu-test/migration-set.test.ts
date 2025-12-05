@@ -194,7 +194,7 @@ describe("migration-set.ts", () => {
     describe("String types", () => {
       test("character varying -> string", () => {
         const col = {
-          data_type: "character varying",
+          udt_name: "varchar",
           character_maximum_length: 100,
         } as PgColumn;
 
@@ -204,7 +204,7 @@ describe("migration-set.ts", () => {
 
       test("text -> string", () => {
         const col = {
-          data_type: "text",
+          udt_name: "text",
         } as PgColumn;
 
         const result = PostgreSQLSchemaReader.resolveDBColType(col);
@@ -213,7 +213,7 @@ describe("migration-set.ts", () => {
 
       test("varchar(255) -> string with length", () => {
         const col = {
-          data_type: "character varying",
+          udt_name: "varchar",
           character_maximum_length: 255,
         } as PgColumn;
 
@@ -223,7 +223,7 @@ describe("migration-set.ts", () => {
 
       test("varchar(no length) -> string without length", () => {
         const col = {
-          data_type: "character varying",
+          udt_name: "varchar",
         } as PgColumn;
 
         const result = PostgreSQLSchemaReader.resolveDBColType(col);
@@ -296,15 +296,6 @@ describe("migration-set.ts", () => {
         const result = PostgreSQLSchemaReader.resolveDBColType(col);
         expect(result).toMatchObject({ type: "date" });
       });
-
-      test("date -> date", () => {
-        const col = {
-          udt_name: "date",
-        } as PgColumn;
-
-        const result = PostgreSQLSchemaReader.resolveDBColType(col);
-        expect(result).toMatchObject({ type: "date" });
-      });
     });
 
     describe("JSON types", () => {
@@ -330,14 +321,11 @@ describe("migration-set.ts", () => {
     test("unknown type -> error", () => {
       const col = {
         udt_name: "sonamu_type",
-        data_type: "sonamu_type",
       } as PgColumn;
 
       const result = () => PostgreSQLSchemaReader.resolveDBColType(col);
 
-      expect(result).toThrowError(
-        "resolve 불가능한 PostgreSQL 컬럼 타입: sonamu_type (sonamu_type)",
-      );
+      expect(result).toThrowError("resolve 불가능한 PostgreSQL 컬럼 타입: sonamu_type");
     });
   });
 });

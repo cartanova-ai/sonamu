@@ -124,10 +124,17 @@ describe("Migrator test", () => {
         props: [
           ...original.props,
           {
-            name: "test_column",
-            type: "string",
-            desc: "Test Column",
+            name: "test_column_string_array",
+            type: "string[]",
+            desc: "Test String Array Column",
             length: 256,
+          },
+          {
+            name: "test_column_numeric_array",
+            type: "numeric[]",
+            desc: "Test Numeric Array Column",
+            precision: 10,
+            scale: 2,
           },
         ],
       }));
@@ -136,13 +143,20 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add1");
+      expect(alterCode?.title).toBe("alter_users_add2");
 
       // up
-      expect(alterCode?.formatted).toContain('table.string("test_column", 256).notNullable()');
+      expect(alterCode?.formatted).toContain(
+        'table.specificType("test_column_string_array", "varchar(256)[]").notNullable()',
+      );
+      expect(alterCode?.formatted).toContain(
+        'table.specificType("test_column_numeric_array", "numeric(10, 2)[]").notNullable()',
+      );
 
       // down
-      expect(alterCode?.formatted).toContain('table.dropColumns("test_column")');
+      expect(alterCode?.formatted).toContain(
+        'table.dropColumns("test_column_numeric_array", "test_column_string_array")',
+      );
     });
 
     test("컬럼 삭제 감지", async () => {

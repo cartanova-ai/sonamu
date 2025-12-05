@@ -19,6 +19,7 @@ import {
   type MigrationJoinTable,
   type MigrationSetAndJoinTable,
 } from "../types/types";
+import { exhaustive } from "../utils/utils";
 
 /**
  * Entity를 읽어서 MigrationSetAndJoinTable을 만들어옵니다.
@@ -196,26 +197,44 @@ function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): Migration
   switch (prop.type) {
     case "string":
       return "string";
-    case "number":
-      return "numberOrNumeric";
-    case "numeric":
-      return "numberOrNumeric";
+    case "string[]":
+      return "string[]";
     case "enum":
       return "string";
-    case "bigInteger":
-      return "bigInteger";
-    case "boolean":
-      return "boolean";
-    case "date":
-      return "date";
+    case "enum[]":
+      return "string[]";
     case "integer":
       return "integer";
-    case "json":
-      return "json";
+    case "integer[]":
+      return "integer[]";
+    case "bigInteger":
+      return "bigInteger";
+    case "bigInteger[]":
+      return "bigInteger[]";
+    case "number":
+      return "numberOrNumeric";
+    case "number[]":
+      return "numberOrNumeric[]";
+    case "numeric":
+      return "numberOrNumeric";
+    case "numeric[]":
+      return "numberOrNumeric[]";
+    case "boolean":
+      return "boolean";
+    case "boolean[]":
+      return "boolean[]";
+    case "date":
+      return "date";
+    case "date[]":
+      return "date[]";
     case "uuid":
       return "uuid";
+    case "uuid[]":
+      return "uuid[]";
+    case "json":
+      return "json";
     default:
-      // exhaustive(prop.type);
+      exhaustive(prop);
       throw new Error(`Unknown entity prop type: ${(prop as { type: string }).type}`);
   }
 }

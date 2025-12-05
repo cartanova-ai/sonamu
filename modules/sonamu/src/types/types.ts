@@ -25,34 +25,65 @@ export type CommonProp = {
 export type IntegerProp = CommonProp & {
   type: "integer";
 }; // PG: integer / TS: number / JSON: number
+export type IntegerArrayProp = CommonProp & {
+  type: "integer[]";
+}; // PG: integer[] / TS: number[] / JSON: number[]
 export type BigIntegerProp = CommonProp & {
   type: "bigInteger";
 }; // PG: bigint / TS: bigint / JSON: bigint
+export type BigIntegerArrayProp = CommonProp & {
+  type: "bigInteger[]";
+}; // PG: bigint[] / TS: bigint[] / JSON: bigint[]
 export type StringProp = CommonProp & {
   type: "string";
   length?: number; // PG: varchar(n), text / TS: string / JSON: string
 }; // PG: text / TS: string / JSON: string
+export type StringArrayProp = CommonProp & {
+  type: "string[]";
+  length?: number; // PG: varchar(n)[], text[] / TS: string[] / JSON: string[]
+}; // PG: varchar(n)[], text[] / TS: string[] / JSON: string[]
 export type EnumProp = CommonProp & {
   type: "enum";
   id: string;
 }; // PG: text / TS: string / JSON: string
+export type EnumArrayProp = CommonProp & {
+  type: "enum[]";
+  id: string;
+}; // PG: text[] / TS: string[] / JSON: string[]
 export type NumberProp = CommonProp & {
   type: "number";
   precision?: number; // PG: numeric(p, s) / TS: number / JSON: number
   scale?: number; // PG: numeric(p, s) / TS: number / JSON: number
   numberType?: "real" | "double precision" | "numeric"; // 기본값: numeric
 }; // PG: numeric(p, s) / TS: number / JSON: number
+export type NumberArrayProp = CommonProp & {
+  type: "number[]";
+  precision?: number;
+  scale?: number;
+  numberType?: "real" | "double precision" | "numeric"; // 기본값: numeric
+}; // PG: numeric(p, s)[] / TS: number[] / JSON: number[]
 export type NumericProp = CommonProp & {
   type: "numeric";
   precision?: number;
   scale?: number;
 }; // PG: numeric(p, s) / TS: string / JSON: string
+export type NumericArrayProp = CommonProp & {
+  type: "numeric[]";
+  precision?: number;
+  scale?: number;
+}; // PG: numeric(p, s)[] / TS: string[] / JSON: string[]
 export type BooleanProp = CommonProp & {
   type: "boolean";
 }; // PG: boolean / TS: boolean / JSON: boolean
+export type BooleanArrayProp = CommonProp & {
+  type: "boolean[]";
+}; // PG: boolean[] / TS: boolean[] / JSON: boolean[]
 export type DateProp = CommonProp & {
   type: "date";
 }; // PG: timestampz / TS: Date / JSON: string(ISOString)
+export type DateArrayProp = CommonProp & {
+  type: "date[]";
+}; // PG: timestamptz[] / TS: Date[] / JSON: string[]
 export type JsonProp = CommonProp & {
   type: "json";
   id: string;
@@ -60,6 +91,9 @@ export type JsonProp = CommonProp & {
 export type UuidProp = CommonProp & {
   type: "uuid";
 }; // PG: uuid / TS: string / JSON: string
+export type UuidArrayProp = CommonProp & {
+  type: "uuid[]";
+}; // PG: uuid[] / TS: string[] / JSON: string[]
 export type VirtualProp = CommonProp & {
   type: "virtual";
   id: string;
@@ -115,15 +149,25 @@ export type RelationProp =
 
 export type EntityProp =
   | IntegerProp
+  | IntegerArrayProp
   | BigIntegerProp
+  | BigIntegerArrayProp
   | StringProp
+  | StringArrayProp
+  | EnumProp
+  | EnumArrayProp
   | NumberProp
+  | NumberArrayProp
+  | NumericProp
+  | NumericArrayProp
   | NumericProp
   | BooleanProp
+  | BooleanArrayProp
   | DateProp
-  | JsonProp
+  | DateArrayProp
   | UuidProp
-  | EnumProp
+  | UuidArrayProp
+  | JsonProp
   | VirtualProp
   | RelationProp;
 
@@ -195,35 +239,89 @@ export type EntityPropNode =
 /*
   Prop Type Guards
 */
-export function isIntegerProp(p: unknown): p is IntegerProp {
+export function isIntegerSingleProp(p: unknown): p is IntegerProp {
   return (p as IntegerProp)?.type === "integer";
 }
-export function isBigIntegerProp(p: unknown): p is BigIntegerProp {
+export function isIntegerArrayProp(p: unknown): p is IntegerArrayProp {
+  return (p as IntegerArrayProp)?.type === "integer[]";
+}
+export function isIntegerProp(p: unknown): p is IntegerProp | IntegerArrayProp {
+  return isIntegerSingleProp(p) || isIntegerArrayProp(p);
+}
+export function isBigIntegerSingleProp(p: unknown): p is BigIntegerProp {
   return (p as BigIntegerProp)?.type === "bigInteger";
 }
-export function isStringProp(p: unknown): p is StringProp {
+export function isBigIntegerArrayProp(p: unknown): p is BigIntegerArrayProp {
+  return (p as BigIntegerArrayProp)?.type === "bigInteger[]";
+}
+export function isBigIntegerProp(p: unknown): p is BigIntegerProp | BigIntegerArrayProp {
+  return isBigIntegerSingleProp(p) || isBigIntegerArrayProp(p);
+}
+export function isStringSingleProp(p: unknown): p is StringProp {
   return (p as StringProp)?.type === "string";
 }
-export function isEnumProp(p: unknown): p is EnumProp {
+export function isStringArrayProp(p: unknown): p is StringArrayProp {
+  return (p as StringArrayProp)?.type === "string[]";
+}
+export function isStringProp(p: unknown): p is StringProp | StringArrayProp {
+  return isStringSingleProp(p) || isStringArrayProp(p);
+}
+export function isEnumSingleProp(p: unknown): p is EnumProp {
   return (p as EnumProp)?.type === "enum";
 }
-export function isNumberProp(p: unknown): p is NumberProp {
+export function isEnumArrayProp(p: unknown): p is EnumArrayProp {
+  return (p as EnumArrayProp)?.type === "enum[]";
+}
+export function isEnumProp(p: unknown): p is EnumProp | EnumArrayProp {
+  return isEnumSingleProp(p) || isEnumArrayProp(p);
+}
+export function isNumberSingleProp(p: unknown): p is NumberProp {
   return (p as NumberProp)?.type === "number";
 }
-export function isNumericProp(p: unknown): p is NumericProp {
+export function isNumberArrayProp(p: unknown): p is NumberArrayProp {
+  return (p as NumberArrayProp)?.type === "number[]";
+}
+export function isNumberProp(p: unknown): p is NumberProp | NumberArrayProp {
+  return isNumberSingleProp(p) || isNumberArrayProp(p);
+}
+export function isNumericSingleProp(p: unknown): p is NumericProp {
   return (p as NumericProp)?.type === "numeric";
 }
-export function isBooleanProp(p: unknown): p is BooleanProp {
+export function isNumericArrayProp(p: unknown): p is NumericArrayProp {
+  return (p as NumericArrayProp)?.type === "numeric[]";
+}
+export function isNumericProp(p: unknown): p is NumericProp | NumericArrayProp {
+  return isNumericSingleProp(p) || isNumericArrayProp(p);
+}
+export function isBooleanSingleProp(p: unknown): p is BooleanProp {
   return (p as BooleanProp)?.type === "boolean";
 }
-export function isDateProp(p: unknown): p is DateProp {
+export function isBooleanArrayProp(p: unknown): p is BooleanArrayProp {
+  return (p as BooleanArrayProp)?.type === "boolean[]";
+}
+export function isBooleanProp(p: unknown): p is BooleanProp | BooleanArrayProp {
+  return isBooleanSingleProp(p) || isBooleanArrayProp(p);
+}
+export function isDateSingleProp(p: unknown): p is DateProp {
   return (p as DateProp)?.type === "date";
+}
+export function isDateArrayProp(p: unknown): p is DateArrayProp {
+  return (p as DateArrayProp)?.type === "date[]";
+}
+export function isDateProp(p: unknown): p is DateProp | DateArrayProp {
+  return isDateSingleProp(p) || isDateArrayProp(p);
+}
+export function isUuidSingleProp(p: unknown): p is UuidProp {
+  return (p as UuidProp)?.type === "uuid";
+}
+export function isUuidArrayProp(p: unknown): p is UuidArrayProp {
+  return (p as UuidArrayProp)?.type === "uuid[]";
+}
+export function isUuidProp(p: unknown): p is UuidProp | UuidArrayProp {
+  return isUuidSingleProp(p) || isUuidArrayProp(p);
 }
 export function isJsonProp(p: unknown): p is JsonProp {
   return (p as JsonProp)?.type === "json";
-}
-export function isUuidProp(p: unknown): p is UuidProp {
-  return (p as UuidProp)?.type === "uuid";
 }
 export function isVirtualProp(p: unknown): p is VirtualProp {
   return (p as VirtualProp)?.type === "virtual";
@@ -327,12 +425,19 @@ export type KnexColumnType =
   | "datetime";
 export type MigrationColumnType =
   | "string"
+  | "string[]"
   | "integer"
+  | "integer[]"
   | "bigInteger"
+  | "bigInteger[]"
   | "numberOrNumeric"
+  | "numberOrNumeric[]"
   | "boolean"
+  | "boolean[]"
   | "date"
+  | "date[]"
   | "uuid"
+  | "uuid[]"
   | "json";
 export type MigrationColumn = {
   name: string;

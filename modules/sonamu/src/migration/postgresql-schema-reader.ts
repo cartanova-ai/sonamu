@@ -223,65 +223,79 @@ class PostgreSQLSchemaReaderClass {
   resolveDBColType(
     dbColumn: PgColumn,
   ): Pick<MigrationColumn, "type" | "length" | "precision" | "scale" | "numberType"> {
-    const { data_type, udt_name, character_maximum_length, numeric_precision, numeric_scale } =
-      dbColumn;
+    const {
+      udt_name: _udt_name,
+      character_maximum_length,
+      numeric_precision,
+      numeric_scale,
+    } = dbColumn;
+
+    const { udt_name, singleOrArray } = (() => {
+      if (_udt_name.startsWith("_")) {
+        return {
+          udt_name: _udt_name.substring(1),
+          singleOrArray: "[]" as const,
+        };
+      }
+      return {
+        udt_name: _udt_name,
+        singleOrArray: "" as const,
+      };
+    })();
 
     // UUID
     if (udt_name === "uuid") {
-      return { type: "uuid" };
+      return { type: `uuid${singleOrArray}` };
     }
 
     // Integer types
     if (udt_name === "int4") {
-      return { type: "integer" };
+      return { type: `integer${singleOrArray}` };
     }
     if (udt_name === "int8") {
-      return { type: "bigInteger" };
+      return { type: `bigInteger${singleOrArray}` };
     }
 
     // String types
-    if (data_type === "character varying") {
+    if (udt_name === "varchar") {
       return {
-        type: "string",
+        type: `string${singleOrArray}`,
         ...(character_maximum_length && {
           length: character_maximum_length,
         }),
       };
     }
-    if (data_type === "text") {
-      return { type: "string" }; // StringProp without length
+    if (udt_name === "text") {
+      return { type: `string${singleOrArray}` }; // StringProp without length
     }
 
-    // Numeric types
+    // NumberOrNumeric types
     if (udt_name === "numeric") {
-      if (numeric_precision && numeric_scale) {
-        return {
-          type: "numberOrNumeric",
-          numberType: "numeric",
-          precision: numeric_precision,
-          scale: numeric_scale,
-        };
-      }
-      return { type: "numberOrNumeric", numberType: "numeric" };
+      return {
+        type: `numberOrNumeric${singleOrArray}`,
+        numberType: "numeric",
+        ...(numeric_precision !== null &&
+          numeric_scale !== null && {
+            precision: numeric_precision,
+            scale: numeric_scale,
+          }),
+      };
     }
     if (udt_name === "float4") {
-      return { type: "numberOrNumeric", numberType: "real" };
+      return { type: `numberOrNumeric${singleOrArray}`, numberType: "real" };
     }
     if (udt_name === "float8") {
-      return { type: "numberOrNumeric", numberType: "double precision" };
+      return { type: `numberOrNumeric${singleOrArray}`, numberType: "double precision" };
     }
 
     // Boolean
     if (udt_name === "bool") {
-      return { type: "boolean" };
+      return { type: `boolean${singleOrArray}` };
     }
 
-    // Date/Time types
+    // Timestampz types
     if (udt_name === "timestamptz") {
-      return { type: "date" }; // DateProp → timestamptz
-    }
-    if (udt_name === "date") {
-      return { type: "date" };
+      return { type: `date${singleOrArray}` }; // DateProp → timestamptz
     }
 
     // JSON
@@ -289,7 +303,7 @@ class PostgreSQLSchemaReaderClass {
       return { type: "json" };
     }
 
-    throw new Error(`resolve 불가능한 PostgreSQL 컬럼 타입: ${data_type} (${udt_name})`);
+    throw new Error(`resolve 불가능한 PostgreSQL 컬럼 타입: ${udt_name}`);
   }
 }
 
