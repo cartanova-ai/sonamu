@@ -1,14 +1,23 @@
+import { isError } from "radashi";
 import {
   api,
   asArray,
   BaseModelClass,
   exhaustive,
   type ListResult,
+  Naite,
   NotFoundException,
+  Sonamu,
+  stream,
 } from "sonamu";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
-import type { ProjectListParams, ProjectSaveParams } from "./project.types";
+import { ProjectAgent } from "./project.agent";
+import {
+  ProjectAskStreamEvents,
+  type ProjectListParams,
+  type ProjectSaveParams,
+} from "./project.types";
 
 /*
   Project Model
@@ -169,6 +178,53 @@ class ProjectModelClass extends BaseModelClass<
     });
 
     return ids.length;
+  }
+
+  @stream({ type: "sse", events: ProjectAskStreamEvents })
+  async ask(prompt: string): Promise<void> {
+    const { createSSE } = Sonamu.getContext();
+    const sse = createSSE(ProjectAskStreamEvents);
+
+    let fullText = "";
+    try {
+      await ProjectAgent.useAgent(async (agent) => {
+        const result = await agent.stream({
+          messages: [
+            {
+              role: "user",
+              content: prompt,
+            },
+          ],
+        });
+
+        for await (const item of result.fullStream) {
+          if (item.type === "text-delta") {
+            Naite.t("project.ask.token", item.text);
+            fullText += item.text;
+            sse.publish("onToken", { token: item.text });
+          }
+        }
+
+        let finalOutput: string;
+        try {
+          Naite.t("project.ask.fullText", fullText);
+
+          const final = await result.text;
+          Naite.t("project.ask.final", final);
+          finalOutput = final ?? fullText;
+        } catch (_error: unknown) {
+          finalOutput = fullText;
+        }
+
+        sse.publish("onComplete", {
+          fullText: finalOutput,
+        });
+      });
+    } catch (error) {
+      sse.publish("onError", { error: isError(error) ? error : new Error("Unknown error") });
+    }
+
+    await sse.end();
   }
 }
 

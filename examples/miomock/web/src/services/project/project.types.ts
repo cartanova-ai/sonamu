@@ -22,5 +22,21 @@ export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 export const StringArray = z.array(z.string());
 export type StringArray = z.infer<typeof StringArray>;
 
-export const Boolean = z.boolean();
-export type Boolean = z.infer<typeof Boolean>;
+// Sample SSE Events
+export const ProjectAskStreamEvents = z.object({
+  onToken: z.object({
+    token: z.string(),
+  }),
+  onComplete: z.object({
+    fullText: z.string(),
+  }),
+  onError: z.object({
+    error: z.object({
+      name: z.string(),
+      message: z.string(),
+      cause: z.any().optional(),
+      stack: z.string().optional(),
+    }),
+  }),
+});
+export type ProjectAskStreamEvents = z.infer<typeof ProjectAskStreamEvents>;

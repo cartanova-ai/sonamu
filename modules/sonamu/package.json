@@ -13,6 +13,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./ai": {
+      "import": "./dist/ai/index.js",
+      "types": "./dist/ai/index.d.ts"
+    },
     "./loader-register": {
       "default": "./dist/bin/loader-register.js"
     },
@@ -96,6 +100,24 @@
     "@swc/core": "^1.13.5",
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@ai-sdk/openai": "3.0.0-beta.75",
+    "@ai-sdk/provider": "3.0.0-beta.22",
+    "@ai-sdk/provider-utils": "4.0.0-beta.40",
+    "ai": "^6.0.0-beta.99"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@ai-sdk/provider": {
+      "optional": true
+    },
+    "@ai-sdk/provider-utils": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
   }
 }

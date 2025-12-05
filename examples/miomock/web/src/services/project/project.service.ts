@@ -3,11 +3,14 @@ import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import {
+  type EventHandlers,
   fetch,
   handleConditional,
   type ListResult,
+  type SSEStreamOptions,
   type SWRError,
   type SwrOptions,
+  useSSEStream,
 } from "../sonamu.shared";
 import type { ProjectListParams, ProjectSaveParams } from "./project.types";
 
@@ -64,5 +67,45 @@ export namespace ProjectService {
       url: `/api/project/del`,
       data: { ids },
     });
+  }
+
+  export function useAsk(
+    params: { prompt: string },
+    handlers: EventHandlers<
+      {
+        onToken: {
+          token: string;
+        };
+        onComplete: {
+          fullText: string;
+        };
+        onError: {
+          error: {
+            name: string;
+            message: string;
+            cause?: any;
+            stack?: string;
+          };
+        };
+      } & { end?: () => void }
+    >,
+    options: SSEStreamOptions,
+  ) {
+    return useSSEStream<{
+      onToken: {
+        token: string;
+      };
+      onComplete: {
+        fullText: string;
+      };
+      onError: {
+        error: {
+          name: string;
+          message: string;
+          cause?: any;
+          stack?: string;
+        };
+      };
+    }>(`/api/project/ask`, params, handlers, options);
   }
 }

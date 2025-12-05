@@ -57,11 +57,11 @@
   },
   {
     "path": "src/application/project/project.model.ts",
-    "checksum": "0c704099de751e48ac248a6106eec3df61701549"
+    "checksum": "6bb5c25fa73182ad240b327ca9d8ac5b6c50673f"
   },
   {
     "path": "src/application/project/project.types.ts",
-    "checksum": "335d07accbacdfae98e6909f8665b1afa51c44b6"
+    "checksum": "a027fc4460bc2d49e84a333a6213e760e9962534"
   },
   {
     "path": "src/application/sonamu.generated.ts",
