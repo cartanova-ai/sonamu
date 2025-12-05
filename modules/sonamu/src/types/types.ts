@@ -742,31 +742,6 @@ const PrecisionScaleFields = {
 };
 
 // 각 타입별 스키마 정의
-const IntegerPropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("integer"),
-  })
-  .strict();
-const IntegerArrayPropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("integer[]"),
-  })
-  .strict();
-
-const BigIntegerPropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("bigInteger"),
-  })
-  .strict();
-const BigIntegerArrayPropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("bigInteger[]"),
-  })
-  .strict();
 
 const StringPropSchema = z
   .object({
@@ -939,10 +914,6 @@ export const NormalPropSchema = z.discriminatedUnion(
   "type",
   [
     BasePropFieldsWithoutAdditional,
-    IntegerPropSchema,
-    IntegerArrayPropSchema,
-    BigIntegerPropSchema,
-    BigIntegerArrayPropSchema,
     StringPropSchema,
     StringArrayPropSchema,
     EnumPropSchema,
