@@ -27,7 +27,6 @@
     {
       "name": "status",
       "type": "enum",
-      "length": 32,
       "id": "SyncFixtureStatus",
       "desc": "상태"
     },

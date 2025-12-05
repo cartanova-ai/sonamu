@@ -6,7 +6,6 @@ import path from "path";
 import { prettifyError } from "zod";
 import { Sonamu } from "../api/sonamu";
 import { type EntityJson, EntityJsonSchema } from "../types/types";
-import { isTest } from "../utils/controller";
 import type { AbsolutePath } from "../utils/path-utils";
 import { Entity } from "./entity";
 
@@ -39,10 +38,9 @@ class EntityManagerClass {
       if (error) {
         const relativePath = path.relative(Sonamu.apiRootPath, file);
         const errorMessage = prettifyError(error);
-        !isTest() &&
-          console.error(
-            chalk.red(`Invalid entity.json schema: ${relativePath}\n${chalk.yellow(errorMessage)}`),
-          );
+        console.error(
+          chalk.red(`Invalid entity.json schema: ${relativePath}\n${chalk.yellow(errorMessage)}`),
+        );
       }
 
       await this.register(json);
