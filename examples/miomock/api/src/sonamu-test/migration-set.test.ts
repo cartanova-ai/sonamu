@@ -1,4 +1,9 @@
-import { EntityManager, getMigrationSetFromEntity } from "sonamu";
+import {
+  EntityManager,
+  getMigrationSetFromEntity,
+  type PgColumn,
+  PostgreSQLSchemaReader,
+} from "sonamu";
 import { beforeEach, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import {
@@ -156,69 +161,183 @@ describe("migration-set.ts", () => {
     });
   });
 
-  // describe("resolveDBColType", () => {
-  //   test("MySQL의 컬럼 타입들을 표준 MigrationColumn 타입으로 정확히 변환", () => {
-  //     // varchar
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("varchar(100)").toEqual({
-  //       type: "string",
-  //       length: 100,
-  //     });
-  //     // int unsigned
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("int unsigned", "age")).toEqual({
-  //       type: "integer",
-  //     });
-  //     // tinyint(1)
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("tinyint(1)", "is_active")).toEqual({
-  //       type: "boolean",
-  //     });
-  //     // tinyint unsigned
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("tinyint unsigned", "is_active")).toEqual({
-  //       type: "boolean",
-  //     });
-  //     // longtext
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("longtext", "description")).toEqual({
-  //       type: "longtext",
-  //     });
-  //     // datetime
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("datetime", "created_at")).toEqual({
-  //       type: "datetime",
-  //     });
-  //     // decimal(12,2)
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("decimal(12,2)", "price")).toEqual({
-  //       type: "decimal",
-  //       precision: 12,
-  //       scale: 2,
-  //     });
-  //     // char(36)
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("char(36)", "uuid")).toEqual({ type: "uuid" });
-  //     // text
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("text", "any_field")).toEqual({ type: "text" });
-  //     // mediumtext
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("mediumtext", "any_field")).toEqual({
-  //       type: "mediumtext",
-  //     });
-  //     // timestamp
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("timestamp", "any_field")).toEqual({
-  //       type: "timestamp",
-  //     });
-  //     // json
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("json", "any_field")).toEqual({ type: "json" });
-  //     // date
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("date", "any_field")).toEqual({ type: "date" });
-  //     // time
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("time", "any_field")).toEqual({ type: "time" });
-  //     // float(8,4)
-  //     expect(PostgreSQLSchemaReader.resolveDBColType("float(8,4)", "any_field")).toEqual({
-  //       type: "float",
-  //       precision: 8,
-  //       scale: 4,
-  //     });
-  //   });
-  //   test("알 수 없는 DB 컬럼 타입은 에러를 발생시켜야 한다", () => {
-  //     // given & when
-  //     const fn = () => PostgreSQLSchemaReader.resolveDBColType("unknown_type", "any_field");
-  //     // then
-  //     expect(fn).toThrow("resolve 불가능한 DB컬럼 타입 unknown_type unknown_type");
-  //   });
-  // });
+  describe("resolveDBColType", () => {
+    test("uuid -> uuid", () => {
+      const col = {
+        udt_name: "uuid",
+      } as PgColumn;
+
+      const result = PostgreSQLSchemaReader.resolveDBColType(col);
+      expect(result).toMatchObject({ type: "uuid" });
+    });
+
+    describe("Integer types", () => {
+      test("int4 -> integer", () => {
+        const col = {
+          udt_name: "int4",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "integer" });
+      });
+
+      test("int8 -> bigInteger", () => {
+        const col = {
+          udt_name: "int8",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "bigInteger" });
+      });
+    });
+
+    describe("String types", () => {
+      test("character varying -> string", () => {
+        const col = {
+          data_type: "character varying",
+          character_maximum_length: 100,
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string", length: 100 });
+      });
+
+      test("text -> string", () => {
+        const col = {
+          data_type: "text",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string" });
+      });
+
+      test("varchar(255) -> string with length", () => {
+        const col = {
+          data_type: "character varying",
+          character_maximum_length: 255,
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string", length: 255 });
+      });
+
+      test("varchar(no length) -> string without length", () => {
+        const col = {
+          data_type: "character varying",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "string" });
+      });
+    });
+
+    describe("Numeric types", () => {
+      test("numeric(10, 2) -> numberOrNumeric", () => {
+        const col = {
+          udt_name: "numeric",
+          numeric_precision: 10,
+          numeric_scale: 2,
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({
+          type: "numberOrNumeric",
+          numberType: "numeric",
+          precision: 10,
+          scale: 2,
+        });
+      });
+
+      test("numeric(no precision, no scale) -> numberOrNumeric", () => {
+        const col = {
+          udt_name: "numeric",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "numberOrNumeric", numberType: "numeric" });
+      });
+
+      test("float4 -> numberOrNumeric", () => {
+        const col = {
+          udt_name: "float4",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "numberOrNumeric", numberType: "real" });
+      });
+
+      test("float8 -> numberOrNumeric", () => {
+        const col = {
+          udt_name: "float8",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "numberOrNumeric", numberType: "double precision" });
+      });
+    });
+
+    describe("Boolean types", () => {
+      test("bool -> boolean", () => {
+        const col = {
+          udt_name: "bool",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "boolean" });
+      });
+    });
+
+    describe("Date/Time types", () => {
+      test("timestamptz -> date", () => {
+        const col = {
+          udt_name: "timestamptz",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "date" });
+      });
+
+      test("date -> date", () => {
+        const col = {
+          udt_name: "date",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "date" });
+      });
+    });
+
+    describe("JSON types", () => {
+      test("json -> json", () => {
+        const col = {
+          udt_name: "json",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "json" });
+      });
+
+      test("jsonb -> json", () => {
+        const col = {
+          udt_name: "jsonb",
+        } as PgColumn;
+
+        const result = PostgreSQLSchemaReader.resolveDBColType(col);
+        expect(result).toMatchObject({ type: "json" });
+      });
+    });
+
+    test("unknown type -> error", () => {
+      const col = {
+        udt_name: "sonamu_type",
+        data_type: "sonamu_type",
+      } as PgColumn;
+
+      const result = () => PostgreSQLSchemaReader.resolveDBColType(col);
+
+      expect(result).toThrowError(
+        "resolve 불가능한 PostgreSQL 컬럼 타입: sonamu_type (sonamu_type)",
+      );
+    });
+  });
 });

@@ -9,7 +9,7 @@ import type {
   RelationOn,
 } from "../types/types";
 
-type PgColumn = {
+export type PgColumn = {
   column_name: string;
   data_type: string;
   udt_name: string;
