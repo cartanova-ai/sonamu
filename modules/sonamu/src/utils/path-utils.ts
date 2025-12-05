@@ -1,3 +1,4 @@
+import { isTest } from "./controller.js";
 import { isHotReloadServer } from "./esm-utils.js";
 
 /**
@@ -90,7 +91,7 @@ export type AbsolutePath = `/${string}`;
  * @param anyPath
  * @returns
  */
-export function runtimePath(anyPath: string, isDev: boolean = isHotReloadServer()): string {
+export function runtimePath(anyPath: string, isDev: boolean = isHotReloadServer() || isTest()): string {
   if (isDev) {
     return anyPath.replace(/dist\//, "src/").replace(/\.js/, ".ts");
   } else {
