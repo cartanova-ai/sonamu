@@ -1,9 +1,11 @@
 import assert from "assert";
+import chalk from "chalk";
 import { glob, readFile } from "fs/promises";
 import inflection from "inflection";
 import path from "path";
+import { prettifyError } from "zod";
 import { Sonamu } from "../api/sonamu";
-import type { EntityJson } from "../types/types";
+import { type EntityJson, EntityJsonSchema } from "../types/types";
 import type { AbsolutePath } from "../utils/path-utils";
 import { Entity } from "./entity";
 
@@ -29,7 +31,19 @@ class EntityManagerClass {
     const pathPattern = path.join(Sonamu.apiRootPath, "/src/application/**/*.entity.json");
 
     for await (const file of glob(path.resolve(pathPattern))) {
-      await this.register(JSON.parse((await readFile(file)).toString()));
+      const json = JSON.parse((await readFile(file)).toString());
+
+      // entity.json 스키마 검증
+      const error = this.schemaValidate(json);
+      if (error) {
+        const relativePath = path.relative(Sonamu.apiRootPath, file);
+        const errorMessage = prettifyError(error);
+        console.error(
+          chalk.red(`Invalid entity.json schema: ${relativePath}\n${chalk.yellow(errorMessage)}`),
+        );
+      }
+
+      await this.register(json);
     }
     // !doSilent &&
     //   console.log(
@@ -39,6 +53,11 @@ class EntityManagerClass {
     //   );
 
     this.isAutoloaded = true;
+  }
+
+  schemaValidate(json: unknown) {
+    const result = EntityJsonSchema.safeParse(json);
+    return result.success ? null : result.error;
   }
 
   async reload(doSilent: boolean = false) {
