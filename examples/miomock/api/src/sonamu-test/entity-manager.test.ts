@@ -251,7 +251,7 @@ describe("entityManager", () => {
 
         expect(errors?.issues).toHaveLength(1);
         expect(errors?.issues[0]?.message).toContain(
-          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "invalidType"`,
+          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'number', 'numeric', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "invalidType"`,
         );
         expect(errors?.issues[0]?.path).toEqual(["props", 0, "type"]);
       });
@@ -265,27 +265,13 @@ describe("entityManager", () => {
 
         expect(errors?.issues).toHaveLength(1);
         expect(errors?.issues[0]?.message).toContain(
-          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "undefined"`,
+          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'number', 'numeric', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "undefined"`,
         );
         expect(errors?.issues[0]?.path).toEqual(["props", 0, "type"]);
       });
     });
 
     describe("prop 필수 필드 에러", () => {
-      it("string prop에서 length 누락", () => {
-        const json = {
-          ...validBaseEntity,
-          props: [{ type: "string", name: "username" }],
-        };
-        const errors = EntityManager.schemaValidate(json);
-
-        expect(errors?.issues).toHaveLength(1);
-        expect(errors?.issues[0]?.message).toContain(
-          "Invalid input: expected number, received undefined",
-        );
-        expect(errors?.issues[0]?.path).toEqual(["props", 0, "length"]);
-      });
-
       it("enum prop에서 id 누락", () => {
         const json = {
           ...validBaseEntity,
@@ -298,38 +284,6 @@ describe("entityManager", () => {
           "Invalid input: expected string, received undefined",
         );
         expect(errors?.issues[0]?.path).toEqual(["props", 0, "id"]);
-      });
-
-      it("enum prop에서 length 누락", () => {
-        const json = {
-          ...validBaseEntity,
-          props: [{ type: "enum", name: "status", id: "TestStatus" }],
-        };
-        const errors = EntityManager.schemaValidate(json);
-
-        expect(errors?.issues).toHaveLength(1);
-        expect(errors?.issues[0]?.message).toContain(
-          "Invalid input: expected number, received undefined",
-        );
-        expect(errors?.issues[0]?.path).toEqual(["props", 0, "length"]);
-      });
-
-      it("decimal prop에서 precision/scale 누락", () => {
-        const json = {
-          ...validBaseEntity,
-          props: [{ type: "decimal", name: "price" }],
-        };
-        const errors = EntityManager.schemaValidate(json);
-
-        expect(errors?.issues).toHaveLength(2);
-        expect(errors?.issues[0]?.message).toContain(
-          "Invalid input: expected number, received undefined",
-        );
-        expect(errors?.issues[0]?.path).toEqual(["props", 0, "precision"]);
-        expect(errors?.issues[1]?.message).toContain(
-          "Invalid input: expected number, received undefined",
-        );
-        expect(errors?.issues[1]?.path).toEqual(["props", 0, "scale"]);
       });
 
       it("text prop에서 textType 누락", () => {
@@ -627,19 +581,19 @@ describe("entityManager", () => {
         const json = {
           ...validBaseEntity,
           props: [
-            { type: "string", name: "field1" }, // length 누락
+            { type: "text", name: "field1" },
             { type: "invalidType", name: "field2" }, // 잘못된 type
           ],
         };
         const errors = EntityManager.schemaValidate(json);
-        // prettifyError가 여러 에러를 하나의 문자열로 합침
+
         expect(errors?.issues).toHaveLength(2);
         expect(errors?.issues[0]?.message).toContain(
-          "Invalid input: expected number, received undefined",
+          'Invalid option: expected one of "text"|"mediumtext"|"longtext"',
         );
-        expect(errors?.issues[0]?.path).toEqual(["props", 0, "length"]);
+        expect(errors?.issues[0]?.path).toEqual(["props", 0, "textType"]);
         expect(errors?.issues[1]?.message).toContain(
-          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "invalidType"`,
+          `type은 'boolean', 'date', 'datetime', 'time', 'timestamp', 'uuid', 'integer', 'bigInteger', 'string', 'text', 'enum', 'float', 'double', 'decimal', 'number', 'numeric', 'json', 'virtual', 'relation' 중 하나여야 합니다. 입력값: "invalidType"`,
         );
         expect(errors?.issues[1]?.path).toEqual(["props", 1, "type"]);
       });
