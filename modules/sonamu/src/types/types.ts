@@ -721,20 +721,19 @@ const BasePropFieldsWithoutAdditional = z
   .object({
     ...BasePropFields,
     type: z.union([
+      z.literal("integer"),
+      z.literal("integer[]"),
+      z.literal("bigInteger"),
+      z.literal("bigInteger[]"),
       z.literal("boolean"),
+      z.literal("boolean[]"),
       z.literal("date"),
-      z.literal("datetime"),
-      z.literal("time"),
-      z.literal("timestamp"),
+      z.literal("date[]"),
       z.literal("uuid"),
+      z.literal("uuid[]"),
     ]),
   })
   .strict();
-
-// 숫자 타입 공통 (unsigned)
-const NumericFields = {
-  unsigned: z.boolean().optional(),
-};
 
 // precision/scale 필드
 const PrecisionScaleFields = {
@@ -747,7 +746,12 @@ const IntegerPropSchema = z
   .object({
     ...BasePropFields,
     type: z.literal("integer"),
-    ...NumericFields,
+  })
+  .strict();
+const IntegerArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("integer[]"),
   })
   .strict();
 
@@ -755,7 +759,12 @@ const BigIntegerPropSchema = z
   .object({
     ...BasePropFields,
     type: z.literal("bigInteger"),
-    ...NumericFields,
+  })
+  .strict();
+const BigIntegerArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("bigInteger[]"),
   })
   .strict();
 
@@ -766,12 +775,11 @@ const StringPropSchema = z
     length: z.number().optional(),
   })
   .strict();
-
-const TextPropSchema = z
+const StringArrayPropSchema = z
   .object({
     ...BasePropFields,
-    type: z.literal("text"),
-    textType: z.enum(["text", "mediumtext", "longtext"]),
+    type: z.literal("string[]"),
+    length: z.number().optional(),
   })
   .strict();
 
@@ -780,34 +788,13 @@ const EnumPropSchema = z
     ...BasePropFields,
     type: z.literal("enum"),
     id: z.string(),
-    length: z.number().optional(),
   })
   .strict();
-
-const FloatPropSchema = z
+const EnumArrayPropSchema = z
   .object({
     ...BasePropFields,
-    type: z.literal("float"),
-    ...NumericFields,
-    ...PrecisionScaleFields,
-  })
-  .strict();
-
-const DoublePropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("double"),
-    ...NumericFields,
-    ...PrecisionScaleFields,
-  })
-  .strict();
-
-const DecimalPropSchema = z
-  .object({
-    ...BasePropFields,
-    type: z.literal("decimal"),
-    ...NumericFields,
-    ...PrecisionScaleFields,
+    type: z.literal("enum[]"),
+    id: z.string(),
   })
   .strict();
 
@@ -819,11 +806,26 @@ const NumberPropSchema = z
     numberType: z.enum(["real", "double precision", "numeric"]).optional(),
   })
   .strict();
+const NumberArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("number[]"),
+    ...PrecisionScaleFields,
+    numberType: z.enum(["real", "double precision", "numeric"]).optional(),
+  })
+  .strict();
 
 const NumericPropSchema = z
   .object({
     ...BasePropFields,
     type: z.literal("numeric"),
+    ...PrecisionScaleFields,
+  })
+  .strict();
+const NumericArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("numeric[]"),
     ...PrecisionScaleFields,
   })
   .strict();
@@ -912,22 +914,24 @@ export const RelationPropSchema = z.discriminatedUnion(
 );
 
 const NormalPropTypes = [
-  "boolean",
-  "date",
-  "datetime",
-  "time",
-  "timestamp",
-  "uuid",
   "integer",
+  "integer[]",
   "bigInteger",
+  "bigInteger[]",
   "string",
-  "text",
+  "string[]",
   "enum",
-  "float",
-  "double",
-  "decimal",
+  "enum[]",
   "number",
+  "number[]",
   "numeric",
+  "numeric[]",
+  "boolean",
+  "boolean[]",
+  "date",
+  "date[]",
+  "uuid",
+  "uuid[]",
   "json",
   "virtual",
 ] as const;
@@ -936,15 +940,17 @@ export const NormalPropSchema = z.discriminatedUnion(
   [
     BasePropFieldsWithoutAdditional,
     IntegerPropSchema,
+    IntegerArrayPropSchema,
     BigIntegerPropSchema,
+    BigIntegerArrayPropSchema,
     StringPropSchema,
-    TextPropSchema,
+    StringArrayPropSchema,
     EnumPropSchema,
-    FloatPropSchema,
-    DoublePropSchema,
-    DecimalPropSchema,
+    EnumArrayPropSchema,
     NumberPropSchema,
+    NumberArrayPropSchema,
     NumericPropSchema,
+    NumericArrayPropSchema,
     JsonPropSchema,
     VirtualPropSchema,
   ],
