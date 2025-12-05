@@ -19,6 +19,7 @@ import {
   type FixtureRecord,
   type FixtureSearchOptions,
   isSoException,
+  type MigrationResult,
   Migrator,
   nonNullable,
   type PathAndCode,
@@ -625,26 +626,15 @@ export async function createServer(options: {
       action: "apply" | "rollback" | "shadow";
       targets: (keyof SonamuDBConfig)[];
     };
-  }>(
-    "/api/migrations/runAction",
-    async (
-      request,
-    ): Promise<
-      {
-        connKey: string;
-        batchNo: number;
-        applied: string[];
-      }[]
-    > => {
-      const { action, targets } = request.body;
+  }>("/api/migrations/runAction", async (request): Promise<MigrationResult> => {
+    const { action, targets } = request.body;
 
-      if (action === "shadow") {
-        return migrator.runShadowTest();
-      } else {
-        return migrator.runAction(action, targets);
-      }
-    },
-  );
+    if (action === "shadow") {
+      return migrator.runShadowTest();
+    } else {
+      return migrator.runAction(action, targets);
+    }
+  });
 
   server.post<{
     Body: {

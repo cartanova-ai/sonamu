@@ -7,6 +7,7 @@ import type {
   FixtureRecord,
   FixtureSearchOptions,
   FlattenSubsetRow,
+  MigrationResult,
   MigrationStatus,
   PathAndCode,
   SonamuDBConfig,
@@ -243,13 +244,7 @@ export namespace SonamuUIService {
   export function migrationsRunAction(
     action: "apply" | "rollback" | "shadow",
     targets: (keyof SonamuDBConfig)[],
-  ): Promise<
-    {
-      connKey: string;
-      batchNo: number;
-      applied: string[];
-    }[]
-  > {
+  ): Promise<MigrationResult> {
     return fetch({
       method: "POST",
       url: `/api/migrations/runAction`,

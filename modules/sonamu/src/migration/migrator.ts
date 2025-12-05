@@ -18,6 +18,12 @@ import { getMigrationSetFromEntity } from "./migration-set";
 import { PostgreSQLSchemaReader } from "./postgresql-schema-reader";
 import type { ConnString, MigrationCode, MigrationStatus } from "./types";
 
+export type MigrationResult = {
+  connKey: string;
+  batchNo: number;
+  applied: string[];
+}[];
+
 export class Migrator {
   targets: {
     compare: Knex;
@@ -178,13 +184,7 @@ export class Migrator {
   async runAction(
     action: "apply" | "rollback",
     targets: (keyof SonamuDBConfig)[],
-  ): Promise<
-    {
-      connKey: string;
-      batchNo: number;
-      applied: string[];
-    }[]
-  > {
+  ): Promise<MigrationResult> {
     Naite.t("migrator:runAction:action", action);
     Naite.t("migrator:runAction:targets", targets);
 
