@@ -17,6 +17,10 @@
       "import": "./dist/ai/index.js",
       "types": "./dist/ai/index.d.ts"
     },
+    "./ai/providers/rtzr": {
+      "import": "./dist/ai/providers/rtzr/index.js",
+      "types": "./dist/ai/providers/rtzr/index.d.ts"
+    },
     "./loader-register": {
       "default": "./dist/bin/loader-register.js"
     },
