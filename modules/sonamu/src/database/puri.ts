@@ -13,6 +13,7 @@ import type {
   ExtractColumnType,
   FulltextColumns,
   InsertData,
+  InsertResult,
   ParseSelectObject,
   ResultAvailableColumns,
   SelectObject,
@@ -60,7 +61,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return {
       _type: "sql_expression",
       _return: "number",
-      _sql: `COUNT(${column})`,
+      _sql: `COUNT(${column})::integer`,
     };
   }
   static sum(column: string): SqlExpression<"number"> {
@@ -467,10 +468,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   having(...conditions: any[]): this {
     if (conditions.length === 1) {
       // having("COUNT(*) > 10")
-      this.knexQuery.having(conditions[0]);
+      this.knexQuery.having(this.knex.raw(conditions[0]));
     } else if (conditions.length === 3) {
       // having("count", ">", 10)
-      this.knexQuery.having(conditions[0], conditions[1], conditions[2]);
+      this.knexQuery.having(
+        this.knex.raw(conditions[0]),
+        conditions[1],
+        this.knex.raw(conditions[2]),
+      );
     } else {
       throw new Error("Invalid having arguments");
     }
@@ -514,13 +519,15 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // INSERT
-  insert(data: InsertData<SingleTableValue<TTables>>): ResolvedPuri<[number], never> {
+  insert(
+    data: InsertData<SingleTableValue<TTables>>,
+  ): ResolvedPuri<InsertResult, SingleTableValue<TTables>> {
     this.knexQuery.insert(data);
     return new ResolvedPuri(this.knexQuery);
   }
 
   // UPDATE
-  update(data: WhereCondition<TTables>): ResolvedPuri<TResult, number> {
+  update(data: WhereCondition<TTables>): ResolvedPuri<number, SingleTableValue<TTables>> {
     this.knexQuery.update(data);
     return new ResolvedPuri(this.knexQuery);
   }
@@ -529,7 +536,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   increment<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number,
-  ): ResolvedPuri<number, never> {
+  ): ResolvedPuri<number, SingleTableValue<TTables>> {
     if (value <= 0) {
       throw new Error("Increment value must be greater than 0");
     }
@@ -540,7 +547,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   decrement<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     value: number,
-  ): ResolvedPuri<number, never> {
+  ): ResolvedPuri<number, SingleTableValue<TTables>> {
     if (value <= 0) {
       throw new Error("Decrement value must be greater than 0");
     }
@@ -549,7 +556,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // DELETE
-  delete(): ResolvedPuri<number, never> {
+  delete(): ResolvedPuri<number, SingleTableValue<TTables>> {
     this.knexQuery.delete();
     return new ResolvedPuri(this.knexQuery);
   }
@@ -781,9 +788,9 @@ export class JoinClauseGroup<
 
 /*
   TResolved: 쿼리 실행 후 반환될 결과 타입
-  _TReturning: 추후 RETURNING 절에 사용될 타입
+  TReturning: RETURNING 절에 사용될 타입
 */
-export class ResolvedPuri<TResolved, _TReturning> {
+export class ResolvedPuri<TResolved, TReturning> {
   constructor(public knexQuery: Knex.QueryBuilder) {}
 
   toQuery(): string {
@@ -809,5 +816,21 @@ export class ResolvedPuri<TResolved, _TReturning> {
   }
   finally(onfinally?: (() => void) | null): Promise<TResolved> {
     return this.knexQuery.finally(onfinally);
+  }
+
+  // RETURNING: "*" - 전체 컬럼
+  returning(column: "*"): ResolvedPuri<TReturning[], never>;
+  // RETURNING: 단일 컬럼
+  returning<TColumn extends ColumnKeys<TReturning>>(
+    column: TColumn,
+  ): ResolvedPuri<Pick<TReturning, TColumn>[], never>;
+  // RETURNING: 복수 컬럼 (배열)
+  returning<TColumn extends ColumnKeys<TReturning>>(
+    columns: TColumn[],
+  ): ResolvedPuri<Pick<TReturning, TColumn>[], never>;
+  // RETURNING 구현
+  returning(columnOrColumns: string | string[]): ResolvedPuri<any[], never> {
+    this.knexQuery.returning(columnOrColumns);
+    return new ResolvedPuri(this.knexQuery);
   }
 }

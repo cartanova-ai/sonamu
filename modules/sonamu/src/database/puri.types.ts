@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri.types.ts는 다양한 타입을 사용하고 있습니다. */
 
+import type { QueryResult } from "pg";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
@@ -136,6 +137,9 @@ type NullableToOptional<T> = {
 export type InsertData<T> = NullableToOptional<
   Omit<PuriTable<T>, "id" | "created_at" | MetadataColumns>
 >;
+
+// Insert Result 타입
+export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
 
 // SubsetQuery를 위한 타입 유틸리티
 type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>

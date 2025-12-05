@@ -722,6 +722,9 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.19.1
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.15.6
       '@types/prompts':
         specifier: ^2.0.14
         version: 2.4.9
@@ -842,7 +845,7 @@ importers:
         version: 2.5.1
       debug:
         specifier: ^4.3.7
-        version: 4.4.3(supports-color@5.5.0)
+        version: 4.4.3(supports-color@10.2.2)
       fastify:
         specifier: ^4.21.0
         version: 4.29.1
@@ -3417,6 +3420,9 @@ packages:
 
   '@types/pegjs@0.10.6':
     resolution: {integrity: sha512-eLYXDbZWXh2uxf+w8sXS8d6KSoXTswfps6fvCUuVAGN8eRpfe7h9eSRydxiSJvo9Bf+GzifsDOr9TMQlmJdmkw==}
+
+  '@types/pg@8.15.6':
+    resolution: {integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==}
 
   '@types/picomatch@4.0.2':
     resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
@@ -11936,6 +11942,12 @@ snapshots:
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/pegjs@0.10.6': {}
+
+  '@types/pg@8.15.6':
+    dependencies:
+      '@types/node': 24.10.1
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
 
   '@types/picomatch@4.0.2': {}
 

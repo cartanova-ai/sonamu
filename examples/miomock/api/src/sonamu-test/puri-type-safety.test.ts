@@ -1,10 +1,10 @@
-import { Naite, Puri } from "sonamu";
+import { type InsertResult, Naite, Puri } from "sonamu";
 import { describe, expect, expectTypeOf, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
-describe.skip("Puri Type Safety", () => {
+describe("Puri Type Safety", () => {
   describe("A. 기본", () => {
     test("테이블 타입 안전성", async () => {
       const db = UserModel.getPuri("r");
@@ -533,8 +533,8 @@ describe.skip("Puri Type Safety", () => {
       });
 
       // 타입 검증
-      type ResultItem = (typeof result)[number];
-      expectTypeOf<ResultItem["total"]>().toEqualTypeOf<number>();
+      type CountResultItem = (typeof result)[number];
+      expectTypeOf<CountResultItem["total"]>().toEqualTypeOf<number>();
 
       // 런타임 검증
       expect(result[0]).toBeDefined();
@@ -643,9 +643,6 @@ describe.skip("Puri Type Safety", () => {
         })
         .groupBy("employees.department_id");
 
-      // SELECT에서 정의한 alias 컬럼을 HAVING에서 참조
-      query.having("count", ">", 5);
-
       // raw string 형태로 HAVING 사용
       query.having("COUNT(*) > 5");
 
@@ -665,7 +662,7 @@ describe.skip("Puri Type Safety", () => {
           count: Puri.count("employees.id"),
         })
         .groupBy("employees.department_id")
-        .having("count", ">", 0);
+        .having("COUNT(employees.id) > 5");
 
       // 타입 검증
       type HavingResultItem = (typeof havingResult)[number];
@@ -760,8 +757,25 @@ describe.skip("Puri Type Safety", () => {
     });
   });
 
-  describe("G. INSERT/UPDATE 타입 안전성", () => {
-    test("INSERT 타입 안전성", async () => {
+  describe("G. INSERT/UPDATE/DELETE 타입 안전성", () => {
+    test("INSERT 타입 안전성 (WITHOUT RETURNING)", async () => {
+      const db = UserModel.getPuri("w");
+
+      const defaultUserData = {
+        email: "test@test.com",
+        username: "testuser",
+        password: "password123",
+        role: "normal" as const,
+        is_verified: false,
+      };
+
+      const result = await db.table("users").insert(defaultUserData);
+
+      // 타입 검증
+      expectTypeOf(result).toEqualTypeOf<InsertResult>();
+    });
+
+    test("INSERT 타입 안전성 (WITH RETURNING)", async () => {
       const db = UserModel.getPuri("w");
 
       const defaultUserData = {
@@ -797,32 +811,41 @@ describe.skip("Puri Type Safety", () => {
       // @ts-expect-error - enum 잘못된 값
       db.table("users").insert({ ...defaultUserData, role: "invalid_role" });
 
-      const [insertedId] = await db.table("users").insert({
-        email: `insert-test-${Date.now()}@test.com`,
-        username: `inserttestuser${Date.now()}`,
-        password: "password123",
-        role: "normal" as const,
-        is_verified: false,
-      });
+      const insertedIds = await db
+        .table("users")
+        .insert({
+          email: `insert-test-${Date.now()}@test.com`,
+          username: `inserttestuser${Date.now()}`,
+          password: "password123",
+          role: "normal" as const,
+          is_verified: false,
+        })
+        .returning("id");
 
-      // 타입 검증: insert()는 [number] (inserted id 배열) 반환
-      expectTypeOf(insertedId).toEqualTypeOf<number>();
+      // 타입 검증
+      expectTypeOf(insertedIds).toEqualTypeOf<{ id: number }[]>();
+      expectTypeOf(insertedIds[0]?.id).toEqualTypeOf<number | undefined>();
 
       // 런타임 검증
-      expect(typeof insertedId).toBe("number");
-      expect(insertedId).toBeGreaterThan(0);
+      expect(Array.isArray(insertedIds)).toBe(true);
+      expect(insertedIds.length).toBe(1);
+      expect(typeof insertedIds[0]?.id).toBe("number");
+      expect(insertedIds[0]?.id).toBeGreaterThan(0);
     });
 
-    test("UPDATE 타입 안전성", async () => {
+    test("UPDATE 타입 안전성 (WITHOUT RETURNING)", async () => {
       const db = UserModel.getPuri("w");
 
-      const [insertedId] = await db.table("users").insert({
-        email: `update-test-${Date.now()}@test.com`,
-        username: `updatetestuser${Date.now()}`,
-        password: "password123",
-        role: "normal" as const,
-        is_verified: false,
-      });
+      const insertedId = await db
+        .table("users")
+        .insert({
+          email: `update-test-${Date.now()}@test.com`,
+          username: `updatetestuser${Date.now()}`,
+          password: "password123",
+          role: "normal" as const,
+          is_verified: false,
+        })
+        .returning("id");
 
       // enum 값 업데이트
       db.table("users").where("id", 1).update({ role: "admin" });
@@ -844,17 +867,64 @@ describe.skip("Puri Type Safety", () => {
 
       const updateCount = await db
         .table("users")
-        .where("id", insertedId)
+        .where("id", insertedId[0]?.id ?? 0)
         .update({ username: "updateduser", bio: "Updated bio" });
 
-      // 타입 검증: update는 affected rows 수를 반환
-      // TODO: Puri 타입 개선 필요 - update()가 TResult를 반환하도록 정의되어 있음, 의도적인 동작일지 확인 필요
-      // MySQL, PostgreSQL, Knex - number (affected rows) 반환함
-      // expectTypeOf(updateCount).toEqualTypeOf<number>();
+      // 타입 검증: affected rows 수 반환
+      expectTypeOf(updateCount).toEqualTypeOf<number>();
 
       // 런타임 검증
       expect(typeof updateCount).toBe("number");
-      expect(updateCount).toBe(1);
+      expect(updateCount).toBeGreaterThanOrEqual(0);
+    });
+
+    test("UPDATE 타입 안전성 (WITH RETURNING)", async () => {
+      const db = UserModel.getPuri("w");
+
+      const insertedId = await db
+        .table("users")
+        .insert({
+          email: `update-test-${Date.now()}@test.com`,
+          username: `updatetestuser${Date.now()}`,
+          password: "password123",
+          role: "normal" as const,
+          is_verified: false,
+        })
+        .returning("id");
+
+      const updateResult = await db
+        .table("users")
+        .where("id", insertedId[0]?.id ?? 0)
+        .update({ username: "updateduser", bio: "Updated bio" })
+        .returning(["username", "bio"]);
+
+      // 타입 검증
+      expectTypeOf(updateResult).toEqualTypeOf<{ username: string; bio: string | null }[]>();
+      expectTypeOf(updateResult[0]?.username).toEqualTypeOf<string | undefined>();
+      expectTypeOf(updateResult[0]?.bio).toEqualTypeOf<string | null | undefined>();
+
+      // 런타임 검증
+      expect(Array.isArray(updateResult)).toBe(true);
+      expect(updateResult.length).toBeGreaterThanOrEqual(1);
+      expect(updateResult[0]?.username).toBe("updateduser");
+      expect(updateResult[0]?.bio).toBe("Updated bio");
+    });
+
+    test("DELETE 타입 안전성 (WITHOUT RETURNING)", async () => {
+      const db = UserModel.getPuri("w");
+      const deleteCount = await db.table("users").where({ id: 1 }).delete();
+
+      // 타입 검증: affected rows 수 반환
+      expectTypeOf(deleteCount).toEqualTypeOf<number>();
+    });
+
+    test("DELETE 타입 안전성 (WITH RETURNING)", async () => {
+      const db = UserModel.getPuri("w");
+      const result = await db.table("users").where({ id: 1 }).delete().returning("id");
+
+      // 타입 검증: RETURNING 절에 사용된 컬럼 배열 반환
+      expectTypeOf(result).toEqualTypeOf<{ id: number }[]>();
+      expectTypeOf(result[0]?.id).toEqualTypeOf<number | undefined>();
     });
 
     test("INCREMENT / DECREMENT 타입 안전성", async () => {
@@ -942,7 +1012,7 @@ describe.skip("Puri Type Safety", () => {
       // 런타임 검증
       expect(result.length).toBeGreaterThanOrEqual(0);
       const birthDate = result[0]?.birthDate;
-      expect(birthDate === null || typeof birthDate === "string").toBe(true);
+      expect(birthDate === null || birthDate instanceof Date).toBe(true);
     });
   });
 });

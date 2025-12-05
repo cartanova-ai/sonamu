@@ -5,7 +5,7 @@ import { bootstrap, test } from "../testing/bootstrap";
 import { expectQuery } from "../testing/expect-query";
 
 bootstrap(vi);
-describe.skip("Puri Query", () => {
+describe("Puri Query", () => {
   describe("A. BASIC CRUD", () => {
     test("select", async () => {
       const db = UserModel.getPuri("r");
@@ -55,7 +55,7 @@ describe.skip("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"update"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
-      expectQuery(query, "set").toMatchInlineSnapshot(`"[object Object] = '수정됨'"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"username = '수정됨'"`);
       expectQuery(query, "where").toMatchInlineSnapshot(`""users"."id" = 1"`);
     });
 
@@ -266,7 +266,9 @@ describe.skip("Puri Query", () => {
       await db.table("employees").select({ total: Puri.count("employees.id") });
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "columns").toMatchInlineSnapshot(`"COUNT("employees".id) AS \`total\`"`);
+      expectQuery(query, "columns").toMatchInlineSnapshot(
+        `"COUNT("employees".id)::INTEGER AS "total""`,
+      );
     });
 
     test("sum", async () => {
@@ -348,10 +350,10 @@ describe.skip("Puri Query", () => {
           count: Puri.count("employees.id"),
         })
         .groupBy("employees.department_id")
-        .having("count", ">=", 2);
+        .having("COUNT(employees.id) >= 2");
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "having").toMatchInlineSnapshot(`"\`count\` >= 2"`);
+      expectQuery(query, "having").toMatchInlineSnapshot(`"COUNT("employees".id) >= 2"`);
     });
 
     test("집계 + groupBy + having 조합", async () => {
@@ -365,11 +367,11 @@ describe.skip("Puri Query", () => {
           count: Puri.count("employees.id"),
         })
         .groupBy("employees.department_id")
-        .having("avgSalary", ">=", 70000);
+        .having("AVG(employees.salary) >= 70000");
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "groupBy").toMatchInlineSnapshot(`"\`employees\`.\`department_id\`"`);
-      expectQuery(query, "having").toMatchInlineSnapshot(`"\`avgSalary\` >= 70000"`);
+      expectQuery(query, "groupBy").toMatchInlineSnapshot(`""employees"."department_id""`);
+      expectQuery(query, "having").toMatchInlineSnapshot(`"AVG("employees".salary) >= 70000"`);
     });
   });
 
@@ -425,27 +427,27 @@ describe.skip("Puri Query", () => {
   describe("F. UPDATE HELPERS", () => {
     test("increment", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).increment("projects.budget", 1000);
+      await db.table("projects").where("projects.id", 1).increment("budget", 1000);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` + 1000"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" + 1000"`);
     });
 
     test("decrement", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).decrement("projects.budget", 500);
+      await db.table("projects").where("projects.id", 1).decrement("budget", 500);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` - 500"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" - 500"`);
     });
 
     test("increment - 조건부 업데이트", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).increment("projects.budget", 100);
+      await db.table("projects").where("projects.id", 1).increment("budget", 100);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = \`projects\`.\`budget\` + 100"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`"\`projects\`.\`id\` = 1"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" + 100"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""projects"."id" = 1"`);
     });
   });
 

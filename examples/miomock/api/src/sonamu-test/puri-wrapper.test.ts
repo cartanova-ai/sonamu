@@ -6,7 +6,6 @@ import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
-
 describe.skip("Puri Wrapper", () => {
   describe("A. 쿼리 빌더 래퍼", () => {
     test("from()", async () => {
@@ -14,12 +13,15 @@ describe.skip("Puri Wrapper", () => {
       const rdb = UserModel.getPuri("r");
       const testEmail = "from-test@test.com";
 
-      const [userId] = await wdb.table("users").insert({
-        email: testEmail,
-        username: "from_test_user",
-        password: "pw",
-        role: "normal",
-      });
+      const [userId] = await wdb
+        .table("users")
+        .insert({
+          email: testEmail,
+          username: "from_test_user",
+          password: "pw",
+          role: "normal",
+        })
+        .returning("id");
 
       assert(userId);
 
@@ -30,7 +32,7 @@ describe.skip("Puri Wrapper", () => {
       // Puri 메서드 체이닝 확인
       const users = await puriQuery
         .select({ email: "users.email", username: "users.username" })
-        .where("users.id", userId)
+        .where("users.id", userId.id)
         .orderBy("users.id", "asc")
         .limit(1);
 
@@ -44,12 +46,15 @@ describe.skip("Puri Wrapper", () => {
       const rdb = UserModel.getPuri("r");
       const testEmail = "table-test@test.com";
 
-      const [userId] = await wdb.table("users").insert({
-        email: testEmail,
-        username: "table_test_user",
-        password: "pw",
-        role: "admin",
-      });
+      const [userId] = await wdb
+        .table("users")
+        .insert({
+          email: testEmail,
+          username: "table_test_user",
+          password: "pw",
+          role: "admin",
+        })
+        .returning("id");
 
       assert(userId);
 
@@ -60,7 +65,7 @@ describe.skip("Puri Wrapper", () => {
       // Puri 메서드 체이닝 확인
       const users = await puriQuery
         .selectAll()
-        .where("users.id", userId)
+        .where("users.id", userId.id)
         .orderBy("users.id", "desc");
 
       expect(users).toHaveLength(1);
@@ -97,15 +102,20 @@ describe.skip("Puri Wrapper", () => {
 
         // 트랜잭션 내에서 user 생성
         await wdb.transaction(async (trx) => {
-          const [userId] = await trx.table("users").insert({
-            email: "transaction-basic@test.com",
-            username: "transaction_basic",
-            password: "pw",
-            role: "normal",
-          });
+          const [userId] = await trx
+            .table("users")
+            .insert({
+              email: "transaction-basic@test.com",
+              username: "transaction_basic",
+              password: "pw",
+              role: "normal",
+            })
+            .returning("id");
 
-          expect(userId).toBeGreaterThan(0);
-          insertedUserId = userId;
+          assert(userId);
+
+          expect(userId.id).toBeGreaterThan(0);
+          insertedUserId = userId.id;
         });
 
         // 자동 커밋 확인 - 트랜잭션 외부에서 데이터 조회 가능
@@ -123,22 +133,25 @@ describe.skip("Puri Wrapper", () => {
         const wdb = UserModel.getPuri("w");
 
         // user 생성
-        const [userId] = await wdb.table("users").insert({
-          email: "trx-select@test.com",
-          username: "trx_select",
-          password: "pw",
-          role: "admin",
-        });
+        const [userId] = await wdb
+          .table("users")
+          .insert({
+            email: "trx-select@test.com",
+            username: "trx_select",
+            password: "pw",
+            role: "admin",
+          })
+          .returning("id");
 
         assert(userId);
 
         // 트랜잭션 내에서 SELECT 쿼리 실행
         await wdb.transaction(async (trx) => {
-          const user = await trx.table("users").where("id", userId).first();
+          const user = await trx.table("users").where("id", userId.id).first();
 
           // 트랜잭션 내에서 데이터 정상 조회 확인
           expect(user).toMatchObject({
-            id: userId,
+            id: userId.id,
             email: "trx-select@test.com",
             username: "trx_select",
             role: "admin",
@@ -150,27 +163,30 @@ describe.skip("Puri Wrapper", () => {
         const wdb = UserModel.getPuri("w");
 
         // user 생성
-        const [userId] = await wdb.table("users").insert({
-          email: "trx-update@test.com",
-          username: "original_name",
-          password: "pw",
-          role: "normal",
-        });
+        const [userId] = await wdb
+          .table("users")
+          .insert({
+            email: "trx-update@test.com",
+            username: "original_name",
+            password: "pw",
+            role: "normal",
+          })
+          .returning("id");
 
         assert(userId);
 
         // 트랜잭션 내에서 UPDATE 실행
         await wdb.transaction(async (trx) => {
-          await trx.table("users").where("id", userId).update({
+          await trx.table("users").where("id", userId.id).update({
             username: "updated_name",
             bio: "Updated in transaction",
           });
 
           // 트랜잭션 내에서 변경사항 확인
-          const userInTrx = await trx.table("users").where("id", userId).first();
+          const userInTrx = await trx.table("users").where("id", userId.id).first();
 
           expect(userInTrx).toMatchObject({
-            id: userId,
+            id: userId.id,
             username: "updated_name",
             bio: "Updated in transaction",
           });
@@ -178,7 +194,7 @@ describe.skip("Puri Wrapper", () => {
 
         // 트랜잭션 외부에서 커밋 확인
         const rdb = UserModel.getPuri("r");
-        const user = await rdb.table("users").where("id", userId).first();
+        const user = await rdb.table("users").where("id", userId.id).first();
 
         expect(user).toMatchObject({
           id: userId,
@@ -221,29 +237,35 @@ describe.skip("Puri Wrapper", () => {
 
         await wdb.transaction(async (trx1) => {
           // 외부 트랜잭션에서 첫 번째 user 생성
-          const [userId1] = await trx1.table("users").insert({
-            email: outerEmail,
-            username: "outer_user",
-            password: "pw",
-            role: "normal",
-          });
+          const [userId1] = await trx1
+            .table("users")
+            .insert({
+              email: outerEmail,
+              username: "outer_user",
+              password: "pw",
+              role: "normal",
+            })
+            .returning("id");
 
           assert(userId1);
 
           // 중첩 트랜잭션 (SAVEPOINT 생성)
           await trx1.transaction(async (trx2) => {
             // 내부 트랜잭션에서 두 번째 user 생성
-            const [userId2] = await trx2.table("users").insert({
-              email: innerEmail,
-              username: "inner_user",
-              password: "pw",
-              role: "normal",
-            });
+            const [userId2] = await trx2
+              .table("users")
+              .insert({
+                email: innerEmail,
+                username: "inner_user",
+                password: "pw",
+                role: "normal",
+              })
+              .returning("id");
 
             assert(userId2);
 
             // 내부 트랜잭션에서 데이터 확인
-            const innerUser = await trx2.table("users").where("id", userId2).first();
+            const innerUser = await trx2.table("users").where("id", userId2.id).first();
             expect(innerUser).toMatchObject({ email: innerEmail });
           });
 
@@ -273,12 +295,15 @@ describe.skip("Puri Wrapper", () => {
 
         await wdb.transaction(async (trx1) => {
           // 외부 트랜잭션에서 user 생성
-          const [userId1] = await trx1.table("users").insert({
-            email: outerEmail,
-            username: "outer_user",
-            password: "pw",
-            role: "normal",
-          });
+          const [userId1] = await trx1
+            .table("users")
+            .insert({
+              email: outerEmail,
+              username: "outer_user",
+              password: "pw",
+              role: "normal",
+            })
+            .returning("id");
 
           assert(userId1);
 
@@ -473,27 +498,30 @@ describe.skip("Puri Wrapper", () => {
         const testEmail = `readonly-test-${Date.now()}@test.com`;
 
         // readOnly 트랜잭션 외부에서 user 생성
-        const [userId] = await wdb.table("users").insert({
-          email: testEmail,
-          username: "readonly_user",
-          password: "pw",
-          role: "normal",
-        });
+        const [userId] = await wdb
+          .table("users")
+          .insert({
+            email: testEmail,
+            username: "readonly_user",
+            password: "pw",
+            role: "normal",
+          })
+          .returning("id");
 
         assert(userId);
 
         // readOnly: true 트랜잭션에서 SELECT 정상 동작
         await wdb.transaction(
           async (trx) => {
-            const user = await trx.table("users").where("id", userId).first();
-            expect(user).toMatchObject({ id: userId, email: testEmail });
+            const user = await trx.table("users").where("id", userId.id).first();
+            expect(user).toMatchObject({ id: userId.id, email: testEmail });
           },
           { readOnly: true },
         );
 
         await wdb.transaction(
           async (trx) => {
-            const user = await trx.table("users").where("id", userId).first();
+            const user = await trx.table("users").where("id", userId.id).first();
             expect(user).toMatchObject({ id: userId, email: testEmail });
           },
           { readOnly: true },
@@ -531,19 +559,22 @@ describe.skip("Puri Wrapper", () => {
         const testEmail = `readonly-update-block-${Date.now()}@test.com`;
 
         // 먼저 데이터 생성
-        const [userId] = await wdb.table("users").insert({
-          email: testEmail,
-          username: "original_name",
-          password: "pw",
-          role: "normal",
-        });
+        const [userId] = await wdb
+          .table("users")
+          .insert({
+            email: testEmail,
+            username: "original_name",
+            password: "pw",
+            role: "normal",
+          })
+          .returning("id");
 
         assert(userId);
 
         // readOnly: true 트랜잭션에서 UPDATE 시도
         const updatePromise = wdb.transaction(
           async (trx) => {
-            await trx.table("users").where("id", userId).update({ username: "modified_name" });
+            await trx.table("users").where("id", userId.id).update({ username: "modified_name" });
           },
           { readOnly: true },
         );
@@ -553,7 +584,7 @@ describe.skip("Puri Wrapper", () => {
 
         // 데이터가 변경되지 않았는지 확인
         const rdb = UserModel.getPuri("r");
-        const user = await rdb.table("users").where("id", userId).first();
+        const user = await rdb.table("users").where("id", userId.id).first();
         expect(user).toMatchObject({ username: "original_name" });
       });
 
@@ -562,19 +593,22 @@ describe.skip("Puri Wrapper", () => {
         const testEmail = `readonly-delete-block-${Date.now()}@test.com`;
 
         // 먼저 데이터 생성
-        const [userId] = await wdb.table("users").insert({
-          email: testEmail,
-          username: "to_be_deleted",
-          password: "pw",
-          role: "normal",
-        });
+        const [userId] = await wdb
+          .table("users")
+          .insert({
+            email: testEmail,
+            username: "to_be_deleted",
+            password: "pw",
+            role: "normal",
+          })
+          .returning("id");
 
         assert(userId);
 
         // readOnly: true 트랜잭션에서 DELETE 시도
         const deletePromise = wdb.transaction(
           async (trx) => {
-            await trx.table("users").where("id", userId).delete();
+            await trx.table("users").where("id", userId.id).delete();
           },
           { readOnly: true },
         );
@@ -584,7 +618,7 @@ describe.skip("Puri Wrapper", () => {
 
         // 데이터가 삭제되지 않았는지 확인
         const rdb = UserModel.getPuri("r");
-        const user = await rdb.table("users").where("id", userId).first();
+        const user = await rdb.table("users").where("id", userId.id).first();
         expect(user).toBeDefined();
         expect(user).toMatchObject({ email: testEmail });
       });

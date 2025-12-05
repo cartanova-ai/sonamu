@@ -70,15 +70,18 @@ class TransactionalExampleModelClass extends BaseModelClass {
     const wdb = this.getPuri("w");
 
     // 첫 번째 insert 성공
-    const [userId] = await wdb.table("users").insert({
-      email: userData.email,
-      username: userData.username,
-      password: userData.password,
-      role: "normal",
-      is_verified: false,
-      birth_date: null,
-      last_login_at: null,
-    });
+    const [userId] = await wdb
+      .table("users")
+      .insert({
+        email: userData.email,
+        username: userData.username,
+        password: userData.password,
+        role: "normal",
+        is_verified: false,
+        birth_date: null,
+        last_login_at: null,
+      })
+      .returning("id");
 
     // 두 번째 작업에서 에러 발생
     if (userData.shouldFail) {
@@ -88,10 +91,10 @@ class TransactionalExampleModelClass extends BaseModelClass {
     assert(userId);
 
     // 추가 작업: bio 업데이트
-    await wdb.table("users").where("id", userId).update({ bio: "New user bio" });
+    await wdb.table("users").where("id", userId.id).update({ bio: "New user bio" });
 
     // 에러 발생 시 insert와 update 모두 롤백됨
-    return userId;
+    return userId.id;
   }
 
   /**
@@ -283,30 +286,33 @@ async function runExamples() {
   console.log("\n=== Example 2: Isolation Level ===");
   try {
     // 테스트용 유저 생성
-    const [userId] = await TransactionalExampleModel.getPuri("w").table("users").insert({
-      email: "isolation@example.com",
-      username: "isolation_user",
-      password: "pass123",
-      role: "normal",
-      is_verified: false,
-    });
+    const [userId] = await TransactionalExampleModel.getPuri("w")
+      .table("users")
+      .insert({
+        email: "isolation@example.com",
+        username: "isolation_user",
+        password: "pass123",
+        role: "normal",
+        is_verified: false,
+      })
+      .returning("id");
 
     assert(userId);
 
     // Isolation level로 업데이트
-    await TransactionalExampleModel.example2_isolationLevel(userId, new Date());
+    await TransactionalExampleModel.example2_isolationLevel(userId.id, new Date());
 
     // 확인
     const user = await TransactionalExampleModel.getPuri("r")
       .table("users")
-      .where("id", userId)
+      .where("id", userId.id)
       .first();
     assert(user);
     assert(user.last_login_at !== null);
     console.log("✅ Isolation level transaction completed successfully");
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId).delete();
+    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId.id).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }
@@ -360,23 +366,26 @@ async function runExamples() {
   console.log("\n=== Example 4: Nested Transaction ===");
   try {
     // 테스트용 유저 생성
-    const [userId] = await TransactionalExampleModel.getPuri("w").table("users").insert({
-      email: "nested@example.com",
-      username: "nested_user",
-      password: "pass123",
-      role: "normal",
-      is_verified: false,
-    });
+    const [userId] = await TransactionalExampleModel.getPuri("w")
+      .table("users")
+      .insert({
+        email: "nested@example.com",
+        username: "nested_user",
+        password: "pass123",
+        role: "normal",
+        is_verified: false,
+      })
+      .returning("id");
 
     assert(userId);
 
     // 중첩 트랜잭션 실행
-    await TransactionalExampleModel.example4_nestedTransaction(userId);
+    await TransactionalExampleModel.example4_nestedTransaction(userId.id);
 
     // 확인
     const user = await TransactionalExampleModel.getPuri("r")
       .table("users")
-      .where("id", userId)
+      .where("id", userId.id)
       .first();
     assert(user);
     assert(user.is_verified === true);
@@ -384,7 +393,7 @@ async function runExamples() {
     console.log("✅ Nested transaction completed successfully");
 
     // Cleanup
-    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId).delete();
+    await TransactionalExampleModel.getPuri("w").table("users").where("id", userId.id).delete();
   } catch (error) {
     console.error("❌ Error:", error);
   }

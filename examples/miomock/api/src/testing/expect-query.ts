@@ -87,12 +87,13 @@ function extractColumns(ast: AST): string | null {
 
 /** UPDATE - SET절 추출 */
 function extractSet(ast: AST): string | null {
-  const set = (ast as { set?: { column: string; value: unknown }[] }).set;
+  const set = (ast as { set?: { column: unknown; value: unknown }[] }).set;
   if (!set || set.length === 0) return null;
 
   const parts = set.map((s) => {
+    const columnSql = (s.column as { expr: { value: string } }).expr.value;
     const valueSql = parser.exprToSQL(s.value, dbOption());
-    return `${s.column} = ${valueSql}`;
+    return `${columnSql} = ${valueSql}`;
   });
   return parts.join(", ");
 }
