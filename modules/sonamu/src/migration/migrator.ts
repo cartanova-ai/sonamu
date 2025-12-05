@@ -442,6 +442,7 @@ export class Migrator {
       connection: {
         ...tdbConn,
         database: shadowDatabase,
+        password: tdbConn.password,
       },
     });
 
