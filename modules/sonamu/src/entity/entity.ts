@@ -659,7 +659,7 @@ export class Entity {
     const typesModulePath = `${basePath}/${this.names.parentFs}.types`;
     const typesFileDistPath = path.join(
       Sonamu.apiRootPath,
-      `src/application/${typesModulePath}.js`,
+      `dist/application/${typesModulePath}.js`,
     );
 
     if (await exists(typesFileDistPath)) {
