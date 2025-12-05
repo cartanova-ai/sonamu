@@ -614,6 +614,24 @@ export class Entity {
       .filter((f) => f !== null) as string[];
   }
 
+  getTableColumns(): { name: string; type: string }[] {
+    return this.props
+      .map((prop) => {
+        if (prop.type === "relation") {
+          if (
+            prop.relationType === "BelongsToOne" ||
+            (prop.relationType === "OneToOne" && prop.hasJoinColumn === true)
+          ) {
+            return { name: `${prop.name}_id`, type: "int_unsigned" };
+          } else {
+            return null;
+          }
+        }
+        return { name: prop.name, type: prop.type };
+      })
+      .filter(nonNullable);
+  }
+
   async registerModulePaths() {
     const basePath = `${this.names.parentFs}`;
 
