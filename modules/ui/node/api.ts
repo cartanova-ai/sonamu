@@ -608,12 +608,12 @@ export async function createServer(options: {
   }>("/api/entity/getTableColumns", async (request) => {
     const { entityId } = request.query;
     const entity = EntityManager.get(entityId);
-    const columns = await entity.getTableColumns();
+    const columns = entity.getTableColumns();
     return { columns };
   });
 
   const migrator = new Migrator();
-  console.log("migrator inialized");
+  console.log("migrator initialized");
 
   server.get("/api/migrations/status", async () => {
     const status = await migrator.getStatus();

@@ -681,7 +681,7 @@ export class FixtureManagerClass {
         const prop = column.prop;
 
         if (isManyToManyRelationProp(prop) && Array.isArray(column.value)) {
-          // 선택되지 않은 MnayToMany 관계는 저장하지 않음
+          // 선택되지 않은 ManyToMany 관계는 저장하지 않음
           const targetTable = EntityManager.get(prop.with);
           if (this.builder.hasTable(targetTable.table) === false) continue;
 
