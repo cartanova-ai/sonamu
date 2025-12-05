@@ -401,55 +401,51 @@ export class Migrator {
    *
    * @returns Shadow DB 테스트 결과
    */
-  async runShadowTest(): Promise<
-    {
-      connKey: string;
-      batchNo: number;
-      applied: string[];
-    }[]
-  > {
-    // ShadowDB 생성 후 테스트 진행
-    const tdb = knex(Sonamu.dbConfig.test);
+  async runShadowTest(): Promise<MigrationResult> {
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
-    const tmpSqlPath = `/tmp/${shadowDatabase}.sql`;
-    Naite.t("migrator:runShadowTest:tmpSqlPath", tmpSqlPath);
+    const pgEnv = { PGPASSWORD: tdbConn.password || "" };
 
-    // PostgreSQL 비밀번호를 환경변수로 설정
-    const pgEnv = {
-      PGPASSWORD: tdbConn.password || "",
-    };
-
-    // 테스트DB 덤프
-    !isTest() && console.log(chalk.magenta(`${tdbConn.database}의 데이터 ${tmpSqlPath}로 덤프`));
+    // test DB 연결 강제 종료 (TEMPLATE 사용을 위해)
+    !isTest() && console.log(chalk.magenta(`${tdbConn.database} 연결 종료`));
     execSync(
-      `pg_dump -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} ${tdbConn.database} --no-owner --no-privileges > ${tmpSqlPath}`,
+      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE datname = '${tdbConn.database}'
+        AND pid <> pg_backend_pid();
+    "`,
       { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
 
-    // 기존 ShadowDB 리셋
-    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 리셋`));
-    await tdb.raw(`DROP DATABASE IF EXISTS "${shadowDatabase}"`);
-    await tdb.raw(`CREATE DATABASE "${shadowDatabase}"`);
-
-    // ShadowDB 테이블 + 데이터 생성
-    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 데이터베이스 생성`));
+    // 기존 Shadow DB 삭제
+    !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
     execSync(
-      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d ${shadowDatabase} -f ${tmpSqlPath}`,
+      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${shadowDatabase}\\""`,
+      {
+        stdio: "ignore",
+        env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv,
+      },
+    );
+
+    // TEMPLATE으로 Shadow DB 생성
+    !isTest() &&
+      console.log(chalk.magenta(`${shadowDatabase} 생성 (TEMPLATE: ${tdbConn.database})`));
+    execSync(
+      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "CREATE DATABASE \\"${shadowDatabase}\\" TEMPLATE \\"${tdbConn.database}\\""`,
       { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
     );
 
-    // shadow db 테스트 진행
+    // Shadow DB에 연결
     const sdb = knex({
       ...Sonamu.dbConfig.test,
       connection: {
         ...tdbConn,
         database: shadowDatabase,
-        password: tdbConn.password,
       },
     });
 
-    // shadow db 테스트 진행
+    // shadow DB 테스트 진행
     try {
       const [batchNo, applied] = await sdb.migrate.latest();
       !isTest() &&
@@ -457,13 +453,6 @@ export class Migrator {
           batchNo,
           applied,
         });
-
-      // drop 전에 커넥션 종료
-      await sdb.destroy();
-
-      // 생성한 Shadow DB 삭제
-      await tdb.raw(`DROP DATABASE IF EXISTS "${shadowDatabase}"`);
-      !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
 
       return [
         {
@@ -476,7 +465,18 @@ export class Migrator {
       console.error(e);
       throw new ServiceUnavailableException("Shadow DB 테스트 진행 중 에러");
     } finally {
-      await tdb.destroy();
+      // Shadow DB 연결 종료
+      await sdb.destroy();
+
+      // Shadow DB 삭제
+      !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
+      execSync(
+        `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${shadowDatabase}\\""`,
+        {
+          stdio: "ignore",
+          env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv,
+        },
+      );
     }
   }
 
