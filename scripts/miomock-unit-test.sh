@@ -8,6 +8,12 @@ set -e
 
 # PostgreSQL DB 준비 대기 함수
 wait_for_postgres() {
+  # psql 명령어가 설치되어 있는지 확인
+  if ! command -v psql &> /dev/null; then
+    echo "Error: psql command not found. Please install PostgreSQL client tools."
+    exit 1
+  fi
+
   local MAX_ATTEMPTS=60
   local ATTEMPT=0
 
