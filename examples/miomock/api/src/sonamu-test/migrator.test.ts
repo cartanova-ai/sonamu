@@ -1,4 +1,11 @@
-import { type EntityJson, EntityManager, Migrator, Naite, Sonamu } from "sonamu";
+import {
+  type EntityJson,
+  EntityManager,
+  type MigrationStatus,
+  Migrator,
+  Naite,
+  Sonamu,
+} from "sonamu";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
 import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGet } from "../testing/test-helpers";
@@ -740,10 +747,63 @@ describe("Migrator test", () => {
     });
   });
 
-  describe.skip("delCodes", () => {
-    test.todo("이미 applied된 파일은 삭제 불가");
-    test.todo("pending 상태인 파일은 삭제 가능");
-    test.todo("마이그레이션 파일이 존재하지 않을 시 삭제된 개수 반영 안됨");
+  describe("validateDeletableCodes", () => {
+    const mockConns = [
+      {
+        status: 0,
+        pending: [
+          "20251206_add_column1[pending]",
+          "20251206_alter_column2[pending]",
+          "20251206_drop_column3[pending]",
+        ],
+      },
+    ] as MigrationStatus["conns"];
+
+    test("pending 상태인 파일은 검증 통과", () => {
+      const result = migrator.validateDeletable(mockConns, [
+        "20251206_add_column1[pending]",
+        "20251206_alter_column2[pending]",
+        "20251206_drop_column3[pending]",
+      ]);
+
+      expect(result.canDelete).toBe(true);
+      expect(result.appliedCodes).toEqual([]);
+    });
+
+    test("applied 상태인 파일은 검증 불가", () => {
+      const result = migrator.validateDeletable(mockConns, ["20251206_add_column1[applied]"]);
+
+      expect(result.canDelete).toBe(false);
+      expect(result.appliedCodes).toEqual(["20251206_add_column1[applied]"]);
+    });
+
+    test("mixed - 일부만 pending 상태인 경우", () => {
+      const result = migrator.validateDeletable(mockConns, [
+        "20251206_add_column1[applied]",
+        "20251206_alter_column2[pending]",
+      ]);
+
+      expect(result.canDelete).toBe(false);
+      expect(result.appliedCodes).toEqual(["20251206_add_column1[applied]"]);
+    });
+
+    test("여러 DB 중 하나라도 applied 상태인 경우", () => {
+      const multiConns = [
+        {
+          status: 0,
+          pending: ["20251206_add_column1[pending]"],
+        },
+        {
+          status: 0,
+          pending: [],
+        }, // 여기선 applied
+      ] as MigrationStatus["conns"];
+
+      const result = migrator.validateDeletable(multiConns, ["20251206_add_column1[pending]"]);
+
+      expect(result.canDelete).toBe(false);
+      expect(result.appliedCodes).toEqual(["20251206_add_column1[pending]"]);
+    });
   });
 
   describe("Integration - 통합 워크플로우", () => {
