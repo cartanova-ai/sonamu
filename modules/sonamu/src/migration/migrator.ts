@@ -209,7 +209,6 @@ export class Migrator {
         knex: knex(config.options),
       })),
     );
-    Naite.t("migrator:runAction:conns", conns);
 
     // action
     const result = await (async () => {
@@ -252,6 +251,24 @@ export class Migrator {
   }
 
   /**
+   * 삭제 가능한 마이그레이션 코드 파일을 검증합니다.
+   *
+   * @param conns 마이그레이션 상태 배열
+   * @param codeNames 삭제할 마이그레이션 코드 파일 이름 배열
+   * @returns 삭제 가능 여부 및 적용된 마이그레이션 코드 파일 이름
+   */
+  validateDeletable(conns: MigrationStatus["conns"], codeNames: string[]) {
+    const appliedCodes = codeNames.filter((codeName) =>
+      conns.some((conn) => conn.pending.includes(codeName) === false),
+    );
+
+    return {
+      canDelete: appliedCodes.length === 0,
+      appliedCodes,
+    };
+  }
+
+  /**
    * 마이그레이션 코드 파일을 삭제합니다.
    *
    * Sonamu UI에서 사용됩니다.
@@ -261,30 +278,25 @@ export class Migrator {
    */
   async delCodes(codeNames: string[]): Promise<number> {
     const { conns } = await this.getStatus();
-
-    if (
-      conns.some((conn) => {
-        return codeNames.some((codeName) => conn.pending.includes(codeName) === false);
-      })
-    ) {
-      throw new Error("You cannot delete a migration file if there is already applied.");
+    const { canDelete, appliedCodes } = this.validateDeletable(conns, codeNames);
+    if (!canDelete) {
+      throw new Error(
+        `You cannot delete a migration file if there is already applied. Applied codes: ${appliedCodes.join(", ")}`,
+      );
     }
 
-    const delFiles = codeNames.map(
-      (codeName) => `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`,
+    return sum(
+      await Promise.all(
+        codeNames.map(async (codeName) => {
+          const filePath = `${Sonamu.apiRootPath}/src/migrations/${codeName}.ts`;
+          if (await exists(filePath)) {
+            await unlink(filePath);
+            return 1;
+          }
+          return 0;
+        }),
+      ),
     );
-
-    const res = await Promise.all(
-      delFiles.map(async (delFile) => {
-        if (await exists(delFile)) {
-          !isTest() && console.log(chalk.red(`DELETE: ${delFile}`));
-          await unlink(delFile);
-          return delFiles.includes(".ts") ? 1 : 0;
-        }
-        return 0;
-      }),
-    );
-    return sum(res);
   }
 
   private genDateTag(index: number, baseDate: Date = new Date()): string {
