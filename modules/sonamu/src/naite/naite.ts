@@ -3,6 +3,7 @@
 import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import type { ComparisonOperator } from "../database/puri.types";
+import { isSerializable } from "../utils/object-utils";
 
 // StackFrame 타입
 interface StackFrame {
@@ -235,7 +236,10 @@ export class NaiteQuery {
 // Naite 싱글턴 객체 (추후 logger 연결 등의 상태 관리 필요성 고려)
 export class NaiteClass {
   // 테스트 로그 기록
-  t(name: string, value: any) {
+  t(
+    name: string,
+    value: any /*이렇게 받은 값이 NaiteTrace로 저장되어 있다가 추후에 vitest에게 meta를 통해 넘겨져 프로세스간 통신을 통해 직렬화되어야 하는 점을 고려하였을 때 여기에 Serializable을 써서 제한을 둘 수도 있지만, 사용상의 편의를 생각하여 any로 받습니다.*/,
+  ) {
     // 이 t 함수는 테스트 환경에서만 작동해야 합니다.
     // 그리고 테스트 환경 판단에 왜 isTest() 함수를 사용하지 않았냐면요,,
     // 이렇게 하는게 유틸 함수 불러와서 사용하는 것보다 조금이나마 빠를 것 같았기 때문입니다.
@@ -320,6 +324,7 @@ export class NaiteClass {
 
   /**
    * 스토어에 들어있던 트레이스를 고대로 꺼내옵니다.
+   * 이때 값들은 모두 직렬화 가능한 상태로 나가게 됩니다.
    * 테스트 정보와 함께 extensions에 보낼 용도로 만들었습니다.
    * @returns
    */
@@ -334,15 +339,45 @@ export class NaiteClass {
     if (!context?.naiteStore) {
       return [];
     }
-    return Array.from(context.naiteStore.values())
-      .flat()
-      .map((trace) => ({
-        key: trace.key,
-        value: JSON.parse(JSON.stringify(trace.data ?? "")), // 직렬화 가능한 것만 남기려는 눈물겨운 노력,, 안그러면 task.meta에 안 들어가그든요, (undefined 처리 추가)
-        filePath: trace.stack[0]?.filePath ?? "",
-        lineNumber: trace.stack[0]?.lineNumber ?? 0,
-        at: trace.at.toISOString(),
-      }));
+
+    const traces = Array.from(context.naiteStore.values()).flat();
+
+    // 직렬화 불가능한 값이 존재한다면 이를 대문짝만하게 알려줍니다! 그치만 알리기만 하고 그냥 지나갑니다 ㅎㅎ
+    // 왜 직렬화가 중요한가? 이(getAllTraces) 호출의 결과는 외부로 나가게 되는데,
+    // 이때 주 용도가 vitest의 task.meta 필드를 통해 afterEach에서 Sonamu extension으로 전달하는 것입니다.
+    // 여기서 meta 필드에 담긴 내용은 프로세스간 통신(process.send) 또는 스레드간 통신(message port)을 통해 전달되어야 하는데,
+    // 이로 인해 "직렬화 가능한 값들만 허용"하는 제약이 생깁니다.
+    //
+    // 이 제약을 의식하여 Naite.t에 직렬화 가능한 값만 넘기게 할 수도 있었지만, 그렇게 하면 불편해질 것 같아서 하지 않았습니다.
+    // 따라서 현재 Naite.t는 모든 값을 받을 수 있게 되어 있습니다. 
+    // 대신 이렇게(getAllTraces) 그 값들을 빼낼 때 JSON.stringify를 사용하여 강제로 직렬화 가능하게 만들었습니다,,
+    for (const trace of traces) {
+      const check = isSerializable(trace.data);
+      if (!check.valid) {
+        console.warn(
+          "\n" +
+            "╔════════════════════════════════════════════════════════════════╗\n" +
+            "║  [Naite] Non-serializable value detected!                      ║\n" +
+            "╠════════════════════════════════════════════════════════════════╣\n" +
+            `║  Key: ${trace.key.padEnd(57)}║\n` +
+            `║  Reason: ${(check.reason ?? "unknown").slice(0, 54).padEnd(54)}║\n` +
+            `║  Location: ${(trace.stack[0]?.filePath ?? "unknown").slice(-51).padEnd(52)}║\n` +
+            `║  Line: ${String(trace.stack[0]?.lineNumber ?? 0).padEnd(56)}║\n` +
+            "╠════════════════════════════════════════════════════════════════╣\n" +
+            "║  Naite.t() accepts any type of value. However, values will     ║\n" +
+            "║  be serialized to JSON when exported via Naite.getAllTraces(). ║\n" +
+            "╚════════════════════════════════════════════════════════════════╝\n",
+        );
+      }
+    }
+
+    return traces.map((trace) => ({
+      key: trace.key,
+      value: JSON.parse(JSON.stringify(trace.data ?? "")), // 직렬화 가능한 것만 남기려는 눈물겨운 노력,, 안그러면 task.meta에 들어가서 프로세스간 통신 할 때 문제 생기거든요,,
+      filePath: trace.stack[0]?.filePath ?? "",
+      lineNumber: trace.stack[0]?.lineNumber ?? 0,
+      at: trace.at.toISOString(),
+    }));
   }
 
   // 특정 키 삭제하기
