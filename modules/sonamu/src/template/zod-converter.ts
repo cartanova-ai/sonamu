@@ -28,18 +28,27 @@ import {
   type EntityProp,
   type EntityPropNode,
   isBelongsToOneRelationProp,
-  isBigIntegerProp,
-  isBooleanProp,
-  isDateProp,
-  isEnumProp,
-  isIntegerProp,
+  isBigIntegerArrayProp,
+  isBigIntegerSingleProp,
+  isBooleanArrayProp,
+  isBooleanSingleProp,
+  isDateArrayProp,
+  isDateSingleProp,
+  isEnumArrayProp,
+  isEnumSingleProp,
+  isIntegerArrayProp,
+  isIntegerSingleProp,
   isJsonProp,
-  isNumberProp,
-  isNumericProp,
+  isNumberArrayProp,
+  isNumberSingleProp,
+  isNumericArrayProp,
+  isNumericSingleProp,
   isOneToOneRelationProp,
   isRelationProp,
-  isStringProp,
-  isUuidProp,
+  isStringArrayProp,
+  isStringSingleProp,
+  isUuidArrayProp,
+  isUuidSingleProp,
   isVirtualProp,
   type RenderingNode,
 } from "../types/types";
@@ -76,30 +85,52 @@ export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
  */
 export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
   let zodType: z.ZodTypeAny = z.unknown();
-  if (isIntegerProp(prop)) {
+  if (isIntegerSingleProp(prop)) {
     zodType = z.number().int();
-  } else if (isBigIntegerProp(prop)) {
+  } else if (isIntegerArrayProp(prop)) {
+    zodType = z.number().int().array();
+  } else if (isBigIntegerSingleProp(prop)) {
     zodType = z.bigint();
-  } else if (isEnumProp(prop)) {
+  } else if (isBigIntegerArrayProp(prop)) {
+    zodType = z.bigint().array();
+  } else if (isEnumSingleProp(prop)) {
     zodType = await getZodTypeById(prop.id);
-  } else if (isStringProp(prop)) {
+  } else if (isEnumArrayProp(prop)) {
+    zodType = (await getZodTypeById(prop.id)).array();
+  } else if (isStringSingleProp(prop)) {
     if (prop.length) {
       zodType = z.string().max(prop.length);
     } else {
       zodType = z.string();
     }
-  } else if (isNumberProp(prop)) {
+  } else if (isStringArrayProp(prop)) {
+    if (prop.length) {
+      zodType = z.string().max(prop.length).array();
+    } else {
+      zodType = z.string().array();
+    }
+  } else if (isNumberSingleProp(prop)) {
     zodType = z.number();
-  } else if (isNumericProp(prop)) {
+  } else if (isNumberArrayProp(prop)) {
+    zodType = z.number().array();
+  } else if (isNumericSingleProp(prop)) {
     zodType = z.string();
-  } else if (isBooleanProp(prop)) {
+  } else if (isNumericArrayProp(prop)) {
+    zodType = z.string().array();
+  } else if (isBooleanSingleProp(prop)) {
     zodType = z.boolean();
-  } else if (isDateProp(prop)) {
+  } else if (isBooleanArrayProp(prop)) {
+    zodType = z.boolean().array();
+  } else if (isDateSingleProp(prop)) {
     zodType = z.date();
+  } else if (isDateArrayProp(prop)) {
+    zodType = z.date().array();
+  } else if (isUuidSingleProp(prop)) {
+    zodType = z.uuid();
+  } else if (isUuidArrayProp(prop)) {
+    zodType = z.uuid().array();
   } else if (isJsonProp(prop)) {
     zodType = await getZodTypeById(prop.id);
-  } else if (isUuidProp(prop)) {
-    zodType = z.uuid();
   } else if (isVirtualProp(prop)) {
     zodType = await getZodTypeById(prop.id);
   } else if (isRelationProp(prop)) {
@@ -125,32 +156,55 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
  */
 export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): string {
   let stmt: string;
-  if (isIntegerProp(prop)) {
+  if (isIntegerSingleProp(prop)) {
     stmt = `${prop.name}: z.int()`;
-  } else if (isBigIntegerProp(prop)) {
+  } else if (isIntegerArrayProp(prop)) {
+    stmt = `${prop.name}: z.int().array()`;
+  } else if (isBigIntegerSingleProp(prop)) {
     stmt = `${prop.name}: z.bigint()`;
-  } else if (isEnumProp(prop)) {
+  } else if (isBigIntegerArrayProp(prop)) {
+    stmt = `${prop.name}: z.bigint().array()`;
+  } else if (isEnumSingleProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
-  } else if (isStringProp(prop)) {
+  } else if (isEnumArrayProp(prop)) {
+    stmt = `${prop.name}: ${prop.id}.array()`;
+    injectImportKeys.push(prop.id);
+  } else if (isStringSingleProp(prop)) {
     if (prop.length) {
       stmt = `${prop.name}: z.string().max(${prop.length})`;
     } else {
       stmt = `${prop.name}: z.string()`;
     }
-  } else if (isNumberProp(prop)) {
+  } else if (isStringArrayProp(prop)) {
+    if (prop.length) {
+      stmt = `${prop.name}: z.string().max(${prop.length}).array()`;
+    } else {
+      stmt = `${prop.name}: z.string().array()`;
+    }
+  } else if (isNumberSingleProp(prop)) {
     stmt = `${prop.name}: z.number()`;
-  } else if (isNumericProp(prop)) {
+  } else if (isNumberArrayProp(prop)) {
+    stmt = `${prop.name}: z.number().array()`;
+  } else if (isNumericSingleProp(prop)) {
     stmt = `${prop.name}: z.string()`;
-  } else if (isDateProp(prop)) {
+  } else if (isNumericArrayProp(prop)) {
+    stmt = `${prop.name}: z.string().array()`;
+  } else if (isDateSingleProp(prop)) {
     stmt = `${prop.name}: z.date()`;
-  } else if (isBooleanProp(prop)) {
+  } else if (isDateArrayProp(prop)) {
+    stmt = `${prop.name}: z.date().array()`;
+  } else if (isBooleanSingleProp(prop)) {
     stmt = `${prop.name}: z.boolean()`;
+  } else if (isBooleanArrayProp(prop)) {
+    stmt = `${prop.name}: z.boolean().array()`;
+  } else if (isUuidSingleProp(prop)) {
+    stmt = `${prop.name}: z.uuid()`;
+  } else if (isUuidArrayProp(prop)) {
+    stmt = `${prop.name}: z.uuid().array()`;
   } else if (isJsonProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
-  } else if (isUuidProp(prop)) {
-    stmt = `${prop.name}: z.uuid()`;
   } else if (isVirtualProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
