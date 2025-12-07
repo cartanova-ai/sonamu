@@ -90,6 +90,8 @@ export class Migrator {
       (key) => key.endsWith("_slave") === false,
     ) as (keyof typeof Sonamu.dbConfig)[];
 
+    let migrationStatusError: string | undefined;
+
     const statuses = await Promise.all(
       connKeys.map(async (connKey) => {
         const knexOptions = Sonamu.dbConfig[connKey];
@@ -104,14 +106,16 @@ export class Migrator {
                 `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
               ),
             );
-            return "error"; /*클라이언트에서 에러 체크에 사용하는 리터럴입니다.*/
+            migrationStatusError = err instanceof Error ? err.message : String(err);
+            return "error";
           }
         })();
-        const pending = await (async () => {
+        const pending: string[] = await (async () => {
           try {
             const [, fdList] = await tConn.migrate.list();
             return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
-          } catch (_err) {
+          } catch (err) {
+            migrationStatusError = err instanceof Error ? err.message : String(err);
             return [];
           }
         })();
@@ -119,6 +123,7 @@ export class Migrator {
           try {
             return await tConn.migrate.currentVersion();
           } catch (_err) {
+            migrationStatusError = _err instanceof Error ? _err.message : String(_err);
             return "error";
           }
         })();
@@ -135,7 +140,7 @@ export class Migrator {
             connection.port
           }/${connection.database}` as ConnString,
           currentVersion,
-          status,
+          status: status as number | "error",
           pending,
         };
       }),
@@ -168,6 +173,7 @@ export class Migrator {
       conns: statuses,
       codes,
       preparedCodes,
+      error: migrationStatusError,
     };
   }
 

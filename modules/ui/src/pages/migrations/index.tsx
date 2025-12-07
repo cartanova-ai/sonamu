@@ -13,6 +13,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
   const { data, error, mutate } = SonamuUIService.useMigrationStatus();
   const { status } = data ?? {};
   const { preparedCodes, conns, codes } = status ?? {};
+  const migrationStatusError = status?.error;
 
   // useCommonModal
   const { openModal } = useCommonModal();
@@ -155,7 +156,12 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {preparedCodes.length === 0 && (
+                {migrationStatusError && (
+                  <Table.Row className="table-empty">
+                    <Table.Cell colSpan={6}>{migrationStatusError}</Table.Cell>
+                  </Table.Row>
+                )}
+                {!migrationStatusError && preparedCodes.length === 0 && (
                   <Table.Row className="table-empty">
                     <Table.Cell colSpan={6}>No prepared migration codes.</Table.Cell>
                   </Table.Row>
@@ -205,7 +211,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 color="green"
                 icon="play"
                 content="Apply to Latest"
-                disabled={selectedConnKeys.length === 0}
+                disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
                 onClick={() => openActionModal("apply")}
               />
               <Button
@@ -213,7 +219,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 color="red"
                 icon="refresh"
                 content="Rollback!!"
-                disabled={selectedConnKeys.length === 0}
+                disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
                 onClick={() => openActionModal("rollback")}
               />
             </div>
@@ -241,7 +247,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                     >
                       <Checkbox
                         label={`${conn.name} / ${conn.status}`}
-                        disabled={conn.status === "error"}
+                        disabled={conn.status === "error" || !!migrationStatusError}
                         checked={selectedConnKeys.includes(conn.connKey)}
                         onChange={(_e, data) => {
                           if (data.checked) {
@@ -258,7 +264,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                 </Table.Row>
               </Table.Header>
               <Table.Body>
-                {conns.some((conn) => conn.status === "error") && (
+                {conns.some((conn) => conn.status === "error" || !!migrationStatusError) && (
                   <Table.Row className="table-empty">
                     <Table.Cell colSpan={6}>
                       <b>
@@ -309,7 +315,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
                       >
                         {conn.pending.includes(code.name) ? (
                           <Label size="mini" color="yellow" icon="minus" content="PENDING" />
-                        ) : conn.status === "error" ? (
+                        ) : conn.status === "error" || !!migrationStatusError ? (
                           <Label size="mini" color="red" icon="times" content="ERROR" />
                         ) : (
                           <Label size="mini" color="green" icon="check" content="APPLIED" />
