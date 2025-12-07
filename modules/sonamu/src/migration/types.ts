@@ -12,9 +12,10 @@ export type MigrationStatus = {
     name: string;
     connKey: keyof SonamuDBConfig;
     connString: ConnString;
-    currentVersion: string;
-    status: string | number;
+    currentVersion: string | "error";
+    status: number | "error";
     pending: string[];
   }[];
   preparedCodes: GenMigrationCode[];
+  error?: string;
 };
