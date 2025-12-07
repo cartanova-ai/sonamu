@@ -167,7 +167,7 @@ export const ProjectBaseSchema = z.object({
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
   // tags: ManyToMany Tag
-  image_urls: z.string().nullable(),
+  image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
@@ -506,7 +506,7 @@ export const ProjectSubsetA = z.object({
   description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
-  image_urls: z.string().nullable(),
+  image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
   employee: z.array(
     z.object({
@@ -540,7 +540,7 @@ export const ProjectSubsetP = z.object({
   description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
-  image_urls: z.string().nullable(),
+  image_urls: z.string().array().nullable(),
   employee: z.array(
     z.object({
       id: z.int(),
