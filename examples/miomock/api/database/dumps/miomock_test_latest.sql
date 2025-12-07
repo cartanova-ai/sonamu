@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict TlfDZdoBBJMBRfcbfcob1pwAgXBVTNuZiDtb2qJJXJgHUhXcRPH3m8iCwVtnOrB
+\restrict k63URNlazvfwG3SPMZYkxoy9Fmv6wjQiG20hWqdmrYEXpuvECu7zGLYXMOYybQe
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
 -- Dumped by pg_dump version 18.1
@@ -266,8 +266,8 @@ CREATE TABLE public.projects (
     description text,
     budget numeric(12,2),
     deadline timestamp with time zone,
-    image_urls jsonb,
-    uuid uuid
+    uuid uuid,
+    image_urls text[]
 );
 
 
@@ -589,6 +589,7 @@ INSERT INTO public.knex_migrations VALUES (11, '20251204170813_foreign__departme
 INSERT INTO public.knex_migrations VALUES (12, '20251204170814_foreign__employees__user_id_department_id.ts', 1, '2025-12-04 19:00:42.28+09');
 INSERT INTO public.knex_migrations VALUES (13, '20251204170815_foreign__projects__employees__employee_id_project_id.ts', 1, '2025-12-04 19:00:42.282+09');
 INSERT INTO public.knex_migrations VALUES (14, '20251204170816_foreign__project_tags__project_id_tag_id.ts', 1, '2025-12-04 19:00:42.285+09');
+INSERT INTO public.knex_migrations VALUES (15, '20251207165706_alter_projects_alter1.ts', 2, '2025-12-07 17:03:53.923+09');
 
 
 --
@@ -623,14 +624,14 @@ INSERT INTO public.project_tags VALUES (15, 7, 6, 'fe51d4dc-8286-4324-902c-3fa9b
 -- Data for Name: projects; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.projects VALUES (1, '2024-01-01 01:00:00+09', '웹 애플리케이션 리뉴얼', 'in_progress', '기존 웹사이트를 최신 기술스택으로 리뉴얼하는 프로젝트입니다.', 150000.00, '2024-06-30 23:59:59+09', NULL, '51958c24-a670-49a0-a461-5fbede870e3c');
-INSERT INTO public.projects VALUES (2, '2024-01-02 01:00:00+09', '모바일 앱 개발', 'planning', '새로운 모바일 서비스를 위한 앱 개발 프로젝트입니다.', 200000.00, '2024-08-31 23:59:59+09', NULL, '475da5a4-649c-486e-b094-aad103300ca8');
-INSERT INTO public.projects VALUES (3, '2023-11-01 01:00:00+09', '데이터 분석 시스템', 'completed', '고객 데이터 분석을 위한 대시보드 시스템 구축 프로젝트입니다.', 80000.00, '2024-03-31 23:59:59+09', NULL, '5d4756df-deef-4e3a-a733-21b6c9cd3f7a');
-INSERT INTO public.projects VALUES (4, '2024-01-03 01:00:00+09', 'API 서버 마이그레이션', 'in_progress', '레거시 API 서버를 클라우드로 마이그레이션하는 작업입니다.', 120000.00, '2024-05-31 23:59:59+09', NULL, '4431d8c9-f95e-467f-91a7-89eb964d63d4');
-INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL, NULL, NULL, '18e41a5b-6b5c-4285-866f-dac5191d3ef0');
-INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00, NULL, NULL, 'ebc49083-5c26-4691-a654-c909a804b3a4');
-INSERT INTO public.projects VALUES (7, '2024-01-08 01:00:00+09', '레거시 시스템 개선', 'in_progress', '오래된 시스템을 현대화하는 프로젝트입니다.', 180000.00, '2024-12-31 23:59:59+09', NULL, '36fe2aaf-cf1d-4c0d-a717-99c399bb36b7');
-INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL, NULL, NULL, '6f9b142d-c89d-4c32-a6e2-7b60973de2b1');
+INSERT INTO public.projects VALUES (1, '2024-01-01 01:00:00+09', '웹 애플리케이션 리뉴얼', 'in_progress', '기존 웹사이트를 최신 기술스택으로 리뉴얼하는 프로젝트입니다.', 150000.00, '2024-06-30 23:59:59+09', '51958c24-a670-49a0-a461-5fbede870e3c', NULL);
+INSERT INTO public.projects VALUES (2, '2024-01-02 01:00:00+09', '모바일 앱 개발', 'planning', '새로운 모바일 서비스를 위한 앱 개발 프로젝트입니다.', 200000.00, '2024-08-31 23:59:59+09', '475da5a4-649c-486e-b094-aad103300ca8', NULL);
+INSERT INTO public.projects VALUES (3, '2023-11-01 01:00:00+09', '데이터 분석 시스템', 'completed', '고객 데이터 분석을 위한 대시보드 시스템 구축 프로젝트입니다.', 80000.00, '2024-03-31 23:59:59+09', '5d4756df-deef-4e3a-a733-21b6c9cd3f7a', NULL);
+INSERT INTO public.projects VALUES (4, '2024-01-03 01:00:00+09', 'API 서버 마이그레이션', 'in_progress', '레거시 API 서버를 클라우드로 마이그레이션하는 작업입니다.', 120000.00, '2024-05-31 23:59:59+09', '4431d8c9-f95e-467f-91a7-89eb964d63d4', NULL);
+INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL, NULL, '18e41a5b-6b5c-4285-866f-dac5191d3ef0', NULL);
+INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00, NULL, 'ebc49083-5c26-4691-a654-c909a804b3a4', NULL);
+INSERT INTO public.projects VALUES (7, '2024-01-08 01:00:00+09', '레거시 시스템 개선', 'in_progress', '오래된 시스템을 현대화하는 프로젝트입니다.', 180000.00, '2024-12-31 23:59:59+09', '36fe2aaf-cf1d-4c0d-a717-99c399bb36b7', NULL);
+INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL, NULL, '6f9b142d-c89d-4c32-a6e2-7b60973de2b1', NULL);
 
 
 --
@@ -729,7 +730,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 14, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 15, true);
 
 
 --
@@ -778,7 +779,7 @@ SELECT pg_catalog.setval('public.tags_id_seq', 9, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 736, true);
+SELECT pg_catalog.setval('public.users_id_seq', 796, true);
 
 
 --
@@ -1049,5 +1050,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict TlfDZdoBBJMBRfcbfcob1pwAgXBVTNuZiDtb2qJJXJgHUhXcRPH3m8iCwVtnOrB
+\unrestrict k63URNlazvfwG3SPMZYkxoy9Fmv6wjQiG20hWqdmrYEXpuvECu7zGLYXMOYybQe
 
