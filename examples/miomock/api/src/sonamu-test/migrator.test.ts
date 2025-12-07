@@ -708,7 +708,7 @@ describe("Migrator test", () => {
 
         // then
         expect(result[0]?.connKey).toBe("test");
-        expect(result[0]?.batchNo).toBe(2);
+        expect(result[0]?.batchNo).toBe(3);
       });
 
       test("다중 DB 동시 적용", async () => {

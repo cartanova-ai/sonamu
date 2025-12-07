@@ -21,12 +21,7 @@
       "onDelete": "CASCADE"
     },
     { "name": "name", "desc": "PROJECT명", "type": "string", "length": 255 },
-    {
-      "name": "status",
-      "desc": "상태",
-      "type": "enum",
-      "id": "ProjectStatus"
-    },
+    { "name": "status", "desc": "상태", "type": "enum", "id": "ProjectStatus" },
     {
       "name": "description",
       "nullable": true,
@@ -62,8 +57,7 @@
       "name": "image_urls",
       "nullable": true,
       "desc": "이미지URLS",
-      "type": "json",
-      "id": "StringArray"
+      "type": "string[]"
     },
     {
       "name": "virtual_test",
