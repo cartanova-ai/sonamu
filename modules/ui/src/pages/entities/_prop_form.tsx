@@ -55,13 +55,23 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
 
   const typeOptions = [
     "string",
+    "string[]",
     "enum",
+    "enum[]",
     "integer",
+    "integer[]",
     "bigInteger",
+    "bigInteger[]",
     "number",
+    "number[]",
     "numeric",
+    "numeric[]",
     "boolean",
+    "boolean[]",
     "date",
+    "date[]",
+    "uuid",
+    "uuid[]",
     "json",
     "virtual",
     "relation",
@@ -204,7 +214,10 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 </Form.Field>
               </Form.Group>
               <Divider />
-              {(form.type === "string" || form.type === "enum") && (
+              {(form.type === "string" ||
+                form.type === "string[]" ||
+                form.type === "enum" ||
+                form.type === "enum[]") && (
                 <Form.Group widths="equal">
                   {form.type === "string" && (
                     <Form.Field>
@@ -230,11 +243,13 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 </Form.Group>
               )}
               {(form.type === "integer" ||
+                form.type === "integer[]" ||
                 form.type === "bigInteger" ||
+                form.type === "bigInteger[]" ||
                 form.type === "number" ||
+                form.type === "number[]" ||
                 form.type === "numeric" ||
-                form.type === "double" ||
-                form.type === "decimal") && (
+                form.type === "numeric[]") && (
                 <Form.Group widths="equal">
                   {form.type === "number" && (
                     <Form.Field>
