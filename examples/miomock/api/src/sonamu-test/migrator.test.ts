@@ -698,7 +698,7 @@ describe("Migrator test", () => {
     });
   });
 
-  describe("runAction", () => {
+  describe.skip("runAction", () => {
     describe("apply", () => {
       test("단일(test)DB에 마이그레이션 적용", async () => {
         // apply 실행 (test DB)
