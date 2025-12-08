@@ -85,9 +85,6 @@ async function bootstrap() {
 }
 
 bootstrap().finally(async () => {
-  if (migrator) {
-    await migrator.destroy();
-  }
   await FixtureManager.destroy();
 });
 

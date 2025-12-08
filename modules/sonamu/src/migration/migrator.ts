@@ -1,12 +1,11 @@
 import assert from "assert";
 import chalk from "chalk";
-import { execSync } from "child_process";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import path from "path";
 import { group, sum, unique } from "radashi";
 import { Sonamu } from "../api";
-import type { SonamuDBConfig } from "../database/db";
+import { DB, type SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
@@ -25,33 +24,6 @@ export type MigrationResult = {
 }[];
 
 export class Migrator {
-  targets: {
-    compare: Knex;
-    shadow: Knex;
-  };
-
-  constructor() {
-    const { dbConfig } = Sonamu;
-
-    const devDB = knex(dbConfig.development_master);
-    const testDB = knex(dbConfig.test);
-    const applyDBs = [devDB, testDB];
-    if (
-      (dbConfig.test.connection as Knex.PgConnectionConfig).host !==
-        (dbConfig.fixture_remote.connection as Knex.PgConnectionConfig).host ||
-      (dbConfig.test.connection as Knex.PgConnectionConfig).database !==
-        (dbConfig.fixture_remote.connection as Knex.PgConnectionConfig).database
-    ) {
-      const fixtureRemoteDB = knex(dbConfig.fixture_remote);
-      applyDBs.push(fixtureRemoteDB);
-    }
-
-    this.targets = {
-      compare: devDB,
-      shadow: testDB,
-    };
-  }
-
   private async getMigrationCodes(): Promise<MigrationCode[]> {
     const srcMigrationsDir = path.join(Sonamu.apiRootPath, "src", "migrations"); // 이건 환경에 관계없이 항상 src에서 찾아야 해요.
 
@@ -422,37 +394,18 @@ export class Migrator {
   async runShadowTest(): Promise<MigrationResult> {
     const tdbConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
     const shadowDatabase = `${tdbConn.database}__migration_shadow`;
-    const pgEnv = { PGPASSWORD: tdbConn.password || "" };
 
-    // test DB 연결 강제 종료 (TEMPLATE 사용을 위해)
-    !isTest() && console.log(chalk.magenta(`${tdbConn.database} 연결 종료`));
-    execSync(
-      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE datname = '${tdbConn.database}'
-        AND pid <> pg_backend_pid();
-    "`,
-      { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
-    );
+    // 테스트 상황에서는 트랜잭션을 초기화하고, 새 데이터베이스 커넥션을 가져와야 함
+    if (isTest()) {
+      await DB.clearTestTransaction();
+      await DB.destroy();
+    }
 
-    // 기존 Shadow DB 삭제
+    // 기존 Shadow DB 삭제 후 Shadow DB 생성
+    const tdb = knex(Sonamu.dbConfig.test);
     !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-    execSync(
-      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${shadowDatabase}\\""`,
-      {
-        stdio: "ignore",
-        env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv,
-      },
-    );
-
-    // TEMPLATE으로 Shadow DB 생성
-    !isTest() &&
-      console.log(chalk.magenta(`${shadowDatabase} 생성 (TEMPLATE: ${tdbConn.database})`));
-    execSync(
-      `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "CREATE DATABASE \\"${shadowDatabase}\\" TEMPLATE \\"${tdbConn.database}\\""`,
-      { stdio: "ignore", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
-    );
+    await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
+    await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
 
     // Shadow DB에 연결
     const sdb = knex({
@@ -489,25 +442,10 @@ export class Migrator {
 
       // Shadow DB 삭제
       !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
-      execSync(
-        `psql -h ${tdbConn.host} -p ${tdbConn.port ?? 5432} -U ${tdbConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${shadowDatabase}\\""`,
-        {
-          stdio: "ignore",
-          env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv,
-        },
-      );
-    }
-  }
+      await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
 
-  /**
-   * 마이그레이션 대상 커넥션을 종료합니다.
-   *
-   * CLI에서 사용됩니다.
-   *
-   * @returns {Promise<void>} 종료 결과
-   */
-  async destroy(): Promise<void> {
-    this.targets.compare.destroy();
-    this.targets.shadow.destroy();
+      // Test DB 연결 종료
+      await tdb.destroy();
+    }
   }
 }

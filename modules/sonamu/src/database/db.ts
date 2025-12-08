@@ -165,5 +165,9 @@ export class DBClass {
     await this.testTransaction?.rollback();
     this.testTransaction = null;
   }
+  async getTestConnection(): Promise<Knex> {
+    const db = this.getDB("w");
+    return db;
+  }
 }
 export const DB = new DBClass();
