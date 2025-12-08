@@ -258,12 +258,10 @@ async function executeCommand(
       startTime = Date.now();
     });
 
-    // stdout 데이터 수집
     child.stdout?.on("data", (data) => {
       output += data.toString();
     });
 
-    // stderr 데이터 수집
     child.stderr?.on("data", (data) => {
       errorOutput += data.toString();
     });
@@ -283,7 +281,6 @@ async function executeCommand(
           console.error(
             chalk.red(`Command failed with exit code ${code}: ${command} ${args.join(" ")}`),
           );
-          // 에러가 있으면 stderr 출력
           if (errorOutput) {
             console.error(errorOutput);
           }
@@ -293,7 +290,6 @@ async function executeCommand(
       }
       const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
 
-      // 출력 표시 옵션이 활성화된 경우 결과 출력
       if (showOutput && output.trim()) {
         spinner.succeed(`${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`);
         console.log(chalk.cyan(output.trim()));
@@ -370,7 +366,6 @@ async function promptDatabase(projectName: string): Promise<PromptDatabaseAnswer
   return answers;
 }
 
-// 공통 취소 핸들러
 function createCancelHandler() {
   return () => {
     cleanup();
@@ -378,29 +373,23 @@ function createCancelHandler() {
   };
 }
 
-// 재귀적으로 디렉토리 삭제 함수
 function removeDirectory(dirPath: string): void {
   if (!fs.existsSync(dirPath)) {
     return;
   }
-
   try {
     fs.rmSync(dirPath, { recursive: true, force: true });
-  } catch (error) {
-    // 삭제 실패 시 에러를 무시하고 계속 진행
+  } catch (_error) {
     console.error(chalk.yellow(`Warning: Failed to remove ${dirPath}`));
   }
 }
 
-// 생성된 파일 정리 함수
 function cleanup() {
   if (isCleaningUp || !createdTargetRoot) {
     return;
   }
-
   isCleaningUp = true;
   console.log(chalk.yellow("\n\n Operation cancelled. Cleaning up created files...\n"));
-
   try {
     if (fs.existsSync(createdTargetRoot)) {
       removeDirectory(createdTargetRoot);
