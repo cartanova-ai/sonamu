@@ -3,6 +3,7 @@ import { readFile } from "fs/promises";
 import inflection from "inflection";
 import ts from "typescript";
 import { type ExtendedApi, registeredApis } from "../api/decorators";
+import { validateMethodName } from "../api/validator";
 import type { ApiParam, ApiParamType } from "../types/types";
 import type { AbsolutePath } from "../utils/path-utils";
 
@@ -37,6 +38,7 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
     if (ts.isMethodDeclaration(node)) {
       if (ts.isIdentifier(node.name)) {
         methodName = node.name.escapedText.toString();
+        validateMethodName(methodName);
       }
 
       const typeParameters: ApiParamType.TypeParam[] = (node.typeParameters ?? []).map(
