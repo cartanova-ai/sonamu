@@ -168,10 +168,6 @@ class SonamuClass {
       const chalk = (await import("chalk")).default;
       console.log(chalk.green("DB Config Loaded!"));
     }
-    const { attachOnDuplicateUpdate } = await import(
-      "../database/knex-plugins/knex-on-duplicate-update"
-    );
-    attachOnDuplicateUpdate();
 
     // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
     if (forTesting) {

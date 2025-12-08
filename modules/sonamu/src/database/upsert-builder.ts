@@ -200,7 +200,9 @@ export class UpsertBuilder {
         refTables: [] as TableData[],
       },
     );
-    const extractFields = unique(references).map((reference) => reference.split(".")[1]);
+    const extractFields = unique(references)
+      .map((reference) => reference.split(".")[1])
+      .filter((field): field is string => field !== undefined);
 
     // 의존성 순서에 따라 레벨별 그룹화 (자기 참조가 없으면 Level 0 하나)
     const { levels, hasCircular } = this.buildInsertLevels(table.rows, tableName);
@@ -245,26 +247,28 @@ export class UpsertBuilder {
       const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
       const selectFields = unique(["uuid", "id", ...extractFields]);
 
-      for (const chunk of levelChunks) {
+      for (const dataChunk of levelChunks) {
+        if (dataChunk.length === 0) continue;
+
         let resultRows: { uuid: string; id: number; [key: string]: unknown }[];
 
         if (mode === "insert") {
           // INSERT 모드
-          await wdb.insert(chunk).into(tableName);
+          await wdb.insert(dataChunk).into(tableName);
 
-          const uuids = chunk.map((r) => r.uuid);
+          const uuids = dataChunk.map((r) => r.uuid);
           resultRows = await wdb(tableName)
             .select(selectFields)
             .whereIn("uuid", uuids as readonly string[]);
         } else {
           // UPSERT 모드 (uniqueIndexes 이미 체크됨)
           const conflictColumns = table.uniqueIndexes[0].columns;
-          const updateColumns = Object.keys(chunk[0]).filter(
+          const updateColumns = Object.keys(dataChunk[0]).filter(
             (col) => col !== "uuid" && !conflictColumns.includes(col),
           );
 
           // RETURNING으로 결과 받기
-          const query = wdb.insert(chunk).into(tableName).onConflict(conflictColumns);
+          const query = wdb.insert(dataChunk).into(tableName).onConflict(conflictColumns);
 
           // updateColumns가 비어있으면 ignore(), 아니면 merge()
           if (updateColumns.length === 0) {
