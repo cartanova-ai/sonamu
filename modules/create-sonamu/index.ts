@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -30,16 +29,18 @@ async function init() {
           type: "text",
           name: "targetDir",
           message: "Project name:",
-          initial: "my-sonamu-app",
-        },
-        {
-          type: "text",
-          name: "targetPath",
-          message: "Project path (absolute or relative):",
-          initial: process.cwd(),
-          validate: (value: string) => {
-            if (!value.trim()) {
-              return "Path cannot be empty";
+          initial: "my_sonamu_app",
+          validate: (value) => {
+            if (!value) {
+              return "Project name is required";
+            }
+
+            if (value.includes(" ")) {
+              return "Project name cannot contain spaces";
+            }
+
+            if (value.includes("-")) {
+              return "Project name cannot contain hyphens";
             }
             return true;
           },
@@ -214,7 +215,7 @@ async function init() {
   if (isDatabase) {
     console.log(`\nSetting up a database using Docker...`);
 
-    // 프롬프트로 입력 받아서 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD .env 파일에 추가
+    // 프롬프트로 입력받은 DB 정보 .env 파일에 추가
     let answers: PromptDatabaseAnswers;
     try {
       answers = await promptDatabase(targetDir);
@@ -224,12 +225,14 @@ async function init() {
     }
     const env = `# Database Configuration
 DB_HOST=0.0.0.0
-DB_USER=root
+DB_PORT=5432
+DB_USER=${answers.DB_USER ?? "postgres"}
 DB_PASSWORD=${answers.DB_PASSWORD}
-COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
-MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
-MYSQL_DATABASE=${answers.MYSQL_DATABASE}
+CONTAINER_NAME=${answers.CONTAINER_NAME}
+DATABASE_NAME=${answers.DATABASE_NAME}
+PROJECT_NAME=${targetDir}
 `;
+
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
   } else {
     console.log(`\nTo set up a database using Docker, run the following commands:\n`);
@@ -338,37 +341,45 @@ async function setupPnpm(projectName: string, dir: string) {
 }
 
 interface PromptDatabaseAnswers {
-  COMPOSE_PROJECT_NAME: string;
-  MYSQL_CONTAINER_NAME: string;
-  MYSQL_DATABASE: string;
+  DOCKER_PROJECT_NAME: string;
+  DB_USER: string | undefined;
+  CONTAINER_NAME: string;
+  DATABASE_NAME: string;
   DB_PASSWORD: string;
 }
-// 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수
+
 async function promptDatabase(projectName: string): Promise<PromptDatabaseAnswers> {
   const answers = await prompts(
     [
       {
         type: "text",
-        name: "COMPOSE_PROJECT_NAME",
+        name: "DOCKER_PROJECT_NAME",
         message: "Enter the Docker project name:",
-        initial: `${projectName}`,
+        initial: `${projectName}-docker`,
       },
       {
         type: "text",
-        name: "MYSQL_CONTAINER_NAME",
-        message: "Enter the MySQL container name:",
-        initial: `${projectName}-mysql`,
+        name: "DB_USER",
+        message: "Enter the database user: ",
+        initial: "postgres", // postgres 기본 유저 제안
       },
       {
         type: "text",
-        name: "MYSQL_DATABASE",
-        message: "Enter the MySQL database name:",
+        name: "CONTAINER_NAME",
+        message: "Enter the container name: ",
+        initial: `${projectName}-container`,
+      },
+      {
+        type: "text",
+        name: "DATABASE_NAME",
+        message: "Enter the database name: ",
         initial: `${projectName}`,
       },
       {
         type: "password",
         name: "DB_PASSWORD",
-        message: "Enter the MySQL database password:",
+        message: "Enter the database password: ",
+        initial: "",
       },
     ],
     {
