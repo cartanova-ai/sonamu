@@ -11,45 +11,16 @@
 import { connect, type Socket } from "net";
 import { homedir } from "os";
 import { join } from "path";
-
-export interface TestResult {
-  suiteName: string;
-  suiteFilePath?: string;
-  testName: string;
-  testFilePath: string;
-  testLine: number;
-  status: string;
-  duration: number;
-  error?: { message: string; stack?: string };
-  traces: {
-    key: string;
-    value: any;
-    filePath: string;
-    lineNumber: number;
-    at: string;
-  }[];
-}
-
-export interface RunSummary {
-  startedAt: string;
-  endedAt: string;
-  duration: number;
-  total: number;
-  passed: number;
-  failed: number;
-  skipped: number;
-}
+import type { NaiteMessagingTypes } from "./messaging-types";
 
 // 소켓 경로
 const SOCKET_PATH =
   process.platform === "win32" ? "\\\\.\\pipe\\naite" : join(homedir(), ".sonamu", "naite.sock");
 
 class NaiteReporterClass {
-  private currentRunId: string | null = null;
   private socket: Socket | null = null;
   private connected = false;
   private buffer: string[] = [];
-  private seq = 0; // 메시지 순서 보장용
 
   /**
    * 소켓 연결 시도
@@ -87,8 +58,8 @@ class NaiteReporterClass {
   /**
    * 메시지 전송 (줄바꿈으로 구분)
    */
-  private send(data: object): void {
-    const msg = `${JSON.stringify({ ...data, seq: this.seq++ })}\n`;
+  private send(data: NaiteMessagingTypes.NaiteMessage): void {
+    const msg = `${JSON.stringify(data)}\n`;
 
     this.ensureConnection();
 
@@ -109,11 +80,8 @@ class NaiteReporterClass {
       return;
     }
 
-    this.currentRunId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
     this.send({
       type: "run/start",
-      runId: this.currentRunId,
       startedAt: new Date().toISOString(),
     });
   }
@@ -122,16 +90,15 @@ class NaiteReporterClass {
    * afterEach에서 호출합니다.
    * 테스트 케이스 결과를 traces와 함께 전송합니다.
    */
-  reportTestResult(result: TestResult): void {
+  reportTestResult(result: Omit<NaiteMessagingTypes.TestResult, "receivedAt">): void {
     if (process.env.CI) {
       return;
     }
 
     this.send({
       type: "test/result",
-      runId: this.currentRunId ?? "unknown",
-      ...result,
       receivedAt: new Date().toISOString(),
+      ...result,
     });
   }
 
@@ -139,19 +106,15 @@ class NaiteReporterClass {
    * afterAll에서 호출합니다.
    * 테스트 run 종료를 알립니다.
    */
-  endTestRun(summary?: RunSummary): void {
+  endTestRun(): void {
     if (process.env.CI) {
       return;
     }
 
     this.send({
       type: "run/end",
-      runId: this.currentRunId,
       endedAt: new Date().toISOString(),
-      summary,
     });
-
-    this.currentRunId = null;
 
     // 연결 종료
     if (this.socket) {
