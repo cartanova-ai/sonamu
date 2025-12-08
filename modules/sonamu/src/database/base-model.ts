@@ -229,7 +229,7 @@ export class BaseModelClass<
     // TODO: qb의 DISTINCT가 있는 경우 처리해야 함
     const countResult: { total?: number } = await countPuri
       .clear("select")
-      .select({ total: Puri.rawNumber(`COUNT(*)`) })
+      .select({ total: Puri.rawNumber(`COUNT(*)::integer`) })
       .first();
 
     if (debug) {
