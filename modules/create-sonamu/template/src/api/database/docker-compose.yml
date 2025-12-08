@@ -1,17 +1,16 @@
 version: "3.8"
-name: ${COMPOSE_PROJECT_NAME}
+name: ${CONTAINER_NAME}
 services:
-  mysql80:
+  pg:
     platform: linux/arm64
-    image: mysql:8.0
-    container_name: ${MYSQL_CONTAINER_NAME}
+    image: postgres:18
+    container_name: ${CONTAINER_NAME}
     volumes:
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_ROOT_HOST: "%"
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "3306:3306"
+      - "5432:5432"

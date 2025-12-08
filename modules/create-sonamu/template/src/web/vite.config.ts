@@ -1,6 +1,9 @@
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
+import dotenv from "dotenv";
 import path from "path";
 import { defineConfig } from "vite";
+
+dotenv.config({ path: ".sonamu.env" });
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -12,9 +15,9 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-    port: 16001,
+    port: 3028,
     proxy: {
-      "/api": "http://0.0.0.0:19000",
+      "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
   },
 });
