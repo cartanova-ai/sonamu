@@ -213,6 +213,14 @@ PROJECT_NAME=${targetDir}
 `;
 
     fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
+
+    // init.sql 변수 치환
+    const initSqlPath = path.join(targetRoot, "api", "database", "fixtures", "init.sql");
+    if (fs.existsSync(initSqlPath)) {
+      let initSql = fs.readFileSync(initSqlPath, "utf-8");
+      initSql = initSql.replace(/\$\{DATABASE_NAME\}/g, answers.DATABASE_NAME);
+      fs.writeFileSync(initSqlPath, initSql);
+    }
   } else {
     console.log(`\nTo set up a database using Docker, run the following commands:\n`);
     console.log(chalk.gray(`  $ cd ${targetRoot}/api/database`));
