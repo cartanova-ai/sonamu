@@ -62,7 +62,7 @@ type AnyZodDefault = z.ZodDefault<z.ZodType>;
 type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
-
+type AnyZodTemplateLiteral = z.ZodTemplateLiteral<string>;
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
  * dist 디렉토리에서 ESM으로 import하여 가져옵니다.
@@ -261,7 +261,6 @@ export function propNodeToZodTypeDef(propNode: EntityPropNode, injectImportKeys:
   }
 }
 
-// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
 export function zodTypeToTsTypeDef(zt: z.ZodType): string {
   switch (zt.def.type) {
     case "string":
@@ -325,12 +324,40 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
     }
     case "optional":
       return `${zodTypeToTsTypeDef((zt as AnyZodOptional).def.innerType)} | undefined`;
+    case "template_literal": {
+      const def = (zt as AnyZodTemplateLiteral).def;
+
+      // 빈 template literal은 string으로 폴백
+      if (!def.parts || def.parts.length === 0) {
+        return "string";
+      }
+
+      // 각 part를 TypeScript 타입 문자열로 변환
+      const parts = def.parts.map((part: unknown) => {
+        // 리터럴 값 (string, number, boolean, null, undefined)
+        if (typeof part === "string") {
+          return `${part}`;
+        }
+
+        // ZodType - 재귀적으로 변환
+        if (part && typeof part === "object" && (part as z.ZodType)._zod) {
+          const innerType = zodTypeToTsTypeDef(part as z.ZodType);
+          return `\${${innerType}}`;
+        }
+
+        // 폴백
+        return `\${string}`;
+      });
+
+      return `\`${parts.join("")}\``;
+    }
+    case "file":
+      return "File";
     default:
       throw new Error(`처리되지 않은 ZodType ${zt.def.type}`);
   }
 }
 
-// TODO(Haze, 251031): "template_literal", "file"에 대한 지원이 필요함.
 /**
  * Zod 타입 인스턴스를 해당하는 Zod 코드 문자열로 변환합니다.
  */
@@ -413,6 +440,31 @@ export function zodTypeToZodCode(zt: z.ZodType): string {
       return `${zodTypeToZodCode((zt as z.ZodOptional<z.ZodType>).def.innerType)}.optional()`;
     case "file":
       return `z.file()`;
+    case "template_literal": {
+      const def = (zt as AnyZodTemplateLiteral).def;
+
+      // 빈 template literal
+      if (!def.parts || def.parts.length === 0) {
+        return "z.templateLiteral([])";
+      }
+
+      // 각 part를 Zod 코드 문자열로 변환
+      const parts = def.parts.map((part: unknown) => {
+        // 문자열 리터럴
+        if (typeof part === "string") {
+          return `"${part}"`;
+        }
+        // ZodType - 재귀적으로 변환
+        if (part && typeof part === "object" && (part as z.ZodType)._zod) {
+          return zodTypeToZodCode(part as z.ZodType);
+        }
+
+        // 폴백
+        return "z.string()";
+      });
+
+      return `z.templateLiteral([${parts.join(", ")}])`;
+    }
     case "intersection": {
       const zIntersectionDef = (zt as z.ZodIntersection<z.ZodType, z.ZodType>).def;
       return `z.intersection(${zodTypeToZodCode(zIntersectionDef.left)}, ${zodTypeToZodCode(zIntersectionDef.right)})`;
