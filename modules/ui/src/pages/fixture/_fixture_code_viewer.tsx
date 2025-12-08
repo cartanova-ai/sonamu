@@ -5,7 +5,6 @@
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: 여기는 다 허용 */
 /** biome-ignore-all lint/performance/noDynamicNamespaceImportAccess: 여기는 다 허용 */
 
-import inflection from "inflection";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 // 진짜 얼탱이없는 이슈: https://github.com/react-syntax-highlighter/react-syntax-highlighter/issues/539#issuecomment-1869182939
@@ -14,8 +13,7 @@ import { Prism, type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button, Checkbox, Dropdown, Icon, Segment } from "semantic-ui-react";
 import type { FixtureImportResult } from "sonamu";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
+import { type ExtendedEntity } from "../../services/sonamu-ui.service";
 
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 
@@ -91,64 +89,65 @@ const FixtureCode = ({
 }) => {
   const subsetKeys = Object.keys(entity.subsets);
   const [selectedSubset, setSelectedSubset] = useState<string>(subsetKeys[0]);
-  const [codes, setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
+  const [codes, _setCodes] = useState<Map<string, { fixture: string; test: string }>>(new Map());
 
-  const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
-    return `${inflection.camelize(entityId, true)}${id
-      .toString()
-      .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
-  };
+  // const getFixtureLoaderCode = (entityId: string, id: number, subset: string) => {
+  //   return `${inflection.camelize(entityId, true)}${id
+  //     .toString()
+  //     .padStart(2, "0")}: async () => ${entityId}Model.findById("${subset}", ${id}),`;
+  // };
 
-  const getFixtureTestCode = (entityId: string, id: number, res: { [key: string]: any }) => {
-    const fixtureName = inflection.camelize(entityId, true) + id.toString().padStart(2, "0");
+  // const getFixtureTestCode = (entityId: string, id: number, res: { [key: string]: any }) => {
+  //   const fixtureName = inflection.camelize(entityId, true) + id.toString().padStart(2, "0");
 
-    const generateExpects = (obj: { [key: string]: any }, path = "") => {
-      let expects = "";
-      for (const [key, value] of Object.entries(obj)) {
-        const currentPath = path ? `${path}.${key}` : key;
-        if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-          expects += generateExpects(value, currentPath);
-        } else if (Array.isArray(value)) {
-          value.forEach((item, index) => {
-            if (typeof item === "object" && item !== null) {
-              expects += generateExpects(item, `${currentPath}[${index}]`);
-            } else {
-              expects += `expect(${fixtureName}${
-                currentPath ? `.${currentPath}` : ""
-              }[${index}]).toBe(${JSON.stringify(item)});\n`;
-            }
-          });
-        } else {
-          expects += `expect(${fixtureName}${
-            currentPath ? `.${currentPath}` : ""
-          }).toBe(${JSON.stringify(value)});\n`;
-        }
-      }
-      return expects;
-    };
+  //   const generateExpects = (obj: { [key: string]: any }, path = "") => {
+  //     let expects = "";
+  //     for (const [key, value] of Object.entries(obj)) {
+  //       const currentPath = path ? `${path}.${key}` : key;
+  //       if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+  //         expects += generateExpects(value, currentPath);
+  //       } else if (Array.isArray(value)) {
+  //         value.forEach((item, index) => {
+  //           if (typeof item === "object" && item !== null) {
+  //             expects += generateExpects(item, `${currentPath}[${index}]`);
+  //           } else {
+  //             expects += `expect(${fixtureName}${
+  //               currentPath ? `.${currentPath}` : ""
+  //             }[${index}]).toBe(${JSON.stringify(item)});\n`;
+  //           }
+  //         });
+  //       } else {
+  //         expects += `expect(${fixtureName}${
+  //           currentPath ? `.${currentPath}` : ""
+  //         }).toBe(${JSON.stringify(value)});\n`;
+  //       }
+  //     }
+  //     return expects;
+  //   };
 
-    return generateExpects(res);
-  };
+  //   return generateExpects(res);
+  // };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 선택된 서브셋이 변경되었을 때 코드 생성
   useEffect(() => {
     if (selectedSubset) {
-      SonamuUIService.getEntityById(fixture.entityId, String(fixture.data.id), selectedSubset, targetDB)
-        .then((res) => {
-          setCodes((prev) => {
-            const newCodes = new Map(prev);
-            newCodes.set(selectedSubset, {
-              fixture: getFixtureLoaderCode(
-                fixture.entityId,
-                Number(fixture.data.id),
-                selectedSubset,
-              ),
-              test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), res),
-            });
-            return newCodes;
-          });
-        })
-        .catch(defaultCatch);
+      // FIXME: 특정 서브셋 쿼리 조회하는 방식 변경 필요
+      // SonamuUIService.getEntityById(fixture.entityId, String(fixture.data.id), selectedSubset, targetDB)
+      //   .then((res) => {
+      //     setCodes((prev) => {
+      //       const newCodes = new Map(prev);
+      //       newCodes.set(selectedSubset, {
+      //         fixture: getFixtureLoaderCode(
+      //           fixture.entityId,
+      //           Number(fixture.data.id),
+      //           selectedSubset,
+      //         ),
+      //         test: getFixtureTestCode(fixture.entityId, Number(fixture.data.id), res),
+      //       });
+      //       return newCodes;
+      //     });
+      //   })
+      //   .catch(defaultCatch);
     }
   }, [fixture, selectedSubset, targetDB]);
 

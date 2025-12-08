@@ -809,33 +809,6 @@ export async function createServer(options: {
     return FixtureManager.addFixtureLoader(code);
   });
 
-  server.get("/api/entity/findById", async (request) => {
-    const { entityId, id, subset, db } = request.query as {
-      db: keyof SonamuDBConfig;
-      entityId: string;
-      id: string;
-      subset: string;
-    };
-
-    const BaseModel = new BaseModelClass();
-    const entity = EntityManager.get(entityId);
-    const {
-      rows: [row],
-    } = await BaseModel.runSubsetQuery({
-      subset,
-      params: { id: Number(id), page: 1, num: 1 },
-      subsetQuery: entity.getSubsetQuery(subset),
-      build: ({ qb }) => {
-        qb.where(`${entity.table}.id`, id);
-        return qb;
-      },
-      baseTable: entity.table,
-      db: knex(Sonamu.dbConfig[db]),
-    });
-
-    return row;
-  });
-
   server.get("/api/all_routes", async () => {
     return {
       // apis: Sonamu.syncer.apis,

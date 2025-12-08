@@ -388,19 +388,6 @@ export namespace SonamuUIService {
       data: { db, fixtures },
     });
   }
-
-  export function getEntityById(
-    entityId: string,
-    id: string,
-    subset: string,
-    db?: string,
-  ): Promise<ExtendedEntity> {
-    return fetch({
-      method: "GET",
-      url: `/api/entity/findById`,
-      params: { entityId, id, subset, db },
-    });
-  }
 }
 
 export type ScaffoldingStatus = {
