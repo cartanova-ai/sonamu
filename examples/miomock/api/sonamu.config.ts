@@ -21,13 +21,13 @@ export default defineConfig({
   },
   database: {
     database: "postgresql",
-    name: "miomock",
+    name: process.env.MIOMOCK_DB_NAME ?? "database_name",
     defaultOptions: {
       connection: {
         host: process.env.MIOMOCK_DB_HOST ?? "0.0.0.0",
         port: Number(process.env.MIOMOCK_DB_PORT ?? 5432),
         user: process.env.MIOMOCK_DB_USER ?? "postgres",
-        password: process.env.MIOMOCK_DB_PASSWORD ?? "miomock123",
+        password: process.env.MIOMOCK_DB_PASSWORD ?? "database_password",
       },
     },
   },
@@ -43,8 +43,8 @@ export default defineConfig({
         prefix: "/api/public",
       },
       session: {
-        secret: "miomock-secret-key-change-this-in-production",
-        salt: "mq9hDxBCDbsQDR6N",
+        secret: process.env.MIOMOCK_SESSION_SECRET ?? "session_secret_key",
+        salt: process.env.MIOMOCK_SESSION_SALT ?? "session_salt_key",
         cookie: {
           domain: "localhost",
           path: "/",
@@ -83,7 +83,7 @@ export default defineConfig({
         process.env.AWS_SECRET_ACCESS_KEY
       ) {
         return new S3Driver({
-          bucket: "miomock",
+          bucket: process.env.MIOMOCK_S3_BUCKET ?? "bucket_name",
           region: "ap-northeast-2",
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
