@@ -74,7 +74,7 @@ async function publishPackage(localPackage: LocalPackageInfo): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`${localPackage.name}@${localPackage.version}: 퍼블리시 중입니다...`);
 
-    const command = `pnpm --filter ${localPackage.name} publish`;
+    const command = `pnpm --filter ${localPackage.name} publish --no-git-checks`;
     console.log(command);
 
     const child = exec(command);
