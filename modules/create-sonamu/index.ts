@@ -140,34 +140,12 @@ async function init() {
 
   // 2. Copy package.json and modify name
   ["api", "web"].forEach((dir) => {
-    const pkg = JSON.parse(fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"));
-    pkg.name = `${targetDir}-${dir}`;
-    // package.json의 resolutions 필드 추가
-    if (!pkg.resolutions) {
-      pkg.resolutions = {};
+    const pkgPath = path.join(templateRoot, dir, "package.json");
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      pkg.name = `${targetDir}-${dir}`;
+      fs.writeFileSync(path.join(targetRoot, dir, "package.json"), JSON.stringify(pkg, null, 2));
     }
-
-    // api 디렉토리에 resolutions 추가
-    if (dir === "api") {
-      const absoluteSonamuPath = path.resolve(sonamuModulePath);
-      const absoluteReactSuiPath = path.resolve(reactSuiModulePath);
-      const absoluteUiPath = path.resolve(uiModulePath);
-      // portal로 로컬 패키지 링킹
-      pkg.resolutions["sonamu"] = `portal:${absoluteSonamuPath}`;
-      pkg.resolutions["@sonamu-kit/react-sui"] = `portal:${absoluteReactSuiPath}`;
-      pkg.resolutions["@sonamu-kit/ui"] = `portal:${absoluteUiPath}`;
-    }
-
-    // web 디렉토리에 resolutions 추가
-    if (dir === "web") {
-      const absoluteReactSuiPath = path.resolve(reactSuiModulePath);
-      pkg.resolutions["@sonamu-kit/react-sui"] = `portal:${absoluteReactSuiPath}`;
-    }
-
-    fs.writeFileSync(
-      path.join(targetRoot, dir, "package.json"),
-      JSON.stringify(pkg, null, 2) + "\n",
-    );
   });
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
@@ -223,6 +201,7 @@ async function init() {
       cleanup();
       throw error;
     }
+
     const env = `# Database Configuration
 DB_HOST=0.0.0.0
 DB_PORT=5432
