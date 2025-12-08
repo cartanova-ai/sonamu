@@ -68,7 +68,7 @@ async function init() {
         type: "confirm",
         name: "overwrite",
         message: `Directory ${targetRoot} already exists. Overwrite?`,
-        initial: false,
+        initial: true,
       },
       {
         onCancel: createCancelHandler(),
