@@ -311,14 +311,7 @@ async function setupPnpm(projectName: string, dir: string) {
 
   try {
     console.log(chalk.blue(`Setting up pnpm in ${cwd}...`));
-
-    // 1. Corepack 활성화
-    await executeCommand("npm", ["install", "-g", "corepack"], cwd);
-    await executeCommand("corepack", ["enable"], cwd);
-
-    // 2. 의존성 설치
     await executeCommand("pnpm", ["install"], cwd);
-
     console.log(chalk.green(`✅ pnpm has been set up in ${cwd}\n`));
   } catch (error) {
     console.error(chalk.red(`❌ Failed to set up pnpm in ${cwd}`));
