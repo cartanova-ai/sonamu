@@ -1481,6 +1481,12 @@ describe("zod-converter", () => {
         ["Any type", z.any(), "data", "string-plain"], // any → "string-plain" (fallback)
         ["Unknown type", z.unknown(), "data", "string-plain"], // unknown → "string-plain" (fallback)
         ["Literal type", z.literal("active"), "status", "string-plain"], // literal → "string-plain"
+        [
+          "Template literal type",
+          z.templateLiteral(["Hello", z.string()]),
+          "greeting",
+          "string-plain",
+        ], // template literal → "string-plain"
       ])("%s", (_desc, zodType, key, expectedRenderType) => {
         const result = zodTypeToRenderingNode(zodType, key);
         expect(result.renderType).toBe(expectedRenderType);
