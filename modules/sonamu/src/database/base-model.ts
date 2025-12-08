@@ -55,7 +55,7 @@ export class BaseModelClass<
 
     // 트랜잭션이 없으면 새로운 PuriWrapper 반환
     const db = this.getDB(which);
-    return new PuriWrapper(db, this.getUpsertBuilder());
+    return new PuriWrapper(db, new UpsertBuilder());
   }
 
   async destroy() {

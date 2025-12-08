@@ -13,6 +13,7 @@ import {
 import type { ApiParam, ApiParamType } from "../types/types";
 import type { UploadContext } from "./context";
 import { Sonamu } from "./sonamu";
+import { UpsertBuilder } from "../database/upsert-builder";
 
 export interface GuardKeys {
   query: true;
@@ -218,7 +219,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
         return puri.knex.transaction(
           async (trx) => {
-            const trxWrapper = new PuriTransactionWrapper(trx, this.getUpsertBuilder());
+            const trxWrapper = new PuriTransactionWrapper(trx, new UpsertBuilder());
             // TransactionContext에 트랜잭션 저장
             DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
 
