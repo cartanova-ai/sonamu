@@ -458,6 +458,11 @@ describe("Upsert Builder", () => {
   });
 
   describe("E. Upsert 실행 (upsert/insertOnly)", () => {
+    // PostgreSQL은 ON CONFLICT (columns)에 명시적인 컬럼 지정이 필요 - EntityManager 직접 로드
+    beforeAll(async () => {
+      Sonamu.isInitialized = false;
+      await Sonamu.init(true, false, undefined, false);
+    });
     test("upsert() - 새 row 삽입 후 ID 배열 반환", async () => {
       const ub = new UpsertBuilder();
 
