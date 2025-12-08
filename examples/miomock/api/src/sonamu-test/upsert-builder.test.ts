@@ -486,12 +486,19 @@ describe("Upsert Builder", () => {
       expect(ids.every((id) => id > 0)).toBe(true);
 
       // [expect] DB 검증: 실제로 DB에 삽입되었는지 확인
-      const insertedUsers = await wdb("users").select("id", "email", "username").whereIn("id", ids);
+      const insertedUsers = await wdb("users")
+        .select("id", "email", "username")
+        .whereIn("id", ids)
+        .orderBy("email");
+
       expect(insertedUsers).toHaveLength(3);
-      expect(insertedUsers[0]).toMatchObject({
-        email: "user1@test.com",
-        username: "유저1",
-      });
+      expect(insertedUsers).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ email: "user1@test.com", username: "유저1" }),
+          expect.objectContaining({ email: "user2@test.com", username: "유저2" }),
+          expect.objectContaining({ email: "user3@test.com", username: "유저3" }),
+        ]),
+      );
 
       // [expectUB] upsert 후 rows 초기화, 테이블 구조는 유지
       expectUB(ub, "rowCount", "users").toBe(0);
