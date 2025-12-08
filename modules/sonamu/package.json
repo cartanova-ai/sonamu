@@ -31,7 +31,7 @@
   "scripts": {
     "dev": "nodemon exec",
     "build": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
-    "publish": "pnpm build && pnpm publish",
+    "publish": "pnpm build && pnpm publish --no-git-checks",
     "test:type": "vitest --typecheck test-d.ts"
   },
   "license": "MIT",
@@ -42,7 +42,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ping-alive/sonamu.git"
+    "url": "https://github.com/cartanova-ai/sonamu.git"
   },
   "bin": "./bin/cli.js",
   "files": [
