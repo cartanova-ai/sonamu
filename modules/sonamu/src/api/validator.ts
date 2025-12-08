@@ -67,9 +67,16 @@ export const RESERVED_KEYWORDS = new Set([
   "yield",
 ]);
 
+export class ApiValidationError extends Error {
+  constructor(message: string) {
+    super(`[Sonamu API Validation] ${message}`);
+    this.name = "ApiValidationError";
+  }
+}
+
 export function validateMethodName(methodName: string) {
   if (RESERVED_KEYWORDS.has(methodName)) {
-    throw new Error(
+    throw new ApiValidationError(
       `Method name ${methodName} is a reserved keyword. Please choose a different name.`,
     );
   }
