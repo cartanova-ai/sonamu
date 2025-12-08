@@ -342,7 +342,7 @@ export function zodTypeToTsTypeDef(zt: z.ZodType): string {
         // ZodType - 재귀적으로 변환
         if (part && typeof part === "object" && (part as z.ZodType)._zod) {
           const innerType = zodTypeToTsTypeDef(part as z.ZodType);
-          return `\${${innerType}}`;
+          return `$\{${innerType}}`;
         }
 
         // 폴백
@@ -570,6 +570,8 @@ function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["r
   } else if (zodType instanceof z.ZodUnion) {
     return "string-plain";
   } else if (zodType instanceof z.ZodLiteral) {
+    return "string-plain";
+  } else if (zodType instanceof z.ZodTemplateLiteral) {
     return "string-plain";
   } else {
     throw new Error(`타입 파싱 불가 ${key} ${zodType.def.type}`);
