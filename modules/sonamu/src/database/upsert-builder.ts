@@ -261,16 +261,15 @@ export class UpsertBuilder {
             .select(selectFields)
             .whereIn("uuid", uuids as readonly string[]);
         } else {
-          // UPSERT 모드 (uniqueIndexes 이미 체크됨)
+          // UPSERT 모드: onConflict로 중복 처리
           const conflictColumns = table.uniqueIndexes[0].columns;
           const updateColumns = Object.keys(dataChunk[0]).filter(
             (col) => col !== "uuid" && !conflictColumns.includes(col),
           );
 
-          // RETURNING으로 결과 받기
           const query = wdb.insert(dataChunk).into(tableName).onConflict(conflictColumns);
 
-          // updateColumns가 비어있으면 ignore(), 아니면 merge()
+          // updateColumns 유무에 따라 ignore/merge 선택하고 RETURNING으로 결과 받기
           if (updateColumns.length === 0) {
             resultRows = await query.ignore().returning(selectFields);
           } else {

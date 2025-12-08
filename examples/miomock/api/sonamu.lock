@@ -5,7 +5,7 @@
   },
   {
     "path": "src/application/company/company.entity.json",
-    "checksum": "ce2a0b97b609c048855a1392c3be052ad3116fe9"
+    "checksum": "8d1a8e3d259a01716330efabd28d0898cbc4f690"
   },
   {
     "path": "src/application/company/company.model.ts",
@@ -17,7 +17,7 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "5b92eaefe058519cb47ef7bd36c64f0076a601dd"
+    "checksum": "76f6c7b8ebaf206c153ca833aee11984c4d08b3d"
   },
   {
     "path": "src/application/department/department.model.ts",
