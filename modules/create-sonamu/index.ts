@@ -86,23 +86,41 @@ async function init() {
   }
 
   createdTargetRoot = targetRoot; // 생성된 디렉토리 추적 시작
+
+  // 템플릿 경로 설정 (src 포함)
   const templateRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "template", "src");
 
+  // 복사 시작 전에 타겟 프로젝트 폴더 생성
+  if (!fs.existsSync(targetRoot)) {
+    fs.mkdirSync(targetRoot, { recursive: true });
+  }
+
+  // 템플릿 파일 복사 함수
   const copy = (src: string, dest: string) => {
     const stat = fs.statSync(src);
+    const basename = path.basename(src);
+
+    // 제외할 디렉토리/파일 목록
+    const excludeList = ["dist", ".git", ".gitkeep", "node_modules", "pnpm-lock.yaml"];
+    if (excludeList.includes(basename)) {
+      if (basename === ".gitkeep") {
+        console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
+      }
+      return;
+    }
+
     if (stat.isDirectory()) {
-      fs.mkdirSync(dest, { recursive: true });
+      // 디렉토리는 생성
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
       for (const file of fs.readdirSync(src)) {
         const srcFile = path.resolve(src, file);
         const destFile = path.resolve(dest, file);
         copy(srcFile, destFile);
       }
     } else {
-      // .gitkeep 제외, 디렉토리 생성 로그 출력
-      if (path.basename(src) === ".gitkeep") {
-        console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
-        return;
-      }
+      // 파일은 복사
       fs.copyFileSync(src, dest);
       console.log(`${chalk.green("CREATE")} ${dest}`);
     }
@@ -121,15 +139,6 @@ async function init() {
   }
 
   // 2. Copy package.json and modify name
-  // create-sonamu의 위치에서 한 뎁스 위로 가서 modules 디렉토리 찾기
-  const createSonamuDir = path.dirname(fileURLToPath(import.meta.url));
-  const modulesDir = path.resolve(createSonamuDir, "..");
-
-  // 각 모듈의 절대 경로
-  const sonamuModulePath = path.join(modulesDir, "sonamu");
-  const reactSuiModulePath = path.join(modulesDir, "react-sui");
-  const uiModulePath = path.join(modulesDir, "ui");
-
   ["api", "web"].forEach((dir) => {
     const pkg = JSON.parse(fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"));
     pkg.name = `${targetDir}-${dir}`;
