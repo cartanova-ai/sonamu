@@ -13,7 +13,7 @@ import { Prism, type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import * as markdownTheme from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button, Checkbox, Dropdown, Icon, Segment } from "semantic-ui-react";
 import type { FixtureImportResult } from "sonamu";
-import { type ExtendedEntity } from "../../services/sonamu-ui.service";
+import type { ExtendedEntity } from "../../services/sonamu-ui.service";
 
 const SyntaxHighlighter = Prism as any as React.FC<SyntaxHighlighterProps>;
 

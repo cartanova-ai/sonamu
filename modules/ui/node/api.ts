@@ -3,12 +3,10 @@ import { execSync } from "child_process";
 import fastify from "fastify";
 import fs from "fs";
 import { pluralize, underscore } from "inflection";
-import knex from "knex";
 import path from "path";
 import { range } from "radashi";
 import {
   BadRequestException,
-  BaseModelClass,
   type DuplicateCheckOptions,
   type Entity,
   type EntityIndex,
