@@ -20,7 +20,7 @@ async function init() {
   process.on("SIGINT", shutdownHandler);
   process.on("SIGTERM", shutdownHandler);
 
-  let result: prompts.Answers<"targetDir" | "targetPath">;
+  let result: prompts.Answers<"targetDir">;
 
   try {
     result = await prompts(
@@ -56,19 +56,10 @@ async function init() {
     process.exit(1);
   }
 
-  const { targetDir, targetPath } = result;
+  const { targetDir } = result;
 
-  // 경로가 상대 경로인지 절대 경로인지 확인
-  const resolvedPath = path.isAbsolute(targetPath)
-    ? targetPath
-    : path.resolve(process.cwd(), targetPath);
-
-  // 경로가 존재하는지 확인하고, 없으면 생성
-  if (!fs.existsSync(resolvedPath)) {
-    fs.mkdirSync(resolvedPath, { recursive: true });
-  }
-
-  const targetRoot = path.join(resolvedPath, targetDir);
+  // 현재 실행 경로(cwd) 하위에 생성 (절대경로 안받음)
+  const targetRoot = path.join(process.cwd(), targetDir);
 
   // 프로젝트 디렉토리가 이미 존재하는지 확인
   if (fs.existsSync(targetRoot)) {
