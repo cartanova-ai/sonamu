@@ -209,6 +209,11 @@ export class UpsertBuilder {
       throw new Error(`${tableName}에 순환 자기 참조가 있습니다.`);
     }
 
+    // upsert 모드일 때 유니크 인덱스가 없으면 에러
+    if (mode === "upsert" && table.uniqueIndexes.length === 0) {
+      throw new Error(`${tableName}에 unique index가 정의되지 않아 upsert를 할 수 없습니다.`);
+    }
+
     const uuidMap = new Map<string, unknown>();
     const allIds: number[] = [];
 
@@ -238,21 +243,39 @@ export class UpsertBuilder {
 
       // 현재 레벨 upsert
       const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
+      const selectFields = unique(["uuid", "id", ...extractFields]);
+
       for (const chunk of levelChunks) {
-        const q = wdb.insert(chunk).into(tableName);
+        let resultRows: { uuid: string; id: number; [key: string]: unknown }[];
+
         if (mode === "insert") {
-          await q;
-        } else if (mode === "upsert") {
-          await q.onDuplicateUpdate.apply(q, Object.keys(chunk[0]));
+          // INSERT 모드
+          await wdb.insert(chunk).into(tableName);
+
+          const uuids = chunk.map((r) => r.uuid);
+          resultRows = await wdb(tableName)
+            .select(selectFields)
+            .whereIn("uuid", uuids as readonly string[]);
+        } else {
+          // UPSERT 모드 (uniqueIndexes 이미 체크됨)
+          const conflictColumns = table.uniqueIndexes[0].columns;
+          const updateColumns = Object.keys(chunk[0]).filter(
+            (col) => col !== "uuid" && !conflictColumns.includes(col),
+          );
+
+          // RETURNING으로 결과 받기
+          const query = wdb.insert(chunk).into(tableName).onConflict(conflictColumns);
+
+          // updateColumns가 비어있으면 ignore(), 아니면 merge()
+          if (updateColumns.length === 0) {
+            resultRows = await query.ignore().returning(selectFields);
+          } else {
+            resultRows = await query.merge(updateColumns).returning(selectFields);
+          }
         }
 
-        // upsert된 row들을 다시 조회하여 uuidMap에 저장
-        const uuids = chunk.map((r) => r.uuid);
-        const upsertedRows = await wdb(tableName)
-          .select(unique(["uuid", "id", ...extractFields]))
-          .whereIn("uuid", uuids as readonly string[]);
-
-        for (const row of upsertedRows) {
+        // 양쪽 모드 공통 처리
+        for (const row of resultRows) {
           uuidMap.set(row.uuid, row);
           allIds.push(row.id);
         }

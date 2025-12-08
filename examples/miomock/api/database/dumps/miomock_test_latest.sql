@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict k63URNlazvfwG3SPMZYkxoy9Fmv6wjQiG20hWqdmrYEXpuvECu7zGLYXMOYybQe
+\restrict 9DB7F00WpfwlUbbcU5dPjNCAeuTxrIMrFBkrabaPyw2jhfeFfeOwe3LYqRMk0sC
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
--- Dumped by pg_dump version 18.1
+-- Dumped by pg_dump version 18.1 (Debian 18.1-1.pgdg13+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -589,7 +589,9 @@ INSERT INTO public.knex_migrations VALUES (11, '20251204170813_foreign__departme
 INSERT INTO public.knex_migrations VALUES (12, '20251204170814_foreign__employees__user_id_department_id.ts', 1, '2025-12-04 19:00:42.28+09');
 INSERT INTO public.knex_migrations VALUES (13, '20251204170815_foreign__projects__employees__employee_id_project_id.ts', 1, '2025-12-04 19:00:42.282+09');
 INSERT INTO public.knex_migrations VALUES (14, '20251204170816_foreign__project_tags__project_id_tag_id.ts', 1, '2025-12-04 19:00:42.285+09');
-INSERT INTO public.knex_migrations VALUES (15, '20251207165706_alter_projects_alter1.ts', 2, '2025-12-07 17:03:53.923+09');
+INSERT INTO public.knex_migrations VALUES (15, '20251207165706_alter_projects_alter1.ts', 2, '2025-12-08 13:11:21.866+09');
+INSERT INTO public.knex_migrations VALUES (16, '20251208131131_alter_companies.ts', 3, '2025-12-08 13:11:35.004+09');
+INSERT INTO public.knex_migrations VALUES (17, '20251208135810_alter_departments.ts', 4, '2025-12-08 13:58:14.972+09');
 
 
 --
@@ -702,21 +704,21 @@ INSERT INTO public.users VALUES (12, '2023-11-01 01:00:00+09', 'deleted@test.com
 -- Name: companies_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.companies_id_seq', 76, true);
+SELECT pg_catalog.setval('public.companies_id_seq', 566, true);
 
 
 --
 -- Name: departments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.departments_id_seq', 14, true);
+SELECT pg_catalog.setval('public.departments_id_seq', 226, true);
 
 
 --
 -- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.employees_id_seq', 12, true);
+SELECT pg_catalog.setval('public.employees_id_seq', 297, true);
 
 
 --
@@ -730,7 +732,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 15, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 17, true);
 
 
 --
@@ -779,7 +781,15 @@ SELECT pg_catalog.setval('public.tags_id_seq', 9, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 796, true);
+SELECT pg_catalog.setval('public.users_id_seq', 4418, true);
+
+
+--
+-- Name: companies companies_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.companies
+    ADD CONSTRAINT companies_name_unique UNIQUE (name);
 
 
 --
@@ -796,6 +806,14 @@ ALTER TABLE ONLY public.companies
 
 ALTER TABLE ONLY public.companies
     ADD CONSTRAINT companies_uuid_unique UNIQUE (uuid);
+
+
+--
+-- Name: departments departments_company_id_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.departments
+    ADD CONSTRAINT departments_company_id_name_unique UNIQUE (company_id, name);
 
 
 --
@@ -1050,5 +1068,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict k63URNlazvfwG3SPMZYkxoy9Fmv6wjQiG20hWqdmrYEXpuvECu7zGLYXMOYybQe
+\unrestrict 9DB7F00WpfwlUbbcU5dPjNCAeuTxrIMrFBkrabaPyw2jhfeFfeOwe3LYqRMk0sC
 

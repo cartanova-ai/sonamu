@@ -154,3 +154,19 @@ export type UnionExtractedTTables<
 > = {
   [K in SubsetKey]: ExtractTTables<ReturnType<SubsetQueries[K]>>;
 }[SubsetKey];
+
+// ON CONFLICT 대상 타입
+// - 단일 컬럼: "email"
+// - 복수 컬럼: ["user_id", "product_id"]
+export type OnConflictTarget = string | string[];
+
+// ON CONFLICT 액션 타입
+// - "nothing": DO NOTHING
+// - { update: [...] }: DO UPDATE
+export type OnConflictAction<TTables extends Record<string, unknown>> =
+  | "nothing"
+  | {
+      update:
+        | AvailableColumns<TTables>[] // 배열 형태 - ["name", "email"]
+        | WhereCondition<TTables>; // 객체 형태 - { name: "John", count: Puri.rawNumber(...) }
+    };

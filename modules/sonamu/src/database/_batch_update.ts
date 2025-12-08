@@ -74,7 +74,7 @@ function generateBatchUpdateSQL<Id extends string>(
   identifiers: Id[],
 ) {
   const keySet = generateKeySetFromData(data);
-  const bindings = [];
+  const allBindings: (string | number | boolean | null)[] = [];
 
   const invalidIdentifiers = identifiers.filter((id) => !keySet.has(id));
   if (invalidIdentifiers.length > 0) {
@@ -83,31 +83,52 @@ function generateBatchUpdateSQL<Id extends string>(
     );
   }
 
-  const cases = [];
+  const cases: string[] = [];
+
   for (const key of keySet) {
     if (identifiers.includes(key as Id)) continue;
 
-    const rows = [];
+    const caseBindings: (string | number | boolean | null)[] = [];
+    const whenClauses: string[] = [];
+
     for (const row of data) {
       if (Object.hasOwn(row, key)) {
-        const whereClause = identifiers.map((id) => `\`${id}\` = ?`).join(" AND ");
-        rows.push(`WHEN (${whereClause}) THEN ?`);
-        bindings.push(...identifiers.map((i) => row[i]), row[key]);
+        const whereParts = identifiers.map(() => `?? = ?`).join(" AND ");
+        whenClauses.push(`WHEN (${whereParts}) THEN ?`);
+
+        // identifier 이름과 값들을 추가
+        for (const id of identifiers) {
+          caseBindings.push(id, row[id]);
+        }
+        // THEN 값 추가
+        caseBindings.push(row[key]);
       }
     }
 
-    const whenThen = rows.join(" ");
-    cases.push(`\`${key}\` = CASE ${whenThen} ELSE \`${key}\` END`);
+    const whenThen = whenClauses.join(" ");
+    cases.push(`?? = CASE ${whenThen} ELSE ?? END`);
+
+    // 컬럼명 2개 추가 (SET의 컬럼명, ELSE의 컬럼명)
+    allBindings.push(key);
+    allBindings.push(...caseBindings);
+    allBindings.push(key);
   }
 
   const whereInClauses = identifiers
-    .map((col) => `${col} IN (${data.map(() => "?").join(", ")})`)
+    .map((_col) => `?? IN (${data.map(() => "?").join(", ")})`)
     .join(" AND ");
 
-  const whereInBindings = identifiers.flatMap((col) => data.map((row) => row[col]));
+  const whereInBindings: (string | number | boolean | null)[] = [];
+  for (const col of identifiers) {
+    whereInBindings.push(col);
+    for (const row of data) {
+      whereInBindings.push(row[col]);
+    }
+  }
 
-  const sql = db.raw(`UPDATE \`${tableName}\` SET ${cases.join(", ")} WHERE ${whereInClauses}`, [
-    ...bindings,
+  const sql = db.raw(`UPDATE ?? SET ${cases.join(", ")} WHERE ${whereInClauses}`, [
+    tableName,
+    ...allBindings,
     ...whereInBindings,
   ]);
 

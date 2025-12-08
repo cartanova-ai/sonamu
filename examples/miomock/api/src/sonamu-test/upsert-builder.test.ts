@@ -5,7 +5,7 @@ import { expectUB } from "../testing/expect-ub";
 
 bootstrap(vi);
 
-describe.skip("Upsert Builder", () => {
+describe("Upsert Builder", () => {
   describe("A. 기본 등록 (register)", () => {
     test("register() 호출 시 UBRef 반환 및 내부 저장 확인", async () => {
       const ub = new UpsertBuilder();
@@ -554,9 +554,9 @@ describe.skip("Upsert Builder", () => {
         role: "admin",
       });
 
-      // [expect] DB 검증: users 테이블에 1개만 존재
-      const userCount = await wdb("users").where({ email: "test@test.com" }).count("* as count");
-      expect(userCount[0]?.count).toBe(1);
+      // [expect] DB 검증: users 테이블에 1개만 존재 (중복 없음)
+      const users = await wdb("users").where({ email: "test@test.com" });
+      expect(users).toHaveLength(1);
 
       // [Naite] 두 번째 upsert 추적
       const traces = Naite.get("puri:ub-upserted").result();
@@ -607,7 +607,7 @@ describe.skip("Upsert Builder", () => {
         rowCount: 3,
       });
 
-      // 에러 케이스: 같은 email로 다시 등록 시도 -
+      // 에러 케이스: 같은 email로 다시 등록 시도
       ub.register("users", {
         email: "insert1@test.com",
         username: "중복시도",
@@ -616,7 +616,7 @@ describe.skip("Upsert Builder", () => {
       });
 
       // [expect] insertOnly는 중복 시 DB 에러 발생
-      await expect(ub.insertOnly(wdb, "users")).rejects.toThrow(/Duplicate entry/);
+      await expect(ub.insertOnly(wdb, "users")).rejects.toThrow(/duplicate/i);
     });
 
     test("참조 해결 (UBRef → 실제 ID로 치환)", async () => {
@@ -715,9 +715,11 @@ describe.skip("Upsert Builder", () => {
       const wdb = DB.getDB("w");
 
       // company 먼저 생성
-      const [companyId] = await wdb("companies")
+      const [result] = await wdb("companies")
         .insert({ name: "테스트회사", created_at: new Date() })
         .returning("id");
+
+      const companyId = result.id;
 
       // 1단계 자기 참조: 본사 → 자식 부서들
       const hqRef = ub.register("departments", {
@@ -774,9 +776,11 @@ describe.skip("Upsert Builder", () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      const [companyId] = await wdb("companies")
+      const [result] = await wdb("companies")
         .insert({ name: "테스트회사", created_at: new Date() })
         .returning("id");
+
+      const companyId = result.id;
 
       const hqRef = ub.register("departments", {
         company_id: companyId,
@@ -851,9 +855,11 @@ describe.skip("Upsert Builder", () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      const [companyId] = await wdb("companies")
+      const [result] = await wdb("companies")
         .insert({ name: "테스트회사", created_at: new Date() })
         .returning("id");
+
+      const companyId = result.id;
 
       const 본사Ref = ub.register("departments", {
         company_id: companyId,

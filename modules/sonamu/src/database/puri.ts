@@ -14,6 +14,7 @@ import type {
   FulltextColumns,
   InsertData,
   InsertResult,
+  OnConflictAction,
   ParseSelectObject,
   ResultAvailableColumns,
   SelectObject,
@@ -502,7 +503,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // 하나만 쿼리
   first(): ResolvedPuri<Expand<TResult>, never> {
     this.knexQuery.first();
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // 쿼리한 레코드에서 특정 컬럼만 추출한 배열 리턴
@@ -515,7 +516,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     never
   > {
     this.knexQuery.pluck(column as string);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // INSERT
@@ -523,13 +524,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     data: InsertData<SingleTableValue<TTables>>,
   ): ResolvedPuri<InsertResult, SingleTableValue<TTables>> {
     this.knexQuery.insert(data);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // UPDATE
   update(data: WhereCondition<TTables>): ResolvedPuri<number, SingleTableValue<TTables>> {
     this.knexQuery.update(data);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // Increment
@@ -541,7 +542,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       throw new Error("Increment value must be greater than 0");
     }
     this.knexQuery.increment(column, value);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
   // Decrement
   decrement<TColumn extends AvailableColumns<TTables>>(
@@ -552,13 +553,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       throw new Error("Decrement value must be greater than 0");
     }
     this.knexQuery.decrement(column, value);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // DELETE
   delete(): ResolvedPuri<number, SingleTableValue<TTables>> {
     this.knexQuery.delete();
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
   // 확인 쿼리 리턴
@@ -791,7 +792,10 @@ export class JoinClauseGroup<
   TReturning: RETURNING 절에 사용될 타입
 */
 export class ResolvedPuri<TResolved, TReturning> {
-  constructor(public knexQuery: Knex.QueryBuilder) {}
+  constructor(
+    public knexQuery: Knex.QueryBuilder,
+    private knex: Knex,
+  ) {}
 
   toQuery(): string {
     return this.knexQuery.toQuery();
@@ -818,6 +822,49 @@ export class ResolvedPuri<TResolved, TReturning> {
     return this.knexQuery.finally(onfinally);
   }
 
+  // ON CONFLICT - 컬럼 기반
+  onConflict<TTables extends Record<string, TReturning>>(
+    columns: string | string[],
+    action?: OnConflictAction<TTables>,
+  ): this {
+    const target = Array.isArray(columns) ? columns : [columns];
+
+    if (!action || action === "nothing") {
+      // DO NOTHING
+      this.knexQuery.onConflict(target).ignore();
+    } else {
+      // DO UPDATE
+      const { update } = action;
+
+      // action.update 배열 형태 : ["name", "email"]
+      if (Array.isArray(update)) {
+        this.knexQuery.onConflict(target).merge(update);
+      } else {
+        // action.update 객체 형태: { name: "John", count: raw(...) }
+        const mergeObj: Record<string, any> = {};
+
+        for (const [key, value] of Object.entries(update)) {
+          if (
+            value &&
+            typeof value === "object" &&
+            "_type" in value &&
+            value._type === "sql_expression"
+          ) {
+            // SqlExpression → knex.raw()로 변환
+            mergeObj[key] = this.knex.raw((value as SqlExpression<any>)._sql);
+          } else {
+            // 일반 값
+            mergeObj[key] = value;
+          }
+        }
+
+        this.knexQuery.onConflict(target).merge(mergeObj);
+      }
+    }
+
+    return this;
+  }
+
   // RETURNING: "*" - 전체 컬럼
   returning(column: "*"): ResolvedPuri<TReturning[], never>;
   // RETURNING: 단일 컬럼
@@ -831,6 +878,6 @@ export class ResolvedPuri<TResolved, TReturning> {
   // RETURNING 구현
   returning(columnOrColumns: string | string[]): ResolvedPuri<any[], never> {
     this.knexQuery.returning(columnOrColumns);
-    return new ResolvedPuri(this.knexQuery);
+    return new ResolvedPuri(this.knexQuery, this.knex);
   }
 }

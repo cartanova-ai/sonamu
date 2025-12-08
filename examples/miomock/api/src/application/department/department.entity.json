@@ -4,12 +4,7 @@
   "title": "부서",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     { "name": "name", "desc": "부서명", "type": "string", "length": 128 },
     {
       "type": "relation",
@@ -38,14 +33,9 @@
       "relationType": "HasMany",
       "joinColumn": "department_id"
     },
-    {
-      "name": "employee_count",
-      "desc": "직원수",
-      "type": "virtual",
-      "id": "NumberType"
-    }
+    { "name": "employee_count", "desc": "직원수", "type": "virtual", "id": "NumberType" }
   ],
-  "indexes": [],
+  "indexes": [{ "type": "unique", "columns": ["company_id", "name"] }],
   "subsets": {
     "A": [
       "id",
@@ -75,10 +65,7 @@
     "P2": ["id", "created_at", "name", "company.id", "company.name"]
   },
   "enums": {
-    "DepartmentOrderBy": {
-      "id-desc": "ID최신순",
-      "name-asc": "부서명오름차순"
-    },
+    "DepartmentOrderBy": { "id-desc": "ID최신순", "name-asc": "부서명오름차순" },
     "DepartmentSearchField": { "id": "ID" }
   }
 }
