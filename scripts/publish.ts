@@ -8,13 +8,13 @@
  *
  * 이 스크립트는 딱히 인자를 받지 않고, 환경변수에 따라 달리 움직이지도 않습니다.
  * CI 환경 뿐만 아니라 로컬에서도 추가적인 설정 없이 바로 실행할 수 있습니다.
- * tsx를 사용하도록 감싸놓은 yarn publish 명령을 사용하면 됩니다.
+ * tsx를 사용하도록 감싸놓은 pnpm publish 명령을 사용하면 됩니다.
  *
  * 스크립트는 최상위 디렉토리에서 실행할 것을 상정하여 작성되었습니다.
- * 최상위 디렉토리에서 yarn publish를 사용하여 실행하는 것 이외의 케이스는 고려하지 않았습니다.
+ * 최상위 디렉토리에서 pnpm publish를 사용하여 실행하는 것 이외의 케이스는 고려하지 않았습니다.
  *
- * NPM 퍼블리시를 위해 yarn workspace <package-name> npm publish 명령을 사용합니다.
- * 따라서 실행 환경의 ~/.yarnrc.yml 파일에 npmAuthToken이 설정되어 있어야 합니다.
+ * NPM 퍼블리시를 위해 pnpm --filter <package-name> publish 명령을 사용합니다.
+ * 따라서 실행 환경의 ~/.npmrc 파일에 npmAuthToken이 설정되어 있어야 합니다.
  */
 
 import { exec } from "child_process";
@@ -74,7 +74,7 @@ async function publishPackage(localPackage: LocalPackageInfo): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`${localPackage.name}@${localPackage.version}: 퍼블리시 중입니다...`);
 
-    const command = `yarn workspace ${localPackage.name} npm publish`;
+    const command = `pnpm --filter ${localPackage.name} publish`;
     console.log(command);
 
     const child = exec(command);
