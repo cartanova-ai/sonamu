@@ -18,9 +18,9 @@ class Hot {
    * Handle messages received from the hook's worker thread
    */
   #onMessage(message: MessageChannelMessage) {
-    if (message.type === "hot-hook:full-reload") {
+    if (message.type === "hmr-hook:full-reload") {
       process.send?.({
-        type: "hot-hook:full-reload",
+        type: "hmr-hook:full-reload",
         path: message.path,
         shouldBeReloadable: message.shouldBeReloadable,
       });
@@ -28,14 +28,14 @@ class Hot {
       this.#options.onFullReloadAsked?.();
     }
 
-    if (message.type === "hot-hook:invalidated") {
+    if (message.type === "hmr-hook:invalidated") {
       if (this.#hasOneDeclinedPath(message.paths)) {
-        process.send?.({ type: "hot-hook:full-reload", paths: message.paths });
+        process.send?.({ type: "hmr-hook:full-reload", paths: message.paths });
         this.#options.onFullReloadAsked?.();
         return;
       }
 
-      process.send?.({ type: "hot-hook:invalidated", paths: message.paths });
+      process.send?.({ type: "hmr-hook:invalidated", paths: message.paths });
 
       for (const url of message.paths) {
         const callback = this.#disposeCallbacks.get(url);
@@ -43,7 +43,7 @@ class Hot {
       }
     }
 
-    if (message.type === "hot-hook:file-changed") {
+    if (message.type === "hmr-hook:file-changed") {
       process.send?.(message);
     }
   }
@@ -67,7 +67,7 @@ class Hot {
           "**/node_modules/**",
           /**
            * Vite has a bug where it create multiple files with a
-           * timestamp. This cause hot-hook to restart in loop.
+           * timestamp. This cause hmr-hook to restart in loop.
            * See https://github.com/vitejs/vite/issues/13267
            */
           "**/vite.config.js.timestamp*",
@@ -86,7 +86,7 @@ class Hot {
      */
     this.#messageChannel = new MessageChannel();
 
-    register("@sonamu-kit/hot-hook/loader", {
+    register("@sonamu-kit/hmr-hook/loader", {
       parentURL: import.meta.url,
       transferList: [this.#messageChannel.port2],
       data: {
@@ -129,7 +129,7 @@ class Hot {
    * Dump the current state hot hook
    */
   async dump() {
-    this.#messageChannel.port1.postMessage({ type: "hot-hook:dump" });
+    this.#messageChannel.port1.postMessage({ type: "hmr-hook:dump" });
     // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) =>
       this.#messageChannel.port1.once("message", (message) => resolve(message)),
@@ -139,7 +139,7 @@ class Hot {
   }
 
   /**
-   * 수동으로 파일 변경을 hot-hook에 알리고 처리 완료를 기다립니다.
+   * 수동으로 파일 변경을 hmr-hook에 알리고 처리 완료를 기다립니다.
    * disableAutoWatch: true로 초기화한 경우 사용합니다.
    *
    * @param path 변경된 파일의 경로
@@ -151,14 +151,14 @@ class Hot {
     action: "change" | "add" | "unlink" = "change",
   ): Promise<string[]> {
     this.#messageChannel.port1.postMessage({
-      type: "hot-hook:manual-invalidate",
+      type: "hmr-hook:manual-invalidate",
       path,
       action,
     });
     // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) => {
       const listener = (message: MessageChannelMessage) => {
-        if (message.type === "hot-hook:manual-invalidate-done") {
+        if (message.type === "hmr-hook:manual-invalidate-done") {
           resolve(message);
           this.#messageChannel.port1.off("message", listener);
         }
@@ -178,12 +178,12 @@ class Hot {
    */
   async invalidateAll(): Promise<string[]> {
     this.#messageChannel.port1.postMessage({
-      type: "hot-hook:invalidate-all",
+      type: "hmr-hook:invalidate-all",
     });
     // biome-ignore lint/suspicious/noExplicitAny: MessageChannel 응답은 런타임에 타입이 결정됨
     const result: any = await new Promise((resolve) => {
       const listener = (message: MessageChannelMessage) => {
-        if (message.type === "hot-hook:invalidate-all-done") {
+        if (message.type === "hmr-hook:invalidate-all-done") {
           resolve(message);
           this.#messageChannel.port1.off("message", listener);
         }

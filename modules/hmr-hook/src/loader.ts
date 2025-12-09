@@ -81,27 +81,27 @@ export class HotHookLoader {
    */
   // biome-ignore lint/suspicious/noExplicitAny: worker thread message는 런타임에 타입이 결정됨
   async #onMessage(message: any) {
-    if (message.type === "hot-hook:dump") {
+    if (message.type === "hmr-hook:dump") {
       return this.#messagePort?.postMessage({
-        type: "hot-hook:dump",
+        type: "hmr-hook:dump",
         dump: this.#dependencyTree.dump(),
       });
     }
 
-    if (message.type === "hot-hook:manual-invalidate") {
+    if (message.type === "hmr-hook:manual-invalidate") {
       // 파일이 변경되었다고 직접 알려주는 메시지입니다. 처리하면 됩니다.
-      // 이 호출이 이 hot-hook의 핵심 tick입니다.
+      // 이 호출이 이 hmr-hook의 핵심 tick입니다.
       const invalidatedPaths = await this.#onFileChange(message.path, message.action);
 
       // 처리 완료 알림을 보내줍니다.
       return this.#messagePort?.postMessage({
-        type: "hot-hook:manual-invalidate-done",
+        type: "hmr-hook:manual-invalidate-done",
         path: message.path,
         invalidatedPaths: invalidatedPaths || [],
       });
     }
 
-    if (message.type === "hot-hook:invalidate-all") {
+    if (message.type === "hmr-hook:invalidate-all") {
       // rootPath 아래의 모든 파일을 무효화합니다.
       const allPaths = this.#dependencyTree.dump();
       const pathsToInvalidate = allPaths.filter((p) => p.reloadable);
@@ -119,7 +119,7 @@ export class HotHookLoader {
 
       // 처리 완료 알림을 보내줍니다.
       return this.#messagePort?.postMessage({
-        type: "hot-hook:invalidate-all-done",
+        type: "hmr-hook:invalidate-all-done",
         invalidatedPaths: Array.from(invalidatedPaths),
       });
     }
@@ -140,7 +140,7 @@ export class HotHookLoader {
     if (action === "unlink") {
       debug("File removed %s", filePath);
       this.#watcher?.unwatch(filePath);
-      this.#postMessage("hot-hook:file-changed", {
+      this.#postMessage("hmr-hook:file-changed", {
         path: filePath,
         action: "unlink",
       });
@@ -173,7 +173,7 @@ export class HotHookLoader {
     const realFilePath = await realpath(filePath);
     if (this.#reloadMatcher.match(realFilePath)) {
       debug("Full reload (hardcoded `restart` file) %s", realFilePath);
-      this.#postMessage("hot-hook:full-reload", { path: realFilePath });
+      this.#postMessage("hmr-hook:full-reload", { path: realFilePath });
       return [];
     }
 
@@ -183,7 +183,7 @@ export class HotHookLoader {
      */
     if (!this.#dependencyTree.isInside(realFilePath)) {
       debug("File not in dependency tree, sending file-changed message %s", realFilePath);
-      this.#postMessage("hot-hook:file-changed", {
+      this.#postMessage("hmr-hook:file-changed", {
         path: realFilePath,
         action,
       });
@@ -197,7 +197,7 @@ export class HotHookLoader {
     const { reloadable, shouldBeReloadable } = this.#dependencyTree.isReloadable(realFilePath);
     if (!reloadable) {
       debug("Full reload (not-reloadable file) %s", realFilePath);
-      this.#postMessage("hot-hook:full-reload", {
+      this.#postMessage("hmr-hook:full-reload", {
         path: realFilePath,
         shouldBeReloadable,
       });
@@ -210,7 +210,7 @@ export class HotHookLoader {
     const invalidatedFiles = this.#dependencyTree.invalidateFileAndDependents(realFilePath);
     debug("Invalidating %s", Array.from(invalidatedFiles).join(", "));
     const invalidatedPaths = [...invalidatedFiles];
-    this.#postMessage("hot-hook:invalidated", { paths: invalidatedPaths });
+    this.#postMessage("hmr-hook:invalidated", { paths: invalidatedPaths });
     return invalidatedPaths;
   }
 
@@ -250,12 +250,12 @@ export class HotHookLoader {
     const hotFns = `
     import.meta.hot = {};
     import.meta.hot.dispose = async (callback) => {
-      const { hot } = await import('hot-hook');
+      const { hot } = await import('@sonamu-kit/hmr-hook');
       hot.dispose(import.meta.url, callback);
     };
 
     import.meta.hot.decline = async () => {
-      const { hot } = await import('hot-hook');
+      const { hot } = await import('@sonamu-kit/hmr-hook');
       hot.decline(import.meta.url);
     };
 
@@ -278,8 +278,8 @@ export class HotHookLoader {
    */
   load: LoadHook = async (url, context, nextLoad) => {
     const parsedUrl = new URL(url);
-    if (parsedUrl.searchParams.has("hot-hook")) {
-      parsedUrl.searchParams.delete("hot-hook");
+    if (parsedUrl.searchParams.has("hmr-hook")) {
+      parsedUrl.searchParams.delete("hmr-hook");
       url = parsedUrl.href;
     }
 
@@ -297,13 +297,13 @@ export class HotHookLoader {
   /**
    * The resolve hook
    * We use it for :
-   * - Adding the hot-hook query parameter to the URL ( to getting a fresh version )
+   * - Adding the hmr-hook query parameter to the URL ( to getting a fresh version )
    * - And adding files to the watcher
    */
   resolve: ResolveHook = async (specifier, context, nextResolve) => {
     const parentUrl = (context.parentURL && new URL(context.parentURL)) as URL;
-    if (parentUrl?.searchParams.has("hot-hook")) {
-      parentUrl.searchParams.delete("hot-hook");
+    if (parentUrl?.searchParams.has("hmr-hook")) {
+      parentUrl.searchParams.delete("hmr-hook");
       context = { ...context, parentURL: parentUrl.href };
     }
 
@@ -316,7 +316,7 @@ export class HotHookLoader {
 
     const resultPath = fileURLToPath(resultUrl);
 
-    // @sonamu-kit/loader는 result.url과 더불어,
+    // @sonamu-kit/ts-loader는 result.url과 더불어,
     // result.importAttributes.ts에 실제 소스 파일 경로를 제공합니다.
     // 만약 result.url이 .js 파일을 가리키더라도, 이는 사실 .ts파일을 swc로 트랜스파일한 것일 수 있습니다.
     // 이 경우에는 result.importAttributes.ts에 실제 소스 파일(.ts) 경로를 제공합니다.
@@ -356,7 +356,7 @@ export class HotHookLoader {
     if (reloadable) {
       /**
        * 이 파일이 reloadable하려면 부모 파일로부터 동적으로 import되어야 합니다.
-       * 그렇지 않으면 hot-hook이 파일을 invalidate할 수 없습니다.
+       * 그렇지 않으면 hmr-hook이 파일을 invalidate할 수 없습니다.
        */
       // 부모도 boundary인지 확인
       const isParentBoundary = this.#hardcodedBoundaryMatcher.match(actualParentPath);
@@ -411,7 +411,7 @@ export class HotHookLoader {
       version = this.#dependencyTree.getVersion(actualSourcePath).toString();
     }
 
-    resultUrl.searchParams.set("hot-hook", version);
+    resultUrl.searchParams.set("hmr-hook", version);
 
     debug("Resolving %s with version %s", resultPath, version);
     return { ...result, url: resultUrl.href };

@@ -252,9 +252,9 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
         // 만약 빌드된 .js 파일이라는 확신이 들면 그대로 사용하고, 아니라면 TypeScript resolution을 시도합니다.
         //
         // 배경:
-        // - workspace 패키지(예: @sonamu-kit/hot-hook)는 node_modules에 없고 modules/ 디렉토리에 있습니다
+        // - workspace 패키지(예: @sonamu-kit/hmr-hook)는 node_modules에 없고 modules/ 디렉토리에 있습니다
         // - pnpm workspace에서는 node_modules에 심볼릭 링크를 만들지만, Node.js의 nextResolve는
-        //   심볼릭 링크를 따라가서 실제 경로(예: /Users/.../modules/hot-hook/build/src/hot.js)를 반환합니다
+        //   심볼릭 링크를 따라가서 실제 경로(예: /Users/.../modules/hmr-hook/build/src/hot.js)를 반환합니다
         // - 따라서 node_modules 체크(335줄)에 걸리지 않아서 TypeScript resolution까지 들어옵니다
         // - 하지만 workspace 패키지는 이미 빌드된 파일(build/, dist/)을 사용해야 하므로,
         //   소스 파일(src/)을 찾으려고 시도하면 안 됩니다
@@ -450,7 +450,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
         }
 
         default:
-          throw new Error("@sonamu-kit/loader: Unexpected format");
+          throw new Error("@sonamu-kit/ts-loader: Unexpected format");
       }
     })();
   };

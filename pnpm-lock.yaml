@@ -277,7 +277,7 @@ importers:
         specifier: ^2.3.7
         version: 2.3.7
 
-  modules/hot-hook:
+  modules/hmr-hook:
     dependencies:
       chokidar:
         specifier: ^4.0.3
@@ -374,7 +374,7 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  modules/hot-runner:
+  modules/hmr-runner:
     dependencies:
       '@adonisjs/ace':
         specifier: ^13.3.0
@@ -452,25 +452,6 @@ importers:
       tsx:
         specifier: ^4.19.4
         version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  modules/loader:
-    dependencies:
-      '@loaderkit/resolve':
-        specifier: ^1.0.4
-        version: 1.0.4
-      '@swc/core':
-        specifier: ^1.13.5
-        version: 1.15.3(@swc/helpers@0.5.17)
-      json5:
-        specifier: ^2.2.3
-        version: 2.2.3
-    devDependencies:
-      '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -631,15 +612,15 @@ importers:
       '@fastify/static':
         specifier: ^7
         version: 7.0.4
-      '@sonamu-kit/hot-hook':
+      '@sonamu-kit/hmr-hook':
         specifier: workspace:^
-        version: link:../hot-hook
-      '@sonamu-kit/hot-runner':
+        version: link:../hmr-hook
+      '@sonamu-kit/hmr-runner':
         specifier: workspace:^
-        version: link:../hot-runner
-      '@sonamu-kit/loader':
+        version: link:../hmr-runner
+      '@sonamu-kit/ts-loader':
         specifier: workspace:^
-        version: link:../loader
+        version: link:../ts-loader
       '@swc/core':
         specifier: ^1.13.19
         version: 1.15.3(@swc/helpers@0.5.17)
@@ -790,6 +771,25 @@ importers:
         specifier: ^4.0.10
         version: 4.0.12(@opentelemetry/api@1.9.0)(@types/debug@4.1.12)(@types/node@24.10.1)(jiti@2.6.1)(sass@1.94.2)(tsx@4.20.6)(yaml@2.8.1)
 
+  modules/ts-loader:
+    dependencies:
+      '@loaderkit/resolve':
+        specifier: ^1.0.4
+        version: 1.0.4
+      '@swc/core':
+        specifier: ^1.13.5
+        version: 1.15.3(@swc/helpers@0.5.17)
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   modules/ui:
     dependencies:
       '@ai-sdk/anthropic':
@@ -816,15 +816,15 @@ importers:
       '@fastify/static':
         specifier: ^6.10.2
         version: 6.12.0
-      '@sonamu-kit/hot-hook':
+      '@sonamu-kit/hmr-hook':
         specifier: workspace:^
-        version: link:../hot-hook
-      '@sonamu-kit/loader':
-        specifier: workspace:^
-        version: link:../loader
+        version: link:../hmr-hook
       '@sonamu-kit/react-sui':
         specifier: workspace:^
         version: link:../react-sui
+      '@sonamu-kit/ts-loader':
+        specifier: workspace:^
+        version: link:../ts-loader
       '@vitejs/plugin-react':
         specifier: ^4.0.3
         version: 4.7.0(vite@7.2.4(@types/node@20.19.25)(jiti@2.6.1)(sass@1.94.2)(tsx@4.20.6)(yaml@2.8.1))
@@ -845,7 +845,7 @@ importers:
         version: 2.5.1
       debug:
         specifier: ^4.3.7
-        version: 4.4.3(supports-color@10.2.2)
+        version: 4.4.3(supports-color@5.5.0)
       fastify:
         specifier: ^4.21.0
         version: 4.29.1

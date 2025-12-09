@@ -1,5 +1,5 @@
 {
-  "name": "@sonamu-kit/loader",
+  "name": "@sonamu-kit/ts-loader",
   "type": "module",
   "version": "2.1.3",
   "exports": {

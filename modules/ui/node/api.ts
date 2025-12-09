@@ -88,9 +88,9 @@ export async function createServer(options: {
     server.get("/api/reload", async () => {
       console.log(chalk.blue("🔄 Reloading UI - invalidating all caches."));
 
-      // hot-hook이 활성화되어 있으면 캐시 무효화
+      // hmr-hook이 활성화되어 있으면 캐시 무효화
       if (process.env.HOT === "yes") {
-        const { hot } = await import("@sonamu-kit/hot-hook");
+        const { hot } = await import("@sonamu-kit/hmr-hook");
         const invalidatedPaths = await hot.invalidateAll();
         if (invalidatedPaths.length > 0) {
           console.log(`🔄 Invalidated ${invalidatedPaths.length} files from cache.`);

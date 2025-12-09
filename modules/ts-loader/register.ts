@@ -1,5 +1,5 @@
 import { register } from "node:module";
 
-register("@sonamu-kit/loader/loader", {
+register("@sonamu-kit/ts-loader/loader", {
   parentURL: import.meta.url,
 });

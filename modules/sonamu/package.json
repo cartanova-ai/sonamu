@@ -21,11 +21,11 @@
       "import": "./dist/ai/providers/rtzr/index.js",
       "types": "./dist/ai/providers/rtzr/index.d.ts"
     },
-    "./loader-register": {
-      "default": "./dist/bin/loader-register.js"
+    "./ts-loader-register": {
+      "default": "./dist/bin/ts-loader-register.js"
     },
-    "./hot-hook-register": {
-      "default": "./dist/bin/hot-hook-register.js"
+    "./hmr-hook-register": {
+      "default": "./dist/bin/hmr-hook-register.js"
     }
   },
   "scripts": {
@@ -62,9 +62,9 @@
     "@fastify/passport": "^2.2.0",
     "@fastify/secure-session": "^7",
     "@fastify/static": "^7",
-    "@sonamu-kit/hot-hook": "workspace:^",
-    "@sonamu-kit/hot-runner": "workspace:^",
-    "@sonamu-kit/loader": "workspace:^",
+    "@sonamu-kit/hmr-hook": "workspace:^",
+    "@sonamu-kit/hmr-runner": "workspace:^",
+    "@sonamu-kit/ts-loader": "workspace:^",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
     "chokidar": "^4.0.3",

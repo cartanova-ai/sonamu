@@ -100,12 +100,12 @@ async function sync() {
  * pnpm dev 하면 실행되는 함수입니다.
  * 프로젝트에 대해 HMR 지원하는 개발 서버를 띄워줍니다.
  *
- * TypeScript를 바로 실행할 수 있도록 @sonamu-kit/loader를,
- * HMR을 지원하기 위해 @sonamu-kit/hot-hook을 import하며,
+ * TypeScript를 바로 실행할 수 있도록 @sonamu-kit/ts-loader를,
+ * HMR을 지원하기 위해 @sonamu-kit/hmr-hook을 import하며,
  * 소스맵 지원을 위해 --enable-source-maps 플래그를 포함하여 실행합니다.
  *
- * 이때 @sonamu-kit/loader와 @sonamu-kit/hot-hook는 sonamu가 자체적으로 가지고 있는 dependency입니다.
- * 또한 실행에 사용하는 @sonamu-kit/hot-runner도 마찬가지로 sonamu가 자체적으로 가지고 있는 dependency입니다.
+ * 이때 @sonamu-kit/ts-loader와 @sonamu-kit/hmr-hook는 sonamu가 자체적으로 가지고 있는 dependency입니다.
+ * 또한 실행에 사용하는 @sonamu-kit/hmr-runner도 마찬가지로 sonamu가 자체적으로 가지고 있는 dependency입니다.
  * 따라서 사용자 프로젝트에서는 이 세 패키지를 직접 설치할 필요가 없습니다.
  *
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
@@ -116,10 +116,10 @@ async function dev() {
 
   console.log(chalk.yellow.bold("🚀 Starting Sonamu dev server...\n"));
 
-  // 이 sonamu 패키지가 dependencies로 가지고 있는 @sonamu-kit/hot-runner의 bin/run.js를 사용합니다.
-  // 이 경로(/bin/run.js)는 @sonamu-kit/hot-runner의 package.json의 bin 필드에 명시되어 있는 그것과 같습니다.
+  // 이 sonamu 패키지가 dependencies로 가지고 있는 @sonamu-kit/hmr-runner의 bin/run.js를 사용합니다.
+  // 이 경로(/bin/run.js)는 @sonamu-kit/hmr-runner의 package.json의 bin 필드에 명시되어 있는 그것과 같습니다.
   const hotRunnerBinPath = createRequire(import.meta.url).resolve(
-    "@sonamu-kit/hot-runner/bin/run.js",
+    "@sonamu-kit/hmr-runner/bin/run.js",
   );
 
   const serverProcess = spawn(
@@ -127,8 +127,8 @@ async function dev() {
     [
       hotRunnerBinPath, // 이렇게 해서 hot-runner를 실행하구요
       "--clear-screen=false", // 이하 hot-runner에게 넘겨줄 인자들입니다.
-      "--node-args=--import=sonamu/loader-register", // TypeScript 서포트를 위한 로더,
-      "--node-args=--import=sonamu/hot-hook-register", // HMR을 지원하기 위한 hot-hook,
+      "--node-args=--import=sonamu/ts-loader-register", // TypeScript 서포트를 위한 로더,
+      "--node-args=--import=sonamu/hmr-hook-register", // HMR을 지원하기 위한 hook,
       "--node-args=--enable-source-maps", // 그리고 소스맵 지원을 위한 플래그입니다.
       "--on-key=r:restart:Restart server", // r 누르면 서버 재시작하게 해줘요.
       `--on-key=f:shell(rm ${path.join(apiRoot, "sonamu.lock")}):restart:Force restart`, // f 누르면 sonamu.lock 파일을 지우고 서버 재시작하게 해줘요.
@@ -144,7 +144,7 @@ async function dev() {
         ...process.env,
         NODE_ENV: "development",
         HOT: "yes", // 얘가 있어야 HMR이 활성화됩니다.
-        API_ROOT_PATH: apiRoot, // 이 경로가 hot-hook의 루트 디렉토리가 됩니다.
+        API_ROOT_PATH: apiRoot, // 이 경로가 hmr-hook의 루트 디렉토리가 됩니다.
       },
     },
   );
@@ -481,14 +481,14 @@ async function ui() {
       return;
     }
 
-    // UI를 별도 프로세스로 실행 (hot-hook 활성화)
+    // UI를 별도 프로세스로 실행 (hmr-hook 활성화)
     const uiProcess = spawn(
       process.execPath,
       [
         "--import",
-        "sonamu/loader-register",
+        "sonamu/ts-loader-register",
         "--import",
-        "sonamu/hot-hook-register",
+        "sonamu/hmr-hook-register",
         "--enable-source-maps",
         "--no-warnings",
         uiNodePath,

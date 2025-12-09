@@ -1,9 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "build:tools:loader": "cowsay -f box '@sonamu-kit/loader 빌드합니다.' && pnpm run --filter @sonamu-kit/loader build || (cowsay -f explosion '@sonamu-kit/loader 빌드 실패!' && exit 1)",
-    "build:tools:hot-hook": "cowsay -f box '@sonamu-kit/hot-hook 빌드합니다.' && pnpm run --filter @sonamu-kit/hot-hook build || (cowsay -f explosion '@sonamu-kit/hot-hook 빌드 실패!' && exit 1)",
-    "build:tools:hot-runner": "cowsay -f box '@sonamu-kit/hot-runner 빌드합니다.' && pnpm run --filter @sonamu-kit/hot-runner build || (cowsay -f explosion '@sonamu-kit/hot-runner 빌드 실패!' && exit 1)",
+    "build:tools:ts-loader": "cowsay -f box '@sonamu-kit/ts-loader 빌드합니다.' && pnpm run --filter @sonamu-kit/ts-loader build || (cowsay -f explosion '@sonamu-kit/ts-loader 빌드 실패!' && exit 1)",
+    "build:tools:hmr-hook": "cowsay -f box '@sonamu-kit/hmr-hook 빌드합니다.' && pnpm run --filter @sonamu-kit/hmr-hook build || (cowsay -f explosion '@sonamu-kit/hmr-hook 빌드 실패!' && exit 1)",
+    "build:tools:hmr-runner": "cowsay -f box '@sonamu-kit/hmr-runner 빌드합니다.' && pnpm run --filter @sonamu-kit/hmr-runner build || (cowsay -f explosion '@sonamu-kit/hmr-runner 빌드 실패!' && exit 1)",
     "build:tools": "run-s 'build:tools:*'",
     "build:lib:react-sui": "cowsay '@sonamu-kit/react-sui 빌드합니다.' && pnpm run --filter @sonamu-kit/react-sui build || (cowsay -f explosion '@sonamu-kit/react-sui 빌드 실패!' && exit 1)",
     "build:lib:sonamu": "cowsay 'sonamu 빌드합니다.' && pnpm run --filter sonamu build || (cowsay -f explosion 'sonamu 빌드 실패!' && exit 1)",

@@ -105,9 +105,9 @@ async function publishPackage(localPackage: LocalPackageInfo): Promise<void> {
 // modules 폴더 아래에 있지만 별도로 퍼블리시하지 않는 패키지도 있기에, 이렇게 수동으로 지정하도록 하였습니다.
 // 패키지가 추가되거나 제거될 때는 이 목록도 수정해야 합니다.
 publish(
-  "./modules/loader",
-  "./modules/hot-hook",
-  "./modules/hot-runner",
+  "./modules/ts-loader",
+  "./modules/hmr-hook",
+  "./modules/hmr-runner",
   "./modules/sonamu",
   "./modules/ui",
   "./modules/react-sui",

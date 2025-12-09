@@ -1,4 +1,4 @@
-import { hot } from "@sonamu-kit/hot-hook";
+import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
 import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
@@ -122,7 +122,7 @@ export class Syncer {
     }
 
     // 싱크 작업이 끝나면 모든 모듈을 로드합니다.
-    // hot-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
+    // hmr-hook에 의해 invalidate된 부분들이 아니라면 캐시 그대로 유지합니다.
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();

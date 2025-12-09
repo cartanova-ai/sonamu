@@ -1,4 +1,4 @@
-# @sonamu-kit/hot-hook
+# @sonamu-kit/hmr-hook
 
 이 패키지는 [hot-hook](https://github.com/Julien-R44/hot-hook)을 기반으로 하여 Sonamu 프레임워크에서 사용할 목적으로 수정을 가한 패키지입니다.
 
@@ -53,9 +53,9 @@ Sonamu UI 서버에서 사용자 프로젝트의 모든 모듈을 한번에 리�
 
 ---
 
-# hot-hook HMR 규칙 정리
+# hmr-hook HMR 규칙 정리
 
-## 원래 hot-hook의 규칙
+## 원래 hmr-hook의 규칙
 
 ### 1. Boundary 파일의 기본 규칙
 - **Boundary 파일은 반드시 부모로부터 동적 import되어야 함**

@@ -1,49 +1,33 @@
 {
-  "name": "@sonamu-kit/hot-hook",
+  "name": "@sonamu-kit/hmr-runner",
   "type": "module",
-  "version": "0.4.1",
-  "description": "Easy hot module reloading (HMR) for Node.js and ESM",
+  "version": "0.1.1",
+  "description": "Runner for applications that use hmr-hook",
   "author": "Julien Ripouteau <julien@ripouteau.com>",
   "license": "MIT",
   "keywords": [
-    "hmr",
-    "hot",
-    "reload",
-    "esm",
-    "node"
+    "hmr-hook",
+    "runner",
+    "hmr"
   ],
-  "exports": {
-    ".": "./build/src/hot.js",
-    "./loader": "./build/src/loader.js",
-    "./register": "./build/src/register.js",
-    "./import-meta": {
-      "types": "./import-meta.d.ts"
-    }
-  },
-  "main": "index.js",
+  "main": "build/bin/run.js",
+  "bin": "./bin/run.js",
   "files": [
-    "!build/bin",
-    "!build/tests",
     "build",
-    "import-meta.d.ts"
+    "bin"
   ],
   "scripts": {
-    "clean": "rm -rf build",
+    "clean": "del-cli build",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext=.ts",
-    "format": "biome format --write",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
-    "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
-    "build": "pnpm clean && tsc",
-    "prepublishOnly": "pnpm lint && pnpm build"
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "chokidar": "^4.0.3",
-    "fast-glob": "^3.3.3",
-    "parse-imports": "^2.2.1",
-    "picomatch": "^4.0.2",
-    "read-package-up": "^11.0.0"
+    "@adonisjs/ace": "^13.3.0",
+    "execa": "^8.0.1"
   },
   "devDependencies": {
     "@adonisjs/tsconfig": "^1.4.1",
@@ -56,7 +40,6 @@
     "@swc/core": "^1.11.29",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.15.29",
-    "@types/picomatch": "^4.0.0",
     "@types/supertest": "^6.0.3",
     "c8": "^10.1.3",
     "del-cli": "^6.0.0",
@@ -66,12 +49,12 @@
     "fs-extra": "^11.3.0",
     "p-event": "^6.0.1",
     "p-timeout": "^6.1.4",
+    "@biomejs/biome": "^2.3.7",
     "supertest": "^7.1.1",
     "ts-node": "^10.9.2",
     "tsdown": "^0.12.5",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3",
-    "@biomejs/biome": "^2.3.7"
+    "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "public",

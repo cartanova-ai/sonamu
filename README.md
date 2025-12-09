@@ -32,7 +32,7 @@ pnpm build # 모노레포 내 패키지들 빌드
 ```
 워크스페이스 내 모든 package들의 의존성이 최상단 `.pnpm/cache` 디렉토리에 설치됩니다.
 
-프로젝트 실행에 필요한 도구들(`@sonamu-kit/loader`, `@sonamu-kit/hot-hook`, `@sonamu-kit/hot-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `pnpm build`를 실행해주어야 합니다.
+프로젝트 실행에 필요한 도구들(`@sonamu-kit/ts-loader`, `@sonamu-kit/hmr-hook`, `@sonamu-kit/hmr-runner` 등)이 준비(build)되어야 하기 때문에 최초 한 번은 `pnpm build`를 실행해주어야 합니다.
 
 ### 3. 예제 프로젝트 실행
 

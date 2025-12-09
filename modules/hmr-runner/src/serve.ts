@@ -46,10 +46,10 @@ export class Serve extends BaseCommand {
   }
 
   /**
-   * hot-runner 접두사가 있는 로그 메시지를 출력합니다
+   * hmr-runner 접두사가 있는 로그 메시지를 출력합니다
    */
   #log(message: string) {
-    this.logger.log(`${this.colors.blue("[hot-runner]")} ${message}`);
+    this.logger.log(`${this.colors.blue("[hmr-runner]")} ${message}`);
   }
 
   /**
@@ -65,12 +65,12 @@ export class Serve extends BaseCommand {
     this.#httpServer.on("message", async (message: unknown) => {
       if (typeof message !== "object" || message === null) return;
 
-      if ("type" in message && message.type === "hot-hook:full-reload") {
+      if ("type" in message && message.type === "hmr-hook:full-reload") {
         const msg = message as unknown as { path: string; shouldBeReloadable: boolean };
         this.#onReloadAsked?.(msg.path, msg.shouldBeReloadable);
       }
 
-      if ("type" in message && message.type === "hot-hook:invalidated") {
+      if ("type" in message && message.type === "hmr-hook:invalidated") {
         const msg = message as unknown as { paths: string[] };
         this.#onFileInvalidated?.(msg.paths);
       }

@@ -4,7 +4,7 @@ import { exists } from "../utils/fs-utils.js";
 import { findApiRootPath } from "../utils/utils.js";
 
 /**
- * @sonamu-kit/loader/loader를 등록하는 스크립트입니다.
+ * @sonamu-kit/ts-loader/loader를 등록하는 스크립트입니다.
  * 이 스크립트는 sonamu cli로 dev 실행할 때 --import로 실행됩니다.
  */
 async function setupSwcConfig() {
@@ -33,6 +33,6 @@ async function setupSwcConfig() {
 // swc 설정 파일 경로를 환경 변수로 설정
 await setupSwcConfig();
 
-register("@sonamu-kit/loader/loader", {
+register("@sonamu-kit/ts-loader/loader", {
   parentURL: import.meta.url,
 });

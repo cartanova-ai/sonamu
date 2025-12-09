@@ -2,13 +2,13 @@ import type { MessagePort } from "node:worker_threads";
 
 export type FileChangeAction = "change" | "add" | "unlink";
 export type MessageChannelMessage =
-  | { type: "hot-hook:full-reload"; path: string; shouldBeReloadable?: boolean }
-  | { type: "hot-hook:invalidated"; paths: string[] }
-  | { type: "hot-hook:file-changed"; path: string; action: FileChangeAction }
-  | { type: "hot-hook:manual-invalidate"; path: string; action: FileChangeAction }
-  | { type: "hot-hook:manual-invalidate-done"; path: string; invalidatedPaths: string[] }
-  | { type: "hot-hook:invalidate-all" }
-  | { type: "hot-hook:invalidate-all-done" };
+  | { type: "hmr-hook:full-reload"; path: string; shouldBeReloadable?: boolean }
+  | { type: "hmr-hook:invalidated"; paths: string[] }
+  | { type: "hmr-hook:file-changed"; path: string; action: FileChangeAction }
+  | { type: "hmr-hook:manual-invalidate"; path: string; action: FileChangeAction }
+  | { type: "hmr-hook:manual-invalidate-done"; path: string; invalidatedPaths: string[] }
+  | { type: "hmr-hook:invalidate-all" }
+  | { type: "hmr-hook:invalidate-all-done" };
 
 export type MessageChannelPerType = {
   [K in MessageChannelMessage["type"]]: Omit<Extract<MessageChannelMessage, { type: K }>, "type">;
@@ -75,7 +75,7 @@ export interface InitOptions {
   throwWhenBoundariesAreNotDynamicallyImported?: boolean;
 
   /**
-   * If false, hot-hook will create its own file watcher.
+   * If false, hmr-hook will create its own file watcher.
    * By default, you must manually notify file changes using hot.invalidateFile().
    *
    * @default undefined (watcher disabled)
