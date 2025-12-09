@@ -126,7 +126,7 @@ export async function loadConfig(rootPath: string): Promise<SonamuConfig> {
   const start = performance.now();
   const configPath =
     process.env.HOT === "yes" || process.env.VITEST === "true"
-      ? `${rootPath}/sonamu.config.ts`
+      ? `${rootPath}/src/sonamu.config.ts`
       : `${rootPath}/dist/sonamu.config.js`;
   const { default: config } = await import(`file://${configPath}`);
   const importTime = performance.now() - start;

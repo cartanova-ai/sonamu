@@ -216,23 +216,6 @@ async function build() {
     process.exit(1);
   }
 
-  // sonamu.config.ts만 따로 빌드합니다.
-  // 이 친구는 src에 들어있지 않기 때문에 SWC_BUILD_COMMAND로 빌드되지 않습니다.
-  // 따라서 따로 빌드해줍니다.
-  try {
-    const configPath = path.join(apiRoot, "sonamu.config.ts");
-    if (await exists(configPath)) {
-      console.log(chalk.blue("Building sonamu.config.ts..."));
-      execSync(`swc ${configPath} -o ${BUILD_DIR}/sonamu.config.js`, {
-        cwd: apiRoot,
-        stdio: "inherit",
-      });
-    }
-  } catch (error) {
-    console.error(chalk.red("Building sonamu.config.ts failed."), error);
-    process.exit(1);
-  }
-
   // 마지막에는 타입 체크를 해요.
   try {
     console.log(chalk.blue("Checking types with tsc..."));

@@ -30,7 +30,7 @@ export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
   model: "src/application/**/*.model.ts",
   frame: "src/application/**/*.frame.ts",
   functions: "src/application/**/*.functions.ts",
-  config: "sonamu.config.ts",
+  config: "src/sonamu.config.ts",
 };
 
 /**

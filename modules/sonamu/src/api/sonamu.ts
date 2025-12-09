@@ -468,10 +468,7 @@ class SonamuClass {
   }
 
   async startWatcher(): Promise<void> {
-    const watchPath = [
-      path.join(this.apiRootPath, "src"),
-      path.join(this.apiRootPath, "sonamu.config.ts"),
-    ];
+    const watchPath = [path.join(this.apiRootPath, "src")];
 
     const chokidar = (await import("chokidar")).default;
     this.watcher = chokidar.watch(watchPath, {
@@ -494,7 +491,7 @@ class SonamuClass {
 
       try {
         // sonamu.config.ts 변경 시 재시작
-        const isConfigTs = filePath === path.join(this.apiRootPath, "sonamu.config.ts");
+        const isConfigTs = filePath === path.join(this.apiRootPath, "src", "sonamu.config.ts");
 
         if (isConfigTs) {
           const relativePath = filePath.replace(this.apiRootPath, "api");
