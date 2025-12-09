@@ -1,12 +1,12 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri.types.ts는 다양한 타입을 사용하고 있습니다. */
 
 import type { QueryResult } from "pg";
-import type { DatabaseSchemaExtend } from "../types/types";
+import type { DatabaseForeignKeys, DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
 
-// 테이블명 타입 (__fk_ 프리픽스 제외)
-export type TableName<TSchema> = Exclude<keyof TSchema & string, `__fk_${string}`>;
+// 테이블명 타입
+export type TableName<TSchema> = keyof TSchema & string;
 
 // 메타데이터 컬럼 유틸
 type MetadataColumns = "__fulltext__" | "__virtual__";
@@ -174,8 +174,6 @@ export type OnConflictAction<TTables extends Record<string, unknown>> =
         | WhereCondition<TTables>; // 객체 형태 - { name: "John", count: Puri.rawNumber(...) }
     };
 
-// FK 컬럼만 추출하는 유틸리티 타입
+// FK 컬럼명 추출 유틸리티 타입 - DatabaseForeignKeys 활용
 export type ForeignKeyColumns<TTable extends TableName<DatabaseSchemaExtend>> =
-  `__fk_${TTable & string}` extends keyof DatabaseSchemaExtend
-    ? DatabaseSchemaExtend[`__fk_${TTable & string}`]
-    : Extract<keyof DatabaseSchemaExtend[TTable], `${string}_id`>;
+  TTable extends keyof DatabaseForeignKeys ? DatabaseForeignKeys[TTable] : never;

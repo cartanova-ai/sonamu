@@ -1136,6 +1136,8 @@ export type RelationNode = {
 
 // biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
 export interface DatabaseSchemaExtend {}
+// biome-ignore lint/suspicious/noEmptyInterface: sonamu.generated.sso 에서 확장을 위해 준비된 빈 인터페이스
+export interface DatabaseForeignKeys {}
 export type ManyToManyBaseSchema<FromIdKey extends string, ToIdKey extends string> = {
   id: number;
 } & {

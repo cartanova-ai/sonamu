@@ -447,7 +447,10 @@ declare module "sonamu" {
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
     project_tags: ManyToManyBaseSchema<"project", "tag">;
-    __fk_departments: DepartmentForeignKeys;
-    __fk_employees: EmployeeForeignKeys;
+  }
+
+  export interface DatabaseForeignKeys {
+    departments: DepartmentForeignKeys;
+    employees: EmployeeForeignKeys;
   }
 }

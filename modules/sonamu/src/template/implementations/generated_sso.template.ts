@@ -132,6 +132,7 @@ export class Template__generated_sso extends Template {
       return null;
     }
 
+    // DatabaseSchemaExtend - 테이블 스키마 타입 정의
     const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
     const joinTables = unique(
@@ -145,10 +146,13 @@ export class Template__generated_sso extends Template {
       (joinTable) => joinTable.table,
     );
 
-    // ForeignKey 메타데이터 추가
-    const fkMetadataLines = entities
-      .filter((entity) => this.getForeignKeyColumns(entity).length > 0)
-      .map((entity) => `__fk_${entity.table}: ${entity.id}ForeignKeys;`);
+    // DatabaseForeignKeys - FK 컬럼을 가진 테이블만 정의
+    const entitiesWithFk = entities.filter(
+      (entity) => this.getForeignKeyColumns(entity).length > 0,
+    );
+    const fkMetadataLines = entitiesWithFk.map(
+      (entity) => `${entity.table}: ${entity.id}ForeignKeys;`,
+    );
 
     return {
       label: `DatabaseSchema`,
@@ -160,6 +164,9 @@ export class Template__generated_sso extends Template {
           (joinTable) =>
             `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}">;`,
         ),
+        `  }`,
+        ``,
+        `  export interface DatabaseForeignKeys {`,
         ...fkMetadataLines,
         `  }`,
         `}`,
@@ -168,6 +175,7 @@ export class Template__generated_sso extends Template {
     };
   }
 
+  // FK 관계를 컬럼명으로 변환 (예: company → company_id)
   private getForeignKeyColumns(entity: Entity): string[] {
     return entity.props
       .filter((prop) => {
@@ -187,20 +195,21 @@ export class Template__generated_sso extends Template {
       return null;
     }
 
-    const fkTypeLines = entities.flatMap((entity) => {
-      const fkColumns = this.getForeignKeyColumns(entity);
+    // FK가 있는 엔티티만 타입 생성
+    const entitiesWithFk = entities.filter(
+      (entity) => this.getForeignKeyColumns(entity).length > 0,
+    );
 
-      if (fkColumns.length === 0) {
-        return [];
-      }
-
-      const fkTypeValue = fkColumns.map((col) => `"${col}"`).join(" | ");
-      return [`export type ${entity.id}ForeignKeys = ${fkTypeValue};`];
-    });
-
-    if (fkTypeLines.length === 0) {
+    if (entitiesWithFk.length === 0) {
       return null;
     }
+
+    const fkTypeLines = entitiesWithFk.map((entity) => {
+      const fkColumns = this.getForeignKeyColumns(entity);
+      const fkTypeValue = fkColumns.map((col) => `"${col}"`).join(" | ");
+
+      return `export type ${entity.id}ForeignKeys = ${fkTypeValue};`;
+    });
 
     return {
       label: `ForeignKey Types`,
