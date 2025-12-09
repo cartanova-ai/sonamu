@@ -155,7 +155,7 @@ describe("Upsert Builder", () => {
       // [expect] users 테이블의 email 유니크 인덱스 확인
       expectUB(ub, "uniqueIndexes", "users").toMatchObject([
         {
-          columns: ["email"],
+          columns: [{ name: "email" }],
           type: "unique",
         },
       ]);

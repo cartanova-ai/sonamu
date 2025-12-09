@@ -23,7 +23,7 @@
       "relationType": "OneToOne"
     }
   ],
-  "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": ["email"] }],
+  "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }],
   "subsets": {
     "A": [
       "id",

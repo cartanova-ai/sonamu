@@ -103,22 +103,30 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
   "indexes": [
     {
       "columns": [
-        "test_string_col",
+        {
+          "name": "test_string_col",
+        },
       ],
       "name": "idx_test_string_col",
       "type": "index",
     },
     {
       "columns": [
-        "test_enum_status",
+        {
+          "name": "test_enum_status",
+        },
       ],
       "name": "uq_test_enum_status",
       "type": "unique",
     },
     {
       "columns": [
-        "test_string_col",
-        "test_integer_nullable",
+        {
+          "name": "test_string_col",
+        },
+        {
+          "name": "test_integer_nullable",
+        },
       ],
       "name": "idx_composite",
       "type": "index",

@@ -263,8 +263,12 @@ describe("Migrator test", () => {
         ...original,
         indexes: [
           ...original.indexes,
-          { type: "index", columns: ["name"], name: "departments_name_index" },
-          { type: "unique", columns: ["company_id"], name: "departments_company_id_unique" },
+          { type: "index", columns: [{ name: "name" }], name: "departments_name_index" },
+          {
+            type: "unique",
+            columns: [{ name: "company_id" }],
+            name: "departments_company_id_unique",
+          },
         ],
       }));
       const status = await migrator.getStatus();

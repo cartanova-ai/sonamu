@@ -39,7 +39,7 @@
     {
       "type": "unique",
       "name": "departments_company_id_name_unique",
-      "columns": ["company_id", "name"]
+      "columns": [{"name": "company_id"}, {"name": "name"}]
     }
   ],
   "subsets": {

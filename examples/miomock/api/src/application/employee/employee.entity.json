@@ -52,7 +52,7 @@
     {
       "type": "unique",
       "name": "employees_user_id_employee_number_unique",
-      "columns": ["user_id", "employee_number"]
+      "columns": [{"name": "user_id"}, {"name": "employee_number"}]
     }
   ],
   "subsets": {

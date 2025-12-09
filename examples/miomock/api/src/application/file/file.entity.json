@@ -9,7 +9,7 @@
     { "name": "name", "desc": "FILE명", "type": "string", "length": 128 },
     { "name": "url", "desc": "URL", "type": "string", "length": 255 }
   ],
-  "indexes": [{ "type": "unique", "name": "files_url_unique", "columns": ["url"] }],
+  "indexes": [{ "type": "unique", "name": "files_url_unique", "columns": [{ "name": "url" }] }],
   "subsets": { "A": ["id", "created_at", "mime_type", "name", "url"] },
   "enums": { "FileOrderBy": { "id-desc": "ID최신순" }, "FileSearchField": { "id": "ID" } }
 }
