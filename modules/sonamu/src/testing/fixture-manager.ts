@@ -755,7 +755,7 @@ export class FixtureManagerClass {
     const _uniqueIndexes = entity.indexes?.filter((i) => i.type === "unique") ?? [];
 
     const uniqueIndexes = _uniqueIndexes.filter((index) =>
-      index.columns.every((column) => !column.startsWith(`${entity.table}__`)),
+      index.columns.every((column) => !column.name.startsWith(`${entity.table}__`)),
     );
     if (uniqueIndexes.length === 0) {
       return null;
@@ -767,7 +767,7 @@ export class FixtureManagerClass {
     for (const index of uniqueIndexes) {
       // 컬럼 중 하나라도 null이면 유니크 제약을 위반하지 않기 때문에 해당 인덱스는 무시
       const containsNull = index.columns.some((column) => {
-        const field = column.replace(/_id$/, "");
+        const field = column.name.replace(/_id$/, "");
         return fixture.columns[field]?.value === null;
       });
       if (containsNull) {
@@ -776,12 +776,12 @@ export class FixtureManagerClass {
 
       uniqueQuery = uniqueQuery.orWhere((qb) => {
         for (const column of index.columns) {
-          const field = column.replace(/_id$/, "");
+          const field = column.name.replace(/_id$/, "");
 
           if (Array.isArray(fixture.columns[field]?.value)) {
-            qb.whereIn(column, fixture.columns[field].value);
+            qb.whereIn(column.name, fixture.columns[field].value);
           } else {
-            qb.andWhere(column, fixture.columns[field]?.value);
+            qb.andWhere(column.name, fixture.columns[field]?.value);
           }
         }
       });

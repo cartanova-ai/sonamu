@@ -146,13 +146,13 @@ function genIndexDefinition(index: MigrationIndex, table: string) {
   };
 
   if (index.type === "fulltext" && index.parser === "ngram") {
-    return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${index.name} (${index.columns.join(
-      ", ",
-    )}) WITH PARSER ngram\`);`;
+    return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${index.name} (${index.columns
+      .map((col) => col.name)
+      .join(", ")}) WITH PARSER ngram\`);`;
   }
 
   return `table.${methodMap[index.type]}([${index.columns
-    .map((col) => `'${col}'`)
+    .map((col) => `'${col.name}'`)
     .join(",")}], '${index.name}'${index.type === "fulltext" ? ", 'FULLTEXT'" : ""}
   );`;
 }
@@ -277,8 +277,8 @@ async function generateAlterCode_ColumnAndIndexes(
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
     (index) =>
-      index.columns.every((colName) =>
-        alterColumnsTo.drop.map((col) => col.name).includes(colName),
+      index.columns.every(({ name }) =>
+        alterColumnsTo.drop.map((col) => col.name).includes(name),
       ) === false,
   );
 
@@ -339,8 +339,8 @@ async function generateAlterCode_ColumnAndIndexes(
     ...alterIndexesTo.add
       .filter(
         (index) =>
-          index.columns.every((colName) =>
-            alterColumnsTo.add.map((col) => col.name).includes(colName),
+          index.columns.every((indexCol) =>
+            alterColumnsTo.add.map((col) => col.name).includes(indexCol.name),
           ) === false,
       )
       .map(genIndexDropDefinition),
@@ -513,8 +513,12 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
     drop: [] as MigrationIndex[],
   };
   const extraIndexes = {
-    db: diff(dbIndexes, entityIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
-    entity: diff(entityIndexes, dbIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
+    db: diff(dbIndexes, entityIndexes, (col) =>
+      [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
+    ),
+    entity: diff(entityIndexes, dbIndexes, (col) =>
+      [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
+    ),
   };
   if (extraIndexes.entity.length > 0) {
     indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
@@ -537,7 +541,7 @@ function genIndexDropDefinition(index: MigrationIndex) {
   };
 
   return `table.drop${methodMap[index.type]}([${index.columns
-    .map((columnName) => `'${columnName}'`)
+    .map((column) => `'${column.name}'`)
     .join(",")}], '${index.name}')`;
 }
 
@@ -724,12 +728,9 @@ export async function generateAlterCode(
         console.debug({ entityColumn, dbColumn });
          */
 
-  const entityIndexes = alphabetical(entitySet.indexes, (a) =>
-    [a.type, ...a.columns].join("-"),
-  );
-  const dbIndexes = alphabetical(dbSet.indexes, (a) =>
-    [a.type, ...a.columns].join("-"),
-  );
+  // ?
+  const entityIndexes = alphabetical(entitySet.indexes, (a) => [a.type, ...a.columns].join("-"));
+  const dbIndexes = alphabetical(dbSet.indexes, (a) => [a.type, ...a.columns].join("-"));
 
   const replaceNoActionOnMySQL = (f: MigrationForeign) => {
     // MySQL에서 RESTRICT와 NO ACTION은 동일함
@@ -756,7 +757,19 @@ export async function generateAlterCode(
   // 1. columnsAndIndexes 처리
   const isEqualColumns = equal(entityColumns, dbColumns);
   const isEqualIndexes = equal(
-    entityIndexes.map((index) => omit(index, ["parser"])),
+    entityIndexes
+      .map((index) => omit(index, ["parser"]))
+      .map((index) => {
+        return {
+          ...index,
+          columns: index.columns.map((col) => ({
+            ...col,
+            nullsFirst: col.nullsFirst ?? false,
+            sortOrder: col.sortOrder ?? "ASC",
+          })),
+          nullsNotDistinct: index.nullsNotDistinct ?? false,
+        };
+      }),
     dbIndexes,
   );
   if (!isEqualColumns || !isEqualIndexes) {

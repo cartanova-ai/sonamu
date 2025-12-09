@@ -904,7 +904,7 @@ export class Entity {
 
     // 현재 엔티티의 인덱스에서 제외
     for (const index of EntityManager.get(this.id).indexes) {
-      index.columns = index.columns.filter((col) => col !== oldName);
+      index.columns = index.columns.filter((col) => col.name !== oldName);
     }
 
     // 프롭 삭제

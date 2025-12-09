@@ -786,7 +786,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </Table.Cell>
                       <Table.Cell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
-                          <Label key={colIndex}>{col}</Label>
+                          <Label key={colIndex}>{col.name}</Label>
                         ))}
                       </Table.Cell>
                     </Table.Row>
