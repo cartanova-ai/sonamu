@@ -99,7 +99,7 @@ export type FulltextColumns<TTables extends Record<string, any>> = {
 }[keyof TTables];
 
 // 비교 연산자
-export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
+export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=" | "is not" | "is";
 
 // SQL Expression 타입 정의
 export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> = {
