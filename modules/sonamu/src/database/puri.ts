@@ -362,6 +362,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     operator: ComparisonOperator | "like" | "not like",
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
+  // WHERE: SQL 표현식 - 사용: .where(puri.raw("CONCAT(u.name, u.email)"), "like", "%test%")
+  where<TColumn extends Knex.Raw>(
+    column: TColumn,
+    operator: ComparisonOperator | "like" | "not like",
+    value: any,
+  ): this;
   // WHERE: 컬럼 - 사용: .where("u.id", "like", "%test%")
   where(...args: [columnOrConditions: any, operatorOrValue?: any, value?: any]): this {
     const [columnOrConditions, operatorOrValue, value] = args;
@@ -752,6 +758,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   }
 }
 
+// JOIN 절 그룹에는 Left와 Right에 대한 순서가 필요하지 않으므로, 모든 경우의 수를 계산해야함.
 export class JoinClauseGroup<
   TLeft extends Record<string, any>,
   TRight extends Record<string, any>,
@@ -760,14 +767,41 @@ export class JoinClauseGroup<
 
   // ON(AND): 컬럼 = 컬럼
   on(left: AvailableColumns<TLeft>, right: AvailableColumns<TRight>): this;
+  on(left: AvailableColumns<TRight>, right: AvailableColumns<TLeft>): this;
+  // ON(AND): 컬럼 = 값
+  on(
+    left: AvailableColumns<TLeft>,
+    right: ExtractColumnType<TLeft, AvailableColumns<TLeft> & string>,
+  ): this;
+  on(
+    left: AvailableColumns<TRight>,
+    right: ExtractColumnType<TRight, AvailableColumns<TRight> & string>,
+  ): this;
   // ON(AND): 컬럼 (연산자) 컬럼
   on(
     left: AvailableColumns<TLeft>,
     operator: ComparisonOperator,
     right: AvailableColumns<TRight>,
   ): this;
+  on(
+    left: AvailableColumns<TRight>,
+    operator: ComparisonOperator,
+    right: AvailableColumns<TLeft>,
+  ): this;
+  // ON(AND): 컬럼 (연산자) 값
+  on(
+    left: AvailableColumns<TLeft>,
+    operator: ComparisonOperator,
+    right: ExtractColumnType<TLeft, AvailableColumns<TLeft> & string>,
+  ): this;
+  on(
+    left: AvailableColumns<TRight>,
+    operator: ComparisonOperator,
+    right: ExtractColumnType<TRight, AvailableColumns<TRight> & string>,
+  ): this;
   // ON(AND): 콜백
   on(callback: (nested: JoinClauseGroup<TLeft, TRight>) => void): this;
+  on(callback: (nested: JoinClauseGroup<TRight, TLeft>) => void): this;
   // ON(AND) 구현
   on(...args: any[]): this {
     this.callback.on(...(args as [string, string]));
@@ -776,14 +810,41 @@ export class JoinClauseGroup<
 
   // ON(OR): 컬럼 = 컬럼
   orOn(left: AvailableColumns<TLeft>, right: AvailableColumns<TRight>): this;
+  orOn(left: AvailableColumns<TRight>, right: AvailableColumns<TLeft>): this;
+  // ON(OR): 컬럼 = 값
+  orOn(
+    left: AvailableColumns<TLeft>,
+    right: ExtractColumnType<TLeft, AvailableColumns<TLeft> & string>,
+  ): this;
+  orOn(
+    left: AvailableColumns<TRight>,
+    right: ExtractColumnType<TRight, AvailableColumns<TRight> & string>,
+  ): this;
   // ON(OR): 컬럼 (연산자) 컬럼
   orOn(
     left: AvailableColumns<TLeft>,
     operator: ComparisonOperator,
     right: AvailableColumns<TRight>,
   ): this;
+  orOn(
+    left: AvailableColumns<TRight>,
+    operator: ComparisonOperator,
+    right: AvailableColumns<TLeft>,
+  ): this;
+  // ON(OR): 컬럼 (연산자) 값
+  orOn(
+    left: AvailableColumns<TLeft>,
+    operator: ComparisonOperator,
+    right: ExtractColumnType<TLeft, AvailableColumns<TLeft> & string>,
+  ): this;
+  orOn(
+    left: AvailableColumns<TRight>,
+    operator: ComparisonOperator,
+    right: ExtractColumnType<TRight, AvailableColumns<TRight> & string>,
+  ): this;
   // ON(OR): 콜백
   orOn(callback: (nested: JoinClauseGroup<TLeft, TRight>) => void): this;
+  orOn(callback: (nested: JoinClauseGroup<TRight, TLeft>) => void): this;
   // ON(OR) 구현
   orOn(...args: any[]): this {
     this.callback.orOn(...(args as [string, string]));
