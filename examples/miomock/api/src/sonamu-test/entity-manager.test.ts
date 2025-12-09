@@ -511,7 +511,7 @@ describe("entityManager", () => {
       it("정상적인 index", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "index", name: "companies_name_index", columns: ["name"] }],
+          indexes: [{ type: "index", name: "companies_name_index", columns: [{ name: "name" }] }],
         };
         const errors = EntityManager.schemaValidate(json);
         expect(errors).toBeNull();
@@ -520,7 +520,9 @@ describe("entityManager", () => {
       it("index type이 잘못된 경우", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "invalidType", name: "companies_name_index", columns: ["name"] }],
+          indexes: [
+            { type: "invalidType", name: "companies_name_index", columns: [{ name: "name" }] },
+          ],
         };
         const errors = EntityManager.schemaValidate(json);
 
@@ -548,7 +550,7 @@ describe("entityManager", () => {
       it("index name 누락", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "index", columns: ["name"] }],
+          indexes: [{ type: "index", columns: [{ name: "name" }] }],
         };
         const errors = EntityManager.schemaValidate(json);
         expect(errors?.issues).toHaveLength(1);
@@ -565,7 +567,7 @@ describe("entityManager", () => {
             {
               type: "index",
               name: "companies_name_index",
-              columns: ["name"],
+              columns: [{ name: "name" }],
               unknownField: "test",
             },
           ],

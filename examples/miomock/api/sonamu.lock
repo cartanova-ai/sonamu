@@ -1,7 +1,7 @@
 [
   {
     "path": "src/application/company/company.entity.json",
-    "checksum": "10b404edd84f92ab138b0a48727cb5ab9ba4cb71"
+    "checksum": "6b911429e3bf562dc86919c99657a8c9e0fe15b3"
   },
   {
     "path": "src/application/company/company.model.ts",
@@ -13,7 +13,7 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "f106e2ed1fd7c935020111ebbc300b948ce9f342"
+    "checksum": "19f1e3259d19ead4d7d08e7cb3a6b312ef742486"
   },
   {
     "path": "src/application/department/department.model.ts",
@@ -25,7 +25,7 @@
   },
   {
     "path": "src/application/employee/employee.entity.json",
-    "checksum": "060ef5edfc9bc8a5be94257408814445f4e7372f"
+    "checksum": "199325a330a4e6e56fab31c23059b693411eb17a"
   },
   {
     "path": "src/application/employee/employee.model.ts",
@@ -37,7 +37,7 @@
   },
   {
     "path": "src/application/file/file.entity.json",
-    "checksum": "41a4706d8ea70b84401a6dfaa4744d415ec460ef"
+    "checksum": "c87bdf09e0c26cb3692cac20ccd6ced880c120aa"
   },
   {
     "path": "src/application/file/file.model.ts",
@@ -89,7 +89,7 @@
   },
   {
     "path": "src/application/user/user.entity.json",
-    "checksum": "984e376970763ee0ea51b9c52f03f4536284e7f8"
+    "checksum": "4a577190bbdf7dbbc3b8e7fa10a6198714fc8ee2"
   },
   {
     "path": "src/application/user/user.model.ts",

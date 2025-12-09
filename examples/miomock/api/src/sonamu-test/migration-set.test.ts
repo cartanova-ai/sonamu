@@ -127,7 +127,7 @@ describe("migration-set.ts", () => {
       expect(autoUUIDCol).toBeUndefined();
 
       const uniqueUUIDIndex = result.indexes.find(
-        (idx) => idx.type === "unique" && idx.columns.includes("uuid"),
+        (idx) => idx.type === "unique" && idx.columns.find((c) => c.name === "uuid"),
       );
       expect(uniqueUUIDIndex).toBeUndefined();
     });
@@ -140,11 +140,11 @@ describe("migration-set.ts", () => {
       // then
       expect(result.indexes).toEqual(
         expect.arrayContaining([
-          { type: "index", columns: ["test_string_col"], name: "idx_test_string_col" },
-          { type: "unique", columns: ["test_enum_status"], name: "uq_test_enum_status" },
+          { type: "index", columns: [{ name: "test_string_col" }], name: "idx_test_string_col" },
+          { type: "unique", columns: [{ name: "test_enum_status" }], name: "uq_test_enum_status" },
           {
             type: "index",
-            columns: ["test_string_col", "test_integer_nullable"],
+            columns: [{ name: "test_string_col" }, { name: "test_integer_nullable" }],
             name: "idx_composite",
           },
         ]),

@@ -141,11 +141,11 @@ export const MigrationSetTestEntity = () =>
       },
     ],
     indexes: [
-      { type: "index", columns: ["test_string_col"], name: "idx_test_string_col" },
-      { type: "unique", columns: ["test_enum_status"], name: "uq_test_enum_status" },
+      { type: "index", columns: [{ name: "test_string_col" }], name: "idx_test_string_col" },
+      { type: "unique", columns: [{ name: "test_enum_status" }], name: "uq_test_enum_status" },
       {
         type: "index",
-        columns: ["test_string_col", "test_integer_nullable"],
+        columns: [{ name: "test_string_col" }, { name: "test_integer_nullable" }],
         name: "idx_composite",
       },
     ],
