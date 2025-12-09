@@ -88,11 +88,6 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
         r.joinTables.push({
           table: through.from.split(".")[0],
           indexes: [
-            {
-              type: "unique",
-              columns: ["uuid"],
-              name: `${through.from.split(".")[0]}_uuid_unique`,
-            },
             // 조인 테이블에 걸린 인덱스 찾아와서 연결
             ...entity.indexes
               .filter((index) => index.columns.find((col) => col.includes(`${prop.joinTable}.`)))
@@ -114,11 +109,6 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
                 nullable: false,
               } as MigrationColumn;
             }),
-            {
-              name: "uuid",
-              nullable: true,
-              type: "uuid",
-            },
           ],
           foreigns: fields.map((field) => {
             // 현재 필드가 어떤 테이블에 속하는지 판단
@@ -175,18 +165,6 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
   migrationSet.indexes = entity.indexes.filter((index) =>
     index.columns.find((col) => col.includes(".") === false),
   );
-
-  // uuid
-  migrationSet.columns = migrationSet.columns.concat({
-    name: "uuid",
-    nullable: true,
-    type: "uuid",
-  } as MigrationColumn);
-  migrationSet.indexes = migrationSet.indexes.concat({
-    type: "unique",
-    columns: ["uuid"],
-    name: `${entity.table}_uuid_unique`,
-  } as MigrationIndex);
 
   return migrationSet;
 }

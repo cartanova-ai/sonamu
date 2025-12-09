@@ -112,24 +112,24 @@ describe("migration-set.ts", () => {
       );
       expect(manyToManyJoinTable).toBeDefined();
       expect(manyToManyJoinTable?.columns.map((c) => c.name)).toEqual(
-        expect.arrayContaining(["id", "migration_set_test_id", "tag_id", "uuid"]),
+        expect.arrayContaining(["id", "migration_set_test_id", "tag_id"]),
       );
       expect(manyToManyJoinTable?.foreigns).toHaveLength(2);
     });
 
-    test("UUID 컬럼과 유니크 인덱스가 자동 추가되어야 한다", () => {
+    test("FIXED: 2025-12-09 UUID 컬럼과 유니크 인덱스가 자동 추가되지 않아야 한다.", () => {
       // when
       const entity = EntityManager.get("MigrationSetTest");
       const result = getMigrationSetFromEntity(entity);
 
       // then
       const autoUUIDCol = result.columns.find((c) => c.name === "uuid");
-      expect(autoUUIDCol).toMatchObject({ type: "uuid", nullable: true });
+      expect(autoUUIDCol).toBeUndefined();
 
       const uniqueUUIDIndex = result.indexes.find(
         (idx) => idx.type === "unique" && idx.columns.includes("uuid"),
       );
-      expect(uniqueUUIDIndex).toBeDefined();
+      expect(uniqueUUIDIndex).toBeUndefined();
     });
 
     test("인덱스가 올바르게 변환되어야 한다", () => {

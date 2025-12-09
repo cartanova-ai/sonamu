@@ -500,8 +500,10 @@ describe("Migrator test", () => {
       // 생성된 조인테이블의 컬럼 user_id, label_id, uuid
       expect(createJoinTableCode?.formatted).toContain("user_id");
       expect(createJoinTableCode?.formatted).toContain("label_id");
-      expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
-      expect(createJoinTableCode?.formatted).toContain(
+
+      // FIXED: 2025-12-09 uuid 없어야 함
+      expect(createJoinTableCode?.formatted).not.toContain('table.uuid("uuid")');
+      expect(createJoinTableCode?.formatted).not.toContain(
         'table.unique(["uuid"], "users__labels_uuid_unique")',
       );
 

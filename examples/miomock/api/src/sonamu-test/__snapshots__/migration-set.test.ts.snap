@@ -81,11 +81,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "nullable": false,
       "type": "integer",
     },
-    {
-      "name": "uuid",
-      "nullable": true,
-      "type": "uuid",
-    },
   ],
   "foreigns": [
     {
@@ -128,13 +123,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "name": "idx_composite",
       "type": "index",
     },
-    {
-      "columns": [
-        "uuid",
-      ],
-      "name": "migration_set_tests_uuid_unique",
-      "type": "unique",
-    },
   ],
   "joinTables": [
     {
@@ -153,11 +141,6 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
           "name": "tag_id",
           "nullable": false,
           "type": "integer",
-        },
-        {
-          "name": "uuid",
-          "nullable": true,
-          "type": "uuid",
         },
       ],
       "foreigns": [
@@ -178,15 +161,7 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
           "to": "tags.id",
         },
       ],
-      "indexes": [
-        {
-          "columns": [
-            "uuid",
-          ],
-          "name": "migration_set_tests__tags_uuid_unique",
-          "type": "unique",
-        },
-      ],
+      "indexes": [],
       "table": "migration_set_tests__tags",
     },
   ],

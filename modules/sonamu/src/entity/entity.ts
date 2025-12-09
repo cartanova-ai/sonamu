@@ -524,8 +524,8 @@ export class Entity {
       // 일반 prop 처리
       if (key === "") {
         return group.map((propName) => {
-          // uuid 개별 처리
-          if (propName === "uuid") {
+          // FIXME: 이거 나중에 없애야함
+          if (propName === "말도안되는프롭명__이거왜타입처리가꼬여서이러지?") {
             return {
               nodeType: "plain" as const,
               prop: {
