@@ -4,7 +4,11 @@ import { unique } from "radashi";
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
-import { isManyToManyRelationProp } from "../../types/types";
+import {
+  isBelongsToOneRelationProp,
+  isManyToManyRelationProp,
+  isOneToOneRelationProp,
+} from "../../types/types";
 import { Template } from "../template";
 import type { SourceCode } from "./generated.template";
 
@@ -71,6 +75,12 @@ export class Template__generated_sso extends Template {
       return [puriSubsetQuery, puriLoaderQuery];
     });
 
+    // ForeignKey 타입 생성
+    const fkTypeSourceCode = this.getForeignKeyTypeSourceCode(entities);
+    if (fkTypeSourceCode) {
+      sourceCodes.push(fkTypeSourceCode);
+    }
+
     // DatabaseSchema 생성
     const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
     if (dbSchemaSourceCode) {
@@ -114,7 +124,10 @@ export class Template__generated_sso extends Template {
     };
   }
 
-  getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
+  //===============================================
+  // private Helper Methods
+  //===============================================
+  private getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
     if (entities.length === 0) {
       return null;
     }
@@ -132,6 +145,11 @@ export class Template__generated_sso extends Template {
       (joinTable) => joinTable.table,
     );
 
+    // ForeignKey 메타데이터 추가
+    const fkMetadataLines = entities
+      .filter((entity) => this.getForeignKeyColumns(entity).length > 0)
+      .map((entity) => `__fk_${entity.table}: ${entity.id}ForeignKeys;`);
+
     return {
       label: `DatabaseSchema`,
       lines: [
@@ -142,10 +160,52 @@ export class Template__generated_sso extends Template {
           (joinTable) =>
             `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}">;`,
         ),
+        ...fkMetadataLines,
         `  }`,
         `}`,
       ],
       importKeys: entities.map((entity) => `${entity.id}BaseSchema`),
+    };
+  }
+
+  private getForeignKeyColumns(entity: Entity): string[] {
+    return entity.props
+      .filter((prop) => {
+        if (isBelongsToOneRelationProp(prop)) {
+          return true;
+        }
+        if (isOneToOneRelationProp(prop) && prop.hasJoinColumn) {
+          return true;
+        }
+        return false;
+      })
+      .map((prop) => `${prop.name}_id`);
+  }
+
+  private getForeignKeyTypeSourceCode(entities: Entity[]): SourceCode | null {
+    if (entities.length === 0) {
+      return null;
+    }
+
+    const fkTypeLines = entities.flatMap((entity) => {
+      const fkColumns = this.getForeignKeyColumns(entity);
+
+      if (fkColumns.length === 0) {
+        return [];
+      }
+
+      const fkTypeValue = fkColumns.map((col) => `"${col}"`).join(" | ");
+      return [`export type ${entity.id}ForeignKeys = ${fkTypeValue};`];
+    });
+
+    if (fkTypeLines.length === 0) {
+      return null;
+    }
+
+    return {
+      label: `ForeignKey Types`,
+      lines: fkTypeLines,
+      importKeys: [],
     };
   }
 }
