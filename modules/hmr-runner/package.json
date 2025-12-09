@@ -20,10 +20,11 @@
     "clean": "del-cli build",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext=.ts",
+    "lint": "biome check",
+    "format": "biome format --write",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
     "test": "c8 pnpm quick:test",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm lint && pnpm build"
   },
   "dependencies": {
     "@adonisjs/ace": "^13.3.0",
