@@ -100,6 +100,6 @@
   },
   "peerDependencies": {
     "@sonamu-kit/react-sui": "^0.1.17",
-    "sonamu": "^0.7.0"
+    "sonamu": "^0.7.2"
   }
 }
