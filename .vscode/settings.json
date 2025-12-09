@@ -2,8 +2,7 @@
   "search.exclude": {
     "**/.yarn": true,
     "**/.pnp.*": true,
-    "**/node_modules": true,
-    "**/modules/create-sonamu/**/*": true
+    "**/node_modules": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.formatOnSave": true,
