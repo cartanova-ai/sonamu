@@ -1,5 +1,5 @@
 {
-  "name": "sonamu-project-web",
+  "name": "create-sonamu-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -11,26 +11,20 @@
   "dependencies": {
     "@sonamu-kit/react-sui": "^0.1.17",
     "axios": "^1.13.2",
-    "classnames": "^2.5.1",
     "dotenv": "^17.2.3",
     "jotai": "^2.14.0",
-    "radashi": "^12.2.0",
-    "luxon": "^3.7.2",
-    "prop-types": "^15.8.1",
     "qs": "^6.14.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.3.0",
-    "react-semantic-ui-datepickers": "^2.17.2",
     "semantic-ui-css": "^2.5.0",
     "semantic-ui-react": "^2.1.5",
     "swr": "^2.3.6",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "classnames": "^2.5.1"
   },
   "devDependencies": {
-    "@types/luxon": "^3",
     "@types/node": "24.5.0",
-    "@types/prop-types": "^15.7.15",
     "@types/qs": "^6.14.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
