@@ -146,15 +146,15 @@ function genIndexDefinition(index: MigrationIndex, table: string) {
   };
 
   if (index.type === "fulltext" && index.parser === "ngram") {
-    const indexName = `${table}_${index.columns.join("_")}_index`;
-    return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${indexName} (${index.columns.join(
+    return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${index.name} (${index.columns.join(
       ", ",
     )}) WITH PARSER ngram\`);`;
   }
 
   return `table.${methodMap[index.type]}([${index.columns
     .map((col) => `'${col}'`)
-    .join(",")}]${index.type === "fulltext" ? ", undefined, 'FULLTEXT'" : ""})`;
+    .join(",")}], '${index.name}'${index.type === "fulltext" ? ", 'FULLTEXT'" : ""}
+  );`;
 }
 
 /**
@@ -308,6 +308,8 @@ async function generateAlterCode_ColumnAndIndexes(
     "indexNeedsToDrop.length": indexNeedsToDrop.length,
   });
   // Naite.t("migrator:generateAlterCode_ColumnAndIndexes:alterColumnsTo", alterColumnsTo);
+
+  // TODO: 인덱스명 변경된 경우 처리
 
   const lines: string[] = [
     'import { Knex } from "knex";',
@@ -536,7 +538,7 @@ function genIndexDropDefinition(index: MigrationIndex) {
 
   return `table.drop${methodMap[index.type]}([${index.columns
     .map((columnName) => `'${columnName}'`)
-    .join(",")}])`;
+    .join(",")}], '${index.name}')`;
 }
 
 /**

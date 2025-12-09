@@ -91,6 +91,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
             {
               type: "unique",
               columns: ["uuid"],
+              name: `${through.from.split(".")[0]}_uuid_unique`,
             },
             // 조인 테이블에 걸린 인덱스 찾아와서 연결
             ...entity.indexes
@@ -184,6 +185,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
   migrationSet.indexes = migrationSet.indexes.concat({
     type: "unique",
     columns: ["uuid"],
+    name: `${entity.table}_uuid_unique`,
   } as MigrationIndex);
 
   return migrationSet;
