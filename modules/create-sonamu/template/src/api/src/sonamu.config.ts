@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { defineConfig, FSDriver, S3Driver } from "sonamu";
 
 const host = "localhost";
