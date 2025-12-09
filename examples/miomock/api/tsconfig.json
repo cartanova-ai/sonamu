@@ -42,7 +42,7 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src/**/*.ts", "src/**/*.json"],
+  "include": ["src/**/*.ts", "src/**/*.json", "sonamu.config.ts"],
   "exclude": [
     "node_modules",
     "dist/*",
