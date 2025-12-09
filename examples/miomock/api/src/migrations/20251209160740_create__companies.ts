@@ -1,23 +1,20 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("departments", (table) => {
+  await knex.schema.createTable("companies", (table) => {
     // columns
     table.increments().primary();
     table
       .timestamp("created_at", { useTz: true })
       .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
-    table.string("name", 128).notNullable();
-    table.integer("company_id").notNullable();
-    table.integer("parent_id").nullable();
-    table.uuid("uuid").nullable();
+    table.text("name").notNullable();
 
     // indexes
-    table.unique(["uuid"]);
+    table.unique(["name"], "companies_name_unique");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("departments");
+  return knex.schema.dropTable("companies");
 }

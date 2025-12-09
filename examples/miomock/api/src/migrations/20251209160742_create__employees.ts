@@ -14,11 +14,9 @@ export async function up(knex: Knex): Promise<void> {
     table.decimal("salary", 10, 2).nullable();
     table.timestamp("hire_date", { useTz: true }).nullable();
     table.text("notes").nullable();
-    table.uuid("uuid").nullable();
 
     // indexes
-    table.unique(["user_id", "employee_number"]);
-    table.unique(["uuid"]);
+    table.unique(["user_id", "employee_number"], "employees_user_id_employee_number_unique");
   });
 }
 

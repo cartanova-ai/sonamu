@@ -13,11 +13,9 @@ export async function up(knex: Knex): Promise<void> {
     table.text("description").nullable();
     table.decimal("budget", 12, 2).nullable();
     table.timestamp("deadline", { useTz: true }).nullable();
-    table.jsonb("image_urls").nullable();
-    table.uuid("uuid").nullable();
+    table.specificType("image_urls", "text[]").nullable();
 
     // indexes
-    table.unique(["uuid"]);
   });
 }
 

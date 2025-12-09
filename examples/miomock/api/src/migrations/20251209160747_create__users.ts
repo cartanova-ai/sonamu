@@ -17,11 +17,9 @@ export async function up(knex: Knex): Promise<void> {
     table.text("bio").nullable();
     table.boolean("is_verified").notNullable().defaultTo(knex.raw("false"));
     table.timestamp("deleted_at", { useTz: true }).nullable();
-    table.uuid("uuid").nullable();
 
     // indexes
-    table.unique(["email"]);
-    table.unique(["uuid"]);
+    table.unique(["email"], "users_email_unique");
   });
 }
 

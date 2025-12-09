@@ -16,10 +16,8 @@ export async function up(knex: Knex): Promise<void> {
     table.boolean("is_active").notNullable().defaultTo(knex.raw("false"));
     table.text("description").nullable();
     table.jsonb("tags").nullable();
-    table.uuid("uuid").nullable();
 
     // indexes
-    table.unique(["uuid"]);
   });
 }
 

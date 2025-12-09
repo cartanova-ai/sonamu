@@ -1,18 +1,16 @@
 import type { Knex } from "knex";
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable("project_tags", (table) => {
+  await knex.schema.createTable("projects__employees", (table) => {
     // columns
     table.increments().primary();
+    table.integer("employee_id").notNullable();
     table.integer("project_id").notNullable();
-    table.integer("tag_id").notNullable();
-    table.uuid("uuid").nullable();
 
     // indexes
-    table.unique(["uuid"]);
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.dropTable("project_tags");
+  return knex.schema.dropTable("projects__employees");
 }
