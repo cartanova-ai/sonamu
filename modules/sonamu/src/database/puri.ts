@@ -47,7 +47,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       if (typeof spec === "string") {
         this.knexQuery = this.knex(spec).from({ [alias]: spec });
       } else if (spec instanceof Puri) {
-        const subqueryBuilder = spec.raw();
+        const subqueryBuilder = spec.rawQuery();
         this.knexQuery = this.knex.from(subqueryBuilder.as(alias));
       } else {
         throw new Error("Invalid table specification");
@@ -331,13 +331,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
         if (args.length === 1 && typeof args[0] === "function") {
           // Callback
           const callback = args[0];
-          this.knexQuery[joinType](spec.raw().as(alias), (joinClause) => {
+          this.knexQuery[joinType](spec.rawQuery().as(alias), (joinClause) => {
             callback(new JoinClauseGroup(joinClause));
           });
         } else {
           // Simple
           const [left, right] = args;
-          this.knexQuery[joinType](spec.raw().as(alias), left, right);
+          this.knexQuery[joinType](spec.rawQuery().as(alias), left, right);
         }
       } else {
         throw new Error("Invalid table specification");
@@ -688,8 +688,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return indentedLines.join("\n").trim();
   }
 
+  raw(sql: string): Knex.Raw {
+    return this.knex.raw(sql);
+  }
+
   // Knex 쿼리 빌더 직접 접근
-  raw(): Knex.QueryBuilder {
+  rawQuery(): Knex.QueryBuilder {
     return this.knexQuery;
   }
 }
