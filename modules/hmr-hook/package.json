@@ -30,7 +30,7 @@
   "scripts": {
     "clean": "rm -rf build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext=.ts",
+    "lint": "biome check",
     "format": "biome format --write",
     "quick:test": "node --import=./tsnode.esm.js --enable-source-maps bin/test.ts",
     "pretest": "pnpm lint",
