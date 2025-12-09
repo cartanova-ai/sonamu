@@ -45,7 +45,6 @@
     "@swc/cli": "^0.7.8",
     "@types/bcrypt": "^6",
     "@types/node": "^24.5.0",
-    "@typescript/native-preview": "^7.0.0-dev.20250923.1",
     "@vitest/coverage-v8": "^4.0.12",
     "node-sql-parser": "^5.3.13",
     "ts-node": "^10.9.2",
