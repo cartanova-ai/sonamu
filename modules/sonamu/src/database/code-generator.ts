@@ -38,8 +38,12 @@ export class CodeGenerator {
       drop: [] as MigrationIndex[],
     };
     const extraIndexes = {
-      db: diff(dbIndexes, entityIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
-      entity: diff(entityIndexes, dbIndexes, (col) => [col.type, col.columns.join("-")].join("//")),
+      db: diff(dbIndexes, entityIndexes, (col) =>
+        [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
+      ),
+      entity: diff(entityIndexes, dbIndexes, (col) =>
+        [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
+      ),
     };
     if (extraIndexes.entity.length > 0) {
       indexesTo.add = indexesTo.add.concat(extraIndexes.entity);

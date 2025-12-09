@@ -3,13 +3,14 @@ import type { Knex } from "knex";
 import { isArray, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
+import type { EntityIndex } from "../types/types";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 
 type TableData = {
   references: Set<string>;
   rows: Record<string, unknown>[];
-  uniqueIndexes: { name?: string; columns: string[] }[];
+  uniqueIndexes: EntityIndex[];
   uniquesMap: Map<string, string>;
 };
 export type UBRef = {
@@ -76,11 +77,11 @@ export class UpsertBuilder {
     const uniqueKeys = table.uniqueIndexes
       .map((unqIndex) => {
         const uniqueKeyArray = unqIndex.columns.map((unqCol) => {
-          const val = row[unqCol as keyof typeof row];
+          const val = row[unqCol.name as keyof typeof row];
           if (isRefField(val)) {
             return val.uuid;
           } else {
-            return row[unqCol as keyof typeof row] ?? randomUUID(); // nullable인 경우 uuid로 랜덤값 삽입
+            return row[unqCol.name as keyof typeof row] ?? randomUUID(); // nullable인 경우 uuid로 랜덤값 삽입
           }
         });
 
@@ -285,7 +286,7 @@ export class UpsertBuilder {
           resultRows = await wdb.insert(dataForDb).into(tableName).returning(selectFields);
         } else {
           // UPSERT 모드 - onConflict 사용
-          const conflictColumns = table.uniqueIndexes[0].columns;
+          const conflictColumns = table.uniqueIndexes[0].columns.map((c) => c.name);
           const updateColumns = Object.keys(dataForDb[0]).filter(
             (col) => !conflictColumns.includes(col),
           );

@@ -5,7 +5,7 @@ import inflection from "inflection";
 import path from "path";
 import { prettifyError } from "zod";
 import { Sonamu } from "../api/sonamu";
-import { type EntityJson, EntityJsonSchema } from "../types/types";
+import { type EntityIndex, type EntityJson, EntityJsonSchema } from "../types/types";
 import type { AbsolutePath } from "../utils/path-utils";
 import { Entity } from "./entity";
 
@@ -15,7 +15,7 @@ export type EntityNamesRecord = Record<
 >;
 type TableSpec = {
   name: string;
-  uniqueIndexes: { name?: string; columns: string[] }[];
+  uniqueIndexes: EntityIndex[];
 };
 class EntityManagerClass {
   private entities: Map<string, Entity> = new Map();

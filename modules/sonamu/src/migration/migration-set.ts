@@ -90,10 +90,16 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
           indexes: [
             // 조인 테이블에 걸린 인덱스 찾아와서 연결
             ...entity.indexes
-              .filter((index) => index.columns.find((col) => col.includes(`${prop.joinTable}.`)))
+              .filter((index) =>
+                index.columns.find((col) => col.name.includes(`${prop.joinTable}.`)),
+              )
               .map((index) => ({
                 ...index,
-                columns: index.columns.map((col) => col.replace(`${prop.joinTable}.`, "")),
+                columns: index.columns.map((col) => ({
+                  name: col.name.replace(`${prop.joinTable}.`, ""),
+                  nullsFirst: col.nullsFirst,
+                  sortOrder: col.sortOrder,
+                })),
               })),
           ],
           columns: [
@@ -163,7 +169,7 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
 
   // indexes
   migrationSet.indexes = entity.indexes.filter((index) =>
-    index.columns.find((col) => col.includes(".") === false),
+    index.columns.find((col) => col.name.includes(".") === false),
   );
 
   return migrationSet;

@@ -26,6 +26,9 @@ type PgIndex = {
   is_unique: boolean;
   is_primary: boolean;
   index_type: string;
+  nulls_first: boolean;
+  sort_order: "ASC" | "DESC";
+  nulls_not_distinct: boolean;
 };
 
 type PgForeign = {
@@ -110,7 +113,12 @@ class PostgreSQLSchemaReaderClass {
       return {
         type,
         name: indexName,
-        columns: currentIndexes.map((idx) => idx.column_name),
+        columns: currentIndexes.map((idx) => ({
+          name: idx.column_name,
+          nullsFirst: idx.nulls_first,
+          sortOrder: idx.sort_order,
+        })),
+        nullsNotDistinct: firstIndex.nulls_not_distinct,
       };
     });
 
@@ -179,12 +187,23 @@ class PostgreSQLSchemaReaderClass {
         a.attname as column_name,
         ix.indisunique as is_unique,
         ix.indisprimary as is_primary,
-        am.amname as index_type
+        am.amname as index_type,
+        -- NULLS FIRST/LAST 확인 (비트 연산)
+        (opt & 2) = 2 AS nulls_first,
+        -- ASC/DESC 확인
+        CASE 
+            WHEN (opt & 1) = 1 THEN 'DESC'
+            ELSE 'ASC'
+        END AS sort_order,
+        ix.indnullsnotdistinct AS nulls_not_distinct
       FROM pg_class t
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON i.oid = ix.indexrelid
-      JOIN pg_attribute a ON a.attrelid = t.oid
       JOIN pg_am am ON i.relam = am.oid
+        JOIN LATERAL unnest(ix.indkey, ix.indoption)
+            WITH ORDINALITY AS u(attnum, opt, ord) ON true
+        -- unnest에서 나온 attnum으로 직접 조인
+      JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = u.attnum
       WHERE t.relname = ?
         AND a.attnum = ANY(ix.indkey)
       ORDER BY i.relname, array_position(ix.indkey, a.attnum)

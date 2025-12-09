@@ -172,11 +172,17 @@ export type EntityProp =
   | VirtualProp
   | RelationProp;
 
+type EntityIndexColumn = {
+  name: string;
+  nullsFirst?: boolean;
+  sortOrder?: "ASC" | "DESC";
+};
 export type EntityIndex = {
   type: "index" | "unique" | "fulltext";
-  columns: string[];
+  columns: EntityIndexColumn[];
   name: string;
   parser?: "built-in" | "ngram";
+  nullsNotDistinct?: boolean; // unique index only
 };
 export type EntityJson = {
   id: string;
@@ -451,10 +457,11 @@ export type MigrationColumn = {
   scale?: number;
 };
 export type MigrationIndex = {
-  name: string;
-  columns: string[];
   type: "unique" | "index" | "fulltext";
+  columns: EntityIndexColumn[];
+  name: string;
   parser?: "built-in" | "ngram";
+  nullsNotDistinct?: boolean;
 };
 export type MigrationForeign = {
   columns: string[];
@@ -938,13 +945,20 @@ const EntityPropSchema = z.discriminatedUnion("type", [NormalPropSchema, Relatio
     `type은 ${AllPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.type}"`,
 });
 
+const EntityIndexColumnSchema = z.object({
+  name: z.string(),
+  nullsFirst: z.boolean().optional(),
+  sortOrder: z.enum(["ASC", "DESC"]).optional(),
+});
+
 // EntityIndex 스키마 정의
 const EntityIndexSchema = z
   .object({
     type: z.enum(["index", "unique", "fulltext"]),
-    columns: z.array(z.string()),
+    columns: z.array(EntityIndexColumnSchema),
     name: z.string().min(1).max(63),
     parser: z.enum(["built-in", "ngram"]).optional(),
+    nullsNotDistinct: z.boolean().optional(),
   })
   .strict();
 

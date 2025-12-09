@@ -3,7 +3,7 @@ import { camelize } from "inflection";
 import { useEffect, useRef } from "react";
 import { Button, Dropdown, Form, Header, Icon, Label, Segment } from "semantic-ui-react";
 import type { EntityIndex } from "sonamu";
-import { z } from "zod";
+import z from "zod";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
@@ -16,9 +16,16 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
   const { form, setForm, register, addError } = useTypeForm(
     z.object({
       type: z.enum(["index", "unique", "fulltext"]),
-      name: z.string(),
-      columns: z.string().array(),
+      columns: z.array(
+        z.object({
+          name: z.string(),
+          nullsFirst: z.boolean().optional(),
+          sortOrder: z.enum(["ASC", "DESC"]).optional(),
+        }),
+      ),
+      name: z.string().min(1).max(63),
       parser: z.enum(["built-in", "ngram"]).optional(),
+      nullsNotDistinct: z.boolean().optional(),
     }),
     {
       type: "index",
@@ -155,9 +162,9 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                       </Label>
                       <div style={{ marginTop: "4px" }}>
                         {form.columns.map((col, idx) => (
-                          <div className="column-order-item" key={col}>
+                          <div className="column-order-item" key={col.name}>
                             <span className="column-order-item-index">{idx + 1}.</span>
-                            <span className="column-order-item-column">{col}</span>
+                            <span className="column-order-item-column">{col.name}</span>
                             <Icon
                               name="arrow up"
                               className={idx === 0 ? "disabled" : ""}
