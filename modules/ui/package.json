@@ -33,9 +33,12 @@
   ],
   "license": "MIT",
   "author": {
-    "name": "Minsang Kim",
-    "email": "minsangk@me.com",
-    "url": "https://twitter.com/minsangk"
+    "name": "CartaNova <dev@cartanova.ai>",
+    "url": "https://cartanova.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.50",

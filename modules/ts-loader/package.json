@@ -2,6 +2,11 @@
   "name": "@sonamu-kit/ts-loader",
   "type": "module",
   "version": "2.1.3",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
   "exports": {
     ".": "./dist/register.js",
     "./loader": "./dist/loader.js"

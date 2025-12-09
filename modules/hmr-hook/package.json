@@ -2,8 +2,12 @@
   "name": "@sonamu-kit/hmr-hook",
   "type": "module",
   "version": "0.4.1",
-  "description": "Easy hot module reloading (HMR) for Node.js and ESM",
-  "author": "Julien Ripouteau <julien@ripouteau.com>",
+  "description": "Easy hot module reloading (HMR) for Node.js and ESM (forked from hot-hook)",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
   "license": "MIT",
   "keywords": [
     "hmr",

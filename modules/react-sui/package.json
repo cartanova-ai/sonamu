@@ -2,8 +2,11 @@
   "name": "@sonamu-kit/react-sui",
   "version": "0.1.17",
   "type": "module",
-  "repository": "https://github.com/ping-alive/sonamu",
-  "author": "Minsang Kim",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
   "license": "MIT",
   "files": [
     "dist"

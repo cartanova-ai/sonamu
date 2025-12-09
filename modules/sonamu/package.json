@@ -35,9 +35,8 @@
   },
   "license": "MIT",
   "author": {
-    "name": "Minsang Kim",
-    "email": "minsangk@me.com",
-    "url": "https://twitter.com/minsangk"
+    "name": "CartaNova <dev@cartanova.ai>",
+    "url": "https://cartanova.ai"
   },
   "repository": {
     "type": "git",
