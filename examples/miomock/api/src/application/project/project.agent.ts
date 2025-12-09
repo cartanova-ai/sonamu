@@ -1,5 +1,4 @@
 import { openai } from "@ai-sdk/openai";
-import { zodSchema } from "@ai-sdk/provider-utils";
 import type { Agent, ToolSet } from "ai";
 import { dedent } from "radashi";
 import { Naite } from "sonamu";
@@ -26,8 +25,8 @@ class ProjectAgentClass extends BaseAgentClass<ProjectAgentContext> {
     name: "fetchProjects",
     description: "Fetch projects from the database",
     schema: {
-      input: zodSchema(FetchProjectsInputSchema),
-      output: zodSchema(FetchProjectsOutputSchema),
+      input: FetchProjectsInputSchema,
+      output: FetchProjectsOutputSchema,
     },
   })
   async fetchProjects(input: FetchProjectsInputSchema): Promise<FetchProjectsOutputSchema> {
