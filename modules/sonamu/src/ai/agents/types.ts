@@ -1,11 +1,14 @@
-import type { ProviderOptions, Schema, Tool } from "@ai-sdk/provider-utils";
+import type { ProviderOptions, Tool } from "@ai-sdk/provider-utils";
 import type { LanguageModel, StopCondition, ToolSet } from "ai";
+import type * as z4 from "zod/v4";
 
 export type ToolChoiceLimited = "auto" | "none" | "required";
 
 export interface ToolDecoratorSchema<INPUT, OUTPUT = unknown> {
-  input: Schema<INPUT>;
-  output?: Schema<OUTPUT>;
+  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  input: z4.core.$ZodType<INPUT, any>;
+  // biome-ignore lint/suspicious/noExplicitAny: zod type의 타입 추론에 필요
+  output?: z4.core.$ZodType<OUTPUT, any>;
 }
 
 export interface ToolDecoratorOptions<INPUT, OUTPUT = unknown> {
