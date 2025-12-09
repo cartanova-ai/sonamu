@@ -1,78 +1,45 @@
-# @sonamu-kit/loader
+# @sonamu-kit/ts-loader
 
-@sonamu-kit/loader는 [`@loaderkit/ts`](https://www.npmjs.com/package/@loaderkit/ts)를 기반으로 하여 Sonamu 프레임워크에서 사용할 목적으로 약간의 수정을 가한 TypeScript 로더입니다.
+> 이 문서는 사람이 썼습니다.
 
-Credit: [laverdet](https://github.com/laverdet) for [`@loaderkit/ts`](https://www.npmjs.com/package/@loaderkit/ts). Thank you for your great work!
+`@loaderkit/ts`([NPM](https://www.npmjs.com/package/@loaderkit/ts), [GitHub](https://github.com/braidnetworks/loaderkit/tree/main/packages/ts))를 fork하여 뜯어고친 패키지입니다.
 
-## 원본 패키지로부터의 주요 변경사항
+## 얘가 하는 일
 
-### 1. 트랜스파일러 변경 (esbuild → swc)
+TypeScript 파일을 직접 실행할 수 있게 도와줍니다. 
 
-**위치**: [`utility/swc.ts`](utility/swc.ts) - `transpileSource()` 함수
+`ts-node` 또는 `tsx`와 비슷합니다.
 
-esbuild 대신 swc를 사용하여 트랜스파일하도록 변경했습니다. swc가 더 빠르며 Sonamu 프로젝트 전반에서 사용 중입니다.
-
-### 2. Yarn PnP Virtual 경로 지원
-
-**위치**: [`utility/swc.ts:14-16`](utility/swc.ts#L14-L16), [`utility/swc.ts:35-36`](utility/swc.ts#L35-L36)
-
-Yarn PnP의 virtual 경로(`.yarn/__virtual__/`)에서 소스맵 파일을 찾을 수 없어 발생하는 오류를 방지하기 위해 `inputSourceMap: false` 옵션을 조건부로 적용합니다.
-
-### 3. `.ts` 확장자 Fully Resolved Path 처리
-
-**위치**: [`esm.ts:179-224`](esm.ts#L179-L224) - `resolve` 훅
-
-`file:///.../specifier.ts` 형식의 TypeScript 파일을 직접 import할 수 있도록 처리합니다. 원본은 `file:///` 경로를 무조건 "트랜스파일된 js 파일"로 간주했으나, TypeScript 파일이면 그대로 반환하도록 수정했습니다.
-
-### 4. Yarn PnP Virtual 경로 트랜스파일 제외
-
-**위치**: [`esm.ts:287-289`](esm.ts#L287-L289)
-
-Virtual 경로의 파일은 이미 빌드된 파일이므로 트랜스파일을 건너뜁니다.
-
-## 관련 커밋
-
-- [`1037683`](https://github.com/cartanova-ai/sonamu/commit/1037683): loader가 swc 트랜스파일 할 때 virtual 경로라면 입력 소스 맵 비활성화
-- [`10f1b7a`](https://github.com/cartanova-ai/sonamu/commit/10f1b7a): 더이상 안 쓰는 dynohot의 흔적을 loader에서 제거
-
----
-
-[![npm version](https://badgen.now.sh/npm/v/@loaderkit/ts)](https://www.npmjs.com/package/@loaderkit/ts)
-[![isc license](https://badgen.now.sh/npm/license/@loaderkit/ts)](https://github.com/braidnetworks/loaderkit/blob/main/LICENSE)
-[![github action](https://github.com/braidnetworks/loaderkit/actions/workflows/build.yaml/badge.svg)](https://github.com/braidnetworks/loaderkit/actions/workflows/build.yaml)
-[![npm downloads](https://badgen.now.sh/npm/dm/@loaderkit/ts)](https://www.npmjs.com/package/@loaderkit/ts)
-
-🐘 @loaderkit/ts - A nodejs loader for TypeScript
-=================================================
-
-This is a simple loader for well-configured TypeScript projects running in nodejs.
-
-This loader does not perform any type checking. It only performs transpilation. A well-configured
-project should run `tsc -b -w` in a separate process.
-
-This loader should only be used in projects which use ECMAScript modules. A well-configured project
-should not be using CommonJS.
-
-Source maps are passed along in the transpilation process, so the `--enable-source-maps` nodejs flag
-is recommended.
-
-An extra degree of care has been taken to ensure that `import.meta.url` is correct. My belief is
-that the behavior of your program should not be different between development and production
-versions. And I don't think that this should be controversial either. So, when an output destination
-is specified in the nearest `tsconfig.json` then `import.meta.url` will be the value it would have
-been if run from the `tsc`-transpiled output.
-
-
-EXAMPLE
--------
-
-`main.ts`
-```ts
-const value: string = 'hello world';
-console.log(value);
+이런 식으로 씁니다:
+```bash
+node --import @sonamu-kit/ts-loader test.ts
 ```
 
-```
-$ node --import @loaderkit/ts test.ts
-hello world
-```
+## 얘가 원래 특이한 점
+
+보통 `ts-node`나 `tsx`로 실행하면 import 경로(`import.meta.filename`)가 실제 ts 파일의 위치가 됩니다.
+
+얘는 컨셉이 조금 다릅니다. 마치 빌드한 `dist` 폴더에 있는 `.js` 파일만 존재하는 것처럼 작동합니다.
+- `dist`의 `.js` 경로로 import해도 자동으로 `src`의 `.ts` 파일을 찾아서 트랜스파일해서 줍니다.
+- `src`의 `.ts` 경로로 import해도 당연히 잘 트랜스파일해서 줍니다.
+- `import.meta.filename`은 `dist`의 `.js` 파일의 경로가 됩니다.
+
+이는 원작자가 *개발 환경과 실행 환경에서 import 경로(특히 `import.meta`)가 달라지는건 문제가 있다*는 철학을 가지고 있기 때문입니다.
+
+## Fork해서 뜯어고친 부분
+
+### 1. 트랜스파일러 변경: esbuild -> swc
+
+그냥 swc로 맞추고 싶어 바꾸었습니다.
+
+### 2. 큰 버그 해결: `.ts` 확장자 Fully Resolved Path 처리
+
+`file:///.../specifier.ts` 형식의 TypeScript 파일을 직접 import할 수 있도록 하였습니다.
+
+원본은 `file:///`로 시작하는 경로를 무조건 "트랜스파일된 js 파일"로 간주하여 "이에 상응하는 ts 소스 파일"을 찾아오려는 행동을 하였습니다만, 애초에 주어진게 ts 파일인데 그런게 있을 리가 없습니다.
+
+따라서 경로가 `file:///`로 시작하더라도 TypeScript 파일이면 그대로 반환하도록 수정했습니다.
+
+### 3. 기타 자잘한 버그 해결
+
+- Yarn PnP 경로 관련 이슈 해결
