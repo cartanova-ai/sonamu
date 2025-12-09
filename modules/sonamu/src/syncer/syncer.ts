@@ -321,8 +321,9 @@ export class Syncer {
           namesRecord: EntityManager.getNamesFromId(entityId),
         };
       }
-      if (modelPath.endsWith("frame.ts")) {
-        const [, frameName] = modelPath.match(/.+\/(.+)\.frame.js$/) ?? [];
+      if (modelPath.endsWith(".frame.js") || modelPath.endsWith(".frame.ts")) {
+        const [, frameName] = modelPath.match(/.+\/(.+)\.frame\.(js|ts)$/) ?? [];
+        console.log(modelPath, "->", frameName);
         assert(frameName);
         return {
           namesRecord: EntityManager.getNamesFromId(frameName),
