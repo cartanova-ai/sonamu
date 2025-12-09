@@ -53,15 +53,18 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     };
     document.addEventListener("keydown", onKeydown);
 
-    if (!oldOne) {
-      const indexName = `${table}_${form.columns.join("_")}_${form.type}`;
-      setForm({ ...form, name: indexName });
-    }
-
     return () => {
       document.removeEventListener("keydown", onKeydown);
     };
   }, [form]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: form.type, form.columns, table, oldOne 변경시에만 실행
+  useEffect(() => {
+    if (!oldOne) {
+      const indexName = `${table}_${form.columns.join("_")}_${form.type}`;
+      setForm({ ...form, name: indexName });
+    }
+  }, [form.type, form.columns, table, oldOne]);
 
   const handleSubmit = () => {
     const ifError = ["name"]
@@ -69,6 +72,14 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
         if (!form[key as keyof typeof form]) {
           addError(key, {
             content: `${camelize(key)} is required.`,
+            pointing: "above",
+          });
+          return true;
+        }
+        // 인덱스명은 최대 63byte
+        if (form.name.length > 63) {
+          addError("name", {
+            content: "인덱스명은 최대 63byte입니다.",
             pointing: "above",
           });
           return true;
