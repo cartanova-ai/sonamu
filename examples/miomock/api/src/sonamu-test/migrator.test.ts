@@ -263,8 +263,8 @@ describe("Migrator test", () => {
         ...original,
         indexes: [
           ...original.indexes,
-          { type: "index", columns: ["name"] },
-          { type: "unique", columns: ["company_id"] },
+          { type: "index", columns: ["name"], name: "departments_name_index" },
+          { type: "unique", columns: ["company_id"], name: "departments_company_id_unique" },
         ],
       }));
       const status = await migrator.getStatus();
@@ -277,15 +277,15 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.schema.alterTable("departments", (table) => {
-            table.index(["name"]);
-            table.unique(["company_id"]);
+            table.index(["name"], "departments_name_index");
+            table.unique(["company_id"], "departments_company_id_unique");
           });
         }
 
         export async function down(knex: Knex): Promise<void> {
           return knex.schema.alterTable("departments", (table) => {
-            table.dropIndex(["name"]);
-            table.dropUnique(["company_id"]);
+            table.dropIndex(["name"], "departments_name_index");
+            table.dropUnique(["company_id"], "departments_company_id_unique");
           });
         }
         "
@@ -306,10 +306,12 @@ describe("Migrator test", () => {
       expect(preparedCodes?.title).toBe("alter_users");
 
       // up
-      expect(preparedCodes?.formatted).toContain('table.dropUnique(["email"])');
+      expect(preparedCodes?.formatted).toContain(
+        'table.dropUnique(["email"], "users_email_unique")',
+      );
 
       // down
-      expect(preparedCodes?.formatted).toContain('table.unique(["email"])');
+      expect(preparedCodes?.formatted).toContain('table.unique(["email"], "users_email_unique")');
     });
 
     // FIXME: FTS 적용 후 케이스 처리 필요
@@ -499,7 +501,9 @@ describe("Migrator test", () => {
       expect(createJoinTableCode?.formatted).toContain("user_id");
       expect(createJoinTableCode?.formatted).toContain("label_id");
       expect(createJoinTableCode?.formatted).toContain('table.uuid("uuid")');
-      expect(createJoinTableCode?.formatted).toContain('table.unique(["uuid"])');
+      expect(createJoinTableCode?.formatted).toContain(
+        'table.unique(["uuid"], "users__labels_uuid_unique")',
+      );
 
       // 조인테이블 FK 생성 코드
       const user_label_FKCode = status.preparedCodes[2];

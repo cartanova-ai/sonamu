@@ -511,7 +511,7 @@ describe("entityManager", () => {
       it("정상적인 index", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "index", columns: ["name"] }],
+          indexes: [{ type: "index", name: "companies_name_index", columns: ["name"] }],
         };
         const errors = EntityManager.schemaValidate(json);
         expect(errors).toBeNull();
@@ -520,7 +520,7 @@ describe("entityManager", () => {
       it("index type이 잘못된 경우", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "invalidType", columns: ["name"] }],
+          indexes: [{ type: "invalidType", name: "companies_name_index", columns: ["name"] }],
         };
         const errors = EntityManager.schemaValidate(json);
 
@@ -534,7 +534,7 @@ describe("entityManager", () => {
       it("index columns 누락", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "index" }],
+          indexes: [{ type: "index", name: "companies_name_index" }],
         };
         const errors = EntityManager.schemaValidate(json);
 
@@ -545,10 +545,30 @@ describe("entityManager", () => {
         expect(errors?.issues[0]?.path).toEqual(["indexes", 0, "columns"]);
       });
 
+      it("index name 누락", () => {
+        const json = {
+          ...validBaseEntity,
+          indexes: [{ type: "index", columns: ["name"] }],
+        };
+        const errors = EntityManager.schemaValidate(json);
+        expect(errors?.issues).toHaveLength(1);
+        expect(errors?.issues[0]?.message).toContain(
+          "Invalid input: expected string, received undefined",
+        );
+        expect(errors?.issues[0]?.path).toEqual(["indexes", 0, "name"]);
+      });
+
       it("index에 정의되지 않은 필드", () => {
         const json = {
           ...validBaseEntity,
-          indexes: [{ type: "index", columns: ["name"], unknownField: "test" }],
+          indexes: [
+            {
+              type: "index",
+              name: "companies_name_index",
+              columns: ["name"],
+              unknownField: "test",
+            },
+          ],
         };
         const errors = EntityManager.schemaValidate(json);
 

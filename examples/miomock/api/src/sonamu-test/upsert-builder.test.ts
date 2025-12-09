@@ -583,12 +583,28 @@ describe("Upsert Builder", () => {
     test("insertOnly() - 삽입만 수행", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
+      const timestamp = Date.now();
 
       // 3개의 user 등록
       [
-        { email: "insert1@test.com", username: "유저1", password: "pw1", role: "normal" },
-        { email: "insert2@test.com", username: "유저2", password: "pw2", role: "admin" },
-        { email: "insert3@test.com", username: "유저3", password: "pw3", role: "normal" },
+        {
+          email: `insert1-${timestamp}@test.com`,
+          username: "유저1",
+          password: "pw1",
+          role: "normal",
+        },
+        {
+          email: `insert2-${timestamp}@test.com`,
+          username: "유저2",
+          password: "pw2",
+          role: "admin",
+        },
+        {
+          email: `insert3-${timestamp}@test.com`,
+          username: "유저3",
+          password: "pw3",
+          role: "normal",
+        },
       ].forEach((data) => {
         ub.register("users", data);
       });
@@ -621,7 +637,7 @@ describe("Upsert Builder", () => {
 
       // 에러 케이스: 같은 email로 다시 등록 시도
       ub.register("users", {
-        email: "insert1@test.com",
+        email: `insert1-${timestamp}@test.com`,
         username: "중복시도",
         password: "pw",
         role: "normal",
@@ -725,10 +741,11 @@ describe("Upsert Builder", () => {
 
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
+      const timestamp = Date.now();
 
       // company 먼저 생성
       const [result] = await wdb("companies")
-        .insert({ name: "테스트회사", created_at: new Date() })
+        .insert({ name: `테스트회사-${timestamp}`, created_at: new Date(timestamp) })
         .returning("id");
 
       const companyId = result.id;
@@ -787,9 +804,10 @@ describe("Upsert Builder", () => {
 
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
+      const timestamp = Date.now();
 
       const [result] = await wdb("companies")
-        .insert({ name: "테스트회사", created_at: new Date() })
+        .insert({ name: `테스트회사-${timestamp}`, created_at: new Date(timestamp) })
         .returning("id");
 
       const companyId = result.id;
@@ -866,9 +884,10 @@ describe("Upsert Builder", () => {
 
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
+      const timestamp = Date.now();
 
       const [result] = await wdb("companies")
-        .insert({ name: "테스트회사", created_at: new Date() })
+        .insert({ name: `테스트회사-${timestamp}`, created_at: new Date(timestamp) })
         .returning("id");
 
       const companyId = result.id;
@@ -928,7 +947,7 @@ describe("Upsert Builder", () => {
       expectUB(ub, "rowCount", "users").toBe(userCount);
 
       // chunkSize: 3으로 설정하여 upsert (10개를 3개씩 나눠서 처리: 3, 3, 3, 1)
-      const ids = await ub.upsert(wdb, "users", 3);
+      const ids = await ub.upsert(wdb, "users", { chunkSize: 3 });
 
       // [expect] 모든 ID 반환
       expect(ids).toHaveLength(userCount);
@@ -1183,164 +1202,406 @@ describe("Upsert Builder", () => {
     });
   });
 
-  describe("G. 에러 처리", () => {
-    test("존재하지 않는 테이블에 upsert → 빈 배열 반환", async () => {
-      const ub = new UpsertBuilder();
-      const wdb = DB.getDB("w");
-
-      // [expectUB] register 없이 upsert 시도 전 상태
-      expectUB(ub, "hasTable", "users").toBe(false);
-      expectUB(ub, "tables").toEqual([]);
-
-      // register 없이 바로 upsert 호출
-      const ids = await ub.upsert(wdb, "users");
-
-      // [expect] 빈 배열 반환 (에러 발생 안 함)
-      expect(ids).toEqual([]);
-      expect(ids).toHaveLength(0);
-
-      // [expectUB] 테이블이 생성되지 않음
-      expectUB(ub, "hasTable", "users").toBe(false);
-      expectUB(ub, "tables").toEqual([]);
-
-      // [Naite] upsert 이벤트 기록 안 됨
-      const traces = Naite.get("puri:ub-upserted").result();
-      const userTraces = traces.filter((t) => t.tableName === "users");
-      expect(userTraces).toHaveLength(0);
+  describe("G. cleanOrphans 옵션", () => {
+    beforeAll(async () => {
+      Sonamu.isInitialized = false;
+      await Sonamu.init(true, false, undefined, false);
     });
 
-    test("rows가 비어있는 테이블에 upsert → 에러", async () => {
+    test("cleanOrphans 적용 X - 레코드 유지", async () => {
       const ub = new UpsertBuilder();
       const wdb = DB.getDB("w");
 
-      // getTable() 호출하여 테이블 구조만 생성 (register는 안 함)
-      ub.getTable("users");
-
-      // [expectUB] 테이블은 존재하지만 rows는 비어있음
-      expectUB(ub, "hasTable", "users").toBe(true);
-      expectUB(ub, "rowCount", "users").toBe(0);
-
-      // rows가 없는 상태에서 upsert 시도 → 에러
-      await expect(ub.upsert(wdb, "users")).rejects.toThrow(/upsert 할 데이터가 없습니다/);
-
-      // [expectUB] 에러 발생 후에도 테이블 구조는 유지
-      expectUB(ub, "hasTable", "users").toBe(true);
-      expectUB(ub, "rowCount", "users").toBe(0);
-
-      // [Naite] upsert 이벤트 기록 안 됨
-      const traces = Naite.get("puri:ub-upserted").result();
-      const userTraces = traces.filter((t) => t.tableName === "users");
-      expect(userTraces).toHaveLength(0);
-    });
-
-    test("존재하지 않는 uuid 참조 시 → 에러", async () => {
-      // console.log를 차단하기 위해 spyOn
-      vi.spyOn(console, "error").mockImplementation(() => {});
-      vi.spyOn(console, "log").mockImplementation(() => {});
-
-      const ub = new UpsertBuilder();
-      const wdb = DB.getDB("w");
-
-      // company 생성
-      const [companyId] = await wdb("companies")
-        .insert({ name: "테스트회사", created_at: new Date() })
-        .returning("id");
-
-      // 정상적인 department 등록
-      ub.register("departments", {
-        company_id: companyId,
-        name: "본부",
-      });
-
-      // 존재하지 않는 uuid를 가진 UBRef 직접 생성
-      const invalidRef = {
-        of: "departments",
-        uuid: "non-existent-uuid-12345", // ← 존재하지 않는 uuid
-        use: "id",
-      };
-
-      // 자기 참조로 잘못된 UBRef 사용
-      ub.register("departments", {
-        company_id: companyId,
-        name: "하위부서",
-        parent_id: invalidRef,
-      });
-
-      // departments upsert 시도 → 에러!
-      await expect(ub.upsert(wdb, "departments")).rejects.toThrow(/존재하지 않는 uuid/);
-
-      // [expectUB] 에러 발생 후에도 departments 데이터는 유지
-      expectUB(ub, "rowCount", "departments").toBe(2);
-
-      // [Naite] departments upsert 이벤트 기록 안 됨
-      const traces = Naite.get("puri:ub-upserted").result();
-      const deptTraces = traces.filter((t) => t.tableName === "departments");
-      expect(deptTraces).toHaveLength(0);
-    });
-  });
-
-  describe("H. 복합 시나리오", () => {
-    test("upsert + updateBatch 조합", async () => {
-      const ub = new UpsertBuilder();
-      const wdb = DB.getDB("w");
-
-      // 1단계: Users 3명 초기 생성 (upsert)
-      const initialUsers = [
-        { email: "combo1@test.com", username: "초기유저1", password: "pw", role: "normal" },
-        { email: "combo2@test.com", username: "초기유저2", password: "pw", role: "normal" },
-        { email: "combo3@test.com", username: "초기유저3", password: "pw", role: "normal" },
-      ];
-
-      for (const user of initialUsers) {
-        ub.register("users", user);
-      }
-
-      const ids = await ub.upsert(wdb, "users");
-      const sortedIds = [...ids].sort((a, b) => a - b);
-
-      // [expect] 3명 생성됨
-      expect(ids).toHaveLength(3);
-
-      // 2단계: updateBatch로 일괄 수정
-      for (let i = 0; i < sortedIds.length; i++) {
-        ub.register("users", {
-          id: sortedIds[i],
-          username: `수정유저${i + 1}`,
-          role: "admin",
-        });
-      }
-
-      await ub.updateBatch(wdb, "users");
-
-      // 3단계: 다시 upsert로 새 유저 추가
+      // 1단계: user 생성
       ub.register("users", {
-        email: "combo4@test.com",
-        username: "추가유저",
+        email: `no-clean-${Date.now()}@test.com`,
+        username: "NoClean User",
         password: "pw",
         role: "normal",
       });
+      const [userId] = await ub.upsert(wdb, "users");
 
-      const [newId] = await ub.upsert(wdb, "users");
+      // 2단계: employees 3개 생성
+      const timestamp = Date.now();
+      for (let i = 1; i <= 3; i++) {
+        ub.register("employees", {
+          user_id: userId,
+          employee_number: `EMP-NOCLEAN-${timestamp}-${i}`,
+          salary: 50000,
+        });
+      }
+      await ub.upsert(wdb, "employees");
 
-      // [expect] DB 검증: 기존 유저는 수정됨, 새 유저는 추가됨
-      const updatedUsers = await wdb("users")
-        .select("username", "role")
-        .whereIn("id", [...sortedIds, newId] as number[])
-        .orderBy("id");
+      // [expect] 3개 생성됨
+      const initialCount = await wdb("employees")
+        .where("employee_number", "like", `EMP-NOCLEAN-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(initialCount?.count)).toBe(3);
 
-      expect(updatedUsers).toMatchObject([
-        { username: "수정유저1", role: "admin" },
-        { username: "수정유저2", role: "admin" },
-        { username: "수정유저3", role: "admin" },
-        { username: "추가유저", role: "normal" },
-      ]);
+      // [Naite] cleanOrphans 실행 전
+      const tracesBeforeCount = Naite.get("puri:ub-clean-orphans").result().length;
 
-      // [Naite] upsert 2번, updateBatch 1번 확인
-      const upsertTraces = Naite.get("puri:ub-upserted").result();
-      const updateTraces = Naite.get("puri:ub-batch-updated").result();
+      // 3단계: employees 2개만 재등록 (cleanOrphans 없음)
+      for (let i = 1; i <= 2; i++) {
+        ub.register("employees", {
+          user_id: userId,
+          employee_number: `EMP-NOCLEAN-${timestamp}-${i}`,
+          salary: 60000,
+        });
+      }
+      await ub.upsert(wdb, "employees");
 
-      expect(upsertTraces.filter((t) => t.tableName === "users")).toHaveLength(2);
-      expect(updateTraces.filter((t) => t.tableName === "users")).toHaveLength(1);
+      // [expect] 3개 모두 유지됨
+      const finalCount = await wdb("employees")
+        .where("employee_number", "like", `EMP-NOCLEAN-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(finalCount?.count)).toBe(3);
+
+      // [expect] 3번 employee는 업데이트 안 됨
+      const employee3 = await wdb("employees")
+        .where({ employee_number: `EMP-NOCLEAN-${timestamp}-3` })
+        .first();
+      expect(employee3).toBeTruthy();
+      expect(Number(employee3?.salary)).toBe(50000);
+
+      // [expect] 1, 2번은 업데이트됨
+      const employees12 = await wdb("employees")
+        .where("employee_number", "like", `EMP-NOCLEAN-${timestamp}%`)
+        .whereIn("employee_number", [`EMP-NOCLEAN-${timestamp}-1`, `EMP-NOCLEAN-${timestamp}-2`])
+        .orderBy("employee_number");
+
+      expect(employees12).toHaveLength(2);
+      expect(Number(employees12[0]?.salary)).toBe(60000);
+      expect(Number(employees12[1]?.salary)).toBe(60000);
+
+      // [Naite] cleanOrphans 실행 전후 비교
+      const tracesAfterCount = Naite.get("puri:ub-clean-orphans").result().length;
+      expect(tracesAfterCount).toBe(tracesBeforeCount);
+    });
+
+    test("cleanOrphans 적용 O - orphans 레코드 삭제", async () => {
+      const ub = new UpsertBuilder();
+      const wdb = DB.getDB("w");
+
+      // user 생성
+      ub.register("users", {
+        email: `clean-orphan-${Date.now()}@test.com`,
+        username: "CleanOrphan User",
+        password: "pw",
+        role: "normal",
+      });
+      const [userId] = await ub.upsert(wdb, "users");
+
+      // employees 3개 생성
+      const timestamp = Date.now();
+      for (let i = 1; i <= 3; i++) {
+        ub.register("employees", {
+          user_id: userId,
+          employee_number: `EMP-ORPHAN-${timestamp}-${i}`,
+          salary: 50000,
+        });
+      }
+      const initialIds = await ub.upsert(wdb, "employees");
+
+      // [expect] 3개 생성됨
+      expect(initialIds).toHaveLength(3);
+
+      const initialCount = await wdb("employees")
+        .where("employee_number", "like", `EMP-ORPHAN-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(initialCount?.count)).toBe(3);
+
+      // [Naite] cleanOrphans 실행 전
+      const tracesBeforeCount = Naite.get("puri:ub-clean-orphans").result().length;
+
+      // 3단계: employees 2개만 재등록 + cleanOrphans
+      for (let i = 1; i <= 2; i++) {
+        ub.register("employees", {
+          user_id: userId,
+          employee_number: `EMP-ORPHAN-${timestamp}-${i}`,
+          salary: 60000,
+        });
+      }
+      const finalIds = await ub.upsert(wdb, "employees", { cleanOrphans: "user_id" });
+
+      // [expect] 2개 반환됨
+      expect(finalIds).toHaveLength(2);
+
+      // [expect] DB에 2개만 남음 (3번 삭제됨)
+      const finalCount = await wdb("employees")
+        .where("employee_number", "like", `EMP-ORPHAN-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(finalCount?.count)).toBe(2);
+
+      // [expect] 남은 레코드 검증
+      const remaining = await wdb("employees")
+        .where("employee_number", "like", `EMP-ORPHAN-${timestamp}%`)
+        .orderBy("employee_number");
+
+      expect(remaining).toHaveLength(2);
+      expect(remaining[0]?.employee_number).toBe(`EMP-ORPHAN-${timestamp}-1`);
+      expect(remaining[1]?.employee_number).toBe(`EMP-ORPHAN-${timestamp}-2`);
+
+      // [Naite] cleanOrphans 실행 전후 비교
+      const traceAfter = Naite.get("puri:ub-clean-orphans").first();
+      const traceAfterCount = Naite.get("puri:ub-clean-orphans").result().length;
+
+      expect(traceAfterCount).not.toBe(tracesBeforeCount);
+      expect(traceAfter).toMatchObject({
+        tableName: "employees",
+        cleanOrphans: ["user_id"],
+        deletedCount: 1,
+      });
+    });
+
+    test("cleanOrphans 적용 O - 단일 FK 컬럼 + FK 여러 개", async () => {
+      const ub = new UpsertBuilder();
+      const wdb = DB.getDB("w");
+
+      // 1단계: 2개의 company 생성
+      const timestamp = Date.now();
+
+      const [companyA, companyB] = await wdb("companies")
+        .insert([
+          { name: `CleanOrphan-Multi-A-${timestamp}`, created_at: new Date() },
+          { name: `CleanOrphan-Multi-B-${timestamp}`, created_at: new Date() },
+        ])
+        .returning("id");
+
+      const companyIdA = companyA.id;
+      const companyIdB = companyB.id;
+
+      // 2단계: Company A에 3개, Company B에 2개 departments 생성
+      for (let i = 1; i <= 3; i++) {
+        ub.register("departments", {
+          company_id: companyIdA,
+          name: `A-Dept ${i}`,
+        });
+      }
+      for (let i = 1; i <= 2; i++) {
+        ub.register("departments", {
+          company_id: companyIdB,
+          name: `B-Dept ${i}`,
+        });
+      }
+      await ub.upsert(wdb, "departments");
+
+      // [expect] Company A: 3개, Company B: 2개 생성됨
+      const initialCountA = await wdb("departments")
+        .where("departments.company_id", companyIdA)
+        .count("* as count")
+        .first();
+      expect(Number(initialCountA?.count)).toBe(3);
+
+      const initialCountB = await wdb("departments")
+        .where("departments.company_id", companyIdB)
+        .count("* as count")
+        .first();
+      expect(Number(initialCountB?.count)).toBe(2);
+
+      // 3단계: Company A는 2개만, Company B는 1개만 재등록 + cleanOrphans
+      for (let i = 1; i <= 2; i++) {
+        ub.register("departments", {
+          company_id: companyIdA,
+          name: `A-Dept ${i} Updated`,
+        });
+      }
+      ub.register("departments", {
+        company_id: companyIdB,
+        name: "B-Dept 1 Updated",
+      });
+
+      await ub.upsert(wdb, "departments", {
+        cleanOrphans: "company_id",
+      });
+
+      // [expect] Company A는 2개만 남음
+      const finalCountA = await wdb("departments")
+        .where("departments.company_id", companyIdA)
+        .count("* as count")
+        .first();
+      expect(Number(finalCountA?.count)).toBe(2);
+
+      // [expect] Company B는 1개만 남음
+      const finalCountB = await wdb("departments")
+        .where("departments.company_id", companyIdB)
+        .count("* as count")
+        .first();
+      expect(Number(finalCountB?.count)).toBe(1);
+
+      // [Naite] cleanOrphans 이벤트 발생 확인
+      const trace = Naite.get("puri:ub-clean-orphans").first();
+      expect(trace?.tableName).toBe("departments");
+      expect(trace?.cleanOrphans).toEqual(["company_id"]);
+      expect(trace?.deletedCount).toBeGreaterThanOrEqual(2);
+    });
+
+    test.todo("cleanOrphans 적용 O - 복수 FK 컬럼 + 각 컬럼마다 값이 여러 개");
+
+    describe("H. 에러 처리", () => {
+      test("존재하지 않는 테이블에 upsert → 빈 배열 반환", async () => {
+        const ub = new UpsertBuilder();
+        const wdb = DB.getDB("w");
+
+        // [expectUB] register 없이 upsert 시도 전 상태
+        expectUB(ub, "hasTable", "users").toBe(false);
+        expectUB(ub, "tables").toEqual([]);
+
+        // register 없이 바로 upsert 호출
+        const ids = await ub.upsert(wdb, "users");
+
+        // [expect] 빈 배열 반환 (에러 발생 안 함)
+        expect(ids).toEqual([]);
+        expect(ids).toHaveLength(0);
+
+        // [expectUB] 테이블이 생성되지 않음
+        expectUB(ub, "hasTable", "users").toBe(false);
+        expectUB(ub, "tables").toEqual([]);
+
+        // [Naite] upsert 이벤트 기록 안 됨
+        const traces = Naite.get("puri:ub-upserted").result();
+        const userTraces = traces.filter((t) => t.tableName === "users");
+        expect(userTraces).toHaveLength(0);
+      });
+
+      test("rows가 비어있는 테이블에 upsert → 에러", async () => {
+        const ub = new UpsertBuilder();
+        const wdb = DB.getDB("w");
+
+        // getTable() 호출하여 테이블 구조만 생성 (register는 안 함)
+        ub.getTable("users");
+
+        // [expectUB] 테이블은 존재하지만 rows는 비어있음
+        expectUB(ub, "hasTable", "users").toBe(true);
+        expectUB(ub, "rowCount", "users").toBe(0);
+
+        // rows가 없는 상태에서 upsert 시도 → 에러
+        await expect(ub.upsert(wdb, "users")).rejects.toThrow(/upsert 할 데이터가 없습니다/);
+
+        // [expectUB] 에러 발생 후에도 테이블 구조는 유지
+        expectUB(ub, "hasTable", "users").toBe(true);
+        expectUB(ub, "rowCount", "users").toBe(0);
+
+        // [Naite] upsert 이벤트 기록 안 됨
+        const traces = Naite.get("puri:ub-upserted").result();
+        const userTraces = traces.filter((t) => t.tableName === "users");
+        expect(userTraces).toHaveLength(0);
+      });
+
+      test("존재하지 않는 uuid 참조 시 → 에러", async () => {
+        // console.log를 차단하기 위해 spyOn
+        vi.spyOn(console, "error").mockImplementation(() => {});
+        vi.spyOn(console, "log").mockImplementation(() => {});
+
+        const ub = new UpsertBuilder();
+        const wdb = DB.getDB("w");
+        const timestamp = Date.now();
+
+        // company 생성
+        const [companyId] = await wdb("companies")
+          .insert({ name: `테스트회사-${timestamp}`, created_at: new Date(timestamp) })
+          .returning("id");
+
+        // 정상적인 department 등록
+        ub.register("departments", {
+          company_id: companyId,
+          name: "본부",
+        });
+
+        // 존재하지 않는 uuid를 가진 UBRef 직접 생성
+        const invalidRef = {
+          of: "departments",
+          uuid: "non-existent-uuid-12345", // ← 존재하지 않는 uuid
+          use: "id",
+        };
+
+        // 자기 참조로 잘못된 UBRef 사용
+        ub.register("departments", {
+          company_id: companyId,
+          name: "하위부서",
+          parent_id: invalidRef,
+        });
+
+        // departments upsert 시도 → 에러!
+        await expect(ub.upsert(wdb, "departments")).rejects.toThrow(/존재하지 않는 uuid/);
+
+        // [expectUB] 에러 발생 후에도 departments 데이터는 유지
+        expectUB(ub, "rowCount", "departments").toBe(2);
+
+        // [Naite] departments upsert 이벤트 기록 안 됨
+        const traces = Naite.get("puri:ub-upserted").result();
+        const deptTraces = traces.filter((t) => t.tableName === "departments");
+        expect(deptTraces).toHaveLength(0);
+      });
+    });
+
+    describe("I. 복합 시나리오", () => {
+      test("upsert + updateBatch 조합", async () => {
+        const ub = new UpsertBuilder();
+        const wdb = DB.getDB("w");
+
+        // 1단계: Users 3명 초기 생성 (upsert)
+        const initialUsers = [
+          { email: "combo1@test.com", username: "초기유저1", password: "pw", role: "normal" },
+          { email: "combo2@test.com", username: "초기유저2", password: "pw", role: "normal" },
+          { email: "combo3@test.com", username: "초기유저3", password: "pw", role: "normal" },
+        ];
+
+        for (const user of initialUsers) {
+          ub.register("users", user);
+        }
+
+        const ids = await ub.upsert(wdb, "users");
+        const sortedIds = [...ids].sort((a, b) => a - b);
+
+        // [expect] 3명 생성됨
+        expect(ids).toHaveLength(3);
+
+        // 2단계: updateBatch로 일괄 수정
+        for (let i = 0; i < sortedIds.length; i++) {
+          ub.register("users", {
+            id: sortedIds[i],
+            username: `수정유저${i + 1}`,
+            role: "admin",
+          });
+        }
+
+        await ub.updateBatch(wdb, "users");
+
+        // 3단계: 다시 upsert로 새 유저 추가
+        ub.register("users", {
+          email: "combo4@test.com",
+          username: "추가유저",
+          password: "pw",
+          role: "normal",
+        });
+
+        const [newId] = await ub.upsert(wdb, "users");
+
+        // [expect] DB 검증: 기존 유저는 수정됨, 새 유저는 추가됨
+        const updatedUsers = await wdb("users")
+          .select("username", "role")
+          .whereIn("id", [...sortedIds, newId] as number[])
+          .orderBy("id");
+
+        expect(updatedUsers).toMatchObject([
+          { username: "수정유저1", role: "admin" },
+          { username: "수정유저2", role: "admin" },
+          { username: "수정유저3", role: "admin" },
+          { username: "추가유저", role: "normal" },
+        ]);
+
+        // [Naite] upsert 2번, updateBatch 1번 확인
+        const upsertTraces = Naite.get("puri:ub-upserted").result();
+        const updateTraces = Naite.get("puri:ub-batch-updated").result();
+
+        expect(upsertTraces.filter((t) => t.tableName === "users")).toHaveLength(2);
+        expect(updateTraces.filter((t) => t.tableName === "users")).toHaveLength(1);
+      });
     });
   });
 });

@@ -4,46 +4,16 @@
   "title": "USER",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     { "name": "email", "desc": "이메일", "type": "string", "length": 255 },
     { "name": "username", "desc": "이름", "type": "string", "length": 255 },
     { "name": "password", "desc": "비밀번호", "type": "string", "length": 255 },
     { "name": "birth_date", "nullable": true, "desc": "생일", "type": "date" },
-    {
-      "name": "role",
-      "desc": "ROLE",
-      "type": "enum",
-      "id": "UserRole"
-    },
-    {
-      "name": "last_login_at",
-      "nullable": true,
-      "desc": "LASTLOGIN일시",
-      "type": "date"
-    },
-    {
-      "name": "bio",
-      "nullable": true,
-      "desc": "BIO",
-      "type": "string"
-    },
-    {
-      "name": "is_verified",
-      "type": "boolean",
-      "desc": "ISVERIFIED",
-      "dbDefault": "false"
-    },
-    {
-      "name": "deleted_at",
-      "nullable": true,
-      "desc": "삭제일시",
-      "type": "date"
-    },
+    { "name": "role", "desc": "ROLE", "type": "enum", "id": "UserRole" },
+    { "name": "last_login_at", "nullable": true, "desc": "LASTLOGIN일시", "type": "date" },
+    { "name": "bio", "nullable": true, "desc": "BIO", "type": "string" },
+    { "name": "is_verified", "type": "boolean", "desc": "ISVERIFIED", "dbDefault": "false" },
+    { "name": "deleted_at", "nullable": true, "desc": "삭제일시", "type": "date" },
     {
       "type": "relation",
       "name": "employee",
@@ -53,7 +23,7 @@
       "relationType": "OneToOne"
     }
   ],
-  "indexes": [{ "type": "unique", "columns": ["email"] }],
+  "indexes": [{ "type": "unique", "name": "users_email_unique", "columns": ["email"] }],
   "subsets": {
     "A": [
       "id",
@@ -77,16 +47,7 @@
       "employee.department.name",
       "employee.salary"
     ],
-    "SS": [
-      "id",
-      "created_at",
-      "email",
-      "username",
-      "role",
-      "last_login_at",
-      "bio",
-      "is_verified"
-    ]
+    "SS": ["id", "created_at", "email", "username", "role", "last_login_at", "bio", "is_verified"]
   },
   "enums": {
     "UserOrderBy": { "id-desc": "ID최신순" },

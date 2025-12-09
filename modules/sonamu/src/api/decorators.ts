@@ -10,10 +10,10 @@ import {
   type PuriWrapper,
   type TransactionalOptions,
 } from "../database/puri-wrapper";
+import { UpsertBuilder } from "../database/upsert-builder";
 import type { ApiParam, ApiParamType } from "../types/types";
 import type { UploadContext } from "./context";
 import { Sonamu } from "./sonamu";
-import { UpsertBuilder } from "../database/upsert-builder";
 
 export interface GuardKeys {
   query: true;

@@ -148,7 +148,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
   }
 
   ubUpsert(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
-    return this.upsertBuilder.upsert(this.knex, tableName, chunkSize);
+    return this.upsertBuilder.upsert(this.knex, tableName, { chunkSize });
   }
 
   ubInsertOnly(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
@@ -160,7 +160,7 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     mode: "upsert" | "insert",
     chunkSize?: number,
   ): Promise<number[]> {
-    return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, chunkSize);
+    return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, { chunkSize });
   }
 
   ubUpdateBatch(

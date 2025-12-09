@@ -175,7 +175,7 @@ export type EntityProp =
 export type EntityIndex = {
   type: "index" | "unique" | "fulltext";
   columns: string[];
-  name?: string;
+  name: string;
   parser?: "built-in" | "ngram";
 };
 export type EntityJson = {
@@ -451,6 +451,7 @@ export type MigrationColumn = {
   scale?: number;
 };
 export type MigrationIndex = {
+  name: string;
   columns: string[];
   type: "unique" | "index" | "fulltext";
   parser?: "built-in" | "ngram";
@@ -942,7 +943,7 @@ const EntityIndexSchema = z
   .object({
     type: z.enum(["index", "unique", "fulltext"]),
     columns: z.array(z.string()),
-    name: z.string().optional(),
+    name: z.string().min(1).max(63),
     parser: z.enum(["built-in", "ngram"]).optional(),
   })
   .strict();

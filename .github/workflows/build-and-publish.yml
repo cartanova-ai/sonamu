@@ -12,6 +12,7 @@ permissions: # 여기를 보세요: https://docs.npmjs.com/trusted-publishers#st
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment: deployment
 
     steps:
       - name: Checkout code

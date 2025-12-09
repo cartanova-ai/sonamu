@@ -109,6 +109,7 @@ class PostgreSQLSchemaReaderClass {
 
       return {
         type,
+        name: indexName,
         columns: currentIndexes.map((idx) => idx.column_name),
       };
     });

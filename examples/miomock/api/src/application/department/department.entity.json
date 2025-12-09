@@ -35,7 +35,13 @@
     },
     { "name": "employee_count", "desc": "직원수", "type": "virtual", "id": "NumberType" }
   ],
-  "indexes": [{ "type": "unique", "columns": ["company_id", "name"] }],
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "departments_company_id_name_unique",
+      "columns": ["company_id", "name"]
+    }
+  ],
   "subsets": {
     "A": [
       "id",
