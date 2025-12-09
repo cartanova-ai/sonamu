@@ -31,10 +31,10 @@
     "radashi": "^12.2.0",
     "sonamu": "workspace:^",
     "zod": "^4.1.12",
-    "ai": "^6.0.0-beta.99",
-    "@ai-sdk/provider-utils": "4.0.0-beta.40",
-    "@ai-sdk/openai": "3.0.0-beta.75",
-    "@ai-sdk/provider": "3.0.0-beta.22"
+    "@ai-sdk/openai": "^3.0.0-beta.75",
+    "@ai-sdk/provider": "^3.0.0-beta.22",
+    "@ai-sdk/provider-utils": "^4.0.0-beta.40",
+    "ai": "^6.0.0-beta.138"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",

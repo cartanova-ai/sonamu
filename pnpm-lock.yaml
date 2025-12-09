@@ -39,20 +39,20 @@ importers:
   examples/miomock/api:
     dependencies:
       '@ai-sdk/openai':
-        specifier: 3.0.0-beta.75
+        specifier: ^3.0.0-beta.75
         version: 3.0.0-beta.75(zod@4.1.12)
       '@ai-sdk/provider':
-        specifier: 3.0.0-beta.22
-        version: 3.0.0-beta.22
+        specifier: ^3.0.0-beta.22
+        version: 3.0.0-beta.25
       '@ai-sdk/provider-utils':
-        specifier: 4.0.0-beta.40
-        version: 4.0.0-beta.40(zod@4.1.12)
+        specifier: ^4.0.0-beta.40
+        version: 4.0.0-beta.44(zod@4.1.12)
       '@swc/core':
         specifier: ^1.13.5
         version: 1.15.3(@swc/helpers@0.5.17)
       ai:
-        specifier: ^6.0.0-beta.99
-        version: 6.0.0-beta.131(zod@4.1.12)
+        specifier: ^6.0.0-beta.138
+        version: 6.0.0-beta.138(zod@4.1.12)
       bcrypt:
         specifier: ^6.0.0
         version: 6.0.0
@@ -574,13 +574,13 @@ importers:
   modules/sonamu:
     dependencies:
       '@ai-sdk/openai':
-        specifier: 3.0.0-beta.75
+        specifier: ^3.0.0-beta.75
         version: 3.0.0-beta.75(zod@4.1.12)
       '@ai-sdk/provider':
-        specifier: 3.0.0-beta.22
+        specifier: ^3.0.0-beta.22
         version: 3.0.0-beta.22
       '@ai-sdk/provider-utils':
-        specifier: 4.0.0-beta.40
+        specifier: ^4.0.0-beta.40
         version: 4.0.0-beta.40(zod@4.1.12)
       '@aws-sdk/client-s3':
         specifier: ^3.921.0
@@ -625,8 +625,8 @@ importers:
         specifier: ^1.13.19
         version: 1.15.3(@swc/helpers@0.5.17)
       ai:
-        specifier: ^6.0.0-beta.99
-        version: 6.0.0-beta.131(zod@4.1.12)
+        specifier: ^6.0.0-beta.138
+        version: 6.0.0-beta.138(zod@4.1.12)
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -986,8 +986,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@2.0.0-beta.71':
-    resolution: {integrity: sha512-Mn5WShiC0BUVOtO6C65FKdeQxfrIaM0QeZjYcQej6+4hRgSKWlySVDWr88ZZjXGpviB7q0zINTuc6YWV6TqfvQ==}
+  '@ai-sdk/gateway@2.0.0-beta.73':
+    resolution: {integrity: sha512-fVuJ4emiymdSmlB7IiRfSyaWZm3+zqBUf+KYJiYrlpQEXGZPMTgo2xNhVlyb0oWzFyFBnbIChYBNZgzFs48ckQ==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1032,8 +1032,8 @@ packages:
       effect:
         optional: true
 
-  '@ai-sdk/provider-utils@4.0.0-beta.42':
-    resolution: {integrity: sha512-VY+aQzlbLT4R+n3AgsRrpaeHQRhBAxBPkfXnS8PdIFKY85/W1d4emA/40j++2N0yBDBeEW4I7xAPv1t43YkjbQ==}
+  '@ai-sdk/provider-utils@4.0.0-beta.44':
+    resolution: {integrity: sha512-eV5Ubq01zT9rQnJaf6nCQKgpQgEiOzWzlXGWRFTZGDfVn/+09GRJ/gyLXhliwUjTgaNLTZvTdp9HahTigENn4w==}
     engines: {node: '>=18'}
     peerDependencies:
       '@valibot/to-json-schema': ^1.3.0
@@ -1056,8 +1056,8 @@ packages:
     resolution: {integrity: sha512-Ss0tgCZwzccS6MREhjAI28lkAV5PfJnoBFbv8mas74Cs5OseFKqxg3dEd1lRL8mf4Qapu1xpBLkV4/ldSShSdA==}
     engines: {node: '>=18'}
 
-  '@ai-sdk/provider@3.0.0-beta.23':
-    resolution: {integrity: sha512-C8X5urwwxCM8GzdMiEnI5ZtRSv+rs17smwubTy0S+dFm9aSVui92ED5U42TJvDivEpDsHbMhuNI8sxRbtFQduQ==}
+  '@ai-sdk/provider@3.0.0-beta.25':
+    resolution: {integrity: sha512-DE7vSHX29Tgw3VX8oPuIJ6yD0nCKor98LvpUX1SkUCqi4UNKQeOr0X93RaRciINRaDQwGcDVRRuGU7RONYDIfg==}
     engines: {node: '>=18'}
 
   '@ai-sdk/react@2.0.104':
@@ -3857,8 +3857,8 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  ai@6.0.0-beta.131:
-    resolution: {integrity: sha512-hoe+I4pPWjyP1CQHtftC5p7z/EEAx8nGTzzxG0Ka+cAKQW+3lQZsO3dBZ9kB2McYrLd2xntJl7V1tgqqnkfvYw==}
+  ai@6.0.0-beta.138:
+    resolution: {integrity: sha512-aS+XzvnUXUx4irNY/UH0tM+yTIMGgWsMDFKiwWHVKaPhKvdRoJA+KoVqW+/EzBU4zI+v+OriNKCMKz3kW++7kA==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -8884,10 +8884,10 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.18(zod@4.1.12)
       zod: 4.1.12
 
-  '@ai-sdk/gateway@2.0.0-beta.71(zod@4.1.12)':
+  '@ai-sdk/gateway@2.0.0-beta.73(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/provider': 3.0.0-beta.23
-      '@ai-sdk/provider-utils': 4.0.0-beta.42(zod@4.1.12)
+      '@ai-sdk/provider': 3.0.0-beta.25
+      '@ai-sdk/provider-utils': 4.0.0-beta.44(zod@4.1.12)
       '@vercel/oidc': 3.0.5
       zod: 4.1.12
     transitivePeerDependencies:
@@ -8932,9 +8932,9 @@ snapshots:
       eventsource-parser: 3.0.6
       zod: 4.1.12
 
-  '@ai-sdk/provider-utils@4.0.0-beta.42(zod@4.1.12)':
+  '@ai-sdk/provider-utils@4.0.0-beta.44(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/provider': 3.0.0-beta.23
+      '@ai-sdk/provider': 3.0.0-beta.25
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.6
       zod: 4.1.12
@@ -8947,7 +8947,7 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/provider@3.0.0-beta.23':
+  '@ai-sdk/provider@3.0.0-beta.25':
     dependencies:
       json-schema: 0.4.0
 
@@ -12532,11 +12532,11 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       zod: 4.1.12
 
-  ai@6.0.0-beta.131(zod@4.1.12):
+  ai@6.0.0-beta.138(zod@4.1.12):
     dependencies:
-      '@ai-sdk/gateway': 2.0.0-beta.71(zod@4.1.12)
-      '@ai-sdk/provider': 3.0.0-beta.23
-      '@ai-sdk/provider-utils': 4.0.0-beta.42(zod@4.1.12)
+      '@ai-sdk/gateway': 2.0.0-beta.73(zod@4.1.12)
+      '@ai-sdk/provider': 3.0.0-beta.25
+      '@ai-sdk/provider-utils': 4.0.0-beta.44(zod@4.1.12)
       '@opentelemetry/api': 1.9.0
       zod: 4.1.12
     transitivePeerDependencies:
