@@ -1,4 +1,5 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
+import { camelize } from "inflection";
 import { useEffect, useRef } from "react";
 import { Button, Dropdown, Form, Header, Segment } from "semantic-ui-react";
 import type { EntityIndex } from "sonamu";
@@ -6,20 +7,22 @@ import { z } from "zod";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
-type EntityIndexFormProps = { entityId: string; oldOne?: EntityIndex };
-export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
+type EntityIndexFormProps = { entityId: string; table: string; oldOne?: EntityIndex };
+export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProps) {
   // CommonModal
   const { doneModal } = useCommonModal();
 
   // TypeForm
-  const { form, setForm, register } = useTypeForm(
+  const { form, setForm, register, addError } = useTypeForm(
     z.object({
       type: z.enum(["index", "unique", "fulltext"]),
+      name: z.string(),
       columns: z.string().array(),
       parser: z.enum(["built-in", "ngram"]).optional(),
     }),
     {
       type: "index",
+      name: "",
       columns: [],
       ...oldOne,
     },
@@ -49,12 +52,34 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
       }
     };
     document.addEventListener("keydown", onKeydown);
+
+    if (!oldOne) {
+      const indexName = `${table}_${form.columns.join("_")}_${form.type}`;
+      setForm({ ...form, name: indexName });
+    }
+
     return () => {
       document.removeEventListener("keydown", onKeydown);
     };
   }, [form]);
 
   const handleSubmit = () => {
+    const ifError = ["name"]
+      .map((key) => {
+        if (!form[key as keyof typeof form]) {
+          addError(key, {
+            content: `${camelize(key)} is required.`,
+            pointing: "above",
+          });
+          return true;
+        }
+        return false;
+      })
+      .some((e) => e === true);
+    if (ifError) {
+      return;
+    }
+
     doneModal(form);
   };
 
@@ -111,6 +136,16 @@ export function EntityIndexForm({ entityId, oldOne }: EntityIndexFormProps) {
                     entityId={entityId}
                     allowedTypes={form.type === "fulltext" ? ["string", "text"] : undefined}
                     className="focus-2"
+                  />
+                </Form.Field>
+                <Form.Field required>
+                  <label>Name</label>
+                  <Form.Input
+                    {...register("name")}
+                    className="focus-3"
+                    origin={form.name}
+                    entityId={entityId}
+                    disabled={!!oldOne?.name}
                   />
                 </Form.Field>
               </Form.Group>

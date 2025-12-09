@@ -435,7 +435,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
     const oldOne = mode === "add" ? undefined : entity.indexes[at!];
 
-    openModal(<EntityIndexForm entityId={entity.id} oldOne={oldOne} />, {
+    openModal(<EntityIndexForm entityId={entity.id} table={entity.table} oldOne={oldOne} />, {
       onControlledOpen: () => {
         // keySwitch off
         turnKeyHandler(false);
