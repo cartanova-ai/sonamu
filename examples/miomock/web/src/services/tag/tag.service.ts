@@ -31,22 +31,22 @@ export namespace TagService {
     });
   }
 
-  export function useTags<T extends TagSubsetKey>(
+  export function useTags<T extends TagSubsetKey, LP extends TagListParams>(
     subset: T,
-    params: TagListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<TagSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, TagSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/tag/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional([`/api/tag/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getTags<T extends TagSubsetKey>(
+  export async function getTags<T extends TagSubsetKey, LP extends TagListParams>(
     subset: T,
-    params: TagListParams = {},
-  ): Promise<ListResult<TagSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, TagSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/tag/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/tag/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

@@ -31,22 +31,22 @@ export namespace FileService {
     });
   }
 
-  export function useFiles<T extends FileSubsetKey>(
+  export function useFiles<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
-    params: FileListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<FileSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, FileSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/file/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional([`/api/file/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getFiles<T extends FileSubsetKey>(
+  export async function getFiles<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
-    params: FileListParams = {},
-  ): Promise<ListResult<FileSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, FileSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/file/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/file/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

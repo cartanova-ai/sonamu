@@ -61,17 +61,17 @@ class CompanyModelClass extends BaseModelClass<
     clients: ["axios", "swr"],
     resourceName: "Companies",
   })
-  async findMany<T extends CompanySubsetKey>(
+  async findMany<T extends CompanySubsetKey, LP extends CompanyListParams>(
     subset: T,
-    params: CompanyListParams = {},
-  ): Promise<ListResult<CompanySubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, CompanySubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
 
     // build queries
@@ -103,17 +103,12 @@ class CompanyModelClass extends BaseModelClass<
       }
     }
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       debug: false,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

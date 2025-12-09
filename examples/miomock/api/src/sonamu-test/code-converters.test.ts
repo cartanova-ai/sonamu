@@ -1115,7 +1115,7 @@ describe("code-converters", () => {
           },
           [],
         );
-        expect(result).toBe("<T>");
+        expect(result).toBe("T");
       });
 
       test("type-param의 constraint가 string인 경우", () => {
@@ -1127,7 +1127,7 @@ describe("code-converters", () => {
           },
           [],
         );
-        expect(result).toBe("<T extends string>");
+        expect(result).toBe("T extends string");
       });
 
       test("type-param의 constraint가 union/object인 경우", () => {
@@ -1145,7 +1145,7 @@ describe("code-converters", () => {
           },
           [],
         );
-        expect(result).toContain("<T extends {");
+        expect(result).toContain("T extends {");
         expect(result).toContain("id: number");
         expect(result).toContain("name: string");
       });
@@ -1160,7 +1160,7 @@ describe("code-converters", () => {
           },
           importKeys,
         );
-        expect(result).toBe("<T extends BaseEntity>");
+        expect(result).toBe("T extends BaseEntity");
         expect(importKeys).toContain("BaseEntity");
       });
 
@@ -1177,7 +1177,7 @@ describe("code-converters", () => {
           },
           importKeys,
         );
-        expect(result).toBe("<T extends PracticeModel[]>");
+        expect(result).toBe("T extends PracticeModel[]");
         expect(importKeys).toContain("PracticeModel");
       });
     });

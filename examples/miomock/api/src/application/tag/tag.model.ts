@@ -50,17 +50,17 @@ class TagModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
-  async findMany<T extends TagSubsetKey>(
+  async findMany<T extends TagSubsetKey, LP extends TagListParams>(
     subset: T,
-    params: TagListParams = {},
-  ): Promise<ListResult<TagSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, TagSubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
 
     // build queries
@@ -92,17 +92,12 @@ class TagModelClass extends BaseModelClass<
       }
     }
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       debug: false,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

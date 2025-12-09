@@ -52,18 +52,18 @@ class FileModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Files" })
-  async findMany<T extends FileSubsetKey>(
+  async findMany<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
-    params: FileListParams = {},
-  ): Promise<ListResult<FileSubsetMapping[T]>> {
-    // params with defaults
-    params = {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, FileSubsetMapping[T]>> {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
+    // params with defaults
 
     // build queries
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
@@ -94,17 +94,12 @@ class FileModelClass extends BaseModelClass<
       }
     }
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       debug: false,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

@@ -69,17 +69,17 @@ class ProjectModelClass extends BaseModelClass<
     clients: ["axios", "swr"],
     resourceName: "Projects",
   })
-  async findMany<T extends ProjectSubsetKey>(
+  async findMany<T extends ProjectSubsetKey, LP extends ProjectListParams>(
     subset: T,
-    params: ProjectListParams = {},
-  ): Promise<ListResult<ProjectSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, ProjectSubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
 
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
@@ -114,18 +114,13 @@ class ProjectModelClass extends BaseModelClass<
       P: (row) => row,
     });
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       enhancers,
       debug: true,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

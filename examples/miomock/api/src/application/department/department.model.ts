@@ -60,17 +60,17 @@ class DepartmentModelClass extends BaseModelClass<
     clients: ["axios", "swr"],
     resourceName: "Departments",
   })
-  async findMany<T extends DepartmentSubsetKey>(
+  async findMany<T extends DepartmentSubsetKey, LP extends DepartmentListParams>(
     subset: T,
-    params: DepartmentListParams = {},
-  ): Promise<ListResult<DepartmentSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, DepartmentSubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
 
     const { qb, onSubset } = this.getSubsetQueries(subset);
@@ -116,18 +116,13 @@ class DepartmentModelClass extends BaseModelClass<
       }),
     });
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       enhancers,
       debug: true,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

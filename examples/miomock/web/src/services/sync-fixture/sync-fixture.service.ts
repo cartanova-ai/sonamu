@@ -31,22 +31,25 @@ export namespace SyncFixtureService {
     });
   }
 
-  export function useSyncFixtures<T extends SyncFixtureSubsetKey>(
+  export function useSyncFixtures<T extends SyncFixtureSubsetKey, LP extends SyncFixtureListParams>(
     subset: T,
-    params: SyncFixtureListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<SyncFixtureSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, SyncFixtureSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/syncFixture/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional(
+        [`/api/syncFixture/findMany`, { subset, rawParams }],
+        swrOptions?.conditional,
+      ),
     );
   }
-  export async function getSyncFixtures<T extends SyncFixtureSubsetKey>(
-    subset: T,
-    params: SyncFixtureListParams = {},
-  ): Promise<ListResult<SyncFixtureSubsetMapping[T]>> {
+  export async function getSyncFixtures<
+    T extends SyncFixtureSubsetKey,
+    LP extends SyncFixtureListParams,
+  >(subset: T, rawParams?: LP): Promise<ListResult<LP, SyncFixtureSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/syncFixture/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/syncFixture/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

@@ -34,22 +34,22 @@ export namespace ProjectService {
     });
   }
 
-  export function useProjects<T extends ProjectSubsetKey>(
+  export function useProjects<T extends ProjectSubsetKey, LP extends ProjectListParams>(
     subset: T,
-    params: ProjectListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<ProjectSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, ProjectSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/project/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional([`/api/project/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getProjects<T extends ProjectSubsetKey>(
+  export async function getProjects<T extends ProjectSubsetKey, LP extends ProjectListParams>(
     subset: T,
-    params: ProjectListParams = {},
-  ): Promise<ListResult<ProjectSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, ProjectSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/project/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/project/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

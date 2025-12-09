@@ -24,6 +24,7 @@ import type {
 /*
   User Model
 */
+
 class UserModelClass extends BaseModelClass<
   UserSubsetKey,
   UserSubsetMapping,
@@ -64,10 +65,10 @@ class UserModelClass extends BaseModelClass<
     resourceName: "Users",
     timeout: 1000,
   })
-  async findMany<T extends UserSubsetKey>(
+  async findMany<T extends UserSubsetKey, LP extends UserListParams>(
     subset: T,
-    rawParams: UserListParams = {},
-  ): Promise<ListResult<UserSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
     // params with defaults
     const params = {
       num: 24,
@@ -109,17 +110,12 @@ class UserModelClass extends BaseModelClass<
     }
 
     Naite.t("esq-query", qb.toQuery());
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       debug: true,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })

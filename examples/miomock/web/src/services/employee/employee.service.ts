@@ -31,22 +31,22 @@ export namespace EmployeeService {
     });
   }
 
-  export function useEmployees<T extends EmployeeSubsetKey>(
+  export function useEmployees<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
     subset: T,
-    params: EmployeeListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<EmployeeSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, EmployeeSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/employee/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional([`/api/employee/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getEmployees<T extends EmployeeSubsetKey>(
+  export async function getEmployees<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
     subset: T,
-    params: EmployeeListParams = {},
-  ): Promise<ListResult<EmployeeSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, EmployeeSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/employee/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/employee/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

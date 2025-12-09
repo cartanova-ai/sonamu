@@ -31,22 +31,22 @@ export namespace CompanyService {
     });
   }
 
-  export function useCompanies<T extends CompanySubsetKey>(
+  export function useCompanies<T extends CompanySubsetKey, LP extends CompanyListParams>(
     subset: T,
-    params: CompanyListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<CompanySubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, CompanySubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/company/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional([`/api/company/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getCompanies<T extends CompanySubsetKey>(
+  export async function getCompanies<T extends CompanySubsetKey, LP extends CompanyListParams>(
     subset: T,
-    params: CompanyListParams = {},
-  ): Promise<ListResult<CompanySubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, CompanySubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/company/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/company/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

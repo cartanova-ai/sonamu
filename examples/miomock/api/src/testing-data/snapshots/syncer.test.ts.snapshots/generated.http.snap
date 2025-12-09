@@ -114,13 +114,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/tag/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###
@@ -160,13 +160,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/syncFixture/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###
@@ -213,13 +213,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/project/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###
@@ -276,13 +276,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/file/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###
@@ -338,13 +338,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/employee/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###
@@ -389,14 +389,14 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/department/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
-	&params[company_name]=COMPANY_NAME
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
+	&rawParams[company_name]=COMPANY_NAME
 Content-Type: application/json
 
 ###
@@ -438,13 +438,13 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/company/findMany
 	?subset=unknown
-	&params[num]=24
-	&params[page]=1
-	&params[search]=id
-	&params[keyword]=KEYWORD
-	&params[orderBy]=id-desc
-	&params[queryMode]=both
-	&params[id]=0
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
 Content-Type: application/json
 
 ###

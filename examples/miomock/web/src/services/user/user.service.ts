@@ -31,20 +31,20 @@ export namespace UserService {
     });
   }
 
-  export function useUsers<T extends UserSubsetKey>(
+  export function useUsers<T extends UserSubsetKey, LP extends UserListParams>(
     subset: T,
-    rawParams: UserListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<UserSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, UserSubsetMapping[T]>, SWRError> {
     return useSWR(
       handleConditional([`/api/user/findMany`, { subset, rawParams }], swrOptions?.conditional),
       { loadingTimeout: 1000 },
     );
   }
-  export async function getUsers<T extends UserSubsetKey>(
+  export async function getUsers<T extends UserSubsetKey, LP extends UserListParams>(
     subset: T,
-    rawParams: UserListParams = {},
-  ): Promise<ListResult<UserSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
     return fetch({
       method: "GET",
       url: `/api/user/findMany?${qs.stringify({ subset, rawParams })}`,

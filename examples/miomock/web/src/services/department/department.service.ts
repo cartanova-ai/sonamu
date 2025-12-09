@@ -31,22 +31,25 @@ export namespace DepartmentService {
     });
   }
 
-  export function useDepartments<T extends DepartmentSubsetKey>(
+  export function useDepartments<T extends DepartmentSubsetKey, LP extends DepartmentListParams>(
     subset: T,
-    params: DepartmentListParams = {},
+    rawParams?: LP,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<DepartmentSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<ListResult<LP, DepartmentSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional([`/api/department/findMany`, { subset, params }], swrOptions?.conditional),
+      handleConditional(
+        [`/api/department/findMany`, { subset, rawParams }],
+        swrOptions?.conditional,
+      ),
     );
   }
-  export async function getDepartments<T extends DepartmentSubsetKey>(
-    subset: T,
-    params: DepartmentListParams = {},
-  ): Promise<ListResult<DepartmentSubsetMapping[T]>> {
+  export async function getDepartments<
+    T extends DepartmentSubsetKey,
+    LP extends DepartmentListParams,
+  >(subset: T, rawParams?: LP): Promise<ListResult<LP, DepartmentSubsetMapping[T]>> {
     return fetch({
       method: "GET",
-      url: `/api/department/findMany?${qs.stringify({ subset, params })}`,
+      url: `/api/department/findMany?${qs.stringify({ subset, rawParams })}`,
     });
   }
 

@@ -61,17 +61,17 @@ class EmployeeModelClass extends BaseModelClass<
     clients: ["axios", "swr"],
     resourceName: "Employees",
   })
-  async findMany<T extends EmployeeSubsetKey>(
+  async findMany<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
     subset: T,
-    params: EmployeeListParams = {},
-  ): Promise<ListResult<EmployeeSubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, EmployeeSubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
-      search: "id",
-      orderBy: "id-desc",
-      ...params,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
     };
 
     // build queries
@@ -138,18 +138,13 @@ class EmployeeModelClass extends BaseModelClass<
       // }),
     });
 
-    const { rows, total } = await this.executeSubsetQuery({
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
       enhancers,
       debug: true,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })
