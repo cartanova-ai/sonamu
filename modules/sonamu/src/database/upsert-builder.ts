@@ -3,10 +3,16 @@ import type { Knex } from "knex";
 import { isArray, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type { DatabaseSchemaExtend, EntityIndex } from "../types/types";
+import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
 import type { ForeignKeyColumns, TableName } from "./puri.types";
+
+/**
+ * FK 타입 추론을 위해 DatabaseForeignKeys export
+ * (module augmentation 자동 로드 보장)
+ */
+export type { DatabaseForeignKeys };
 
 // 테이블 데이터 타입
 type TableData = {
