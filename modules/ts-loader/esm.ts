@@ -450,7 +450,7 @@ export function makeResolveAndLoad(underlyingFileSystem: LoaderFileSystem) {
         }
 
         default:
-          throw new Error("@sonamu-kit/ts-loader: Unexpected format");
+          throw new Error(`@sonamu-kit/ts-loader: Unexpected format ${format} at ${tsSource}`);
       }
     })();
   };
