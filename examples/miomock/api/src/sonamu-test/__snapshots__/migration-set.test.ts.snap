@@ -132,6 +132,7 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
       "columns": [
         "uuid",
       ],
+      "name": "migration_set_tests_uuid_unique",
       "type": "unique",
     },
   ],
@@ -182,6 +183,7 @@ exports[`migration-set.ts > getMigrationSetFromEntity > 전체 변환 결과가 
           "columns": [
             "uuid",
           ],
+          "name": "migration_set_tests__tags_uuid_unique",
           "type": "unique",
         },
       ],
