@@ -545,6 +545,19 @@ describe("entityManager", () => {
         expect(errors?.issues[0]?.path).toEqual(["indexes", 0, "columns"]);
       });
 
+      it("index name 누락", () => {
+        const json = {
+          ...validBaseEntity,
+          indexes: [{ type: "index", columns: ["name"] }],
+        };
+        const errors = EntityManager.schemaValidate(json);
+        expect(errors?.issues).toHaveLength(1);
+        expect(errors?.issues[0]?.message).toContain(
+          "Invalid input: expected string, received undefined",
+        );
+        expect(errors?.issues[0]?.path).toEqual(["indexes", 0, "name"]);
+      });
+
       it("index에 정의되지 않은 필드", () => {
         const json = {
           ...validBaseEntity,
