@@ -90,12 +90,23 @@ export type SonamuServerOptions = {
   };
 };
 
-export type SonamuConfigExport = SonamuConfig | Promise<SonamuConfig>;
+// NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
+export type SonamuConfigExport =
+  | SonamuConfig
+  | Promise<SonamuConfig>
+  | (() => SonamuConfig)
+  | (() => Promise<SonamuConfig>);
 
-export function defineConfig(config: SonamuConfig): SonamuConfig;
+export function defineConfig(config: SonamuConfig): Promise<SonamuConfig>;
 export function defineConfig(config: Promise<SonamuConfig>): Promise<SonamuConfig>;
-export function defineConfig(config: SonamuConfigExport): SonamuConfigExport {
-  return config;
+export function defineConfig(config: () => SonamuConfig): Promise<SonamuConfig>;
+export function defineConfig(config: () => Promise<SonamuConfig>): Promise<SonamuConfig>;
+export function defineConfig(config: SonamuConfigExport): Promise<SonamuConfig> {
+  if (typeof config === "function") {
+    return Promise.resolve(config());
+  }
+
+  return Promise.resolve(config);
 }
 
 /**
