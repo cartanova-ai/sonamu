@@ -14,4 +14,4 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
-  prismjs@<1.30.0: '>=1.30.0'
+  prismjs@<1.30.0: ">=1.30.0"
