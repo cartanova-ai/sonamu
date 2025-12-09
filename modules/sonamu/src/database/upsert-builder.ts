@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Knex } from "knex";
-import { unique } from "radashi";
+import { isArray, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
@@ -16,6 +16,10 @@ export type UBRef = {
   uuid: string;
   of: string;
   use?: string;
+};
+type UpsertOptions = {
+  chunkSize?: number;
+  cleanOrphans?: string | string[]; // FK 컬럼명(들)
 };
 export function isRefField(field: unknown): field is UBRef {
   return (
@@ -150,18 +154,37 @@ export class UpsertBuilder {
     return result;
   }
 
-  async upsert(wdb: Knex, tableName: string, chunkSize?: number): Promise<number[]> {
-    return this.upsertOrInsert(wdb, tableName, "upsert", chunkSize);
+  async upsert(
+    wdb: Knex,
+    tableName: string,
+    optionsOrChunkSize?: UpsertOptions,
+  ): Promise<number[]> {
+    // 숫자면 { chunkSize: n } 으로 변환
+    const options =
+      typeof optionsOrChunkSize === "number"
+        ? { chunkSize: optionsOrChunkSize }
+        : optionsOrChunkSize;
+
+    return this.upsertOrInsert(wdb, tableName, "upsert", options);
   }
-  async insertOnly(wdb: Knex, tableName: string, chunkSize?: number): Promise<number[]> {
-    return this.upsertOrInsert(wdb, tableName, "insert", chunkSize);
+  async insertOnly(
+    wdb: Knex,
+    tableName: string,
+    optionsOrChunkSize?: UpsertOptions | number,
+  ): Promise<number[]> {
+    const options =
+      typeof optionsOrChunkSize === "number"
+        ? { chunkSize: optionsOrChunkSize }
+        : optionsOrChunkSize;
+
+    return this.upsertOrInsert(wdb, tableName, "insert", options);
   }
 
   async upsertOrInsert(
     wdb: Knex,
     tableName: string,
     mode: "upsert" | "insert",
-    chunkSize?: number,
+    options?: UpsertOptions,
   ): Promise<number[]> {
     if (this.hasTable(tableName) === false) {
       return [];
@@ -244,6 +267,7 @@ export class UpsertBuilder {
       });
 
       // 현재 레벨 upsert
+      const chunkSize = options?.chunkSize;
       const levelChunks = chunkSize ? chunk(resolvedRows, chunkSize) : [resolvedRows];
       const selectFields = unique(["uuid", "id", ...extractFields]);
 
@@ -309,6 +333,38 @@ export class UpsertBuilder {
         }
         return row;
       });
+    }
+
+    if (options?.cleanOrphans) {
+      const cleanOrphans = options.cleanOrphans;
+      const fkColumns = isArray(cleanOrphans) ? cleanOrphans : [cleanOrphans];
+
+      // 현재 register된 레코드들의 FK 값들 추출
+      const fkConditions = fkColumns.map((fkCol) => {
+        const fkValues = [...new Set(table.rows.map((row) => row[fkCol]).filter((v) => v != null))];
+        return { column: fkCol, values: fkValues };
+      });
+
+      // 모든 FK 컬럼에 값이 있는 경우에만 삭제 실행
+      if (fkConditions.every((fc) => fc.values.length > 0)) {
+        let deleteQuery = wdb(tableName);
+
+        // 각 FK 컬럼에 대한 WHERE IN 조건 추가
+        for (const { column, values } of fkConditions) {
+          deleteQuery = deleteQuery.whereIn(column, values);
+        }
+
+        // 방금 upsert한 ID는 제외
+        deleteQuery = deleteQuery.whereNotIn("id", allIds);
+
+        const deletedCount = await deleteQuery.delete();
+
+        Naite.t("puri:ub-clean-orphans", {
+          tableName,
+          cleanOrphans: fkColumns,
+          deletedCount,
+        });
+      }
     }
 
     // 해당 테이블의 데이터 초기화
