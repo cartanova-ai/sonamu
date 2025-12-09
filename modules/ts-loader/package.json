@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -b",
-    "test": "node --no-warnings --experimental-vm-modules --enable-source-maps --test-reporter=spec --test 'dist/__tests__/**/*.js'"
+    "test": "node --no-warnings --experimental-vm-modules --enable-source-maps --test-reporter=spec --test 'dist/__tests__/**/*.js'",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@loaderkit/resolve": "^1.0.4",
