@@ -354,14 +354,16 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE: 컬럼 - 사용: .where("u.id", 1), .where("u.id", null)
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    value: ExtractColumnType<TTables, TColumn & string> | null,
+    value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
+  // FIXME: WHERE절에서 JOIN된 컬럼은 nullish할 때 체크할 수 없음.
   // WHERE: 컬럼 - 사용: .where("u.id", ">", 10), .where("u.id", "!=", null)
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
     operator: ComparisonOperator | "like" | "not like",
-    value: ExtractColumnType<TTables, TColumn & string> | null,
+    value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
+  // FIXME: WHERE절에서 JOIN된 컬럼은 nullish할 때 체크할 수 없음.
   // WHERE: SQL 표현식 - 사용: .where(puri.raw("CONCAT(u.name, u.email)"), "like", "%test%")
   where<TColumn extends Knex.Raw>(
     column: TColumn,
