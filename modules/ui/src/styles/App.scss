@@ -1482,3 +1482,35 @@ code {
     border-top: 1px solid #e2e8f0;
   }
 }
+
+.entity-index-form {
+  .column-order {
+    margin-top: 8px;
+  }
+
+  .column-order-item {
+    display: flex;
+    gap: 8px;
+    padding: 4px 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    &:nth-child(even) {
+      background: #fff;
+    }
+
+    .column-order-item-index {
+      width: 20px;
+      color: #888;
+    }
+    .column-order-item-column {
+      flex: 1;
+    }
+    .icon.arrow {
+      cursor: pointer;
+    }
+    .icon.arrow.disabled {
+      cursor: not-allowed;
+      opacity: 0.3;
+    }
+  }
+}

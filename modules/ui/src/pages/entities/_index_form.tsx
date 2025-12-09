@@ -1,7 +1,7 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
 import { camelize } from "inflection";
 import { useEffect, useRef } from "react";
-import { Button, Dropdown, Form, Header, Segment } from "semantic-ui-react";
+import { Button, Dropdown, Form, Header, Icon, Label, Segment } from "semantic-ui-react";
 import type { EntityIndex } from "sonamu";
 import { z } from "zod";
 import { useCommonModal } from "../../components/core/CommonModal";
@@ -148,6 +148,47 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                     allowedTypes={form.type === "fulltext" ? ["string", "text"] : undefined}
                     className="focus-2"
                   />
+                  {form.columns.length > 1 && (
+                    <div className="column-order">
+                      <Label size="small" basic>
+                        순서
+                      </Label>
+                      <div style={{ marginTop: "4px" }}>
+                        {form.columns.map((col, idx) => (
+                          <div className="column-order-item" key={col}>
+                            <span className="column-order-item-index">{idx + 1}.</span>
+                            <span className="column-order-item-column">{col}</span>
+                            <Icon
+                              name="arrow up"
+                              className={idx === 0 ? "disabled" : ""}
+                              onClick={() => {
+                                if (idx === 0) return;
+                                const newColumns = [...form.columns];
+                                [newColumns[idx - 1], newColumns[idx]] = [
+                                  newColumns[idx],
+                                  newColumns[idx - 1],
+                                ];
+                                setForm({ ...form, columns: newColumns });
+                              }}
+                            />
+                            <Icon
+                              name="arrow down"
+                              className={idx === form.columns.length - 1 ? "disabled" : ""}
+                              onClick={() => {
+                                if (idx === form.columns.length - 1) return;
+                                const newColumns = [...form.columns];
+                                [newColumns[idx], newColumns[idx + 1]] = [
+                                  newColumns[idx + 1],
+                                  newColumns[idx],
+                                ];
+                                setForm({ ...form, columns: newColumns });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </Form.Field>
                 <Form.Field required>
                   <label>Name</label>

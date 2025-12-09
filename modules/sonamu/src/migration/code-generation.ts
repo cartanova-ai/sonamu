@@ -725,10 +725,10 @@ export async function generateAlterCode(
          */
 
   const entityIndexes = alphabetical(entitySet.indexes, (a) =>
-    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
+    [a.type, ...a.columns].join("-"),
   );
   const dbIndexes = alphabetical(dbSet.indexes, (a) =>
-    [a.type, ...a.columns.sort((c1, c2) => (c1 > c2 ? 1 : -1))].join("-"),
+    [a.type, ...a.columns].join("-"),
   );
 
   const replaceNoActionOnMySQL = (f: MigrationForeign) => {

@@ -341,7 +341,7 @@ export class Migrator {
         ...tables[0],
         indexes: unique(
           tables.flatMap((t) => t.indexes),
-          (index) => [index.type, ...index.columns.sort()].join("-"),
+          (index) => [index.type, ...index.columns].join("-"),
         ),
       };
     });
