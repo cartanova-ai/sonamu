@@ -720,7 +720,7 @@ const BasePropFields = {
   name: z.string(),
   desc: z.string().optional(),
   nullable: z.boolean().optional(),
-  toFilter: z.literal(true).optional(),
+  toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
 };
 
@@ -771,6 +771,7 @@ const EnumPropSchema = z
     ...BasePropFields,
     type: z.literal("enum"),
     id: z.string(),
+    length: z.number().optional(),
   })
   .strict();
 const EnumArrayPropSchema = z
