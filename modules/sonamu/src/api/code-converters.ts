@@ -294,11 +294,11 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
   } else if (ApiParamType.isTupleType(paramType)) {
     return `[ ${paramType.elements.map((elem) => apiParamTypeToTsType(elem, injectImportKeys))} ]`;
   } else if (ApiParamType.isTypeParam(paramType)) {
-    return `<${paramType.id}${
+    return `${paramType.id}${
       paramType.constraint
         ? ` extends ${apiParamTypeToTsType(paramType.constraint, injectImportKeys)}`
         : ""
-    }>`;
+    }`;
   } else {
     throw new Error(`resolve 불가 ApiParamType ${paramType}`);
   }

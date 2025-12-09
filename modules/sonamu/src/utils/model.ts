@@ -1,7 +1,13 @@
-export type ListResult<T> = {
-  rows: T[];
-  total?: number;
-};
+import type { SonamuQueryMode } from "..";
+
+export type ListResult<
+  LP extends { queryMode?: SonamuQueryMode },
+  T,
+> = LP["queryMode"] extends "list"
+  ? { rows: T[] }
+  : LP["queryMode"] extends "count"
+    ? { total: number }
+    : { rows: T[]; total: number };
 
 export type ArrayOr<T> = T | T[];
 

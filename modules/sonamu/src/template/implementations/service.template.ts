@@ -85,11 +85,12 @@ export class Template__service extends Template {
             );
 
             // 파라미터 타입 정의
-            const typeParamsDef = api.typeParameters
+            const typeParametersAsTsType = api.typeParameters
               .map((typeParam) => {
                 return apiParamTypeToTsType(typeParam, importKeys);
               })
               .join(", ");
+            const typeParamsDef = typeParametersAsTsType ? `<${typeParametersAsTsType}>` : "";
             typeParamNames = typeParamNames.concat(
               api.typeParameters.map((typeParam) => typeParam.id),
             );
