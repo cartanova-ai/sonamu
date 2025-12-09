@@ -4,18 +4,10 @@
   "title": "COMPANY",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     { "name": "name", "desc": "회사명", "type": "string" }
   ],
-  "indexes": [{ "type": "unique", "columns": ["name"] }],
+  "indexes": [{ "type": "unique", "name": "companies_name_unique", "columns": ["name"] }],
   "subsets": { "A": ["id", "created_at", "name"] },
-  "enums": {
-    "CompanyOrderBy": { "id-desc": "ID최신순" },
-    "CompanySearchField": { "id": "ID" }
-  }
+  "enums": { "CompanyOrderBy": { "id-desc": "ID최신순" }, "CompanySearchField": { "id": "ID" } }
 }

@@ -4,12 +4,7 @@
   "title": "직원",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     {
       "type": "relation",
       "name": "user",
@@ -30,12 +25,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "SET NULL"
     },
-    {
-      "name": "employee_number",
-      "desc": "사번",
-      "type": "string",
-      "length": 32
-    },
+    { "name": "employee_number", "desc": "사번", "type": "string", "length": 32 },
     {
       "name": "salary",
       "nullable": true,
@@ -45,12 +35,7 @@
       "scale": 2
     },
     { "name": "hire_date", "type": "date", "nullable": true, "desc": "입사일" },
-    {
-      "name": "notes",
-      "type": "string",
-      "nullable": true,
-      "desc": "비고"
-    },
+    { "name": "notes", "type": "string", "nullable": true, "desc": "비고" },
     {
       "type": "relation",
       "name": "projs",
@@ -63,7 +48,13 @@
       "onDelete": "CASCADE"
     }
   ],
-  "indexes": [{ "type": "unique", "columns": ["user_id", "employee_number"] }],
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "employees_user_id_employee_number_unique",
+      "columns": ["user_id", "employee_number"]
+    }
+  ],
   "subsets": {
     "A": [
       "id",
@@ -101,8 +92,5 @@
       "projs.description"
     ]
   },
-  "enums": {
-    "EmployeeOrderBy": { "id-desc": "ID최신순" },
-    "EmployeeSearchField": { "id": "ID" }
-  }
+  "enums": { "EmployeeOrderBy": { "id-desc": "ID최신순" }, "EmployeeSearchField": { "id": "ID" } }
 }
