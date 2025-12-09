@@ -943,7 +943,7 @@ const EntityIndexSchema = z
   .object({
     type: z.enum(["index", "unique", "fulltext"]),
     columns: z.array(z.string()),
-    name: z.string(),
+    name: z.string().min(1).max(63),
     parser: z.enum(["built-in", "ngram"]).optional(),
   })
   .strict();
