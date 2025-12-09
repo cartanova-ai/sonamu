@@ -61,7 +61,7 @@ export interface InitOptions {
    * reload will be automatically detected.
    *
    * For example an `.env` file is a good candidate for this list.
-   * Hot Hook will watch these files and send a full reload message
+   * HMR Hook will watch these files and send a full reload message
    * to the main thread when they change.
    *
    * @default ['.env']

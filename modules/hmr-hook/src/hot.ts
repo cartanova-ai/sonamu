@@ -77,7 +77,7 @@ class Hot {
       options,
     );
 
-    debug("Hot hook options %o", this.#options);
+    debug("HMR hook options %o", this.#options);
 
     /**
      * First, we setup a message channel to be able to communicate
@@ -126,7 +126,7 @@ class Hot {
   }
 
   /**
-   * Dump the current state hot hook
+   * Dump the current state HMR hook
    */
   async dump() {
     this.#messageChannel.port1.postMessage({ type: "hmr-hook:dump" });
