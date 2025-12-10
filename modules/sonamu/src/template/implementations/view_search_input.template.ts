@@ -23,7 +23,7 @@ export class Template__view_search_input extends Template {
 import React from "react";
 import { useState } from "react";
 import { DropdownProps, Input, InputProps } from "semantic-ui-react";
-import { ${names.capital}SearchFieldDropdown } from "src/components/${names.fs}/${names.capital}SearchFieldDropdown";
+import { ${names.capital}SearchFieldDropdown } from "@/components/${names.fs}/${names.capital}SearchFieldDropdown";
 
 export function ${names.capital}SearchInput({
   input: { value: inputValue, onChange: inputOnChange, ...inputProps },

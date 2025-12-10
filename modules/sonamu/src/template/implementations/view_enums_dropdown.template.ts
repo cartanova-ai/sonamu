@@ -28,7 +28,7 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${enumId}Label } from 'src/services/sonamu.generated';
+import { ${enumId}Label } from '@/services/sonamu.generated';
 
 export function ${enumId}Dropdown(props: DropdownProps) {
   const options = Object.entries(${enumId}Label).map(([key, label]) => {

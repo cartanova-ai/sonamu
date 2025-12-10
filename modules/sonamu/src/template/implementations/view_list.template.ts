@@ -101,7 +101,7 @@ export class Template__view_list extends Template {
   ): (string | null)[] {
     if (col.renderType === "enums") {
       const { id: enumId } = getEnumInfoFromColName(names.capital, col.name);
-      return [`import { ${enumId}Label } from 'src/services/sonamu.generated';`];
+      return [`import { ${enumId}Label } from '@/services/sonamu.generated';`];
     } else if (col.renderType === "object") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name);
@@ -124,11 +124,11 @@ export class Template__view_list extends Template {
 
   renderFilterImport(entityId: string, col: RenderingNode, names: EntityNamesRecord) {
     if (col.name === "search") {
-      return `import { ${names.capital}SearchInput } from "src/components/${names.fs}/${names.capital}SearchInput";`;
+      return `import { ${names.capital}SearchInput } from "@/components/${names.fs}/${names.capital}SearchInput";`;
     } else if (col.renderType === "enums") {
       if (col.name === "orderBy") {
         const componentId = `${names.capital}${inflection.camelize(col.name)}Select`;
-        return `import { ${componentId} } from "src/components/${names.fs}/${componentId}";`;
+        return `import { ${componentId} } from "@/components/${names.fs}/${componentId}";`;
       } else {
         try {
           const { id, targetEntityNames: targetMDNames } = getEnumInfoFromColName(
@@ -136,7 +136,7 @@ export class Template__view_list extends Template {
             col.name,
           );
           const componentId = `${id}Select`;
-          return `import { ${componentId} } from "src/components/${targetMDNames.fs}/${componentId}";`;
+          return `import { ${componentId} } from "@/components/${targetMDNames.fs}/${componentId}";`;
         } catch {
           return "";
         }
@@ -146,7 +146,7 @@ export class Template__view_list extends Template {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         const targetNames = EntityManager.getNamesFromId(relProp.with);
         const componentId = `${relProp.with}IdAsyncSelect`;
-        return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
+        return `import { ${componentId} } from "@/components/${targetNames.fs}/${componentId}";`;
       } catch {
         return "";
       }
@@ -325,9 +325,9 @@ import classNames from 'classnames';
 import { DateTime } from "luxon";
 import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, formatDate, formatDateTime } from '@sonamu-kit/react-sui';
 
-import { ${names.capital}SubsetA } from "src/services/sonamu.generated";
-import { ${names.capital}Service } from 'src/services/${names.fs}/${names.fs}.service';
-import { ${names.capital}ListParams } from 'src/services/${names.fs}/${names.fs}.types';
+import { ${names.capital}SubsetA } from "@/services/sonamu.generated";
+import { ${names.capital}Service } from '@/services/${names.fs}/${names.fs}.service';
+import { ${names.capital}ListParams } from '@/services/${names.fs}/${names.fs}.types';
 ${columnImports}
 ${filterColumns
   .map((col) => {

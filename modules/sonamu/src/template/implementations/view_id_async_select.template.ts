@@ -39,9 +39,9 @@ import React, { useState, useEffect, SyntheticEvent } from "react";
 import { DropdownProps, DropdownItemProps, DropdownOnSearchChangeData, Dropdown } from "semantic-ui-react";
 import { ${names.capital}SubsetKey, ${
         names.capital
-      }SubsetMapping } from "src/services/sonamu.generated";
-import { ${names.capital}Service } from "src/services/${names.fs}/${names.fs}.service";
-import { ${names.capital}ListParams } from "src/services/${names.fs}/${names.fs}.types";
+      }SubsetMapping } from "@/services/sonamu.generated";
+import { ${names.capital}Service } from "@/services/${names.fs}/${names.fs}.service";
+import { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 
 export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>(
   { subset, baseListParams, textField, valueField, ...props }: DropdownProps & {

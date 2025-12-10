@@ -28,7 +28,7 @@ import {
   DropdownProps,
 } from 'semantic-ui-react';
 
-import { ${enumId}, ${enumId}Label } from 'src/services/sonamu.generated';
+import { ${enumId}, ${enumId}Label } from '@/services/sonamu.generated';
 
 export type ${enumId}SelectProps = {
   placeholder?: string;

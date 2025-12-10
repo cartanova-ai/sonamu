@@ -35,13 +35,13 @@ export class Template__view_form extends Template {
     if (col.renderType === "enums") {
       const { id, targetEntityNames } = getEnumInfoFromColName(entityId, col.name);
       const componentId = `${id}Select`;
-      return `import { ${componentId} } from "src/components/${targetEntityNames.fs}/${componentId}";`;
+      return `import { ${componentId} } from "@/components/${targetEntityNames.fs}/${componentId}";`;
     } else if (col.renderType === "number-fk_id") {
       try {
         const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
         const targetNames = EntityManager.getNamesFromId(relProp.with);
         const componentId = `${relProp.with}IdAsyncSelect`;
-        return `import { ${componentId} } from "src/components/${targetNames.fs}/${componentId}";`;
+        return `import { ${componentId} } from "@/components/${targetNames.fs}/${componentId}";`;
       } catch {
         return "";
       }
@@ -251,13 +251,13 @@ import {
 import { DateTime } from "luxon";
 
 import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack, formatDateTime } from "@sonamu-kit/react-sui";
-import { defaultCatch } from 'src/services/sonamu.shared';
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "src/admin-common/CommonModal";
+import { defaultCatch } from '@/services/sonamu.shared';
+// import { ImageUploader } from '@/admin-common/ImageUploader';
+// import { useCommonModal } from "@/admin-common/CommonModal";
 
-import { ${names.capital}SaveParams } from 'src/services/${names.fs}/${names.fs}.types';
-import { ${names.capital}Service } from 'src/services/${names.fs}/${names.fs}.service';
-import { ${names.capital}SubsetA } from 'src/services/sonamu.generated';
+import { ${names.capital}SaveParams } from '@/services/${names.fs}/${names.fs}.types';
+import { ${names.capital}Service } from '@/services/${names.fs}/${names.fs}.service';
+import { ${names.capital}SubsetA } from '@/services/sonamu.generated';
 ${unique(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
