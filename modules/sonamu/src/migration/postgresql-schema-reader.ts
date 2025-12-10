@@ -87,9 +87,9 @@ class PostgreSQLSchemaReaderClass {
             // 타입 캐스팅 제거 (예: '1'::integer → 1)
             defaultValue = defaultValue.replace(/::[\w\s]+$/g, "");
 
-            // 따옴표 제거가 필요한 경우
-            if (defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
-              defaultValue = defaultValue.slice(1, -1);
+            // 따옴표가 single quote인 경우 double quote로 변환
+            if( defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
+              defaultValue = defaultValue.replaceAll('\'', '"');
             }
 
             return {
