@@ -108,13 +108,11 @@ class DepartmentModelClass extends BaseModelClass<
     const enhancers = this.createEnhancers({
       A: (row) => ({
         ...row,
-        employee_count: row.employees?.length ?? 0,
-        parent: row.parent?.id !== null ? { id: row.parent.id, name: row.parent.name ?? "" } : null,
+        employee_count: row.employees.length,
       }),
       P: (row) => ({
         ...row,
         employee_count: 0,
-        parent: row.parent?.id !== null ? { id: row.parent.id, name: row.parent.name ?? "" } : null,
       }),
     });
 

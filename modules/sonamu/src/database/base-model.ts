@@ -306,23 +306,32 @@ export class BaseModelClass<
    * Flat 레코드를 중첩 객체로 변환
    *
    * - `user__name` → `{ user: { name } }`
-   * - nullable relation의 경우 모든 필드가 null이면 객체 자체를 null로
+   * - nullable relation의 경우 id 필드가 null이면 객체 자체를 null로
    */
   hydrate<T extends UnknownDBRecord>(rows: T[]): T[] {
     return rows.map((row: T) => {
-      // nullable relation 처리: 관련 필드가 전부 null인 경우 방지
+      // nullable relation 처리: 그룹의 id 필드가 null이면 객체 전체를 null로
       const nestedKeys = Object.keys(row).filter((key) => key.includes("__"));
       const groups = Object.groupBy(nestedKeys, (key) => key.split("__")[0]);
+
+      // id 필드가 null인 그룹 찾기 (예: parent__id가 null이면 parent 그룹 전체가 null)
       const nullKeys = Object.entries(groups)
-        .filter(
-          ([_, data]) =>
-            data &&
-            data.length > 1 &&
-            data.every(
-              (field) =>
-                row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
-            ),
-        )
+        .filter(([groupKey, fields]) => {
+          if (!fields || fields.length === 0) return false;
+
+          // 그룹의 id 필드 찾기 (예: "parent__id")
+          const idField = `${groupKey}__id`;
+          if (idField in row) {
+            // id 필드가 null이면 객체 전체가 null
+            return row[idField] === null;
+          }
+
+          // id 필드가 없으면 기존 로직: 모든 필드가 null인지 확인
+          return fields.every(
+            (field) =>
+              row[field] === null || (Array.isArray(row[field]) && row[field].length === 0),
+          );
+        })
         .map(([key]) => key);
 
       const hydrated = Object.keys(row).reduce((r, field) => {

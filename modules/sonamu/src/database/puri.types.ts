@@ -11,8 +11,9 @@ import type { PuriWrapper } from "./puri-wrapper";
 type FulltextKey = "__fulltext__";
 type VirtualKey = "__virtual__";
 type LeftJoinedKey = "__leftJoined__";
+type InheritedLeftJoinedKey = "__inheritedLeftJoined__";
 
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey;
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | InheritedLeftJoinedKey;
 
 // ============================================
 // 타입 유틸리티
@@ -27,8 +28,11 @@ type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
 
-// LEFT JOIN 마커
+// LEFT JOIN 마커 - 자체적으로 nullable인 관계
 export type LeftJoinedMarker = { [K in LeftJoinedKey]: true };
+
+// Inherited LEFT JOIN 마커 - 부모가 leftJoin이라서 따라서 leftJoin된 것 (자체는 non-nullable)
+export type InheritedLeftJoinedMarker = { [K in InheritedLeftJoinedKey]: true };
 
 // 메타데이터 필드 제외한 실제 엔티티 컬럼
 export type ColumnKeys<T> = Exclude<keyof StripVirtual<T>, InternalTypeKeys> & string;
@@ -53,22 +57,57 @@ export type ResultAvailableColumns<TTables extends Record<string, any>, TResult 
   | AvailableColumns<TTables>
   | `${keyof TResult & string}`;
 
-// Select 값 타입 확장
+// Select 값 타입 확장 (단일 컬럼 또는 SQL 표현식)
 export type SelectValue<TTables extends Record<string, any>> =
   | AvailableColumns<TTables>
   | SqlExpression<"string" | "number" | "boolean" | "date">;
 
-// Select 객체 타입 (현재는 컬럼 경로만 지원)
-export type SelectObject<TTables extends Record<string, any>> = Record<
-  string,
-  SelectValue<TTables> // AvailableColumns 대신
->;
+// 중첩 Select 객체 타입 (재귀적)
+// 예: { parent: { id: "parent.id", name: "parent.name" } }
+export type NestedSelectObject<TTables extends Record<string, any>> = {
+  [key: string]: SelectValue<TTables> | NestedSelectObject<TTables>;
+};
 
-// Select 결과 타입 추론
+// Select 객체 타입 (flat 또는 중첩 허용)
+export type SelectObject<TTables extends Record<string, any>> = NestedSelectObject<TTables>;
+
+// 값이 중첩 객체인지 판별하는 헬퍼 타입
+type IsNestedObject<T> = T extends string
+  ? false
+  : T extends SqlExpression<any>
+    ? false
+    : T extends Record<string, any>
+      ? true
+      : false;
+
+// 중첩 객체 키가 "자체적으로" leftJoin 테이블인지 확인 (경로 기반)
+// InheritedLeftJoinedMarker는 제외 - 부모가 이미 nullable로 처리됨
+// TableKey는 TTables에서 찾을 키 (예: "user__employee__department")
+type IsLeftJoinedTable<TTables, TableKey> = TableKey extends keyof TTables
+  ? TTables[TableKey] extends LeftJoinedMarker
+    ? TTables[TableKey] extends InheritedLeftJoinedMarker
+      ? false // Inherited는 자체 nullable이 아님
+      : true // 자체 nullable
+    : false
+  : false;
+
+// 경로 조합 헬퍼 (prefix가 없으면 key만, 있으면 prefix__key)
+type JoinPath<Prefix extends string, Key extends string> = Prefix extends ""
+  ? Key
+  : `${Prefix}__${Key}`;
+
+// Select 결과 타입 추론 (leftJoin 중첩 객체만 T | null로 추론)
 export type ParseSelectObject<
   TTables extends Record<string, any>,
   TSelect extends SelectObject<TTables>,
-> = {
+> = ParseSelectObjectWithPath<TTables, TSelect, "">;
+
+// 경로를 추적하면서 Select 결과 타입 추론
+type ParseSelectObjectWithPath<
+  TTables extends Record<string, any>,
+  TSelect extends SelectObject<TTables>,
+  Prefix extends string,
+> = Expand<{
   [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
     ? R extends "string"
       ? string
@@ -79,10 +118,41 @@ export type ParseSelectObject<
           : R extends "date"
             ? Date
             : never
-    : ExtractColumnType<TTables, TSelect[K] & string>;
-};
+    : IsNestedObject<TSelect[K]> extends true
+      ? TSelect[K] extends NestedSelectObject<TTables>
+        ? IsLeftJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
+          ? Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>> | null
+          : Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>>
+        : never
+      : ExtractColumnType<TTables, TSelect[K] & string>;
+}>;
 
-// 컬럼 경로에서 타입 추출
+// 중첩 객체 내부용 - leftJoin nullable을 객체 레벨에서 이미 처리했으므로 필드는 원본 타입 사용
+type ParseSelectObjectInner<
+  TTables extends Record<string, any>,
+  TSelect extends SelectObject<TTables>,
+  Prefix extends string,
+> = Expand<{
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
+    ? R extends "string"
+      ? string
+      : R extends "number"
+        ? number
+        : R extends "boolean"
+          ? boolean
+          : R extends "date"
+            ? Date
+            : never
+    : IsNestedObject<TSelect[K]> extends true
+      ? TSelect[K] extends NestedSelectObject<TTables>
+        ? IsLeftJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
+          ? Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>> | null
+          : Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>>
+        : never
+      : ExtractColumnTypeRaw<TTables, TSelect[K] & string>; // leftJoin nullable 무시
+}>;
+
+// 컬럼 경로에서 타입 추출 (자체 leftJoin 시만 nullable 추가, inherited는 제외)
 export type ExtractColumnType<
   TTables extends Record<string, any>,
   Path extends string,
@@ -90,11 +160,29 @@ export type ExtractColumnType<
   ? TAlias extends keyof TTables
     ? TColumn extends keyof TTables[TAlias]
       ? TTables[TAlias] extends LeftJoinedMarker
-        ? TTables[TAlias][TColumn] | null // LEFT JOIN → nullable
+        ? TTables[TAlias] extends InheritedLeftJoinedMarker
+          ? TTables[TAlias][TColumn] // Inherited LEFT JOIN → non-nullable (부모가 처리)
+          : TTables[TAlias][TColumn] | null // 자체 LEFT JOIN → nullable
         : TTables[TAlias][TColumn] // INNER JOIN → non-nullable
       : never
     : never
-  : IsSingleKey<TTables> extends true // 추가
+  : IsSingleKey<TTables> extends true
+    ? Path extends keyof TTables[keyof TTables]
+      ? TTables[keyof TTables][Path]
+      : never
+    : never;
+
+// 컬럼 경로에서 타입 추출 (leftJoin nullable 무시 - 객체 레벨에서 이미 처리된 경우)
+type ExtractColumnTypeRaw<
+  TTables extends Record<string, any>,
+  Path extends string,
+> = Path extends `${infer TAlias}.${infer TColumn}`
+  ? TAlias extends keyof TTables
+    ? TColumn extends keyof TTables[TAlias]
+      ? TTables[TAlias][TColumn] // leftJoin 여부와 관계없이 원본 타입
+      : never
+    : never
+  : IsSingleKey<TTables> extends true
     ? Path extends keyof TTables[keyof TTables]
       ? TTables[keyof TTables][Path]
       : never

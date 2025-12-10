@@ -112,28 +112,11 @@ class ProjectModelClass extends BaseModelClass<
       A: (row) => ({
         ...row,
         virtual_test: 1,
-        employee: row.employee.map((emp) => ({
-          ...emp,
-          department:
-            emp.department?.name !== null
-              ? {
-                  name: emp.department.name,
-                }
-              : null,
-        })),
       }),
       // A: (row) => ({ ...row }), // virtual_test를 추가하지 않았으므로 오류 발생!
       P: (row) => ({
         ...row,
-        employee: row.employee.map((emp) => ({
-          ...emp,
-          department:
-            emp.department?.name !== null
-              ? {
-                  name: emp.department.name,
-                }
-              : null,
-        })),
+        employee: row.employee.map((emp) => ({ ...emp })),
       }),
     });
 

@@ -12,6 +12,7 @@ import type {
   Expand,
   ExtractColumnType,
   FulltextColumns,
+  InheritedLeftJoinedMarker,
   InsertData,
   InsertResult,
   LeftJoinedMarker,
@@ -27,6 +28,9 @@ import type { ClearStatements } from "./puri-subset.types";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
+
+  // 중첩 객체 키 메타데이터 (hydrate에서 사용)
+  private _nestedKeys: Set<string> = new Set();
 
   // 생성자 시그니처들
   constructor(knex: Knex, tableName: string);
@@ -134,9 +138,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
   ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
+    // 중첩 객체를 flat하게 변환
+    const { flatSelect, nestedKeys } = this.flattenSelect(selectObj);
+    this._nestedKeys = nestedKeys;
+
     const selectClauses: (string | Knex.Raw)[] = [];
 
-    for (const [alias, columnOrFunction] of Object.entries(selectObj)) {
+    for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
       if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
         // SQL 함수인 경우
         selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
@@ -157,11 +165,74 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this as any;
   }
 
+  /**
+   * 중첩 객체를 flat 객체로 변환
+   * 예: { parent: { id: "parent.id", name: "parent.name" } }
+   *   → { parent__id: "parent.id", parent__name: "parent.name" }
+   *
+   * @returns flatSelect: flat하게 변환된 select 객체
+   * @returns nestedKeys: 중첩 객체의 최상위 키들 (hydrate에서 nullable 판별에 사용)
+   */
+  private flattenSelect(
+    selectObj: Record<string, any>,
+    prefix = "",
+  ): { flatSelect: Record<string, any>; nestedKeys: Set<string> } {
+    const flatSelect: Record<string, any> = {};
+    const nestedKeys = new Set<string>();
+
+    for (const [key, value] of Object.entries(selectObj)) {
+      const fullKey = prefix ? `${prefix}__${key}` : key;
+
+      if (typeof value === "object" && value !== null && !("_type" in value)) {
+        // 중첩 객체인 경우 - 재귀 처리
+        const rootKey = prefix || key;
+        nestedKeys.add(rootKey);
+
+        const nested = this.flattenSelect(value, fullKey);
+        Object.assign(flatSelect, nested.flatSelect);
+        // 하위의 nestedKeys는 상위로 전파하지 않음 (최상위만 관리)
+      } else {
+        // 일반 값인 경우 (컬럼 경로 또는 SqlExpression)
+        flatSelect[fullKey] = value;
+      }
+    }
+
+    return { flatSelect, nestedKeys };
+  }
+
+  // 중첩 키 정보 getter (hydrate에서 사용)
+  getNestedKeys(): Set<string> {
+    return this._nestedKeys;
+  }
+
   // SELECT (select는 overwrite, appendSelect는 append)
   appendSelect<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
   ): Puri<TSchema, TTables, TResult & ParseSelectObject<TTables, TSelect>> {
-    return this.select(selectObj) as any;
+    // 중첩 객체를 flat하게 변환
+    const { flatSelect, nestedKeys } = this.flattenSelect(selectObj);
+    // 기존 nestedKeys와 merge
+    for (const key of nestedKeys) {
+      this._nestedKeys.add(key);
+    }
+
+    const selectClauses: (string | Knex.Raw)[] = [];
+
+    for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
+      if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
+        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
+      } else {
+        const columnPath = columnOrFunction as string;
+        if (alias === columnPath) {
+          selectClauses.push(columnPath);
+        } else {
+          selectClauses.push(`${columnPath} as ${alias}`);
+        }
+      }
+    }
+
+    this.knexQuery.select(selectClauses);
+    return this as any;
   }
 
   // SELECT *
@@ -282,6 +353,21 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, TResult>;
   // LEFT JOIN 실제 구현
   leftJoin(tableNameOrSpec: any, ...args: any[]): any {
+    return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
+  }
+
+  // INHERITED LEFT JOIN: 테이블 + Alias (부모가 leftJoin이라서 따라서 leftJoin - 자체는 non-nullable)
+  inheritedLeftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+    tableSpec: { [K in TJoinAlias]: TJoinTable },
+    left: AvailableColumns<TTables>,
+    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
+  ): Puri<
+    TSchema,
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & InheritedLeftJoinedMarker>,
+    TResult
+  >;
+  // INHERITED LEFT JOIN 실제 구현
+  inheritedLeftJoin(tableNameOrSpec: any, ...args: any[]): any {
     return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
   }
 
@@ -582,6 +668,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // 'dual'은 더미 테이블이며, 바로 아래 줄에서 knexQuery가 덮어씌워집니다.
     const newPuri = new Puri<TSchema, TTables, TResult>(this.knex, "dual");
     newPuri.knexQuery = this.knexQuery.clone();
+    newPuri._nestedKeys = new Set(this._nestedKeys);
     return newPuri;
   }
 
