@@ -951,19 +951,18 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - 증감값에 undefined 전달
       db.table("users").where("id", userId).increment("id", undefined);
 
-      // TODO: Puri 타입 개선 필요 - string 컬럼에 increment / decrement 허용됨
-      // 이상적으로는 숫자 타입 컬럼만 허용해야 함
-      db.table("users").where("id", userId).increment("username", 1);
-      db.table("users").where("id", userId).decrement("username", 1);
+      // 숫자 타입 컬럼만 허용 함
+      db.table("employees").where("id", userId).increment("department_id", 1);
+      db.table("employees").where("id", userId).decrement("department_id", 1);
 
       // JOIN 후 increment / decrement
       const joinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
 
-      joinQuery.where("employees.id", employeeId).increment("employees.salary", 1);
-      joinQuery.where("users.id", userId).decrement("employees.salary", 1);
+      joinQuery.where("employees.id", employeeId).increment("employees.department_id", 1);
+      joinQuery.where("users.id", userId).decrement("employees.department_id", 1);
 
       // @ts-expect-error - JOIN 후 prefix 없이 사용 불가
-      joinQuery.where("employees.id", employeeId).increment("salary", 1);
+      joinQuery.where("employees.id", employeeId).increment("department_id", 1);
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼
       joinQuery.where("employees.id", employeeId).increment("departments.id", 1);
@@ -972,11 +971,11 @@ describe("Puri Type Safety", () => {
       const incrementResult = await db
         .table("employees")
         .where("id", employeeId)
-        .increment("salary", 1);
+        .increment("department_id", 1);
       const decrementResult = await db
         .table("employees")
         .where("id", employeeId)
-        .decrement("salary", 1);
+        .decrement("department_id", 1);
 
       // 타입 검증
       expectTypeOf(incrementResult).toEqualTypeOf<number>();

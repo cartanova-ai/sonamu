@@ -15,6 +15,7 @@ import type {
   InsertData,
   InsertResult,
   LeftJoinedMarker,
+  NumericColumns,
   OnConflictAction,
   ParseSelectObject,
   ResultAvailableColumns,
@@ -539,7 +540,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // Increment
-  increment<TColumn extends AvailableColumns<TTables>>(
+  increment<TColumn extends NumericColumns<TTables>>(
     column: TColumn,
     value: number,
   ): ResolvedPuri<number, SingleTableValue<TTables>> {
@@ -550,7 +551,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return new ResolvedPuri(this.knexQuery, this.knex);
   }
   // Decrement
-  decrement<TColumn extends AvailableColumns<TTables>>(
+  decrement<TColumn extends NumericColumns<TTables>>(
     column: TColumn,
     value: number,
   ): ResolvedPuri<number, SingleTableValue<TTables>> {
