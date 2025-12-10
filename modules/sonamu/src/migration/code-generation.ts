@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { alphabetical, diff, fork, omit } from "radashi";
+import { alphabetical, diff, omit } from "radashi";
 import { Naite } from "..";
 import type {
   GenMigrationCode,
@@ -504,13 +504,29 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
     add: [] as MigrationIndex[],
     drop: [] as MigrationIndex[],
   };
+
+  // 인덱스 고유 식별자 생성 (name을 제외한 모든 필드를 문자열로 변환하여 조합)
+  const identity = <T extends Record<string, unknown>>(index: T): string => {
+    const keys = Object.keys(index)
+      .filter((key) => key !== "name")
+      .sort();
+
+    return keys
+      .map((key) => {
+        if (key === "name") {
+          return undefined;
+        }
+        if (key === "columns") {
+          return (index[key] as MigrationIndex["columns"]).flatMap(identity);
+        }
+        return `${key}=${index[key as keyof MigrationIndex]}`;
+      })
+      .join("//");
+  };
+
   const extraIndexes = {
-    db: diff(dbIndexes, entityIndexes, (col) =>
-      [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
-    ),
-    entity: diff(entityIndexes, dbIndexes, (col) =>
-      [col.type, col.columns.map((c) => c.name).join("-")].join("//"),
-    ),
+    db: diff(dbIndexes, entityIndexes.map(setMigrationIndexDefaults), identity),
+    entity: diff(entityIndexes.map(setMigrationIndexDefaults), dbIndexes, identity),
   };
   if (extraIndexes.entity.length > 0) {
     indexesTo.add = indexesTo.add.concat(extraIndexes.entity);
@@ -529,6 +545,22 @@ function genIndexDropDefinition(index: MigrationIndex) {
   return `table.dropIndex([${index.columns
     .map((column) => `'${column.name}'`)
     .join(",")}], '${index.name}')`;
+}
+
+/**
+ * DB 조회 결과와 비교하기 위한 인덱스 기본값 설정
+ */
+function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
+  return {
+    ...index,
+    columns: index.columns.map((col) => ({
+      ...col,
+      sortOrder: col.sortOrder ?? "ASC",
+      // sortOrder에 따라 nullsFirst의 default 값 설정
+      nullsFirst: col.nullsFirst ?? col.sortOrder === "DESC",
+    })),
+    nullsNotDistinct: index.nullsNotDistinct ?? false,
+  };
 }
 
 /**
@@ -743,19 +775,7 @@ export async function generateAlterCode(
   // 1. columnsAndIndexes 처리
   const isEqualColumns = equal(entityColumns, dbColumns);
   const isEqualIndexes = equal(
-    entityIndexes
-      .map((index) => omit(index, ["parser"]))
-      .map((index) => {
-        return {
-          ...index,
-          columns: index.columns.map((col) => ({
-            ...col,
-            nullsFirst: col.nullsFirst ?? false,
-            sortOrder: col.sortOrder ?? "ASC",
-          })),
-          nullsNotDistinct: index.nullsNotDistinct ?? false,
-        };
-      }),
+    entityIndexes.map((index) => omit(index, ["parser"])).map(setMigrationIndexDefaults),
     dbIndexes,
   );
   if (!isEqualColumns || !isEqualIndexes) {
