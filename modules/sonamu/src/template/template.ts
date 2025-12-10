@@ -70,7 +70,7 @@ export abstract class Template {
     const instance = Template.templates.get(key);
     if (!instance) {
       throw new Error(
-        `Template ${key} not found. It might be becasuse you tried to find a template before loading all templates. Did you call Template.loadAll()?`,
+        `Template ${key} not found. It might be because you tried to find a template before loading all templates. Did you call Template.loadAll()?`,
       );
     }
     return instance;
