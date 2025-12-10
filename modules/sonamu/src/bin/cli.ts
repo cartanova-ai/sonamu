@@ -22,7 +22,7 @@ import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-co
 let migrator: Migrator;
 
 async function bootstrap() {
-  const notToInit = ["dev", "build", "start"].includes(process.argv[2] ?? "");
+  const notToInit = ["dev", "build", "start", "ui"].includes(process.argv[2] ?? "");
   if (!notToInit) {
     await Sonamu.init(false, false);
   }
@@ -451,9 +451,11 @@ async function scaffold_model_test(entityId: string) {
 
 async function ui() {
   try {
+    const apiRootPath = findApiRootPath();
+
     // 사용자 프로젝트의 패키지들 중에서 @sonamu-kit/ui를 찾습니다.
     // 이를 위해서 createRequire를 사용하여 프로젝트 경로 기준으로 resolve합니다.
-    const projectRequire = createRequire(path.join(Sonamu.apiRootPath, "package.json"));
+    const projectRequire = createRequire(path.join(apiRootPath, "package.json"));
     const uiPackagePath = projectRequire.resolve("@sonamu-kit/ui"); // 없으면 여기서 터져요(MODULE_NOT_FOUND)
     const uiNodePath = path.join(path.dirname(uiPackagePath), "run-ui.js");
 
@@ -481,9 +483,7 @@ async function ui() {
         env: {
           ...process.env,
           HOT: "yes",
-          PROJECT_NAME: Sonamu.config.projectName ?? path.basename(Sonamu.apiRootPath),
-          API_ROOT_PATH: Sonamu.apiRootPath,
-          UI_PORT: (Sonamu.config.ui?.port ?? 57000).toString(),
+          API_ROOT_PATH: apiRootPath, // UI는 얘만 알면 돼요! 나머지는 얘가 떠서 알아서 할 것임 ㅎ
         },
       },
     );
