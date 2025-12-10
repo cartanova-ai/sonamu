@@ -534,13 +534,7 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
  * 인덱스 삭제 정의 생성
  */
 function genIndexDropDefinition(index: MigrationIndex) {
-  const methodMap = {
-    index: "Index",
-    fulltext: "Index",
-    unique: "Unique",
-  };
-
-  return `table.drop${methodMap[index.type]}([${index.columns
+  return `table.dropIndex([${index.columns
     .map((column) => `'${column.name}'`)
     .join(",")}], '${index.name}')`;
 }
