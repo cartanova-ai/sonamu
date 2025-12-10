@@ -280,14 +280,17 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (table) => {
-            table.Index(["name"], "departments_name_index");
-            table.Unique(["company_id"], "departments_company_id_unique");
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST) NULLS DISTINCT;\`,
+          );
+          await knex.raw(
+            \`CREATE UNIQUE INDEX departments_company_id_unique ON departments (company_id ASC NULLS LAST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["name"], "departments_name_index");
             table.dropIndex(["company_id"], "departments_company_id_unique");
           });
@@ -341,13 +344,14 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (table) => {
-            table.Index(["name"], "departments_name_desc_index");
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["name"], "departments_name_desc_index");
           });
         }
@@ -377,13 +381,14 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (table) => {
-            table.Index(["name"], "departments_name_nulls_first_index");
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["name"], "departments_name_nulls_first_index");
           });
         }
@@ -421,7 +426,7 @@ describe("Migrator test", () => {
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["name"], "departments_name_unique");
           });
         }
@@ -454,13 +459,14 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (table) => {
-            table.Index(["company_id", "name"], "departments_company_name_composite_index");
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["company_id", "name"], "departments_company_name_composite_index");
           });
         }

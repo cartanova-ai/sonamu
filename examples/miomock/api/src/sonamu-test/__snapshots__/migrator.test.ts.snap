@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -71,7 +71,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -116,7 +116,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -228,7 +228,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("profile_id");
   });
@@ -326,7 +326,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - drop columns
     table.timestamp("deleted_at", { useTz: true }).nullable();
   });
@@ -352,7 +352,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - alter column
     table.timestamp("deleted_at", { useTz: true }).nullable().alter();
   });
@@ -380,7 +380,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("full_name");
     // rollback - drop columns
@@ -409,7 +409,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("test_column_numeric_array", "test_column_string_array");
   });
