@@ -23,10 +23,10 @@ export class Template__model_test extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { describe, test, expect } from "vitest";
-import { bootstrap } from '../../testing/bootstrap';
+import { describe, expect, vi } from "vitest";
+import { bootstrap, test } from '../../testing/bootstrap';
 
-bootstrap();
+bootstrap(vi);
 describe.skip("${entityId}ModelTest", () => {
   test("Query", async () => {
     expect(true).toBe(true);
