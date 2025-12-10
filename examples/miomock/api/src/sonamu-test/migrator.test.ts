@@ -280,16 +280,19 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (table) => {
-            table.index(["name"], "departments_name_index");
-            table.unique(["company_id"], "departments_company_id_unique");
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST) NULLS DISTINCT;\`,
+          );
+          await knex.raw(
+            \`CREATE UNIQUE INDEX departments_company_id_unique ON departments (company_id ASC NULLS LAST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("departments", (table) => {
+          await knex.schema.alterTable("departments", (table) => {
             table.dropIndex(["name"], "departments_name_index");
-            table.dropUnique(["company_id"], "departments_company_id_unique");
+            table.dropIndex(["company_id"], "departments_company_id_unique");
           });
         }
         "
@@ -311,11 +314,13 @@ describe("Migrator test", () => {
 
       // up
       expect(preparedCodes?.formatted).toContain(
-        'table.dropUnique(["email"], "users_email_unique")',
+        'table.dropIndex(["email"], "users_email_unique")',
       );
 
       // down
-      expect(preparedCodes?.formatted).toContain('table.unique(["email"], "users_email_unique")');
+      expect(preparedCodes?.formatted).toContain(
+        "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+      );
     });
 
     // FIXME: FTS 적용 후 케이스 처리 필요
