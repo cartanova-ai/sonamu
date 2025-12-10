@@ -22,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -71,7 +71,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -116,7 +116,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("company_id");
   });
@@ -157,11 +157,8 @@ exports[`Migrator test > preparedCodes 생성 > FK 추가 감지 (ManyToMany) 1`
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("labels", (table) => {
-    // columns
     table.increments().primary();
     table.string("name", 100).notNullable();
-
-    // indexes
   });
 }
 
@@ -178,12 +175,9 @@ export async function down(knex: Knex): Promise<void> {
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("users__labels", (table) => {
-    // columns
     table.increments().primary();
     table.integer("user_id").notNullable();
     table.integer("label_id").notNullable();
-
-    // indexes
   });
 }
 
@@ -234,7 +228,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("profile_id");
   });
@@ -273,7 +267,6 @@ exports[`Migrator test > preparedCodes 생성 > 신규 엔티티 감지 1`] = `
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_entities", (table) => {
-    // columns
     table.increments().primary();
     table
       .timestamp("created_at", { useTz: true })
@@ -281,8 +274,6 @@ export async function up(knex: Knex): Promise<void> {
       .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
     table.text("description").nullable();
-
-    // indexes
   });
 }
 
@@ -304,14 +295,15 @@ exports[`Migrator test > preparedCodes 생성 > 인덱스 삭제 감지 1`] = `
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    table.dropUnique(["email"], "users_email_unique");
+    table.dropIndex(["email"], "users_email_unique");
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
-    table.unique(["email"], "users_email_unique");
-  });
+  await knex.schema.alterTable("users", (_table) => {});
+  await knex.raw(
+    \`CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;\`,
+  );
 }
 ",
     "table": "users",
@@ -334,7 +326,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - drop columns
     table.timestamp("deleted_at", { useTz: true }).nullable();
   });
@@ -360,7 +352,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - alter column
     table.timestamp("deleted_at", { useTz: true }).nullable().alter();
   });
@@ -388,7 +380,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("full_name");
     // rollback - drop columns
@@ -417,7 +409,7 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  return knex.schema.alterTable("users", (table) => {
+  await knex.schema.alterTable("users", (table) => {
     // rollback - add
     table.dropColumns("test_column_numeric_array", "test_column_string_array");
   });
@@ -437,7 +429,6 @@ exports[`Migrator test > preparedCodes 생성 > 코드 정렬 순서 1`] = `
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_order_entities", (table) => {
-    // columns
     table.increments().primary();
     table
       .timestamp("created_at", { useTz: true })
@@ -445,8 +436,6 @@ export async function up(knex: Knex): Promise<void> {
       .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
     table.integer("company_id").notNullable();
-
-    // indexes
   });
 }
 
