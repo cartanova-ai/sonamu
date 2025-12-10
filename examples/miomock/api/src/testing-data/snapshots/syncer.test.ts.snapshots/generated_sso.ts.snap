@@ -430,10 +430,6 @@ export const userLoaderQueries = {
   SS: [],
 } as const satisfies PuriLoaderQueries<UserSubsetKey>;
 
-// ForeignKey Types
-export type DepartmentForeignKeys = "company_id" | "parent_id";
-export type EmployeeForeignKeys = "user_id" | "department_id";
-
 // DatabaseSchema
 declare module "sonamu" {
   export interface DatabaseSchemaExtend {
@@ -447,10 +443,5 @@ declare module "sonamu" {
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
     project_tags: ManyToManyBaseSchema<"project", "tag">;
-  }
-
-  export interface DatabaseForeignKeys {
-    departments: DepartmentForeignKeys;
-    employees: EmployeeForeignKeys;
   }
 }
