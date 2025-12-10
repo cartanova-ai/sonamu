@@ -323,41 +323,250 @@ describe("Migrator test", () => {
       );
     });
 
-    // FIXME: FTS 적용 후 케이스 처리 필요
-    test.skip("인덱스 변경 감지", async () => {
-      // UserEntity의 fulltext 인덱스 컬럼 변경
-      mockEntityManagerGet("User", (original) => ({
+    test("인덱스 옵션 - sortOrder DESC", async () => {
+      mockEntityManagerGet("Department", (original) => ({
         ...original,
-      }));
-
-      await migrator.getStatus();
-      expect(Naite.get("migrator:getStatus:preparedCodes").first()).toMatchInlineSnapshot(`
-        [
+        indexes: [
+          ...original.indexes,
           {
-            "formatted": "import type { Knex } from "knex";
+            type: "index",
+            columns: [{ name: "name", sortOrder: "DESC" }],
+            name: "departments_name_desc_index",
+          },
+        ],
+      }));
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "departments");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("users", (table) => {
-            table.index(["bio", "username"], undefined, "FULLTEXT");
-            table.dropIndex(["bio"]);
-            table.dropUnique(["email"]);
-          });
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST) NULLS DISTINCT;\`,
+          );
         }
 
         export async function down(knex: Knex): Promise<void> {
-          return knex.schema.alterTable("users", (table) => {
-            table.dropIndex(["bio", "username"]);
-            table.index(["bio"], undefined, "FULLTEXT");
-            table.unique(["email"]);
+          await knex.schema.alterTable("departments", (table) => {
+            table.dropIndex(["name"], "departments_name_desc_index");
           });
         }
-        ",
-            "table": "users",
-            "title": "alter_users",
-            "type": "normal",
+        "
+      `,
+      );
+    });
+
+    test("인덱스 옵션 - nullsFirst 명시", async () => {
+      mockEntityManagerGet("Department", (original) => ({
+        ...original,
+        indexes: [
+          ...original.indexes,
+          {
+            type: "index",
+            columns: [{ name: "name", sortOrder: "ASC", nullsFirst: true }],
+            name: "departments_name_nulls_first_index",
           },
-        ]
-      `);
+        ],
+      }));
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "departments");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
+
+        export async function up(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST) NULLS DISTINCT;\`,
+          );
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (table) => {
+            table.dropIndex(["name"], "departments_name_nulls_first_index");
+          });
+        }
+        "
+      `,
+      );
+    });
+
+    test("인덱스 옵션 - nullsNotDistinct (UNIQUE)", async () => {
+      mockEntityManagerGet("Department", (original) => ({
+        ...original,
+        indexes: [
+          ...original.indexes,
+          {
+            type: "unique",
+            columns: [{ name: "name" }],
+            name: "departments_name_unique",
+            nullsNotDistinct: true,
+          },
+        ],
+      }));
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "departments");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
+
+        export async function up(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE UNIQUE INDEX departments_name_unique ON departments (name ASC NULLS LAST) NULLS NOT DISTINCT;\`,
+          );
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (table) => {
+            table.dropIndex(["name"], "departments_name_unique");
+          });
+        }
+        "
+      `,
+      );
+    });
+
+    test("인덱스 옵션 - 복합 인덱스 (다중 컬럼, 각기 다른 옵션)", async () => {
+      mockEntityManagerGet("Department", (original) => ({
+        ...original,
+        indexes: [
+          ...original.indexes,
+          {
+            type: "index",
+            columns: [
+              { name: "company_id", sortOrder: "ASC", nullsFirst: false },
+              { name: "name", sortOrder: "DESC", nullsFirst: true },
+            ],
+            name: "departments_company_name_composite_index",
+          },
+        ],
+      }));
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "departments");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
+
+        export async function up(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (_table) => {});
+          await knex.raw(
+            \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST) NULLS DISTINCT;\`,
+          );
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("departments", (table) => {
+            table.dropIndex(["company_id", "name"], "departments_company_name_composite_index");
+          });
+        }
+        "
+      `,
+      );
+    });
+
+    // FIXME: FTS 적용 후 케이스 처리 필요
+    describe("인덱스 변경 감지", () => {
+      test("옵션 변경 감지 - sortOrder 변경 시 alter 코드 생성", async () => {
+        // User 엔티티의 기존 email unique 인덱스를 DESC로 변경
+        mockEntityManagerGet("User", (original) => ({
+          ...original,
+          indexes: [
+            {
+              type: "unique",
+              name: "users_email_unique",
+              columns: [{ name: "email", sortOrder: "DESC" }],
+            },
+          ],
+        }));
+        const status = await migrator.getStatus();
+
+        const alterCode = status.preparedCodes.find((code) => code.table === "users");
+        expect(alterCode).toBeDefined();
+        expect(alterCode?.title).toBe("alter_users");
+
+        // up: 기존 인덱스 삭제 후 새 인덱스 생성
+        expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email DESC NULLS FIRST) NULLS DISTINCT;",
+        );
+
+        // down: 변경된 인덱스 삭제 후 원래 인덱스 복원
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+        );
+      });
+
+      test("옵션 변경 감지 - nullsNotDistinct 변경 시 alter 코드 생성", async () => {
+        // User 엔티티의 기존 email unique 인덱스에 nullsNotDistinct 추가
+        mockEntityManagerGet("User", (original) => ({
+          ...original,
+          indexes: [
+            {
+              type: "unique",
+              name: "users_email_unique",
+              columns: [{ name: "email" }],
+              nullsNotDistinct: true,
+            },
+          ],
+        }));
+        const status = await migrator.getStatus();
+
+        const alterCode = status.preparedCodes.find((code) => code.table === "users");
+        expect(alterCode).toBeDefined();
+        expect(alterCode?.title).toBe("alter_users");
+
+        // up: 기존 인덱스 삭제 후 NULLS NOT DISTINCT 인덱스 생성
+        expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS NOT DISTINCT;",
+        );
+
+        // down: 변경된 인덱스 삭제 후 원래 인덱스 복원
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+        );
+      });
+
+      test("옵션 변경 감지 - nullsFirst 변경 시 alter 코드 생성", async () => {
+        // User 엔티티의 기존 email unique 인덱스의 nullsFirst를 true로 변경
+        mockEntityManagerGet("User", (original) => ({
+          ...original,
+          indexes: [
+            {
+              type: "unique",
+              name: "users_email_unique",
+              columns: [{ name: "email", nullsFirst: true }],
+            },
+          ],
+        }));
+        const status = await migrator.getStatus();
+
+        const alterCode = status.preparedCodes.find((code) => code.table === "users");
+        expect(alterCode).toBeDefined();
+        expect(alterCode?.title).toBe("alter_users");
+
+        // up: 기존 인덱스 삭제 후 NULLS FIRST 인덱스 생성
+        expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS FIRST) NULLS DISTINCT;",
+        );
+
+        // down: 원래 인덱스 복원 (NULLS LAST)
+        expect(alterCode?.formatted).toContain(
+          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+        );
+      });
     });
 
     test("FK 추가 감지 (BelongsToOne)", async () => {
