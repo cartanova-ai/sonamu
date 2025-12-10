@@ -97,10 +97,6 @@ export type SonamuConfigExport =
   | (() => SonamuConfig)
   | (() => Promise<SonamuConfig>);
 
-export function defineConfig(config: SonamuConfig): Promise<SonamuConfig>;
-export function defineConfig(config: Promise<SonamuConfig>): Promise<SonamuConfig>;
-export function defineConfig(config: () => SonamuConfig): Promise<SonamuConfig>;
-export function defineConfig(config: () => Promise<SonamuConfig>): Promise<SonamuConfig>;
 export function defineConfig(config: SonamuConfigExport): Promise<SonamuConfig> {
   if (typeof config === "function") {
     return Promise.resolve(config());
