@@ -9,15 +9,12 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
-import { defaultCatch } from "../../../services/sonamu.shared";
-
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "../../../admin-common/CommonModal";
-
-import { UserRoleSelect } from "../../../components/user/UserRoleSelect";
-import type { UserSubsetA } from "../../../services/sonamu.generated";
-import { UserService } from "../../../services/user/user.service";
-import { UserSaveParams } from "../../../services/user/user.types";
+import { useCommonModal } from "@/admin-common/CommonModal";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import type { UserSubsetA } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
+import { UserService } from "@/services/user/user.service";
+import { UserSaveParams } from "@/services/user/user.types";
 
 export default function UsersFormPage() {
   // 라우팅 searchParams
@@ -62,8 +59,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     }
   }, [id, setForm]);
 
-  // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
+  const { doneModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -71,13 +67,13 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     UserService.save([form])
       .then(([_id]) => {
         if (mode === "modal") {
-          // doneModal();
+          doneModal();
         } else {
           goBack("/admin/users");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode, goBack, doneModal]);
 
   // 페이지
   const PAGE = {

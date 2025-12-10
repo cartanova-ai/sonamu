@@ -27,13 +27,13 @@ import {
   Transition,
 } from "semantic-ui-react";
 import z from "zod";
-import { ApiLogViewer } from "../../../admin-common/ApiLogViewer";
-import { ImageUploader } from "../../../admin-common/ImageUploader";
-import { FileOrderBySelect } from "../../../components/file/FileOrderBySelect";
-import { FileSearchInput } from "../../../components/file/FileSearchInput";
-import { FileService } from "../../../services/file/file.service";
-import { FileListParams, FileSaveParams } from "../../../services/file/file.types";
-import type { FileSubsetA } from "../../../services/sonamu.generated";
+import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
+import { ImageUploader } from "@/admin-common/ImageUploader";
+import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
+import { FileSearchInput } from "@/components/file/FileSearchInput";
+import { FileService } from "@/services/file/file.service";
+import { FileListParams, FileSaveParams } from "@/services/file/file.types";
+import type { FileSubsetA } from "@/services/sonamu.generated";
 
 type FileListProps = {};
 export default function FileList({}: FileListProps) {

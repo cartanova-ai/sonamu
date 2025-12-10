@@ -2,14 +2,11 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "../../../services/sonamu.shared";
-
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "../../../admin-common/CommonModal";
-
-import type { TagSubsetA } from "../../../services/sonamu.generated";
-import { TagService } from "../../../services/tag/tag.service";
-import { TagSaveParams } from "../../../services/tag/tag.types";
+import { useCommonModal } from "@/admin-common/CommonModal";
+import type { TagSubsetA } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
+import { TagService } from "@/services/tag/tag.service";
+import { TagSaveParams } from "@/services/tag/tag.types";
 
 export default function TagsFormPage() {
   // 라우팅 searchParams
@@ -44,7 +41,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
   }, [id, setForm]);
 
   // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
+  const { doneModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -52,13 +49,13 @@ export function TagsForm({ id, mode }: TagsFormProps) {
     TagService.save([form])
       .then(([_id]) => {
         if (mode === "modal") {
-          // doneModal();
+          doneModal();
         } else {
           goBack("/admin/tags");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode, goBack, doneModal]);
 
   // 페이지
   const PAGE = {

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button, Container, Header, Segment } from "semantic-ui-react";
-import { useAuth } from "../../admin-common/auth";
+import { useAuth } from "@/admin-common/auth";
 
 export default function AdminIndexPage() {
   const { user, logout } = useAuth();

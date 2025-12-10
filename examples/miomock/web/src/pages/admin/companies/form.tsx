@@ -2,14 +2,12 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "../../../services/sonamu.shared";
+import { useCommonModal } from "@/admin-common/CommonModal";
 
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "../../../admin-common/CommonModal";
-
-import { CompanyService } from "../../../services/company/company.service";
-import { CompanySaveParams } from "../../../services/company/company.types";
-import type { CompanySubsetA } from "../../../services/sonamu.generated";
+import { CompanyService } from "@/services/company/company.service";
+import { CompanySaveParams } from "@/services/company/company.types";
+import type { CompanySubsetA } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
 
 export default function CompaniesFormPage() {
   // 라우팅 searchParams
@@ -46,7 +44,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   }, [id, setForm]);
 
   // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
+  const { doneModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -54,13 +52,13 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
     CompanyService.save([form])
       .then(([_id]) => {
         if (mode === "modal") {
-          // doneModal();
+          doneModal();
         } else {
           goBack("/admin/companies");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode, goBack, doneModal]);
 
   // 페이지
   const PAGE = {

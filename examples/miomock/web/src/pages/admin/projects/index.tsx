@@ -22,11 +22,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { ProjectOrderBySelect } from "../../../components/project/ProjectOrderBySelect";
-import { ProjectSearchInput } from "../../../components/project/ProjectSearchInput";
-import { ProjectService } from "../../../services/project/project.service";
-import { ProjectListParams } from "../../../services/project/project.types";
-import { ProjectStatusLabel, type ProjectSubsetA } from "../../../services/sonamu.generated";
+import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
+import { ProjectSearchInput } from "@/components/project/ProjectSearchInput";
+import { ProjectService } from "@/services/project/project.service";
+import { ProjectListParams } from "@/services/project/project.types";
+import { ProjectStatusLabel, type ProjectSubsetA } from "@/services/sonamu.generated";
 
 type ProjectListProps = {};
 export default function ProjectList({}: ProjectListProps) {

@@ -2,16 +2,13 @@ import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/re
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
-import { defaultCatch } from "../../../services/sonamu.shared";
-
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "../../../admin-common/CommonModal";
-
-import { DepartmentIdAsyncSelect } from "../../../components/department/DepartmentIdAsyncSelect";
-import { UserIdAsyncSelect } from "../../../components/user/UserIdAsyncSelect";
-import { EmployeeService } from "../../../services/employee/employee.service";
-import { EmployeeSaveParams } from "../../../services/employee/employee.types";
-import type { EmployeeSubsetA } from "../../../services/sonamu.generated";
+import { useCommonModal } from "@/admin-common/CommonModal";
+import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
+import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+import { EmployeeService } from "@/services/employee/employee.service";
+import { EmployeeSaveParams } from "@/services/employee/employee.types";
+import type { EmployeeSubsetA } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
 
 export default function EmployeesFormPage() {
   // 라우팅 searchParams
@@ -55,7 +52,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   }, [id, setForm]);
 
   // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
+  const { doneModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -63,13 +60,13 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
     EmployeeService.save([form])
       .then(([_id]) => {
         if (mode === "modal") {
-          // doneModal();
+          doneModal();
         } else {
           goBack("/admin/employees");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode, goBack, doneModal]);
 
   // 페이지
   const PAGE = {

@@ -21,11 +21,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { EmployeeOrderBySelect } from "../../../components/employee/EmployeeOrderBySelect";
-import { EmployeeSearchInput } from "../../../components/employee/EmployeeSearchInput";
-import { EmployeeService } from "../../../services/employee/employee.service";
-import { EmployeeListParams } from "../../../services/employee/employee.types";
-import type { EmployeeSubsetA } from "../../../services/sonamu.generated";
+import { EmployeeOrderBySelect } from "@/components/employee/EmployeeOrderBySelect";
+import { EmployeeSearchInput } from "@/components/employee/EmployeeSearchInput";
+import { EmployeeService } from "@/services/employee/employee.service";
+import { EmployeeListParams } from "@/services/employee/employee.types";
+import type { EmployeeSubsetA } from "@/services/sonamu.generated";
 
 type EmployeeListProps = {};
 export default function EmployeeList({}: EmployeeListProps) {

@@ -22,11 +22,11 @@ import {
   TableRow,
   Transition,
 } from "semantic-ui-react";
-import { UserOrderBySelect } from "../../../components/user/UserOrderBySelect";
-import { UserSearchInput } from "../../../components/user/UserSearchInput";
-import { UserRoleLabel, type UserSubsetA } from "../../../services/sonamu.generated";
-import { UserService } from "../../../services/user/user.service";
-import { UserListParams } from "../../../services/user/user.types";
+import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
+import { UserSearchInput } from "@/components/user/UserSearchInput";
+import { UserRoleLabel, type UserSubsetA } from "@/services/sonamu.generated";
+import { UserService } from "@/services/user/user.service";
+import { UserListParams } from "@/services/user/user.types";
 
 type UserListProps = {};
 export default function UserList({}: UserListProps) {

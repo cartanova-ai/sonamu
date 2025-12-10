@@ -2,18 +2,15 @@ import { BackLink, formatDateTime, upload, useGoBack, useTypeForm } from "@sonam
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
-import { defaultCatch } from "../../../services/sonamu.shared";
-
-// import { ImageUploader } from 'src/admin-common/ImageUploader';
-// import { useCommonModal } from "../../../admin-common/CommonModal";
-
-import { ImageUploader } from "../../../admin-common/ImageUploader";
-import { EmployeeIdAsyncSelect } from "../../../components/employee/EmployeeIdAsyncSelect";
-import { ProjectStatusSelect } from "../../../components/project/ProjectStatusSelect";
-import { TagIdAsyncSelect } from "../../../components/tag/TagIdAsyncSelect";
-import { ProjectService } from "../../../services/project/project.service";
-import { ProjectSaveParams } from "../../../services/project/project.types";
-import type { ProjectSubsetA } from "../../../services/sonamu.generated";
+import { useCommonModal } from "@/admin-common/CommonModal";
+import { ImageUploader } from "@/admin-common/ImageUploader";
+import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
+import { ProjectService } from "@/services/project/project.service";
+import { ProjectSaveParams } from "@/services/project/project.types";
+import type { ProjectSubsetA } from "@/services/sonamu.generated";
+import { defaultCatch } from "@/services/sonamu.shared";
 
 export default function ProjectsFormPage() {
   // 라우팅 searchParams
@@ -60,7 +57,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   }, [id, setForm]);
 
   // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
+  const { doneModal } = useCommonModal();
 
   // 저장
   const { goBack } = useGoBack();
@@ -69,14 +66,14 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
       ProjectService.save([{ ...form, image_urls: urls }])
         .then(([_id]) => {
           if (mode === "modal") {
-            // doneModal();
+            doneModal();
           } else {
             goBack("/admin/projects");
           }
         })
         .catch(defaultCatch);
     },
-    [form, mode, goBack],
+    [form, mode, goBack, doneModal],
   );
 
   // 페이지
