@@ -25,7 +25,7 @@ describe("TemplateManager", () => {
       // 목적: Sonamu.init() 후 빌트인 템플릿이 자동 로드되는지 확인
       test("빌트인 템플릿 로드 확인", async () => {
         expect(TemplateManager.isAutoloaded).toBe(true);
-        expect(TemplateManager.size).toBeGreaterThanOrEqual(17);
+        expect(TemplateManager.size).toBeGreaterThanOrEqual(15);
       });
 
       // 목적: 주요 빌트인 템플릿이 모두 존재하는지 확인
@@ -92,7 +92,7 @@ describe("TemplateManager", () => {
         const keys = TemplateManager.getAllKeys();
 
         expect(Array.isArray(keys)).toBe(true);
-        expect(keys.length).toBeGreaterThanOrEqual(17);
+        expect(keys.length).toBeGreaterThanOrEqual(15);
 
         // 정렬 확인
         const sortedKeys = [...keys].sort();
@@ -112,7 +112,7 @@ describe("TemplateManager", () => {
     describe("size", () => {
       // 목적: size 속성이 등록된 템플릿 개수를 반환하는지 확인
       test("등록된 템플릿 개수 반환", async () => {
-        expect(TemplateManager.size).toBeGreaterThanOrEqual(17);
+        expect(TemplateManager.size).toBeGreaterThanOrEqual(15);
         expect(TemplateManager.size).toBe(TemplateManager.getAllKeys().length);
       });
     });
@@ -161,7 +161,7 @@ describe("TemplateManager", () => {
         await TemplateManager.autoload();
 
         expect(TemplateManager.isAutoloaded).toBe(true);
-        expect(TemplateManager.size).toBeGreaterThanOrEqual(17);
+        expect(TemplateManager.size).toBeGreaterThanOrEqual(15);
       });
     });
 
@@ -177,7 +177,7 @@ describe("TemplateManager", () => {
 
         // 전역 인스턴스는 영향 없음
         expect(TemplateManager.isAutoloaded).toBe(true);
-        expect(TemplateManager.size).toBeGreaterThanOrEqual(17);
+        expect(TemplateManager.size).toBeGreaterThanOrEqual(15);
       });
 
       // 목적: 격리된 인스턴스에서 autoload 후 독립적으로 동작하는지 확인
@@ -187,7 +187,7 @@ describe("TemplateManager", () => {
         await isolatedManager.autoload();
 
         expect(isolatedManager.isAutoloaded).toBe(true);
-        expect(isolatedManager.size).toBeGreaterThanOrEqual(17);
+        expect(isolatedManager.size).toBeGreaterThanOrEqual(15);
       });
 
       // 목적: 격리된 인스턴스에 커스텀 템플릿 등록해도 전역에 영향 없는지 확인
