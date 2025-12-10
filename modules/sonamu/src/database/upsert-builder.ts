@@ -3,25 +3,43 @@ import type { Knex } from "knex";
 import { isArray, unique } from "radashi";
 import { EntityManager } from "../entity/entity-manager";
 import { Naite } from "../naite/naite";
-import type { EntityIndex } from "../types/types";
+import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
+import type { ForeignKeyColumns, TableName } from "./puri.types";
 
+/**
+ * FK 타입 추론을 위해 DatabaseForeignKeys export
+ * (module augmentation 자동 로드 보장)
+ */
+export type { DatabaseForeignKeys };
+
+// 테이블 데이터 타입
 type TableData = {
   references: Set<string>;
   rows: Record<string, unknown>[];
   uniqueIndexes: EntityIndex[];
   uniquesMap: Map<string, string>;
 };
+
+// 참조 필드 타입
 export type UBRef = {
   uuid: string;
   of: string;
   use?: string;
 };
-type UpsertOptions = {
+
+// upsert 옵션
+export type UpsertOptions<TTable extends TableName<DatabaseSchemaExtend>> = {
   chunkSize?: number;
-  cleanOrphans?: string | string[]; // FK 컬럼명(들)
+  cleanOrphans?: ForeignKeyColumns<TTable> | ForeignKeyColumns<TTable>[];
 };
+
+// insertOnly 옵션
+export type InsertOnlyOptions = {
+  chunkSize?: number;
+};
+
 export function isRefField(field: unknown): field is UBRef {
   return (
     field !== undefined &&
@@ -155,37 +173,27 @@ export class UpsertBuilder {
     return result;
   }
 
-  async upsert(
+  async upsert<TTable extends TableName<DatabaseSchemaExtend>>(
     wdb: Knex,
-    tableName: string,
-    optionsOrChunkSize?: UpsertOptions,
+    tableName: TTable,
+    options?: UpsertOptions<TTable>,
   ): Promise<number[]> {
-    // 숫자면 { chunkSize: n } 으로 변환
-    const options =
-      typeof optionsOrChunkSize === "number"
-        ? { chunkSize: optionsOrChunkSize }
-        : optionsOrChunkSize;
-
     return this.upsertOrInsert(wdb, tableName, "upsert", options);
   }
-  async insertOnly(
-    wdb: Knex,
-    tableName: string,
-    optionsOrChunkSize?: UpsertOptions | number,
-  ): Promise<number[]> {
-    const options =
-      typeof optionsOrChunkSize === "number"
-        ? { chunkSize: optionsOrChunkSize }
-        : optionsOrChunkSize;
 
+  async insertOnly<TTable extends TableName<DatabaseSchemaExtend>>(
+    wdb: Knex,
+    tableName: TTable,
+    options?: InsertOnlyOptions,
+  ): Promise<number[]> {
     return this.upsertOrInsert(wdb, tableName, "insert", options);
   }
 
-  async upsertOrInsert(
+  async upsertOrInsert<TTable extends TableName<DatabaseSchemaExtend>>(
     wdb: Knex,
-    tableName: string,
+    tableName: TTable,
     mode: "upsert" | "insert",
-    options?: UpsertOptions,
+    options?: UpsertOptions<TTable>,
   ): Promise<number[]> {
     if (this.hasTable(tableName) === false) {
       return [];
@@ -341,7 +349,9 @@ export class UpsertBuilder {
 
     if (options?.cleanOrphans) {
       const cleanOrphans = options.cleanOrphans;
-      const fkColumns = isArray(cleanOrphans) ? cleanOrphans : [cleanOrphans];
+      const fkColumns = isArray(cleanOrphans)
+        ? (cleanOrphans as ForeignKeyColumns<TTable>[])
+        : [cleanOrphans as ForeignKeyColumns<TTable>];
 
       // 현재 register된 레코드들의 FK 값들 추출
       const fkConditions = fkColumns.map((fkCol) => {
@@ -431,7 +441,7 @@ export class UpsertBuilder {
   }
 
   // ============================================================================
-  // Private Helpers
+  // Private Helper Methods
   // ============================================================================
 
   /**

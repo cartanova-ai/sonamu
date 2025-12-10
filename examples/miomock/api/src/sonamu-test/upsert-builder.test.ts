@@ -1440,7 +1440,142 @@ describe("Upsert Builder", () => {
       expect(trace?.deletedCount).toBeGreaterThanOrEqual(2);
     });
 
-    test.todo("cleanOrphans 적용 O - 복수 FK 컬럼 + 각 컬럼마다 값이 여러 개");
+    test("cleanOrphans 적용 O - 복수 FK 컬럼 + 각 컬럼마다 값이 여러 개", async () => {
+      const ub = new UpsertBuilder();
+      const wdb = DB.getDB("w");
+      const timestamp = Date.now();
+
+      // 1단계: 2개의 user 생성
+      const [userA, userB] = await wdb("users")
+        .insert([
+          {
+            email: `multi-fk-userA-${timestamp}@test.com`,
+            username: "Multi FK User A",
+            password: "pw",
+            role: "normal",
+            created_at: new Date(),
+          },
+          {
+            email: `multi-fk-userB-${timestamp}@test.com`,
+            username: "Multi FK User B",
+            password: "pw",
+            role: "normal",
+            created_at: new Date(),
+          },
+        ])
+        .returning("id");
+
+      const userIdA = userA.id;
+      const userIdB = userB.id;
+
+      // 2단계: company 1개 생성 → 2개의 department 생성
+      const [company] = await wdb("companies")
+        .insert({ name: `Multi-FK-Company-${timestamp}`, created_at: new Date() })
+        .returning("id");
+
+      const companyId = company.id;
+
+      const [dept1, dept2] = await wdb("departments")
+        .insert([
+          { company_id: companyId, name: `Dept 1`, created_at: new Date() },
+          { company_id: companyId, name: `Dept 2`, created_at: new Date() },
+        ])
+        .returning("id");
+
+      const deptId1 = dept1.id;
+      const deptId2 = dept2.id;
+
+      // 3단계: 모든 조합으로 employees register
+      // userA-dept1, userA-dept2, userB-dept1, userB-dept2
+      ub.register("employees", {
+        user_id: userIdA,
+        department_id: deptId1,
+        employee_number: `MULTI-FK-${timestamp}-A1`,
+        salary: 50000,
+      });
+      ub.register("employees", {
+        user_id: userIdA,
+        department_id: deptId2,
+        employee_number: `MULTI-FK-${timestamp}-A2`,
+        salary: 51000,
+      });
+      ub.register("employees", {
+        user_id: userIdB,
+        department_id: deptId1,
+        employee_number: `MULTI-FK-${timestamp}-B1`,
+        salary: 52000,
+      });
+      ub.register("employees", {
+        user_id: userIdB,
+        department_id: deptId2,
+        employee_number: `MULTI-FK-${timestamp}-B2`,
+        salary: 53000,
+      });
+
+      await ub.upsert(wdb, "employees");
+
+      // [expect] 4개 생성됨
+      const initialCount = await wdb("employees")
+        .where("employee_number", "like", `MULTI-FK-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(initialCount?.count)).toBe(4);
+
+      // [Naite] cleanOrphans 실행 전
+      const tracesBeforeCount = Naite.get("puri:ub-clean-orphans").result().length;
+
+      // 4단계: 2개만 재등록 (userA-dept1, userB-dept2) + cleanOrphans
+      ub.register("employees", {
+        user_id: userIdA,
+        department_id: deptId1,
+        employee_number: `MULTI-FK-${timestamp}-A1`,
+        salary: 60000,
+      });
+      ub.register("employees", {
+        user_id: userIdB,
+        department_id: deptId2,
+        employee_number: `MULTI-FK-${timestamp}-B2`,
+        salary: 63000,
+      });
+
+      await ub.upsert(wdb, "employees", {
+        cleanOrphans: ["user_id", "department_id"],
+      });
+
+      // [expect] 2개만 남음 (userA-dept2, userB-dept1 삭제됨)
+      const finalCount = await wdb("employees")
+        .where("employee_number", "like", `MULTI-FK-${timestamp}%`)
+        .count("* as count")
+        .first();
+      expect(Number(finalCount?.count)).toBe(2);
+
+      // [expect] 남은 레코드 검증
+      const remaining = await wdb("employees")
+        .where("employee_number", "like", `MULTI-FK-${timestamp}%`)
+        .orderBy("employee_number");
+
+      expect(remaining).toHaveLength(2);
+      expect(remaining[0]?.employee_number).toBe(`MULTI-FK-${timestamp}-A1`);
+      expect(Number(remaining[0]?.user_id)).toBe(userIdA);
+      expect(Number(remaining[0]?.department_id)).toBe(deptId1);
+      expect(Number(remaining[0]?.salary)).toBe(60000);
+
+      expect(remaining[1]?.employee_number).toBe(`MULTI-FK-${timestamp}-B2`);
+      expect(Number(remaining[1]?.user_id)).toBe(userIdB);
+      expect(Number(remaining[1]?.department_id)).toBe(deptId2);
+      expect(Number(remaining[1]?.salary)).toBe(63000);
+
+      // [Naite] cleanOrphans 이벤트 발생 확인
+      const traceAfter = Naite.get("puri:ub-clean-orphans").first();
+      const traceAfterCount = Naite.get("puri:ub-clean-orphans").result().length;
+
+      expect(traceAfterCount).not.toBe(tracesBeforeCount);
+      expect(traceAfter).toMatchObject({
+        tableName: "employees",
+        cleanOrphans: ["user_id", "department_id"],
+        deletedCount: 2,
+      });
+    });
 
     describe("H. 에러 처리", () => {
       test("존재하지 않는 테이블에 upsert → 빈 배열 반환", async () => {

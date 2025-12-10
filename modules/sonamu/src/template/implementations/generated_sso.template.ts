@@ -4,7 +4,11 @@ import { unique } from "radashi";
 import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
-import { isManyToManyRelationProp } from "../../types/types";
+import {
+  isBelongsToOneRelationProp,
+  isManyToManyRelationProp,
+  isOneToOneRelationProp,
+} from "../../types/types";
 import { Template } from "../template";
 import type { SourceCode } from "./generated.template";
 
@@ -71,6 +75,12 @@ export class Template__generated_sso extends Template {
       return [puriSubsetQuery, puriLoaderQuery];
     });
 
+    // ForeignKey 타입 생성
+    const fkTypeSourceCode = this.getForeignKeyTypeSourceCode(entities);
+    if (fkTypeSourceCode) {
+      sourceCodes.push(fkTypeSourceCode);
+    }
+
     // DatabaseSchema 생성
     const dbSchemaSourceCode = this.getDatabaseSchemaSourceCode(entities);
     if (dbSchemaSourceCode) {
@@ -114,11 +124,15 @@ export class Template__generated_sso extends Template {
     };
   }
 
-  getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
+  //===============================================
+  // private Helper Methods
+  //===============================================
+  private getDatabaseSchemaSourceCode(entities: Entity[]): SourceCode | null {
     if (entities.length === 0) {
       return null;
     }
 
+    // DatabaseSchemaExtend - 테이블 스키마 타입 정의
     const entitySchemaLines = entities.map((entity) => `${entity.table}: ${entity.id}BaseSchema;`);
 
     const joinTables = unique(
@@ -132,6 +146,14 @@ export class Template__generated_sso extends Template {
       (joinTable) => joinTable.table,
     );
 
+    // DatabaseForeignKeys - FK 컬럼을 가진 테이블만 정의
+    const entitiesWithFk = entities.filter(
+      (entity) => this.getForeignKeyColumns(entity).length > 0,
+    );
+    const fkMetadataLines = entitiesWithFk.map(
+      (entity) => `${entity.table}: ${entity.id}ForeignKeys;`,
+    );
+
     return {
       label: `DatabaseSchema`,
       lines: [
@@ -143,9 +165,56 @@ export class Template__generated_sso extends Template {
             `${joinTable.table}: ManyToManyBaseSchema<"${joinTable.fromTableKey}", "${joinTable.toTableKey}">;`,
         ),
         `  }`,
+        ``,
+        `  export interface DatabaseForeignKeys {`,
+        ...fkMetadataLines,
+        `  }`,
         `}`,
       ],
       importKeys: entities.map((entity) => `${entity.id}BaseSchema`),
+    };
+  }
+
+  // FK 관계를 컬럼명으로 변환 (예: company → company_id)
+  private getForeignKeyColumns(entity: Entity): string[] {
+    return entity.props
+      .filter((prop) => {
+        if (isBelongsToOneRelationProp(prop)) {
+          return true;
+        }
+        if (isOneToOneRelationProp(prop) && prop.hasJoinColumn) {
+          return true;
+        }
+        return false;
+      })
+      .map((prop) => `${prop.name}_id`);
+  }
+
+  private getForeignKeyTypeSourceCode(entities: Entity[]): SourceCode | null {
+    if (entities.length === 0) {
+      return null;
+    }
+
+    // FK가 있는 엔티티만 타입 생성
+    const entitiesWithFk = entities.filter(
+      (entity) => this.getForeignKeyColumns(entity).length > 0,
+    );
+
+    if (entitiesWithFk.length === 0) {
+      return null;
+    }
+
+    const fkTypeLines = entitiesWithFk.map((entity) => {
+      const fkColumns = this.getForeignKeyColumns(entity);
+      const fkTypeValue = fkColumns.map((col) => `"${col}"`).join(" | ");
+
+      return `export type ${entity.id}ForeignKeys = ${fkTypeValue};`;
+    });
+
+    return {
+      label: `ForeignKey Types`,
+      lines: fkTypeLines,
+      importKeys: [],
     };
   }
 }

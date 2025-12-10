@@ -13,6 +13,7 @@ import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
+  type DatabaseSchemaExtend,
   type EntityProp,
   type FixtureImportResult,
   type FixtureRecord,
@@ -506,7 +507,7 @@ export class FixtureManagerClass {
           // upsert된 row들의 uuid -> id 매핑 구축
           if (uuids.length > 0) {
             const uuidToId = new Map<string, number>();
-            const rows = await trx(tableName).select("uuid", "id").whereIn("uuid", uuids);
+            const rows = await trx(tableName as string).select("uuid", "id").whereIn("uuid", uuids);
 
             for (const row of rows) {
               uuidToId.set(row.uuid, row.id);
@@ -656,7 +657,7 @@ export class FixtureManagerClass {
   /**
    * 테이블 순서 추출 (fixtures에 포함된 테이블만)
    */
-  private getTableOrder(fixtures: FixtureRecord[]): string[] {
+  private getTableOrder(fixtures: FixtureRecord[]): (keyof DatabaseSchemaExtend)[] {
     const tables: string[] = [];
     const seen = new Set<string>();
 
@@ -668,7 +669,7 @@ export class FixtureManagerClass {
       }
     }
 
-    return tables;
+    return tables as (keyof DatabaseSchemaExtend)[];
   }
 
   private async processManyToManyRelations(

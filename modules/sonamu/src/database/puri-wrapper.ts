@@ -5,10 +5,8 @@ import type { Knex } from "knex";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { DBPreset } from "./db";
 import { Puri } from "./puri";
-import type { ColumnKeys, OmitMetadataColumns, PuriTable } from "./puri.types";
-import type { UBRef, UpsertBuilder } from "./upsert-builder";
-
-type TableName<TSchema extends DatabaseSchemaExtend> = Extract<keyof TSchema, string>;
+import type { ColumnKeys, OmitMetadataColumns, PuriTable, TableName } from "./puri.types";
+import type { InsertOnlyOptions, UBRef, UpsertBuilder, UpsertOptions } from "./upsert-builder";
 
 export type TransactionalOptions = {
   isolation?: Exclude<Knex.IsolationLevels, "snapshot">; // snapshot: mssql only
@@ -147,20 +145,26 @@ export class PuriWrapper<TSchema extends DatabaseSchemaExtend = DatabaseSchemaEx
     return this.upsertBuilder.register(tableName, row);
   }
 
-  ubUpsert(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
-    return this.upsertBuilder.upsert(this.knex, tableName, { chunkSize });
-  }
-
-  ubInsertOnly(tableName: TableName<TSchema>, chunkSize?: number): Promise<number[]> {
-    return this.upsertBuilder.insertOnly(this.knex, tableName, chunkSize);
-  }
-
-  ubUpsertOrInsert(
-    tableName: TableName<TSchema>,
-    mode: "upsert" | "insert",
-    chunkSize?: number,
+  ubUpsert<TTable extends TableName<TSchema> & keyof DatabaseSchemaExtend>(
+    tableName: TTable,
+    options?: UpsertOptions<TTable>,
   ): Promise<number[]> {
-    return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, { chunkSize });
+    return this.upsertBuilder.upsert(this.knex, tableName, options);
+  }
+
+  ubInsertOnly<TTable extends TableName<TSchema> & keyof DatabaseSchemaExtend>(
+    tableName: TTable,
+    options?: InsertOnlyOptions,
+  ): Promise<number[]> {
+    return this.upsertBuilder.insertOnly(this.knex, tableName, options);
+  }
+
+  ubUpsertOrInsert<TTable extends TableName<TSchema> & keyof DatabaseSchemaExtend>(
+    tableName: TTable,
+    mode: "upsert" | "insert",
+    options?: UpsertOptions<TTable>,
+  ): Promise<number[]> {
+    return this.upsertBuilder.upsertOrInsert(this.knex, tableName, mode, options);
   }
 
   ubUpdateBatch(
