@@ -405,6 +405,12 @@ export class Migrator {
     const tdb = knex(Sonamu.dbConfig.test);
     !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
     await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
+    await tdb.raw(`
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE datname = '${tdbConn.database}'
+        AND pid <> pg_backend_pid();
+    `);
     await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
 
     // Shadow DB에 연결
