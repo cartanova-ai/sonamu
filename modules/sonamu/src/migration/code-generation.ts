@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { alphabetical, diff, fork, omit } from "radashi";
+import { alphabetical, diff, omit } from "radashi";
 import { Naite } from "..";
 import type {
   GenMigrationCode,
@@ -129,79 +129,41 @@ function getPgArrayType(column: MigrationColumn, elementType: string): string {
   throw new Error(`Unknown array element type: ${elementType}`);
 }
 
-// Knex 빌더로 처리 가능한 일반 인덱스
-const methodMap: Record<string, string> = {
-  index: "Index",
-  fulltext: "Index",
-  unique: "Unique",
-  hnsw: "Index",
-  ivfflat: "Index",
-};
-
 /**
  * 개별 인덱스 정의 생성
  */
 function genIndexDefinition(index: MigrationIndex, table: string): string {
-  // Knex 빌더로 처리 불가능한 특수 인덱스 (raw SQL 필요)
-  if (isRawSqlIndex(index)) {
+  if (index.type === "hnsw" || index.type === "ivfflat") {
     return genRawIndexDefinition(index, table);
   }
 
-  return `table.${methodMap[index.type]}([${index.columns
-    .map((col) => `'${col.name}'`)
-    .join(",")}], '${index.name}'${index.type === "fulltext" ? ", 'FULLTEXT'" : ""}
+  const methodMap = {
+    index: "INDEX",
+    fulltext: "INDEX",
+    unique: "UNIQUE INDEX",
+  };
+
+  const nullsNotDistinctClause =
+    index.nullsNotDistinct === undefined
+      ? ""
+      : ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`;
+
+  return `await knex.raw(
+  \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} (${index.columns
+    .map((col) => {
+      const sortOrderClause = col.sortOrder === undefined ? "" : ` ${col.sortOrder}`;
+      const nullsFirstClause =
+        col.nullsFirst === undefined ? "" : ` NULLS ${col.nullsFirst ? "FIRST" : "LAST"}`;
+      return `${col.name}${sortOrderClause}${nullsFirstClause}`;
+    })
+    .join(", ")})${nullsNotDistinctClause};\`
   );`;
 }
 
 /**
- * Knex 빌더로 처리 불가능하여 raw SQL이 필요한 인덱스인지 판별
- * - HNSW, IVFFlat: 벡터 인덱스
- * - ngram fulltext: MySQL ngram 파서
- * - unique 인덱스의 비기본 옵션: nullsNotDistinct=true, DESC, nullsFirst가 기본값이 아닌 경우
- */
-function isRawSqlIndex(index: MigrationIndex): boolean {
-  // 벡터 인덱스
-  if (index.type === "hnsw" || index.type === "ivfflat") {
-    return true;
-  }
-
-  // MySQL ngram fulltext
-  if (index.type === "fulltext" && index.parser === "ngram") {
-    return true;
-  }
-
-  // unique 인덱스의 PostgreSQL 특수 옵션 (Knex 빌더로 처리 불가)
-  if (index.type === "unique") {
-    // nullsNotDistinct가 true인 경우 (false는 기본값이므로 Knex로 처리 가능)
-    if (index.nullsNotDistinct === true) {
-      return true;
-    }
-    // 컬럼에 비기본 옵션이 설정된 경우
-    if (
-      index.columns.some((col) => {
-        const sortOrder = col.sortOrder ?? "ASC";
-        // nullsFirst의 기본값: ASC면 false, DESC면 true
-        const defaultNullsFirst = sortOrder === "DESC";
-        const nullsFirst = col.nullsFirst ?? defaultNullsFirst;
-
-        // DESC이거나 nullsFirst가 기본값이 아닌 경우 raw SQL 필요
-        return sortOrder === "DESC" || nullsFirst !== defaultNullsFirst;
-      })
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Raw SQL이 필요한 특수 인덱스 생성 코드 생성
- *
  * @description
  * - HNSW (Hierarchical Navigable Small World): 느린 빌드, 빠른 검색 속도, 높은 메모리 및 정확도
  * - IVFFlat (Inverted File with Flat Compression): 빠른 빌드, 중간 검색 속도, 낮은 메모리
- * - ngram fulltext: MySQL ngram 파서를 사용하는 전문 검색 인덱스
  *
  * @example
  * // HNSW 인덱스 (권장 - 빠른 검색, 높은 정확도)
@@ -227,34 +189,7 @@ function genRawIndexDefinition(index: MigrationIndex, table: string): string {
     return `await knex.raw(\`CREATE INDEX ${index.name} ON ${table} USING ivfflat (${column.name} ${vectorOps}) WITH (lists = ${lists})\`);`;
   }
 
-  // MySQL ngram fulltext
-  if (index.type === "fulltext" && index.parser === "ngram") {
-    return `await knex.raw(\`ALTER TABLE ${table} ADD FULLTEXT INDEX ${index.name} (${index.columns
-      .map((col) => col.name)
-      .join(", ")}) WITH PARSER ngram\`);`;
-  }
-
-  // unique 인덱스의 경우 NULLS DISTINCT/NOT DISTINCT 절 생성
-  // false인 경우 NULLS DISTINCT, true인 경우 NULLS NOT DISTINCT
-  const nullsNotDistinctClause =
-    index.type === "unique"
-      ? ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`
-      : "";
-
-  // CREATE INDEX 또는 CREATE UNIQUE INDEX 생성
-  const indexTypeKeyword = index.type === "unique" ? "UNIQUE INDEX" : "INDEX";
-
-  return `await knex.raw(
-  \`CREATE ${indexTypeKeyword} ${index.name} ON ${table} (${index.columns
-    .map((col) => {
-      // sortOrder 기본값: ASC
-      const sortOrder = col.sortOrder ?? "ASC";
-      // nullsFirst 기본값: sortOrder가 DESC면 true, ASC면 false
-      const nullsFirst = col.nullsFirst ?? (sortOrder === "DESC");
-      return `${col.name} ${sortOrder} NULLS ${nullsFirst ? "FIRST" : "LAST"}`;
-    })
-    .join(", ")})${nullsNotDistinctClause};\`
-  );`;
+  throw new Error(`Unknown raw SQL index type: ${index.type}`);
 }
 
 /**
@@ -368,9 +303,6 @@ async function generateAlterCode_ColumnAndIndexes(
   // 인덱스의 add, drop 여부 확인
   const alterIndexesTo = getAlterIndexesTo(entityIndexes, dbIndexes);
 
-  // 추가될 인덱스를 raw SQL 필요 여부로 분리
-  const [rawSqlIndexesToAdd, standardIndexes] = fork(alterIndexesTo.add, isRawSqlIndex);
-
   // 인덱스가 삭제되는 경우, 컬럼과 같이 삭제된 케이스에는 drop에서 제외해야함!
   const indexNeedsToDrop = alterIndexesTo.drop.filter(
     (index) =>
@@ -378,25 +310,13 @@ async function generateAlterCode_ColumnAndIndexes(
         alterColumnsTo.drop.map((col) => col.name).includes(name),
       ) === false,
   );
-  // drop할 인덱스(DB에서 온 인덱스)도 raw SQL 필요 여부로 분리 (down에서 복원 시 사용)
-  // DB 인덱스는 sortOrder, nullsFirst, nullsNotDistinct가 항상 설정되어 있으므로
-  // unique 인덱스는 항상 raw SQL로 처리해야 정확한 복원이 가능함
-  const isRawSqlIndexForRestore = (index: MigrationIndex): boolean => {
-    // unique 인덱스는 항상 raw SQL로 복원 (옵션 정보 보존을 위해)
-    if (index.type === "unique") {
-      return true;
-    }
-    return isRawSqlIndex(index);
-  };
-  const [rawSqlIndexesToDrop, standardIndexesToDrop] = fork(indexNeedsToDrop, isRawSqlIndexForRestore);
 
   // 빈 코드 생성 방지
   if (
     alterColumnLinesTo.add.up.length === 0 &&
     alterColumnLinesTo.drop.up.length === 0 &&
     alterColumnLinesTo.alter.up.length === 0 &&
-    standardIndexes.length === 0 &&
-    rawSqlIndexesToAdd.length === 0 &&
+    alterIndexesTo.add.length === 0 &&
     indexNeedsToDrop.length === 0
   ) {
     Naite.t("migrator:generateAlterCode_ColumnAndIndexes:emptyCodeGenerationError", {
@@ -430,22 +350,20 @@ async function generateAlterCode_ColumnAndIndexes(
     ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.up : []),
     // 3. alter column
     ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.up : []),
-    // 4. add index (Knex 빌더로 처리 가능한 것만)
-    ...standardIndexes.map((index) => genIndexDefinition(index, table)),
-    // 5. drop index (모든 인덱스 타입 동일하게 처리)
+    // 4. drop index
     ...indexNeedsToDrop.map(genIndexDropDefinition),
     "});",
-    // raw SQL이 필요한 인덱스 생성 (unique with options, ngram, hnsw, ivfflat)
-    ...rawSqlIndexesToAdd.map((index) => genIndexDefinition(index, table)),
+    // index는 knex.raw로 처리하므로 alterTable 밖에서 실행
+    ...alterIndexesTo.add.map((index) => genIndexDefinition(index, table)),
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
-    `${rawSqlIndexesToDrop.length > 0 ? "await" : "return"} knex.schema.alterTable("${table}", (table) => {`,
+    `await knex.schema.alterTable("${table}", (table) => {`,
     ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.down : []),
     ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.down : []),
     ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.down : []),
-    // up에서 추가한 standard 인덱스 삭제 (새 컬럼과 함께 추가된 것 제외)
-    ...standardIndexes
+    // up에서 추가한 인덱스 삭제 (새 컬럼과 함께 추가된 것 제외)
+    ...alterIndexesTo.add
       .filter(
         (index) =>
           index.columns.every((indexCol) =>
@@ -453,21 +371,8 @@ async function generateAlterCode_ColumnAndIndexes(
           ) === false,
       )
       .map(genIndexDropDefinition),
-    // up에서 추가한 raw SQL 인덱스도 삭제 (새 컬럼과 함께 추가된 것 제외)
-    ...rawSqlIndexesToAdd
-      .filter(
-        (index) =>
-          index.columns.every((indexCol) =>
-            alterColumnsTo.add.map((col) => col.name).includes(indexCol.name),
-          ) === false,
-      )
-      .map(genIndexDropDefinition),
-    // up에서 삭제한 인덱스 복원 (Knex 빌더로 처리 가능한 것만)
-    ...standardIndexesToDrop.map((index) => genIndexDefinition(index, table)),
     "});",
-    // raw SQL이 필요한 인덱스 복원 (unique, ngram fulltext, HNSW, IVFFlat)
-    // unique 인덱스는 sortOrder, nullsFirst, nullsNotDistinct 정보를 보존하기 위해 항상 raw SQL 사용
-    ...rawSqlIndexesToDrop.map((index) => genRawIndexDefinition(index, table)),
+    ...indexNeedsToDrop.map((index) => genIndexDefinition(index, table)),
     "}",
   ];
 
