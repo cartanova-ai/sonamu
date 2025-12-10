@@ -1483,34 +1483,104 @@ code {
   }
 }
 
-.entity-index-form {
-  .column-order {
-    margin-top: 8px;
+.entity-form-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+
+  .ui.header,
+  .sub.header {
+    background: none;
+    border: none;
   }
 
-  .column-order-item {
-    display: flex;
-    gap: 8px;
-    padding: 4px 8px;
-    background: #f9f9f9;
-    border-radius: 4px;
-    &:nth-child(even) {
-      background: #fff;
-    }
+  .form-header {
+    padding: 24px 24px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #eee;
+  }
+  .form-body {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
 
-    .column-order-item-index {
-      width: 20px;
-      color: #888;
+    .ui.form .field > label {
+      display: block;
+      margin-bottom: 8px;
+      color: #666;
     }
-    .column-order-item-column {
-      flex: 1;
+  }
+  .form-footer {
+    padding: 16px 24px;
+    background: #f9fafb;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .column-config-area {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .column-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: box-shadow 0.2s;
+  }
+  .column-card:hover {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-color: #d0d0d0;
+  }
+  .column-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .column-badge {
+    background: #e0e1e2;
+    color: #555;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  .column-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #333;
+  }
+  .column-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .debug-form-state {
+    margin: 0;
+    pre {
+      overflow-x: auto;
+      font-size: 11px;
+      line-height: 1.4;
+      margin: 0;
+      color: #555;
     }
-    .icon.arrow {
-      cursor: pointer;
-    }
-    .icon.arrow.disabled {
-      cursor: not-allowed;
-      opacity: 0.3;
+  }
+  .sort-controls {
+    display: flex;
+    gap: 4px;
+    .ui.dropdown {
+      min-width: 120px;
     }
   }
 }
