@@ -134,7 +134,7 @@ function getPgArrayType(column: MigrationColumn, elementType: string): string {
  */
 function genIndexDefinition(index: MigrationIndex, table: string): string {
   if (index.type === "hnsw" || index.type === "ivfflat") {
-    return genRawIndexDefinition(index, table);
+    return genVectorIndexDefinition(index, table);
   }
 
   const methodMap = {
@@ -172,7 +172,7 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
  * // IVFFlat 인덱스 (대용량 데이터, 비용 중요 시)
  * CREATE INDEX idx_embedding ON items USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
  */
-function genRawIndexDefinition(index: MigrationIndex, table: string): string {
+function genVectorIndexDefinition(index: MigrationIndex, table: string): string {
   const column = index.columns[0];
   const vectorOps = column.vectorOps ?? "vector_cosine_ops";
 
