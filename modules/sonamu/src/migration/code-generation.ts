@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { alphabetical, diff, omit } from "radashi";
+import { alphabetical, diff, fork, omit } from "radashi";
 import { Naite } from "..";
 import type {
   GenMigrationCode,
@@ -19,18 +19,6 @@ async function generateCreateCode_ColumnAndIndexes(
   columns: MigrationColumn[],
   indexes: MigrationIndex[],
 ): Promise<GenMigrationCode> {
-  // fulltext index 분리
-  const [ngramIndexes, afterNgram] = fork(
-    indexes,
-    (i) => i.type === "fulltext" && i.parser === "ngram",
-  );
-
-  // vector index 분리 (hnsw, ivfflat)
-  const [vectorIndexes, standardIndexes] = fork(
-    afterNgram,
-    (i) => i.type === "hnsw" || i.type === "ivfflat",
-  );
-
   // 컬럼, 인덱스 처리
   const lines: string[] = [
     'import { Knex } from "knex";',
@@ -39,9 +27,8 @@ async function generateCreateCode_ColumnAndIndexes(
     `await knex.schema.createTable("${table}", (table) => {`,
     ...genColumnDefinitions(columns),
     "});",
-    // ngram, vector index는 knex.raw로 처리하므로 createTable 밖에서 실행
-    ...ngramIndexes.map((index) => genIndexDefinition(index, table)),
-    ...vectorIndexes.map((index) => genIndexDefinition(index, table)),
+    // index는 knex.raw로 처리하므로 createTable 밖에서 실행
+    ...indexes.map((index) => genIndexDefinition(index, table)),
     "}",
     "",
     "export async function down(knex: Knex): Promise<void> {",
@@ -142,6 +129,15 @@ function getPgArrayType(column: MigrationColumn, elementType: string): string {
   throw new Error(`Unknown array element type: ${elementType}`);
 }
 
+// Knex 빌더로 처리 가능한 일반 인덱스
+const methodMap: Record<string, string> = {
+  index: "Index",
+  fulltext: "Index",
+  unique: "Unique",
+  hnsw: "Index",
+  ivfflat: "Index",
+};
+
 /**
  * 개별 인덱스 정의 생성
  */
@@ -150,13 +146,6 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   if (isRawSqlIndex(index)) {
     return genRawIndexDefinition(index, table);
   }
-
-  // Knex 빌더로 처리 가능한 일반 인덱스
-  const methodMap: Record<string, string> = {
-    index: "index",
-    fulltext: "index",
-    unique: "unique",
-  };
 
   return `table.${methodMap[index.type]}([${index.columns
     .map((col) => `'${col.name}'`)
@@ -637,15 +626,7 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
  * 인덱스 삭제 정의 생성
  */
 function genIndexDropDefinition(index: MigrationIndex) {
-  const methodMap: Record<string, string> = {
-    index: "Index",
-    fulltext: "Index",
-    unique: "Unique",
-    hnsw: "Index",
-    ivfflat: "Index",
-  };
-
-  return `table.drop${methodMap[index.type]}([${index.columns
+  return `table.dropIndex([${index.columns
     .map((column) => `'${column.name}'`)
     .join(",")}], '${index.name}')`;
 }
