@@ -1166,22 +1166,4 @@ export type SonamuFastifyConfig = {
       options: ApiDecoratorOptions;
     },
   ) => void;
-  cache?: {
-    get: (key: string) => Promise<unknown | null>;
-    put: (key: string, value: unknown, ttl?: number) => Promise<void>;
-    resolveKey: (
-      path: string,
-      reqBody: {
-        [key: string]: unknown;
-      },
-    ) =>
-      | {
-          cache: false;
-        }
-      | {
-          cache: true;
-          key: string;
-          ttl?: number;
-        };
-  };
 };

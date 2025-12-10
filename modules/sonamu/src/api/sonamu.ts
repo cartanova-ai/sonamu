@@ -387,30 +387,6 @@ class SonamuClass {
       // Content-Type
       reply.type(api.options.contentType ?? "application/json");
 
-      // 캐시
-      const { cacheKey, cacheTtl, cachedData } = await (async () => {
-        if (config.cache) {
-          try {
-            const cacheKeyRes = config.cache.resolveKey(api.path, reqBody);
-            if (cacheKeyRes.cache === false) {
-              return { cacheKey: null, cachedData: null };
-            }
-
-            const cacheKey = cacheKeyRes.key;
-            const cacheTtl = cacheKeyRes.ttl;
-            const cachedData = await config.cache.get(cacheKey);
-            return { cacheKey, cacheTtl, cachedData };
-          } catch (e) {
-            console.error(e);
-          }
-          return { cacheKey: null, cachedData: null };
-        }
-        return { cacheKey: null, cachedData: null };
-      })();
-      if (cachedData !== null) {
-        return cachedData;
-      }
-
       // createSSEFactory 함수에 미리 request의 socket과 reply를 바인딩.
       const { createSSEFactory } = await import("../stream/sse");
       const createSSE = (<T extends ZodObject>(
@@ -458,10 +434,6 @@ class SonamuClass {
         );
         reply.type(api.options.contentType ?? "application/json");
 
-        // 캐시 키 있는 경우 갱신 후 저장
-        if (config.cache && cacheKey) {
-          await config.cache.put(cacheKey, result, cacheTtl);
-        }
         return result;
       });
     };
