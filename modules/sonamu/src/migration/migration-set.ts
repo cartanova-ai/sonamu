@@ -11,6 +11,7 @@ import {
   isOneToOneRelationProp,
   isRelationProp,
   isStringProp,
+  isVectorProp,
   isVirtualProp,
   type MigrationColumn,
   type MigrationColumnType,
@@ -62,6 +63,10 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
             precision: prop.precision,
             scale: prop.scale,
             numberType: isNumberProp(prop) ? (prop.numberType ?? "numeric") : "numeric",
+          }),
+          // Vector 타입의 경우 dimensions 추가
+          ...(isVectorProp(prop) && {
+            dimensions: prop.dimensions,
           }),
         };
 
@@ -219,6 +224,10 @@ function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): Migration
       return "uuid[]";
     case "json":
       return "json";
+    case "vector":
+      return "vector";
+    case "vector[]":
+      return "vector[]";
     default:
       exhaustive(prop);
       throw new Error(`Unknown entity prop type: ${(prop as { type: string }).type}`);

@@ -59,8 +59,17 @@ class PostgreSQLSchemaReaderClass {
       return null;
     }
 
+    // vector 컬럼의 dimensions 조회
+    const vectorDimensions = await this.getVectorDimensions(compareDB, table);
+
     const columns: MigrationColumn[] = dbColumns.map((dbColumn) => {
       const dbColType = this.resolveDBColType(dbColumn);
+
+      // vector 타입인 경우 dimensions 설정
+      if (dbColType.type === "vector") {
+        dbColType.dimensions = vectorDimensions[dbColumn.column_name] ?? 0;
+      }
+
       return {
         name: dbColumn.column_name,
         nullable: dbColumn.is_nullable === "YES",
@@ -238,11 +247,42 @@ class PostgreSQLSchemaReaderClass {
   }
 
   /**
+   * vector 컬럼의 dimensions를 조회합니다.
+   * pg_attribute의 atttypmod에서 차원 수를 추출합니다.
+   */
+  private async getVectorDimensions(
+    compareDB: Knex,
+    tableName: string,
+  ): Promise<Record<string, number>> {
+    const query = `
+      SELECT
+        a.attname as column_name,
+        a.atttypmod as dimensions
+      FROM pg_attribute a
+      JOIN pg_class c ON a.attrelid = c.oid
+      JOIN pg_type t ON a.atttypid = t.oid
+      WHERE c.relname = ?
+        AND t.typname = 'vector'
+        AND a.attnum > 0
+    `;
+    const result = await compareDB.raw(query, [tableName]);
+    const dimensions: Record<string, number> = {};
+    for (const row of result.rows) {
+      // atttypmod에서 실제 dimensions 값 추출
+      dimensions[row.column_name] = row.dimensions > 0 ? row.dimensions : 0;
+    }
+    return dimensions;
+  }
+
+  /**
    * PostgreSQL 컬럼 타입을 분석하여 MigrationColumn 객체로 변환합니다.
    */
   resolveDBColType(
     dbColumn: PgColumn,
-  ): Pick<MigrationColumn, "type" | "length" | "precision" | "scale" | "numberType"> {
+  ): Pick<
+    MigrationColumn,
+    "type" | "length" | "precision" | "scale" | "numberType" | "dimensions"
+  > {
     const {
       udt_name: _udt_name,
       character_maximum_length,
@@ -321,6 +361,18 @@ class PostgreSQLSchemaReaderClass {
     // JSON
     if (udt_name === "json" || udt_name === "jsonb") {
       return { type: "json" };
+    }
+
+    // Vector (pgvector)
+    if (udt_name === "vector") {
+      // vector 타입의 차원 수는 column_default나 별도 쿼리로 확인해야 함
+      // 현재는 기본값 0으로 설정 (실제 dimensions는 getMigrationSetFromDB에서 별도 쿼리로 확인)
+      return { type: `vector${singleOrArray}`, dimensions: 0 };
+    }
+
+    // tsvector (PostgreSQL 전문 검색용 타입)
+    if (udt_name === "tsvector") {
+      return { type: "tsvector" };
     }
 
     throw new Error(`resolve 불가능한 PostgreSQL 컬럼 타입: ${udt_name}`);

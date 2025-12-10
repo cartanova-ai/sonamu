@@ -111,6 +111,9 @@ export class Template__view_form extends Template {
         return `<>${col.name} array</>`;
       case "object":
         return `<>${col.name} object</>`;
+      case "vector":
+        // vector 타입은 일반적으로 API를 통해 생성되므로 읽기 전용으로 표시
+        return `<div className="p-8px text-gray-500">[Vector: ${col.name}] - 임베딩 데이터는 API를 통해 자동 생성됩니다.</div>`;
       default:
         throw new Error(`대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`);
     }

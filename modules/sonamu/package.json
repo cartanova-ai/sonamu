@@ -78,6 +78,7 @@
     "minimatch": "^10.0.3",
     "node-sql-parser": "^5.2.0",
     "pg": "^8.16.3",
+    "pgvector": "^0.2.1",
     "prompts": "^2.4.2",
     "qs": "^6.11.0",
     "radashi": "^12.2.0",
@@ -99,15 +100,15 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@swc/cli": "^0.7.8",
-    "@swc/core": "^1.13.5",
-    "fastify": "^4.23.2",
-    "knex": "^3.1.0",
-    "typescript": "^5.9.3",
     "@ai-sdk/openai": "^3.0.0-beta.75",
     "@ai-sdk/provider": "^3.0.0-beta.22",
     "@ai-sdk/provider-utils": "^4.0.0-beta.40",
-    "ai": "^6.0.0-beta.138"
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.13.5",
+    "ai": "^6.0.0-beta.138",
+    "fastify": "^4.23.2",
+    "knex": "^3.1.0",
+    "typescript": "^5.9.3"
   },
   "peerDependenciesMeta": {
     "@ai-sdk/openai": {

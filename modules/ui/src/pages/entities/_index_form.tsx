@@ -16,7 +16,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
   // TypeForm
   const { form, setForm, register, addError } = useTypeForm(
     z.object({
-      type: z.enum(["index", "unique", "fulltext"]),
+      type: z.enum(["index", "unique", "fulltext", "hnsw", "ivfflat"]),
       columns: z.array(
         z.object({
           name: z.string(),
@@ -102,7 +102,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     doneModal(form);
   };
 
-  const typeOptions = ["index", "unique", "fulltext"].map((k) => ({
+  const typeOptions = ["index", "unique", "fulltext", "hnsw", "ivfflat"].map((k) => ({
     key: k,
     value: k,
     text: k.toUpperCase(),

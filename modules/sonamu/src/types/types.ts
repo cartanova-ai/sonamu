@@ -99,7 +99,14 @@ export type VirtualProp = CommonProp & {
   type: "virtual";
   id: string;
 }; // PG: none / TS: any(id) / JSON: any
-
+export type VectorProp = CommonProp & {
+  type: "vector";
+  dimensions: number;
+};
+export type VectorArrayProp = CommonProp & {
+  type: "vector[]";
+  dimensions: number;
+};
 export type RelationType = "HasMany" | "BelongsToOne" | "ManyToMany" | "OneToOne";
 export type RelationOn = "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT" | "RESTRICT";
 type _RelationProp = {
@@ -170,19 +177,82 @@ export type EntityProp =
   | UuidArrayProp
   | JsonProp
   | VirtualProp
+  | VectorProp
+  | VectorArrayProp
   | RelationProp;
+
+/**
+ * pgvector 거리 연산자 클래스
+ *
+ * @description
+ * - `vector_cosine_ops`: 코사인 거리 (Cosine Distance) - 권장
+ *   - SQL 연산자: `<=>`
+ *   - 벡터의 방향만 비교 (크기 무시), 1 - cosine_similarity
+ *   - 텍스트 임베딩, 시맨틱 검색에 가장 일반적으로 사용
+ *   - 사용 예: OpenAI, Voyage 등 대부분의 임베딩 모델에 권장
+ *
+ * - `vector_ip_ops`: 내적 (Inner Product)
+ *   - SQL 연산자: `<#>`
+ *   - 두 벡터의 내적을 계산 (sum(a[i] * b[i]))
+ *   - 정규화된 벡터에서 코사인 유사도와 동일한 결과
+ *   - 값이 클수록 유사 (음수 연산자이므로 ORDER BY에서 주의)
+ *   - 사용 예: 이미 정규화된 임베딩에서 가장 빠른 성능
+ *
+ * - `vector_l2_ops`: 유클리드 거리 (L2 Distance)
+ *   - SQL 연산자: `<->`
+ *   - 두 벡터 간의 직선 거리를 계산 (sqrt(sum((a[i] - b[i])^2)))
+ *   - 벡터의 크기(magnitude)가 중요할 때 사용
+ *   - 사용 예: 이미지 유사도, 절대적 거리 측정이 필요한 경우
+ */
+export type VectorOps = "vector_cosine_ops" | "vector_ip_ops" | "vector_l2_ops";
 
 type EntityIndexColumn = {
   name: string;
   nullsFirst?: boolean;
   sortOrder?: "ASC" | "DESC";
+  /** pgvector 인덱스에서 사용할 거리 연산자 (vector 컬럼에만 적용) */
+  vectorOps?: VectorOps;
 };
 export type EntityIndex = {
-  type: "index" | "unique" | "fulltext";
+  type: "index" | "unique" | "fulltext" | "hnsw" | "ivfflat";
   columns: EntityIndexColumn[];
   name: string;
   parser?: "built-in" | "ngram";
   nullsNotDistinct?: boolean; // unique index only
+  /**
+   * HNSW (Hierarchical Navigable Small World) 인덱스: 각 노드의 최대 연결 수
+   *
+   * @description
+   * 그래프에서 각 노드가 가질 수 있는 최대 연결 수입니다.
+   * HNSW는 빠른 검색 속도와 높은 정확도를 제공하므로 권장됩니다.
+   * - 기본값: 16
+   * - 범위: 2 ~ 100
+   * - 높을수록: 정확도↑, 빌드 시간↑, 메모리↑
+   * - 권장: 빠른 빌드(8), 균형(16), 높은 정확도(32), 최고 정확도(64)
+   */
+  m?: number;
+  /**
+   * HNSW (Hierarchical Navigable Small World) 인덱스: 구성 시 탐색 범위
+   *
+   * @description
+   * 인덱스 구성 시 각 노드에서 탐색할 범위입니다.
+   * - 기본값: 64
+   * - 범위: 4 ~ 1000
+   * - 높을수록: 정확도↑, 빌드 시간↑
+   * - 권장: 빠른 빌드(32), 균형(64), 높은 정확도(128), 최고 정확도(256)
+   */
+  efConstruction?: number;
+  /**
+   * IVFFlat (Inverted File with Flat Compression) 인덱스: 클러스터링 리스트 수
+   *
+   * @description
+   * 벡터를 클러스터링할 버킷 수를 지정합니다.
+   * IVFFlat은 빠른 빌드와 낮은 메모리 사용이 필요할 때 사용합니다.
+   * - 권장값: sqrt(row_count) ~ row_count / 1000
+   * - 예시: 10,000행 → 100, 100,000행 → 300, 1,000,000행 → 1000
+   * - 많을수록 정확도↑, 검색 속도↓
+   */
+  lists?: number;
 };
 export type EntityJson = {
   id: string;
@@ -333,6 +403,15 @@ export function isJsonProp(p: unknown): p is JsonProp {
 export function isVirtualProp(p: unknown): p is VirtualProp {
   return (p as VirtualProp)?.type === "virtual";
 }
+export function isVectorSingleProp(p: unknown): p is VectorProp {
+  return (p as VectorProp)?.type === "vector";
+}
+export function isVectorArrayProp(p: unknown): p is VectorArrayProp {
+  return (p as VectorArrayProp)?.type === "vector[]";
+}
+export function isVectorProp(p: unknown): p is VectorProp | VectorArrayProp {
+  return isVectorSingleProp(p) || isVectorArrayProp(p);
+}
 export function isRelationProp(p: unknown): p is RelationProp {
   return (p as RelationProp)?.type === "relation";
 }
@@ -445,7 +524,10 @@ export type MigrationColumnType =
   | "date[]"
   | "uuid"
   | "uuid[]"
-  | "json";
+  | "json"
+  | "vector"
+  | "vector[]"
+  | "tsvector";
 export type MigrationColumn = {
   name: string;
   type: MigrationColumnType;
@@ -455,13 +537,20 @@ export type MigrationColumn = {
   defaultTo?: string;
   precision?: number;
   scale?: number;
+  dimensions?: number;
 };
 export type MigrationIndex = {
-  type: "unique" | "index" | "fulltext";
+  type: "unique" | "index" | "fulltext" | "hnsw" | "ivfflat";
   columns: EntityIndexColumn[];
   name: string;
   parser?: "built-in" | "ngram";
   nullsNotDistinct?: boolean;
+  /** HNSW (Hierarchical Navigable Small World): 각 노드의 최대 연결 수 */
+  m?: number;
+  /** HNSW (Hierarchical Navigable Small World): 구성 시 탐색 범위 */
+  efConstruction?: number;
+  /** IVFFlat (Inverted File with Flat Compression): 클러스터링 리스트 수 */
+  lists?: number;
 };
 export type MigrationForeign = {
   columns: string[];
@@ -705,7 +794,8 @@ export type RenderingNode = {
     | "array-images"
     | "object"
     | "object-pick"
-    | "record";
+    | "record"
+    | "vector";
   zodType: z.ZodTypeAny;
   element?: RenderingNode;
   children?: RenderingNode[];
@@ -830,6 +920,21 @@ const VirtualPropSchema = z
   })
   .strict();
 
+const VectorPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("vector"),
+    dimensions: z.number(),
+  })
+  .strict();
+const VectorArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("vector[]"),
+    dimensions: z.number(),
+  })
+  .strict();
+
 // Relation 타입은 relationType에 따라 세분화
 const BaseRelationFields = {
   ...BasePropFields,
@@ -918,6 +1023,8 @@ const NormalPropTypes = [
   "uuid[]",
   "json",
   "virtual",
+  "vector",
+  "vector[]",
 ] as const;
 export const NormalPropSchema = z.discriminatedUnion(
   "type",
@@ -933,6 +1040,8 @@ export const NormalPropSchema = z.discriminatedUnion(
     NumericArrayPropSchema,
     JsonPropSchema,
     VirtualPropSchema,
+    VectorPropSchema,
+    VectorArrayPropSchema,
   ],
   {
     error: (iss) =>
@@ -950,16 +1059,20 @@ const EntityIndexColumnSchema = z.object({
   name: z.string(),
   nullsFirst: z.boolean().optional(),
   sortOrder: z.enum(["ASC", "DESC"]).optional(),
+  vectorOps: z.enum(["vector_cosine_ops", "vector_ip_ops", "vector_l2_ops"]).optional(),
 });
 
 // EntityIndex 스키마 정의
 const EntityIndexSchema = z
   .object({
-    type: z.enum(["index", "unique", "fulltext"]),
+    type: z.enum(["index", "unique", "fulltext", "hnsw", "ivfflat"]),
     columns: z.array(EntityIndexColumnSchema),
     name: z.string().min(1).max(63),
     parser: z.enum(["built-in", "ngram"]).optional(),
     nullsNotDistinct: z.boolean().optional(),
+    m: z.number().optional(),
+    efConstruction: z.number().optional(),
+    lists: z.number().optional(),
   })
   .strict();
 

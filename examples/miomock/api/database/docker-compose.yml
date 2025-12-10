@@ -1,12 +1,12 @@
-version: "3.8"
+# database/docker-compose.yml (pgvector 적용)
 name: miomock
 services:
   pg:
     platform: linux/arm64
-    image: postgres:18
+    image: pgvector/pgvector:pg18
     container_name: miomock-pg
     volumes:
-      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql # DB 초기화 스크립트 (얘가 있어야 데이터베이스(schema)가 생깁니다)
+      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       POSTGRES_DB: miomock
       POSTGRES_USER: postgres

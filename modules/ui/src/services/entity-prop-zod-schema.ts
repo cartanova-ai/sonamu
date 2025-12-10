@@ -56,6 +56,14 @@ export namespace EntityPropZodSchema {
   export const UuidProp = CommonProp.extend({
     type: z.literal("uuid"),
   });
+  export const VectorProp = CommonProp.extend({
+    type: z.literal("vector"),
+    dimensions: z.number(),
+  });
+  export const VectorArrayProp = CommonProp.extend({
+    type: z.literal("vector[]"),
+    dimensions: z.number(),
+  });
   export const VirtualProp = CommonProp.extend({
     type: z.literal("virtual"),
     id: z.string(),
@@ -125,6 +133,14 @@ export namespace EntityPropZodSchema {
           return EntityPropZodSchema.DateProp;
         case "json":
           return EntityPropZodSchema.JsonProp;
+        case "boolean":
+          return EntityPropZodSchema.BooleanProp;
+        case "uuid":
+          return EntityPropZodSchema.UuidProp;
+        case "vector":
+          return EntityPropZodSchema.VectorProp;
+        case "vector[]":
+          return EntityPropZodSchema.VectorArrayProp;
         case "virtual":
           return EntityPropZodSchema.VirtualProp;
         case "relation":

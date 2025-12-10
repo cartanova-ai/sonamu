@@ -86,6 +86,9 @@ export class Template__view_list extends Template {
       }
       case "array":
         return `<>{ /* array ${colName} */ }</>`;
+      case "vector":
+        // vector 타입은 차원 수만 표시 (실제 데이터는 너무 김)
+        return `<>{${col.nullable ? `${colName} ? ` : ""}[Vector: {${colName}${col.nullable ? "" : " ?? []"}.length}d]${col.nullable ? " : '-'" : ""}}</>`;
       default:
         throw new Error(`렌더 불가 컬럼 ${col.renderType}`);
     }

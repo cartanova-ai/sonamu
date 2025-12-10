@@ -7,3 +7,13 @@
 -- PostgreSQL은 템플릿 데이터베이스에서 실행되므로, 추가 데이터베이스만 생성
 CREATE DATABASE miomock_fixture_remote;
 CREATE DATABASE miomock_test;
+
+-- 각 데이터베이스에 vector 확장 설치
+-- miomock (현재 연결된 DB)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- miomock_fixture_remote
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- miomock_test
+CREATE EXTENSION IF NOT EXISTS vector;

@@ -49,6 +49,8 @@ import {
   isStringSingleProp,
   isUuidArrayProp,
   isUuidSingleProp,
+  isVectorArrayProp,
+  isVectorSingleProp,
   isVirtualProp,
   type RenderingNode,
 } from "../types/types";
@@ -131,6 +133,10 @@ export async function propToZodType(prop: EntityProp): Promise<z.ZodTypeAny> {
     zodType = z.uuid().array();
   } else if (isJsonProp(prop)) {
     zodType = await getZodTypeById(prop.id);
+  } else if (isVectorSingleProp(prop)) {
+    zodType = z.array(z.number());
+  } else if (isVectorArrayProp(prop)) {
+    zodType = z.array(z.array(z.number()));
   } else if (isVirtualProp(prop)) {
     zodType = await getZodTypeById(prop.id);
   } else if (isRelationProp(prop)) {
@@ -205,6 +211,10 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
   } else if (isJsonProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
+  } else if (isVectorSingleProp(prop)) {
+    stmt = `${prop.name}: z.array(z.number())`;
+  } else if (isVectorArrayProp(prop)) {
+    stmt = `${prop.name}: z.array(z.array(z.number()))`;
   } else if (isVirtualProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);
@@ -504,6 +514,16 @@ export function zodTypeToRenderingNode(
       return {
         ...def,
         renderType: "array-images",
+      };
+    }
+    // vector 타입 판별: number 배열이면서 embedding, vector 등의 이름을 가진 경우
+    if (
+      innerType instanceof z.ZodNumber &&
+      (baseKey.includes("embedding") || baseKey.includes("vector"))
+    ) {
+      return {
+        ...def,
+        renderType: "vector",
       };
     }
     return {

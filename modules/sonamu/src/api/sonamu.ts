@@ -17,6 +17,8 @@ import type { ExtendedApi } from "./decorators";
 
 export type SonamuSecrets = {
   anthropic_api_key?: string;
+  voyage_api_key?: string;
+  openai_api_key?: string;
 };
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -155,10 +157,19 @@ class SonamuClass {
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "postgresql";
 
+    // API 키 환경변수 로드
+    const secrets: SonamuSecrets = {};
     if (process.env.ANTHROPIC_API_KEY) {
-      this.secrets = {
-        anthropic_api_key: process.env.ANTHROPIC_API_KEY,
-      };
+      secrets.anthropic_api_key = process.env.ANTHROPIC_API_KEY;
+    }
+    if (process.env.VOYAGE_API_KEY) {
+      secrets.voyage_api_key = process.env.VOYAGE_API_KEY;
+    }
+    if (process.env.OPENAI_API_KEY) {
+      secrets.openai_api_key = process.env.OPENAI_API_KEY;
+    }
+    if (Object.keys(secrets).length > 0) {
+      this.secrets = secrets;
     }
 
     // DB 로드

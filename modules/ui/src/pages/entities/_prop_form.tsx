@@ -33,6 +33,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       precision: z.number().optional(),
       scale: z.number().optional(),
       id: z.string().optional(),
+      dimensions: z.number().optional(),
       as: z.union([z.object({ ref: z.string() }), z.any()]).optional(),
       relationType: z.enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"]).optional(),
       customJoinClause: z.string().optional(),
@@ -73,6 +74,9 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     "uuid",
     "uuid[]",
     "json",
+    "uuid",
+    "vector",
+    "vector[]",
     "virtual",
     "relation",
   ].map((type) => ({
@@ -283,6 +287,17 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                   <FormTypeIdAsyncSelect {...register("id")} search />
                   <Button icon="code" size="mini" onClick={() => openVscodePreset("types")} />
                 </div>
+              </Form.Field>
+            </Form.Group>
+          )}
+          {(form.type === "vector" || form.type === "vector[]") && (
+            <Form.Group widths="equal">
+              <Form.Field required>
+                <label>Dimensions</label>
+                <FormNumberInput
+                  {...register("dimensions")}
+                  placeholder="예: 1024 (Voyage-3)"
+                />
               </Form.Field>
             </Form.Group>
           )}
