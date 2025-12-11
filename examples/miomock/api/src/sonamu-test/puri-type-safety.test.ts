@@ -735,10 +735,8 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - offset에 string 전달
       db.table("users").offset("20");
 
-      // TODO: Puri 타입 개선 필요 - limit/offset에 음수 허용됨
-      // SQL 표준에서는 limit/offset에 음수를 허용하지 않음 (PostgreSQL은 허용하지만 음수를 0으로 처리)
-      // Knex에서는 offset에서만 음수 검증을 함
-      db.table("users").limit(-1);
+      // limit/offset에 음수 전달 시 런타임 에러 발생
+      // db.table("users").limit(-1);
       // db.table("users").offset(-1);
 
       // @ts-expect-error - limit에 undefined

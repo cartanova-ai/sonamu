@@ -449,11 +449,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
   // 기본 쿼리 메서드들
   limit(count: number): this {
+    if (count < 0) {
+      throw new Error("Invalid limit: must be >= 0");
+    }
     this.knexQuery.limit(count);
     return this;
   }
 
   offset(count: number): this {
+    if (count < 0) {
+      throw new Error("Invalid offset: must be >= 0");
+    }
     this.knexQuery.offset(count);
     return this;
   }
