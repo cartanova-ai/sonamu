@@ -411,8 +411,7 @@ Content-Type: application/json
       "created_at": "2000-01-01",
       "name": "NAME",
       "company_id": 0,
-      "parent_id": null,
-      "code": "CODE"
+      "parent_id": null
     }
   ]
 }
