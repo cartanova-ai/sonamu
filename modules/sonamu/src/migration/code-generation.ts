@@ -12,6 +12,16 @@ import { formatCode } from "../utils/formatter";
 import { differenceWith, intersectionBy } from "../utils/utils";
 
 /**
+ * 컬럼 정의 결과 타입
+ * - builder: Knex table builder 메서드로 실행할 구문 (table.xxx())
+ * - raw: knex.raw()로 실행할 구문
+ */
+type ColumnDefinitionResult = {
+  builder: string[];
+  raw: string[];
+};
+
+/**
  * 테이블 생성하는 케이스 - 컬럼/인덱스 생성
  */
 async function generateCreateCode_ColumnAndIndexes(
@@ -19,14 +29,18 @@ async function generateCreateCode_ColumnAndIndexes(
   columns: MigrationColumn[],
   indexes: MigrationIndex[],
 ): Promise<GenMigrationCode> {
+  const columnDefs = genColumnDefinitions(table, columns);
+
   // 컬럼, 인덱스 처리
   const lines: string[] = [
     'import { Knex } from "knex";',
     "",
     "export async function up(knex: Knex): Promise<void> {",
     `await knex.schema.createTable("${table}", (table) => {`,
-    ...genColumnDefinitions(columns),
+    ...columnDefs.builder,
     "});",
+    // raw 구문 (Generated Column 등)
+    ...columnDefs.raw,
     // index는 knex.raw로 처리하므로 createTable 밖에서 실행
     ...indexes.map((index) => genIndexDefinition(index, table)),
     "}",
@@ -45,68 +59,133 @@ async function generateCreateCode_ColumnAndIndexes(
 
 /**
  * MigrationColumn[] 읽어서 컬럼 정의하는 구문 생성
+ * @returns builder: table builder 메서드, raw: knex.raw() 구문
  */
-function genColumnDefinitions(columns: MigrationColumn[]): string[] {
-  return columns.map((column) => {
-    const chains: string[] = [];
-    if (column.name === "id") {
-      return `table.increments().primary();`;
+function genColumnDefinitions(table: string, columns: MigrationColumn[]): ColumnDefinitionResult {
+  const result: ColumnDefinitionResult = {
+    builder: [],
+    raw: [],
+  };
+
+  for (const column of columns) {
+    // Generated Column은 raw로 처리
+    if (column.generated) {
+      result.raw.push(genGeneratedColumnDefinition(table, column));
+      continue;
     }
 
-    // 배열 타입 처리
-    if (column.type.endsWith("[]")) {
-      const elementType = column.type.slice(0, -2); // "integer[]" -> "integer"
-      const pgType = getPgArrayType(column, elementType);
-      chains.push(`specificType('${column.name}', '${pgType}')`);
-    } else if (column.type === "vector") {
-      // Knex는 vector 타입을 직접 지원하지 않으므로 specificType 사용
-      chains.push(`specificType('${column.name}', 'vector(${column.dimensions})')`);
-    } else if (column.type === "numberOrNumeric") {
-      // number
-      if (column.numberType === "real") {
-        chains.push(`float('${column.name}')`);
-      } else if (column.numberType === "double precision") {
-        chains.push(`double('${column.name}')`);
-      } else if ((column.numberType ?? "numeric") === "numeric") {
-        chains.push(`decimal('${column.name}', ${column.precision}, ${column.scale})`);
-      }
-    } else if (column.type === "string") {
-      // string
-      if (column.length !== undefined) {
-        chains.push(`string('${column.name}', ${column.length})`);
-      } else {
-        chains.push(`text('${column.name}')`);
-      }
-    } else if (column.type === "date") {
-      // date
-      chains.push(`timestamp('${column.name}', { useTz: true })`);
-    } else if (column.type === "json") {
-      // json
-      chains.push(`jsonb('${column.name}')`);
+    // 일반 컬럼은 builder로 처리
+    result.builder.push(genNormalColumnDefinition(column));
+  }
+
+  return result;
+}
+
+/**
+ * Generated Column 정의 생성 (ALTER TABLE ADD COLUMN 사용)
+ */
+function genGeneratedColumnDefinition(table: string, column: MigrationColumn): string {
+  if (!column.generated) {
+    throw new Error("Generated column definition required");
+  }
+  const pgType = getPgTypeForColumn(column);
+  const storageType = column.generated.type === "VIRTUAL" ? " VIRTUAL" : " STORED";
+  const nullableClause = column.nullable ? "" : " NOT NULL";
+  return `await knex.raw(\`ALTER TABLE "${table}" ADD COLUMN "${column.name}" ${pgType} GENERATED ALWAYS AS (${column.generated.expression})${storageType}${nullableClause}\`);`;
+}
+
+/**
+ * 일반 컬럼 정의 생성 (table.xxx() 체인)
+ */
+function genNormalColumnDefinition(column: MigrationColumn): string {
+  const chains: string[] = [];
+
+  if (column.name === "id") {
+    return `table.increments().primary();`;
+  }
+
+  // 배열 타입 처리
+  if (column.type.endsWith("[]")) {
+    const elementType = column.type.slice(0, -2); // "integer[]" -> "integer"
+    const pgType = getPgArrayType(column, elementType);
+    chains.push(`specificType('${column.name}', '${pgType}')`);
+  } else if (column.type === "vector") {
+    // Knex는 vector 타입을 직접 지원하지 않으므로 specificType 사용
+    chains.push(`specificType('${column.name}', 'vector(${column.dimensions})')`);
+  } else if (column.type === "numberOrNumeric") {
+    // number
+    if (column.numberType === "real") {
+      chains.push(`float('${column.name}')`);
+    } else if (column.numberType === "double precision") {
+      chains.push(`double('${column.name}')`);
+    } else if ((column.numberType ?? "numeric") === "numeric") {
+      chains.push(`decimal('${column.name}', ${column.precision}, ${column.scale})`);
+    }
+  } else if (column.type === "string") {
+    // string
+    if (column.length !== undefined) {
+      chains.push(`string('${column.name}', ${column.length})`);
     } else {
-      // type, length
-      let extraType: string | undefined;
-      chains.push(
-        `${column.type}('${column.name}'${
-          column.length ? `, ${column.length}` : ""
-        }${extraType ? `, '${extraType}'` : ""})`,
-      );
+      chains.push(`text('${column.name}')`);
     }
+  } else if (column.type === "date") {
+    // date
+    chains.push(`timestamp('${column.name}', { useTz: true })`);
+  } else if (column.type === "json") {
+    // json
+    chains.push(`jsonb('${column.name}')`);
+  } else {
+    // type, length
+    let extraType: string | undefined;
+    chains.push(
+      `${column.type}('${column.name}'${
+        column.length ? `, ${column.length}` : ""
+      }${extraType ? `, '${extraType}'` : ""})`,
+    );
+  }
 
-    // nullable
-    chains.push(column.nullable ? "nullable()" : "notNullable()");
+  // nullable
+  chains.push(column.nullable ? "nullable()" : "notNullable()");
 
-    // defaultTo
-    if (column.defaultTo !== undefined) {
-      if (typeof column.defaultTo === "string" && column.defaultTo.startsWith(`"`)) {
-        chains.push(`defaultTo(${column.defaultTo})`);
-      } else {
-        chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
-      }
+  // defaultTo
+  if (column.defaultTo !== undefined) {
+    if (typeof column.defaultTo === "string" && column.defaultTo.startsWith(`"`)) {
+      chains.push(`defaultTo(${column.defaultTo})`);
+    } else {
+      chains.push(`defaultTo(knex.raw('${column.defaultTo}'))`);
     }
+  }
 
-    return `table.${chains.join(".")};`;
-  });
+  return `table.${chains.join(".")};`;
+}
+
+/**
+ * MigrationColumn의 타입을 PostgreSQL 타입 문자열로 변환
+ */
+function getPgTypeForColumn(column: MigrationColumn): string {
+  if (column.type.endsWith("[]")) {
+    const elementType = column.type.slice(0, -2);
+    return getPgArrayType(column, elementType);
+  }
+
+  switch (column.type) {
+    case "string":
+      return column.length !== undefined ? `varchar(${column.length})` : "text";
+    case "bigInteger":
+      return "bigint";
+    case "numberOrNumeric":
+      if (column.numberType === "real") return "real";
+      if (column.numberType === "double precision") return "double precision";
+      return `numeric(${column.precision}, ${column.scale})`;
+    case "date":
+      return "timestamptz";
+    case "json":
+      return "jsonb";
+    case "vector":
+      return `vector(${column.dimensions})`;
+    default:
+      return column.type;
+  }
 }
 
 function getPgArrayType(column: MigrationColumn, elementType: string): string {
@@ -312,13 +391,14 @@ async function generateAlterCode_ColumnAndIndexes(
   );
 
   // 빈 코드 생성 방지
-  if (
-    alterColumnLinesTo.add.up.length === 0 &&
-    alterColumnLinesTo.drop.up.length === 0 &&
-    alterColumnLinesTo.alter.up.length === 0 &&
-    alterIndexesTo.add.length === 0 &&
-    indexNeedsToDrop.length === 0
-  ) {
+  const hasUpChanges =
+    alterColumnLinesTo.add.up.builder.length > 0 ||
+    alterColumnLinesTo.add.up.raw.length > 0 ||
+    alterColumnLinesTo.drop.up.builder.length > 0 ||
+    alterColumnLinesTo.alter.up.builder.length > 0 ||
+    alterIndexesTo.add.length > 0 ||
+    indexNeedsToDrop.length > 0;
+  if (!hasUpChanges) {
     Naite.t("migrator:generateAlterCode_ColumnAndIndexes:emptyCodeGenerationError", {
       entityColumns,
       dbColumns,
@@ -339,30 +419,28 @@ async function generateAlterCode_ColumnAndIndexes(
 
   // TODO: 인덱스명 변경된 경우 처리
 
-  const lines: string[] = [
-    'import { Knex } from "knex";',
-    "",
-    "export async function up(knex: Knex): Promise<void> {",
-    `await knex.schema.alterTable("${table}", (table) => {`,
-    // 1. add column
-    ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.up : []),
-    // 2. drop column
-    ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.up : []),
-    // 3. alter column
-    ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.up : []),
-    // 4. drop index
+  // table builder 메서드로 실행할 코드
+  const upBuilderLines = [
+    ...(alterColumnLinesTo.add.up.builder.length > 0 ? alterColumnLinesTo.add.up.builder : []),
+    ...(alterColumnLinesTo.drop.up.builder.length > 0 ? alterColumnLinesTo.drop.up.builder : []),
+    ...(alterColumnLinesTo.alter.up.builder.length > 0 ? alterColumnLinesTo.alter.up.builder : []),
     ...indexNeedsToDrop.map(genIndexDropDefinition),
-    "});",
-    // index는 knex.raw로 처리하므로 alterTable 밖에서 실행
+  ];
+
+  // knex.raw()로 실행할 코드
+  const upRawLines = [
+    ...(alterColumnLinesTo.add.up.raw.length > 0 ? alterColumnLinesTo.add.up.raw : []),
     ...alterIndexesTo.add.map((index) => genIndexDefinition(index, table)),
-    "}",
-    "",
-    "export async function down(knex: Knex): Promise<void> {",
-    `await knex.schema.alterTable("${table}", (table) => {`,
-    ...(alterColumnsTo.add.length > 0 ? alterColumnLinesTo.add.down : []),
-    ...(alterColumnsTo.drop.length > 0 ? alterColumnLinesTo.drop.down : []),
-    ...(alterColumnsTo.alter.length > 0 ? alterColumnLinesTo.alter.down : []),
-    // up에서 추가한 인덱스 삭제 (새 컬럼과 함께 추가된 것 제외)
+  ];
+
+  const downBuilderLines = [
+    ...(alterColumnLinesTo.add.down.builder.length > 0 ? alterColumnLinesTo.add.down.builder : []),
+    ...(alterColumnLinesTo.drop.down.builder.length > 0
+      ? alterColumnLinesTo.drop.down.builder
+      : []),
+    ...(alterColumnLinesTo.alter.down.builder.length > 0
+      ? alterColumnLinesTo.alter.down.builder
+      : []),
     ...alterIndexesTo.add
       .filter(
         (index) =>
@@ -371,8 +449,28 @@ async function generateAlterCode_ColumnAndIndexes(
           ) === false,
       )
       .map(genIndexDropDefinition),
-    "});",
+  ];
+
+  const downRawLines = [
+    ...(alterColumnLinesTo.drop.down.raw.length > 0 ? alterColumnLinesTo.drop.down.raw : []),
     ...indexNeedsToDrop.map((index) => genIndexDefinition(index, table)),
+  ];
+
+  const lines: string[] = [
+    'import { Knex } from "knex";',
+    "",
+    "export async function up(knex: Knex): Promise<void> {",
+    ...(upBuilderLines.length > 0
+      ? [`await knex.schema.alterTable("${table}", (table) => {`, ...upBuilderLines, "});"]
+      : []),
+    ...upRawLines,
+    "}",
+    "",
+    "export async function down(knex: Knex): Promise<void> {",
+    ...(downBuilderLines.length > 0
+      ? [`await knex.schema.alterTable("${table}", (table) => {`, ...downBuilderLines, "});"]
+      : []),
+    ...downRawLines,
     "}",
   ];
 
@@ -402,6 +500,22 @@ async function generateAlterCode_ColumnAndIndexes(
 }
 
 /**
+ * 컬럼 비교를 위해 Generated Column의 expression을 제외한 객체를 생성
+ */
+function normalizeColumnForComparison(col: MigrationColumn): MigrationColumn {
+  if (col.generated) {
+    return {
+      ...col,
+      generated: {
+        type: col.generated.type,
+        expression: "",
+      },
+    };
+  }
+  return col;
+}
+
+/**
  * 각 컬럼 이름 기준으로 add, drop, alter 여부 확인
  */
 function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
@@ -423,10 +537,12 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
     columnsTo.drop = columnsTo.drop.concat(extraColumns.db);
   }
 
-  // 동일 컬럼명의 세부 필드 비교
+  // 동일 컬럼명의 세부 필드 비교 (Generated Column expression 제외)
   const sameDbColumns = intersectionBy(dbColumns, entityColumns, (col) => col.name);
   const sameMdColumns = intersectionBy(entityColumns, dbColumns, (col) => col.name);
-  columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) => equal(a, b));
+  columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
+    equal(normalizeColumnForComparison(a), normalizeColumnForComparison(b)),
+  );
 
   return columnsTo;
 }
@@ -442,25 +558,34 @@ function getAlterColumnLinesTo(
 ) {
   const linesTo = {
     add: {
-      up: [] as string[],
-      down: [] as string[],
+      up: { builder: [] as string[], raw: [] as string[] },
+      down: { builder: [] as string[], raw: [] as string[] },
     },
     drop: {
-      up: [] as string[],
-      down: [] as string[],
+      up: { builder: [] as string[], raw: [] as string[] },
+      down: { builder: [] as string[], raw: [] as string[] },
     },
     alter: {
-      up: [] as string[],
-      down: [] as string[],
+      up: { builder: [] as string[], raw: [] as string[] },
+      down: { builder: [] as string[], raw: [] as string[] },
     },
   };
 
-  linesTo.add = {
-    up: ["// add", ...genColumnDefinitions(columnsTo.add)],
-    down: [
-      "// rollback - add",
-      `table.dropColumns(${columnsTo.add.map((col) => `'${col.name}'`).join(", ")})`,
-    ],
+  // add columns
+  const addColumnDefs = genColumnDefinitions(table, columnsTo.add);
+  linesTo.add.up = {
+    builder: addColumnDefs.builder.length > 0 ? ["// add", ...addColumnDefs.builder] : [],
+    raw: addColumnDefs.raw.length > 0 ? ["// add (generated)", ...addColumnDefs.raw] : [],
+  };
+  linesTo.add.down = {
+    builder:
+      columnsTo.add.length > 0
+        ? [
+            "// rollback - add",
+            `table.dropColumns(${columnsTo.add.map((col) => `'${col.name}'`).join(", ")})`,
+          ]
+        : [],
+    raw: [],
   };
 
   // drop할 컬럼에 걸린 FK 찾기
@@ -476,20 +601,38 @@ function getAlterColumnLinesTo(
 
   const restoreFkLines = genForeignDefinitions(table, fkToDropBeforeColumn).up;
 
+  // drop의 rollback시에는 generated column도 복원해야 함
+  const dropColumnDefs = genColumnDefinitions(table, columnsTo.drop);
   linesTo.drop = {
-    up: [
-      ...(dropFkLines.length > 0
-        ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
-        : []),
-      "// drop columns",
-      `table.dropColumns(${columnsTo.drop.map((col) => `'${col.name}'`).join(", ")})`,
-    ],
-    down: [
-      "// rollback - drop columns",
-      ...genColumnDefinitions(columnsTo.drop),
-      ...(restoreFkLines.length > 0 ? ["// restore foreign keys", ...restoreFkLines] : []),
-    ],
+    up: {
+      builder: [
+        ...(dropFkLines.length > 0
+          ? ["// drop foreign keys on columns to be dropped", ...dropFkLines]
+          : []),
+        ...(columnsTo.drop.length > 0
+          ? [
+              "// drop columns",
+              `table.dropColumns(${columnsTo.drop.map((col) => `'${col.name}'`).join(", ")})`,
+            ]
+          : []),
+      ],
+      raw: [],
+    },
+    down: {
+      builder: [
+        ...(dropColumnDefs.builder.length > 0
+          ? ["// rollback - drop columns", ...dropColumnDefs.builder]
+          : []),
+        ...(restoreFkLines.length > 0 ? ["// restore foreign keys", ...restoreFkLines] : []),
+      ],
+      raw:
+        dropColumnDefs.raw.length > 0
+          ? ["// rollback - drop columns (generated)", ...dropColumnDefs.raw]
+          : [],
+    },
   };
+
+  // alter columns (Generated Column은 ALTER 불가하므로 builder만 처리)
   linesTo.alter = columnsTo.alter.reduce(
     (r, dbColumn) => {
       const entityColumn = entityColumns.find((col) => col.name === dbColumn.name);
@@ -497,23 +640,28 @@ function getAlterColumnLinesTo(
         return r;
       }
 
+      // Generated Column은 ALTER 불가
+      if (entityColumn.generated || dbColumn.generated) {
+        return r;
+      }
+
       // 컬럼 변경사항
       const columnDiffUp = diff(
-        genColumnDefinitions([entityColumn]),
-        genColumnDefinitions([dbColumn]),
+        genColumnDefinitions(table, [entityColumn]).builder,
+        genColumnDefinitions(table, [dbColumn]).builder,
       );
       const columnDiffDown = diff(
-        genColumnDefinitions([dbColumn]),
-        genColumnDefinitions([entityColumn]),
+        genColumnDefinitions(table, [dbColumn]).builder,
+        genColumnDefinitions(table, [entityColumn]).builder,
       );
       if (columnDiffUp.length > 0) {
-        r.up = [
-          ...r.up,
+        r.up.builder = [
+          ...r.up.builder,
           "// alter column",
           ...columnDiffUp.map((l) => `${l.replace(";", "")}.alter();`),
         ];
-        r.down = [
-          ...r.down,
+        r.down.builder = [
+          ...r.down.builder,
           "// rollback - alter column",
           ...columnDiffDown.map((l) => `${l.replace(";", "")}.alter();`),
         ];
@@ -522,8 +670,8 @@ function getAlterColumnLinesTo(
       return r;
     },
     {
-      up: [] as string[],
-      down: [] as string[],
+      up: { builder: [] as string[], raw: [] as string[] },
+      down: { builder: [] as string[], raw: [] as string[] },
     },
   );
 
@@ -808,7 +956,10 @@ export async function generateAlterCode(
   const alterCodes: (GenMigrationCode | GenMigrationCode[] | null)[] = [];
 
   // 1. columnsAndIndexes 처리
-  const isEqualColumns = equal(entityColumns, dbColumns);
+  const isEqualColumns = equal(
+    entityColumns.map(normalizeColumnForComparison),
+    dbColumns.map(normalizeColumnForComparison),
+  );
   const isEqualIndexes = equal(
     entityIndexes.map((index) => omit(index, ["parser"])).map(setMigrationIndexDefaults),
     dbIndexes,
