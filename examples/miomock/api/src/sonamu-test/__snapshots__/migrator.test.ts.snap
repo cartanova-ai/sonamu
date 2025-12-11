@@ -371,10 +371,10 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 이름 변경 감지 (Dro
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
-    // add
-    table.string("full_name", 255).notNullable();
     // drop columns
     table.dropColumns("username");
+    // add
+    table.string("full_name", 255).notNullable();
   });
 }
 
