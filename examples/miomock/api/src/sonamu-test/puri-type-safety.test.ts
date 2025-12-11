@@ -79,14 +79,21 @@ describe("Puri Type Safety", () => {
       db.table("users").where("departments.id", 1);
 
       // join 후 select에서 양쪽 테이블 컬럼 모두 접근 가능 여부 검증
-      const result = await db
-        .table("employees")
-        .join("users", "employees.user_id", "users.id")
-        .select({
-          empId: "employees.id",
-          userId: "users.id",
-          username: "users.username",
-        });
+      const innerJoinQuery = db.table("employees").join("users", "employees.user_id", "users.id");
+      const result = await innerJoinQuery.select({
+        empId: "employees.id",
+        userId: "users.id",
+        username: "users.username",
+      });
+
+      // @ts-expect-error - INNER JOIN된 NOT NULL 컬럼은 null 체크 불가
+      innerJoinQuery.where("users.username", null);
+
+      // @ts-expect-error - INNER JOIN된 NOT NULL 컬럼은 null 비교 불가
+      innerJoinQuery.where("users.email", "=", null);
+
+      // @ts-expect-error - INNER JOIN된 NOT NULL 컬럼은 null 비교 불가
+      innerJoinQuery.where("users.id", "!=", null);
 
       // 타입 검증
       type ResultItem = (typeof result)[number];
@@ -129,13 +136,14 @@ describe("Puri Type Safety", () => {
       const db = UserModel.getPuri("r");
 
       // leftJoin 후 select
-      const result = await db
+      const leftJoinQuery = db
         .table("employees")
-        .leftJoin("departments", "employees.department_id", "departments.id")
-        .select({
-          empId: "employees.id",
-          deptName: "departments.name",
-        });
+        .leftJoin("departments", "employees.department_id", "departments.id");
+
+      const result = await leftJoinQuery.select({
+        empId: "employees.id",
+        deptName: "departments.name",
+      });
 
       // leftJoin 조건 컬럼 타입 검증
       db.table("employees").leftJoin("departments", "employees.department_id", "departments.id");
@@ -152,6 +160,10 @@ describe("Puri Type Safety", () => {
 
       // @ts-expect-error - 조인 대상 테이블이 아닌 다른 테이블 컬럼 참조
       db.table("employees").leftJoin("users", "departments.id", "users.id");
+
+      leftJoinQuery.where("departments.name", null);
+      leftJoinQuery.where("departments.name", "=", null);
+      leftJoinQuery.where("departments.name", "!=", null);
 
       // 타입 검증
       type ResultItem = (typeof result)[number];

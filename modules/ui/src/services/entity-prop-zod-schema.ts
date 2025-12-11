@@ -1,6 +1,28 @@
 import { z } from "zod";
 
 export namespace EntityPropZodSchema {
+  // Generated Column 스키마
+  export const GeneratedColumn = z.object({
+    type: z.enum(["STORED", "VIRTUAL"]),
+    expression: z.string().min(1, "Generation expression은 필수입니다"),
+  });
+
+  // VIRTUAL Generated Column에서 사용 불가능한 타입들
+  export const VirtualGeneratedDisallowedTypes = [
+    "json",
+    "vector",
+    "vector[]",
+    "string[]",
+    "integer[]",
+    "bigInteger[]",
+    "boolean[]",
+    "date[]",
+    "uuid[]",
+    "number[]",
+    "numeric[]",
+    "enum[]",
+  ] as const;
+
   export const CommonProp = z.object({
     name: z.string().nonempty(),
     nullable: z.boolean().optional(),
@@ -15,6 +37,7 @@ export namespace EntityPropZodSchema {
         }),
       ])
       .optional(),
+    generated: GeneratedColumn.optional(),
   });
   export const IntegerProp = CommonProp.extend({
     type: z.literal("integer"),
@@ -113,6 +136,8 @@ export namespace EntityPropZodSchema {
     type: string;
     relationType?: string;
     length?: number;
+    dbDefault?: unknown;
+    generated?: { type: string; expression: string };
     // biome-ignore lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용
   }): z.ZodSafeParseSuccess<any> | z.ZodSafeParseError<any> {
     const zodSchema = (() => {
@@ -176,6 +201,69 @@ export namespace EntityPropZodSchema {
       ) {
         delete result.data.precision;
         delete result.data.scale;
+      }
+
+      // Generated Column 검증
+      if (result.data.generated) {
+        // dbDefault와 generated 동시 사용 불가
+        if (result.data.dbDefault !== undefined) {
+          return {
+            success: false,
+            error: new z.ZodError([
+              {
+                code: "custom",
+                message: "dbDefault와 generated는 함께 사용할 수 없습니다",
+                path: ["generated"],
+              },
+            ]),
+          };
+        }
+
+        // virtual 타입은 generated 불가
+        if (result.data.type === "virtual") {
+          return {
+            success: false,
+            error: new z.ZodError([
+              {
+                code: "custom",
+                message: "virtual 타입은 generated column을 지원하지 않습니다",
+                path: ["generated"],
+              },
+            ]),
+          };
+        }
+
+        // relation 타입은 generated 불가
+        if (result.data.type === "relation") {
+          return {
+            success: false,
+            error: new z.ZodError([
+              {
+                code: "custom",
+                message: "relation 타입은 generated column을 지원하지 않습니다",
+                path: ["generated"],
+              },
+            ]),
+          };
+        }
+
+        // VIRTUAL Generated Column 타입 제한 검증
+        if (result.data.generated.type === "VIRTUAL") {
+          if (
+            (VirtualGeneratedDisallowedTypes as readonly string[]).includes(result.data.type)
+          ) {
+            return {
+              success: false,
+              error: new z.ZodError([
+                {
+                  code: "custom",
+                  message: `VIRTUAL generated column은 ${result.data.type} 타입을 지원하지 않습니다. STORED를 사용하세요.`,
+                  path: ["generated", "type"],
+                },
+              ]),
+            };
+          }
+        }
       }
     }
     return result;

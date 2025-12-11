@@ -128,11 +128,14 @@ export const DepartmentBaseSchema = z.object({
   company_id: z.int(),
   parent_id: z.int().nullable(),
   // employees: HasMany Employee
+  code: z.string().max(10),
   employee_count: NumberType,
 });
 export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
   readonly __virtual__: readonly ["employee_count"];
-} & { readonly __hasDefault__: readonly ["created_at", "parent_id", "id"] };
+} & { readonly __hasDefault__: readonly ["created_at", "parent_id", "id"] } & {
+  readonly __generated__: readonly ["code"];
+};
 
 // BaseSchema: Employee
 export const EmployeeBaseSchema = z.object({

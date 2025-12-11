@@ -13,7 +13,7 @@
   },
   {
     "path": "src/application/department/department.entity.json",
-    "checksum": "19f1e3259d19ead4d7d08e7cb3a6b312ef742486"
+    "checksum": "3aaa91abcaf7c5daa6e3368f9e95397f6790c6a3"
   },
   {
     "path": "src/application/department/department.model.ts",
@@ -21,7 +21,7 @@
   },
   {
     "path": "src/application/department/department.types.ts",
-    "checksum": "5732ff50ca402b33bb4f58add60e4c23edf6eafe"
+    "checksum": "eaf5d0329812592f6e386cc2bc67ee4f6bdccb91"
   },
   {
     "path": "src/application/employee/employee.entity.json",
@@ -61,7 +61,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "8ffbf6de9588423d0ece5f0f9cd95cd679d06f9d"
+    "checksum": "558ff6b61b0b68be552b78cba2e7496bd7d73e26"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",
