@@ -15,12 +15,18 @@ export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K
 /*
   Model-Defintion
 */
+export type GeneratedColumnType = "STORED" | "VIRTUAL";
+export type GeneratedColumn = {
+  type: GeneratedColumnType;
+  expression: string;
+};
 export type CommonProp = {
   name: string;
   nullable?: boolean;
   toFilter?: true;
   desc?: string;
   dbDefault?: string;
+  generated?: GeneratedColumn;
 };
 export type IntegerProp = CommonProp & {
   type: "integer";
@@ -538,6 +544,7 @@ export type MigrationColumn = {
   precision?: number;
   scale?: number;
   dimensions?: number;
+  generated?: GeneratedColumn;
 };
 export type MigrationIndex = {
   type: "unique" | "index" | "fulltext" | "hnsw" | "ivfflat";
@@ -806,12 +813,18 @@ export type RenderingNode = {
   nullable?: boolean;
 };
 
+const GeneratedColumnSchema = z.object({
+  type: z.enum(["STORED", "VIRTUAL"]),
+  expression: z.string(),
+});
+
 const BasePropFields = {
   name: z.string(),
   desc: z.string().optional(),
   nullable: z.boolean().optional(),
   toFilter: z.boolean().default(false).optional(),
   dbDefault: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  generated: GeneratedColumnSchema.optional(),
 };
 
 // 부가 필드가 필요없는 prop
@@ -1026,28 +1039,81 @@ const NormalPropTypes = [
   "vector",
   "vector[]",
 ] as const;
-export const NormalPropSchema = z.discriminatedUnion(
-  "type",
-  [
-    BasePropFieldsWithoutAdditional,
-    StringPropSchema,
-    StringArrayPropSchema,
-    EnumPropSchema,
-    EnumArrayPropSchema,
-    NumberPropSchema,
-    NumberArrayPropSchema,
-    NumericPropSchema,
-    NumericArrayPropSchema,
-    JsonPropSchema,
-    VirtualPropSchema,
-    VectorPropSchema,
-    VectorArrayPropSchema,
-  ],
-  {
-    error: (iss) =>
-      `type은 ${NormalPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.type}"`,
-  },
-);
+
+// VIRTUAL Generated Column에서 사용 불가능한 타입들
+const VirtualGeneratedDisallowedTypes = [
+  "json",
+  "vector",
+  "vector[]",
+  "string[]",
+  "integer[]",
+  "bigInteger[]",
+  "boolean[]",
+  "date[]",
+  "uuid[]",
+  "number[]",
+  "numeric[]",
+  "enum[]",
+] as const;
+
+export const NormalPropSchema = z
+  .discriminatedUnion(
+    "type",
+    [
+      BasePropFieldsWithoutAdditional,
+      StringPropSchema,
+      StringArrayPropSchema,
+      EnumPropSchema,
+      EnumArrayPropSchema,
+      NumberPropSchema,
+      NumberArrayPropSchema,
+      NumericPropSchema,
+      NumericArrayPropSchema,
+      JsonPropSchema,
+      VirtualPropSchema,
+      VectorPropSchema,
+      VectorArrayPropSchema,
+    ],
+    {
+      error: (iss) =>
+        `type은 ${NormalPropTypes.map((t) => `'${t}'`).join(", ")} 중 하나여야 합니다. 입력값: "${(iss.input as Record<string, unknown>)?.type}"`,
+    },
+  )
+  .superRefine((data, ctx) => {
+    if (!data.generated) {
+      return;
+    }
+
+    // dbDefault와 generated 동시 사용 불가
+    if (data.dbDefault !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: "dbDefault와 generated는 함께 사용할 수 없습니다",
+        path: ["generated"],
+      });
+    }
+
+    // virtual 타입은 generated 불가
+    if (data.type === "virtual") {
+      ctx.addIssue({
+        code: "custom",
+        message: "virtual 타입은 generated column을 지원하지 않습니다",
+        path: ["generated"],
+      });
+    }
+
+    // VIRTUAL Generated Column 타입 제한 검증
+    if (data.generated.type === "VIRTUAL") {
+      if ((VirtualGeneratedDisallowedTypes as readonly string[]).includes(data.type)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `VIRTUAL generated column은 ${data.type} 타입을 지원하지 않습니다. STORED를 사용하세요.`,
+          path: ["generated", "type"],
+          fatal: true,
+        });
+      }
+    }
+  });
 
 const AllPropTypes = [...NormalPropTypes, "relation"] as const;
 const EntityPropSchema = z.discriminatedUnion("type", [NormalPropSchema, RelationPropSchema], {
