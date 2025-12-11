@@ -191,7 +191,15 @@ export class Entity {
         // 마지막 파트 전까지 중첩 객체 생성
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts[i];
-          if (!(part in current) || typeof current[part] === "string") {
+          if (part in current) {
+            if (typeof current[part] === "string") {
+              // 입력이 ["user", "user__id"] 같은 경우!
+              // 애초에 말도 안 되지만 안전하게 예외를 던집니다.
+              throw new Error(
+                `Conflict detected in select items: parent path "${parts.slice(0, i + 1).join("__")}" is already set as a field, cannot nest "${alias}" under it.`,
+              );
+            }
+          } else {
             current[part] = {};
           }
           current = current[part];
