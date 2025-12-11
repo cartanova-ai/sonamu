@@ -199,26 +199,38 @@ export class Template__generated extends Template {
       .filter((prop) => prop.type !== "relation" && prop.generated !== undefined)
       .map((prop) => prop.name);
 
+    const hasMetadata =
+      fulltextColumns.length > 0 ||
+      virtualProps.length > 0 ||
+      hasDefaultColumns.length > 0 ||
+      generatedColumns.length > 0;
+
     const lines = [
       `export const ${schemaName} = ${schemaBody};`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
-        (fulltextColumns.length > 0
-          ? ` & { readonly __fulltext__: readonly [${fulltextColumns
-              .map((col) => `"${col}"`)
-              .join(", ")}] }`
-          : "") +
-        (virtualProps.length > 0
-          ? ` & { readonly __virtual__: readonly [${virtualProps
-              .map((prop) => `"${prop}"`)
-              .join(", ")}] }`
-          : "") +
-        ` & { readonly __hasDefault__: readonly [${hasDefaultColumns
-          .map((col) => `"${col}"`)
-          .join(", ")}] }` +
-        (generatedColumns.length > 0
-          ? ` & { readonly __generated__: readonly [${generatedColumns
-              .map((col) => `"${col}"`)
-              .join(", ")}] }`
+        (hasMetadata
+          ? ` & {${
+              (fulltextColumns.length > 0
+                ? `readonly __fulltext__: readonly [${fulltextColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "") +
+              (virtualProps.length > 0
+                ? `readonly __virtual__: readonly [${virtualProps.map((prop) => `"${prop}"`).join(", ")}],`
+                : "") +
+              (
+                hasDefaultColumns.length > 0
+                  ? `readonly __hasDefault__: readonly [${hasDefaultColumns
+                      .map((col) => `"${col}"`)
+                      .join(", ")}],`
+                  : ""
+              ) +
+              (generatedColumns.length > 0
+                ? `readonly __generated__: readonly [${generatedColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "")
+            }}`
           : "") +
         ";",
     ];
