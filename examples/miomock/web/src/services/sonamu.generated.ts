@@ -128,6 +128,7 @@ export const DepartmentBaseSchema = z.object({
   company_id: z.int(),
   parent_id: z.int().nullable(),
   // employees: HasMany Employee
+  code: z.string().max(10),
   employee_count: NumberType,
 });
 export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
