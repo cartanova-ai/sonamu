@@ -15,6 +15,7 @@ import type {
   InsertData,
   InsertResult,
   LeftJoinedMarker,
+  LeftJoinMarkerFor,
   NumericColumns,
   OnConflictAction,
   ParseSelectObject,
@@ -137,9 +138,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
   ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
+    // 중첩 객체를 flat하게 변환
+    const flatSelect = this.flattenSelect(selectObj);
+
     const selectClauses: (string | Knex.Raw)[] = [];
 
-    for (const [alias, columnOrFunction] of Object.entries(selectObj)) {
+    for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
       if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
         // SQL 함수인 경우
         selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
@@ -160,11 +164,54 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this as any;
   }
 
+  /**
+   * 중첩 객체를 flat 객체로 변환
+   * 예: { parent: { id: "parent.id", name: "parent.name" } }
+   *   → { parent__id: "parent.id", parent__name: "parent.name" }
+   */
+  private flattenSelect(selectObj: Record<string, any>, prefix = ""): Record<string, any> {
+    const flatSelect: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(selectObj)) {
+      const fullKey = prefix ? `${prefix}__${key}` : key;
+
+      if (typeof value === "object" && value !== null && !("_type" in value)) {
+        // 중첩 객체인 경우 - 재귀 처리
+        const nested = this.flattenSelect(value, fullKey);
+        Object.assign(flatSelect, nested);
+      } else {
+        // 일반 값인 경우 (컬럼 경로 또는 SqlExpression)
+        flatSelect[fullKey] = value;
+      }
+    }
+
+    return flatSelect;
+  }
+
   // SELECT (select는 overwrite, appendSelect는 append)
   appendSelect<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
   ): Puri<TSchema, TTables, TResult & ParseSelectObject<TTables, TSelect>> {
-    return this.select(selectObj) as any;
+    // 중첩 객체를 flat하게 변환
+    const flatSelect = this.flattenSelect(selectObj);
+
+    const selectClauses: (string | Knex.Raw)[] = [];
+
+    for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
+      if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
+        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
+      } else {
+        const columnPath = columnOrFunction as string;
+        if (alias === columnPath) {
+          selectClauses.push(columnPath);
+        } else {
+          selectClauses.push(`${columnPath} as ${alias}`);
+        }
+      }
+    }
+
+    this.knexQuery.select(selectClauses);
+    return this as any;
   }
 
   // SELECT *
@@ -249,23 +296,28 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`,
   ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult & LeftJoinedMarker>, TResult>; // 서브쿼리의 TResult
   // LEFT JOIN: 테이블 + Alias
-  leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+  // FK nullable 여부에 따라 자동으로 LeftJoinedMarker 결정
+  leftJoin<
+    TJoinTable extends keyof TSchema,
+    TJoinAlias extends string,
+    TLeft extends AvailableColumns<TTables>,
+  >(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
-    left: AvailableColumns<TTables>,
+    left: TLeft,
     right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinedMarker>, // TTables 확장!
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
     TResult
   >;
   // LEFT JOIN: 테이블명
-  leftJoin<TJoinTable extends keyof TSchema>(
+  leftJoin<TJoinTable extends keyof TSchema, TLeft extends AvailableColumns<TTables>>(
     tableName: TJoinTable,
-    left: AvailableColumns<TTables>,
+    left: TLeft,
     right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, // 테이블명이 키
+    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
     TResult
   >;
   // LEFT JOIN: 서브쿼리 + Alias + 콜백

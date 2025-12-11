@@ -117,9 +117,9 @@ export class Entity {
     };
   }
 
-  /*
-    subset을 Puri 코드로 변환
-  */
+  /**
+   * 주어진 이름(subsetKey)의 subset을 실제로 가져오는 Puri 코드 구현체 string을 반환합니다.
+   */
   getPuriSubsetQuery(subsetKey: string): string {
     const subset = this.subsets[subsetKey];
     const subsetQuery = this.resolveSubsetQuery("", subset);
@@ -132,6 +132,8 @@ export class Entity {
 
     // join
     for (const join of subsetQuery.joins) {
+      // join 메서드 결정: inner → join, outer → leftJoin
+      // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
       const joinMethod = join.join === "inner" ? "join" : "leftJoin";
 
       if ("custom" in join) {
@@ -144,25 +146,112 @@ export class Entity {
       }
     }
 
-    // select
-    const selectObj: Record<string, string> = {};
-    for (const selectItem of subsetQuery.select) {
-      // "users.id" 또는 "users.id as user__id" 형태
+    // select - 입체적 구조로 생성
+    const selectObj = this.buildNestedSelectObject(subsetQuery.select);
+
+    lines.push(`.select(${this.stringifyNestedSelectObject(selectObj)});`);
+
+    return lines.join("\n");
+  }
+
+  /**
+   * *.entity.json의 subset에 들어있는 필드 배열을 받아서,
+   * Puri의 SelectObject 타입으로 변환합니다.
+   *
+   * 예: ["users.id", "parent.id", "parent.name"]
+   *   → { id: "users.id", parent: { id: "parent.id", name: "parent.name" } }
+   *
+   * 언더바가 아닌 중첩 객체로 변환함에 유의하세요.
+   * 이렇게 중첩 객체로 변환하여 select에 넘겨주면 ParseSelectObject 타입이 join된 객체의 타입을 잘 잡아줄 수 있습니다.
+   * 즉, enhancer에서 row를 받았을 때 hydrate된 객체 자체의 nullity와 그 안쪽 필드의 nullity가 fk nullable 여부에 따라 잘 추론됩니다.
+   */
+  private buildNestedSelectObject(
+    selectItems: string[],
+    // biome-ignore lint/suspicious/noExplicitAny: 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+  ): Record<string, any> {
+    const result: ReturnType<typeof this.buildNestedSelectObject> = {};
+
+    for (const selectItem of selectItems) {
+      // "users.id" 또는 "users.id as user__id" 형태 파싱
       const match = selectItem.match(/^(.+?)(?: as (.+))?$/);
-      if (match) {
-        const [, column, alias] = match;
+      if (!match) continue;
+
+      const [, column, alias] = match;
+      const columnValue = `"${column.trim()}"`;
+
+      if (!alias || !alias.includes("__")) {
+        // alias가 없거나 __를 포함하지 않으면 최상위 필드
         const key = alias ?? assertDefined(column.split(".").pop());
-        selectObj[key] = `"${column.trim()}"`;
+        result[key] = columnValue;
+      } else {
+        // alias가 __를 포함하면 입체 구조로 그룹화
+        const parts = alias.split("__");
+        let current = result;
+
+        // 마지막 파트 전까지 중첩 객체 생성
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts[i];
+          if (!(part in current) || typeof current[part] === "string") {
+            current[part] = {};
+          }
+          current = current[part];
+        }
+
+        // 마지막 파트에 값 설정
+        const lastPart = parts[parts.length - 1];
+        current[lastPart] = columnValue;
       }
     }
 
-    lines.push(`.select({`);
-    Object.entries(selectObj).forEach(([key, value]) => {
-      lines.push(`${key}: ${value},`);
-    });
-    lines.push(`});`);
+    return result;
+  }
 
-    return lines.join("\n");
+  /**
+   * JSON.stringify와 유사한 일을 합니다.
+   * 다만 주어진 객체를 JSON이 아닌 TypeScript 객체 리터럴 스트링으로 만들어줍니다.
+   * key에 따옴표가 없어요.
+   * 출력 예시:
+   * ```typescript
+   * {
+   *   id: "users.id",
+   *   parent: {
+   *     id: "parent.id",
+   *     name: "parent.name",
+   *   },
+   * }
+   * ```
+   * @param obj 변환할 객체
+   * @param indent 들여쓰기 레벨
+   * @param withBraces true면 중괄호 포함, false면 내용만 반환
+   */
+  private stringifyNestedSelectObject(
+    // biome-ignore lint/suspicious/noExplicitAny: 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+    obj: Record<string, any>,
+    indent: number = 0,
+    withBraces: boolean = true,
+  ): string {
+    const spaces = "  ".repeat(indent);
+    const innerSpaces = "  ".repeat(indent + 1);
+
+    const entries = Object.entries(obj);
+    if (entries.length === 0) return withBraces ? "{}" : "";
+
+    const lines = entries.map(([key, value]) => {
+      if (typeof value === "string") {
+        // 컬럼 경로 (이미 따옴표 포함)
+        return `${innerSpaces}${key}: ${value},`;
+      } else {
+        // 중첩 객체 (항상 중괄호 포함)
+        return `${innerSpaces}${key}: ${this.stringifyNestedSelectObject(value, indent + 1, true)},`;
+      }
+    });
+
+    if (withBraces) {
+      return `{\n${lines.join("\n")}\n${spaces}}`;
+    } else {
+      // 중괄호 없이 내용만 반환 (앞뒤 개행 제외)
+      return lines.join("\n");
+    }
   }
 
   getPuriLoaderQuery(subsetKey: string): string {
@@ -170,19 +259,6 @@ export class Entity {
     const { loaders } = this.resolveSubsetQuery("", subset);
 
     const lines: string[] = [`[`];
-
-    const parseSelect = (select: string, table: string) => {
-      const tablePrefix = `${table}.`;
-      if (select.startsWith(tablePrefix)) {
-        return `${select.replace(tablePrefix, "")}: "${select}"`;
-      }
-
-      if (select.includes(" as ")) {
-        const [column, alias] = select.split(" as ");
-        return `${alias}: "${column}"`;
-      }
-      return `${select}: "${select}"`;
-    };
 
     // 재귀적으로 loader 생성하는 헬퍼 함수
     const generateLoaderCode = (loaders: SubsetQuery["loaders"]): string[] => {
@@ -206,27 +282,28 @@ export class Entity {
           );
 
           loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-            const joinType = join.join === "inner" ? "join" : "leftJoin";
+            // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+            const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
               // FIXME: 검증 필요
               loaderLines.push(
-                `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+                `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
                 `j.on(Puri.rawString("${join.custom}"));`,
                 "})",
               );
             } else {
               loaderLines.push(
-                `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
+                `.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
               );
             }
           });
 
+          // 입체적 select 구조 생성 (refId 포함)
+          const selectObj = this.buildNestedSelectObject(loader.select);
+          selectObj.refId = `"${toTable}.${toCol}"`;
           loaderLines.push(
             `.whereIn("${toTable}.${toCol}", fromIds)`,
-            `.select({`,
-            `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
-            `refId: "${toTable}.${toCol}",`,
-            `});`,
+            `.select(${this.stringifyNestedSelectObject(selectObj)});`,
           );
         } else {
           // ManyToMany
@@ -237,26 +314,28 @@ export class Entity {
           );
 
           loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-            const joinType = join.join === "inner" ? "join" : "leftJoin";
+            // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+            const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
               // FIXME: 검증 필요
               loaderLines.push(
-                `.${joinType}({ ${join.as}: "${join.table}" }, (j) => {`,
+                `.${joinMethod}({ ${join.as}: "${join.table}" }, (j) => {`,
                 `j.on(Puri.rawString("${join.custom}"));`,
                 "})",
               );
             } else {
               loaderLines.push(
-                `.${joinType}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
+                `.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`,
               );
             }
           });
+
+          // 입체적 select 구조 생성 (refId 포함)
+          const selectObj = this.buildNestedSelectObject(loader.select);
+          selectObj.refId = `"${through.table}.${through.fromCol}"`;
           loaderLines.push(
             `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
-            `.select({`,
-            `${loader.select.map((select: string) => parseSelect(select, toTable)).join(",")},`,
-            `refId: "${through.table}.${through.fromCol}",`,
-            `});`,
+            `.select(${this.stringifyNestedSelectObject(selectObj)});`,
           );
         }
 

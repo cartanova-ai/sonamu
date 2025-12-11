@@ -29,7 +29,12 @@ type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
 
-// LEFT JOIN 마커
+// LEFT JOIN 마커 - nullable FK로 조인된 테이블
+// 이 마커는 nullable FK + leftJoin 조합에서만 붙습니다.
+// join + FK nullable -> 안 붙음
+// join + FK non-nullable -> 안 붙음
+// leftJoin + FK non-nullable -> 안 붙음
+// leftJoin + FK nullable -> 붙음!
 export type LeftJoinedMarker = { [K in LeftJoinedKey]: true };
 
 // 메타데이터 필드 제외한 실제 엔티티 컬럼
@@ -70,22 +75,100 @@ export type ResultAvailableColumns<TTables extends Record<string, any>, TResult 
   | AvailableColumns<TTables>
   | `${keyof TResult & string}`;
 
-// Select 값 타입 확장
+// Select 값 타입 확장 (단일 컬럼 또는 SQL 표현식)
 export type SelectValue<TTables extends Record<string, any>> =
   | AvailableColumns<TTables>
   | SqlExpression<"string" | "number" | "boolean" | "date">;
 
-// Select 객체 타입 (현재는 컬럼 경로만 지원)
-export type SelectObject<TTables extends Record<string, any>> = Record<
-  string,
-  SelectValue<TTables> // AvailableColumns 대신
->;
+// 중첩 Select 객체 타입 (재귀적)
+// 예: { parent: { id: "parent.id", name: "parent.name" } }
+export type NestedSelectObject<TTables extends Record<string, any>> = {
+  [key: string]: SelectValue<TTables> | NestedSelectObject<TTables>;
+};
 
-// Select 결과 타입 추론
+// Select 객체 타입 (flat 또는 중첩 허용)
+export type SelectObject<TTables extends Record<string, any>> = NestedSelectObject<TTables>;
+
+// 값이 중첩 객체인지 판별하는 헬퍼 타입
+type IsNestedObject<T> = T extends string
+  ? false
+  : T extends SqlExpression<any>
+    ? false
+    : T extends Record<string, any>
+      ? true
+      : false;
+
+// 컬럼이 nullable인지 확인 (스키마에서 직접 추출)
+// 예: IsNullableColumn<TTables, "employees.department_id"> → department_id가 number | null이면 true
+export type IsNullableColumn<
+  TTables,
+  Path extends string,
+> = Path extends `${infer TAlias}.${infer TColumn}`
+  ? TAlias extends keyof TTables
+    ? TColumn extends keyof TTables[TAlias]
+      ? null extends TTables[TAlias][TColumn]
+        ? true
+        : false
+      : false
+    : false
+  : false;
+
+// FK nullable 여부에 따른 마커 타입 결정
+// nullable FK로 leftJoin → LeftJoinedMarker (객체 자체가 null일 수 있음)
+// non-null FK로 leftJoin → 마커 없음 (부모가 있으면 자식도 반드시 있음)
+export type LeftJoinMarkerFor<TTables, Path extends string> = IsNullableColumn<
+  TTables,
+  Path
+> extends true
+  ? LeftJoinedMarker
+  : {};
+
+// 주어진 테이블이 FK nullable로 leftJoin 된 테이블인지 확인합니다.
+// 사실 LeftJoinMarker가 붙었는지 확인하는게 다입니다.
+// 이 마커는 FK nullable + leftJoin 조합에서만 붙습니다.
+type IsNullableJoinedTable<TTables, TableKey> = TableKey extends keyof TTables
+  ? TTables[TableKey] extends LeftJoinedMarker
+    ? true // LeftJoinedMarker가 있으면 nullable
+    : false
+  : false;
+
+// 경로 조합 헬퍼 (prefix가 없으면 key만, 있으면 prefix__key)
+type JoinPath<Prefix extends string, Key extends string> = Prefix extends ""
+  ? Key
+  : `${Prefix}__${Key}`;
+
+// Select 결과 타입을 추론해주는 친구입니다.
+// 이 타입은 Puri의 select, appendSelect에서 TResult로 사용됩니다.
+//
+// Schema를 읽어서 FK의 nullability에 따라 join된 객체의 타입을 추론해주는 기능이 있습니다.
+// 이게 무슨 소리냐? FK가 nullable인데 leftJoin되었다면, 해당 객체는 nullable 해야 함을 타입 추론으로 반영해준다는 것입니다.
+// 반면 FK가 non-nullable이거나 그냥 join으로 이어졌다면 해당 객체는 non-nullable할 겁니다.
+// 물론 객체 내부의 nullaability는 또 별개로 추론됩니다. 
+// 
+// 아래에도 ParseSelectObjectWithPath를 비롯해 ExtractColumnType, ExtractColumnTypeRaw 등의 타입이 있습니다.
+// 이들의 역할은 다음과 같습니다:
+// - Parse*: 객체 레벨에서 중첩 구조를 순회하며 객체에 | null을 붙일지 결정합니다.
+// - Extract*: 필드 레벨에서 "table.column" 경로로부터 실제 타입을 추출합니다.
+//
+// 예시:
+// .select({
+//   id: "users.id",           // ← ExtractColumnType의 결과는 number입니다.
+//   department: {             // ← ParseSelectObjectInner에 의해 nullable 객체로 추론됩니다.
+//     id: "department.id",    // ← ExtractColumnTypeRaw의 결과는 number입니다.
+//     name: "department.name" // ← ExtractColumnTypeRaw의 결과는 string입니다.
+//   }
+// })
 export type ParseSelectObject<
   TTables extends Record<string, any>,
   TSelect extends SelectObject<TTables>,
-> = {
+> = ParseSelectObjectWithPath<TTables, TSelect, "">;
+
+// 경로를 추적하면서 Select 결과 타입을 추론합니다.
+type ParseSelectObjectWithPath<
+  TTables extends Record<string, any>,
+  TSelect extends SelectObject<TTables>,
+  Prefix extends string,
+> = Expand<{
   [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
     ? R extends "string"
       ? string
@@ -96,10 +179,44 @@ export type ParseSelectObject<
           : R extends "date"
             ? Date
             : never
-    : ExtractColumnType<TTables, TSelect[K] & string>;
-};
+    : IsNestedObject<TSelect[K]> extends true
+      ? TSelect[K] extends NestedSelectObject<TTables>
+        ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true // 주어진 테이블이 FK nullable에 leftJoin되었는지 여부에 따라 select 결과 객체의 타입이 달라집니다.
+          ? Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>> | null // 만약 해당한다면 해당 객체 자체는 nullable 하며,
+          : Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>> // 그렇지 않다면 non-nullable 합니다.
+        : never
+      : ExtractColumnType<TTables, TSelect[K] & string>;
+}>;
 
-// 컬럼 경로에서 타입 추출
+// 중첩 객체 내부용 - leftJoin nullable을 객체 레벨에서 이미 처리했으므로 필드는 원본 타입을 사용합니다.
+// ParseSelectObjectWithPath와 거의 동일하나, 마지막에 ExtractColumnType 대신 ExtractColumnTypeRaw를 사용하여
+// 필드 레벨에서 중복으로 | null이 추가되는 것을 방지합니다.
+type ParseSelectObjectInner<
+  TTables extends Record<string, any>,
+  TSelect extends SelectObject<TTables>,
+  Prefix extends string,
+> = Expand<{
+  [K in keyof TSelect]: TSelect[K] extends SqlExpression<infer R>
+    ? R extends "string"
+      ? string
+      : R extends "number"
+        ? number
+        : R extends "boolean"
+          ? boolean
+          : R extends "date"
+            ? Date
+            : never
+    : IsNestedObject<TSelect[K]> extends true
+      ? TSelect[K] extends NestedSelectObject<TTables>
+        ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
+          ? Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>> | null
+          : Expand<ParseSelectObjectInner<TTables, TSelect[K], JoinPath<Prefix, K & string>>>
+        : never
+      : ExtractColumnTypeRaw<TTables, TSelect[K] & string>; // leftJoin nullable 무시
+}>;
+
+// 컬럼 경로에서 타입을 추출합니다. LeftJoinedMarker가 있으면 | null을 추가합니다.
+// 최상위 select 필드에서 사용됩니다.
 export type ExtractColumnType<
   TTables extends Record<string, any>,
   Path extends string,
@@ -107,15 +224,33 @@ export type ExtractColumnType<
   ? TAlias extends keyof TTables
     ? TColumn extends keyof TTables[TAlias]
       ? TTables[TAlias] extends LeftJoinedMarker
-        ? TTables[TAlias][TColumn] | null // LEFT JOIN → nullable
-        : TTables[TAlias][TColumn] // INNER JOIN → non-nullable
+        ? TTables[TAlias][TColumn] | null // LEFT JOIN (nullable FK) → nullable
+        : TTables[TAlias][TColumn] // INNER JOIN 또는 non-null FK leftJoin → non-nullable
       : never
     : never
-  : IsSingleKey<TTables> extends true // 추가
+  : IsSingleKey<TTables> extends true
     ? Path extends keyof TTables[keyof TTables]
       ? TTables[keyof TTables][Path]
       : never
     : never;
+
+// 컬럼 경로에서 타입을 추출합니다. leftJoin 여부와 관계없이 원본 타입을 반환합니다.
+// 중첩 객체 내부 필드에서 사용됩니다. (객체 레벨에서 이미 | null 처리가 완료되었으므로)
+type ExtractColumnTypeRaw<
+  TTables extends Record<string, any>,
+  Path extends string,
+> = Path extends `${infer TAlias}.${infer TColumn}`
+  ? TAlias extends keyof TTables
+    ? TColumn extends keyof TTables[TAlias]
+      ? TTables[TAlias][TColumn] // leftJoin 여부와 관계없이 원본 타입
+      : never
+    : never
+  : IsSingleKey<TTables> extends true
+    ? Path extends keyof TTables[keyof TTables]
+      ? TTables[keyof TTables][Path]
+      : never
+    : never;
+
 // Where 조건 객체 타입
 // 예: { "u.id": 1, "u.status": "active" }
 export type WhereCondition<TTables extends Record<string, any>> = {
@@ -174,7 +309,10 @@ type GeneratedKeys<T> = T extends { __generated__: readonly (infer K)[] }
   : never;
 
 // Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리, __generated__ 컬럼은 완전히 제외
-export type InsertData<T> = Omit<PuriTable<T>, InternalTypeKeys | HasDefaultKeys<T> | GeneratedKeys<T>> & {
+export type InsertData<T> = Omit<
+  PuriTable<T>,
+  InternalTypeKeys | HasDefaultKeys<T> | GeneratedKeys<T>
+> & {
   [K in HasDefaultKeys<T>]?: PuriTable<T>[K];
 };
 

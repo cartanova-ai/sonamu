@@ -111,18 +111,7 @@ class UserModelClass extends BaseModelClass<
 
     const enhancers = this.createEnhancers({
       A: (row) => row,
-      P: (row) => ({
-        ...row,
-        employee:
-          row.employee?.department?.name !== null
-            ? {
-                department: {
-                  name: row.employee.department.name,
-                },
-                salary: row.employee.salary,
-              }
-            : null,
-      }),
+      P: (row) => row,
       SS: (row) => row,
     });
 

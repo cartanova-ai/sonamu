@@ -103,14 +103,10 @@ class EmployeeModelClass extends BaseModelClass<
       A: (row) => ({
         ...row,
         department:
-          row.department?.id !== null
+          row.department !== null
             ? {
-                id: row.department.id,
-                name: row.department.name ?? "",
+                ...row.department,
                 employee_count: 0,
-                company: {
-                  name: row.department.company?.name ?? "",
-                },
               }
             : null,
       }),
@@ -119,14 +115,13 @@ class EmployeeModelClass extends BaseModelClass<
         user: {
           ...row.user,
           employee:
-            row.user.employee?.employee_number !== null
+            row.user.employee !== null
               ? {
-                  employee_number: row.user.employee.employee_number,
-                  salary: row.user.employee.salary,
+                  ...row.user.employee,
                   department:
-                    row.user.employee.department?.id !== null
+                    row.user.employee.department !== null
                       ? {
-                          id: row.user.employee.department.id,
+                          ...row.user.employee.department,
                           employee_count: 0,
                         }
                       : null,
@@ -134,15 +129,12 @@ class EmployeeModelClass extends BaseModelClass<
               : null,
         },
         department:
-          row.department?.id !== null
+          row.department !== null
             ? {
-                id: row.department.id,
+                ...row.department,
                 employees: row.department.employees.map((employee) => ({
                   ...employee,
-                  projs: employee.projs.map((proj) => ({
-                    ...proj,
-                    virtual_test: 0,
-                  })),
+                  projs: employee.projs.map((proj) => ({ ...proj, virtual_test: 0 })),
                 })),
               }
             : null,
