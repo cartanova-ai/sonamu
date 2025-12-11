@@ -601,8 +601,6 @@ describe("Puri Type Safety", () => {
 
       joinQuery.groupBy("employees.department_id", "departments.name");
 
-      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 groupBy 허용됨
-      // joined.groupBy("employees.department_id"); // 정상 케이스
       joinQuery.groupBy("department_id");
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼으로 groupBy
@@ -705,8 +703,6 @@ describe("Puri Type Safety", () => {
       joinQuery.orderBy("employees.id", "asc");
       joinQuery.orderBy("users.username", "desc");
 
-      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 orderBy 허용됨
-      // (groupBy와 동일한 오버로드 문제)
       joinQuery.orderBy("id", "asc");
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼
@@ -941,7 +937,6 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - 증감값에 string 전달 (decrement)
       db.table("users").where("id", userId).decrement("id", "5");
 
-      // TODO : Puri 타입 개선 필요 - increment / decrement에 undefined 전달 가능하며, 전달했을 때 런타임 에러 발생 x (NULL, 음수는 런타임 에러 발생)
       // @ts-expect-error - 증감값에 undefined 전달
       db.table("users").where("id", userId).increment("id", undefined);
 
