@@ -31,9 +31,6 @@ import type { ClearStatements } from "./puri-subset.types";
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   private knexQuery: Knex.QueryBuilder;
 
-  // 중첩 객체 키 메타데이터 (hydrate에서 사용)
-  private _nestedKeys: Set<string> = new Set();
-
   // 생성자 시그니처들
   constructor(knex: Knex, tableName: string);
   constructor(knex: Knex, tableSpec: Record<string, string | Puri<TSchema, any, any>>);
@@ -141,8 +138,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     selectObj: TSelect,
   ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
     // 중첩 객체를 flat하게 변환
-    const { flatSelect, nestedKeys } = this.flattenSelect(selectObj);
-    this._nestedKeys = nestedKeys;
+    const flatSelect = this.flattenSelect(selectObj);
 
     const selectClauses: (string | Knex.Raw)[] = [];
 
@@ -171,40 +167,24 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    * 중첩 객체를 flat 객체로 변환
    * 예: { parent: { id: "parent.id", name: "parent.name" } }
    *   → { parent__id: "parent.id", parent__name: "parent.name" }
-   *
-   * @returns flatSelect: flat하게 변환된 select 객체
-   * @returns nestedKeys: 중첩 객체의 최상위 키들 (hydrate에서 nullable 판별에 사용)
    */
-  private flattenSelect(
-    selectObj: Record<string, any>,
-    prefix = "",
-  ): { flatSelect: Record<string, any>; nestedKeys: Set<string> } {
+  private flattenSelect(selectObj: Record<string, any>, prefix = ""): Record<string, any> {
     const flatSelect: Record<string, any> = {};
-    const nestedKeys = new Set<string>();
 
     for (const [key, value] of Object.entries(selectObj)) {
       const fullKey = prefix ? `${prefix}__${key}` : key;
 
       if (typeof value === "object" && value !== null && !("_type" in value)) {
         // 중첩 객체인 경우 - 재귀 처리
-        const rootKey = prefix || key;
-        nestedKeys.add(rootKey);
-
         const nested = this.flattenSelect(value, fullKey);
-        Object.assign(flatSelect, nested.flatSelect);
-        // 하위의 nestedKeys는 상위로 전파하지 않음 (최상위만 관리)
+        Object.assign(flatSelect, nested);
       } else {
         // 일반 값인 경우 (컬럼 경로 또는 SqlExpression)
         flatSelect[fullKey] = value;
       }
     }
 
-    return { flatSelect, nestedKeys };
-  }
-
-  // 중첩 키 정보 getter (hydrate에서 사용)
-  getNestedKeys(): Set<string> {
-    return this._nestedKeys;
+    return flatSelect;
   }
 
   // SELECT (select는 overwrite, appendSelect는 append)
@@ -212,11 +192,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     selectObj: TSelect,
   ): Puri<TSchema, TTables, TResult & ParseSelectObject<TTables, TSelect>> {
     // 중첩 객체를 flat하게 변환
-    const { flatSelect, nestedKeys } = this.flattenSelect(selectObj);
-    // 기존 nestedKeys와 merge
-    for (const key of nestedKeys) {
-      this._nestedKeys.add(key);
-    }
+    const flatSelect = this.flattenSelect(selectObj);
 
     const selectClauses: (string | Knex.Raw)[] = [];
 
@@ -670,7 +646,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // 'dual'은 더미 테이블이며, 바로 아래 줄에서 knexQuery가 덮어씌워집니다.
     const newPuri = new Puri<TSchema, TTables, TResult>(this.knex, "dual");
     newPuri.knexQuery = this.knexQuery.clone();
-    newPuri._nestedKeys = new Set(this._nestedKeys);
     return newPuri;
   }
 

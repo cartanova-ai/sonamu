@@ -56,11 +56,11 @@ sonamu/
 
 // hydrate 후 (nested)
 { id: 1, name: "개발팀", parent: { id: null, name: null } }
-// ↑ 문제: parent 객체가 존재하지만 내부 필드들이 null
+// 문제: parent 객체가 존재하지만 내부 필드들이 null
 
 // 원하는 결과
 { id: 1, name: "개발팀", parent: null }
-// ↑ parent 자체가 null이어야 함
+// parent 자체가 null이어야 함
 ```
 
 #### 문제 2: Nullable 필드와의 구분 불가
@@ -88,7 +88,7 @@ type Result = {
 }
 ```
 
-### 2.3 왜 이런 문제가 생기는가: Hydrate 타입의 한계
+### 2.3 Hydrate 타입의 한계
 
 #### Hydrate의 역할
 `Hydrate<T>` 타입은 flat한 결과를 nested 객체로 변환합니다:
@@ -101,7 +101,7 @@ type Result = {
 ```
 
 #### 핵심 한계: Join 정보 부재
-`Hydrate`은 **키 패턴(`__`)만 보고 그룹핑**합니다. Join 정보(TTables)가 없어서:
+`Hydrate`은 키 패턴(`__`)만 보고 그룹핑합니다. Join 정보(TTables)가 없습니다:
 
 ```typescript
 // Hydrate이 아는 것
@@ -120,27 +120,84 @@ parent__name: string | null  // leftJoin이라서 | null 추가됨
 
 // Hydrate은 이 타입을 그대로 그룹핑만 함
 parent: {
-  id: number | null;    // ❌ 스키마상 non-null인데 nullable로 유지
-  name: string | null;  // ❌ 스키마상 non-null인데 nullable로 유지
+  id: number | null;    // 스키마상 non-null인데 nullable로 유지됨
+  name: string | null;  // 스키마상 non-null인데 nullable로 유지됨
 } | null;
 ```
 
-#### ParseSelectObject가 해결할 수 있는 이유
-`ParseSelectObject`는 `TTables` 타입 파라미터를 통해 Join 정보를 알고 있습니다:
+### 2.4 ParseSelectObject vs Hydrate
+
+#### 위치적 차이
 
 ```typescript
-// ParseSelectObject가 아는 것
-TTables = {
-  departments: { id: number; name: string; ... },
-  parent: { id: number; name: string; ... } & LeftJoinedMarker,  // ← Join 정보!
+// ParseSelectObject: Puri 클래스 내부에서 사용
+class Puri<TSchema, TTables, TResult> {
+  // TTables: 조인된 테이블들 + 마커 정보
+  
+  select<TSelect>(selectObj: TSelect): Puri<..., ParseSelectObject<TTables, TSelect>>
+  // TTables 직접 접근 가능
 }
 
-// 따라서 정확한 타입 추론 가능
-parent: {
-  id: number;     // ✅ 스키마 원본 타입
-  name: string;   // ✅ 스키마 원본 타입
-} | null;         // ✅ leftJoin이라서 객체만 nullable
+// Hydrate: 외부에서 결과 타입만 받음
+type Hydrate<T> = /* T만 있음, TTables 없음 */
 ```
+
+#### 정보 접근 비교
+
+| | `ParseSelectObject` | `Hydrate` |
+|---|---|---|
+| 위치 | Puri 내부 | 외부 (결과 후처리) |
+| TTables 접근 | 가능 | 불가 |
+| 조인 마커 체크 | `LeftJoinedMarker` 확인 | 키 패턴만 확인 |
+| 스키마 타입 | `TTables[alias][column]` | 이미 nullable 적용됨 |
+| nullability 결정 | 객체 단위 | 필드 단위 (그대로 유지) |
+
+#### 핵심 차이
+
+```typescript
+// ParseSelectObject: "이 테이블이 leftJoin이니까 객체에만 | null"
+//                    TTables 정보로 판단
+
+// Hydrate: "parent__id가 number | null이네, 그대로 두자"
+//          키 패턴만 보고 그룹핑
+```
+
+`ParseSelectObject`는 Puri 내부에서 `TTables` 정보에 접근할 수 있어 정확한 타입 추론이 가능합니다.
+
+### 2.5 중첩 Select의 본질
+
+#### 역할
+
+1. **타입 추론**: `ParseSelectObject`가 `TTables`로 정확한 nullability 추론
+2. **가독성**: 개발자가 의도를 명확하게 표현 (`{ parent: { id, name } }` vs `{ parent__id, parent__name }`)
+
+#### 실제 런타임 처리
+
+```
+{ parent: { id: "p.id" } }           입력 (중첩)
+        |
+        v flattenSelect()
+{ parent__id: "p.id" }               flat으로 변환
+        |
+        v Knex → SQL
+SELECT p.id AS parent__id ...        flat SQL
+        |
+        v SQL 결과
+{ parent__id: 1 }                    flat 결과
+        |
+        v hydrate()
+{ parent: { id: 1 } }                다시 중첩
+```
+
+#### 요약
+
+| 역할 | 중첩 구조 기여 |
+|------|---------------|
+| 타입 추론 | 객체 단위 nullability 추론 가능 |
+| 가독성 | 구조를 명시적으로 표현 |
+| 런타임 | flat으로 변환되어 처리됨 |
+
+중첩 구조는 타입과 가독성을 위한 추상화이며, 런타임은 기존 방식 그대로입니다.
 
 ---
 
@@ -197,7 +254,7 @@ employees (메인 테이블)
   department: {
     id: number;
     name: string;
-    company: {        // null 아님!
+    company: {        // null 아님
       name: string;
     };
   } | null;           // department 전체가 null일 수 있음
@@ -254,54 +311,45 @@ type ParseSelectObjectInner<TTables, TSelect, Prefix extends string> = Expand<{
 
 // 컬럼 타입 추출 (leftJoin nullability 적용)
 export type ExtractColumnType<TTables, Path extends string> = 
-  /* ... TTables[Alias] extends LeftJoinedMarker이고 InheritedLeftJoinedMarker가 아니면 | null 추가 */;
+  /* TTables[Alias] extends LeftJoinedMarker이고 InheritedLeftJoinedMarker가 아니면 | null 추가 */;
 
 // 컬럼 타입 추출 (leftJoin nullability 무시 - 내부 필드용)
 type ExtractColumnTypeRaw<TTables, Path extends string> = 
-  /* ... 항상 원본 타입 반환 */;
+  /* 항상 원본 타입 반환 */;
 ```
 
 ### 4.3 Puri 클래스 수정 (puri.ts)
 
 ```typescript
 class Puri<TSchema, TTables, TResult> {
-  private _nestedKeys: Set<string> = new Set();  // 중첩 객체 키 저장
-
   // select 메서드
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
   ): Puri<TSchema, TTables, ParseSelectObject<TTables, TSelect>> {
-    const { flatSelect, nestedKeys } = this.flattenSelect(selectObj);
-    this._nestedKeys = nestedKeys;
+    const flatSelect = this.flattenSelect(selectObj);
     // flatSelect를 Knex에 전달
   }
 
   // 입체적 객체를 flat하게 변환
-  private flattenSelect(
-    selectObj: Record<string, any>,
-    prefix = "",
-  ): { flatSelect: Record<string, any>; nestedKeys: Set<string> } {
+  private flattenSelect(selectObj: Record<string, any>, prefix = ""): Record<string, any> {
     const flatSelect: Record<string, any> = {};
-    const nestedKeys = new Set<string>();
 
     for (const [key, value] of Object.entries(selectObj)) {
       const fullKey = prefix ? `${prefix}__${key}` : key;
 
       if (typeof value === "object" && !("_type" in value)) {
-        // 중첩 객체
-        if (!prefix) nestedKeys.add(key);  // 최상위 중첩 키만 저장
+        // 중첩 객체 - 재귀 처리
         const nested = this.flattenSelect(value, fullKey);
-        Object.assign(flatSelect, nested.flatSelect);
-        nested.nestedKeys.forEach((k) => nestedKeys.add(k));
+        Object.assign(flatSelect, nested);
       } else {
         flatSelect[fullKey] = value;
       }
     }
 
-    return { flatSelect, nestedKeys };
+    return flatSelect;
   }
 
-  // inheritedLeftJoin 메서드 추가
+  // inheritedLeftJoin 메서드
   inheritedLeftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
     left: AvailableColumns<TTables>,
@@ -512,7 +560,7 @@ export const departmentLoaderQueries = {
     name: string;
     company: {
       name: string;
-    };  // inheritedLeftJoin → non-null (부모가 null이면 여기 접근 자체가 안됨)
+    };  // inheritedLeftJoin → non-null (부모가 null이면 접근 자체가 안됨)
   } | null;  // leftJoin → nullable
 }
 ```
@@ -532,21 +580,21 @@ TypeScript intersection(`&`)을 사용하여 기존 타입과 새 타입을 합�
 
 ### 6.2 객체 머징
 ```typescript
-// 단순 케이스: 동작함
+// 단순 케이스
 qb.select({ user: { id: "user.id" } })
   .appendSelect({ name: "users.name" });
 // Result: { user: { id: number }, name: string }
 
-// 같은 객체 확장: 주의 필요
+// 같은 객체 확장
 qb.select({ user: { id: "user.id" } })
   .appendSelect({ user: { name: "user.name" } });
 // Result: { user: { id: number } & { name: string } }
-// = { user: { id: number; name: string } }  // 동작함
+// = { user: { id: number; name: string } }
 ```
 
 ### 6.3 주의사항
-- nullability가 다른 경우 타입이 복잡해질 수 있음
-- 가능하면 한 번에 select 정의 권장
+- nullability가 다른 경우 타입이 복잡해질 수 있습니다.
+- 가능하면 한 번에 select를 정의하는 것을 권장합니다.
 
 ---
 
@@ -554,7 +602,7 @@ qb.select({ user: { id: "user.id" } })
 
 ### 7.1 SQL 레벨의 근본적 한계: NULL 구분 불가
 
-**핵심 문제**: SQL 결과만으로는 "leftJoin miss"와 "필드가 NULL"을 구분할 수 없습니다.
+SQL 결과만으로는 "leftJoin miss"와 "필드가 NULL"을 구분할 수 없습니다.
 
 ```sql
 SELECT 
@@ -569,7 +617,7 @@ LEFT JOIN departments d ON e.department_id = d.id
 | department 없음 (leftJoin miss) | `department__name: NULL` |
 | department 있음, name이 NULL | `department__name: NULL` |
 
-**→ 둘 다 똑같이 `NULL`이라서 구분 불가!**
+둘 다 똑같이 `NULL`이라서 구분이 불가능합니다.
 
 #### 문제 발생 케이스
 
@@ -577,18 +625,18 @@ LEFT JOIN departments d ON e.department_id = d.id
 // select에 id 없이 nullable 필드만 포함
 .select({
   department: {
-    name: "department.name",  // name이 nullable 컬럼이라면?
+    name: "department.name",  // name이 nullable 컬럼인 경우
   },
 })
 
 // DB 상태: department 존재, name이 NULL
 // SQL 결과: { department__name: null }
 
-// hydrate 결과 (잘못됨!)
-{ department: null }  // ❌ 객체 자체가 null로 판별
+// hydrate 결과 (잘못됨)
+{ department: null }  // 객체 자체가 null로 판별
 
 // 실제 올바른 결과
-{ department: { name: null } }  // ✅ 객체 존재, name만 null
+{ department: { name: null } }  // 객체 존재, name만 null
 ```
 
 #### 타입-런타임 불일치
@@ -598,7 +646,7 @@ LEFT JOIN departments d ON e.department_id = d.id
 | department 있고 name이 null | `{ name: null }` | `null` |
 
 ```typescript
-// 타입은 이렇게 접근 가능하다고 함
+// 타입은 접근 가능하다고 함
 if (row.department) {
   console.log(row.department.name);  // string | null
 }
@@ -606,15 +654,15 @@ if (row.department) {
 // 런타임에서는 department가 null이라서 if문 통과 못함
 ```
 
-### 7.2 해결책: 중첩 객체에 id 필드 필수
+### 7.2 해결책: 중첩 객체에 id 필드 포함
 
-**구분하려면 PK 또는 FK를 select에 포함해야 합니다:**
+구분하려면 PK 또는 FK를 select에 포함해야 합니다:
 
 ```typescript
-// ✅ 권장: id 필드 포함
+// 권장: id 필드 포함
 .select({
   department: {
-    id: "department.id",     // 이걸로 존재 여부 판별!
+    id: "department.id",     // 존재 여부 판별에 사용
     name: "department.name",
   },
 })
@@ -622,11 +670,11 @@ if (row.department) {
 
 | 상황 | department__id | department__name | hydrate 결과 |
 |------|----------------|------------------|-------------|
-| department 없음 | `NULL` | `NULL` | `{ department: null }` ✅ |
-| department 있음, name이 NULL | `100` | `NULL` | `{ department: { id: 100, name: null } }` ✅ |
+| department 없음 | `NULL` | `NULL` | `{ department: null }` |
+| department 있음, name이 NULL | `100` | `NULL` | `{ department: { id: 100, name: null } }` |
 
 ```typescript
-// ❌ 비권장: id 없이
+// 비권장: id 없이
 .select({
   department: {
     name: "department.name",  // 모든 필드가 null이면 객체가 null로 잘못 판별됨
@@ -644,13 +692,13 @@ if (idField in row) {
   return row[idField] === null;
 }
 
-// id 필드가 없으면 → 모든 필드가 null인지로 판별 (부정확할 수 있음!)
+// id 필드가 없으면 → 모든 필드가 null인지로 판별 (부정확할 수 있음)
 return fields.every((field) => row[field] === null);
 ```
 
 ### 7.4 깊은 중첩에서의 hydrate
 
-현재 hydrate는 `__`로 1단계 그룹핑만 수행. 더 깊은 중첩은 자동으로 처리되지만, 객체 경계 판별이 제한적일 수 있음.
+현재 hydrate는 `__`로 1단계 그룹핑만 수행합니다. 더 깊은 중첩은 자동으로 처리되지만, 객체 경계 판별이 제한적일 수 있습니다.
 
 ### 7.5 수동 쿼리 작성 시 주의사항
 
@@ -661,12 +709,12 @@ return fields.every((field) => row[field] === null);
 | 잘 모르겠다 | `leftJoin` 사용 (안전함, 타입만 더 엄격) |
 | 부모가 leftJoin + 관계가 확실히 non-null | `inheritedLeftJoin` 사용 |
 
-**잘못 사용했을 때:**
+잘못 사용했을 때:
 
 | 잘못 사용 | 결과 |
 |----------|------|
-| nullable 관계에 `inheritedLeftJoin` | 💥 **위험** - 런타임 에러 가능 |
-| non-null 관계에 `leftJoin` | 🟡 **안전** - 불필요한 null 체크만 강제됨 |
+| nullable 관계에 `inheritedLeftJoin` | 위험 - 런타임 에러 가능 |
+| non-null 관계에 `leftJoin` | 안전 - 불필요한 null 체크만 강제됨 |
 
 ---
 
@@ -702,7 +750,7 @@ cd examples/miomock/api && npx vitest run src/sonamu-test/syncer.test.ts -u
 
 ---
 
-## 10. 관련 커밋/변경 파일
+## 10. 관련 변경 파일
 
 - `modules/sonamu/src/database/puri.types.ts` - 타입 추론 로직
 - `modules/sonamu/src/database/puri.ts` - Puri 클래스 (flattenSelect, inheritedLeftJoin)
