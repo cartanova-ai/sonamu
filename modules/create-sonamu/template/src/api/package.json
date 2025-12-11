@@ -18,17 +18,18 @@
     "seed": "bash database/scripts/seed.sh"
   },
   "dependencies": {
-    "chokidar": "^4.0.3",
-    "chalk": "^4",
     "@sonamu-kit/ui": "^0.7.3",
-    "dotenv": "^17.2.2",
+    "@swc/core": "^1.13.5",
     "fastify": "^4",
     "knex": "^3.1.0",
     "sonamu": "^0.7.4",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "dotenv": "^17.2.2"
   },
   "devDependencies": {
+    "@swc/cli": "^0.7.8",
     "@types/node": "^24.5.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.10"
   }
 }
