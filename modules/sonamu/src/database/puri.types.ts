@@ -133,6 +133,8 @@ export type FulltextColumns<TTables extends Record<string, any>> = {
 
 // 비교 연산자
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
+// 조건 연산자: 비교 연산자 + 패턴 매칭 연산자
+export type WhereOperator = ComparisonOperator | "like" | "not like";
 
 // SQL Expression 타입 정의
 export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> = {

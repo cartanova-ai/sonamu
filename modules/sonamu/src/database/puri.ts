@@ -23,6 +23,7 @@ import type {
   SingleTableValue,
   SqlExpression,
   WhereCondition,
+  WhereOperator,
 } from "./puri.types";
 import type { ClearStatements } from "./puri-subset.types";
 
@@ -715,7 +716,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator,
+    operator: WhereOperator,
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   where(...args: any[]): WhereGroup<TTables> {
@@ -731,7 +732,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhere<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator,
+    operator: WhereOperator,
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   orWhere(...args: any[]): WhereGroup<TTables> {

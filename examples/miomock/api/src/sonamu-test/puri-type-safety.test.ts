@@ -504,13 +504,9 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - JOIN 안 한 테이블에 like 사용 불가
       joinQuery.where("departments.name", "like", "%dev%");
 
-      // TODO: Puri 타입 개선 필요 - whereGroup 내부 where / orWhere에 LIKE / NOT LIKE 사용 불가
+      // whereGroup 내부 where / orWhere에 LIKE / NOT LIKE 사용
       db.table("users").whereGroup((g) =>
-        g
-          // @ts-expect-error - whereGroup 내부 where
-          .where("username", "like", "%admin%")
-          // @ts-expect-error - whereGroup 내부 orWhere
-          .orWhere("email", "like", "%@company.com"),
+        g.where("username", "like", "%admin%").orWhere("email", "like", "%@company.com"),
       );
 
       // Multiple join 후 LIKE 사용
