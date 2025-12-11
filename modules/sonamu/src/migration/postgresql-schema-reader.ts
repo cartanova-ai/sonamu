@@ -18,6 +18,8 @@ export type PgColumn = {
   numeric_scale: number | null;
   is_nullable: string;
   column_default: string | null;
+  is_generated: string; // 's' = STORED, 'v' = VIRTUAL, '' = none
+  generation_expression: string | null;
 };
 
 type PgIndex = {
@@ -74,7 +76,25 @@ class PostgreSQLSchemaReaderClass {
         name: dbColumn.column_name,
         nullable: dbColumn.is_nullable === "YES",
         ...dbColType,
+        // Generated Column 처리
         ...(() => {
+          if (dbColumn.is_generated === "s" || dbColumn.is_generated === "v") {
+            return {
+              generated: {
+                type: dbColumn.is_generated === "s" ? "STORED" : "VIRTUAL",
+                expression: dbColumn.generation_expression ?? "",
+              },
+            };
+          }
+          return {};
+        })(),
+        // Default 값 처리 (Generated Column이 아닌 경우만)
+        ...(() => {
+          // Generated Column은 default 값이 없음
+          if (dbColumn.is_generated === "s" || dbColumn.is_generated === "v") {
+            return {};
+          }
+
           if (dbColumn.column_default !== null) {
             // PostgreSQL default 값 정리 (nextval, CURRENT_TIMESTAMP 등)
             let defaultValue = dbColumn.column_default;
@@ -88,8 +108,8 @@ class PostgreSQLSchemaReaderClass {
             defaultValue = defaultValue.replace(/::[\w\s]+$/g, "");
 
             // 따옴표가 single quote인 경우 double quote로 변환
-            if( defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
-              defaultValue = defaultValue.replaceAll('\'', '"');
+            if (defaultValue.startsWith("'") && defaultValue.endsWith("'")) {
+              defaultValue = defaultValue.replaceAll("'", '"');
             }
 
             return {
@@ -170,21 +190,30 @@ class PostgreSQLSchemaReaderClass {
     compareDB: Knex,
     tableName: string,
   ): Promise<[PgColumn[], PgIndex[], PgForeign[]]> {
-    // Columns 조회
-    const columns = await compareDB
-      .select(
-        "column_name",
-        "data_type",
-        "udt_name",
-        "character_maximum_length",
-        "numeric_precision",
-        "numeric_scale",
-        "is_nullable",
-        "column_default",
-      )
-      .from("information_schema.columns")
-      .where({ table_name: tableName })
-      .orderBy("ordinal_position");
+    // Columns 조회 (Generated Column 정보 포함)
+    const columnsQuery = `
+      SELECT
+        c.column_name,
+        c.data_type,
+        c.udt_name,
+        c.character_maximum_length,
+        c.numeric_precision,
+        c.numeric_scale,
+        c.is_nullable,
+        c.column_default,
+        COALESCE(a.attgenerated, '') as is_generated,
+        c.generation_expression
+      FROM information_schema.columns c
+      LEFT JOIN pg_attribute a ON a.attname = c.column_name
+        AND a.attrelid = (
+          SELECT oid FROM pg_class WHERE relname = c.table_name
+          AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = c.table_schema)
+        )
+      WHERE c.table_name = ?
+        AND c.table_schema = 'public'
+      ORDER BY c.ordinal_position
+    `;
+    const columns = (await compareDB.raw(columnsQuery, [tableName])).rows as PgColumn[];
     if (columns.length === 0) {
       throw new Error(`Table not found: ${tableName}`);
     }
