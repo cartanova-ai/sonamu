@@ -177,6 +177,20 @@ export class Template__generated extends Template {
       .filter((prop) => isVirtualProp(prop))
       .map((prop) => prop.name);
 
+    /**
+     * hasDefault props
+     * - nullable 또는 dbDefault가 있는 컬럼 (id 포함)
+     * - relation이 아니거나, relation이어도 nullable이면 포함
+     */
+    const hasDefaultColumns = entity.props
+      .filter(
+        (prop) =>
+          (prop.type !== "relation" || prop.nullable === true) &&
+          (prop.nullable === true || (prop.type !== "relation" && prop.dbDefault !== undefined)),
+      )
+      .map((prop) => (prop.type === "relation" ? `${prop.name}_id` : prop.name))
+      .concat("id");
+
     const lines = [
       `export const ${schemaName} = ${schemaBody};`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
@@ -190,6 +204,9 @@ export class Template__generated extends Template {
               .map((prop) => `"${prop}"`)
               .join(", ")}] }`
           : "") +
+        ` & { readonly __hasDefault__: readonly [${hasDefaultColumns
+          .map((col) => `"${col}"`)
+          .join(", ")}] }` +
         ";",
     ];
 

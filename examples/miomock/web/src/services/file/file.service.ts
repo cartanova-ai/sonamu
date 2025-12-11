@@ -15,18 +15,15 @@ export namespace FileService {
   export function useFile<T extends FileSubsetKey>(
     subset: T,
     id: number,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<FileSubsetMapping[T], SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/file/findById`, { subset, id }],
-        swrOptions?.conditional
-      )
+      handleConditional([`/api/file/findById`, { subset, id }], swrOptions?.conditional),
     );
   }
   export async function getFile<T extends FileSubsetKey>(
     subset: T,
-    id: number
+    id: number,
   ): Promise<FileSubsetMapping[T]> {
     return fetch({
       method: "GET",
@@ -37,19 +34,16 @@ export namespace FileService {
   export function useFiles<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
     rawParams?: LP,
-    swrOptions?: SwrOptions
+    swrOptions?: SwrOptions,
   ): SWRResponse<ListResult<LP, FileSubsetMapping[T]>, SWRError> {
     return useSWR(
-      handleConditional(
-        [`/api/file/findMany`, { subset, rawParams }],
-        swrOptions?.conditional
-      )
+      handleConditional([`/api/file/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getFiles<
-    T extends FileSubsetKey,
-    LP extends FileListParams,
-  >(subset: T, rawParams?: LP): Promise<ListResult<LP, FileSubsetMapping[T]>> {
+  export async function getFiles<T extends FileSubsetKey, LP extends FileListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, FileSubsetMapping[T]>> {
     return fetch({
       method: "GET",
       url: `/api/file/findMany?${qs.stringify({ subset, rawParams })}`,
@@ -74,7 +68,7 @@ export namespace FileService {
 
   export async function upload(
     file: File,
-    onUploadProgress?: (pe: AxiosProgressEvent) => void
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
   ): Promise<{ file: { name: string; url: string; mime_type: string } }> {
     const formData = new FormData();
     formData.append("file", file);
@@ -91,7 +85,7 @@ export namespace FileService {
 
   export async function uploadMultiple(
     files: File[],
-    onUploadProgress?: (pe: AxiosProgressEvent) => void
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
   ): Promise<{ files: { name: string; url: string; mime_type: string }[] }> {
     const formData = new FormData();
     files.forEach((f) => {

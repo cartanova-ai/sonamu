@@ -778,7 +778,6 @@ describe("Puri Type Safety", () => {
         username: "testuser",
         password: "password123",
         role: "normal" as const,
-        is_verified: false,
       };
 
       // 유효한 INSERT - default 컬럼
@@ -794,7 +793,8 @@ describe("Puri Type Safety", () => {
 
       // nullable 컬럼
       db.table("users").insert({ ...defaultUserData, birth_date: null });
-      // TODO: Puri 타입 개선 필요 - 필수 컬럼 누락 시 에러 안 남
+
+      // @ts-expect-error - 필수 컬럼 누락 시 에러
       db.table("users").insert({ ...defaultUserData, email: undefined });
 
       // @ts-expect-error - 존재하지 않는 컬럼

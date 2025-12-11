@@ -6,13 +6,14 @@ import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
 
 // ============================================
-// 내부 타입 키
+// 내부 타입 키 (메타데이터)
 // ============================================
 type FulltextKey = "__fulltext__";
 type VirtualKey = "__virtual__";
 type LeftJoinedKey = "__leftJoined__";
+type HasDefault = "__hasDefault__";
 
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey;
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault;
 
 // ============================================
 // 타입 유틸리티
@@ -161,17 +162,15 @@ type IsSingleKey<TTables extends Record<string, any>> = keyof TTables extends in
 export type SingleTableValue<TTables extends Record<string, any>> =
   IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
 
-// Nullable을 Optional로 변환
-type NullableToOptional<T> = {
-  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<T[K], null | undefined>;
-} & Partial<{
-  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
-}>;
+// __hasDefault__에 포함된 키들을 PuriTable<T>의 키로 제한
+type HasDefaultKeys<T> = T extends { __hasDefault__: readonly (infer K)[] }
+  ? Extract<K, keyof PuriTable<T>>
+  : never;
 
-// Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<
-  Omit<PuriTable<T>, "id" | "created_at" | InternalTypeKeys>
->;
+// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리
+export type InsertData<T> = Omit<PuriTable<T>, InternalTypeKeys | HasDefaultKeys<T>> & {
+  [K in HasDefaultKeys<T>]?: PuriTable<T>[K];
+};
 
 // Insert Result 타입
 export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
