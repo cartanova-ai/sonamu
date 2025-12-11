@@ -102,31 +102,42 @@ class EmployeeModelClass extends BaseModelClass<
     const enhancers = this.createEnhancers({
       A: (row) => ({
         ...row,
-        department: row.department !== null ?{
-          ...row.department,
-          employee_count: 0,
-        } : null,
+        department:
+          row.department !== null
+            ? {
+                ...row.department,
+                employee_count: 0,
+              }
+            : null,
       }),
       P: (row) => ({
         ...row,
         user: {
           ...row.user,
-          employee: row.user.employee !== null ? {
-            ...row.user.employee,
-            department: row.user.employee.department !== null ? {
-              ...row.user.employee.department,
-              employee_count: 0,
-            } : null,
-          } : null,
+          employee:
+            row.user.employee !== null
+              ? {
+                  ...row.user.employee,
+                  department:
+                    row.user.employee.department !== null
+                      ? {
+                          ...row.user.employee.department,
+                          employee_count: 0,
+                        }
+                      : null,
+                }
+              : null,
         },
         department:
-          row.department !== null ? {
-            ...row.department,
-            employees: row.department.employees.map((employee) => ({
-              ...employee,
-              projs: employee.projs.map((proj) => ({ ...proj, virtual_test: 0 })),
-            })),
-          } : null,
+          row.department !== null
+            ? {
+                ...row.department,
+                employees: row.department.employees.map((employee) => ({
+                  ...employee,
+                  projs: employee.projs.map((proj) => ({ ...proj, virtual_test: 0 })),
+                })),
+              }
+            : null,
       }),
       // P: (row) => ({
       //   ...row,
