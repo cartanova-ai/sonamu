@@ -13,4 +13,4 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "{DB_PORT}:5432"
+      - "${DB_PORT}:5432"
