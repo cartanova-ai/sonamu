@@ -44,6 +44,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       onUpdate: EntityPropZodSchema.RelationOn.optional(),
       onDelete: EntityPropZodSchema.RelationOn.optional(),
       with: z.string().optional(),
+      generated: EntityPropZodSchema.GeneratedColumn.optional(),
     }),
     {
       name: "",
@@ -188,11 +189,29 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               <BooleanToggle {...register("toFilter")} />
             </Form.Field>
             <Form.Field>
+              <label>Generated</label>
+              <BooleanToggle
+                value={form.generated !== undefined}
+                onChange={(_, { value }) => {
+                  if (value) {
+                    setForm({
+                      ...form,
+                      generated: { type: "STORED", expression: "" },
+                      dbDefault: undefined,
+                    });
+                  } else {
+                    setForm({ ...form, generated: undefined });
+                  }
+                }}
+              />
+            </Form.Field>
+            <Form.Field>
               <label>DB Default</label>
               <Input
                 {...register("dbDefault")}
                 className="focus-5"
                 labelPosition="left"
+                disabled={form.generated !== undefined}
                 label={
                   <Label>
                     {(() => {
@@ -211,6 +230,42 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
               />
             </Form.Field>
           </Form.Group>
+          {form.generated && (
+            <Form.Group widths="equal">
+              <Form.Field required style={{ flex: 2 }}>
+                <label>Storage Type</label>
+                <Form.Dropdown
+                  value={form.generated?.type ?? "STORED"}
+                  onChange={(_, { value }) => {
+                    const newGenerated = {
+                      type: value as "STORED" | "VIRTUAL",
+                      expression: form.generated?.expression ?? "",
+                    };
+                    setForm({ ...form, generated: newGenerated });
+                  }}
+                  selection
+                  options={[
+                    { key: "STORED", value: "STORED", text: "STORED" },
+                    { key: "VIRTUAL", value: "VIRTUAL", text: "VIRTUAL" },
+                  ]}
+                />
+              </Form.Field>
+              <Form.Field required>
+                <label>Generation Expression</label>
+                <Input
+                  value={form.generated?.expression ?? ""}
+                  onChange={(_, { value }) => {
+                    const newGenerated = {
+                      type: form.generated?.type ?? "STORED",
+                      expression: value,
+                    };
+                    setForm({ ...form, generated: newGenerated });
+                  }}
+                  placeholder="예: price * 1.1"
+                />
+              </Form.Field>
+            </Form.Group>
+          )}
           <Divider />
           {(form.type === "string" ||
             form.type === "string[]" ||
@@ -294,10 +349,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
             <Form.Group widths="equal">
               <Form.Field required>
                 <label>Dimensions</label>
-                <FormNumberInput
-                  {...register("dimensions")}
-                  placeholder="예: 1024 (Voyage-3)"
-                />
+                <FormNumberInput {...register("dimensions")} placeholder="예: 1024 (Voyage-3)" />
               </Form.Field>
             </Form.Group>
           )}
