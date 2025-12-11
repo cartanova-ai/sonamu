@@ -191,6 +191,14 @@ export class Template__generated extends Template {
       .map((prop) => (prop.type === "relation" ? `${prop.name}_id` : prop.name))
       .concat("id");
 
+    /**
+     * generated props
+     * - generated 속성이 있는 컬럼 (INSERT/UPDATE 시 값 제공 불가)
+     */
+    const generatedColumns = entity.props
+      .filter((prop) => prop.type !== "relation" && prop.generated !== undefined)
+      .map((prop) => prop.name);
+
     const lines = [
       `export const ${schemaName} = ${schemaBody};`,
       `export type ${schemaName} = z.infer<typeof ${schemaName}>` +
@@ -207,6 +215,11 @@ export class Template__generated extends Template {
         ` & { readonly __hasDefault__: readonly [${hasDefaultColumns
           .map((col) => `"${col}"`)
           .join(", ")}] }` +
+        (generatedColumns.length > 0
+          ? ` & { readonly __generated__: readonly [${generatedColumns
+              .map((col) => `"${col}"`)
+              .join(", ")}] }`
+          : "") +
         ";",
     ];
 

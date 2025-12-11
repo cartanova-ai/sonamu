@@ -12,8 +12,9 @@ type FulltextKey = "__fulltext__";
 type VirtualKey = "__virtual__";
 type LeftJoinedKey = "__leftJoined__";
 type HasDefault = "__hasDefault__";
+type GeneratedKey = "__generated__";
 
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault;
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault | GeneratedKey;
 
 // ============================================
 // 타입 유틸리티
@@ -167,8 +168,13 @@ type HasDefaultKeys<T> = T extends { __hasDefault__: readonly (infer K)[] }
   ? Extract<K, keyof PuriTable<T>>
   : never;
 
-// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리
-export type InsertData<T> = Omit<PuriTable<T>, InternalTypeKeys | HasDefaultKeys<T>> & {
+// __generated__에 포함된 키들 (INSERT 시 제외해야 함)
+type GeneratedKeys<T> = T extends { __generated__: readonly (infer K)[] }
+  ? Extract<K, keyof PuriTable<T>>
+  : never;
+
+// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리, __generated__ 컬럼은 완전히 제외
+export type InsertData<T> = Omit<PuriTable<T>, InternalTypeKeys | HasDefaultKeys<T> | GeneratedKeys<T>> & {
   [K in HasDefaultKeys<T>]?: PuriTable<T>[K];
 };
 
