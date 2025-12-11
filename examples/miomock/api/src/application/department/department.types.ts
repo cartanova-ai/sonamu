@@ -13,6 +13,7 @@ export const DepartmentSaveParams = DepartmentBaseSchema.partial({
   created_at: true,
 }).omit({
   employee_count: true,
+  code: true,
 });
 export type DepartmentSaveParams = z.infer<typeof DepartmentSaveParams>;
 
