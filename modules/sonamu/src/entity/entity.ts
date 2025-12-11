@@ -117,9 +117,9 @@ export class Entity {
     };
   }
 
-  /*
-    subset을 Puri 코드로 변환
-  */
+  /**
+   * 주어진 이름(subsetKey)의 subset을 실제로 가져오는 Puri 코드 구현체 string을 반환합니다.
+   */
   getPuriSubsetQuery(subsetKey: string): string {
     const subset = this.subsets[subsetKey];
     const subsetQuery = this.resolveSubsetQuery("", subset);
@@ -155,14 +155,21 @@ export class Entity {
   }
 
   /**
-   * flat한 select 항목들을 입체적 구조로 변환
-   * 예: ["users.id", "parent.id as parent__id", "parent.name as parent__name"]
+   * *.entity.json의 subset에 들어있는 필드 배열을 받아서,
+   * Puri의 SelectObject 타입으로 변환합니다.
+   *
+   * 예: ["users.id", "parent.id", "parent.name"]
    *   → { id: "users.id", parent: { id: "parent.id", name: "parent.name" } }
+   *
+   * 언더바가 아닌 중첩 객체로 변환함에 유의하세요.
+   * 이렇게 중첩 객체로 변환하여 select에 넘겨주면 ParseSelectObject 타입이 join된 객체의 타입을 잘 잡아줄 수 있습니다.
+   * 즉, enhancer에서 row를 받았을 때 hydrate된 객체 자체의 nullity와 그 안쪽 필드의 nullity가 fk nullable 여부에 따라 잘 추론됩니다.
    */
   private buildNestedSelectObject(
     selectItems: string[],
-  ): Record<string, string | Record<string, any>> {
-    const result: Record<string, any> = {};
+    // biome-ignore lint/suspicious/noExplicitAny: 반환 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
+  ): Record<string, any> {
+    const result: ReturnType<typeof this.buildNestedSelectObject> = {};
 
     for (const selectItem of selectItems) {
       // "users.id" 또는 "users.id as user__id" 형태 파싱
@@ -200,12 +207,25 @@ export class Entity {
   }
 
   /**
-   * 입체적 select 객체를 코드 문자열로 변환
+   * JSON.stringify와 유사한 일을 합니다.
+   * 다만 주어진 객체를 JSON이 아닌 TypeScript 객체 리터럴 스트링으로 만들어줍니다.
+   * key에 따옴표가 없어요.
+   * 출력 예시:
+   * ```typescript
+   * {
+   *   id: "users.id",
+   *   parent: {
+   *     id: "parent.id",
+   *     name: "parent.name",
+   *   },
+   * }
+   * ```
    * @param obj 변환할 객체
    * @param indent 들여쓰기 레벨
    * @param withBraces true면 중괄호 포함, false면 내용만 반환
    */
   private stringifyNestedSelectObject(
+    // biome-ignore lint/suspicious/noExplicitAny: 중첩 오브젝트의 값은 string일 수도 있고 또다른 오브젝트일 수도 있는데, 이를 재귀 타입으로 나타낼 수 없어 any로 처리합니다.
     obj: Record<string, any>,
     indent: number = 0,
     withBraces: boolean = true,
@@ -284,7 +304,7 @@ export class Entity {
 
           // 입체적 select 구조 생성 (refId 포함)
           const selectObj = this.buildNestedSelectObject(loader.select);
-          selectObj["refId"] = `"${toTable}.${toCol}"`;
+          selectObj.refId = `"${toTable}.${toCol}"`;
           loaderLines.push(
             `.whereIn("${toTable}.${toCol}", fromIds)`,
             `.select(${this.stringifyNestedSelectObject(selectObj)});`,
@@ -320,7 +340,7 @@ export class Entity {
 
           // 입체적 select 구조 생성 (refId 포함)
           const selectObj = this.buildNestedSelectObject(loader.select);
-          selectObj["refId"] = `"${through.table}.${through.fromCol}"`;
+          selectObj.refId = `"${through.table}.${through.fromCol}"`;
           loaderLines.push(
             `.whereIn("${through.table}.${through.fromCol}", fromIds)`,
             `.select(${this.stringifyNestedSelectObject(selectObj)});`,
