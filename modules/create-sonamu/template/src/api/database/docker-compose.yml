@@ -8,9 +8,9 @@ services:
     volumes:
       - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
-      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_DB: template1
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       TZ: Asia/Seoul
     ports:
-      - "5432:5432"
+      - "{DB_PORT}:5432"
