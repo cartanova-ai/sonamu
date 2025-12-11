@@ -675,7 +675,10 @@ export class Entity {
   }
 
   registerTableSpecs(): void {
-    const uniqueIndexes = this.indexes.filter((idx) => idx.type === "unique");
+    // 조인 테이블 인덱스 제외 (컬럼 이름에 '.'이 포함된 경우)
+    const uniqueIndexes = this.indexes
+      .filter((idx) => idx.type === "unique")
+      .filter((idx) => idx.columns.every((col) => !col.name.includes(".")));
 
     EntityManager.setTableSpec({
       name: this.table,
