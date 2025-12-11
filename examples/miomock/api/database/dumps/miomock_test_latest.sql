@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict yIJpVu2Y4kIz6Jd8qmka1w7TrCnTL1CYtRFsyAEcNCqgzwONlReE9xxHofphq7f
+\restrict HcDcexNJLXu61dv9bCg9f5emDBzCtMHF5pchICaRETYPgB6OCnDMI6aGlzhehXf
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg13+2)
 -- Dumped by pg_dump version 18.1
@@ -63,7 +63,8 @@ CREATE TABLE public.departments (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     name character varying(128) NOT NULL,
     company_id integer NOT NULL,
-    parent_id integer
+    parent_id integer,
+    code character varying(10) GENERATED ALWAYS AS (('DEP-'::text || lpad((id)::text, 3, '0'::text))) STORED NOT NULL
 );
 
 
@@ -523,19 +524,19 @@ INSERT INTO public.companies VALUES (5, '2025-11-25 00:17:02+09', '소프트웨�
 -- Data for Name: departments; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', '개발팀', 1, NULL);
-INSERT INTO public.departments VALUES (2, '2024-01-01 02:00:00+09', '디자인팀', 1, NULL);
-INSERT INTO public.departments VALUES (3, '2024-01-02 01:00:00+09', '백엔드팀', 1, 1);
-INSERT INTO public.departments VALUES (4, '2024-01-02 02:00:00+09', '프론트엔드팀', 1, 1);
-INSERT INTO public.departments VALUES (5, '2024-01-03 01:00:00+09', '기술팀', 2, NULL);
-INSERT INTO public.departments VALUES (6, '2024-01-03 02:00:00+09', '마케팅팀', 2, NULL);
-INSERT INTO public.departments VALUES (7, '2024-01-04 01:00:00+09', '연구개발팀', 3, NULL);
-INSERT INTO public.departments VALUES (8, '2024-01-04 02:00:00+09', '품질관리팀', 3, NULL);
-INSERT INTO public.departments VALUES (9, '2024-01-05 01:00:00+09', '데이터팀', 4, NULL);
-INSERT INTO public.departments VALUES (10, '2024-01-06 01:00:00+09', '아키텍처팀', 5, NULL);
-INSERT INTO public.departments VALUES (11, '2024-01-06 02:00:00+09', '인프라팀', 5, NULL);
-INSERT INTO public.departments VALUES (12, '2024-01-07 01:00:00+09', '빈부서A', 1, NULL);
-INSERT INTO public.departments VALUES (13, '2024-01-07 02:00:00+09', '빈부서B', 2, NULL);
+INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', '개발팀', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (2, '2024-01-01 02:00:00+09', '디자인팀', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (3, '2024-01-02 01:00:00+09', '백엔드팀', 1, 1, DEFAULT);
+INSERT INTO public.departments VALUES (4, '2024-01-02 02:00:00+09', '프론트엔드팀', 1, 1, DEFAULT);
+INSERT INTO public.departments VALUES (5, '2024-01-03 01:00:00+09', '기술팀', 2, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (6, '2024-01-03 02:00:00+09', '마케팅팀', 2, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (7, '2024-01-04 01:00:00+09', '연구개발팀', 3, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (8, '2024-01-04 02:00:00+09', '품질관리팀', 3, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (9, '2024-01-05 01:00:00+09', '데이터팀', 4, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (10, '2024-01-06 01:00:00+09', '아키텍처팀', 5, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (11, '2024-01-06 02:00:00+09', '인프라팀', 5, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (12, '2024-01-07 01:00:00+09', '빈부서A', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (13, '2024-01-07 02:00:00+09', '빈부서B', 2, NULL, DEFAULT);
 
 
 --
@@ -579,6 +580,7 @@ INSERT INTO public.knex_migrations VALUES (39, '20251209160750_foreign__departme
 INSERT INTO public.knex_migrations VALUES (40, '20251209160751_foreign__employees__user_id_department_id.ts', 1, '2025-12-09 16:25:57.22+09');
 INSERT INTO public.knex_migrations VALUES (41, '20251209160752_foreign__projects__employees__employee_id_project_id.ts', 1, '2025-12-09 16:25:57.222+09');
 INSERT INTO public.knex_migrations VALUES (42, '20251209160753_foreign__project_tags__project_id_tag_id.ts', 1, '2025-12-09 16:25:57.224+09');
+INSERT INTO public.knex_migrations VALUES (49, '20251211150026_alter_departments_add1.ts', 2, '2025-12-11 16:01:46.752+09');
 
 
 --
@@ -691,21 +693,21 @@ INSERT INTO public.users VALUES (12, '2023-11-01 01:00:00+09', 'deleted@test.com
 -- Name: companies_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.companies_id_seq', 21, true);
+SELECT pg_catalog.setval('public.companies_id_seq', 299, true);
 
 
 --
 -- Name: departments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.departments_id_seq', 55, true);
+SELECT pg_catalog.setval('public.departments_id_seq', 766, true);
 
 
 --
 -- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.employees_id_seq', 57, true);
+SELECT pg_catalog.setval('public.employees_id_seq', 640, true);
 
 
 --
@@ -719,7 +721,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 42, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 49, true);
 
 
 --
@@ -768,7 +770,7 @@ SELECT pg_catalog.setval('public.tags_id_seq', 8, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.users_id_seq', 185, true);
+SELECT pg_catalog.setval('public.users_id_seq', 2291, true);
 
 
 --
@@ -975,5 +977,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yIJpVu2Y4kIz6Jd8qmka1w7TrCnTL1CYtRFsyAEcNCqgzwONlReE9xxHofphq7f
+\unrestrict HcDcexNJLXu61dv9bCg9f5emDBzCtMHF5pchICaRETYPgB6OCnDMI6aGlzhehXf
 
