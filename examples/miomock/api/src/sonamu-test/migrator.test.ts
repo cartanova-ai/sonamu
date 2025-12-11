@@ -280,7 +280,6 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (_table) => {});
           await knex.raw(
             \`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST) NULLS DISTINCT;\`,
           );
@@ -344,7 +343,6 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (_table) => {});
           await knex.raw(
             \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST) NULLS DISTINCT;\`,
           );
@@ -381,7 +379,6 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (_table) => {});
           await knex.raw(
             \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST) NULLS DISTINCT;\`,
           );
@@ -419,7 +416,6 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (_table) => {});
           await knex.raw(
             \`CREATE UNIQUE INDEX departments_name_unique ON departments (name ASC NULLS LAST) NULLS NOT DISTINCT;\`,
           );
@@ -459,7 +455,6 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.schema.alterTable("departments", (_table) => {});
           await knex.raw(
             \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST) NULLS DISTINCT;\`,
           );
