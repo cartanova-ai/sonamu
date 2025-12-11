@@ -180,15 +180,17 @@ class SonamuClass {
       console.log(chalk.green("DB Config Loaded!"));
     }
 
-    // 테스팅인 경우 엔티티 로드 & 싱크 없이 중단
+    // Entity 로드
+    // 테스트에서도 Entity 정보는 필요합니다.
+    // upsert가 제대로 작동하려면 entity의 unique index 정보가 필요하기 때문입니다.
+    const { EntityManager } = await import("../entity/entity-manager");
+    await EntityManager.autoload(doSilent);
+
+    // 테스팅인 경우 싱크 없이 중단
     if (forTesting) {
       this.isInitialized = true;
       return;
     }
-
-    // Entity 로드
-    const { EntityManager } = await import("../entity/entity-manager");
-    await EntityManager.autoload(doSilent);
 
     // Syncer
     const { Syncer } = await import("../syncer/syncer");
