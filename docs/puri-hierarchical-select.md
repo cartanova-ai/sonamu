@@ -88,6 +88,60 @@ type Result = {
 }
 ```
 
+### 2.3 왜 이런 문제가 생기는가: Hydrate 타입의 한계
+
+#### Hydrate의 역할
+`Hydrate<T>` 타입은 flat한 결과를 nested 객체로 변환합니다:
+```typescript
+// 입력
+{ parent__id: number | null; parent__name: string | null }
+
+// Hydrate 적용 후
+{ parent: { id: number | null; name: string | null } | null }
+```
+
+#### 핵심 한계: Join 정보 부재
+`Hydrate`은 **키 패턴(`__`)만 보고 그룹핑**합니다. Join 정보(TTables)가 없어서:
+
+```typescript
+// Hydrate이 아는 것
+"parent__id" → "parent" 그룹의 "id" 필드
+
+// Hydrate이 모르는 것
+- parent가 leftJoin인지 innerJoin인지
+- id 필드가 스키마상 nullable인지, leftJoin 때문에 nullable인지
+```
+
+#### 결과: 필드 단위 nullability 유지
+```typescript
+// flat 구조에서 leftJoin 시 타입 추론
+parent__id: number | null    // leftJoin이라서 | null 추가됨
+parent__name: string | null  // leftJoin이라서 | null 추가됨
+
+// Hydrate은 이 타입을 그대로 그룹핑만 함
+parent: {
+  id: number | null;    // ❌ 스키마상 non-null인데 nullable로 유지
+  name: string | null;  // ❌ 스키마상 non-null인데 nullable로 유지
+} | null;
+```
+
+#### ParseSelectObject가 해결할 수 있는 이유
+`ParseSelectObject`는 `TTables` 타입 파라미터를 통해 Join 정보를 알고 있습니다:
+
+```typescript
+// ParseSelectObject가 아는 것
+TTables = {
+  departments: { id: number; name: string; ... },
+  parent: { id: number; name: string; ... } & LeftJoinedMarker,  // ← Join 정보!
+}
+
+// 따라서 정확한 타입 추론 가능
+parent: {
+  id: number;     // ✅ 스키마 원본 타입
+  name: string;   // ✅ 스키마 원본 타입
+} | null;         // ✅ leftJoin이라서 객체만 nullable
+```
+
 ---
 
 ## 3. 해결 방안: 입체적 Select 구조
