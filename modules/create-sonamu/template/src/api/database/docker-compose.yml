@@ -3,7 +3,7 @@ name: ${CONTAINER_NAME}
 services:
   pg:
     platform: linux/arm64
-    image: postgres:18
+    image: pgvector/pgvector:pg18
     container_name: ${CONTAINER_NAME}
     volumes:
       - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
