@@ -91,17 +91,17 @@ class ${entityId}ModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${names.capitalPlural}" })
-  async findMany<T extends ${entityId}SubsetKey>(
+  async findMany<T extends ${entityId}SubsetKey, LP extends ${entityId}ListParams>(
     subset: T,
-    params: ${entityId}ListParams = {}
-  ): Promise<ListResult<${entityId}SubsetMapping[T]>> {
+    rawParams?: LP,
+  ): Promise<ListResult<LP, ${entityId}SubsetMapping[T]>> {
     // params with defaults
-    params = {
+    const params = {
       num: 24,
       page: 1,
       search: "${def.search}",
       orderBy: "${def.orderBy}",
-      ...params,
+      ...rawParams,
     };
 
     // build queries
