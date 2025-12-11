@@ -143,7 +143,7 @@ type JoinPath<Prefix extends string, Key extends string> = Prefix extends ""
 // Schema를 읽어서 FK의 nullability에 따라 join된 객체의 타입을 추론해주는 기능이 있습니다.
 // 이게 무슨 소리냐? FK가 nullable인데 leftJoin되었다면, 해당 객체는 nullable 해야 함을 타입 추론으로 반영해준다는 것입니다.
 // 반면 FK가 non-nullable이거나 그냥 join으로 이어졌다면 해당 객체는 non-nullable할 겁니다.
-// 물론 객체 내부의 nullaability는 또 별개로 추론됩니다. 
+// 물론 객체 내부의 nullability는 또 별개로 추론됩니다. 
 // 
 // 아래에도 ParseSelectObjectWithPath를 비롯해 ExtractColumnType, ExtractColumnTypeRaw 등의 타입이 있습니다.
 // 이들의 역할은 다음과 같습니다:
