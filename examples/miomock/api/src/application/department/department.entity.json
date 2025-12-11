@@ -33,13 +33,20 @@
       "relationType": "HasMany",
       "joinColumn": "department_id"
     },
+    {
+      "name": "code",
+      "desc": "부서번호",
+      "generated": { "type": "STORED", "expression": "'DEP-' || LPAD(id::text, 3, '0')" },
+      "type": "string",
+      "length": 10
+    },
     { "name": "employee_count", "desc": "직원수", "type": "virtual", "id": "NumberType" }
   ],
   "indexes": [
     {
       "type": "unique",
       "name": "departments_company_id_name_unique",
-      "columns": [{"name": "company_id"}, {"name": "name"}]
+      "columns": [{ "name": "company_id" }, { "name": "name" }]
     }
   ],
   "subsets": {
