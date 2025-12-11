@@ -6,14 +6,15 @@ import type { Puri } from "./puri";
 import type { PuriWrapper } from "./puri-wrapper";
 
 // ============================================
-// 내부 타입 키
+// 내부 타입 키 (메타데이터)
 // ============================================
 type FulltextKey = "__fulltext__";
 type VirtualKey = "__virtual__";
 type LeftJoinedKey = "__leftJoined__";
 type InheritedLeftJoinedKey = "__inheritedLeftJoined__";
+type HasDefault = "__hasDefault__";
 
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | InheritedLeftJoinedKey;
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault | InheritedLeftJoinedKey;
 
 // ============================================
 // 타입 유틸리티
@@ -249,17 +250,15 @@ type IsSingleKey<TTables extends Record<string, any>> = keyof TTables extends in
 export type SingleTableValue<TTables extends Record<string, any>> =
   IsSingleKey<TTables> extends true ? TTables[keyof TTables] : never;
 
-// Nullable을 Optional로 변환
-type NullableToOptional<T> = {
-  [K in keyof T as T[K] extends null | undefined ? K : never]?: Exclude<T[K], null | undefined>;
-} & Partial<{
-  [K in keyof T as T[K] extends null | undefined ? never : K]: T[K];
-}>;
+// __hasDefault__에 포함된 키들을 PuriTable<T>의 키로 제한
+type HasDefaultKeys<T> = T extends { __hasDefault__: readonly (infer K)[] }
+  ? Extract<K, keyof PuriTable<T>>
+  : never;
 
-// Insert 타입: id, created_at 제외
-export type InsertData<T> = NullableToOptional<
-  Omit<PuriTable<T>, "id" | "created_at" | InternalTypeKeys>
->;
+// Insert 타입: 메타데이터 제거 후, __hasDefault__ 컬럼들만 optional로 처리
+export type InsertData<T> = Omit<PuriTable<T>, InternalTypeKeys | HasDefaultKeys<T>> & {
+  [K in HasDefaultKeys<T>]?: PuriTable<T>[K];
+};
 
 // Insert Result 타입
 export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
@@ -297,3 +296,19 @@ export type OnConflictAction<TTables extends Record<string, unknown>> =
 // FK 컬럼명 추출 유틸리티 타입 - DatabaseForeignKeys 활용
 export type ForeignKeyColumns<TTable extends TableName<DatabaseSchemaExtend>> =
   TTable extends keyof DatabaseForeignKeys ? DatabaseForeignKeys[TTable] : never;
+
+// Union을 Intersection으로 변환하는 유틸리티
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
+  ? I
+  : never;
+
+// SelectAll 시 모든 조인된 테이블의 컬럼 포함
+export type SelectAllResult<TTables extends Record<string, any>> = UnionToIntersection<
+  {
+    [K in keyof TTables]: TTables[K] extends infer T
+      ? T extends LeftJoinedMarker
+        ? Partial<OmitInternalTypeKeys<T>> // LEFT JOIN은 nullable, 메타데이터 제거
+        : OmitInternalTypeKeys<T> // INNER JOIN은 non-nullable, 메타데이터 제거
+      : never;
+  }[keyof TTables]
+>;

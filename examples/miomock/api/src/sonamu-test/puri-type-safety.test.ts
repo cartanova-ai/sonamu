@@ -106,18 +106,13 @@ describe("Puri Type Safety", () => {
         .join("users", "employees.user_id", "users.id")
         .selectAll();
 
-      // NOTE: 런타임에는 양쪽 테이블 컬럼이 모두 반환되지만,
-      // 현재 타입 정의는 메인 테이블(employees) 컬럼만 포함함
-      // TODO: Puri 타입 개선 필요 - Puri.selectAll()
       type SelectAllResultItem = (typeof selectAllResult)[number];
 
       // employees 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("user_id");
       expectTypeOf<SelectAllResultItem>().toHaveProperty("department_id");
-
-      // @ts-expect-error - users 테이블 컬럼
+      // users 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("username");
-      // @ts-expect-error - users 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("email");
 
       // 런타임 검증
@@ -125,7 +120,6 @@ describe("Puri Type Safety", () => {
       if (selectAllResult[0]) {
         expect(typeof selectAllResult[0].user_id).toBe("number");
         expect(typeof selectAllResult[0].department_id).toBe("number");
-        // @ts-expect-error - users 테이블 컬럼
         expect(typeof selectAllResult[0].username).toBe("string");
         expect(selectAllResult[0]).toHaveProperty("username");
       }
@@ -601,8 +595,6 @@ describe("Puri Type Safety", () => {
 
       joinQuery.groupBy("employees.department_id", "departments.name");
 
-      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 groupBy 허용됨
-      // joined.groupBy("employees.department_id"); // 정상 케이스
       joinQuery.groupBy("department_id");
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼으로 groupBy
@@ -705,8 +697,6 @@ describe("Puri Type Safety", () => {
       joinQuery.orderBy("employees.id", "asc");
       joinQuery.orderBy("users.username", "desc");
 
-      // TODO: Puri 타입 개선 필요 - JOIN 후 prefix 없이 orderBy 허용됨
-      // (groupBy와 동일한 오버로드 문제)
       joinQuery.orderBy("id", "asc");
 
       // @ts-expect-error - JOIN 안 한 테이블 컬럼
@@ -735,10 +725,8 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - offset에 string 전달
       db.table("users").offset("20");
 
-      // TODO: Puri 타입 개선 필요 - limit/offset에 음수 허용됨
-      // SQL 표준에서는 limit/offset에 음수를 허용하지 않음 (PostgreSQL은 허용하지만 음수를 0으로 처리)
-      // Knex에서는 offset에서만 음수 검증을 함
-      db.table("users").limit(-1);
+      // limit/offset에 음수 전달 시 런타임 에러 발생
+      // db.table("users").limit(-1);
       // db.table("users").offset(-1);
 
       // @ts-expect-error - limit에 undefined
@@ -778,7 +766,6 @@ describe("Puri Type Safety", () => {
         username: "testuser",
         password: "password123",
         role: "normal" as const,
-        is_verified: false,
       };
 
       // 유효한 INSERT - default 컬럼
@@ -794,7 +781,8 @@ describe("Puri Type Safety", () => {
 
       // nullable 컬럼
       db.table("users").insert({ ...defaultUserData, birth_date: null });
-      // TODO: Puri 타입 개선 필요 - 필수 컬럼 누락 시 에러 안 남
+
+      // @ts-expect-error - 필수 컬럼 누락 시 에러
       db.table("users").insert({ ...defaultUserData, email: undefined });
 
       // @ts-expect-error - 존재하지 않는 컬럼
@@ -943,7 +931,6 @@ describe("Puri Type Safety", () => {
       // @ts-expect-error - 증감값에 string 전달 (decrement)
       db.table("users").where("id", userId).decrement("id", "5");
 
-      // TODO : Puri 타입 개선 필요 - increment / decrement에 undefined 전달 가능하며, 전달했을 때 런타임 에러 발생 x (NULL, 음수는 런타임 에러 발생)
       // @ts-expect-error - 증감값에 undefined 전달
       db.table("users").where("id", userId).increment("id", undefined);
 

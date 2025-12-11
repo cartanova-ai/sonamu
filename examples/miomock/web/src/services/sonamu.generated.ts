@@ -116,7 +116,9 @@ export const CompanyBaseSchema = z.object({
   created_at: z.date(),
   name: z.string(),
 });
-export type CompanyBaseSchema = z.infer<typeof CompanyBaseSchema>;
+export type CompanyBaseSchema = z.infer<typeof CompanyBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "id"];
+};
 
 // BaseSchema: Department
 export const DepartmentBaseSchema = z.object({
@@ -130,7 +132,7 @@ export const DepartmentBaseSchema = z.object({
 });
 export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
   readonly __virtual__: readonly ["employee_count"];
-};
+} & { readonly __hasDefault__: readonly ["created_at", "parent_id", "id"] };
 
 // BaseSchema: Employee
 export const EmployeeBaseSchema = z.object({
@@ -144,7 +146,17 @@ export const EmployeeBaseSchema = z.object({
   notes: z.string().nullable(),
   // projs: ManyToMany Project
 });
-export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema>;
+export type EmployeeBaseSchema = z.infer<typeof EmployeeBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "department_id",
+    "salary",
+    "hire_date",
+    "notes",
+    "projs_id",
+    "id",
+  ];
+};
 
 // BaseSchema: File
 export const FileBaseSchema = z.object({
@@ -154,7 +166,9 @@ export const FileBaseSchema = z.object({
   name: z.string().max(128),
   url: z.string().max(255),
 });
-export type FileBaseSchema = z.infer<typeof FileBaseSchema>;
+export type FileBaseSchema = z.infer<typeof FileBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "id"];
+};
 
 // BaseSchema: Project
 export const ProjectBaseSchema = z.object({
@@ -172,6 +186,17 @@ export const ProjectBaseSchema = z.object({
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];
+} & {
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "description",
+    "budget",
+    "deadline",
+    "tags_id",
+    "image_urls",
+    "virtual_test",
+    "id",
+  ];
 };
 
 // BaseSchema: SyncFixture
@@ -187,7 +212,18 @@ export const SyncFixtureBaseSchema = z.object({
   description: z.string().nullable(),
   tags: StringArray.nullable(),
 });
-export type SyncFixtureBaseSchema = z.infer<typeof SyncFixtureBaseSchema>;
+export type SyncFixtureBaseSchema = z.infer<typeof SyncFixtureBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "updated_at",
+    "code",
+    "priority",
+    "is_active",
+    "description",
+    "tags",
+    "id",
+  ];
+};
 
 // BaseSchema: Tag
 export const TagBaseSchema = z.object({
@@ -195,7 +231,9 @@ export const TagBaseSchema = z.object({
   created_at: z.date(),
   name: z.string(),
 });
-export type TagBaseSchema = z.infer<typeof TagBaseSchema>;
+export type TagBaseSchema = z.infer<typeof TagBaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "id"];
+};
 
 // BaseSchema: User
 export const UserBaseSchema = z.object({
@@ -212,7 +250,18 @@ export const UserBaseSchema = z.object({
   deleted_at: z.date().nullable(),
   // employee: OneToOne Employee
 });
-export type UserBaseSchema = z.infer<typeof UserBaseSchema>;
+export type UserBaseSchema = z.infer<typeof UserBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "birth_date",
+    "last_login_at",
+    "bio",
+    "is_verified",
+    "deleted_at",
+    "employee_id",
+    "id",
+  ];
+};
 
 // BaseListParams: Company
 export const CompanyBaseListParams = z

@@ -243,11 +243,6 @@ export class UpsertBuilder {
       throw new Error(`${tableName}에 순환 자기 참조가 있습니다.`);
     }
 
-    // upsert 모드일 때 유니크 인덱스가 없으면 에러
-    if (mode === "upsert" && table.uniqueIndexes.length === 0) {
-      throw new Error(`${tableName}에 unique index가 정의되지 않아 upsert를 할 수 없습니다.`);
-    }
-
     const uuidMap = new Map<string, unknown>();
     const allIds: number[] = [];
 
@@ -293,8 +288,11 @@ export class UpsertBuilder {
           // INSERT 모드 - RETURNING 사용
           resultRows = await wdb.insert(dataForDb).into(tableName).returning(selectFields);
         } else {
-          // UPSERT 모드 - onConflict 사용
-          const conflictColumns = table.uniqueIndexes[0].columns.map((c) => c.name);
+          // UPSERT 모드 - onConflict 사용 (unique index 없으면 PK fallback)
+          const conflictColumns =
+            table.uniqueIndexes.length > 0
+              ? table.uniqueIndexes[0].columns.map((c) => c.name)
+              : ["id"];
           const updateColumns = Object.keys(dataForDb[0]).filter(
             (col) => !conflictColumns.includes(col),
           );
