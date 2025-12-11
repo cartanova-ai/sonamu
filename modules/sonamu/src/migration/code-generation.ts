@@ -419,10 +419,10 @@ async function generateAlterCode_ColumnAndIndexes(
 
   // TODO: 인덱스명 변경된 경우 처리
 
-  // table builder 메서드로 실행할 코드
+  // table builder 메서드로 실행할 코드 (drop → add → alter 순서)
   const upBuilderLines = [
-    ...(alterColumnLinesTo.add.up.builder.length > 0 ? alterColumnLinesTo.add.up.builder : []),
     ...(alterColumnLinesTo.drop.up.builder.length > 0 ? alterColumnLinesTo.drop.up.builder : []),
+    ...(alterColumnLinesTo.add.up.builder.length > 0 ? alterColumnLinesTo.add.up.builder : []),
     ...(alterColumnLinesTo.alter.up.builder.length > 0 ? alterColumnLinesTo.alter.up.builder : []),
     ...indexNeedsToDrop.map(genIndexDropDefinition),
   ];
@@ -433,13 +433,14 @@ async function generateAlterCode_ColumnAndIndexes(
     ...alterIndexesTo.add.map((index) => genIndexDefinition(index, table)),
   ];
 
+  // down은 up의 역순 (add.down = drop rollback, drop.down = add rollback)
   const downBuilderLines = [
     ...(alterColumnLinesTo.add.down.builder.length > 0 ? alterColumnLinesTo.add.down.builder : []),
-    ...(alterColumnLinesTo.drop.down.builder.length > 0
-      ? alterColumnLinesTo.drop.down.builder
-      : []),
     ...(alterColumnLinesTo.alter.down.builder.length > 0
       ? alterColumnLinesTo.alter.down.builder
+      : []),
+    ...(alterColumnLinesTo.drop.down.builder.length > 0
+      ? alterColumnLinesTo.drop.down.builder
       : []),
     ...alterIndexesTo.add
       .filter(
@@ -527,8 +528,8 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
 
   // 컬럼명 기준 비교
   const extraColumns = {
-    db: diff(dbColumns, entityColumns, (col) => col.name),
-    entity: diff(entityColumns, dbColumns, (col) => col.name),
+    db: diff(dbColumns, entityColumns, (col) => [col.name, col.generated?.type].join("///")),
+    entity: diff(entityColumns, dbColumns, (col) => [col.name, col.generated?.type].join("///")),
   };
   if (extraColumns.entity.length > 0) {
     columnsTo.add = columnsTo.add.concat(extraColumns.entity);
@@ -540,8 +541,10 @@ function getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: Migratio
   // 동일 컬럼명의 세부 필드 비교 (Generated Column expression 제외)
   const sameDbColumns = intersectionBy(dbColumns, entityColumns, (col) => col.name);
   const sameMdColumns = intersectionBy(entityColumns, dbColumns, (col) => col.name);
-  columnsTo.alter = differenceWith(sameDbColumns, sameMdColumns, (a, b) =>
-    equal(normalizeColumnForComparison(a), normalizeColumnForComparison(b)),
+  columnsTo.alter = differenceWith(
+    sameDbColumns,
+    sameMdColumns,
+    (a, b) => equal({ ...a, generated: undefined }, { ...b, generated: undefined }), // generated 컬럼은 alter로 처리하지 않음
   );
 
   return columnsTo;
@@ -632,16 +635,11 @@ function getAlterColumnLinesTo(
     },
   };
 
-  // alter columns (Generated Column은 ALTER 불가하므로 builder만 처리)
+  // alter columns (Generated Column은 ALTER 불가하므로 drop 후 재생성)
   linesTo.alter = columnsTo.alter.reduce(
     (r, dbColumn) => {
       const entityColumn = entityColumns.find((col) => col.name === dbColumn.name);
       if (entityColumn === undefined) {
-        return r;
-      }
-
-      // Generated Column은 ALTER 불가
-      if (entityColumn.generated || dbColumn.generated) {
         return r;
       }
 
