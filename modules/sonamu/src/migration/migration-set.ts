@@ -68,6 +68,10 @@ export function getMigrationSetFromEntity(entity: Entity): MigrationSetAndJoinTa
           ...(isVectorProp(prop) && {
             dimensions: prop.dimensions,
           }),
+          // Generated Column 정보 추가
+          ...(prop.generated && {
+            generated: prop.generated,
+          }),
         };
 
         r.columns.push(column);
