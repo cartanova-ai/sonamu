@@ -106,18 +106,13 @@ describe("Puri Type Safety", () => {
         .join("users", "employees.user_id", "users.id")
         .selectAll();
 
-      // NOTE: 런타임에는 양쪽 테이블 컬럼이 모두 반환되지만,
-      // 현재 타입 정의는 메인 테이블(employees) 컬럼만 포함함
-      // TODO: Puri 타입 개선 필요 - Puri.selectAll()
       type SelectAllResultItem = (typeof selectAllResult)[number];
 
       // employees 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("user_id");
       expectTypeOf<SelectAllResultItem>().toHaveProperty("department_id");
-
-      // @ts-expect-error - users 테이블 컬럼
+      // users 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("username");
-      // @ts-expect-error - users 테이블 컬럼
       expectTypeOf<SelectAllResultItem>().toHaveProperty("email");
 
       // 런타임 검증
@@ -125,7 +120,6 @@ describe("Puri Type Safety", () => {
       if (selectAllResult[0]) {
         expect(typeof selectAllResult[0].user_id).toBe("number");
         expect(typeof selectAllResult[0].department_id).toBe("number");
-        // @ts-expect-error - users 테이블 컬럼
         expect(typeof selectAllResult[0].username).toBe("string");
         expect(selectAllResult[0]).toHaveProperty("username");
       }

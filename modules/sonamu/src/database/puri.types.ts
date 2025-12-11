@@ -208,3 +208,19 @@ export type OnConflictAction<TTables extends Record<string, unknown>> =
 // FK 컬럼명 추출 유틸리티 타입 - DatabaseForeignKeys 활용
 export type ForeignKeyColumns<TTable extends TableName<DatabaseSchemaExtend>> =
   TTable extends keyof DatabaseForeignKeys ? DatabaseForeignKeys[TTable] : never;
+
+// Union을 Intersection으로 변환하는 유틸리티
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
+  ? I
+  : never;
+
+// SelectAll 시 모든 조인된 테이블의 컬럼 포함
+export type SelectAllResult<TTables extends Record<string, any>> = UnionToIntersection<
+  {
+    [K in keyof TTables]: TTables[K] extends infer T
+      ? T extends LeftJoinedMarker
+        ? Partial<OmitInternalTypeKeys<T>> // LEFT JOIN은 nullable, 메타데이터 제거
+        : OmitInternalTypeKeys<T> // INNER JOIN은 non-nullable, 메타데이터 제거
+      : never;
+  }[keyof TTables]
+>;

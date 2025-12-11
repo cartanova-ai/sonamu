@@ -19,6 +19,7 @@ import type {
   OnConflictAction,
   ParseSelectObject,
   ResultAvailableColumns,
+  SelectAllResult,
   SelectObject,
   SingleTableValue,
   SqlExpression,
@@ -167,7 +168,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // SELECT *
-  selectAll(): this {
+  selectAll(): Puri<TSchema, TTables, SelectAllResult<TTables>> {
     this.knexQuery.select("*");
     return this as any;
   }
