@@ -52,6 +52,21 @@ export type AvailableColumns<TTables extends Record<string, any>> =
       ? ColumnKeys<TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
       : never);
 
+// 숫자 타입 컬럼만 추출하는 유틸리티 타입
+type NumericColumnKeys<T> = {
+  [K in keyof T]: T[K] extends number | bigint | null | undefined ? K : never;
+}[keyof T] &
+  string;
+
+// TTables의 모든 테이블에서 숫자 타입 컬럼만 추출
+export type NumericColumns<TTables extends Record<string, any>> =
+  | {
+      [TAlias in keyof TTables]: `${TAlias & string}.${NumericColumnKeys<TTables[TAlias]>}`;
+    }[keyof TTables]
+  | (IsSingleKey<TTables> extends true
+      ? NumericColumnKeys<TTables[keyof TTables]> // 단일 테이블이면 컬럼명만도 허용
+      : never);
+
 // Group By, Order By, Having 등에서 선택 가능한 컬럼
 export type ResultAvailableColumns<TTables extends Record<string, any>, TResult = any> =
   | AvailableColumns<TTables>
@@ -206,6 +221,8 @@ export type FulltextColumns<TTables extends Record<string, any>> = {
 
 // 비교 연산자
 export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
+// 조건 연산자: 비교 연산자 + 패턴 매칭 연산자
+export type WhereOperator = ComparisonOperator | "like" | "not like";
 
 // SQL Expression 타입 정의
 export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> = {

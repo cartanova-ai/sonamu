@@ -427,27 +427,27 @@ describe("Puri Query", () => {
   describe("F. UPDATE HELPERS", () => {
     test("increment", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).increment("budget", 1000);
+      await db.table("sync_fixtures").where("sync_fixtures.id", 1).increment("priority", 10);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" + 1000"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"priority = "priority" + 10"`);
     });
 
     test("decrement", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).decrement("budget", 500);
+      await db.table("sync_fixtures").where("sync_fixtures.id", 1).decrement("priority", 5);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" - 500"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"priority = "priority" - 5"`);
     });
 
     test("increment - 조건부 업데이트", async () => {
       const db = UserModel.getPuri("w");
-      await db.table("projects").where("projects.id", 1).increment("budget", 100);
+      await db.table("sync_fixtures").where("sync_fixtures.id", 1).increment("priority", 1);
       const query = Naite.get("puri:executed-query").first();
 
-      expectQuery(query, "set").toMatchInlineSnapshot(`"budget = "budget" + 100"`);
-      expectQuery(query, "where").toMatchInlineSnapshot(`""projects"."id" = 1"`);
+      expectQuery(query, "set").toMatchInlineSnapshot(`"priority = "priority" + 1"`);
+      expectQuery(query, "where").toMatchInlineSnapshot(`""sync_fixtures"."id" = 1"`);
     });
   });
 

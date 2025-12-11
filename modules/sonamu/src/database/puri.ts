@@ -16,6 +16,7 @@ import type {
   InsertData,
   InsertResult,
   LeftJoinedMarker,
+  NumericColumns,
   OnConflictAction,
   ParseSelectObject,
   ResultAvailableColumns,
@@ -23,6 +24,7 @@ import type {
   SingleTableValue,
   SqlExpression,
   WhereCondition,
+  WhereOperator,
 } from "./puri.types";
 import type { ClearStatements } from "./puri-subset.types";
 
@@ -625,7 +627,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // Increment
-  increment<TColumn extends AvailableColumns<TTables>>(
+  increment<TColumn extends NumericColumns<TTables>>(
     column: TColumn,
     value: number,
   ): ResolvedPuri<number, SingleTableValue<TTables>> {
@@ -636,7 +638,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return new ResolvedPuri(this.knexQuery, this.knex);
   }
   // Decrement
-  decrement<TColumn extends AvailableColumns<TTables>>(
+  decrement<TColumn extends NumericColumns<TTables>>(
     column: TColumn,
     value: number,
   ): ResolvedPuri<number, SingleTableValue<TTables>> {
@@ -801,7 +803,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   where<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator,
+    operator: WhereOperator,
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   where(...args: any[]): WhereGroup<TTables> {
@@ -817,7 +819,7 @@ export class WhereGroup<TTables extends Record<string, any>> {
   ): this;
   orWhere<TColumn extends AvailableColumns<TTables>>(
     column: TColumn,
-    operator: ComparisonOperator,
+    operator: WhereOperator,
     value: ExtractColumnType<TTables, TColumn & string>,
   ): this;
   orWhere(...args: any[]): WhereGroup<TTables> {

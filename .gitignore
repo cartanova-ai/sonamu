@@ -36,3 +36,7 @@ Thumbs.db
 .npmrc
 
 **/pgdata/**
+
+# Claude Code
+CLAUDE.md
+.claude/
