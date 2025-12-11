@@ -498,26 +498,121 @@ qb.select({ user: { id: "user.id" } })
 
 ## 7. 알려진 제한사항
 
-### 7.1 hydrate에서 id 필드 권장
+### 7.1 SQL 레벨의 근본적 한계: NULL 구분 불가
+
+**핵심 문제**: SQL 결과만으로는 "leftJoin miss"와 "필드가 NULL"을 구분할 수 없습니다.
+
+```sql
+SELECT 
+  e.id,
+  d.name AS department__name
+FROM employees e
+LEFT JOIN departments d ON e.department_id = d.id
+```
+
+| 상황 | SQL 결과 |
+|------|----------|
+| department 없음 (leftJoin miss) | `department__name: NULL` |
+| department 있음, name이 NULL | `department__name: NULL` |
+
+**→ 둘 다 똑같이 `NULL`이라서 구분 불가!**
+
+#### 문제 발생 케이스
+
 ```typescript
-// 권장: id 필드 포함
+// select에 id 없이 nullable 필드만 포함
 .select({
-  parent: {
-    id: "parent.id",    // null 판별에 사용
-    name: "parent.name",
+  department: {
+    name: "department.name",  // name이 nullable 컬럼이라면?
   },
 })
 
-// 비권장: id 없이
+// DB 상태: department 존재, name이 NULL
+// SQL 결과: { department__name: null }
+
+// hydrate 결과 (잘못됨!)
+{ department: null }  // ❌ 객체 자체가 null로 판별
+
+// 실제 올바른 결과
+{ department: { name: null } }  // ✅ 객체 존재, name만 null
+```
+
+#### 타입-런타임 불일치
+
+| | 타입 (ParseSelectObject) | 런타임 (hydrate) |
+|---|---|---|
+| department 있고 name이 null | `{ name: null }` | `null` |
+
+```typescript
+// 타입은 이렇게 접근 가능하다고 함
+if (row.department) {
+  console.log(row.department.name);  // string | null
+}
+
+// 런타임에서는 department가 null이라서 if문 통과 못함
+```
+
+### 7.2 해결책: 중첩 객체에 id 필드 필수
+
+**구분하려면 PK 또는 FK를 select에 포함해야 합니다:**
+
+```typescript
+// ✅ 권장: id 필드 포함
 .select({
-  parent: {
-    name: "parent.name",  // 모든 필드가 null이어야 객체가 null로 판별됨
+  department: {
+    id: "department.id",     // 이걸로 존재 여부 판별!
+    name: "department.name",
   },
 })
 ```
 
-### 7.2 깊은 중첩에서의 hydrate
+| 상황 | department__id | department__name | hydrate 결과 |
+|------|----------------|------------------|-------------|
+| department 없음 | `NULL` | `NULL` | `{ department: null }` ✅ |
+| department 있음, name이 NULL | `100` | `NULL` | `{ department: { id: 100, name: null } }` ✅ |
+
+```typescript
+// ❌ 비권장: id 없이
+.select({
+  department: {
+    name: "department.name",  // 모든 필드가 null이면 객체가 null로 잘못 판별됨
+  },
+})
+```
+
+### 7.3 hydrate의 null 판별 로직
+
+```typescript
+// base-model.ts - hydrate 내부
+const idField = `${groupKey}__id`;
+if (idField in row) {
+  // id 필드가 있으면 → id가 null인지로 판별 (정확함)
+  return row[idField] === null;
+}
+
+// id 필드가 없으면 → 모든 필드가 null인지로 판별 (부정확할 수 있음!)
+return fields.every((field) => row[field] === null);
+```
+
+### 7.4 깊은 중첩에서의 hydrate
+
 현재 hydrate는 `__`로 1단계 그룹핑만 수행. 더 깊은 중첩은 자동으로 처리되지만, 객체 경계 판별이 제한적일 수 있음.
+
+### 7.5 수동 쿼리 작성 시 주의사항
+
+수동으로 쿼리 작성할 때 `leftJoin` vs `inheritedLeftJoin` 선택:
+
+| 상황 | 추천 |
+|------|------|
+| 잘 모르겠다 | `leftJoin` 사용 (안전함, 타입만 더 엄격) |
+| 부모가 leftJoin + 관계가 확실히 non-null | `inheritedLeftJoin` 사용 |
+
+**잘못 사용했을 때:**
+
+| 잘못 사용 | 결과 |
+|----------|------|
+| nullable 관계에 `inheritedLeftJoin` | 💥 **위험** - 런타임 에러 가능 |
+| non-null 관계에 `leftJoin` | 🟡 **안전** - 불필요한 null 체크만 강제됨 |
 
 ---
 
