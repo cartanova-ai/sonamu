@@ -12,10 +12,10 @@ import type {
   Expand,
   ExtractColumnType,
   FulltextColumns,
-  InheritedLeftJoinedMarker,
   InsertData,
   InsertResult,
   LeftJoinedMarker,
+  LeftJoinMarkerFor,
   NumericColumns,
   OnConflictAction,
   ParseSelectObject,
@@ -296,23 +296,28 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     right: `${TJoinAlias}.${ColumnKeys<TSubResult>}`,
   ): Puri<TSchema, TTables & Record<TJoinAlias, TSubResult & LeftJoinedMarker>, TResult>; // 서브쿼리의 TResult
   // LEFT JOIN: 테이블 + Alias
-  leftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+  // FK nullable 여부에 따라 자동으로 LeftJoinedMarker 결정
+  leftJoin<
+    TJoinTable extends keyof TSchema,
+    TJoinAlias extends string,
+    TLeft extends AvailableColumns<TTables>,
+  >(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
-    left: AvailableColumns<TTables>,
+    left: TLeft,
     right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinedMarker>, // TTables 확장!
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
     TResult
   >;
   // LEFT JOIN: 테이블명
-  leftJoin<TJoinTable extends keyof TSchema>(
+  leftJoin<TJoinTable extends keyof TSchema, TLeft extends AvailableColumns<TTables>>(
     tableName: TJoinTable,
-    left: AvailableColumns<TTables>,
+    left: TLeft,
     right: `${TJoinTable & string}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, // 테이블명이 키
+    TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
     TResult
   >;
   // LEFT JOIN: 서브쿼리 + Alias + 콜백
@@ -332,21 +337,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): Puri<TSchema, TTables & Record<TJoinTable, TSchema[TJoinTable] & LeftJoinedMarker>, TResult>;
   // LEFT JOIN 실제 구현
   leftJoin(tableNameOrSpec: any, ...args: any[]): any {
-    return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
-  }
-
-  // INHERITED LEFT JOIN: 테이블 + Alias (부모가 leftJoin이라서 따라서 leftJoin - 자체는 non-nullable)
-  inheritedLeftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
-    tableSpec: { [K in TJoinAlias]: TJoinTable },
-    left: AvailableColumns<TTables>,
-    right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
-  ): Puri<
-    TSchema,
-    TTables & Record<TJoinAlias, TSchema[TJoinTable] & InheritedLeftJoinedMarker>,
-    TResult
-  >;
-  // INHERITED LEFT JOIN 실제 구현
-  inheritedLeftJoin(tableNameOrSpec: any, ...args: any[]): any {
     return this.__commonJoin("leftJoin", tableNameOrSpec, ...args);
   }
 

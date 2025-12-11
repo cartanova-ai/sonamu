@@ -477,8 +477,6 @@ export type SubsetQuery = {
     as: string;
     join: "inner" | "outer";
     table: string;
-    /** 부모가 leftJoin이라서 따라서 leftJoin된 것 (자체는 non-nullable 관계) */
-    inherited?: boolean;
   } & JoinClause)[];
   loaders: SubsetLoader[];
 };

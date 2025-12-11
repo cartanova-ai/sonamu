@@ -132,9 +132,9 @@ export class Entity {
 
     // join
     for (const join of subsetQuery.joins) {
-      // join 메서드 결정: inner → join, outer + inherited → inheritedLeftJoin, outer → leftJoin
-      const joinMethod =
-        join.join === "inner" ? "join" : join.inherited === true ? "inheritedLeftJoin" : "leftJoin";
+      // join 메서드 결정: inner → join, outer → leftJoin
+      // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+      const joinMethod = join.join === "inner" ? "join" : "leftJoin";
 
       if ("custom" in join) {
         // custom join clause는 raw 사용
@@ -282,12 +282,8 @@ export class Entity {
           );
 
           loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-            const joinMethod =
-              join.join === "inner"
-                ? "join"
-                : join.inherited === true
-                  ? "inheritedLeftJoin"
-                  : "leftJoin";
+            // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+            const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
               // FIXME: 검증 필요
               loaderLines.push(
@@ -318,12 +314,8 @@ export class Entity {
           );
 
           loader.oneJoins.forEach((join: SubsetQuery["joins"][number]) => {
-            const joinMethod =
-              join.join === "inner"
-                ? "join"
-                : join.inherited === true
-                  ? "inheritedLeftJoin"
-                  : "leftJoin";
+            // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+            const joinMethod = join.join === "inner" ? "join" : "leftJoin";
             if ("custom" in join) {
               // FIXME: 검증 필요
               loaderLines.push(
@@ -503,14 +495,10 @@ export class Entity {
             };
           }
 
-          // inherited: 부모가 leftJoin이라서 따라서 leftJoin된 것 (자체는 non-nullable)
-          const isInherited = isAlreadyOuterJoined && !relation.nullable;
-
           r.joins.push({
             as: joinAs,
             join: innerOrOuter,
             table: relEntity.table,
-            ...(isInherited && { inherited: true }),
             ...joinClause,
           });
 

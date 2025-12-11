@@ -229,24 +229,27 @@ SELECT p.id AS parent__id ...        flat SQL
 
 ## 4. 구현 세부사항
 
-### 4.1 LeftJoinedMarker vs InheritedLeftJoinedMarker
+### 4.1 FK Nullable 여부로 자동 추론
 
-#### 개념
+#### 핵심 아이디어
+`leftJoin` 시 사용된 FK 컬럼의 nullable 여부를 스키마에서 직접 확인하여 마커를 자동으로 결정합니다.
+
 ```
 employees (메인 테이블)
-    └─ leftJoin → department (nullable, LeftJoinedMarker)
-                      └─ leftJoin → company (non-nullable, InheritedLeftJoinedMarker)
+    └─ leftJoin → department (FK: department_id가 nullable)  → LeftJoinedMarker
+                      └─ leftJoin → company (FK: company_id가 non-null) → 마커 없음
 ```
 
-- **LeftJoinedMarker**: 자체적으로 nullable한 관계 (relation.nullable === true)
-- **InheritedLeftJoinedMarker**: 부모가 leftJoin이라서 따라서 leftJoin이지만, 관계 자체는 non-nullable
+- **nullable FK로 leftJoin**: `LeftJoinedMarker` 붙음 → 객체가 `T | null`
+- **non-null FK로 leftJoin**: 마커 없음 → 객체가 `T`
 
 #### 예시
 ```typescript
-// department는 nullable (LeftJoinedMarker)
+// employees.department_id는 nullable
 // → department: { ... } | null
 
-// department.company는 department가 있으면 반드시 존재 (InheritedLeftJoinedMarker)
+// departments.company_id는 non-null
+// → department가 있으면 company도 반드시 존재
 // → company: { ... } (null 아님)
 
 // 최종 타입
@@ -254,10 +257,10 @@ employees (메인 테이블)
   department: {
     id: number;
     name: string;
-    company: {        // null 아님
+    company: {        // null 아님 (FK가 non-null이므로)
       name: string;
     };
-  } | null;           // department 전체가 null일 수 있음
+  } | null;           // department 전체가 null일 수 있음 (FK가 nullable이므로)
 }
 ```
 
@@ -266,25 +269,37 @@ employees (메인 테이블)
 ```typescript
 // Internal Type Keys
 type LeftJoinedKey = "__leftJoined__";
-type InheritedLeftJoinedKey = "__inheritedLeftJoined__";
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | InheritedLeftJoinedKey;
+type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault | GeneratedKey;
 
-// Markers
+// LEFT JOIN 마커 - nullable FK로 조인된 테이블
 export type LeftJoinedMarker = { [K in LeftJoinedKey]: true };
-export type InheritedLeftJoinedMarker = { [K in InheritedLeftJoinedKey]: true };
 
-// leftJoin 판별 (자체 nullable만 true, inherited는 false)
-type IsLeftJoinedTable<TTables, TableKey> = TableKey extends keyof TTables
-  ? TTables[TableKey] extends LeftJoinedMarker
-    ? TTables[TableKey] extends InheritedLeftJoinedMarker
-      ? false  // Inherited는 자체 nullable 아님
-      : true   // 자체 nullable
-    : false
-  : false;
+// 컬럼이 nullable인지 확인 (스키마에서 직접 추출)
+export type IsNullableColumn<TTables, Path extends string> = 
+  Path extends `${infer TAlias}.${infer TColumn}`
+    ? TAlias extends keyof TTables
+      ? TColumn extends keyof TTables[TAlias]
+        ? null extends TTables[TAlias][TColumn] ? true : false
+        : false
+      : false
+    : false;
+
+// FK nullable 여부에 따른 마커 타입 결정
+export type LeftJoinMarkerFor<TTables, Path extends string> = 
+  IsNullableColumn<TTables, Path> extends true
+    ? LeftJoinedMarker
+    : {};  // non-null FK면 마커 없음
 
 // 경로 조합 헬퍼
 type JoinPath<Prefix extends string, Key extends string> = 
   Prefix extends "" ? Key : `${Prefix}__${Key}`;
+
+// 중첩 객체 키가 leftJoin 테이블인지 확인
+type IsLeftJoinedTable<TTables, TableKey> = TableKey extends keyof TTables
+  ? TTables[TableKey] extends LeftJoinedMarker
+    ? true   // LeftJoinedMarker가 있으면 nullable
+    : false
+  : false;
 
 // 메인 파싱 타입
 export type ParseSelectObject<TTables, TSelect> = 
@@ -297,8 +312,8 @@ type ParseSelectObjectWithPath<TTables, TSelect, Prefix extends string> = Expand
     : IsNestedObject<TSelect[K]> extends true
       ? TSelect[K] extends NestedSelectObject<TTables>
         ? IsLeftJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
-          ? Expand<ParseSelectObjectInner<...>> | null  // 자체 leftJoin → nullable 객체
-          : Expand<ParseSelectObjectInner<...>>         // inner 또는 inherited → non-null 객체
+          ? Expand<ParseSelectObjectInner<...>> | null  // leftJoin (nullable FK) → nullable 객체
+          : Expand<ParseSelectObjectInner<...>>         // non-null FK → non-null 객체
         : never
       : ExtractColumnType<TTables, TSelect[K] & string>;
 }>;
@@ -309,9 +324,9 @@ type ParseSelectObjectInner<TTables, TSelect, Prefix extends string> = Expand<{
     : ExtractColumnTypeRaw<TTables, TSelect[K] & string>;  // leftJoin nullability 무시
 }>;
 
-// 컬럼 타입 추출 (leftJoin nullability 적용)
+// 컬럼 타입 추출 (LeftJoinedMarker가 있으면 nullable 추가)
 export type ExtractColumnType<TTables, Path extends string> = 
-  /* TTables[Alias] extends LeftJoinedMarker이고 InheritedLeftJoinedMarker가 아니면 | null 추가 */;
+  /* TTables[Alias] extends LeftJoinedMarker이면 | null 추가 */;
 
 // 컬럼 타입 추출 (leftJoin nullability 무시 - 내부 필드용)
 type ExtractColumnTypeRaw<TTables, Path extends string> = 
@@ -349,14 +364,18 @@ class Puri<TSchema, TTables, TResult> {
     return flatSelect;
   }
 
-  // inheritedLeftJoin 메서드
-  inheritedLeftJoin<TJoinTable extends keyof TSchema, TJoinAlias extends string>(
+  // leftJoin 메서드 - FK nullable 여부로 자동 마커 결정
+  leftJoin<
+    TJoinTable extends keyof TSchema,
+    TJoinAlias extends string,
+    TLeft extends AvailableColumns<TTables>,
+  >(
     tableSpec: { [K in TJoinAlias]: TJoinTable },
-    left: AvailableColumns<TTables>,
+    left: TLeft,  // FK 컬럼 경로 (예: "employees.department_id")
     right: `${TJoinAlias}.${ColumnKeys<TSchema[TJoinTable]>}`,
   ): Puri<
     TSchema,
-    TTables & Record<TJoinAlias, TSchema[TJoinTable] & InheritedLeftJoinedMarker>,
+    TTables & Record<TJoinAlias, TSchema[TJoinTable] & LeftJoinMarkerFor<TTables, TLeft>>,
     TResult
   > {
     return this.__commonJoin("leftJoin", tableSpec, left, right);
@@ -366,7 +385,7 @@ class Puri<TSchema, TTables, TResult> {
 
 ### 4.4 코드 생성 로직 (entity.ts)
 
-#### SubsetQuery에 inherited 플래그 추가 (types.ts)
+#### SubsetQuery 타입 (types.ts)
 ```typescript
 export type SubsetQuery = {
   select: string[];
@@ -375,35 +394,17 @@ export type SubsetQuery = {
     as: string;
     join: "inner" | "outer";
     table: string;
-    inherited?: boolean;  // 부모가 leftJoin이라서 따라서 leftJoin
   } & JoinClause)[];
-  loaders: /* ... */;
+  loaders: SubsetLoader[];
 };
-```
-
-#### resolveSubsetQuery에서 inherited 판별
-```typescript
-// entity.ts - resolveSubsetQuery 내부
-const isInherited = isAlreadyOuterJoined && !relation.nullable;
-r.joins.push({
-  as: joinAs,
-  join: innerOrOuter,
-  table: relEntity.table,
-  ...(isInherited && { inherited: true }),
-  ...joinClause,
-});
 ```
 
 #### getPuriSubsetQuery에서 joinMethod 결정
 ```typescript
 // entity.ts - getPuriSubsetQuery 내부
 for (const join of subsetQuery.joins) {
-  const joinMethod =
-    join.join === "inner"
-      ? "join"
-      : join.inherited === true
-        ? "inheritedLeftJoin"
-        : "leftJoin";
+  // FK nullable 여부는 leftJoin 타입 시그니처에서 자동으로 판단됨
+  const joinMethod = join.join === "inner" ? "join" : "leftJoin";
   lines.push(`.${joinMethod}({ ${join.as}: "${join.table}" }, "${join.from}", "${join.to}")`);
 }
 ```
@@ -487,7 +488,7 @@ export const employeeSubsetQueries = {
       .from("employees")
       .join({ user: "users" }, "employees.user_id", "user.id")
       .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-      .inheritedLeftJoin(
+      .leftJoin(
         { department__company: "companies" },
         "department.company_id",
         "department__company.id",
@@ -560,8 +561,8 @@ export const departmentLoaderQueries = {
     name: string;
     company: {
       name: string;
-    };  // inheritedLeftJoin → non-null (부모가 null이면 접근 자체가 안됨)
-  } | null;  // leftJoin → nullable
+    };  // non-null (FK company_id가 non-null이므로)
+  } | null;  // nullable (FK department_id가 nullable이므로)
 }
 ```
 
@@ -700,22 +701,6 @@ return fields.every((field) => row[field] === null);
 
 현재 hydrate는 `__`로 1단계 그룹핑만 수행합니다. 더 깊은 중첩은 자동으로 처리되지만, 객체 경계 판별이 제한적일 수 있습니다.
 
-### 7.5 수동 쿼리 작성 시 주의사항
-
-수동으로 쿼리 작성할 때 `leftJoin` vs `inheritedLeftJoin` 선택:
-
-| 상황 | 추천 |
-|------|------|
-| 잘 모르겠다 | `leftJoin` 사용 (안전함, 타입만 더 엄격) |
-| 부모가 leftJoin + 관계가 확실히 non-null | `inheritedLeftJoin` 사용 |
-
-잘못 사용했을 때:
-
-| 잘못 사용 | 결과 |
-|----------|------|
-| nullable 관계에 `inheritedLeftJoin` | 위험 - 런타임 에러 가능 |
-| non-null 관계에 `leftJoin` | 안전 - 불필요한 null 체크만 강제됨 |
-
 ---
 
 ## 8. 테스트 및 검증
@@ -752,8 +737,8 @@ cd examples/miomock/api && npx vitest run src/sonamu-test/syncer.test.ts -u
 
 ## 10. 관련 변경 파일
 
-- `modules/sonamu/src/database/puri.types.ts` - 타입 추론 로직
-- `modules/sonamu/src/database/puri.ts` - Puri 클래스 (flattenSelect, inheritedLeftJoin)
+- `modules/sonamu/src/database/puri.types.ts` - 타입 추론 로직 (IsNullableColumn, LeftJoinMarkerFor)
+- `modules/sonamu/src/database/puri.ts` - Puri 클래스 (flattenSelect, leftJoin 자동 마커)
 - `modules/sonamu/src/database/base-model.ts` - hydrate 로직
 - `modules/sonamu/src/entity/entity.ts` - 코드 생성 (getPuriSubsetQuery, getPuriLoaderQuery, buildNestedSelectObject)
-- `modules/sonamu/src/types/types.ts` - SubsetQuery 타입 (inherited 플래그)
+- `modules/sonamu/src/types/types.ts` - SubsetQuery 타입

@@ -2,7 +2,6 @@ import { describe, expectTypeOf, it } from "vitest";
 import type {
   AvailableColumns,
   ExtractColumnType,
-  InheritedLeftJoinedMarker,
   LeftJoinedMarker,
   ParseSelectObject,
 } from "./puri.types";
@@ -104,12 +103,12 @@ describe("ExtractColumnType", () => {
     });
   });
 
-  describe("inheritedLeftJoin된 테이블", () => {
-    it("inheritedLeftJoin 테이블의 컬럼은 non-null이다 (부모가 null 처리)", () => {
+  describe("non-null FK로 leftJoin된 테이블", () => {
+    it("non-null FK로 leftJoin된 테이블의 컬럼은 non-null이다 (마커 없음)", () => {
       type Tables = {
         users: MockSchema["users"];
-        department: MockSchema["departments"] & LeftJoinedMarker;
-        company: MockSchema["companies"] & InheritedLeftJoinedMarker; // inherited
+        department: MockSchema["departments"] & LeftJoinedMarker; // nullable FK
+        company: MockSchema["companies"] & LeftJoinedMarker; // non-null FK → 마커 없음
       };
       type Result = ExtractColumnType<Tables, "company.id">;
 
@@ -281,12 +280,12 @@ describe("ParseSelectObject", () => {
     });
   });
 
-  describe("inheritedLeftJoin + nested select (입체적 구조)", () => {
-    it("inheritedLeftJoin 테이블의 중첩 객체는 non-null이다", () => {
+  describe("non-null FK leftJoin + nested select (입체적 구조)", () => {
+    it("non-null FK로 leftJoin된 테이블의 중첩 객체는 non-null이다", () => {
       type Tables = {
         users: MockSchema["users"];
-        department: MockSchema["departments"] & LeftJoinedMarker; // leftJoin
-        department__company: MockSchema["companies"] & InheritedLeftJoinedMarker; // inherited
+        department: MockSchema["departments"] & LeftJoinedMarker; // nullable FK → 마커 있음
+        department__company: MockSchema["companies"]; // non-null FK → 마커 없음
       };
       type Select = {
         id: "users.id";
@@ -308,17 +307,17 @@ describe("ParseSelectObject", () => {
           name: string;
           company: {
             name: string;
-          }; // non-null! (inherited는 부모가 null 처리)
+          }; // non-null! (non-null FK로 조인되어 마커 없음)
         } | null;
       }>();
     });
 
-    it("깊은 중첩에서도 inheritedLeftJoin은 non-null이다", () => {
+    it("깊은 중첩에서도 non-null FK leftJoin은 non-null이다", () => {
       type Tables = {
         employees: MockSchema["employees"];
-        user: MockSchema["users"];
-        user__employee: MockSchema["employees"] & LeftJoinedMarker;
-        user__employee__department: MockSchema["departments"] & InheritedLeftJoinedMarker;
+        user: MockSchema["users"]; // innerJoin → 마커 없음
+        user__employee: MockSchema["employees"] & LeftJoinedMarker; // nullable FK
+        user__employee__department: MockSchema["departments"]; // non-null FK → 마커 없음
       };
       type Select = {
         id: "employees.id";
@@ -341,25 +340,25 @@ describe("ParseSelectObject", () => {
           // user는 innerJoin이므로 무조건 존재합니다.
           id: number;
           employee: {
-            // user의 employee는 leftJoin이므로 null일 수 있습니다.
+            // user의 employee는 nullable FK leftJoin이므로 null일 수 있습니다.
             id: number;
             department: {
-              // employee가 존재한다면 department는 (inherited)leftJoin이므로 무조건 존재합니다.
+              // employee가 존재한다면 department는 non-null FK leftJoin이므로 무조건 존재합니다.
               id: number;
-            }; // inherited → non-null
-          } | null; // leftJoin → nullable
+            }; // non-null FK → non-null
+          } | null; // nullable FK leftJoin → nullable
         }; // innerJoin → non-null
       }>();
     });
   });
 
   describe("복합 케이스", () => {
-    it("innerJoin + leftJoin + inheritedLeftJoin 조합", () => {
+    it("innerJoin + nullable FK leftJoin + non-null FK leftJoin 조합", () => {
       type Tables = {
         employees: MockSchema["employees"];
-        user: MockSchema["users"]; // innerJoin
-        department: MockSchema["departments"] & LeftJoinedMarker; // leftJoin
-        department__company: MockSchema["companies"] & InheritedLeftJoinedMarker; // inherited
+        user: MockSchema["users"]; // innerJoin (non-null FK)
+        department: MockSchema["departments"] & LeftJoinedMarker; // nullable FK leftJoin
+        department__company: MockSchema["companies"]; // non-null FK leftJoin → 마커 없음
       };
       type Select = {
         id: "employees.id";
@@ -393,8 +392,8 @@ describe("ParseSelectObject", () => {
           name: string;
           company: {
             name: string;
-          }; // inherited → non-null
-        } | null; // leftJoin → nullable
+          }; // non-null FK → non-null
+        } | null; // nullable FK leftJoin → nullable
       }>();
     });
 

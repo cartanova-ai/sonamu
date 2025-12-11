@@ -125,7 +125,7 @@ export const employeeSubsetQueries = {
       .from("employees")
       .join({ user: "users" }, "employees.user_id", "user.id")
       .leftJoin({ department: "departments" }, "employees.department_id", "department.id")
-      .inheritedLeftJoin(
+      .leftJoin(
         { department__company: "companies" },
         "department.company_id",
         "department__company.id",
