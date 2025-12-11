@@ -96,47 +96,45 @@ export class FixtureManagerClass {
   }
 
   /**
-    이제 FixtureManager.sync() 는 checksum 비교 없이 create database template 으로 수행합니다.
+    원격 fixture DB를 로컬 test DB로 복사합니다.
+    pg_dump로 원격 DB를 덤프하고, pg_restore로 로컬에 복원합니다.
   */
   async sync() {
     const fixtureConn = Sonamu.dbConfig.fixture_remote.connection as Knex.PgConnectionConfig;
     const testConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
 
-    // PostgreSQL 패스워드 환경변수 설정
-    const pgEnv = { PGPASSWORD: testConn.password || "" };
-
-    // 1. 연결 강제 종료
+    // 1. 로컬 test DB 연결 종료 및 재생성
+    const testPgEnv = { PGPASSWORD: testConn.password || "" };
     execSync(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE datname = '${testConn.database}'
-        AND pid <> pg_backend_pid();
-    "`,
-      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
-    );
-
-    execSync(
-      `psql -h ${fixtureConn.host} -p ${fixtureConn.port ?? 5432} -U ${fixtureConn.user} -d postgres -c "
         SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
-        WHERE datname = '${fixtureConn.database}'
+        WHERE datname = '${testConn.database}'
           AND pid <> pg_backend_pid();
       "`,
-      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
     );
 
-    // 2. DROP DATABASE (별도 실행!)
     execSync(
       `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "DROP DATABASE IF EXISTS \\"${testConn.database}\\""`,
-      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
     );
 
-    // 3. CREATE DATABASE
     execSync(
-      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "CREATE DATABASE \\"${testConn.database}\\" TEMPLATE \\"${fixtureConn.database}\\""`,
-      { stdio: "inherit", env: { ...process.env, ...pgEnv } as NodeJS.ProcessEnv },
+      `psql -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d postgres -c "CREATE DATABASE \\"${testConn.database}\\""`,
+      { stdio: "inherit", env: { ...process.env, ...testPgEnv } as NodeJS.ProcessEnv },
     );
+
+    // 2. 원격 fixture DB → 로컬 test DB로 복사 (pg_dump | pg_restore)
+    const fixturePgEnv = { PGPASSWORD: fixtureConn.password || "" };
+    const dumpCmd = `pg_dump -h ${fixtureConn.host} -p ${fixtureConn.port ?? 5432} -U ${fixtureConn.user} -d ${fixtureConn.database} -Fc`;
+    const restoreCmd = `pg_restore -h ${testConn.host} -p ${testConn.port ?? 5432} -U ${testConn.user} -d ${testConn.database} --no-owner --no-acl`;
+
+    execSync(`${dumpCmd} | PGPASSWORD="${testConn.password || ""}" ${restoreCmd}`, {
+      stdio: "inherit",
+      env: { ...process.env, ...fixturePgEnv } as NodeJS.ProcessEnv,
+      shell: "/bin/bash",
+    });
   }
 
   private visitedRecords = new Set<string>();
@@ -507,7 +505,9 @@ export class FixtureManagerClass {
           // upsert된 row들의 uuid -> id 매핑 구축
           if (uuids.length > 0) {
             const uuidToId = new Map<string, number>();
-            const rows = await trx(tableName as string).select("uuid", "id").whereIn("uuid", uuids);
+            const rows = await trx(tableName as string)
+              .select("uuid", "id")
+              .whereIn("uuid", uuids);
 
             for (const row of rows) {
               uuidToId.set(row.uuid, row.id);
