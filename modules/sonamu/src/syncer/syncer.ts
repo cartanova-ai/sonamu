@@ -446,7 +446,18 @@ export class Syncer {
     const oldFileContent = (await readFile(fromPath)).toString();
 
     const newFileContent = (() => {
-      const nfc = oldFileContent.replace(/from "sonamu"/g, `from "./sonamu.shared"`);
+      // web이나 app 등에는 sonamu가 없습니다.
+      // 따라서 sonamu에 대한 import는 함께 복사되는 sonamu.shared.ts에 대한 import로 치환해야 합니다.
+      // 문제는 리소스 종류에 따라 sonamu.shared.ts로 가는 경로가 다르다는 점입니다.
+      // 예를 들어 sonamu.generated.ts 입장에서 sonamu.shared.ts는 같은 디렉토리에 있으니 ./sonamu.shared로 치환하면 되지만,
+      // user.types.ts 입장에서 sonamu.shared.ts는 상위 디렉토리에 있으니 ../sonamu.shared로 치환해야 합니다.
+      // 이 문제를 해결하기 위해 복사하고자 하는 리소스의 경로(toPath)를 기준으로 sonamu.shared.ts가 있는 디렉토리를 찾아서 상대 경로를 계산하도록 하였습니다.
+      const servicesDir = toPath.replace(/\/services\/.*$/, "/services");
+      const fileDir = dirname(toPath);
+      const relativePath = path.relative(fileDir, servicesDir);
+      const sharedPath = relativePath === "" ? "./sonamu.shared" : `${relativePath}/sonamu.shared`;
+
+      const nfc = oldFileContent.replace(/from "sonamu"/g, `from "${sharedPath}"`);
       return nfc;
     })();
     return writeFile(toPath, newFileContent);
