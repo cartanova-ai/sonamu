@@ -15,7 +15,8 @@
     "sonamu": "sonamu",
     "practice": "node dist/practices/$0.js",
     "dump": "bash database/scripts/dump.sh",
-    "seed": "bash database/scripts/seed.sh"
+    "seedOnly": "bash database/scripts/seed.sh",
+    "seed": "pnpm seedOnly && sonamu fixture sync"
   },
   "dependencies": {
     "@swc/core": "^1.13.5",
