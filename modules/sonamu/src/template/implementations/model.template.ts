@@ -1,3 +1,4 @@
+import type z from "zod";
 import { Sonamu } from "../../api";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
@@ -5,7 +6,6 @@ import type { TemplateOptions } from "../../types/types";
 import { Template } from "../template";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 import { Template__view_list } from "./view_list.template";
-
 export class Template__model extends Template {
   constructor() {
     super("model");
@@ -25,6 +25,9 @@ export class Template__model extends Template {
 
     const listParamsZodType = await getZodTypeById(`${entityId}ListParams`);
     const listParamsNode = zodTypeToRenderingNode(listParamsZodType);
+
+    const subsetKeyZodType = await getZodTypeById(`${entityId}SubsetKey`);
+    const subsetKeys = (subsetKeyZodType as z.ZodEnum).enum;
 
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);
@@ -99,8 +102,8 @@ class ${entityId}ModelClass extends BaseModelClass<
     const params = {
       num: 24,
       page: 1,
-      search: "${def.search}",
-      orderBy: "${def.orderBy}",
+      search: "${def.search}" as const,
+      orderBy: "${def.orderBy}" as const,
       ...rawParams,
     };
 
@@ -132,18 +135,25 @@ class ${entityId}ModelClass extends BaseModelClass<
         exhaustive(params.orderBy);
       }
     }
-    
-    const { rows, total } = await this.executeSubsetQuery({
+
+    const enhancers = this.createEnhancers({
+      ${Object.keys(subsetKeys)
+        .map(
+          (key) => `${key}: (row) => ({
+          ...row,
+          // 서브셋별로 virtual 필드 계산로직 추가
+        }),`,
+        )
+        .join("\n")}
+    });
+
+    return this.executeSubsetQuery({
       subset,
       qb,
       params,
+      enhancers,
       debug: false,
     });
-
-    return {
-      rows,
-      total,
-    };
   }
 
   @api({ httpMethod: "POST" })
