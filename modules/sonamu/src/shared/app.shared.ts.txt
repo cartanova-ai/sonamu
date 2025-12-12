@@ -171,10 +171,12 @@ export function defaultCatch(e: any) {
 /*
   Isomorphic Types
 */
-export type ListResult<T> = {
-  rows: T[];
-  total?: number;
-};
+export type ListResult<LP extends { queryMode?: SonamuQueryMode }, T> = LP["queryMode"] extends "list"
+  ? { rows: T[] }
+  : LP["queryMode"] extends "count"
+    ? { total: number }
+    : { rows: T[]; total: number };
+
 export const SonamuQueryMode = z.enum(["both", "list", "count"]);
 export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
 
@@ -224,7 +226,7 @@ export function handleConditional(
 /*
   Utils
 */
-export function zArrayable<T extends z.ZodTypeAny>(shape: T) {
+export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }
 
