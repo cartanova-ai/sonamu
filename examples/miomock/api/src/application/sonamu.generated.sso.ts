@@ -47,10 +47,14 @@ export const departmentSubsetQueries = {
         id: "departments.id",
         created_at: "departments.created_at",
         name: "departments.name",
-        company__id: "company.id",
-        company__name: "company.name",
-        parent__id: "parent.id",
-        parent__name: "parent.name",
+        company: {
+          id: "company.id",
+          name: "company.name",
+        },
+        parent: {
+          id: "parent.id",
+          name: "parent.name",
+        },
       });
   },
   P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -62,10 +66,14 @@ export const departmentSubsetQueries = {
         id: "departments.id",
         created_at: "departments.created_at",
         name: "departments.name",
-        company__id: "company.id",
-        company__name: "company.name",
-        parent__id: "parent.id",
-        parent__name: "parent.name",
+        company: {
+          id: "company.id",
+          name: "company.name",
+        },
+        parent: {
+          id: "parent.id",
+          name: "parent.name",
+        },
       });
   },
   P2: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -76,8 +84,10 @@ export const departmentSubsetQueries = {
         id: "departments.id",
         created_at: "departments.created_at",
         name: "departments.name",
-        company__id: "company.id",
-        company__name: "company.name",
+        company: {
+          id: "company.id",
+          name: "company.name",
+        },
       });
   },
 };
@@ -97,8 +107,10 @@ export const departmentLoaderQueries = {
             id: "employees.id",
             employee_number: "employees.employee_number",
             salary: "employees.salary",
-            user__id: "user.id",
-            user__email: "user.email",
+            user: {
+              id: "user.id",
+              email: "user.email",
+            },
             refId: "employees.department_id",
           });
       },
@@ -142,11 +154,17 @@ export const employeeSubsetQueries = {
         salary: "employees.salary",
         hire_date: "employees.hire_date",
         notes: "employees.notes",
-        user__id: "user.id",
-        user__username: "user.username",
-        department__id: "department.id",
-        department__name: "department.name",
-        department__company__name: "department__company.name",
+        user: {
+          id: "user.id",
+          username: "user.username",
+        },
+        department: {
+          id: "department.id",
+          name: "department.name",
+          company: {
+            name: "department__company.name",
+          },
+        },
       });
   },
   P: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -163,12 +181,20 @@ export const employeeSubsetQueries = {
       .select({
         id: "employees.id",
         created_at: "employees.created_at",
-        user__id: "user.id",
-        user__username: "user.username",
-        user__employee__department__id: "user__employee__department.id",
-        user__employee__employee_number: "user__employee.employee_number",
-        user__employee__salary: "user__employee.salary",
-        department__id: "department.id",
+        user: {
+          id: "user.id",
+          username: "user.username",
+          employee: {
+            department: {
+              id: "user__employee__department.id",
+            },
+            employee_number: "user__employee.employee_number",
+            salary: "user__employee.salary",
+          },
+        },
+        department: {
+          id: "department.id",
+        },
       });
   },
 };
@@ -289,9 +315,13 @@ export const projectLoaderQueries = {
             id: "employees.id",
             employee_number: "employees.employee_number",
             salary: "employees.salary",
-            user__email: "user.email",
-            user__username: "user.username",
-            department__name: "department.name",
+            user: {
+              email: "user.email",
+              username: "user.username",
+            },
+            department: {
+              name: "department.name",
+            },
             refId: "projects__employees.project_id",
           });
       },
@@ -326,9 +356,13 @@ export const projectLoaderQueries = {
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
-            user__email: "user.email",
-            user__username: "user.username",
-            department__name: "department.name",
+            user: {
+              email: "user.email",
+              username: "user.username",
+            },
+            department: {
+              name: "department.name",
+            },
             refId: "projects__employees.project_id",
           });
       },
@@ -422,8 +456,12 @@ export const userSubsetQueries = {
         role: "users.role",
         bio: "users.bio",
         is_verified: "users.is_verified",
-        employee__department__name: "employee__department.name",
-        employee__salary: "employee.salary",
+        employee: {
+          department: {
+            name: "employee__department.name",
+          },
+          salary: "employee.salary",
+        },
       });
   },
   SS: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {

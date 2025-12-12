@@ -144,7 +144,9 @@ export const DepartmentBaseSchema = z.object({
 });
 export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
   readonly __virtual__: readonly ["employee_count"];
-} & { readonly __hasDefault__: readonly ["created_at", "parent_id", "id"] };
+  readonly __hasDefault__: readonly ["created_at", "parent_id", "id"];
+  readonly __generated__: readonly ["code"];
+};
 
 // BaseSchema: Document
 export const DocumentBaseSchema = z.object({
@@ -218,7 +220,6 @@ export const ProjectBaseSchema = z.object({
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];
-} & {
   readonly __hasDefault__: readonly [
     "created_at",
     "description",

@@ -28,6 +28,17 @@ export const DepartmentSearchField = z.enum(["id"]).describe("DepartmentSearchFi
 export type DepartmentSearchField = z.infer<typeof DepartmentSearchField>;
 export const DepartmentSearchFieldLabel = { id: "ID" };
 
+// Enums: Document
+export const DocumentOrderBy = z.enum(["id-desc"]).describe("DocumentOrderBy");
+export type DocumentOrderBy = z.infer<typeof DocumentOrderBy>;
+export const DocumentOrderByLabel = { "id-desc": "ID최신순" };
+export const DocumentSearchField = z.enum(["id"]).describe("DocumentSearchField");
+export type DocumentSearchField = z.infer<typeof DocumentSearchField>;
+export const DocumentSearchFieldLabel = { id: "ID" };
+export const DocumentStatus = z.enum(["draft", "published", "archived"]).describe("DocumentStatus");
+export type DocumentStatus = z.infer<typeof DocumentStatus>;
+export const DocumentStatusLabel = { draft: "초안", published: "게시됨", archived: "보관됨" };
+
 // Enums: Employee
 export const EmployeeOrderBy = z.enum(["id-desc"]).describe("EmployeeOrderBy");
 export type EmployeeOrderBy = z.infer<typeof EmployeeOrderBy>;
@@ -135,6 +146,26 @@ export type DepartmentBaseSchema = z.infer<typeof DepartmentBaseSchema> & {
   readonly __virtual__: readonly ["employee_count"];
   readonly __hasDefault__: readonly ["created_at", "parent_id", "id"];
   readonly __generated__: readonly ["code"];
+};
+
+// BaseSchema: Document
+export const DocumentBaseSchema = z.object({
+  id: z.int(),
+  created_at: z.date(),
+  title: z.string().max(255),
+  content: z.string().nullable(),
+  status: DocumentStatus,
+  content_embedding: z.array(z.number()).nullable(),
+  content_embedding_openai: z.array(z.number()).nullable(),
+});
+export type DocumentBaseSchema = z.infer<typeof DocumentBaseSchema> & {
+  readonly __hasDefault__: readonly [
+    "created_at",
+    "content",
+    "content_embedding",
+    "content_embedding_openai",
+    "id",
+  ];
 };
 
 // BaseSchema: Employee
@@ -292,6 +323,20 @@ export const DepartmentBaseListParams = z
   })
   .partial();
 export type DepartmentBaseListParams = z.infer<typeof DepartmentBaseListParams>;
+
+// BaseListParams: Document
+export const DocumentBaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: DocumentSearchField,
+    keyword: z.string(),
+    orderBy: DocumentOrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+  })
+  .partial();
+export type DocumentBaseListParams = z.infer<typeof DocumentBaseListParams>;
 
 // BaseListParams: Employee
 export const EmployeeBaseListParams = z
@@ -453,6 +498,18 @@ export type DepartmentSubsetMapping = {
 };
 export const DepartmentSubsetKey = z.enum(["A", "P", "P2"]);
 export type DepartmentSubsetKey = z.infer<typeof DepartmentSubsetKey>;
+
+// Subsets: Document
+export const DocumentSubsetA = z.object({
+  id: z.int(),
+  created_at: z.date(),
+});
+export type DocumentSubsetA = z.infer<typeof DocumentSubsetA>;
+export type DocumentSubsetMapping = {
+  A: DocumentSubsetA;
+};
+export const DocumentSubsetKey = z.enum(["A"]);
+export type DocumentSubsetKey = z.infer<typeof DocumentSubsetKey>;
 
 // Subsets: Employee
 export const EmployeeSubsetA = z.object({

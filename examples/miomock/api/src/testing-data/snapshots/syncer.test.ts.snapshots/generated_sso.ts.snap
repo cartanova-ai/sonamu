@@ -4,6 +4,8 @@ import type {
   CompanySubsetKey,
   DepartmentBaseSchema,
   DepartmentSubsetKey,
+  DocumentBaseSchema,
+  DocumentSubsetKey,
   EmployeeBaseSchema,
   EmployeeSubsetKey,
   FileBaseSchema,
@@ -117,6 +119,21 @@ export const departmentLoaderQueries = {
   P: [],
   P2: [],
 } as const satisfies PuriLoaderQueries<DepartmentSubsetKey>;
+
+// SubsetQuery: Document
+export const documentSubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("documents").select({
+      id: "documents.id",
+      created_at: "documents.created_at",
+    });
+  },
+};
+
+// LoaderQuery: Document
+export const documentLoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<DocumentSubsetKey>;
 
 // SubsetQuery: Employee
 export const employeeSubsetQueries = {
@@ -477,6 +494,7 @@ declare module "sonamu" {
   export interface DatabaseSchemaExtend {
     companies: CompanyBaseSchema;
     departments: DepartmentBaseSchema;
+    documents: DocumentBaseSchema;
     employees: EmployeeBaseSchema;
     files: FileBaseSchema;
     projects: ProjectBaseSchema;
