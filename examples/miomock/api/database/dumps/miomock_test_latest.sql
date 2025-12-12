@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict yIJpVu2Y4kIz6Jd8qmka1w7TrCnTL1CYtRFsyAEcNCqgzwONlReE9xxHofphq7f
+\restrict R5HxWgIvlsK9wnaEfb98dHM4RM7xhGYxXiO7d1rJ0J93Gs3myhADlcMxsVDwmKB
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
--- Dumped by pg_dump version 18.1 (Homebrew)
+-- Dumped by pg_dump version 18.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -106,8 +106,7 @@ CREATE TABLE public.documents (
     content text,
     status text NOT NULL,
     content_embedding public.vector(1024),
-    content_embedding_openai public.vector(1536),
-    content_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text || ' '::text || COALESCE(content, ''::text))) STORED
+    content_embedding_openai public.vector(1536)
 );
 
 
@@ -574,19 +573,25 @@ INSERT INTO public.companies VALUES (5, '2025-11-25 00:17:02+09', '소프트웨�
 -- Data for Name: departments; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', '개발팀', 1, NULL);
-INSERT INTO public.departments VALUES (2, '2024-01-01 02:00:00+09', '디자인팀', 1, NULL);
-INSERT INTO public.departments VALUES (3, '2024-01-02 01:00:00+09', '백엔드팀', 1, 1);
-INSERT INTO public.departments VALUES (4, '2024-01-02 02:00:00+09', '프론트엔드팀', 1, 1);
-INSERT INTO public.departments VALUES (5, '2024-01-03 01:00:00+09', '기술팀', 2, NULL);
-INSERT INTO public.departments VALUES (6, '2024-01-03 02:00:00+09', '마케팅팀', 2, NULL);
-INSERT INTO public.departments VALUES (7, '2024-01-04 01:00:00+09', '연구개발팀', 3, NULL);
-INSERT INTO public.departments VALUES (8, '2024-01-04 02:00:00+09', '품질관리팀', 3, NULL);
-INSERT INTO public.departments VALUES (9, '2024-01-05 01:00:00+09', '데이터팀', 4, NULL);
-INSERT INTO public.departments VALUES (10, '2024-01-06 01:00:00+09', '아키텍처팀', 5, NULL);
-INSERT INTO public.departments VALUES (11, '2024-01-06 02:00:00+09', '인프라팀', 5, NULL);
-INSERT INTO public.departments VALUES (12, '2024-01-07 01:00:00+09', '빈부서A', 1, NULL);
-INSERT INTO public.departments VALUES (13, '2024-01-07 02:00:00+09', '빈부서B', 2, NULL);
+INSERT INTO public.departments VALUES (1, '2024-01-01 01:00:00+09', '개발팀', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (2, '2024-01-01 02:00:00+09', '디자인팀', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (3, '2024-01-02 01:00:00+09', '백엔드팀', 1, 1, DEFAULT);
+INSERT INTO public.departments VALUES (4, '2024-01-02 02:00:00+09', '프론트엔드팀', 1, 1, DEFAULT);
+INSERT INTO public.departments VALUES (5, '2024-01-03 01:00:00+09', '기술팀', 2, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (6, '2024-01-03 02:00:00+09', '마케팅팀', 2, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (7, '2024-01-04 01:00:00+09', '연구개발팀', 3, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (8, '2024-01-04 02:00:00+09', '품질관리팀', 3, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (9, '2024-01-05 01:00:00+09', '데이터팀', 4, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (10, '2024-01-06 01:00:00+09', '아키텍처팀', 5, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (11, '2024-01-06 02:00:00+09', '인프라팀', 5, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (12, '2024-01-07 01:00:00+09', '빈부서A', 1, NULL, DEFAULT);
+INSERT INTO public.departments VALUES (13, '2024-01-07 02:00:00+09', '빈부서B', 2, NULL, DEFAULT);
+
+
+--
+-- Data for Name: documents; Type: TABLE DATA; Schema: public; Owner: -
+--
+
 
 
 --
@@ -602,8 +607,8 @@ INSERT INTO public.employees VALUES (6, '2024-01-06 01:00:00+09', 6, 11, 'EMP006
 INSERT INTO public.employees VALUES (7, '2024-01-07 01:00:00+09', 7, 6, 'EMP007', 68000.00, '2021-03-20 00:00:00+09', NULL);
 INSERT INTO public.employees VALUES (8, '2024-01-08 01:00:00+09', 8, 5, 'EMP008', 78000.00, '2019-12-01 00:00:00+09', '풀스택 개발자');
 INSERT INTO public.employees VALUES (9, '2024-01-09 01:00:00+09', 9, 1, 'EMP009', 95000.00, '2015-01-01 00:00:00+09', '시스템 관리자');
-INSERT INTO public.employees VALUES (10, '2024-01-10 01:00:00+09', 10, 7, 'EMP010', 55000.00);
-INSERT INTO public.employees VALUES (11, '2024-01-11 01:00:00+09', 11, 8, 'EMP011', 58000.00);
+INSERT INTO public.employees VALUES (10, '2024-01-10 01:00:00+09', 10, 7, 'EMP010', 55000.00, NULL, NULL);
+INSERT INTO public.employees VALUES (11, '2024-01-11 01:00:00+09', 11, 8, 'EMP011', 58000.00, NULL, NULL);
 
 
 --
@@ -631,6 +636,7 @@ INSERT INTO public.knex_migrations VALUES (40, '20251209160751_foreign__employee
 INSERT INTO public.knex_migrations VALUES (41, '20251209160752_foreign__projects__employees__employee_id_project_id.ts', 1, '2025-12-09 16:25:57.222+09');
 INSERT INTO public.knex_migrations VALUES (42, '20251209160753_foreign__project_tags__project_id_tag_id.ts', 1, '2025-12-09 16:25:57.224+09');
 INSERT INTO public.knex_migrations VALUES (49, '20251211150026_alter_departments_add1.ts', 2, '2025-12-11 16:01:46.752+09');
+INSERT INTO public.knex_migrations VALUES (50, '20251211183902_create__documents.ts', 3, '2025-12-12 16:59:32.064+09');
 
 
 --
@@ -669,10 +675,10 @@ INSERT INTO public.projects VALUES (1, '2024-01-01 01:00:00+09', '웹 애플리�
 INSERT INTO public.projects VALUES (2, '2024-01-02 01:00:00+09', '모바일 앱 개발', 'planning', '새로운 모바일 서비스를 위한 앱 개발 프로젝트입니다.', 200000.00, '2024-08-31 23:59:59+09', NULL);
 INSERT INTO public.projects VALUES (3, '2023-11-01 01:00:00+09', '데이터 분석 시스템', 'completed', '고객 데이터 분석을 위한 대시보드 시스템 구축 프로젝트입니다.', 80000.00, '2024-03-31 23:59:59+09', NULL);
 INSERT INTO public.projects VALUES (4, '2024-01-03 01:00:00+09', 'API 서버 마이그레이션', 'in_progress', '레거시 API 서버를 클라우드로 마이그레이션하는 작업입니다.', 120000.00, '2024-05-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL);
-INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00);
+INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL, NULL, NULL);
+INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00, NULL, NULL);
 INSERT INTO public.projects VALUES (7, '2024-01-08 01:00:00+09', '레거시 시스템 개선', 'in_progress', '오래된 시스템을 현대화하는 프로젝트입니다.', 180000.00, '2024-12-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL);
+INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL, NULL, NULL);
 
 
 --
@@ -1754,6 +1760,13 @@ SELECT pg_catalog.setval('public.departments_id_seq', 55, true);
 
 
 --
+-- Name: documents_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.documents_id_seq', 1, false);
+
+
+--
 -- Name: employees_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -1771,7 +1784,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 49, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 50, true);
 
 
 --
@@ -2032,29 +2045,8 @@ ALTER TABLE ONLY public.projects__employees
 
 
 --
--- Name: documents_content_embedding_hnsw_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX documents_content_embedding_hnsw_idx ON public.documents USING hnsw (content_embedding public.vector_cosine_ops) WITH (m = 16, ef_construction = 64);
-
-
---
--- Name: documents_content_embedding_openai_hnsw_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX documents_content_embedding_openai_hnsw_idx ON public.documents USING hnsw (content_embedding_openai public.vector_cosine_ops) WITH (m = 16, ef_construction = 64);
-
-
---
--- Name: documents_content_tsv_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX documents_content_tsv_idx ON public.documents USING gin (content_tsv);
-
-
---
 -- PostgreSQL database dump complete
 --
 
-\unrestrict yIJpVu2Y4kIz6Jd8qmka1w7TrCnTL1CYtRFsyAEcNCqgzwONlReE9xxHofphq7f
+\unrestrict R5HxWgIvlsK9wnaEfb98dHM4RM7xhGYxXiO7d1rJ0J93Gs3myhADlcMxsVDwmKB
 
