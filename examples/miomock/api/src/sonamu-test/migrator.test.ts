@@ -280,9 +280,7 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.raw(
-            \`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST) NULLS DISTINCT;\`,
-          );
+          await knex.raw(\`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST);\`);
           await knex.raw(
             \`CREATE UNIQUE INDEX departments_company_id_unique ON departments (company_id ASC NULLS LAST) NULLS DISTINCT;\`,
           );
@@ -344,7 +342,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST) NULLS DISTINCT;\`,
+            \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST);\`,
           );
         }
 
@@ -380,7 +378,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST) NULLS DISTINCT;\`,
+            \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST);\`,
           );
         }
 
@@ -456,7 +454,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST) NULLS DISTINCT;\`,
+            \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST);\`,
           );
         }
 

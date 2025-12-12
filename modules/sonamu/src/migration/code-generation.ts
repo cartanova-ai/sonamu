@@ -222,9 +222,9 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   };
 
   const nullsNotDistinctClause =
-    index.type === "unique" && index.nullsNotDistinct === undefined
-      ? ""
-      : ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`;
+    index.type === "unique" && index.nullsNotDistinct !== undefined
+      ? ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`
+      : "";
 
   return `await knex.raw(
   \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} (${index.columns
