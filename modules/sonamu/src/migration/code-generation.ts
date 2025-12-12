@@ -222,7 +222,7 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   };
 
   const nullsNotDistinctClause =
-    index.nullsNotDistinct === undefined
+    index.type === "unique" && index.nullsNotDistinct === undefined
       ? ""
       : ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`;
 
