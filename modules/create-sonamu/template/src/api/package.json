@@ -18,11 +18,11 @@
     "seed": "bash database/scripts/seed.sh"
   },
   "dependencies": {
-    "@sonamu-kit/ui": "^0.7.3",
+    "@sonamu-kit/ui": "^0.7.5",
     "@swc/core": "^1.13.5",
     "fastify": "^4",
     "knex": "^3.1.0",
-    "sonamu": "^0.7.4",
+    "sonamu": "^0.7.5",
     "zod": "^4.1.12",
     "dotenv": "^17.2.2"
   },
