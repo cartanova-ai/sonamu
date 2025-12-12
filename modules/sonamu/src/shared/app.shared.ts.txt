@@ -1,0 +1,469 @@
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: shared */
+/** biome-ignore-all lint/suspicious/noExplicitAny: shared */
+
+/*
+  fetch
+*/
+import type { AxiosRequestConfig } from "axios";
+import axios from "axios";
+import qs from "qs";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert } from "react-native";
+import EventSource from "react-native-sse";
+import { type core, z } from "zod";
+
+// AbortSignal.timeout polyfill for React Native
+if (typeof AbortSignal !== "undefined" && !AbortSignal.timeout) {
+  AbortSignal.timeout = (ms: number): AbortSignal => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), ms);
+    return controller.signal;
+  };
+}
+
+// ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
+function dateReviver(_key: string, value: any): any {
+  if (typeof value === "string") {
+    // ISO 8601 형식: 2024-01-15T09:30:00.000Z 또는 2024-01-15T09:30:00+09:00
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})?$/;
+
+    // SQL Datetime 형식 (타임존 포함): 2024-01-15 09:30:00+09:00
+    const datetimeWithTimezoneRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+
+    // SQL Datetime 형식 (타임존 없음): 2024-01-15 09:30:00
+    const datetimeRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+    if (
+      (isoRegex.test(value) ||
+        datetimeWithTimezoneRegex.test(value) ||
+        datetimeRegex.test(value)) &&
+      new Date(value).toString() !== "Invalid Date"
+    ) {
+      return new Date(value);
+    }
+  }
+  return value;
+}
+
+// Date 객체를 SQL date 문자열로 변환하는 함수 (날짜만)
+function convertDateToDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Date 객체를 SQL datetime 문자열로 변환하는 함수 (날짜+시간)
+function convertDateToString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+}
+
+// 날짜만 필요한 필드들 (시간 제외)
+const DATE_ONLY_FIELDS = ["birth_date", "test_performed_at", "specimen_collection_at"];
+
+// 객체를 재귀적으로 순회하면서 Date를 문자열로 변환
+function convertDatesToStrings(obj: any, parentKey?: string): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (obj instanceof Date) {
+    // 날짜만 필요한 필드인지 확인
+    if (parentKey && DATE_ONLY_FIELDS.includes(parentKey)) {
+      return convertDateToDateString(obj);
+    }
+    return convertDateToString(obj);
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => convertDatesToStrings(item, parentKey));
+  }
+
+  if (typeof obj === "object") {
+    const result: any = {};
+    for (const key in obj) {
+      if (Object.hasOwn(obj, key)) {
+        result[key] = convertDatesToStrings(obj[key], key);
+      }
+    }
+    return result;
+  }
+
+  return obj;
+}
+
+axios.defaults.transformResponse = [
+  (data) => {
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data, dateReviver);
+      } catch (_e) {
+        return data;
+      }
+    }
+    return data;
+  },
+];
+
+// Request interceptor: Date 객체를 SQL datetime 문자열로 변환
+axios.interceptors.request.use(
+  (config) => {
+    // FormData는 변환하지 않음 (파일 업로드용)
+    if (config.data && !(config.data instanceof FormData)) {
+      config.data = convertDatesToStrings(config.data);
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
+export async function fetch(options: AxiosRequestConfig) {
+  try {
+    const res = await axios({
+      ...options,
+    });
+    return res.data;
+  } catch (e: unknown) {
+    if (axios.isAxiosError(e) && e.response && e.response.data) {
+      const d = e.response.data as {
+        message: string;
+        issues: core.$ZodIssue[];
+      };
+      throw new SonamuError(e.response.status, d.message, d.issues);
+    }
+    throw e;
+  }
+}
+
+export class SonamuError extends Error {
+  isSonamuError: boolean;
+
+  constructor(
+    public code: number,
+    public message: string,
+    public issues: z.ZodIssue[],
+  ) {
+    super(message);
+    this.isSonamuError = true;
+  }
+}
+export function isSonamuError(e: any): e is SonamuError {
+  return e && e.isSonamuError === true;
+}
+
+export function defaultCatch(e: any) {
+  if (isSonamuError(e)) {
+    console.log(e);
+    Alert.alert(e.message);
+  } else {
+    Alert.alert("에러 발생");
+  }
+}
+
+/*
+  Isomorphic Types
+*/
+export type ListResult<T> = {
+  rows: T[];
+  total?: number;
+};
+export const SonamuQueryMode = z.enum(["both", "list", "count"]);
+export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
+
+/*
+  SWR
+*/
+export type SwrOptions = {
+  conditional?: () => boolean;
+};
+export type SWRError = {
+  name: string;
+  message: string;
+  statusCode: number;
+};
+export async function swrFetcher(args: [string, object]): Promise<any> {
+  try {
+    const [url, params] = args;
+    const res = await axios.get(`${url}?${qs.stringify(params)}`);
+    return res.data;
+  } catch (e: any) {
+    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
+    error.statusCode = e.response?.data.statusCode ?? e.response.status;
+    throw error;
+  }
+}
+export async function swrPostFetcher(args: [string, object]): Promise<any> {
+  try {
+    const [url, params] = args;
+    const res = await axios.post(url, params);
+    return res.data;
+  } catch (e: any) {
+    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
+    error.statusCode = e.response?.data.statusCode ?? e.response.status;
+    throw error;
+  }
+}
+export function handleConditional(
+  args: [string, object],
+  conditional?: () => boolean,
+): [string, object] | null {
+  if (conditional) {
+    return conditional() ? args : null;
+  }
+  return args;
+}
+
+/*
+  Utils
+*/
+export function zArrayable<T extends z.ZodTypeAny>(shape: T) {
+  return z.union([shape, shape.array()]);
+}
+
+/*
+  Custom Scalars
+*/
+export const SQLDateTimeString = z
+  .string()
+  .regex(/([0-9]{4}-[0-9]{2}-[0-9]{2}( [0-9]{2}:[0-9]{2}:[0-9]{2})*)$/, {
+    message: "잘못된 SQLDate 타입",
+  })
+  .min(10)
+  .max(19)
+  .describe("SQLDateTimeString");
+export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
+
+/*
+  Stream
+*/
+export type SSEStreamOptions = {
+  enabled?: boolean;
+  retry?: number;
+  retryInterval?: number;
+};
+
+export type SSEStreamState = {
+  isConnected: boolean;
+  error: string | null;
+  retryCount: number;
+  isEnded: boolean;
+};
+
+export type EventHandlers<T> = {
+  [K in keyof T as K extends "end" ? never : K]?: (data: T[K]) => void;
+} & (T extends { end?: any } ? { end?: () => void } : {});
+
+export function useSSEStream<T extends Record<string, any>>(
+  url: string,
+  params: Record<string, any>,
+  handlers: {
+    [K in keyof T]?: (data: T[K]) => void;
+  } & { end?: () => void },
+  options: SSEStreamOptions = {},
+): SSEStreamState {
+  const { enabled = true, retry = 3, retryInterval = 3000 } = options;
+
+  const [state, setState] = useState<SSEStreamState>({
+    isConnected: false,
+    error: null,
+    retryCount: 0,
+    isEnded: false,
+  });
+
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handlersRef = useRef(handlers);
+  const currentRetryCount = useRef(0);
+
+  // handlers를 ref로 관리해서 재연결 없이 업데이트
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
+
+  // 연결 함수
+  const connect = useCallback(() => {
+    if (!enabled) return;
+
+    try {
+      // 기존 연결이 있으면 정리
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+
+      // 재시도 타이머 정리
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+
+      // URL에 파라미터 추가 - 절대 URL로 변환
+      const queryString = qs.stringify(params);
+      const baseUrl = url.startsWith("http") ? url : `https://dev.amrintl.com${url}`;
+      const fullUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+
+      const eventSource = new EventSource(fullUrl);
+      eventSourceRef.current = eventSource;
+
+      // 연결 시도 중 상태 표시
+      setState((prev) => ({
+        ...prev,
+        isConnected: false,
+        error: null,
+        isEnded: false,
+        retryCount: currentRetryCount.current,
+      }));
+
+      // 연결 성공 이벤트
+      eventSource.addEventListener("open", () => {
+        console.log("✅ SSE 연결 성공");
+        currentRetryCount.current = 0;
+        setState((prev) => ({
+          ...prev,
+          isConnected: true,
+          error: null,
+          retryCount: 0,
+          isEnded: false,
+        }));
+      });
+
+      // 연결 에러 이벤트
+      eventSource.addEventListener("error", (event: any) => {
+        console.log("❌ SSE 연결 에러:", event);
+
+        // 이미 다른 연결로 교체되었는지 확인
+        if (eventSourceRef.current !== eventSource) {
+          return;
+        }
+
+        setState((prev) => ({
+          ...prev,
+          isConnected: false,
+          error: "Connection failed",
+          isEnded: false,
+        }));
+
+        // 자동 재연결 시도
+        if (currentRetryCount.current < retry) {
+          currentRetryCount.current += 1;
+          retryTimeoutRef.current = setTimeout(() => {
+            if (eventSourceRef.current === eventSource) {
+              setState((prev) => ({
+                ...prev,
+                retryCount: currentRetryCount.current,
+                isEnded: false,
+              }));
+              connect();
+            }
+          }, retryInterval);
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: `Connection failed after ${retry} attempts`,
+          }));
+        }
+      });
+
+      // 각 이벤트 타입별 리스너 등록
+      Object.keys(handlersRef.current).forEach((eventType) => {
+        if (eventType === "end") return; // end는 별도 처리
+
+        const handler = handlersRef.current[eventType as keyof T];
+        if (handler) {
+          (eventSource as any).addEventListener(eventType, (event: any) => {
+            // console.log(`SSE 이벤트 수신 [${eventType}]:`, event.data);
+
+            // 여전히 현재 연결인지 확인
+            if (eventSourceRef.current !== eventSource) {
+              return;
+            }
+
+            try {
+              const data = JSON.parse(event.data, dateReviver);
+              handler(data);
+            } catch (error) {
+              console.error(`Failed to parse SSE data for event ${eventType}:`, error);
+            }
+
+            setState((prev) => ({
+              ...prev,
+              isEnded: false,
+            }));
+          });
+        }
+      });
+
+      // 공통 'end' 이벤트 처리
+      (eventSource as any).addEventListener("end", () => {
+        console.log("SSE 연결 정상종료");
+        if (eventSourceRef.current === eventSource) {
+          eventSource.close();
+          eventSourceRef.current = null;
+          setState((prev) => ({
+            ...prev,
+            isConnected: false,
+            error: null,
+            isEnded: true,
+          }));
+
+          if (handlersRef.current.end) {
+            handlersRef.current.end();
+          }
+        }
+      });
+    } catch (error) {
+      console.error("SSE 연결 중 오류:", error);
+      setState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Unknown error",
+        isConnected: false,
+        isEnded: false,
+      }));
+    }
+  }, [url, JSON.stringify(params), enabled, retry, retryInterval]);
+
+  // 연결 시작 및 정리
+  useEffect(() => {
+    if (enabled) {
+      connect();
+    } else {
+      // 연결 해제
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      setState((prev) => ({
+        ...prev,
+        isConnected: false,
+        error: null,
+        isEnded: true,
+      }));
+    }
+
+    return () => {
+      // cleanup
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
+  }, [connect]);
+
+  return state;
+}
