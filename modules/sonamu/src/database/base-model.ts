@@ -3,9 +3,20 @@
 import type { Knex } from "knex";
 import { group, isObject, omit, set } from "radashi";
 import { Sonamu } from "../api";
+import { EntityManager } from "../entity/entity-manager";
 import type { DatabaseSchemaExtend } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
+import type {
+  EmbeddingItem,
+  EmbeddingProvider,
+  HybridSearchOptions,
+  HybridSearchResult,
+  ProgressCallback,
+  VectorSearchOptions,
+  VectorSearchResult,
+} from "../vector/types";
+import { VectorSearch } from "../vector/vector-search";
 import type {
   EnhancerMap,
   ExecuteSubsetQueryResult,
@@ -58,7 +69,119 @@ export class BaseModelClass<
     return new PuriWrapper(db, new UpsertBuilder());
   }
 
+  // VectorSearch 인스턴스 캐시
+  // biome-ignore lint/suspicious/noExplicitAny: 제네릭 타입은 호출 시점에 결정됨
+  private _vectorSearch: VectorSearch<any> | null = null;
+
+  /**
+   * 벡터 검색 인스턴스 반환
+   * - 기본 provider: voyage
+   * - 기본 dimensions: 1024 (DEFAULT_VECTOR_CONFIG 사용)
+   */
+  getVector<T = Record<string, unknown>>(): VectorSearch<T> {
+    if (this._vectorSearch) {
+      return this._vectorSearch as VectorSearch<T>;
+    }
+
+    const entity = EntityManager.get(this.modelName);
+
+    this._vectorSearch = new VectorSearch<T>(this.getDB("w"), entity.table);
+
+    return this._vectorSearch as VectorSearch<T>;
+  }
+
+  /**
+   * 벡터 검색 (코사인 유사도)
+   * @param query - 검색어
+   * @param options - 검색 옵션
+   */
+  async vectorSearch<T = Record<string, unknown>>(
+    query: string,
+    options: VectorSearchOptions & { provider?: EmbeddingProvider } = {},
+  ): Promise<VectorSearchResult<T>[]> {
+    const entity = EntityManager.get(this.modelName);
+    const vectorProp = entity.getVectorColumn();
+    if (!vectorProp) {
+      throw new Error(`${this.modelName} Entity에 vector 컬럼이 정의되지 않았습니다.`);
+    }
+
+    const vs = new VectorSearch<T>(this.getDB("w"), entity.table);
+    return vs.search(query, options.provider ?? "voyage", {
+      ...options,
+      embeddingColumn: options.embeddingColumn ?? vectorProp.name,
+    });
+  }
+
+  /**
+   * 하이브리드 검색 (Vector + FTS)
+   * @param query - 검색어
+   * @param options - 검색 옵션
+   */
+  async hybridSearch<T = Record<string, unknown>>(
+    query: string,
+    options: HybridSearchOptions & { provider?: EmbeddingProvider } = {},
+  ): Promise<HybridSearchResult<T>[]> {
+    const entity = EntityManager.get(this.modelName);
+    const vectorProp = entity.getVectorColumn();
+    if (!vectorProp) {
+      throw new Error(`${this.modelName} Entity에 vector 컬럼이 정의되지 않았습니다.`);
+    }
+
+    const vs = new VectorSearch<T>(this.getDB("w"), entity.table);
+    return vs.hybridSearch(query, options.provider ?? "voyage", {
+      ...options,
+      embeddingColumn: options.embeddingColumn ?? vectorProp.name,
+    });
+  }
+
+  /**
+   * 단일 레코드에 임베딩 저장
+   * @param id - 레코드 ID
+   * @param text - 임베딩할 텍스트
+   * @param options - provider, embeddingColumn 옵션
+   */
+  async saveEmbedding(
+    id: number,
+    text: string,
+    options: { provider?: EmbeddingProvider; embeddingColumn?: string } = {},
+  ): Promise<void> {
+    const entity = EntityManager.get(this.modelName);
+    const vectorProp = entity.getVectorColumn(options.embeddingColumn);
+    if (!vectorProp) {
+      throw new Error(`${this.modelName} Entity에 vector 컬럼이 정의되지 않았습니다.`);
+    }
+
+    const { provider = "voyage" } = options;
+    const vs = this.getVector();
+    return vs.saveEmbedding(id, text, provider, vectorProp.name);
+  }
+
+  /**
+   * 여러 레코드에 임베딩 일괄 저장
+   * @param items - { id, text } 배열
+   * @param options - provider, embeddingColumn, onProgress 옵션
+   */
+  async saveEmbeddingsBatch(
+    items: EmbeddingItem[],
+    options: {
+      provider?: EmbeddingProvider;
+      embeddingColumn?: string;
+      onProgress?: ProgressCallback;
+    } = {},
+  ): Promise<void> {
+    const entity = EntityManager.get(this.modelName);
+    const vectorProp = entity.getVectorColumn(options.embeddingColumn);
+    if (!vectorProp) {
+      throw new Error(`${this.modelName} Entity에 vector 컬럼이 정의되지 않았습니다.`);
+    }
+
+    const { provider = "voyage", onProgress } = options;
+    const vs = this.getVector();
+    return vs.saveEmbeddingsBatch(items, provider, vectorProp.name, onProgress);
+  }
+
   async destroy() {
+    this._vectorSearch = null;
     return DB.destroy();
   }
 

@@ -720,6 +720,25 @@ export class Entity {
       .filter(nonNullable);
   }
 
+  /**
+   * Entity에 정의된 모든 vector 타입 컬럼 반환
+   */
+  getVectorColumns(): EntityProp[] {
+    return this.props.filter((p) => p.type === "vector");
+  }
+
+  /**
+   * 특정 vector 컬럼 반환
+   * @param columnName - 컬럼명 (생략 시 첫 번째 vector 컬럼)
+   */
+  getVectorColumn(columnName?: string): EntityProp | undefined {
+    const vectorProps = this.getVectorColumns();
+    if (columnName) {
+      return vectorProps.find((p) => p.name === columnName);
+    }
+    return vectorProps[0];
+  }
+
   async registerModulePaths() {
     const basePath = `${this.names.parentFs}`;
 
