@@ -42,8 +42,7 @@ jobs:
           sudo apt-get install -y postgresql-16-pgvector
           sudo systemctl start postgresql.service
           sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'miomock123';"
-          sudo -u postgres psql -c "CREATE DATABASE miomock;"
-          PGPASSWORD=miomock123 psql -U postgres -d miomock -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
+          PGPASSWORD=miomock123 psql -U postgres -d template1 -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
 
       # sonamu.lock 지우고 sync가 잘 되는지 봅니다.
       - name: Miomock sync test
