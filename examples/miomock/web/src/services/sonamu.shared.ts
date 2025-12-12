@@ -7,7 +7,7 @@
 import type { AxiosRequestConfig } from "axios";
 import axios from "axios";
 import qs from "qs";
-import { type ZodIssue, z } from "zod";
+import { type core, z } from "zod";
 
 // ISO 8601 및 타임존 포맷의 날짜 문자열을 Date 객체로 변환하는 reviver
 function dateReviver(_key: string, value: any): any {
@@ -51,7 +51,7 @@ export async function fetch(options: AxiosRequestConfig) {
     if (axios.isAxiosError(e) && e.response && e.response.data) {
       const d = e.response.data as {
         message: string;
-        issues: ZodIssue[];
+        issues: core.$ZodIssue[];
       };
       throw new SonamuError(e.response.status, d.message, d.issues);
     }
@@ -196,7 +196,7 @@ export function useSSEStream<T extends Record<string, any>>(
   });
 
   const eventSourceRef = useRef<EventSource | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handlersRef = useRef(handlers);
 
   // handlers를 ref로 관리해서 재연결 없이 업데이트
