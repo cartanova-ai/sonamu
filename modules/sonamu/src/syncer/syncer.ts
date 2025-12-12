@@ -2,6 +2,7 @@ import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
 import chalk from "chalk";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import inflection from "inflection";
 import { minimatch } from "minimatch";
 import path, { dirname } from "path";
 import { group, unique } from "radashi";
@@ -321,12 +322,13 @@ export class Syncer {
           namesRecord: EntityManager.getNamesFromId(entityId),
         };
       }
-      if (modelPath.endsWith(".frame.js") || modelPath.endsWith(".frame.ts")) {
-        const [, frameName] = modelPath.match(/.+\/(.+)\.frame\.(js|ts)$/) ?? [];
-        console.log(modelPath, "->", frameName);
+      if (modelPath.endsWith(".frame.ts")) {
+        const [, frameName] = modelPath.match(/.+\/(.+)\.frame\.ts$/) ?? [];
         assert(frameName);
+        // frameName을 PascalCase로 변환 (dashboard -> Dashboard)
+        const frameId = inflection.camelize(frameName);
         return {
-          namesRecord: EntityManager.getNamesFromId(frameName),
+          namesRecord: EntityManager.getNamesFromId(frameId),
         };
       }
       throw new Error("not reachable");
