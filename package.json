@@ -15,7 +15,9 @@
     "build": "run-s 'build:tools' 'build:lib' 'build:miomock'",
     "publish-those-not-published-yet": "tsx scripts/publish.ts",
     "format": "biome format --write",
-    "check": "biome check"
+    "check": "biome check",
+    "verify:clean": "tsx scripts/verify.ts clean",
+    "verify:fast": "tsx scripts/verify.ts fast"
   },
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
