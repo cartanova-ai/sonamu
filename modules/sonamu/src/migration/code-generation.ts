@@ -226,8 +226,10 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
       ? ` NULLS ${index.nullsNotDistinct ? "NOT DISTINCT" : "DISTINCT"}`
       : "";
 
+  const usingClause = index.using === undefined ? "" : `USING ${index.using}`;
+
   return `await knex.raw(
-  \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} (${index.columns
+  \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} ${usingClause}(${index.columns
     .map((col) => {
       const sortOrderClause = col.sortOrder === undefined ? "" : ` ${col.sortOrder}`;
       const nullsFirstClause =
