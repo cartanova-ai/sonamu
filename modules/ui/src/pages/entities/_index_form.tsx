@@ -16,7 +16,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
   // TypeForm
   const { form, setForm, register, addError } = useTypeForm(
     z.object({
-      type: z.enum(["index", "unique", "fulltext", "hnsw", "ivfflat"]),
+      type: z.enum(["index", "unique", "hnsw", "ivfflat"]),
       columns: z.array(
         z.object({
           name: z.string(),
@@ -25,7 +25,6 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
         }),
       ),
       name: z.string().min(1).max(63),
-      parser: z.enum(["built-in", "ngram"]).optional(),
       nullsNotDistinct: z.boolean().optional(),
     }),
     {
@@ -45,7 +44,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
       isInitialMount.current = false;
       return;
     }
-    setForm({ ...form, columns: [], parser: undefined });
+    setForm({ ...form, columns: [] });
   }, [form.type]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onKeyDown 함수는 컴포넌트가 마운트될 때만 등록되어야 함
@@ -102,13 +101,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     doneModal(form);
   };
 
-  const typeOptions = ["index", "unique", "fulltext", "hnsw", "ivfflat"].map((k) => ({
-    key: k,
-    value: k,
-    text: k.toUpperCase(),
-  }));
-
-  const parserOptions = ["built-in", "ngram"].map((k) => ({
+  const typeOptions = ["index", "unique", "hnsw", "ivfflat"].map((k) => ({
     key: k,
     value: k,
     text: k.toUpperCase(),
@@ -172,19 +165,6 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                   className="focus-0"
                 />
               </Form.Field>
-              {form.type === "fulltext" && (
-                <Form.Field>
-                  <label>Parser</label>
-                  <Dropdown
-                    {...register("parser")}
-                    search
-                    selection
-                    fluid
-                    options={parserOptions}
-                    className="focus-2"
-                  />
-                </Form.Field>
-              )}
               {form.type === "unique" && (
                 <Form.Field>
                   <label>Nulls Not Distinct</label>
@@ -219,7 +199,6 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                     setForm({ ...form, columns: newColumns });
                   }}
                   entityId={entityId}
-                  allowedTypes={form.type === "fulltext" ? ["string", "text"] : undefined}
                   className="focus-2"
                   placeholder="Columns"
                 />
@@ -236,64 +215,62 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                       </div>
 
                       <div className="column-controls">
-                        {form.type !== "fulltext" && (
-                          <div className="sort-controls">
-                            <Dropdown
-                              clearable
-                              selection
-                              className="tiny"
-                              placeholder="Sort"
-                              value={col.sortOrder}
-                              options={[
-                                {
-                                  key: "asc",
-                                  value: "ASC",
-                                  text: "ASC",
-                                },
-                                {
-                                  key: "desc",
-                                  value: "DESC",
-                                  text: "DESC",
-                                },
-                              ]}
-                              onChange={(_, { value }) => {
-                                const newColumns = [...form.columns];
-                                if (value === "") {
-                                  delete newColumns[idx].sortOrder;
-                                } else {
-                                  newColumns[idx] = {
-                                    ...newColumns[idx],
-                                    sortOrder: value as "ASC" | "DESC",
-                                  };
-                                }
-                                setForm({ ...form, columns: newColumns });
-                              }}
-                            />
-                            <Dropdown
-                              clearable
-                              selection
-                              className="tiny"
-                              placeholder="Nulls"
-                              value={col.nullsFirst}
-                              options={[
-                                { key: "first", value: true, text: "NULLS FIRST" },
-                                { key: "last", value: false, text: "NULLS LAST" },
-                              ]}
-                              onChange={(_, { value }) => {
-                                const newColumns = [...form.columns];
-                                if (value === "") {
-                                  delete newColumns[idx].nullsFirst;
-                                } else {
-                                  newColumns[idx] = {
-                                    ...newColumns[idx],
-                                    nullsFirst: value as boolean,
-                                  };
-                                }
-                                setForm({ ...form, columns: newColumns });
-                              }}
-                            />
-                          </div>
-                        )}
+                        <div className="sort-controls">
+                          <Dropdown
+                            clearable
+                            selection
+                            className="tiny"
+                            placeholder="Sort"
+                            value={col.sortOrder}
+                            options={[
+                              {
+                                key: "asc",
+                                value: "ASC",
+                                text: "ASC",
+                              },
+                              {
+                                key: "desc",
+                                value: "DESC",
+                                text: "DESC",
+                              },
+                            ]}
+                            onChange={(_, { value }) => {
+                              const newColumns = [...form.columns];
+                              if (value === "") {
+                                delete newColumns[idx].sortOrder;
+                              } else {
+                                newColumns[idx] = {
+                                  ...newColumns[idx],
+                                  sortOrder: value as "ASC" | "DESC",
+                                };
+                              }
+                              setForm({ ...form, columns: newColumns });
+                            }}
+                          />
+                          <Dropdown
+                            clearable
+                            selection
+                            className="tiny"
+                            placeholder="Nulls"
+                            value={col.nullsFirst}
+                            options={[
+                              { key: "first", value: true, text: "NULLS FIRST" },
+                              { key: "last", value: false, text: "NULLS LAST" },
+                            ]}
+                            onChange={(_, { value }) => {
+                              const newColumns = [...form.columns];
+                              if (value === "") {
+                                delete newColumns[idx].nullsFirst;
+                              } else {
+                                newColumns[idx] = {
+                                  ...newColumns[idx],
+                                  nullsFirst: value as boolean,
+                                };
+                              }
+                              setForm({ ...form, columns: newColumns });
+                            }}
+                          />
+                        </div>
 
                         {form.columns.length > 1 && (
                           <Button.Group size="tiny" basic>

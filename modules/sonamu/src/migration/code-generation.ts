@@ -1,5 +1,5 @@
 import equal from "fast-deep-equal";
-import { alphabetical, diff, omit } from "radashi";
+import { alphabetical, diff } from "radashi";
 import { Naite } from "..";
 import type {
   GenMigrationCode,
@@ -218,7 +218,6 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
 
   const methodMap = {
     index: "INDEX",
-    fulltext: "INDEX",
     unique: "UNIQUE INDEX",
   };
 
@@ -958,10 +957,7 @@ export async function generateAlterCode(
     entityColumns.map(normalizeColumnForComparison),
     dbColumns.map(normalizeColumnForComparison),
   );
-  const isEqualIndexes = equal(
-    entityIndexes.map((index) => omit(index, ["parser"])).map(setMigrationIndexDefaults),
-    dbIndexes,
-  );
+  const isEqualIndexes = equal(entityIndexes.map(setMigrationIndexDefaults), dbIndexes);
   if (!isEqualColumns || !isEqualIndexes) {
     alterCodes.push(
       await generateAlterCode_ColumnAndIndexes(

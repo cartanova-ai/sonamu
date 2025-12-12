@@ -4,7 +4,7 @@ import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import { type EntityPropNode, isVirtualProp } from "../../types/types";
+import { type EntityIndex, type EntityPropNode, isVirtualProp } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
@@ -168,9 +168,8 @@ export class Template__generated extends Template {
     })();
 
     // fulltext index에 포함된 컬럼들 추출
-    const fulltextColumns = unique(
-      entity.indexes.filter((index) => index.type === "fulltext").flatMap((index) => index.columns),
-    );
+    // TODO: GIN/GiST 인덱스 생성된 컬럼 추출
+    const fulltextColumns: EntityIndex["columns"][] = [];
 
     // virtual props
     const virtualProps = entity.props

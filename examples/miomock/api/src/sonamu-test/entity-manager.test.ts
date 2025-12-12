@@ -528,7 +528,7 @@ describe("entityManager", () => {
 
         expect(errors?.issues).toHaveLength(1);
         expect(errors?.issues[0]?.message).toContain(
-          `Invalid option: expected one of "index"|"unique"|"fulltext"`,
+          `Invalid option: expected one of "index"|"unique"|"hnsw"|"ivfflat"`,
         );
         expect(errors?.issues[0]?.path).toEqual(["indexes", 0, "type"]);
       });
