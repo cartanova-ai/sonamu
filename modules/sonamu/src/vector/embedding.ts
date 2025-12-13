@@ -1,3 +1,6 @@
+import { createOpenAI, type OpenAIProvider } from "@ai-sdk/openai";
+import { type EmbeddingModel, embedMany } from "ai";
+import { VoyageAIClient } from "voyageai";
 import { Sonamu } from "../api/sonamu";
 import { DEFAULT_VECTOR_CONFIG } from "./config";
 import type {
@@ -10,7 +13,7 @@ import type {
 
 /**
  * 임베딩 클라이언트
- * Voyage AI와 OpenAI 임베딩을 통합 지원
+ * Voyage AI와 OpenAI 임베딩을 SDK 방식으로 통합 지원
  */
 export class Embedding {
   private config: VectorConfig;
@@ -23,6 +26,28 @@ export class Embedding {
       search: { ...DEFAULT_VECTOR_CONFIG.search, ...config.search },
       pgvector: { ...DEFAULT_VECTOR_CONFIG.pgvector, ...config.pgvector },
     };
+  }
+
+  /**
+   * Voyage AI 클라이언트 초기화
+   */
+  private getVoyageClient(): VoyageAIClient {
+    const apiKey = Sonamu.secrets?.voyage_api_key ?? process.env.VOYAGE_API_KEY;
+    if (!apiKey) {
+      throw new Error("VOYAGE_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.");
+    }
+    return new VoyageAIClient({ apiKey });
+  }
+
+  /**
+   * OpenAI provider 생성
+   */
+  private getOpenAIProvider(): OpenAIProvider {
+    const apiKey = Sonamu.secrets?.openai_api_key ?? process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.");
+    }
+    return createOpenAI({ apiKey });
   }
 
   /**
@@ -60,42 +85,24 @@ export class Embedding {
    */
   private async embedVoyage(
     texts: string[],
-    inputType: VectorInputType
+    inputType: VectorInputType,
   ): Promise<EmbeddingResult[]> {
+    const client = this.getVoyageClient();
     const voyageConfig = this.config.voyage;
 
-    // config에서 설정된 apiKey 우선, 없으면 Sonamu.secrets에서 로드
-    const apiKey = voyageConfig.apiKey || Sonamu.secrets?.voyage_api_key;
-    if (!apiKey) {
-      throw new Error(
-        "VOYAGE_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요."
-      );
-    }
-
-    const response = await fetch(voyageConfig.baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        input: texts,
-        model: voyageConfig.model,
-        input_type: inputType,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Voyage API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-
-    return data.data.map((item: { embedding: number[] }) => ({
-      embedding: item.embedding,
+    const response = await client.embed({
+      input: texts,
       model: voyageConfig.model,
-      tokenCount: data.usage?.total_tokens || 0,
+      inputType: inputType,
+    });
+    if (!response.data) {
+      throw new Error("Voyage API: 응답 데이터가 없습니다.");
+    }
+
+    return response.data.map((item) => ({
+      embedding: item.embedding ?? [],
+      model: voyageConfig.model,
+      tokenCount: response.usage?.totalTokens ?? 0,
     }));
   }
 
@@ -103,39 +110,19 @@ export class Embedding {
    * OpenAI 임베딩
    */
   private async embedOpenAI(texts: string[]): Promise<EmbeddingResult[]> {
+    const openai = this.getOpenAIProvider();
     const openaiConfig = this.config.openai;
+    const model = openai.embeddingModel(openaiConfig.model);
 
-    // config에서 설정된 apiKey 우선, 없으면 Sonamu.secrets에서 로드
-    const apiKey = openaiConfig.apiKey || Sonamu.secrets?.openai_api_key;
-    if (!apiKey) {
-      throw new Error(
-        "OPENAI_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요."
-      );
-    }
-
-    const response = await fetch(openaiConfig.baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        input: texts,
-        model: openaiConfig.model,
-      }),
+    const { embeddings, usage } = await embedMany({
+      model: model as EmbeddingModel,
+      values: texts,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-
-    return data.data.map((item: { embedding: number[] }) => ({
-      embedding: item.embedding,
+    return embeddings.map((embedding) => ({
+      embedding,
       model: openaiConfig.model,
-      tokenCount: data.usage?.total_tokens || 0,
+      tokenCount: usage?.tokens ?? 0,
     }));
   }
 
