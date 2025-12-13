@@ -380,6 +380,56 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/document/findById
+	?subset=unknown
+	&id=0
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/document/findMany
+	?subset=unknown
+	&rawParams[num]=24
+	&rawParams[page]=1
+	&rawParams[search]=id
+	&rawParams[keyword]=KEYWORD
+	&rawParams[orderBy]=id-desc
+	&rawParams[queryMode]=both
+	&rawParams[id]=0
+Content-Type: application/json
+
+###
+
+POST {{baseUrl}}/api/document/save
+Content-Type: application/json
+
+{
+  "spa": [
+    {
+      "id": 0,
+      "created_at": "2000-01-01",
+      "title": "TITLE",
+      "content": null,
+      "status": "draft",
+      "content_embedding": null,
+      "content_embedding_openai": null
+    }
+  ]
+}
+
+###
+
+POST {{baseUrl}}/api/document/del
+Content-Type: application/json
+
+{
+  "ids": [
+    0
+  ]
+}
+
+###
+
 GET {{baseUrl}}/api/department/findById
 	?subset=unknown
 	&id=0
