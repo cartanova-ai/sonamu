@@ -13,7 +13,7 @@ export const DEFAULT_VECTOR_CONFIG: VectorConfig = {
     model: "voyage-3",
     dimensions: 1024,
     maxTokens: 32000,
-    batchSize: 100,
+    batchSize: 128,
   },
 
   // OpenAI 설정
@@ -55,9 +55,7 @@ export const DEFAULT_VECTOR_CONFIG: VectorConfig = {
  * 설정 생성 헬퍼 함수
  * 부분 설정만 제공하면 나머지는 기본값 사용
  */
-export function createVectorConfig(
-  overrides: Partial<VectorConfig> = {}
-): VectorConfig {
+export function createVectorConfig(overrides: Partial<VectorConfig> = {}): VectorConfig {
   return {
     voyage: { ...DEFAULT_VECTOR_CONFIG.voyage, ...overrides.voyage },
     openai: { ...DEFAULT_VECTOR_CONFIG.openai, ...overrides.openai },

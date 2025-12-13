@@ -214,7 +214,7 @@ describe("vector.test.ts", () => {
     test("Voyage AI 기본 설정이 올바라야 한다", () => {
       expect(DEFAULT_VECTOR_CONFIG.voyage.model).toBe("voyage-3");
       expect(DEFAULT_VECTOR_CONFIG.voyage.dimensions).toBe(1024);
-      expect(DEFAULT_VECTOR_CONFIG.voyage.batchSize).toBe(100);
+      expect(DEFAULT_VECTOR_CONFIG.voyage.batchSize).toBe(128);
       expect(DEFAULT_VECTOR_CONFIG.voyage.maxTokens).toBe(32000);
     });
 
