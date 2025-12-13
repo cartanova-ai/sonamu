@@ -106,7 +106,7 @@ describe("vector.test.ts", () => {
 
     test.skip("배치 임베딩 생성 (API 키 필요)", async () => {
       const texts = ["첫 번째 텍스트", "두 번째 텍스트", "세 번째 텍스트"];
-      const results = await embedding.embedBatch(texts, "voyage", "document");
+      const results = await embedding.embed(texts, "voyage", "document");
 
       expect(results).toHaveLength(3);
       results.forEach((result) => {
@@ -167,7 +167,9 @@ describe("vector.test.ts", () => {
         with_embedding: "80",
       });
       // count().count().first() 체인 구조
-      const mockCount = vi.fn().mockReturnValue({ count: vi.fn().mockReturnValue({ first: mockFirst }) });
+      const mockCount = vi
+        .fn()
+        .mockReturnValue({ count: vi.fn().mockReturnValue({ first: mockFirst }) });
       const mockDbFn = vi.fn().mockReturnValue({ count: mockCount });
 
       const db = mockDbFn as unknown as Knex;

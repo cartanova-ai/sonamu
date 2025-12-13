@@ -52,20 +52,40 @@ export class Embedding {
 
   /**
    * 텍스트 임베딩 생성
-   * @param texts - 임베딩할 텍스트 배열
+   * @param texts - 임베딩할 텍스트 배열 (batchSize이상 시 자동 분할)
    * @param provider - 'voyage' | 'openai'
    * @param inputType - 'document' | 'query' (Voyage AI만 해당)
+   * @param onProgress - 진행률 콜백
    */
   async embed(
     texts: string[],
     provider: EmbeddingProvider,
-    inputType: VectorInputType = "document"
+    inputType: VectorInputType = "document",
+    onProgress?: ProgressCallback,
   ): Promise<EmbeddingResult[]> {
-    if (provider === "voyage") {
-      return this.embedVoyage(texts, inputType);
-    } else {
-      return this.embedOpenAI(texts);
+    const maxBatchSize =
+      provider === "voyage" ? this.config.voyage.batchSize : this.config.openai.batchSize;
+
+    // batchSize이하면 바로 호출
+    if (texts.length <= maxBatchSize) {
+      return provider === "voyage"
+        ? await this.embedVoyage(texts, inputType)
+        : await this.embedOpenAI(texts);
     }
+
+    // batchSize이상이면 자동으로 나눠서 처리
+    const batches = Array.from({ length: Math.ceil(texts.length / maxBatchSize) }, (_, i) =>
+      texts.slice(i * maxBatchSize, (i + 1) * maxBatchSize),
+    );
+
+    const results = await Promise.all(
+      batches.map((batch) =>
+        provider === "voyage" ? this.embedVoyage(batch, inputType) : this.embedOpenAI(batch),
+      ),
+    );
+
+    onProgress?.(texts.length, texts.length);
+    return results.flat();
   }
 
   /**
@@ -74,7 +94,7 @@ export class Embedding {
   async embedOne(
     text: string,
     provider: EmbeddingProvider,
-    inputType: VectorInputType = "document"
+    inputType: VectorInputType = "document",
   ): Promise<EmbeddingResult> {
     const results = await this.embed([text], provider, inputType);
     return results[0];
@@ -127,38 +147,6 @@ export class Embedding {
   }
 
   /**
-   * 배치 임베딩 (대량 처리)
-   */
-  async embedBatch(
-    texts: string[],
-    provider: EmbeddingProvider,
-    inputType: VectorInputType = "document",
-    onProgress?: ProgressCallback
-  ): Promise<EmbeddingResult[]> {
-    const batchSize =
-      provider === "voyage"
-        ? this.config.voyage.batchSize
-        : this.config.openai.batchSize;
-
-    const results: EmbeddingResult[] = [];
-
-    for (let i = 0; i < texts.length; i += batchSize) {
-      const batch = texts.slice(i, i + batchSize);
-      const batchResults = await this.embed(batch, provider, inputType);
-      results.push(...batchResults);
-
-      onProgress?.(Math.min(i + batchSize, texts.length), texts.length);
-
-      // Rate limiting (100ms between batches)
-      if (i + batchSize < texts.length) {
-        await this.delay(100);
-      }
-    }
-
-    return results;
-  }
-
-  /**
    * 벡터를 PostgreSQL vector 타입 문자열로 변환
    */
   static toVectorString(embedding: number[]): string {
@@ -169,12 +157,6 @@ export class Embedding {
    * 임베딩 provider의 차원 수 반환
    */
   getDimensions(provider: EmbeddingProvider): number {
-    return provider === "voyage"
-      ? this.config.voyage.dimensions
-      : this.config.openai.dimensions;
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return provider === "voyage" ? this.config.voyage.dimensions : this.config.openai.dimensions;
   }
 }

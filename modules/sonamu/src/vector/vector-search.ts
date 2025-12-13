@@ -64,7 +64,7 @@ export class VectorSearch<T = Record<string, unknown>> {
     onProgress?: ProgressCallback,
   ): Promise<void> {
     const texts = items.map((item) => item.text);
-    const embeddings = await this.embedding.embedBatch(texts, provider, "document", onProgress);
+    const embeddings = await this.embedding.embed(texts, provider, "document", onProgress);
 
     await this.db.transaction(async (trx) => {
       for (let i = 0; i < items.length; i++) {
