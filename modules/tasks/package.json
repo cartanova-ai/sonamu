@@ -27,10 +27,10 @@
   "dependencies": {
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
+    "inflection": "^3.0.2",
     "knex": "^3.1.0",
     "node-cron": "^4.2.1",
     "pg": "^8.16.3",
-    "pg-listen": "^1.7.0",
     "rou3": "^0.7.10",
     "uuid": "^13.0.0",
     "zod": "^4.1.12"
@@ -41,6 +41,7 @@
     "@swc/core": "^1.15.3",
     "@types/node": "^24.9.2",
     "nodemon": "^3.1.10",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.10"
   },

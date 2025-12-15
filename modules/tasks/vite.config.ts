@@ -5,9 +5,11 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     exclude: ["src/**/*.test-hold.ts", "**/node_modules/**", "**/.yarn/**", "**/dist/**"],
-    pool: "forks",
-    maxWorkers: 2,
-    isolate: true,
-    restoreMocks: true,
+    maxWorkers: 4,
+    maxConcurrency: 3,
+    setupFiles: ["src/testing/vitest-setup.ts"],
+  },
+  resolve: {
+    extensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".cjs", ".mts", ".cts"],
   },
 });
