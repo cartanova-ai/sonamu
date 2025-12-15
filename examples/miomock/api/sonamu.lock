@@ -28,6 +28,10 @@
     "checksum": "82a5dd17f7a7403ff4a40e5841754acee2f10010"
   },
   {
+    "path": "src/application/document/document.model.ts",
+    "checksum": "d0ad9c1f466c68f46f16f604c345bd6e3b70e5f8"
+  },
+  {
     "path": "src/application/document/document.types.ts",
     "checksum": "1f99edeabf0c6a8d8be8f310161e512350e3ef3e"
   },

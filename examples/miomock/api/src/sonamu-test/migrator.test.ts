@@ -280,9 +280,11 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.raw(\`CREATE INDEX departments_name_index ON departments (name ASC NULLS LAST);\`);
           await knex.raw(
-            \`CREATE UNIQUE INDEX departments_company_id_unique ON departments (company_id ASC NULLS LAST) NULLS DISTINCT;\`,
+            \`CREATE INDEX departments_name_index ON departments USING btree(name ASC NULLS LAST);\`,
+          );
+          await knex.raw(
+            \`CREATE UNIQUE INDEX departments_company_id_unique ON departments USING btree(company_id ASC NULLS LAST) NULLS DISTINCT;\`,
           );
         }
 
@@ -316,7 +318,7 @@ describe("Migrator test", () => {
 
       // down
       expect(preparedCodes?.formatted).toContain(
-        "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+        "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS LAST) NULLS DISTINCT;",
       );
     });
 
@@ -365,7 +367,9 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
-          await knex.raw(\`CREATE INDEX users_birth_date_index ON users (birth_date ASC NULLS LAST);\`);
+          await knex.raw(
+            \`CREATE INDEX users_birth_date_index ON users USING btree(birth_date ASC NULLS LAST);\`,
+          );
           await knex.raw(\`CREATE INDEX users_email_index ON users USING btree(email ASC NULLS LAST);\`);
           await knex.raw(\`CREATE INDEX users_username_index ON users USING hash(username);\`);
           await knex.raw(\`CREATE INDEX users_role_index ON users USING gin(role);\`);
@@ -408,7 +412,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_name_desc_index ON departments (name DESC NULLS FIRST);\`,
+            \`CREATE INDEX departments_name_desc_index ON departments USING btree(name DESC NULLS FIRST);\`,
           );
         }
 
@@ -444,7 +448,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_name_nulls_first_index ON departments (name ASC NULLS FIRST);\`,
+            \`CREATE INDEX departments_name_nulls_first_index ON departments USING btree(name ASC NULLS FIRST);\`,
           );
         }
 
@@ -481,7 +485,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE UNIQUE INDEX departments_name_unique ON departments (name ASC NULLS LAST) NULLS NOT DISTINCT;\`,
+            \`CREATE UNIQUE INDEX departments_name_unique ON departments USING btree(name ASC NULLS LAST) NULLS NOT DISTINCT;\`,
           );
         }
 
@@ -520,7 +524,7 @@ describe("Migrator test", () => {
 
         export async function up(knex: Knex): Promise<void> {
           await knex.raw(
-            \`CREATE INDEX departments_company_name_composite_index ON departments (company_id ASC NULLS LAST, name DESC NULLS FIRST);\`,
+            \`CREATE INDEX departments_company_name_composite_index ON departments USING btree(company_id ASC NULLS LAST, name DESC NULLS FIRST);\`,
           );
         }
 
@@ -557,12 +561,12 @@ describe("Migrator test", () => {
         // up: 기존 인덱스 삭제 후 새 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email DESC NULLS FIRST) NULLS DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email DESC NULLS FIRST) NULLS DISTINCT;",
         );
 
         // down: 변경된 인덱스 삭제 후 원래 인덱스 복원
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS LAST) NULLS DISTINCT;",
         );
       });
 
@@ -588,12 +592,12 @@ describe("Migrator test", () => {
         // up: 기존 인덱스 삭제 후 NULLS NOT DISTINCT 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS NOT DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS LAST) NULLS NOT DISTINCT;",
         );
 
         // down: 변경된 인덱스 삭제 후 원래 인덱스 복원
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS LAST) NULLS DISTINCT;",
         );
       });
 
@@ -618,12 +622,12 @@ describe("Migrator test", () => {
         // up: 기존 인덱스 삭제 후 NULLS FIRST 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS FIRST) NULLS DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS FIRST) NULLS DISTINCT;",
         );
 
         // down: 원래 인덱스 복원 (NULLS LAST)
         expect(alterCode?.formatted).toContain(
-          "CREATE UNIQUE INDEX users_email_unique ON users (email ASC NULLS LAST) NULLS DISTINCT;",
+          "CREATE UNIQUE INDEX users_email_unique ON users USING btree(email ASC NULLS LAST) NULLS DISTINCT;",
         );
       });
     });
