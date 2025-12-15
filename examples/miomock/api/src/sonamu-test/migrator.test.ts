@@ -320,6 +320,72 @@ describe("Migrator test", () => {
       );
     });
 
+    test("인덱스 옵션 - using", async () => {
+      mockEntityManagerGet("User", (original) => ({
+        ...original,
+        indexes: [
+          ...original.indexes,
+          {
+            type: "index",
+            columns: [{ name: "birth_date" }],
+            name: "users_birth_date_index",
+          },
+          {
+            type: "index",
+            columns: [{ name: "email" }],
+            name: "users_email_index",
+            using: "btree",
+          },
+          {
+            type: "index",
+            columns: [{ name: "username" }],
+            name: "users_username_index",
+            using: "hash",
+          },
+          {
+            type: "index",
+            columns: [{ name: "role" }],
+            name: "users_role_index",
+            using: "gin",
+          },
+          {
+            type: "index",
+            columns: [{ name: "bio" }],
+            name: "users_bio_index",
+            using: "gist",
+          },
+        ],
+      }));
+      const status = await migrator.getStatus();
+
+      const alterCode = status.preparedCodes.find((code) => code.table === "users");
+      expect(alterCode).toBeDefined();
+      expect(alterCode?.formatted).toMatchInlineSnapshot(
+        `
+        "import type { Knex } from "knex";
+
+        export async function up(knex: Knex): Promise<void> {
+          await knex.raw(\`CREATE INDEX users_birth_date_index ON users (birth_date ASC NULLS LAST);\`);
+          await knex.raw(\`CREATE INDEX users_email_index ON users USING btree(email ASC NULLS LAST);\`);
+          await knex.raw(\`CREATE INDEX users_username_index ON users USING hash(username);\`);
+          await knex.raw(\`CREATE INDEX users_role_index ON users USING gin(role);\`);
+          await knex.raw(\`CREATE INDEX users_bio_index ON users USING gist(bio);\`);
+        }
+
+        export async function down(knex: Knex): Promise<void> {
+          await knex.schema.alterTable("users", (table) => {
+            table.dropIndex(["birth_date"], "users_birth_date_index");
+            table.dropIndex(["email"], "users_email_index");
+            table.dropIndex(["username"], "users_username_index");
+            table.dropIndex(["role"], "users_role_index");
+            table.dropIndex(["bio"], "users_bio_index");
+          });
+        }
+        "
+      `,
+      );
+    });
+
     test("인덱스 옵션 - sortOrder DESC", async () => {
       mockEntityManagerGet("Department", (original) => ({
         ...original,
