@@ -148,6 +148,7 @@ class PostgreSQLSchemaReaderClass {
           sortOrder: idx.sort_order,
         })),
         nullsNotDistinct: firstIndex.nulls_not_distinct,
+        using: firstIndex.index_type as "btree" | "hash" | "gin" | "gist" | undefined,
       };
     });
 

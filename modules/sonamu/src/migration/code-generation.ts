@@ -747,6 +747,7 @@ function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
       nullsFirst: col.nullsFirst ?? col.sortOrder === "DESC",
     })),
     nullsNotDistinct: index.nullsNotDistinct ?? false,
+    using: index.using ?? "btree",
   };
 }
 
@@ -964,7 +965,10 @@ export async function generateAlterCode(
     entityColumns.map(normalizeColumnForComparison),
     dbColumns.map(normalizeColumnForComparison),
   );
-  const isEqualIndexes = equal(entityIndexes.map(setMigrationIndexDefaults), dbIndexes);
+  const isEqualIndexes = equal(
+    entityIndexes.map(setMigrationIndexDefaults),
+    dbIndexes.map(setMigrationIndexDefaults),
+  );
   if (!isEqualColumns || !isEqualIndexes) {
     alterCodes.push(
       await generateAlterCode_ColumnAndIndexes(
