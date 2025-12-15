@@ -113,6 +113,9 @@ export type VectorArrayProp = CommonProp & {
   type: "vector[]";
   dimensions: number;
 };
+export type TsVectorProp = CommonProp & {
+  type: "tsvector";
+};
 export type RelationType = "HasMany" | "BelongsToOne" | "ManyToMany" | "OneToOne";
 export type RelationOn = "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT" | "RESTRICT";
 type _RelationProp = {
@@ -185,6 +188,7 @@ export type EntityProp =
   | VirtualProp
   | VectorProp
   | VectorArrayProp
+  | TsVectorProp
   | RelationProp;
 
 /**
@@ -842,6 +846,7 @@ const BasePropFieldsWithoutAdditional = z
       z.literal("date[]"),
       z.literal("uuid"),
       z.literal("uuid[]"),
+      z.literal("tsvector"),
     ]),
   })
   .strict();
@@ -1038,6 +1043,7 @@ const NormalPropTypes = [
   "virtual",
   "vector",
   "vector[]",
+  "tsvector",
 ] as const;
 
 // VIRTUAL Generated Column에서 사용 불가능한 타입들

@@ -80,6 +80,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     "vector[]",
     "virtual",
     "relation",
+    "tsvector",
   ].map((type) => ({
     key: type,
     value: type,

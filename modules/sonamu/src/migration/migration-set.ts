@@ -232,6 +232,8 @@ function resolveEntityPropTypeToMigrationColumnType(prop: EntityProp): Migration
       return "vector";
     case "vector[]":
       return "vector[]";
+    case "tsvector":
+      return "tsvector";
     default:
       exhaustive(prop);
       throw new Error(`Unknown entity prop type: ${(prop as { type: string }).type}`);
