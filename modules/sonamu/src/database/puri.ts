@@ -472,6 +472,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  // WHERE RAW
+  whereRaw(sql: string, bindings?: readonly unknown[]): this {
+    this.knexQuery.whereRaw(sql, bindings);
+    return this;
+  }
+
   // WHERE 괄호 그룹핑
   whereGroup(callback: (g: WhereGroup<TTables>) => void): this {
     this.knexQuery.where((builder) => {
