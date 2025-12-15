@@ -111,7 +111,6 @@ export namespace ProjectService {
 
   export async function search(
     search: string,
-    func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
   ): Promise<
     {
       name: string;
@@ -122,7 +121,7 @@ export namespace ProjectService {
   > {
     return fetch({
       method: "GET",
-      url: `/api/project/search?${qs.stringify({ search, func })}`,
+      url: `/api/project/search?${qs.stringify({ search })}`,
     });
   }
 }

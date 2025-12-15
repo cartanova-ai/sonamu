@@ -233,10 +233,7 @@ class ProjectModelClass extends BaseModelClass<
    * FTS 테스트용 API
    */
   @api({ httpMethod: "GET" })
-  async search(
-    search: string,
-    func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
-  ): Promise<
+  async search(search: string): Promise<
     {
       name: string;
       description: string | null;
@@ -246,17 +243,15 @@ class ProjectModelClass extends BaseModelClass<
   > {
     const rows = await this.getPuri("w")
       .table("projects")
-      .whereSearch(Puri.rawString("to_tsvector('simple', name)"), search)
-      // .whereSearch("textsearchable_index_col", search)
+      .whereSearch("textsearchable_index_col", search)
       .select({
         name: "projects.name",
         description: "projects.description",
-        name_highlight: Puri.rawString(
-          `ts_headline('simple', projects.name, ${func}('simple', '${search}'), 'StartSel=<b>, StopSel=</b>')`,
-        ),
-        description_highlight: Puri.rawString(
-          `ts_headline('simple', projects.description, ${func}('simple', '${search}'), 'StartSel=<b>, StopSel=</b>')`,
-        ),
+        name_highlight: Puri.highlight("projects.name", search, {
+          startSel: "<mark>",
+          stopSel: "</mark>",
+        }),
+        description_highlight: Puri.highlight("projects.description", search),
       })
       .debug();
 

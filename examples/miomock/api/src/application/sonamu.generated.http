@@ -269,7 +269,6 @@ Content-Type: application/json
 
 GET {{baseUrl}}/api/project/search
 	?search=SEARCH
-	&func=to_tsquery
 Content-Type: application/json
 
 ###
