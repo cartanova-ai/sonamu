@@ -376,3 +376,26 @@ export type TsQueryOptions = {
   parser?: TsQueryParser;
   config?: TsQueryConfig;
 };
+
+export type HighlightOptions = {
+  /** 쿼리 변환 함수 (기본값: "websearch_to_tsquery") */
+  parser?: TsQueryParser;
+  /** 텍스트 검색 설정 (기본값: "simple") */
+  config?: TsQueryConfig;
+  /** 최대 단어 수 (기본값: 35) */
+  maxWords?: number;
+  /** 최소 단어 수 (기본값: 15) */
+  minWords?: number;
+  /** 헤드라인 시작/끝에서 제거할 짧은 단어 길이 (기본값: 3) */
+  shortWord?: number;
+  /** true면 전체 문서를 헤드라인으로 사용 (기본값: false) */
+  highlightAll?: boolean;
+  /** 표시할 최대 텍스트 조각 수 (기본값: 0, 조각 미사용) */
+  maxFragments?: number;
+  /** 쿼리 단어 시작 구분자 (기본값: "<b>") */
+  startSel?: string;
+  /** 쿼리 단어 끝 구분자 (기본값: "</b>") */
+  stopSel?: string;
+  /** 조각 구분자 (기본값: " ... ") */
+  fragmentDelimiter?: string;
+};
