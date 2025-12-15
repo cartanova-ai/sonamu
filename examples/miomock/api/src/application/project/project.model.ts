@@ -246,7 +246,8 @@ class ProjectModelClass extends BaseModelClass<
   > {
     const rows = await this.getPuri("w")
       .table("projects")
-      .whereSearch("textsearchable_index_col", search)
+      .whereSearch(Puri.rawString("to_tsvector('simple', name)"), search)
+      // .whereSearch("textsearchable_index_col", search)
       .select({
         name: "projects.name",
         description: "projects.description",
