@@ -64,7 +64,7 @@ class DocumentModelClass extends BaseModelClass<
       search: "id" as const,
       orderBy: "id-desc" as const,
       ...rawParams,
-    };
+    } satisfies DocumentListParams;
 
     // build queries
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);

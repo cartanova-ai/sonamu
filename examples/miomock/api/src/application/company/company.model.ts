@@ -72,7 +72,7 @@ class CompanyModelClass extends BaseModelClass<
       search: "id" as const,
       orderBy: "id-desc" as const,
       ...rawParams,
-    };
+    } satisfies CompanyListParams;
 
     // build queries
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);

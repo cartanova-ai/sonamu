@@ -377,6 +377,9 @@ describe("Syncer", () => {
         expect(writeFile.data).toContain("BaseModelClass");
         // import 문이 포함되어 있는지 확인
         expect(writeFile.data).toContain("import");
+
+        // findMany 기본 파라미터 적용시 satisfies 적용되어 있는지 확인
+        expect(writeFile.data).toContain("satisfies SyncFixtureListParams");
       }
     });
 
