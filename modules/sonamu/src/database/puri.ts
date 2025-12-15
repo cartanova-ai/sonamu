@@ -27,6 +27,7 @@ import type {
   SqlExpression,
   TsQueryConfig,
   TsQueryOptions,
+  VectorColumns,
   WhereCondition,
   WhereOperator,
 } from "./puri.types";
@@ -611,8 +612,8 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    * });
    * ```
    */
-  vectorSimilarity<TAs extends string = "similarity">(
-    column: AvailableColumns<TTables> & string,
+  vectorSimilarity<TAs extends string>(
+    column: VectorColumns<TTables>,
     embedding: number[],
     options: {
       method?: "cosine" | "l2" | "inner_product";
