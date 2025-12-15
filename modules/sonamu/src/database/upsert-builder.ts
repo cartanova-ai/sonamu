@@ -6,13 +6,16 @@ import { Naite } from "../naite/naite";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend, EntityIndex } from "../types/types";
 import { assertDefined, chunk, nonNullable } from "../utils/utils";
 import { batchUpdate, type RowWithId } from "./_batch_update";
-import type { ForeignKeyColumns, TableName } from "./puri.types";
+import type { ColumnKeys, ForeignKeyColumns, TableName } from "./puri.types";
 
 /**
  * FK 타입 추론을 위해 DatabaseForeignKeys export
  * (module augmentation 자동 로드 보장)
  */
 export type { DatabaseForeignKeys };
+
+type InheritableColumns<TTable extends TableName<DatabaseSchemaExtend>> =
+  TTable extends keyof DatabaseSchemaExtend ? ColumnKeys<DatabaseSchemaExtend[TTable]> : never;
 
 // 테이블 데이터 타입
 type TableData = {
@@ -33,6 +36,7 @@ export type UBRef = {
 export type UpsertOptions<TTable extends TableName<DatabaseSchemaExtend>> = {
   chunkSize?: number;
   cleanOrphans?: ForeignKeyColumns<TTable> | ForeignKeyColumns<TTable>[];
+  inherit?: InheritableColumns<TTable>[];
 };
 
 // insertOnly 옵션
@@ -289,16 +293,30 @@ export class UpsertBuilder {
           resultRows = await wdb.insert(dataForDb).into(tableName).returning(selectFields);
         } else {
           // UPSERT 모드 - onConflict 사용 (unique index 없으면 PK fallback)
-          const conflictColumns =
-            table.uniqueIndexes.length > 0
-              ? table.uniqueIndexes[0].columns.map((c) => c.name)
-              : ["id"];
-          const updateColumns = Object.keys(dataForDb[0]).filter(
-            (col) => !conflictColumns.includes(col),
-          );
+          const conflictColumns = table.uniqueIndexes[0]?.columns.map((c) => c.name) ?? ["id"];
+
+          const allColumns = Object.keys(dataForDb[0]);
+          let updateColumns = allColumns.filter((c) => !conflictColumns.includes(c));
+
+          // inherit 옵션 처리 - inherit 컬럼은 update 대상에서 제외
+          if (options?.inherit?.length) {
+            const inheritColumns = options.inherit as string[];
+
+            const excludedFromUpdate = updateColumns.filter((c) => inheritColumns.includes(c));
+            updateColumns = updateColumns.filter((c) => !inheritColumns.includes(c));
+
+            // 실제로 제외된 컬럼 로깅
+            if (excludedFromUpdate.length) {
+              Naite.t("puri:ub-inherit", {
+                tableName,
+                inheritColumns,
+                excludedFromUpdate,
+              });
+            }
+          }
 
           // updateColumns가 비어있어도 merge()를 사용하여 모든 행이 RETURNING되도록 보장
-          const mergeColumns = updateColumns.length > 0 ? updateColumns : conflictColumns;
+          const mergeColumns = updateColumns.length ? updateColumns : conflictColumns;
 
           resultRows = await wdb
             .insert(dataForDb)
