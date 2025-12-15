@@ -65,9 +65,25 @@
       "desc": "virtual prop test",
       "type": "virtual",
       "id": "NumberType"
+    },
+    {
+      "name": "textsearchable_index_col",
+      "type": "tsvector",
+      "desc": "FTS 테스트용",
+      "generated": {
+        "type": "STORED",
+        "expression": "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))"
+      }
     }
   ],
-  "indexes": [],
+  "indexes": [
+    {
+      "type": "index",
+      "name": "projects_textsearchable_index_col_index",
+      "columns": [{ "name": "textsearchable_index_col" }],
+      "using": "gin"
+    }
+  ],
   "subsets": {
     "A": [
       "id",

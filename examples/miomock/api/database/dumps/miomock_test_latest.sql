@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict R5HxWgIvlsK9wnaEfb98dHM4RM7xhGYxXiO7d1rJ0J93Gs3myhADlcMxsVDwmKB
+\restrict p5Q5P596QScMm3Jfbt4mBaVaBa85KeUnbXVfctZevJm1SvH5oHwAp22dc8CCNOh
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -304,7 +304,8 @@ CREATE TABLE public.projects (
     description text,
     budget numeric(12,2),
     deadline timestamp with time zone,
-    image_urls text[]
+    image_urls text[],
+    textsearchable_index_col tsvector GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, (((COALESCE(name, ''::character varying))::text || ' '::text) || COALESCE(description, ''::text)))) STORED NOT NULL
 );
 
 
@@ -637,6 +638,8 @@ INSERT INTO public.knex_migrations VALUES (41, '20251209160752_foreign__projects
 INSERT INTO public.knex_migrations VALUES (42, '20251209160753_foreign__project_tags__project_id_tag_id.ts', 1, '2025-12-09 16:25:57.224+09');
 INSERT INTO public.knex_migrations VALUES (49, '20251211150026_alter_departments_add1.ts', 2, '2025-12-11 16:01:46.752+09');
 INSERT INTO public.knex_migrations VALUES (50, '20251211183902_create__documents.ts', 3, '2025-12-12 16:59:32.064+09');
+INSERT INTO public.knex_migrations VALUES (53, '20251215123723_alter_projects_add1.ts', 4, '2025-12-15 12:37:28.231+09');
+INSERT INTO public.knex_migrations VALUES (54, '20251215123829_alter_projects.ts', 5, '2025-12-15 12:38:33.09+09');
 
 
 --
@@ -671,14 +674,14 @@ INSERT INTO public.project_tags VALUES (15, 7, 6);
 -- Data for Name: projects; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.projects VALUES (1, '2024-01-01 01:00:00+09', '웹 애플리케이션 리뉴얼', 'in_progress', '기존 웹사이트를 최신 기술스택으로 리뉴얼하는 프로젝트입니다.', 150000.00, '2024-06-30 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (2, '2024-01-02 01:00:00+09', '모바일 앱 개발', 'planning', '새로운 모바일 서비스를 위한 앱 개발 프로젝트입니다.', 200000.00, '2024-08-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (3, '2023-11-01 01:00:00+09', '데이터 분석 시스템', 'completed', '고객 데이터 분석을 위한 대시보드 시스템 구축 프로젝트입니다.', 80000.00, '2024-03-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (4, '2024-01-03 01:00:00+09', 'API 서버 마이그레이션', 'in_progress', '레거시 API 서버를 클라우드로 마이그레이션하는 작업입니다.', 120000.00, '2024-05-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL, NULL, NULL);
-INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00, NULL, NULL);
-INSERT INTO public.projects VALUES (7, '2024-01-08 01:00:00+09', '레거시 시스템 개선', 'in_progress', '오래된 시스템을 현대화하는 프로젝트입니다.', 180000.00, '2024-12-31 23:59:59+09', NULL);
-INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL, NULL, NULL);
+INSERT INTO public.projects VALUES (1, '2024-01-01 01:00:00+09', '웹 애플리케이션 리뉴얼', 'in_progress', '기존 웹사이트를 최신 기술스택으로 리뉴얼하는 프로젝트입니다.', 150000.00, '2024-06-30 23:59:59+09', NULL, DEFAULT);
+INSERT INTO public.projects VALUES (2, '2024-01-02 01:00:00+09', '모바일 앱 개발', 'planning', '새로운 모바일 서비스를 위한 앱 개발 프로젝트입니다.', 200000.00, '2024-08-31 23:59:59+09', NULL, DEFAULT);
+INSERT INTO public.projects VALUES (3, '2023-11-01 01:00:00+09', '데이터 분석 시스템', 'completed', '고객 데이터 분석을 위한 대시보드 시스템 구축 프로젝트입니다.', 80000.00, '2024-03-31 23:59:59+09', NULL, DEFAULT);
+INSERT INTO public.projects VALUES (4, '2024-01-03 01:00:00+09', 'API 서버 마이그레이션', 'in_progress', '레거시 API 서버를 클라우드로 마이그레이션하는 작업입니다.', 120000.00, '2024-05-31 23:59:59+09', NULL, DEFAULT);
+INSERT INTO public.projects VALUES (5, '2024-01-05 01:00:00+09', 'UI/UX 개선', 'planning', '사용자 경험 향상을 위한 인터페이스 개선 프로젝트입니다.', NULL, NULL, NULL, DEFAULT);
+INSERT INTO public.projects VALUES (6, '2023-12-01 01:00:00+09', '보안 강화', 'cancelled', '시스템 보안성 강화를 위한 프로젝트였으나 우선순위 변경으로 취소되었습니다.', 50000.00, NULL, NULL, DEFAULT);
+INSERT INTO public.projects VALUES (7, '2024-01-08 01:00:00+09', '레거시 시스템 개선', 'in_progress', '오래된 시스템을 현대화하는 프로젝트입니다.', 180000.00, '2024-12-31 23:59:59+09', NULL, DEFAULT);
+INSERT INTO public.projects VALUES (8, '2023-10-01 01:00:00+09', '내부 도구 개발', 'completed', '직원들의 생산성 향상을 위한 내부 도구입니다.', NULL, NULL, NULL, DEFAULT);
 
 
 --
@@ -1784,7 +1787,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 50, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 54, true);
 
 
 --
@@ -1981,6 +1984,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: projects_textsearchable_index_col_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX projects_textsearchable_index_col_index ON public.projects USING gin (textsearchable_index_col);
+
+
+--
 -- Name: departments departments_company_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2048,5 +2058,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict R5HxWgIvlsK9wnaEfb98dHM4RM7xhGYxXiO7d1rJ0J93Gs3myhADlcMxsVDwmKB
+\unrestrict p5Q5P596QScMm3Jfbt4mBaVaBa85KeUnbXVfctZevJm1SvH5oHwAp22dc8CCNOh
 

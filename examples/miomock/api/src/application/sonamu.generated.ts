@@ -217,6 +217,7 @@ export const ProjectBaseSchema = z.object({
   // tags: ManyToMany Tag
   image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
+  // unable to resolve
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];
@@ -230,6 +231,7 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
     "virtual_test",
     "id",
   ];
+  readonly __generated__: readonly ["textsearchable_index_col"];
 };
 
 // BaseSchema: SyncFixture
