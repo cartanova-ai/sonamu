@@ -70,7 +70,6 @@ export class BaseModelClass<
   }
 
   // VectorSearch 인스턴스 캐시
-  // biome-ignore lint/suspicious/noExplicitAny: 제네릭 타입은 호출 시점에 결정됨
   private _vectorSearch: VectorSearch<any> | null = null;
 
   /**
@@ -281,8 +280,8 @@ export class BaseModelClass<
       subset: T;
       qb: Puri<any, any, any>;
       params: {
-        num?: number;
-        page?: number;
+        num: number;
+        page: number;
         queryMode?: "list" | "count" | "both";
       };
       debug?: boolean;
@@ -293,10 +292,6 @@ export class BaseModelClass<
 
     if (!this.loaderQueries) {
       throw new Error("loaderQueries is not defined");
-    }
-
-    if (!queryParams.num || !queryParams.page) {
-      throw new Error("num and page are required");
     }
 
     const { num, page } = queryParams;
@@ -376,7 +371,14 @@ export class BaseModelClass<
       return [];
     }
 
-    let unloadedRows = (await qb.limit(num).offset(num * (page - 1))) as any[];
+    const limitedQb = (() => {
+      if (num === 0) {
+        return qb;
+      } else {
+        return qb.limit(num).offset(num * (page - 1));
+      }
+    })();
+    let unloadedRows = (await limitedQb) as any[];
 
     if (debug) {
       qb.debug();

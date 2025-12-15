@@ -121,7 +121,6 @@ class UserModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
-      debug: true,
     });
   }
 
@@ -272,20 +271,6 @@ class UserModelClass extends BaseModelClass<
     `);
 
     console.log(trxStates);
-  }
-
-  async testNaite(): Promise<void> {
-    // 동일한 이름으로 여러번 로깅시 (number)
-    Naite.t("testArray", 1);
-    Naite.t("testArray", 2);
-    Naite.t("testArray", 3);
-
-    // 동일한 이름으로 여러번 로깅시 (object)
-    Naite.t("testObjectArray", { a: 1, b: 2 });
-    Naite.t("testObjectArray", { a: 3, b: 4 });
-
-    // 메소드 자체는 에러 상황
-    throw new Error("Not implemented yet.");
   }
 }
 
