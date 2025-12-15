@@ -18,12 +18,12 @@ export async function up(knex: Knex): Promise<void> {
     table.text("parent_step_attempt_namespace_id");
     table.text("parent_step_attempt_id");
     table.text("worker_id");
-    table.timestamp("available_at");
-    table.timestamp("deadline_at");
-    table.timestamp("started_at");
-    table.timestamp("finished_at");
-    table.timestamp("created_at").notNullable();
-    table.timestamp("updated_at").notNullable();
+    table.timestamp("available_at", { useTz: true, precision: 3 });
+    table.timestamp("deadline_at", { useTz: true, precision: 3 });
+    table.timestamp("started_at", { useTz: true, precision: 3 });
+    table.timestamp("finished_at", { useTz: true, precision: 3 });
+    table.timestamp("created_at", { useTz: true, precision: 3 }).notNullable();
+    table.timestamp("updated_at", { useTz: true, precision: 3 }).notNullable();
     table.primary(["namespace_id", "id"]);
   });
 
@@ -40,10 +40,10 @@ export async function up(knex: Knex): Promise<void> {
     table.jsonb("error");
     table.text("child_workflow_run_namespace_id");
     table.text("child_workflow_run_id");
-    table.timestamp("started_at");
-    table.timestamp("finished_at");
-    table.timestamp("created_at").notNullable();
-    table.timestamp("updated_at").notNullable();
+    table.timestamp("started_at", { useTz: true, precision: 3 });
+    table.timestamp("finished_at", { useTz: true, precision: 3 });
+    table.timestamp("created_at", { useTz: true, precision: 3 }).notNullable();
+    table.timestamp("updated_at", { useTz: true, precision: 3 }).notNullable();
     table.primary(["namespace_id", "id"]);
   });
 }
