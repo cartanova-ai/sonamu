@@ -475,7 +475,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // WHERE FULLTEXT
-  whereSearch<TColumn extends AvailableColumns<TTables>>(
+  whereSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
     column: TColumn,
     value: string,
     options?: TsQueryOptions | TsQueryConfig,
@@ -485,8 +485,12 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
     const parser = opts.parser ?? "websearch_to_tsquery";
     const config = opts.config ?? "simple";
+    const columnExpr =
+      typeof column === "object" && column._type === "sql_expression"
+        ? column._sql
+        : String(column);
 
-    this.knexQuery.whereRaw(`${column} @@ ${parser}(?, ?)`, [config, value]);
+    this.knexQuery.whereRaw(`${columnExpr} @@ ${parser}(?, ?)`, [config, value]);
     return this;
   }
 
