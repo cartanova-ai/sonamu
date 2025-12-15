@@ -143,8 +143,8 @@ type JoinPath<Prefix extends string, Key extends string> = Prefix extends ""
 // Schema를 읽어서 FK의 nullability에 따라 join된 객체의 타입을 추론해주는 기능이 있습니다.
 // 이게 무슨 소리냐? FK가 nullable인데 leftJoin되었다면, 해당 객체는 nullable 해야 함을 타입 추론으로 반영해준다는 것입니다.
 // 반면 FK가 non-nullable이거나 그냥 join으로 이어졌다면 해당 객체는 non-nullable할 겁니다.
-// 물론 객체 내부의 nullability는 또 별개로 추론됩니다. 
-// 
+// 물론 객체 내부의 nullability는 또 별개로 추론됩니다.
+//
 // 아래에도 ParseSelectObjectWithPath를 비롯해 ExtractColumnType, ExtractColumnTypeRaw 등의 타입이 있습니다.
 // 이들의 역할은 다음과 같습니다:
 // - Parse*: 객체 레벨에서 중첩 구조를 순회하며 객체에 | null을 붙일지 결정합니다.
@@ -368,3 +368,11 @@ export type SelectAllResult<TTables extends Record<string, any>> = UnionToInters
       : never;
   }[keyof TTables]
 >;
+
+// FTS 타입
+type TsQueryParser = "to_tsquery" | "plainto_tsquery" | "phraseto_tsquery" | "websearch_to_tsquery";
+export type TsQueryConfig = "simple" | "english";
+export type TsQueryOptions = {
+  parser?: TsQueryParser;
+  config?: TsQueryConfig;
+};

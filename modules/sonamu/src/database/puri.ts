@@ -24,6 +24,8 @@ import type {
   SelectObject,
   SingleTableValue,
   SqlExpression,
+  TsQueryConfig,
+  TsQueryOptions,
   WhereCondition,
   WhereOperator,
 } from "./puri.types";
@@ -469,6 +471,22 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   // WHERE MATCH
   whereMatch<TColumn extends FulltextColumns<TTables>>(column: TColumn, value: string): this {
     this.knexQuery.whereRaw(`MATCH (${String(column)}) AGAINST (?)`, [value]);
+    return this;
+  }
+
+  // WHERE FULLTEXT
+  whereSearch<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn,
+    value: string,
+    options?: TsQueryOptions | TsQueryConfig,
+  ): this {
+    const opts =
+      typeof options === "string" ? ({ config: options } as TsQueryOptions) : (options ?? {});
+
+    const parser = opts.parser ?? "websearch_to_tsquery";
+    const config = opts.config ?? "simple";
+
+    this.knexQuery.whereRaw(`${column} @@ ${parser}(?, ?)`, [config, value]);
     return this;
   }
 
