@@ -114,10 +114,10 @@ export class BackendPostgres implements Backend {
         context: params.context,
         input: params.input,
         attempts: 0,
-        available_at: params.availableAt ?? new Date(),
+        available_at: params.availableAt ?? this.knex.fn.now(),
         deadline_at: params.deadlineAt,
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -174,14 +174,11 @@ export class BackendPostgres implements Backend {
       cursor = decodeCursor(before);
     }
 
-    const qb = this.buildListWorkflowRunsWhere(
-      params,
-      cursor,
-    )(this.knex.withSchema(DEFAULT_SCHEMA).table("workflow_runs"));
-    const rows = await (before
-      ? qb.orderBy("created_at", "desc").orderBy("id", "desc")
-      : qb.orderBy("created_at", "asc").orderBy("id", "asc")
-    ).limit(limit + 1);
+    const qb = this.buildListWorkflowRunsWhere(params, cursor);
+    const rows = await qb
+      .orderBy("created_at", before ? "desc" : "asc")
+      .orderBy("id", before ? "desc" : "asc")
+      .limit(limit + 1);
 
     return this.processPaginationResults(
       rows,
@@ -192,20 +189,21 @@ export class BackendPostgres implements Backend {
   }
 
   private buildListWorkflowRunsWhere(params: ListWorkflowRunsParams, cursor: Cursor | null) {
-    return (qb: Knex.QueryBuilder) => {
-      const { after } = params;
-      qb = qb.where("namespace_id", this.namespaceId);
+    const { after } = params;
+    const qb = this.knex
+      .withSchema(DEFAULT_SCHEMA)
+      .table("workflow_runs")
+      .where("namespace_id", this.namespaceId);
 
-      if (cursor) {
-        const operator = after ? ">" : "<";
-        return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
-          cursor.createdAt,
-          cursor.id,
-        ]);
-      }
+    if (cursor) {
+      const operator = after ? ">" : "<";
+      return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
+        cursor.createdAt.toISOString(),
+        cursor.id,
+      ]);
+    }
 
-      return qb;
-    };
+    return qb;
   }
 
   async claimWorkflowRun(params: ClaimWorkflowRunParams): Promise<WorkflowRun | null> {
@@ -274,7 +272,7 @@ export class BackendPostgres implements Backend {
       .where("worker_id", params.workerId)
       .update({
         available_at: this.knex.raw(`NOW() + ${params.leaseDurationMs} * INTERVAL '1 millisecond'`),
-        updated_at: new Date(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -298,7 +296,7 @@ export class BackendPostgres implements Backend {
         status: "sleeping",
         available_at: params.availableAt,
         worker_id: null,
-        updated_at: new Date(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -323,8 +321,8 @@ export class BackendPostgres implements Backend {
         error: null,
         worker_id: params.workerId,
         available_at: null,
-        finished_at: new Date(),
-        updated_at: new Date(),
+        finished_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -368,7 +366,7 @@ export class BackendPostgres implements Backend {
         error: JSON.stringify(error),
         worker_id: null,
         started_at: null,
-        updated_at: new Date(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -390,8 +388,8 @@ export class BackendPostgres implements Backend {
         status: "canceled",
         worker_id: null,
         available_at: null,
-        finished_at: new Date(),
-        updated_at: new Date(),
+        finished_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -424,7 +422,6 @@ export class BackendPostgres implements Backend {
   }
 
   async createStepAttempt(params: CreateStepAttemptParams): Promise<StepAttempt> {
-    const now = new Date();
     const [stepAttempt] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts")
@@ -437,9 +434,9 @@ export class BackendPostgres implements Backend {
         status: "running",
         config: JSON.stringify(params.config),
         context: JSON.stringify(params.context),
-        started_at: now,
-        created_at: now,
-        updated_at: now,
+        started_at: this.knex.fn.now(),
+        created_at: this.knex.raw("date_trunc('milliseconds', NOW())"),
+        updated_at: this.knex.fn.now(),
       })
       .returning("*");
 
@@ -472,14 +469,11 @@ export class BackendPostgres implements Backend {
       cursor = decodeCursor(before);
     }
 
-    const qb = this.buildListStepAttemptsQuery(
-      params,
-      cursor,
-    )(this.knex.withSchema(DEFAULT_SCHEMA).table("step_attempts"));
-    const rows = await (before
-      ? qb.orderBy("created_at", "desc").orderBy("id", "desc")
-      : qb.orderBy("created_at", "asc").orderBy("id", "asc")
-    ).limit(limit + 1);
+    const qb = this.buildListStepAttemptsWhere(params, cursor);
+    const rows = await qb
+      .orderBy("created_at", before ? "desc" : "asc")
+      .orderBy("id", before ? "desc" : "asc")
+      .limit(limit + 1);
 
     return this.processPaginationResults(
       rows,
@@ -489,20 +483,23 @@ export class BackendPostgres implements Backend {
     );
   }
 
-  private buildListStepAttemptsQuery(params: ListStepAttemptsParams, cursor: Cursor | null) {
-    return (qb: Knex.QueryBuilder) => {
-      const { after } = params;
-      qb = qb
-        .where("namespace_id", this.namespaceId)
-        .where("workflow_run_id", params.workflowRunId);
+  private buildListStepAttemptsWhere(params: ListStepAttemptsParams, cursor: Cursor | null) {
+    const { after } = params;
+    const qb = this.knex
+      .withSchema(DEFAULT_SCHEMA)
+      .table("step_attempts")
+      .where("namespace_id", this.namespaceId)
+      .where("workflow_run_id", params.workflowRunId);
 
-      if (cursor) {
-        const operator = after ? ">" : "<";
-        qb = qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [cursor.createdAt, cursor.id]);
-      }
+    if (cursor) {
+      const operator = after ? ">" : "<";
+      return qb.whereRaw(`("created_at", "id") ${operator} (?, ?)`, [
+        cursor.createdAt.toISOString(),
+        cursor.id,
+      ]);
+    }
 
-      return qb;
-    };
+    return qb;
   }
 
   private processPaginationResults<T extends Cursor>(
@@ -554,8 +551,8 @@ export class BackendPostgres implements Backend {
         status: "completed",
         output: JSON.stringify(params.output),
         error: null,
-        finished_at: new Date(),
-        updated_at: new Date(),
+        finished_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
       })
       .updateFrom(`${DEFAULT_SCHEMA}.workflow_runs as wr`)
       .where("sa.namespace_id", this.namespaceId)
@@ -583,8 +580,8 @@ export class BackendPostgres implements Backend {
         status: "failed",
         output: null,
         error: JSON.stringify(params.error),
-        finished_at: new Date(),
-        updated_at: new Date(),
+        finished_at: this.knex.fn.now(),
+        updated_at: this.knex.fn.now(),
       })
       .updateFrom(`${DEFAULT_SCHEMA}.workflow_runs as wr`)
       .where("sa.namespace_id", this.namespaceId)
@@ -617,9 +614,9 @@ interface Cursor {
 }
 
 function encodeCursor(item: Cursor): string {
-  const encoded = Buffer.from(JSON.stringify({ createdAt: item.createdAt, id: item.id })).toString(
-    "base64",
-  );
+  const encoded = Buffer.from(
+    JSON.stringify({ createdAt: item.createdAt.toISOString(), id: item.id }),
+  ).toString("base64");
   return encoded;
 }
 
