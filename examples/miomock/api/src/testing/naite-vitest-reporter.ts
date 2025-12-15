@@ -9,12 +9,12 @@ import type { Reporter } from "vitest/reporters";
  * - onTestRunEnd: 각 런 종료 시
  */
 const NaiteVitestReporter: Reporter = {
-  onTestRunStart() {
-    NaiteReporter.startTestRun();
+  async onTestRunStart() {
+    await NaiteReporter.startTestRun();
   },
 
-  onTestRunEnd() {
-    NaiteReporter.endTestRun();
+  async onTestRunEnd() {
+    await NaiteReporter.endTestRun();
   },
 };
 

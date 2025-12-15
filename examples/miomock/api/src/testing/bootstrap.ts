@@ -22,7 +22,7 @@ export function bootstrap(vi: VitestUtils) {
     vi.useRealTimers();
     await DB.clearTestTransaction();
 
-    NaiteReporter.reportTestResult({
+    await NaiteReporter.reportTestResult({
       suiteName: task.suite?.name ?? "(no suite)",
       suiteFilePath: task.file?.filepath,
       testName: task.name,
