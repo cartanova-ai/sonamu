@@ -217,7 +217,7 @@ export const ProjectBaseSchema = z.object({
   // tags: ManyToMany Tag
   image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
-  // unable to resolve
+  textsearchable_index_col: z.string(),
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];

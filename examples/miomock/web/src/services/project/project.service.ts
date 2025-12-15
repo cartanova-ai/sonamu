@@ -112,7 +112,14 @@ export namespace ProjectService {
   export async function search(
     search: string,
     func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
-  ): Promise<ProjectSubsetMapping["A"][]> {
+  ): Promise<
+    {
+      name: string;
+      description: string | null;
+      name_highlight: string;
+      description_highlight: string;
+    }[]
+  > {
     return fetch({
       method: "GET",
       url: `/api/project/search?${qs.stringify({ search, func })}`,

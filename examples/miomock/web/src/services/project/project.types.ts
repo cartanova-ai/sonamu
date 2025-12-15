@@ -16,6 +16,7 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
   })
   .omit({
     virtual_test: true,
+    textsearchable_index_col: true,
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 

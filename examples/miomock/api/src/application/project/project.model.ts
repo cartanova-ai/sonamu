@@ -7,6 +7,7 @@ import {
   type ListResult,
   Naite,
   NotFoundException,
+  Puri,
   Sonamu,
   stream,
 } from "sonamu";
@@ -235,24 +236,28 @@ class ProjectModelClass extends BaseModelClass<
   async search(
     search: string,
     func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
-  ): Promise<ProjectSubsetMapping["A"][]> {
-    // search with textsearchable_index_col
-    const rows = await this.getDB("w")
+  ): Promise<
+    {
+      name: string;
+      description: string | null;
+      name_highlight: string;
+      description_highlight: string;
+    }[]
+  > {
+    const rows = await this.getPuri("w")
       .table("projects")
-      .whereRaw(`textsearchable_index_col @@ ${func}('simple', ?)`, [search])
-      .debug(true);
-
-    // const rows = await this.getDB("w")
-    //   .table("projects")
-    //   .whereRaw("to_tsvector('simple', name) @@ websearch_to_tsquery('simple', ?)", [search]);
-
-    // const rows2 = await this.getDB("w")
-    //   .table("projects")
-    //   .whereFullText("textsearchable_index_col", "to_tsquery", search, 'simple');
-
-    // const rows3 = await this.getDB("w")
-    //   .table("projects")
-    //   .whereToTsQuery("textsearchable_index_col", search, "simple");
+      .whereSearch("textsearchable_index_col", search)
+      .select({
+        name: "projects.name",
+        description: "projects.description",
+        name_highlight: Puri.rawString(
+          `ts_headline('simple', projects.name, ${func}('simple', '${search}'), 'StartSel=<b>, StopSel=</b>')`,
+        ),
+        description_highlight: Puri.rawString(
+          `ts_headline('simple', projects.description, ${func}('simple', '${search}'), 'StartSel=<b>, StopSel=</b>')`,
+        ),
+      })
+      .debug();
 
     return rows;
   }
