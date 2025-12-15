@@ -231,6 +231,11 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
   return `await knex.raw(
   \`CREATE ${methodMap[index.type]} ${index.name} ON ${table} ${usingClause}(${index.columns
     .map((col) => {
+      // 정렬 옵션은 btree만 사용 가능
+      if (index.using !== "btree" && index.using !== undefined) {
+        return `${col.name}`;
+      }
+
       const sortOrderClause = col.sortOrder === undefined ? "" : ` ${col.sortOrder}`;
       const nullsFirstClause =
         col.nullsFirst === undefined ? "" : ` NULLS ${col.nullsFirst ? "FIRST" : "LAST"}`;
