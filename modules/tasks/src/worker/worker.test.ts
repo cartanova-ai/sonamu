@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "vitest";
-import type { Backend } from "../core/backend";
-import { declareWorkflow, OpenWorkflow } from "../sdk/client";
+import { declareWorkflow, OpenWorkflow, type WorkflowRunHandle } from "../sdk/client";
+import { createBackend } from "../testing/connection";
 
 describe("Worker", () => {
   test("passes workflow input to handlers (known slow test)", async () => {
     const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
-
     const workflow = client.defineWorkflow({ name: "context" }, ({ input }) => input);
     const worker = client.newWorker();
 
@@ -409,7 +408,7 @@ describe("Worker", () => {
     });
 
     // enqueue many workflows
-    const handles = [];
+    const handles: WorkflowRunHandle<string>[] = [];
     for (let i = 0; i < 20; i++) {
       handles.push(await workflow.run());
     }
@@ -1157,13 +1156,6 @@ describe("Worker", () => {
     });
   });
 });
-
-async function createBackend(): Promise<Backend> {
-  // return await BackendPostgres.connect(DEFAULT_DATABASE_URL, {
-  //   namespaceId: randomUUID(), // unique namespace per test
-  // });
-  throw new Error("NOT IMPLEMENTED");
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,8 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { describe, expect, test } from "vitest";
-import { BackendPostgres } from "../../backend-postgres/backend";
-import { DEFAULT_DATABASE_URL } from "../../backend-postgres/postgres";
 import { OpenWorkflow } from "../sdk/client";
+import { createBackend } from "../testing/connection";
 
 describe("StepExecutor", () => {
   test("executes step and returns result", async () => {
@@ -112,6 +110,9 @@ describe("StepExecutor", () => {
     const handle = await workflow.run();
     const worker = client.newWorker();
     await worker.tick();
+
+    // Wait for sleep to elapse
+    await sleep(50);
 
     const workflowRun = await backend.getWorkflowRun({
       workflowRunId: handle.workflowRun.id,
@@ -294,6 +295,9 @@ describe("executeWorkflow", () => {
       const handle = await workflow.run();
       const worker = client.newWorker();
       await worker.tick();
+
+      // Wait for sleep to elapse
+      await sleep(50);
 
       const workflowRun = await backend.getWorkflowRun({
         workflowRunId: handle.workflowRun.id,
@@ -497,12 +501,6 @@ describe("executeWorkflow", () => {
     });
   });
 });
-
-async function createBackend(): Promise<BackendPostgres> {
-  return await BackendPostgres.connect(DEFAULT_DATABASE_URL, {
-    namespaceId: randomUUID(),
-  });
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
