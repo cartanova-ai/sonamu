@@ -80,12 +80,18 @@ importers:
       pg:
         specifier: ^8.16.3
         version: 8.16.3
+      pgvector:
+        specifier: ^0.2.1
+        version: 0.2.1
       radashi:
         specifier: ^12.2.0
         version: 12.7.1
       sonamu:
         specifier: workspace:^
         version: link:../../../modules/sonamu
+      voyageai:
+        specifier: ^0.0.8
+        version: 0.0.8
       zod:
         specifier: ^4.1.12
         version: 4.1.12
