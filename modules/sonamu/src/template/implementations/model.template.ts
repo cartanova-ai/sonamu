@@ -105,7 +105,7 @@ class ${entityId}ModelClass extends BaseModelClass<
       search: "${def.search}" as const,
       orderBy: "${def.orderBy}" as const,
       ...rawParams,
-    };
+    } satisfies ${entityId}ListParams;
 
     // build queries
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
