@@ -29,6 +29,8 @@ type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
 
+// @TODO: extract vector column type
+
 // LEFT JOIN 마커 - nullable FK로 조인된 테이블
 // 이 마커는 nullable FK + leftJoin 조합에서만 붙습니다.
 // join + FK nullable -> 안 붙음

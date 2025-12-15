@@ -578,6 +578,129 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  /**
+   * 벡터 유사도 검색 설정
+   *
+   * - SELECT에 similarity 컬럼 추가
+   * - WHERE col IS NOT NULL 추가
+   * - threshold가 있으면 WHERE 조건 추가
+   * - 기존 ORDER BY를 clear하고 원시 연산자로 정렬 (HNSW 인덱스 최적화)
+   *
+   * @param column 벡터 컬럼 경로
+   * @param embedding 쿼리 임베딩 벡터
+   * @param options method, threshold, as 등 옵션
+   *
+   * @example
+   * ```typescript
+   * // cosine similarity (기본값)
+   * qb.vectorSimilarity("columnName", queryVector, {
+   *   method: "cosine",
+   *   threshold: 0.5
+   * });
+   *
+   * // L2 distance
+   * qb.vectorSimilarity("columnName", queryVector, {
+   *   method: "l2",
+   *   threshold: 1.5  // 거리가 1.5 이하인 결과만
+   * });
+   *
+   * // Inner product
+   * qb.vectorSimilarity("columnName", queryVector, {
+   *   method: "inner_product",
+   *   threshold: 0.7
+   * });
+   * ```
+   */
+  vectorSimilarity<TAs extends string = "similarity">(
+    column: AvailableColumns<TTables> & string,
+    embedding: number[],
+    options: {
+      method?: "cosine" | "l2" | "inner_product";
+      threshold?: number;
+      as?: TAs;
+    } = {},
+  ): Puri<TSchema, TTables, TResult & Record<TAs, number>> {
+    const { method = "cosine", threshold, as = "similarity" as TAs } = options;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(as)) {
+      throw new Error(`Invalid vectorSimilarity alias: ${as}`);
+    }
+    if (
+      !Array.isArray(embedding) ||
+      embedding.length === 0 ||
+      embedding.some((v) => !Number.isFinite(v))
+    ) {
+      throw new Error("Invalid embedding vector: expected a non-empty array of finite numbers");
+    }
+    const vectorLiteral = JSON.stringify(embedding.map((v) => Number(v)));
+
+    // method별 연산자 및 similarity 계산식
+    // - cosine: <=> (cosine distance, 0~2), similarity = 1 - distance
+    // - l2: <-> (euclidean distance), similarity = distance (낮을수록 유사)
+    // - inner_product: <#> (negative inner product), similarity = -distance (높을수록 유사)
+    const operatorMap = {
+      cosine: "<=>",
+      l2: "<->",
+      inner_product: "<#>",
+    } as const;
+    const operator = operatorMap[method];
+
+    // SELECT에 similarity 추가
+    if (method === "cosine") {
+      // cosine: similarity = 1 - cosine_distance (0~1, 높을수록 유사)
+      this.knexQuery.select(
+        this.knex.raw(`1 - (?? <=> ?::vector) as ??`, [column, vectorLiteral, as]),
+      );
+    } else if (method === "l2") {
+      // l2: distance 그대로 반환 (낮을수록 유사)
+      this.knexQuery.select(this.knex.raw(`?? <-> ?::vector as ??`, [column, vectorLiteral, as]));
+    } else {
+      // inner_product: pgvector는 음수 반환하므로 부호 반전 (높을수록 유사)
+      this.knexQuery.select(
+        this.knex.raw(`-(?? <#> ?::vector) as ??`, [column, vectorLiteral, as]),
+      );
+    }
+
+    // WHERE col IS NOT NULL
+    this.knexQuery.whereNotNull(column);
+
+    // threshold가 있으면 WHERE 추가
+    if (typeof threshold === "number") {
+      if (!Number.isFinite(threshold)) {
+        throw new Error(`Invalid vectorSimilarity threshold: ${threshold}`);
+      }
+
+      if (method === "cosine") {
+        // similarity >= threshold  <=>  cosine_distance <= (1 - threshold)
+        this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
+          column,
+          vectorLiteral,
+          1 - threshold,
+        ]);
+      } else if (method === "l2") {
+        // distance <= threshold (거리가 threshold 이하)
+        this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
+          column,
+          vectorLiteral,
+          threshold,
+        ]);
+      } else {
+        // inner_product: -distance >= threshold  <=>  distance <= -threshold
+        this.knexQuery.whereRaw(`?? ${operator} ?::vector <= ?`, [
+          column,
+          vectorLiteral,
+          -threshold,
+        ]);
+      }
+    }
+
+    // 기존 ORDER BY clear 후 원시 연산자로 정렬 (HNSW 인덱스 최적화)
+    // 모든 method에서 ASC: 거리/음수값이 작을수록 유사
+    this.knexQuery.clear("order");
+    this.knexQuery.orderByRaw(`?? ${operator} ?::vector`, [column, vectorLiteral]);
+
+    return this as any;
+  }
+
   // 기본 쿼리 메서드들
   limit(count: number): this {
     if (count < 0) {
