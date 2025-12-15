@@ -227,6 +227,35 @@ class ProjectModelClass extends BaseModelClass<
 
     await sse.end();
   }
+
+  /**
+   * FTS 테스트용 API
+   */
+  @api({ httpMethod: "GET" })
+  async search(
+    search: string,
+    func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
+  ): Promise<ProjectSubsetMapping["A"][]> {
+    // search with textsearchable_index_col
+    const rows = await this.getDB("w")
+      .table("projects")
+      .whereRaw(`textsearchable_index_col @@ ${func}('simple', ?)`, [search])
+      .debug(true);
+
+    // const rows = await this.getDB("w")
+    //   .table("projects")
+    //   .whereRaw("to_tsvector('simple', name) @@ websearch_to_tsquery('simple', ?)", [search]);
+
+    // const rows2 = await this.getDB("w")
+    //   .table("projects")
+    //   .whereFullText("textsearchable_index_col", "to_tsquery", search, 'simple');
+
+    // const rows3 = await this.getDB("w")
+    //   .table("projects")
+    //   .whereToTsQuery("textsearchable_index_col", search, "simple");
+
+    return rows;
+  }
 }
 
 export const ProjectModel = new ProjectModelClass(projectSubsetQueries, projectLoaderQueries);

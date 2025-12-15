@@ -108,4 +108,14 @@ export namespace ProjectService {
       };
     }>(`/api/project/ask`, params, handlers, options);
   }
+
+  export async function search(
+    search: string,
+    func: "to_tsquery" | "plainto_tsquery" | "websearch_to_tsquery" | "phraseto_tsquery",
+  ): Promise<ProjectSubsetMapping["A"][]> {
+    return fetch({
+      method: "GET",
+      url: `/api/project/search?${qs.stringify({ search, func })}`,
+    });
+  }
 }
