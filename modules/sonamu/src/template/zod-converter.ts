@@ -47,6 +47,7 @@ import {
   isRelationProp,
   isStringArrayProp,
   isStringSingleProp,
+  isTsVectorProp,
   isUuidArrayProp,
   isUuidSingleProp,
   isVectorArrayProp,
@@ -215,6 +216,8 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
     stmt = `${prop.name}: z.array(z.number())`;
   } else if (isVectorArrayProp(prop)) {
     stmt = `${prop.name}: z.array(z.array(z.number()))`;
+  } else if (isTsVectorProp(prop)) {
+    stmt = `${prop.name}: z.string()`;
   } else if (isVirtualProp(prop)) {
     stmt = `${prop.name}: ${prop.id}`;
     injectImportKeys.push(prop.id);

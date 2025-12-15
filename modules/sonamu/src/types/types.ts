@@ -422,6 +422,9 @@ export function isVectorArrayProp(p: unknown): p is VectorArrayProp {
 export function isVectorProp(p: unknown): p is VectorProp | VectorArrayProp {
   return isVectorSingleProp(p) || isVectorArrayProp(p);
 }
+export function isTsVectorProp(p: unknown): p is TsVectorProp {
+  return (p as TsVectorProp)?.type === "tsvector";
+}
 export function isRelationProp(p: unknown): p is RelationProp {
   return (p as RelationProp)?.type === "relation";
 }
