@@ -18,7 +18,11 @@
  * 
  * 이 스크립트를 실행시킬 때 넘어온 인자와 환경변수 등은 모두 dist/bin/cli.js에 그대로 전달됩니다.
  */
-import('../dist/bin/cli.js').catch(() => {
-  console.error('Sonamu has no cli.js in dist/bin directory. It seems that you have not built the project yet. Please run: pnpm build');
+import('../dist/bin/cli.js').catch((e) => {
+  console.error("Sonamu CLI를 실행하는 과정에 문제가 발생하였습니다. 보통은 dist/bin/cli.js 파일이 없는 경우입니다만, 아래 에러 메시지를 자세히 읽어보시면 힌트를 얻으실 수 있을 것입니다.");
+  console.error("There was an error while executing Sonamu CLI. Usually it's because dist/bin/cli.js file is not found. Please read the error message below for more information.");
+  console.error("=".repeat(80));
+  console.error(e);
+
   process.exit(1);
 });
