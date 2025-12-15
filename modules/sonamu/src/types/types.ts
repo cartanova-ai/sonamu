@@ -13,7 +13,7 @@ export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.Z
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 /*
-  Model-Defintion
+  Model-Definition
 */
 export type GeneratedColumnType = "STORED" | "VIRTUAL";
 export type GeneratedColumn = {
