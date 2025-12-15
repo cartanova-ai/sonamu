@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import pgvector from "pgvector/knex";
 import { DEFAULT_VECTOR_CONFIG } from "./config";
-import { Embedding } from "./embedding";
+import { EmbeddingClass } from "./embedding";
 import type {
   EmbeddingItem,
   EmbeddingProvider,
@@ -20,7 +20,7 @@ import type {
 export class VectorSearch<T = Record<string, unknown>> {
   private db: Knex;
   private config: VectorConfig;
-  private embedding: Embedding;
+  private embedding: EmbeddingClass;
   private tableName: string;
 
   constructor(db: Knex, tableName: string, config: Partial<VectorConfig> = {}) {
@@ -33,7 +33,7 @@ export class VectorSearch<T = Record<string, unknown>> {
       search: { ...DEFAULT_VECTOR_CONFIG.search, ...config.search },
       pgvector: { ...DEFAULT_VECTOR_CONFIG.pgvector, ...config.pgvector },
     };
-    this.embedding = new Embedding(config);
+    this.embedding = new EmbeddingClass(config);
   }
 
   /**
@@ -255,7 +255,7 @@ export class VectorSearch<T = Record<string, unknown>> {
   /**
    * Embedding 인스턴스 반환 (고급 사용)
    */
-  getEmbedding(): Embedding {
+  getEmbedding(): EmbeddingClass {
     return this.embedding;
   }
 }

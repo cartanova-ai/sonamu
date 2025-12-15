@@ -15,7 +15,7 @@ import type {
  * 임베딩 클라이언트
  * Voyage AI와 OpenAI 임베딩을 SDK 방식으로 통합 지원
  */
-export class Embedding {
+export class EmbeddingClass {
   private config: VectorConfig;
 
   constructor(config: Partial<VectorConfig> = {}) {
@@ -160,3 +160,4 @@ export class Embedding {
     return provider === "voyage" ? this.config.voyage.dimensions : this.config.openai.dimensions;
   }
 }
+export const Embedding = new EmbeddingClass();

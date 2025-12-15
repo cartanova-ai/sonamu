@@ -5,7 +5,7 @@
  */
 
 import type { Knex } from "knex";
-import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding, VectorSearch } from "sonamu";
+import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding, EmbeddingClass, VectorSearch } from "sonamu";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
 describe("vector.test.ts", () => {
@@ -66,39 +66,37 @@ describe("vector.test.ts", () => {
   });
 
   describe("Embedding", () => {
-    const embedding = new Embedding();
-
     test("toVectorString이 올바른 형식을 반환해야 한다", () => {
       const vector = [0.1, 0.2, 0.3, 0.4, 0.5];
-      const result = Embedding.toVectorString(vector);
+      const result = EmbeddingClass.toVectorString(vector);
 
       expect(result).toBe("[0.1,0.2,0.3,0.4,0.5]");
     });
 
     test("빈 배열도 처리해야 한다", () => {
       const vector: number[] = [];
-      const result = Embedding.toVectorString(vector);
+      const result = EmbeddingClass.toVectorString(vector);
 
       expect(result).toBe("[]");
     });
 
     test("부동소수점 정밀도가 유지되어야 한다", () => {
       const vector = [0.123456789, -0.987654321];
-      const result = Embedding.toVectorString(vector);
+      const result = EmbeddingClass.toVectorString(vector);
 
       expect(result).toBe("[0.123456789,-0.987654321]");
     });
 
     // API 호출이 필요한 테스트는 skip
     test.skip("Voyage AI 임베딩 생성 (API 키 필요)", async () => {
-      const result = await embedding.embedOne("테스트 텍스트", "voyage", "document");
+      const result = await Embedding.embedOne("테스트 텍스트", "voyage", "document");
 
       expect(result.embedding).toHaveLength(1024);
       expect(result.tokenCount).toBeGreaterThan(0);
     });
 
     test.skip("OpenAI 임베딩 생성 (API 키 필요)", async () => {
-      const result = await embedding.embedOne("테스트 텍스트", "openai", "document");
+      const result = await Embedding.embedOne("테스트 텍스트", "openai", "document");
 
       expect(result.embedding).toHaveLength(1536);
       expect(result.tokenCount).toBeGreaterThan(0);
@@ -106,7 +104,7 @@ describe("vector.test.ts", () => {
 
     test.skip("배치 임베딩 생성 (API 키 필요)", async () => {
       const texts = ["첫 번째 텍스트", "두 번째 텍스트", "세 번째 텍스트"];
-      const results = await embedding.embed(texts, "voyage", "document");
+      const results = await Embedding.embed(texts, "voyage", "document");
 
       expect(results).toHaveLength(3);
       results.forEach((result) => {
@@ -145,7 +143,7 @@ describe("vector.test.ts", () => {
       const vectorSearch = new VectorSearch(mockDb, "test_table");
 
       expect(vectorSearch).toBeDefined();
-      expect(vectorSearch.getEmbedding()).toBeInstanceOf(Embedding);
+      expect(vectorSearch.getEmbedding()).toBeInstanceOf(EmbeddingClass);
     });
 
     test("커스텀 설정으로 인스턴스 생성이 가능해야 한다", () => {
