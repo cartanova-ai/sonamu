@@ -574,13 +574,13 @@ importers:
   modules/sonamu:
     dependencies:
       '@ai-sdk/openai':
-        specifier: ^3.0.0-beta.75
+        specifier: 3.0.0-beta.75
         version: 3.0.0-beta.75(zod@4.1.12)
       '@ai-sdk/provider':
-        specifier: ^3.0.0-beta.22
+        specifier: 3.0.0-beta.22
         version: 3.0.0-beta.22
       '@ai-sdk/provider-utils':
-        specifier: ^4.0.0-beta.40
+        specifier: 4.0.0-beta.40
         version: 4.0.0-beta.40(zod@4.1.12)
       '@aws-sdk/client-s3':
         specifier: ^3.921.0
@@ -625,7 +625,7 @@ importers:
         specifier: ^1.13.19
         version: 1.15.3(@swc/helpers@0.5.17)
       ai:
-        specifier: ^6.0.0-beta.138
+        specifier: 6.0.0-beta.138
         version: 6.0.0-beta.138(zod@4.1.12)
       chalk:
         specifier: ^4.1.2
