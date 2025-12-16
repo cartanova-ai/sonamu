@@ -13,12 +13,8 @@ export type RetryPolicy = typeof DEFAULT_RETRY_POLICY;
  * @returns Delay in milliseconds
  */
 export function calculateRetryDelayMs(attemptNumber: number): number {
-  const { initialIntervalMs, backoffCoefficient, maximumIntervalMs } =
-    DEFAULT_RETRY_POLICY;
-
-  const backoffMs =
-    initialIntervalMs * Math.pow(backoffCoefficient, attemptNumber - 1);
-
+  const { initialIntervalMs, backoffCoefficient, maximumIntervalMs } = DEFAULT_RETRY_POLICY;
+  const backoffMs = initialIntervalMs * backoffCoefficient ** (attemptNumber - 1);
   return Math.min(backoffMs, maximumIntervalMs);
 }
 
@@ -28,9 +24,6 @@ export function calculateRetryDelayMs(attemptNumber: number): number {
  * @param attemptNumber - Attempt number (1-based)
  * @returns True if another attempt should be made
  */
-export function shouldRetry(
-  retryPolicy: RetryPolicy,
-  attemptNumber: number,
-): boolean {
+export function shouldRetry(retryPolicy: RetryPolicy, attemptNumber: number): boolean {
   return attemptNumber < retryPolicy.maximumAttempts;
 }

@@ -59,7 +59,7 @@ export type WorkflowFunction<Input, Output> = (
  * Signal thrown when a workflow needs to sleep. Contains the time when the
  * workflow should resume.
  */
-export class SleepSignal extends Error {
+class SleepSignal extends Error {
   readonly resumeAt: Date;
 
   constructor(resumeAt: Readonly<Date>) {

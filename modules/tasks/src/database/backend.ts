@@ -25,8 +25,8 @@ import type { WorkflowRun } from "../core/workflow";
 import { DEFAULT_SCHEMA, migrate } from "./base";
 import { type OnSubscribed, PostgresPubSub } from "./pubsub";
 
-export const DEFAULT_LISTEN_CHANNEL = "new_tasks";
-export const DEFAULT_PAGINATION_PAGE_SIZE = 100;
+export const DEFAULT_LISTEN_CHANNEL = "new_tasks" as const;
+const DEFAULT_PAGINATION_PAGE_SIZE = 100 as const;
 
 interface BackendPostgresOptions {
   namespaceId?: string;

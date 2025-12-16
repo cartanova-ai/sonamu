@@ -1,0 +1,84 @@
+import type { StandardSchemaV1 } from "./core/schema";
+import type { WorkflowFunction } from "./execution";
+
+export interface WorkflowSpec<Input, Output, RawInput> {
+  /** The name of the workflow. */
+  readonly name: string;
+  /** The version of the workflow. */
+  readonly version?: string;
+  /** The schema used to validate inputs. */
+  readonly schema?: StandardSchemaV1<RawInput, Input>;
+  /** Phantom type carrier - won't exist at runtime. */
+  readonly __types?: {
+    output: Output;
+  };
+}
+
+/**
+ * Define a workflow spec.
+ * @param spec - The workflow spec
+ * @returns The workflow spec
+ */
+export function defineWorkflowSpec<Input, Output = unknown, RawInput = Input>(
+  spec: WorkflowSpec<Input, Output, RawInput>,
+): WorkflowSpec<Input, Output, RawInput> {
+  return spec;
+}
+
+/**
+ * A workflow spec and implementation.
+ */
+export interface Workflow<Input, Output, RawInput> {
+  /** The workflow spec. */
+  readonly spec: WorkflowSpec<Input, Output, RawInput>;
+  /** The workflow implementation function. */
+  readonly fn: WorkflowFunction<Input, Output>;
+}
+
+/**
+ * Define a workflow.
+ * @param spec - The workflow spec
+ * @param fn - The workflow implementation function
+ * @returns The workflow
+ */
+// Handles:
+// - `defineWorkflow(spec, fn)` (0 generics)
+// - `defineWorkflow<Input, Output>(spec, fn)` (2 generics)
+export function defineWorkflow<Input, Output, RawInput = Input>(
+  spec: WorkflowSpec<Input, Output, RawInput>,
+  fn: WorkflowFunction<Input, Output>,
+): Workflow<Input, Output, RawInput>;
+
+/**
+ * Define a workflow.
+ * @param spec - The workflow spec
+ * @param fn - The workflow implementation function
+ * @returns The workflow
+ */
+// Handles:
+// - `defineWorkflow<Input>(spec, fn)` (1 generic)
+export function defineWorkflow<
+  Input,
+  WorkflowFn extends WorkflowFunction<Input, unknown> = WorkflowFunction<Input, unknown>,
+  RawInput = Input,
+>(
+  spec: WorkflowSpec<Input, Awaited<ReturnType<WorkflowFn>>, RawInput>,
+  fn: WorkflowFn,
+): Workflow<Input, Awaited<ReturnType<WorkflowFn>>, RawInput>;
+
+/**
+ * Define a workflow.
+ * @internal
+ * @param spec - The workflow spec
+ * @param fn - The workflow implementation function
+ * @returns The workflow
+ */
+export function defineWorkflow<Input, Output, RawInput>(
+  spec: WorkflowSpec<Input, Output, RawInput>,
+  fn: WorkflowFunction<Input, Output>,
+): Workflow<Input, Output, RawInput> {
+  return {
+    spec,
+    fn,
+  };
+}

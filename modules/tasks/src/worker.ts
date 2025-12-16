@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Backend } from "./backend";
-import type { WorkflowDefinition } from "./client";
 import type { WorkflowRun } from "./core/workflow";
 import { executeWorkflow } from "./execution";
 import type { WorkflowRegistry } from "./registry";
+import type { Workflow } from "./workflow";
 
 const DEFAULT_LEASE_DURATION_MS = 30 * 1000; // 30s
 const DEFAULT_POLL_INTERVAL_MS = 100; // 100ms
@@ -15,7 +15,7 @@ const DEFAULT_CONCURRENCY = 1;
  */
 export interface WorkerOptions {
   backend: Backend;
-  registry: WorkflowRegistry<WorkflowDefinition<unknown, unknown, unknown>>;
+  registry: WorkflowRegistry;
   concurrency?: number | undefined;
   usePubSub?: boolean;
   listenDelay?: number;
@@ -28,7 +28,7 @@ export interface WorkerOptions {
 export class Worker {
   private readonly backend: Backend;
   private readonly workerIds: string[];
-  private readonly registry: WorkflowRegistry<WorkflowDefinition<unknown, unknown, unknown>>;
+  private readonly registry: WorkflowRegistry;
   private readonly activeExecutions = new Set<WorkflowExecution>();
   private running = false;
   private loopPromise: Promise<void> | null = null;
@@ -185,12 +185,12 @@ export class Worker {
    * Process a workflow execution, handling heartbeats, step execution, and
    * marking success or failure.
    * @param execution - Workflow execution
-   * @param workflow - Workflow definition
+   * @param workflow - Workflow to execute
    * @returns Promise resolved when processing completes
    */
   private async processExecutionInBackground(
     execution: WorkflowExecution,
-    workflow: WorkflowDefinition<unknown, unknown, unknown>,
+    workflow: Workflow<unknown, unknown, unknown>,
   ): Promise<void> {
     // start heartbeating
     execution.startHeartbeat();
