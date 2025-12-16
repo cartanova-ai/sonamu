@@ -227,7 +227,7 @@ export type EntityIndex = {
   type: "index" | "unique" | "hnsw" | "ivfflat";
   columns: EntityIndexColumn[];
   name: string;
-  using?: "btree" | "hash" | "gin" | "gist";
+  using?: "btree" | "hash" | "gin" | "gist" | "pgroonga";
   nullsNotDistinct?: boolean; // unique index only
   /**
    * HNSW (Hierarchical Navigable Small World) 인덱스: 각 노드의 최대 연결 수
@@ -557,7 +557,7 @@ export type MigrationIndex = {
   type: "unique" | "index" | "hnsw" | "ivfflat";
   columns: EntityIndexColumn[];
   name: string;
-  using?: "btree" | "hash" | "gin" | "gist";
+  using?: "btree" | "hash" | "gin" | "gist" | "pgroonga";
   nullsNotDistinct?: boolean;
   /** HNSW (Hierarchical Navigable Small World): 각 노드의 최대 연결 수 */
   m?: number;
@@ -1143,7 +1143,7 @@ const EntityIndexSchema = z
     type: z.enum(["index", "unique", "hnsw", "ivfflat"]),
     columns: z.array(EntityIndexColumnSchema),
     name: z.string().min(1).max(63),
-    using: z.enum(["btree", "hash", "gin", "gist"]).optional(),
+    using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
     nullsNotDistinct: z.boolean().optional(),
     m: z.number().optional(),
     efConstruction: z.number().optional(),

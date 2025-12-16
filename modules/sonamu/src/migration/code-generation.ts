@@ -1,7 +1,8 @@
 import equal from "fast-deep-equal";
 import { alphabetical, diff } from "radashi";
-import { Naite } from "..";
+import { EntityManager, Naite } from "..";
 import type {
+  EntityProp,
   GenMigrationCode,
   MigrationColumn,
   MigrationForeign,
@@ -216,6 +217,10 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
     return genVectorIndexDefinition(index, table);
   }
 
+  if (index.using === "pgroonga") {
+    return genPgroongaIndexDefinition(index, table);
+  }
+
   const methodMap = {
     index: "INDEX",
     unique: "UNIQUE INDEX",
@@ -243,6 +248,40 @@ function genIndexDefinition(index: MigrationIndex, table: string): string {
     })
     .join(", ")})${nullsNotDistinctClause};\`
   );`;
+}
+
+function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
+  const entity = EntityManager.getByTable(table);
+
+  // 복합 인덱스인 경우 ARRAY 사용
+  const columnClause = (() => {
+    if (index.columns.length === 1) {
+      const column = entity.propsDict[index.columns[0].name];
+      const option = getPgroongaColumnOption(column);
+      return `${index.columns[0].name}${option ? ` ${option}` : ""}`;
+    }
+
+    return `(ARRAY[${index.columns.map((col) => `${col.name}::text`).join(",")}])`;
+  })();
+
+  return `await knex.raw(
+  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause});\`
+  )`;
+}
+
+/**
+ * PGroonga 컬럼 옵션 추출
+ *
+ * FullText 오퍼레이터를 지원하는 경우 우선 설정, 나머지는 디폴트 이용
+ * @link https://pgroonga.github.io/reference
+ */
+function getPgroongaColumnOption(column: EntityProp) {
+  if (column.type === "string" && column.length !== undefined) {
+    return "pgroonga_varchar_full_text_search_ops_v2";
+  } else if (column.type === "json") {
+    return "pgroonga_jsonb_full_text_search_ops_v2";
+  }
+  return null;
 }
 
 /**

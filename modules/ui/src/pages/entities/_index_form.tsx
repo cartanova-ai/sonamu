@@ -33,7 +33,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
         }),
       ),
       name: z.string().min(1).max(63),
-      using: z.enum(["btree", "hash", "gin", "gist"]).optional(),
+      using: z.enum(["btree", "hash", "gin", "gist", "pgroonga"]).optional(),
       nullsNotDistinct: z.boolean().optional(),
     }),
     {
@@ -180,6 +180,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     { key: "hash", text: "Hash" },
     { key: "gin", text: "GIN" },
     { key: "gist", text: "GiST" },
+    { key: "pgroonga", text: "PGroonga" },
   ].map((k) => ({ key: k.key, value: k.key, text: k.text }));
 
   return (
