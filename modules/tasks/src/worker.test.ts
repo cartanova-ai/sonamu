@@ -1,12 +1,26 @@
 import { randomUUID } from "node:crypto";
-import { describe, expect, test } from "vitest";
-import { declareWorkflow, OpenWorkflow, type WorkflowRunHandle } from "../sdk/client";
-import { createBackend } from "../testing/connection";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { declareWorkflow, OpenWorkflow } from "./client";
+import { BackendPostgres } from "./database/backend";
+import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
 
 describe("Worker", () => {
+  let backend: BackendPostgres;
+
+  beforeEach(async () => {
+    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+      namespaceId: randomUUID(),
+      runMigrations: false,
+    });
+  });
+
+  afterEach(async () => {
+    await backend.stop();
+  });
+
   test("passes workflow input to handlers (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
+
     const workflow = client.defineWorkflow({ name: "context" }, ({ input }) => input);
     const worker = client.newWorker();
 
@@ -19,7 +33,6 @@ describe("Worker", () => {
   });
 
   test("processes workflow runs to completion (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow(
@@ -36,7 +49,6 @@ describe("Worker", () => {
   });
 
   test("step.run reuses cached results (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let executionCount = 0;
@@ -63,7 +75,6 @@ describe("Worker", () => {
   });
 
   test("marks workflow for retry when definition is missing", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflowRun = await backend.createWorkflowRun({
@@ -90,7 +101,6 @@ describe("Worker", () => {
   });
 
   test("retries failed workflows automatically (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let attemptCount = 0;
@@ -125,7 +135,6 @@ describe("Worker", () => {
   });
 
   test("tick is a no-op when no work is available", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     client.defineWorkflow({ name: "noop" }, () => null);
@@ -134,7 +143,6 @@ describe("Worker", () => {
   });
 
   test("handles step functions that return undefined (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "undefined-steps" }, async ({ step }) => {
@@ -157,7 +165,6 @@ describe("Worker", () => {
   });
 
   test("executes steps synchronously within workflow (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const executionOrder: string[] = [];
@@ -186,7 +193,6 @@ describe("Worker", () => {
   });
 
   test("executes parallel steps with Promise.all (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const executionTimes: Record<string, number> = {};
@@ -225,7 +231,6 @@ describe("Worker", () => {
   });
 
   test("respects worker concurrency limit", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "concurrency-test" }, () => {
@@ -259,7 +264,6 @@ describe("Worker", () => {
   });
 
   test("worker starts, processes work, and stops gracefully (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "lifecycle" }, () => {
@@ -278,7 +282,6 @@ describe("Worker", () => {
   });
 
   test("recovers from crashes during parallel step execution (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let attemptCount = 0;
@@ -322,7 +325,6 @@ describe("Worker", () => {
   });
 
   test("reclaims workflow run when heartbeat stops (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "heartbeat-test" }, () => "done");
@@ -348,7 +350,6 @@ describe("Worker", () => {
   });
 
   test("tick() returns count of claimed workflows", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "count-test" }, () => "result");
@@ -372,7 +373,6 @@ describe("Worker", () => {
   });
 
   test("tick() respects concurrency limit", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "concurrency-test" }, async () => {
@@ -399,7 +399,6 @@ describe("Worker", () => {
   });
 
   test("worker only sleeps between claims when no work is available (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "adaptive-test" }, async ({ step }) => {
@@ -408,7 +407,7 @@ describe("Worker", () => {
     });
 
     // enqueue many workflows
-    const handles: WorkflowRunHandle<string>[] = [];
+    const handles = [];
     for (let i = 0; i < 20; i++) {
       handles.push(await workflow.run());
     }
@@ -430,7 +429,6 @@ describe("Worker", () => {
   });
 
   test("only failed steps re-execute on retry (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const executionCounts = {
@@ -496,7 +494,6 @@ describe("Worker", () => {
   });
 
   test("step.sleep postpones workflow execution (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let stepCount = 0;
@@ -563,7 +560,6 @@ describe("Worker", () => {
   });
 
   test("step.sleep is cached on replay", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let step1Count = 0;
@@ -607,7 +603,6 @@ describe("Worker", () => {
   });
 
   test("step.sleep throws error for invalid duration format", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "invalid-duration" }, async ({ step }) => {
@@ -628,12 +623,10 @@ describe("Worker", () => {
 
     expect(failed?.status).toBe("pending"); // should be retrying
     expect(failed?.error).toBeDefined();
-    // @ts-expect-error - test suite
     expect(failed?.error?.message).toContain("Invalid duration format");
   });
 
   test("step.sleep handles multiple sequential sleeps (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let executionCount = 0;
@@ -698,7 +691,6 @@ describe("Worker", () => {
   });
 
   test("sleeping workflows can be claimed after availableAt", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "sleeping-claim-test" }, async ({ step }) => {
@@ -736,7 +728,6 @@ describe("Worker", () => {
   });
 
   test("sleep is not skipped when worker crashes after creating sleep step but before marking workflow as sleeping (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let executionCount = 0;
@@ -804,7 +795,6 @@ describe("Worker", () => {
   });
 
   test("version enables conditional code paths (known slow test)", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow(
@@ -825,7 +815,6 @@ describe("Worker", () => {
   });
 
   test("workflow version is null when not specified", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow(
@@ -847,7 +836,6 @@ describe("Worker", () => {
   });
 
   test("cancels a pending workflow", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "cancel-pending" }, async ({ step }) => {
@@ -870,7 +858,6 @@ describe("Worker", () => {
   });
 
   test("cancels a sleeping workflow", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "cancel-sleeping" }, async ({ step }) => {
@@ -895,7 +882,6 @@ describe("Worker", () => {
   });
 
   test("cannot cancel a completed workflow", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "cancel-completed" }, () => ({
@@ -916,7 +902,6 @@ describe("Worker", () => {
   });
 
   test("cannot cancel a failed workflow", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "cancel-failed" }, () => {
@@ -942,8 +927,6 @@ describe("Worker", () => {
   });
 
   test("cannot cancel non-existent workflow", async () => {
-    const backend = await createBackend();
-
     await expect(
       backend.cancelWorkflowRun({
         workflowRunId: "non-existent-id",
@@ -952,7 +935,6 @@ describe("Worker", () => {
   });
 
   test("worker handles when canceled workflow during execution", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let stepExecuted = false;
@@ -991,7 +973,6 @@ describe("Worker", () => {
   });
 
   test("result() rejects for canceled workflows", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "cancel-result" }, async ({ step }) => {
@@ -1007,7 +988,6 @@ describe("Worker", () => {
 
   describe("version matching", () => {
     test("worker matches workflow runs by version", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       client.defineWorkflow({ name: "versioned-workflow", version: "v1" }, async ({ step }) => {
@@ -1042,7 +1022,6 @@ describe("Worker", () => {
     });
 
     test("worker fails workflow run when version is not registered", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       client.defineWorkflow({ name: "version-check", version: "v1" }, () => "v1-result");
@@ -1073,7 +1052,6 @@ describe("Worker", () => {
     });
 
     test("unversioned workflow does not match versioned run", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       client.defineWorkflow({ name: "version-mismatch" }, () => "unversioned-result");
@@ -1104,7 +1082,6 @@ describe("Worker", () => {
     });
 
     test("versioned workflow does not match unversioned run", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       client.defineWorkflow({ name: "version-required", version: "v1" }, () => "v1-result");
@@ -1137,7 +1114,6 @@ describe("Worker", () => {
     test("workflow receives run's version, not registered version", async () => {
       // this test verifies that the version passed to the workflow function
       // is the one from the workflow run, not the registered workflow
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(

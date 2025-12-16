@@ -1,6 +1,6 @@
 import interprete from "./conversion";
 
-const validationRegex = /^(?:\d+|\*|\*\/\d+)$/ as const;
+const validationRegex = /^(?:\d+|\*|\*\/\d+)$/;
 
 /**
  * @param {string} expression The Cron-Job expression.

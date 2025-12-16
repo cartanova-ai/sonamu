@@ -14,6 +14,9 @@ export const KNEX_GLOBAL_CONFIG: Knex.Config = {
     password: "postgres",
     database: "postgres",
   },
+  pool: {
+    max: 50,
+  },
 } as const;
 
 export async function migrate(): Promise<void> {

@@ -18,7 +18,7 @@ import {
   type ListWorkflowRunsParams,
   type PaginatedResponse,
   type SleepWorkflowRunParams,
-} from "../core/backend";
+} from "../backend";
 import { DEFAULT_RETRY_POLICY } from "../core/retry";
 import type { StepAttempt } from "../core/step";
 import type { WorkflowRun } from "../core/workflow";

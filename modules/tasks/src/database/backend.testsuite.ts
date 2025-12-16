@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import type { Backend } from "../core/backend";
+import type { Backend } from "..//backend";
 import type { StepAttempt } from "../core/step";
 import type { WorkflowRun } from "../core/workflow";
 
@@ -601,6 +601,14 @@ export function testBackend(options: TestBackendOptions): void {
     });
 
     describe("listStepAttempts()", () => {
+      beforeAll(async () => {
+        backend = await setup();
+      });
+
+      afterAll(async () => {
+        await teardown(backend);
+      });
+
       test("lists step attempts ordered by creation time", async () => {
         const claimed = await createClaimedWorkflowRun(backend);
 
@@ -740,6 +748,14 @@ export function testBackend(options: TestBackendOptions): void {
     });
 
     describe("completeStepAttempt()", () => {
+      beforeAll(async () => {
+        backend = await setup();
+      });
+
+      afterAll(async () => {
+        await teardown(backend);
+      });
+
       test("marks running step attempts as completed", async () => {
         const claimed = await createClaimedWorkflowRun(backend);
 
@@ -838,6 +854,14 @@ export function testBackend(options: TestBackendOptions): void {
     });
 
     describe("failStepAttempt()", () => {
+      beforeAll(async () => {
+        backend = await setup();
+      });
+
+      afterAll(async () => {
+        await teardown(backend);
+      });
+
       test("marks running step attempts as failed", async () => {
         const claimed = await createClaimedWorkflowRun(backend);
 
@@ -936,6 +960,14 @@ export function testBackend(options: TestBackendOptions): void {
     });
 
     describe("deadline_at", () => {
+      beforeAll(async () => {
+        backend = await setup();
+      });
+
+      afterAll(async () => {
+        await teardown(backend);
+      });
+
       test("creates a workflow run with a deadline", async () => {
         const deadline = new Date(Date.now() + 60_000); // in 1 minute
         const created = await backend.createWorkflowRun({

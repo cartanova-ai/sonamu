@@ -7,7 +7,13 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts"
+    },
+    "./internal": {
+      "import": "./dist/internal.js",
+      "types": "./dist/internal.d.ts",
+      "development": "./src/internal.ts"
     }
   },
   "scripts": {
@@ -40,6 +46,7 @@
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.15.3",
     "@types/node": "^24.9.2",
+    "c12": "^3.3.2",
     "nodemon": "^3.1.10",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",

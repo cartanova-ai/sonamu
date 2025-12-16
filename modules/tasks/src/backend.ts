@@ -1,6 +1,7 @@
-import type { JsonValue } from "./json";
-import type { StepAttempt, StepAttemptContext, StepKind } from "./step";
-import type { WorkflowRun } from "./workflow";
+import type { SerializedError } from "./core/error";
+import type { JsonValue } from "./core/json";
+import type { StepAttempt, StepAttemptContext, StepKind } from "./core/step";
+import type { WorkflowRun } from "./core/workflow";
 
 export const DEFAULT_NAMESPACE_ID = "default";
 
@@ -74,7 +75,7 @@ export interface CompleteWorkflowRunParams {
 export interface FailWorkflowRunParams {
   workflowRunId: string;
   workerId: string;
-  error: JsonValue;
+  error: SerializedError;
 }
 
 export interface CancelWorkflowRunParams {
@@ -109,7 +110,7 @@ export interface FailStepAttemptParams {
   workflowRunId: string;
   stepAttemptId: string;
   workerId: string;
-  error: JsonValue;
+  error: SerializedError;
 }
 
 export interface PaginationOptions {

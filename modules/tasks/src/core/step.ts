@@ -54,40 +54,8 @@ export interface StepAttempt {
 export type StepAttemptCache = ReadonlyMap<string, StepAttempt>;
 
 /**
- * Serialized error format for JSON compatibility.
- */
-export interface SerializedError {
-  message: string;
-  name?: string;
-  stack?: string | null;
-  [key: string]: JsonValue;
-}
-
-/**
- * Serialize an error to a JSON-compatible format. Pure function that converts
- * any error into a SerializedError object.
- *
- * @param error - The error to serialize (can be Error instance or any value)
- * @returns A JSON-serializable error object
- */
-export function serializeError(error: unknown): SerializedError {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack ?? null,
-    };
-  }
-
-  return {
-    message: String(error),
-  };
-}
-
-/**
  * Create a step attempt cache from an array of attempts. Only includes
  * successful attempts (completed or succeeded status).
- *
  * @param attempts - Array of step attempts to cache
  * @returns An immutable map of step name to successful attempt
  */
@@ -104,7 +72,6 @@ export function createStepAttemptCacheFromAttempts(
 
 /**
  * Get a cached step attempt by name.
- *
  * @param cache - The step attempt cache
  * @param stepName - The name of the step to look up
  * @returns The cached attempt or undefined if not found
@@ -118,7 +85,6 @@ export function getCachedStepAttempt(
 
 /**
  * Check if a step attempt is cached (has completed successfully).
- *
  * @param cache - The step attempt cache
  * @param stepName - The name of the step to check
  * @returns True if the step has a cached successful result
@@ -130,7 +96,6 @@ export function hasCompletedStep(cache: StepAttemptCache, stepName: string): boo
 /**
  * Add a step attempt to the cache (returns new cache, original unchanged). This
  * is an immutable operation.
- *
  * @param cache - The existing step attempt cache
  * @param attempt - The attempt to add
  * @returns A new cache with the attempt added
@@ -145,7 +110,6 @@ export function addToStepAttemptCache(
 /**
  * Convert a step function result to a JSON-compatible value. Undefined values
  * are converted to null for JSON serialization.
- *
  * @param result - The result from a step function
  * @returns A JSON-serializable value
  */
@@ -155,7 +119,6 @@ export function normalizeStepOutput(result: unknown): JsonValue {
 
 /**
  * Calculate the resume time for a sleep step.
- *
  * @param duration - The duration string to sleep for
  * @param now - The current timestamp (defaults to Date.now())
  * @returns A Result containing the resume Date or an Error
@@ -163,7 +126,7 @@ export function normalizeStepOutput(result: unknown): JsonValue {
 export function calculateSleepResumeAt(
   duration: DurationString,
   now: number = Date.now(),
-): Result<Date, Error> {
+): Result<Date> {
   const result = parseDuration(duration);
 
   if (!result.ok) {
@@ -175,7 +138,6 @@ export function calculateSleepResumeAt(
 
 /**
  * Create the context object for a sleep step attempt.
- *
  * @param resumeAt - The time when the sleep should resume
  * @returns The context object for the sleep step
  */

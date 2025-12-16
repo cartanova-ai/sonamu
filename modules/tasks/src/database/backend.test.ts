@@ -7,6 +7,7 @@ testBackend({
   setup: async () => {
     return await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
+      runMigrations: false,
     });
   },
   teardown: async (backend) => {

@@ -1,3 +1,4 @@
+import type { SerializedError } from "./error";
 import type { JsonValue } from "./json";
 import type { StandardSchemaV1 } from "./schema";
 
@@ -27,7 +28,7 @@ export interface WorkflowRun {
   context: JsonValue | null; // runtime execution metadata
   input: JsonValue | null;
   output: JsonValue | null;
-  error: JsonValue | null;
+  error: SerializedError | null;
   attempts: number;
   parentStepAttemptNamespaceId: string | null;
   parentStepAttemptId: string | null;
@@ -85,7 +86,6 @@ export const DEFAULT_WORKFLOW_RESULT_CONFIG = {
 /**
  * Validate input against a Standard Schema. Pure async function that validates
  * input and returns a ValidationResult.
- *
  * @param schema - The Standard Schema to validate against (or null/undefined
  * for no validation)
  * @param input - The input value to validate
@@ -127,7 +127,6 @@ export async function validateInput<RunInput, Input>(
 
 /**
  * Create a workflow configuration object with defaults applied.
- *
  * @param config - The user-provided workflow configuration
  * @returns A normalized workflow configuration
  */
@@ -147,7 +146,6 @@ export function createWorkflowConfig<TSchema extends StandardSchemaV1 | undefine
 
 /**
  * Check if a workflow definition has a schema for validation.
- *
  * @param config - The workflow configuration
  * @returns True if the workflow has a schema configured
  */
@@ -159,7 +157,6 @@ export function hasSchema<TSchema extends StandardSchemaV1 | undefined>(
 
 /**
  * Check if a workflow run status represents a terminal state.
- *
  * @param status - The workflow run status
  * @returns True if the status is terminal (completed, failed, or canceled)
  */

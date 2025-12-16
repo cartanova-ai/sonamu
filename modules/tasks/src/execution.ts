@@ -1,7 +1,8 @@
-import type { Backend } from "../core/backend";
-import type { DurationString } from "../core/duration";
-import type { JsonValue } from "../core/json";
-import type { StepAttempt, StepAttemptCache } from "../core/step";
+import type { Backend } from "./backend";
+import type { DurationString } from "./core/duration";
+import { serializeError } from "./core/error";
+import type { JsonValue } from "./core/json";
+import type { StepAttempt, StepAttemptCache } from "./core/step";
 import {
   addToStepAttemptCache,
   calculateSleepResumeAt,
@@ -9,9 +10,8 @@ import {
   createStepAttemptCacheFromAttempts,
   getCachedStepAttempt,
   normalizeStepOutput,
-  serializeError,
-} from "../core/step";
-import type { WorkflowRun } from "../core/workflow";
+} from "./core/step";
+import type { WorkflowRun } from "./core/workflow";
 
 /**
  * Config for an individual step defined with `step.run()`.
@@ -195,7 +195,6 @@ export interface ExecuteWorkflowParams {
  * - Creating the step executor
  * - Executing the workflow function
  * - Completing, failing, or sleeping the workflow run based on the outcome
- *
  * @param params - The execution parameters
  */
 export async function executeWorkflow(params: Readonly<ExecuteWorkflowParams>): Promise<void> {

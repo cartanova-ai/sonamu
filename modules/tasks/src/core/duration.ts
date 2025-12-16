@@ -17,8 +17,10 @@ export type DurationString = `${number}` | `${number}${UnitAnyCase}` | `${number
  * Parse a duration string into milliseconds. Exmaples:
  * - short units: "1ms", "5s", "30m", "2h", "7d", "3w", "1y"
  * - long units: "1 millisecond", "5 seconds", "30 minutes", "2 hours", "7 days", "3 weeks", "1 year"
+ * @param str - Duration string
+ * @returns Milliseconds
  */
-export function parseDuration(str: DurationString): Result<number, Error> {
+export function parseDuration(str: DurationString): Result<number> {
   if (typeof str !== "string") {
     return err(
       new TypeError("Invalid duration format: expected a string but received " + typeof str),

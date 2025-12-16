@@ -1,10 +1,24 @@
-import { describe, expect, test } from "vitest";
-import { OpenWorkflow } from "../sdk/client";
-import { createBackend } from "../testing/connection";
+import { randomUUID } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { BackendPostgres } from ".";
+import { OpenWorkflow } from "./client";
+import { KNEX_GLOBAL_CONFIG } from "./testing/connection";
 
 describe("StepExecutor", () => {
+  let backend: BackendPostgres;
+
+  beforeAll(async () => {
+    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+      namespaceId: randomUUID(),
+      runMigrations: false,
+    });
+  });
+
+  afterAll(async () => {
+    await backend.stop();
+  });
+
   test("executes step and returns result", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "executor-basic" }, async ({ step }) => {
@@ -21,7 +35,6 @@ describe("StepExecutor", () => {
   });
 
   test("caches step results for same step name", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let executionCount = 0;
@@ -50,7 +63,6 @@ describe("StepExecutor", () => {
   });
 
   test("different step names execute independently", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     let executionCount = 0;
@@ -79,7 +91,6 @@ describe("StepExecutor", () => {
   });
 
   test("propagates step errors with deadline exceeded", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "executor-error" }, async ({ step }) => {
@@ -99,7 +110,6 @@ describe("StepExecutor", () => {
   });
 
   test("sleep puts workflow in sleeping status", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "executor-sleep" }, async ({ step }) => {
@@ -110,9 +120,7 @@ describe("StepExecutor", () => {
     const handle = await workflow.run();
     const worker = client.newWorker();
     await worker.tick();
-
-    // Wait for sleep to elapse
-    await sleep(50);
+    await sleep(50); // Wait for sleep step to complete
 
     const workflowRun = await backend.getWorkflowRun({
       workflowRunId: handle.workflowRun.id,
@@ -122,7 +130,6 @@ describe("StepExecutor", () => {
   });
 
   test("workflow resumes after sleep duration", async () => {
-    const backend = await createBackend();
     const client = new OpenWorkflow({ backend });
 
     const workflow = client.defineWorkflow({ name: "resume-after-sleep" }, async ({ step }) => {
@@ -154,9 +161,21 @@ describe("StepExecutor", () => {
 });
 
 describe("executeWorkflow", () => {
+  let backend: BackendPostgres;
+
+  beforeAll(async () => {
+    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+      namespaceId: randomUUID(),
+      runMigrations: false,
+    });
+  });
+
+  afterAll(async () => {
+    await backend.stop();
+  });
+
   describe("successful execution", () => {
     test("executes a simple workflow", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -175,7 +194,6 @@ describe("executeWorkflow", () => {
     });
 
     test("executes a multi-step workflow", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow<{ value: number }, number>(
@@ -196,7 +214,6 @@ describe("executeWorkflow", () => {
     });
 
     test("returns null for workflows without return", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "void-workflow" }, () => null);
@@ -210,7 +227,6 @@ describe("executeWorkflow", () => {
     });
 
     test("returns null from workflow", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "null-workflow" }, () => null);
@@ -226,7 +242,6 @@ describe("executeWorkflow", () => {
 
   describe("error handling", () => {
     test("handles workflow errors with deadline exceeded", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "failing-workflow" }, () => {
@@ -243,7 +258,6 @@ describe("executeWorkflow", () => {
     });
 
     test("handles step errors with deadline exceeded", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "step-error-workflow" }, async ({ step }) => {
@@ -262,7 +276,6 @@ describe("executeWorkflow", () => {
     });
 
     test("serializes non-Error exceptions", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "non-error-workflow" }, async ({ step }) => {
@@ -284,7 +297,6 @@ describe("executeWorkflow", () => {
 
   describe("sleep handling", () => {
     test("workflow enters sleeping status", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "sleep-workflow" }, async ({ step }) => {
@@ -295,9 +307,7 @@ describe("executeWorkflow", () => {
       const handle = await workflow.run();
       const worker = client.newWorker();
       await worker.tick();
-
-      // Wait for sleep to elapse
-      await sleep(50);
+      await sleep(50); // Wait for sleep step to complete
 
       const workflowRun = await backend.getWorkflowRun({
         workflowRunId: handle.workflowRun.id,
@@ -306,7 +316,6 @@ describe("executeWorkflow", () => {
     });
 
     test("resumes workflow after sleep duration", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow<{ value: number }, number>(
@@ -342,7 +351,6 @@ describe("executeWorkflow", () => {
 
   describe("workflow with complex data", () => {
     test("handles objects as input and output", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -367,7 +375,6 @@ describe("executeWorkflow", () => {
     });
 
     test("handles arrays in workflow", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -388,7 +395,6 @@ describe("executeWorkflow", () => {
 
   describe("result type handling", () => {
     test("returns success with numeric result", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "numeric-result" }, async ({ step }) => {
@@ -404,7 +410,6 @@ describe("executeWorkflow", () => {
     });
 
     test("returns success with string result", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -423,7 +428,6 @@ describe("executeWorkflow", () => {
     });
 
     test("returns success with boolean result", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -444,7 +448,6 @@ describe("executeWorkflow", () => {
 
   describe("step execution order", () => {
     test("executes steps in sequence", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const order: string[] = [];
@@ -466,7 +469,6 @@ describe("executeWorkflow", () => {
 
   describe("version handling", () => {
     test("passes version to workflow function", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow(
@@ -485,7 +487,6 @@ describe("executeWorkflow", () => {
     });
 
     test("passes null version when not specified", async () => {
-      const backend = await createBackend();
       const client = new OpenWorkflow({ backend });
 
       const workflow = client.defineWorkflow({ name: "no-version-workflow" }, ({ version }) => {
