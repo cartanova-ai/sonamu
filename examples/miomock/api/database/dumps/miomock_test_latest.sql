@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict p5Q5P596QScMm3Jfbt4mBaVaBa85KeUnbXVfctZevJm1SvH5oHwAp22dc8CCNOh
+\restrict lB52p0aiz4RYoSbD5wbgRtzmM8d5t2Z03prk1xaesqs7uukd9BzotfP2ouLBjT0
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -305,7 +305,7 @@ CREATE TABLE public.projects (
     budget numeric(12,2),
     deadline timestamp with time zone,
     image_urls text[],
-    textsearchable_index_col tsvector GENERATED ALWAYS AS (to_tsvector('simple'::regconfig, (((COALESCE(name, ''::character varying))::text || ' '::text) || COALESCE(description, ''::text)))) STORED NOT NULL
+    textsearchable_index_col tsvector GENERATED ALWAYS AS ((setweight(to_tsvector('simple'::regconfig, (COALESCE(name, ''::character varying))::text), 'A'::"char") || setweight(to_tsvector('simple'::regconfig, COALESCE(description, ''::text)), 'D'::"char"))) STORED NOT NULL
 );
 
 
@@ -640,6 +640,8 @@ INSERT INTO public.knex_migrations VALUES (49, '20251211150026_alter_departments
 INSERT INTO public.knex_migrations VALUES (50, '20251211183902_create__documents.ts', 3, '2025-12-12 16:59:32.064+09');
 INSERT INTO public.knex_migrations VALUES (53, '20251215123723_alter_projects_add1.ts', 4, '2025-12-15 12:37:28.231+09');
 INSERT INTO public.knex_migrations VALUES (54, '20251215123829_alter_projects.ts', 5, '2025-12-15 12:38:33.09+09');
+INSERT INTO public.knex_migrations VALUES (55, '20251216132209_alter_projects_drop1.ts', 6, '2025-12-16 13:38:53.379+09');
+INSERT INTO public.knex_migrations VALUES (56, '20251216132334_alter_projects_add1.ts', 6, '2025-12-16 13:38:53.383+09');
 
 
 --
@@ -1787,7 +1789,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 54, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 56, true);
 
 
 --
@@ -2058,5 +2060,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict p5Q5P596QScMm3Jfbt4mBaVaBa85KeUnbXVfctZevJm1SvH5oHwAp22dc8CCNOh
+\unrestrict lB52p0aiz4RYoSbD5wbgRtzmM8d5t2Z03prk1xaesqs7uukd9BzotfP2ouLBjT0
 
