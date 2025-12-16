@@ -3,7 +3,9 @@ name: miomock
 services:
   pg:
     platform: linux/arm64
-    image: pgvector/pgvector:pg18
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: miomock-pg
     volumes:
       - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql

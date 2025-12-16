@@ -4,8 +4,9 @@
  * 이후 DDL 추가는 Sonamu UI의 DB Migration 기능을 사용해주세요.
  */
 
- -- 데이터베이스에서 vector 확장 설치 (기본접속 template1)
- CREATE EXTENSION IF NOT EXISTS vector;
+-- 데이터베이스에서 vector 확장 설치 (기본접속 template1)
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgroonga;
 
 CREATE DATABASE miomock;
 CREATE DATABASE miomock_fixture_remote;

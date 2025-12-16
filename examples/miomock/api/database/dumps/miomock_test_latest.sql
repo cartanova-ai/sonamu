@@ -20,6 +20,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: pgroonga; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgroonga WITH SCHEMA public;
+
+
+--
 -- Name: vector; Type: EXTENSION; Schema: -; Owner: -
 --
 
