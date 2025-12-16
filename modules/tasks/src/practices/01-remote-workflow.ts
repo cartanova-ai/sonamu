@@ -40,6 +40,7 @@ async function practice() {
     });
   });
 
+  // create a worker that will listen to the channel and process the workflow runs
   const worker = ow.newWorker({ concurrency: 3 });
   await worker.start();
 

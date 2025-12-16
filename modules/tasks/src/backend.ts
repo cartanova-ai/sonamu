@@ -2,6 +2,7 @@ import type { SerializedError } from "./core/error";
 import type { JsonValue } from "./core/json";
 import type { StepAttempt, StepAttemptContext, StepKind } from "./core/step";
 import type { WorkflowRun } from "./core/workflow";
+import type { OnSubscribed } from "./database/pubsub";
 
 export const DEFAULT_NAMESPACE_ID = "default";
 
@@ -9,6 +10,10 @@ export const DEFAULT_NAMESPACE_ID = "default";
  * Backend is the interface for backend providers to implement.
  */
 export interface Backend {
+  // Listen for events on a channel
+  subscribe(callback: OnSubscribed): Promise<void>;
+  publish(payload?: string): Promise<void>;
+
   // Workflow Runs
   createWorkflowRun(params: Readonly<CreateWorkflowRunParams>): Promise<WorkflowRun>;
   getWorkflowRun(params: Readonly<GetWorkflowRunParams>): Promise<WorkflowRun | null>;

@@ -23,7 +23,9 @@ import { DEFAULT_RETRY_POLICY } from "../core/retry";
 import type { StepAttempt } from "../core/step";
 import type { WorkflowRun } from "../core/workflow";
 import { DEFAULT_SCHEMA, migrate } from "./base";
+import { type OnSubscribed, PostgresPubSub } from "./pubsub";
 
+export const DEFAULT_LISTEN_CHANNEL = "new_tasks";
 export const DEFAULT_PAGINATION_PAGE_SIZE = 100;
 
 interface BackendPostgresOptions {
@@ -31,7 +33,7 @@ interface BackendPostgresOptions {
   runMigrations?: boolean;
 
   // default: true
-  useNotifyListen?: boolean;
+  usePubSub?: boolean;
 }
 
 /**
@@ -40,10 +42,37 @@ interface BackendPostgresOptions {
 export class BackendPostgres implements Backend {
   private knex: Knex;
   private namespaceId: string;
+  private usePubSub: boolean;
+  private pubsub: PostgresPubSub | null = null;
 
-  private constructor(knex: Knex, namespaceId: string) {
+  private constructor(knex: Knex, namespaceId: string, usePubSub: boolean) {
     this.knex = knex;
     this.namespaceId = namespaceId;
+    this.usePubSub = usePubSub;
+  }
+
+  async subscribe(callback: OnSubscribed) {
+    if (!this.usePubSub) {
+      return;
+    }
+
+    if (!this.pubsub) {
+      this.pubsub = await PostgresPubSub.create(this.knex);
+    }
+
+    this.pubsub.listenEvent(DEFAULT_LISTEN_CHANNEL, callback);
+  }
+
+  async publish(payload?: string): Promise<void> {
+    if (!this.usePubSub) {
+      return;
+    }
+
+    await this.knex.raw(
+      payload
+        ? `NOTIFY ${DEFAULT_LISTEN_CHANNEL}, '${payload}'`
+        : `NOTIFY ${DEFAULT_LISTEN_CHANNEL}`,
+    );
   }
 
   /**
@@ -74,9 +103,10 @@ export class BackendPostgres implements Backend {
       return camelizeRow(result);
     };
 
-    const { namespaceId, runMigrations } = {
+    const { namespaceId, runMigrations, usePubSub } = {
       namespaceId: DEFAULT_NAMESPACE_ID,
       runMigrations: true,
+      usePubSub: true,
       ...options,
     };
 
@@ -92,10 +122,12 @@ export class BackendPostgres implements Backend {
       await pgForMigrate.destroy();
     }
 
-    return new BackendPostgres(knex({ ...database, postProcessResponse }), namespaceId);
+    return new BackendPostgres(knex({ ...database, postProcessResponse }), namespaceId, usePubSub);
   }
 
   async stop(): Promise<void> {
+    await this.pubsub?.destroy();
+    this.pubsub = null;
     await this.knex.destroy();
   }
 

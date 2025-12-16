@@ -17,6 +17,8 @@ export interface WorkerOptions {
   backend: Backend;
   registry: WorkflowRegistry<WorkflowDefinition<unknown, unknown, unknown>>;
   concurrency?: number | undefined;
+  usePubSub?: boolean;
+  listenDelay?: number;
 }
 
 /**
@@ -31,9 +33,14 @@ export class Worker {
   private running = false;
   private loopPromise: Promise<void> | null = null;
 
+  private usePubSub: boolean;
+  private listenDelay: number;
+
   constructor(options: WorkerOptions) {
     this.backend = options.backend;
     this.registry = options.registry;
+    this.usePubSub = options.usePubSub ?? true;
+    this.listenDelay = options.listenDelay ?? 500;
 
     const concurrency = Math.max(DEFAULT_CONCURRENCY, options.concurrency ?? DEFAULT_CONCURRENCY);
 
@@ -101,6 +108,17 @@ export class Worker {
    * Only sleeps when no work was claimed to avoid busy-waiting.
    */
   private async runLoop(): Promise<void> {
+    if (this.usePubSub) {
+      this.backend.subscribe(async (result) => {
+        if (!result.ok) {
+          return;
+        }
+
+        await sleep(this.listenDelay);
+        await this.tick();
+      });
+    }
+
     while (this.running) {
       try {
         const claimedCount = await this.tick();

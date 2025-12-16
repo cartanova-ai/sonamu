@@ -4,7 +4,7 @@ import type { SchemaInput, SchemaOutput, WorkflowRun } from "./core/workflow";
 import { validateInput } from "./core/workflow";
 import type { WorkflowFunction } from "./execution";
 import { WorkflowRegistry } from "./registry";
-import { Worker } from "./worker";
+import { Worker, type WorkerOptions } from "./worker";
 
 const DEFAULT_RESULT_POLL_INTERVAL_MS = 1000; // 1s
 const DEFAULT_RESULT_TIMEOUT_MS = 5 * 60 * 1000; // 5m
@@ -39,12 +39,18 @@ export class OpenWorkflow {
    * @param options.concurrency - Max concurrent workflow runs
    * @returns Worker instance
    */
-  newWorker(options?: { concurrency?: number | undefined }): Worker {
+  newWorker(options?: {
+    concurrency?: number | undefined;
+    usePubSub?: boolean;
+    listenDelay?: number;
+  }): Worker {
     return new Worker({
       backend: this.backend,
       registry: this.registry,
       concurrency: options?.concurrency,
-    });
+      usePubSub: options?.usePubSub,
+      listenDelay: options?.listenDelay,
+    } satisfies WorkerOptions);
   }
 
   /**
@@ -90,7 +96,6 @@ export class OpenWorkflow {
       throw new Error(validationResult.error);
     }
     const parsedInput = validationResult.value;
-
     const workflowRun = await this.backend.createWorkflowRun({
       workflowName: spec.name,
       version: spec.version,
@@ -101,6 +106,10 @@ export class OpenWorkflow {
       availableAt: null,
       deadlineAt: options?.deadlineAt ?? null,
     });
+
+    if (options?.publishToChannel) {
+      await this.backend.publish(workflowRun.id);
+    }
 
     return new WorkflowRunHandle<Output>({
       backend: this.backend,
@@ -281,6 +290,12 @@ export interface WorkflowRunOptions {
    * it will be marked as failed.
    */
   deadlineAt?: Date;
+
+  /**
+   * Publish when the workflow run is created to the channel.
+   * Default: true
+   */
+  publishToChannel?: boolean;
 }
 
 /**
