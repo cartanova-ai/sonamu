@@ -233,7 +233,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     for (const [alias, columnOrFunction] of Object.entries(flatSelect)) {
       if (typeof columnOrFunction === "object" && columnOrFunction._type === "sql_expression") {
         // SQL 함수인 경우
-        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as ${alias}`));
+        selectClauses.push(this.knex.raw(`${columnOrFunction._sql} as "${alias}"`));
       } else {
         // 일반 컬럼인 경우
         const columnPath = columnOrFunction as string;
