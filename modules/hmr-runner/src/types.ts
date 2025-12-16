@@ -18,7 +18,7 @@ export type RunOptions = {
   nodeArgs: string[];
 
   /**
-   * Standard input ouput stream options
+   * Standard input output stream options
    */
   stdio?: "pipe" | "inherit";
 
