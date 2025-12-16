@@ -321,11 +321,6 @@ type HasDefaultKeys<T> = T extends { __hasDefault__: readonly (infer K)[] }
   ? Extract<K, keyof PuriTable<T>>
   : never;
 
-// __vector__에 포함된 키들을 PuriTable<T>의 키로 제한
-type VectorKeys<T> = T extends { __vector__: readonly (infer K)[] }
-  ? Extract<K, keyof PuriTable<T>>
-  : never;
-
 // __generated__에 포함된 키들 (INSERT 시 제외해야 함)
 type GeneratedKeys<T> = T extends { __generated__: readonly (infer K)[] }
   ? Extract<K, keyof PuriTable<T>>
