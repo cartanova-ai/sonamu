@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict lB52p0aiz4RYoSbD5wbgRtzmM8d5t2Z03prk1xaesqs7uukd9BzotfP2ouLBjT0
+\restrict 62nppBXPfhqCg20YV8ORSzpsbCy8ufRyAJw2v1HCh11TDvclTgHVlLXc4s59nXF
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -105,8 +105,7 @@ CREATE TABLE public.documents (
     title character varying(255) NOT NULL,
     content text,
     status text NOT NULL,
-    content_embedding public.vector(1024),
-    content_embedding_openai public.vector(1536)
+    title_content_embedding public.vector(1024)
 );
 
 
@@ -642,6 +641,7 @@ INSERT INTO public.knex_migrations VALUES (53, '20251215123723_alter_projects_ad
 INSERT INTO public.knex_migrations VALUES (54, '20251215123829_alter_projects.ts', 5, '2025-12-15 12:38:33.09+09');
 INSERT INTO public.knex_migrations VALUES (55, '20251216132209_alter_projects_drop1.ts', 6, '2025-12-16 13:38:53.379+09');
 INSERT INTO public.knex_migrations VALUES (56, '20251216132334_alter_projects_add1.ts', 6, '2025-12-16 13:38:53.383+09');
+INSERT INTO public.knex_migrations VALUES (57, '20251217031141_alter_documents_add1_drop2.ts', 7, '2025-12-17 03:39:51.931+09');
 
 
 --
@@ -1789,7 +1789,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 56, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 57, true);
 
 
 --
@@ -2060,5 +2060,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lB52p0aiz4RYoSbD5wbgRtzmM8d5t2Z03prk1xaesqs7uukd9BzotfP2ouLBjT0
+\unrestrict 62nppBXPfhqCg20YV8ORSzpsbCy8ufRyAJw2v1HCh11TDvclTgHVlLXc4s59nXF
 
