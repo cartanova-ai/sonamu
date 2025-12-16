@@ -155,18 +155,11 @@ export const DocumentBaseSchema = z.object({
   title: z.string().max(255),
   content: z.string().nullable(),
   status: DocumentStatus,
-  content_embedding: z.array(z.number()).nullable(),
-  content_embedding_openai: z.array(z.number()).nullable(),
+  title_content_embedding: z.array(z.number()).nullable(),
 });
 export type DocumentBaseSchema = z.infer<typeof DocumentBaseSchema> & {
-  readonly __hasDefault__: readonly [
-    "created_at",
-    "content",
-    "content_embedding",
-    "content_embedding_openai",
-    "id",
-  ];
-  readonly __vector__: readonly ["content_embedding", "content_embedding_openai"];
+  readonly __hasDefault__: readonly ["created_at", "content", "title_content_embedding", "id"];
+  readonly __vector__: readonly ["title_content_embedding"];
 };
 
 // BaseSchema: Employee
@@ -506,6 +499,9 @@ export type DepartmentSubsetKey = z.infer<typeof DepartmentSubsetKey>;
 export const DocumentSubsetA = z.object({
   id: z.int(),
   created_at: z.date(),
+  title: z.string().max(255),
+  content: z.string().nullable(),
+  status: DocumentStatus,
 });
 export type DocumentSubsetA = z.infer<typeof DocumentSubsetA>;
 export type DocumentSubsetMapping = {
