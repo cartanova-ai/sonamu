@@ -25,15 +25,15 @@
   },
   {
     "path": "src/application/document/document.entity.json",
-    "checksum": "82a5dd17f7a7403ff4a40e5841754acee2f10010"
+    "checksum": "3f81d3ca1772737a0c0733d7af51be3aa7b1d77b"
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "f6b7ba7eb0752e78f12b5d528858f90ed689fdfe"
+    "checksum": "c28dfbf84e6dc852e18974e9a4b3aff513f9c6ad"
   },
   {
     "path": "src/application/document/document.types.ts",
-    "checksum": "1f99edeabf0c6a8d8be8f310161e512350e3ef3e"
+    "checksum": "b70bec4bb0d33130122e73395e84a6aab58c28f5"
   },
   {
     "path": "src/application/employee/employee.entity.json",
@@ -73,7 +73,7 @@
   },
   {
     "path": "src/application/sonamu.generated.ts",
-    "checksum": "28c78a3df6c9246903d8cb93d2e023e369c999ed"
+    "checksum": "662871051570d25a2f8a8a673155cebd3aa93f27"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.entity.json",

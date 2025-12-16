@@ -5,26 +5,19 @@
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
     { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
-    { "name": "title", "desc": "제목", "type": "string", "length": 255 },
+    { "name": "title", "toFilter": false, "desc": "제목", "type": "string", "length": 255 },
     { "name": "content", "nullable": true, "desc": "내용", "type": "string" },
     { "name": "status", "desc": "상태", "type": "enum", "id": "DocumentStatus" },
     {
-      "name": "content_embedding",
+      "name": "title_content_embedding",
       "nullable": true,
-      "desc": "임베딩 내용",
+      "desc": "임베딩 내용 (title_content)",
       "type": "vector",
       "dimensions": 1024
-    },
-    {
-      "name": "content_embedding_openai",
-      "nullable": true,
-      "desc": "임베딩 내용 (openai)",
-      "type": "vector",
-      "dimensions": 1536
     }
   ],
   "indexes": [],
-  "subsets": { "A": ["id", "created_at"] },
+  "subsets": { "A": ["id", "created_at", "title", "content", "status"] },
   "enums": {
     "DocumentOrderBy": { "id-desc": "ID최신순" },
     "DocumentSearchField": { "id": "ID" },

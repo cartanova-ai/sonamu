@@ -10,8 +10,7 @@ export async function up(knex: Knex): Promise<void> {
     table.string("title", 255).notNullable();
     table.text("content").nullable();
     table.text("status").notNullable();
-    table.specificType("content_embedding", "vector(1024)").nullable();
-    table.specificType("content_embedding_openai", "vector(1536)").nullable();
+    table.specificType("title_content_embedding", "vector(1024)").nullable();
   });
 }
 
