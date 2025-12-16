@@ -268,7 +268,7 @@ Content-Type: application/json
 ###
 
 GET {{baseUrl}}/api/project/search
-	?search=SEARCH
+	?search=시스템
 Content-Type: application/json
 
 ###

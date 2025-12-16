@@ -253,7 +253,7 @@ class ProjectModelClass extends BaseModelClass<
         }),
         description_highlight: Puri.highlight("projects.description", search),
         rank: Puri.rank("projects.textsearchable_index_col", search, {
-          weights: [0.1, 0.2, 0.5, 1.0],
+          weights: [0.1, 0.2, 0.4, 1.0],
         }),
         rankCd: Puri.rankCd("projects.textsearchable_index_col", search, {
           normalization: 8 | 32,

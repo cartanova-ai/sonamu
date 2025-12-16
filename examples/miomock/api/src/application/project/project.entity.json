@@ -4,12 +4,7 @@
   "title": "PROJECT",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
-    },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     {
       "type": "relation",
       "name": "employee",
@@ -22,12 +17,7 @@
     },
     { "name": "name", "desc": "PROJECT명", "type": "string", "length": 255 },
     { "name": "status", "desc": "상태", "type": "enum", "id": "ProjectStatus" },
-    {
-      "name": "description",
-      "nullable": true,
-      "desc": "설명",
-      "type": "string"
-    },
+    { "name": "description", "nullable": true, "desc": "설명", "type": "string" },
     {
       "name": "budget",
       "type": "numeric",
@@ -36,12 +26,7 @@
       "nullable": true,
       "desc": "예산"
     },
-    {
-      "name": "deadline",
-      "type": "date",
-      "nullable": true,
-      "desc": "마감일시"
-    },
+    { "name": "deadline", "type": "date", "nullable": true, "desc": "마감일시" },
     {
       "type": "relation",
       "name": "tags",
@@ -53,12 +38,7 @@
       "onUpdate": "CASCADE",
       "onDelete": "CASCADE"
     },
-    {
-      "name": "image_urls",
-      "nullable": true,
-      "desc": "이미지URLS",
-      "type": "string[]"
-    },
+    { "name": "image_urls", "nullable": true, "desc": "이미지URLS", "type": "string[]" },
     {
       "name": "virtual_test",
       "nullable": true,
@@ -72,7 +52,7 @@
       "desc": "FTS 테스트용",
       "generated": {
         "type": "STORED",
-        "expression": "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))"
+        "expression": "setweight(to_tsvector('simple', coalesce(name, '')), 'A') || setweight(to_tsvector('simple', coalesce(description, '')), 'D')"
       }
     }
   ],
