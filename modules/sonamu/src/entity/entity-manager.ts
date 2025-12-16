@@ -85,6 +85,15 @@ class EntityManagerClass {
     return entity;
   }
 
+  getByTable(table: string): Entity {
+    const entity = Array.from(this.entities.values()).find((entity) => entity.table === table);
+    if (entity === undefined) {
+      throw new Error(`존재하지 않는 Entity 요청 ${table}`);
+    }
+
+    return entity;
+  }
+
   exists(entityId: string): boolean {
     const entity = this.entities.get(entityId);
     return entity !== undefined;
