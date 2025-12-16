@@ -8,10 +8,10 @@ let backend: BackendPostgres | null = null;
 export const KNEX_GLOBAL_CONFIG: Knex.Config = {
   client: "pg",
   connection: {
-    host: "localhost",
-    port: 51000,
+    host: "127.0.0.1",
+    port: 5432,
     user: "postgres",
-    password: "postgres",
+    password: "miomock123",
     database: "postgres",
   },
   pool: {
@@ -30,7 +30,6 @@ export async function createBackend(): Promise<BackendPostgres> {
 
   backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
     namespaceId: randomUUID(),
-    runMigrations: false,
   });
 
   return backend;

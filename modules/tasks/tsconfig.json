@@ -33,6 +33,7 @@
     "src/**/*.ignore.ts",
     "**/__mocks__/**",
     "*.config.ts",
-    "templates/openworkflow.config.ts"
+    "templates/openworkflow.config.ts",
+    "scripts/**/*.ts"
   ]
 }

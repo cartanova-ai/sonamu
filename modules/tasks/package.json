@@ -22,6 +22,7 @@
     "check": "tsc --noEmit && biome format --write ./src/**/*.ts",
     "check:type": "tsc --noEmit",
     "check:format": "biome format --write ./src/**/*.ts",
+    "pretest": "tsx scripts/migrate.ts",
     "test": "vitest run",
     "test:watch": "vitest watch --standalone",
     "test:coverage": "vitest run --coverage"

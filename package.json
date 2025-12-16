@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "build:tools:tasks": "cowsay -f box '@sonamu-kit/tasks 빌드합니다.' && pnpm run --filter @sonamu-kit/tasks build || (cowsay -f explosion '@sonamu-kit/tasks 빌드 실패!' && exit 1)",
     "build:tools:ts-loader": "cowsay -f box '@sonamu-kit/ts-loader 빌드합니다.' && pnpm run --filter @sonamu-kit/ts-loader build || (cowsay -f explosion '@sonamu-kit/ts-loader 빌드 실패!' && exit 1)",
     "build:tools:hmr-hook": "cowsay -f box '@sonamu-kit/hmr-hook 빌드합니다.' && pnpm run --filter @sonamu-kit/hmr-hook build || (cowsay -f explosion '@sonamu-kit/hmr-hook 빌드 실패!' && exit 1)",
     "build:tools:hmr-runner": "cowsay -f box '@sonamu-kit/hmr-runner 빌드합니다.' && pnpm run --filter @sonamu-kit/hmr-runner build || (cowsay -f explosion '@sonamu-kit/hmr-runner 빌드 실패!' && exit 1)",

@@ -110,19 +110,12 @@ export class BackendPostgres implements Backend {
       ...options,
     };
 
+    const knexInstance = knex({ ...database, postProcessResponse });
     if (runMigrations) {
-      const pgForMigrate = knex({
-        ...database,
-        pool: {
-          min: 1,
-          max: 1,
-        },
-      });
-      await migrate(pgForMigrate, DEFAULT_SCHEMA);
-      await pgForMigrate.destroy();
+      await migrate(knexInstance, DEFAULT_SCHEMA);
     }
 
-    return new BackendPostgres(knex({ ...database, postProcessResponse }), namespaceId, usePubSub);
+    return new BackendPostgres(knexInstance, namespaceId, usePubSub);
   }
 
   async stop(): Promise<void> {
