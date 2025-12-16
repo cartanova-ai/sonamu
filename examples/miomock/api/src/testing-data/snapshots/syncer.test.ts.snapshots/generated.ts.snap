@@ -166,6 +166,7 @@ export type DocumentBaseSchema = z.infer<typeof DocumentBaseSchema> & {
     "content_embedding_openai",
     "id",
   ];
+  readonly __vector__: readonly ["content_embedding", "content_embedding_openai"];
 };
 
 // BaseSchema: Employee
