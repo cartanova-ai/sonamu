@@ -406,6 +406,40 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/document/findManySemantic
+Content-Type: application/json
+
+{
+  "subset": "unknown",
+  "rawParams": {
+    "num": 24,
+    "page": 1,
+    "search": "id",
+    "keyword": "KEYWORD",
+    "orderBy": "id-desc",
+    "queryMode": "both",
+    "id": 0,
+    "semanticQuery": {
+      "embedding": [
+        0
+      ],
+      "threshold": 0,
+      "as": "AS",
+      "method": "cosine"
+    }
+  }
+}
+
+###
+
+GET {{baseUrl}}/api/document/embedQuery
+	?text=TEXT
+	&model=voyage
+	&inputType=document
+Content-Type: application/json
+
+###
+
 POST {{baseUrl}}/api/document/save
 Content-Type: application/json
 
@@ -417,8 +451,7 @@ Content-Type: application/json
       "title": "TITLE",
       "content": null,
       "status": "draft",
-      "content_embedding": null,
-      "content_embedding_openai": null
+      "title_content_embedding": null
     }
   ]
 }

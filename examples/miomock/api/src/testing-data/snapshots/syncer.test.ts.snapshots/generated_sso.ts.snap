@@ -126,6 +126,9 @@ export const documentSubsetQueries = {
     return qbWrapper.from("documents").select({
       id: "documents.id",
       created_at: "documents.created_at",
+      title: "documents.title",
+      content: "documents.content",
+      status: "documents.status",
     });
   },
 };
