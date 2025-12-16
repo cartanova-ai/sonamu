@@ -13,12 +13,30 @@ type VirtualKey = "__virtual__";
 type LeftJoinedKey = "__leftJoined__";
 type HasDefault = "__hasDefault__";
 type GeneratedKey = "__generated__";
+type VectorKey = "__vector__";
 
-type InternalTypeKeys = FulltextKey | VirtualKey | LeftJoinedKey | HasDefault | GeneratedKey;
+type InternalTypeKeys =
+  | FulltextKey
+  | VirtualKey
+  | LeftJoinedKey
+  | HasDefault
+  | GeneratedKey
+  | VectorKey;
 
 // ============================================
 // 타입 유틸리티
 // ============================================
+
+// __vector__ 메타데이터에서 벡터 컬럼 추출
+type VectorColumnKeys<T> = T extends { [K in VectorKey]: readonly (infer V)[] }
+  ? V & string
+  : never;
+
+export type VectorColumns<TTables extends Record<string, any>> =
+  | {
+      [TAlias in keyof TTables]: `${TAlias & string}.${VectorColumnKeys<TTables[TAlias]>}`;
+    }[keyof TTables]
+  | (IsSingleKey<TTables> extends true ? VectorColumnKeys<TTables[keyof TTables]> : never);
 
 // 테이블명 타입
 export type TableName<TSchema> = keyof TSchema & string;
@@ -28,17 +46,6 @@ type VirtualKeys<T> = T extends { [K in VirtualKey]: readonly (infer V)[] } ? V 
 
 // virtual 컬럼 제거
 type StripVirtual<T> = Omit<T, VirtualKeys<T>>;
-
-type VectorColumnKeys<T> = {
-  [K in keyof T]: T[K] extends number[] | null | undefined ? K : never;
-}[keyof T] &
-  string;
-
-export type VectorColumns<TTables extends Record<string, any>> =
-  | {
-      [TAlias in keyof TTables]: `${TAlias & string}.${VectorColumnKeys<TTables[TAlias]>}`;
-    }[keyof TTables]
-  | (IsSingleKey<TTables> extends true ? VectorColumnKeys<TTables[keyof TTables]> : never);
 
 // LEFT JOIN 마커 - nullable FK로 조인된 테이블
 // 이 마커는 nullable FK + leftJoin 조합에서만 붙습니다.
@@ -311,6 +318,11 @@ export type SingleTableValue<TTables extends Record<string, any>> =
 
 // __hasDefault__에 포함된 키들을 PuriTable<T>의 키로 제한
 type HasDefaultKeys<T> = T extends { __hasDefault__: readonly (infer K)[] }
+  ? Extract<K, keyof PuriTable<T>>
+  : never;
+
+// __vector__에 포함된 키들을 PuriTable<T>의 키로 제한
+type VectorKeys<T> = T extends { __vector__: readonly (infer K)[] }
   ? Extract<K, keyof PuriTable<T>>
   : never;
 

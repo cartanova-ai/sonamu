@@ -196,6 +196,14 @@ export class Template__generated extends Template {
       .concat("id");
 
     /**
+     * hasVector props
+     * - vector 타입인 컬럼
+     */
+    const hasVectorColumns = entity.props
+      .filter((prop) => prop.type === "vector" || prop.type === "vector[]")
+      .map((prop) => prop.name);
+
+    /**
      * generated props
      * - generated 속성이 있는 컬럼 (INSERT/UPDATE 시 값 제공 불가)
      */
@@ -207,7 +215,8 @@ export class Template__generated extends Template {
       fulltextColumns.length > 0 ||
       virtualProps.length > 0 ||
       hasDefaultColumns.length > 0 ||
-      generatedColumns.length > 0;
+      generatedColumns.length > 0 ||
+      hasVectorColumns.length > 0;
 
     const lines = [
       `export const ${schemaName} = ${schemaBody};`,
@@ -222,15 +231,20 @@ export class Template__generated extends Template {
               (virtualProps.length > 0
                 ? `readonly __virtual__: readonly [${virtualProps.map((prop) => `"${prop}"`).join(", ")}],`
                 : "") +
+              (hasDefaultColumns.length > 0
+                ? `readonly __hasDefault__: readonly [${hasDefaultColumns
+                    .map((col) => `"${col}"`)
+                    .join(", ")}],`
+                : "") +
               (
-                hasDefaultColumns.length > 0
-                  ? `readonly __hasDefault__: readonly [${hasDefaultColumns
+                generatedColumns.length > 0
+                  ? `readonly __generated__: readonly [${generatedColumns
                       .map((col) => `"${col}"`)
                       .join(", ")}],`
                   : ""
               ) +
-              (generatedColumns.length > 0
-                ? `readonly __generated__: readonly [${generatedColumns
+              (hasVectorColumns.length > 0
+                ? `readonly __vector__: readonly [${hasVectorColumns
                     .map((col) => `"${col}"`)
                     .join(", ")}],`
                 : "")
