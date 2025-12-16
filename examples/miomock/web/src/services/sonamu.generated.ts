@@ -337,12 +337,6 @@ export const DocumentBaseListParams = z
     orderBy: DocumentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type DocumentBaseListParams = z.infer<typeof DocumentBaseListParams>;

@@ -4,12 +4,7 @@ import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import {
-  type EntityIndex,
-  type EntityPropNode,
-  isVectorProp,
-  isVirtualProp,
-} from "../../types/types";
+import { type EntityIndex, type EntityPropNode, isVirtualProp } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
@@ -284,19 +279,6 @@ export class Template__generated extends Template {
     const filterBody = propNodes
       .map((propNode) => propNodeToZodTypeDef(propNode, importKeys))
       .join("\n");
-
-    const hasVectorProps =
-      entity.props.filter((prop) => isVectorProp(prop)).map((prop) => prop.name).length !== 0;
-    const vectorFields = hasVectorProps
-      ? `
-  semanticQuery: z.object({
-    keyword: z.string().trim().min(1),
-    threshold: z.number().optional(),
-    as: z.string().optional(),
-    method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-  }),`
-      : "";
-
     const schemaBody = `
 z.object({
   num: z.number().int().nonnegative(),
@@ -305,7 +287,7 @@ z.object({
   keyword: z.string(),
   orderBy: ${entity.id}OrderBy,
   queryMode: SonamuQueryMode,
-  id: zArrayable(z.number().int().positive()),${vectorFields}${filterBody}
+  id: zArrayable(z.number().int().positive()),${filterBody}
 }).partial();
 `.trim();
 
