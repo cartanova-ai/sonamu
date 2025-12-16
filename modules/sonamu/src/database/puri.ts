@@ -3,6 +3,7 @@
 
 import assert from "assert";
 import chalk from "chalk";
+import inflection from "inflection";
 import type { Knex } from "knex";
 import { Naite } from "../naite/naite";
 import type {
@@ -155,32 +156,13 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   static highlight(
     column: string,
     query: string,
-    options?: HighlightOptions,
+    _options?: HighlightOptions,
   ): SqlExpression<"string"> {
-    const {
-      parser = "websearch_to_tsquery",
-      config = "simple",
-      maxWords,
-      minWords,
-      shortWord,
-      highlightAll,
-      maxFragments,
-      startSel,
-      stopSel,
-      fragmentDelimiter,
-    } = options ?? {};
+    const { parser = "websearch_to_tsquery", config = "simple", ...options } = _options ?? {};
 
-    const hlOptionParts: string[] = [];
-
-    if (maxWords !== undefined) hlOptionParts.push(`MaxWords=${maxWords}`);
-    if (minWords !== undefined) hlOptionParts.push(`MinWords=${minWords}`);
-    if (shortWord !== undefined) hlOptionParts.push(`ShortWord=${shortWord}`);
-    if (highlightAll !== undefined) hlOptionParts.push(`HighlightAll=${highlightAll}`);
-    if (maxFragments !== undefined) hlOptionParts.push(`MaxFragments=${maxFragments}`);
-    if (startSel !== undefined) hlOptionParts.push(`StartSel="${startSel}"`);
-    if (stopSel !== undefined) hlOptionParts.push(`StopSel="${stopSel}"`);
-    if (fragmentDelimiter !== undefined)
-      hlOptionParts.push(`FragmentDelimiter="${fragmentDelimiter}"`);
+    const hlOptionParts = Object.entries(options).map(([key, value]) => {
+      return `${inflection.camelize(key)}=${value}`;
+    });
 
     const hlOptions = hlOptionParts.length > 0 ? `, '${hlOptionParts.join(", ")}'` : "";
 
