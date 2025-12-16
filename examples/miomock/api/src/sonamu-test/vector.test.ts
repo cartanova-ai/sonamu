@@ -4,9 +4,8 @@
  * - 실제 API 호출이 필요한 테스트는 skip 처리
  */
 
-import type { Knex } from "knex";
-import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding, EmbeddingClass, VectorSearch } from "sonamu";
-import { beforeAll, describe, expect, test, vi } from "vitest";
+import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding, EmbeddingClass } from "sonamu";
+import { describe, expect, test } from "vitest";
 
 describe("vector.test.ts", () => {
   describe("Chunking", () => {
@@ -110,94 +109,6 @@ describe("vector.test.ts", () => {
       results.forEach((result) => {
         expect(result.embedding).toHaveLength(1024);
       });
-    });
-  });
-
-  describe("VectorSearch", () => {
-    let mockDb: Knex;
-
-    beforeAll(() => {
-      // Mock Knex 생성
-      mockDb = {
-        raw: vi.fn(),
-        transaction: vi.fn(),
-        cosineDistance: vi.fn(),
-      } as unknown as Knex;
-
-      // mock query builder
-      const mockQueryBuilder = {
-        count: vi.fn().mockReturnThis(),
-        first: vi.fn(),
-        select: vi.fn().mockReturnThis(),
-        whereNull: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockReturnThis(),
-      };
-
-      (mockDb as unknown as (tableName: string) => typeof mockQueryBuilder) = vi
-        .fn()
-        .mockReturnValue(mockQueryBuilder);
-    });
-
-    test("VectorSearch 인스턴스가 생성되어야 한다", () => {
-      const vectorSearch = new VectorSearch(mockDb, "test_table");
-
-      expect(vectorSearch).toBeDefined();
-      expect(vectorSearch.getEmbedding()).toBeInstanceOf(EmbeddingClass);
-    });
-
-    test("커스텀 설정으로 인스턴스 생성이 가능해야 한다", () => {
-      const vectorSearch = new VectorSearch(mockDb, "test_table", {
-        search: {
-          defaultLimit: 20,
-          similarityThreshold: 0.7,
-          vectorWeight: 0.8,
-          ftsWeight: 0.2,
-        },
-      });
-
-      expect(vectorSearch).toBeDefined();
-    });
-
-    test("getEmbeddingStatus가 올바른 쿼리를 실행해야 한다", async () => {
-      const mockFirst = vi.fn().mockResolvedValue({
-        total: "100",
-        with_embedding: "80",
-      });
-      // count().count().first() 체인 구조
-      const mockCount = vi
-        .fn()
-        .mockReturnValue({ count: vi.fn().mockReturnValue({ first: mockFirst }) });
-      const mockDbFn = vi.fn().mockReturnValue({ count: mockCount });
-
-      const db = mockDbFn as unknown as Knex;
-      const vectorSearch = new VectorSearch(db, "test_table");
-
-      const status = await vectorSearch.getEmbeddingStatus();
-
-      expect(status).toEqual({
-        total: 100,
-        withEmbedding: 80,
-        withoutEmbedding: 20,
-      });
-      expect(mockDbFn).toHaveBeenCalledWith("test_table");
-    });
-
-    test("getItemsWithoutEmbedding이 올바른 쿼리를 실행해야 한다", async () => {
-      const mockLimit = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }, { id: 3 }]);
-      const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
-      const mockWhereNull = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-      const mockSelect = vi.fn().mockReturnValue({ whereNull: mockWhereNull });
-      const mockDbFn = vi.fn().mockReturnValue({ select: mockSelect });
-
-      const db = mockDbFn as unknown as Knex;
-      const vectorSearch = new VectorSearch(db, "test_table");
-
-      const ids = await vectorSearch.getItemsWithoutEmbedding("content_embedding", 10);
-
-      expect(ids).toEqual([1, 2, 3]);
-      expect(mockWhereNull).toHaveBeenCalledWith("content_embedding");
-      expect(mockLimit).toHaveBeenCalledWith(10);
     });
   });
 

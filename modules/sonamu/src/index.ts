@@ -35,7 +35,6 @@ export * from "./vector/chunking";
 export * from "./vector/config";
 export * from "./vector/embedding";
 export * from "./vector/types";
-export * from "./vector/vector-search";
 
 // export * from "./api/code-converters";
 // export * from "./syncer/syncer";
