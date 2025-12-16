@@ -3,13 +3,18 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
+  Embedding,
   exhaustive,
   type ListResult,
   NotFoundException,
 } from "sonamu";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
-import type { DocumentListParams, DocumentSaveParams } from "./document.types";
+import type {
+  DocumentListParams,
+  DocumentSaveParams,
+  DocumentSimilarityListParams,
+} from "./document.types";
 
 /*
   Document Model
@@ -109,6 +114,59 @@ class DocumentModelClass extends BaseModelClass<
       enhancers,
       debug: false,
     });
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "swr"] })
+  async findManySemantic<T extends DocumentSubsetKey, LP extends DocumentSimilarityListParams>(
+    subset: T,
+    rawParams: LP,
+  ): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
+    const params = {
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
+    } satisfies DocumentSimilarityListParams;
+
+    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
+    if (params.id) {
+      qb.whereIn("documents.id", asArray(params.id));
+    }
+
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("documents.id", Number(params.keyword));
+      } else {
+        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+      }
+    }
+
+    // semanticQuery 조건에 따라 유사도 검색 조건 추가
+    const { embedding, as, method, threshold } = params.semanticQuery;
+    qb.vectorSimilarity("documents.title_content_embedding", embedding, {
+      as,
+      method,
+      threshold,
+    });
+
+    return this.executeSubsetQuery({
+      subset,
+      qb,
+      params,
+      debug: false,
+    });
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
+  async embedQuery(
+    text: string,
+    model: "voyage" | "openai",
+    inputType: "document" | "query",
+  ): Promise<number[]> {
+    const queryResult = await Embedding.embedOne(text, model, inputType);
+
+    return queryResult.embedding;
   }
 
   @api({ httpMethod: "POST" })
