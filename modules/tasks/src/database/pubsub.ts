@@ -1,0 +1,92 @@
+import assert from "assert";
+import type { Knex } from "knex";
+import { err, ok, type Result } from "../core/result";
+
+export type OnSubscribed = (result: Result<string | null>) => void | Promise<void>;
+
+export class PostgresPubSub {
+  private _destroyed = false;
+  private _onClosed: () => Promise<void>;
+  private _listeners = new Map<string, Set<OnSubscribed>>();
+
+  // biome-ignore lint/suspicious/noExplicitAny: Knex exposes a connection as any
+  private _connection: any | null = null;
+
+  private constructor(private readonly knex: Knex) {
+    // Re-connect to the database when the connection is closed and not destroyed manually
+    this._onClosed = (async () => {
+      if (this._destroyed) {
+        return;
+      }
+
+      await this.connect();
+    }).bind(this);
+  }
+
+  get destroyed() {
+    return this._destroyed;
+  }
+
+  // acquire new raw connection and set up listeners
+  async connect() {
+    const connection = await this.knex.client.acquireRawConnection();
+    connection.on("close", this._onClosed);
+    connection.on(
+      "notification",
+      async ({ channel, payload: rawPayload }: { channel: string; payload: unknown }) => {
+        const payload =
+          typeof rawPayload === "string" && rawPayload.length !== 0 ? rawPayload : null;
+        const listeners = this._listeners.get(channel);
+        if (!listeners) {
+          return;
+        }
+
+        const result = ok(payload);
+        await Promise.allSettled(
+          Array.from(listeners.values()).map((listener) => Promise.resolve(listener(result))),
+        );
+      },
+    );
+    connection.on("error", async (error: Error) => {
+      const result = err(error);
+      await Promise.allSettled(
+        Array.from(this._listeners.values())
+          .flatMap((listeners) => Array.from(listeners))
+          .map((listener) => Promise.resolve(listener(result))),
+      );
+    });
+
+    for (const channel of this._listeners.keys()) {
+      connection.query(`LISTEN ${channel}`);
+    }
+
+    this._connection = connection;
+  }
+
+  // destroy the listener and close the connection, do not destroy the knex connection
+  async destroy() {
+    this._destroyed = true;
+    this._connection.off("close", this._onClosed);
+    await this.knex.client.destroyRawConnection(this._connection);
+  }
+
+  // create a new listener and connect to the database
+  static async create(knex: Knex) {
+    const listener = new PostgresPubSub(knex);
+    await listener.connect();
+    return listener;
+  }
+
+  // add a new listener to the channel
+  listenEvent(channel: string, callback: OnSubscribed) {
+    if (!this._listeners.has(channel)) {
+      this._connection?.query(`LISTEN ${channel}`);
+      this._listeners.set(channel, new Set<OnSubscribed>().add(callback));
+      return;
+    }
+
+    const listeners = this._listeners.get(channel);
+    assert(listeners, "Listener channel not found");
+    listeners.add(callback);
+  }
+}
