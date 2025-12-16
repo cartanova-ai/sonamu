@@ -20,6 +20,7 @@ import type {
   NumericColumns,
   OnConflictAction,
   ParseSelectObject,
+  RankOptions,
   ResultAvailableColumns,
   SelectAllResult,
   SelectObject,
@@ -186,6 +187,37 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     // TODO: rawBinding 메서드 만들어서 XSS 방지
     return Puri.rawString(
       `ts_headline('${config}', ${column}, ${parser}('${config}', '${query}')${hlOptions})`,
+    );
+  }
+
+  // ts_rank
+  static rank(column: string, query: string, options?: RankOptions): SqlExpression<"number"> {
+    return Puri._rank("ts_rank", column, query, options);
+  }
+
+  // ts_rank_cd
+  static rankCd(column: string, query: string, options?: RankOptions): SqlExpression<"number"> {
+    return Puri._rank("ts_rank_cd", column, query, options);
+  }
+
+  static _rank(
+    type: "ts_rank" | "ts_rank_cd",
+    column: string,
+    query: string,
+    options?: RankOptions,
+  ): SqlExpression<"number"> {
+    const {
+      parser = "websearch_to_tsquery",
+      config = "simple",
+      normalization,
+      weights,
+    } = options ?? {};
+
+    const weightClause = weights ? `ARRAY[${weights.join(", ")}], ` : "";
+    const normalizationClause = normalization ? `, ${normalization}` : "";
+
+    return Puri.rawNumber(
+      `${type}(${weightClause}${column}, ${parser}('${config}', '${query}')${normalizationClause})`,
     );
   }
 

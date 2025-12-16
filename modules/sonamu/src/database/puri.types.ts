@@ -417,3 +417,24 @@ export type HighlightOptions = {
   /** 조각 구분자 (기본값: " ... ") */
   fragmentDelimiter?: string;
 };
+
+export type RankOptions = {
+  parser?: TsQueryParser;
+  config?: TsQueryConfig;
+  /** 가중치 배열 [D, C, B, A] (기본값: [0.1, 0.2, 0.4, 1.0]) */
+  weights?: [number, number, number, number];
+  /**
+   * 정규화 옵션
+   * 0: 문서 길이 무시 (기본값)
+   * 1: 1 + log(문서 길이)로 나눔
+   * 2: 문서 길이로 나눔
+   * 4: 평균 조화 거리로 나눔 (ts_rank_cd만)
+   * 8: 고유 단어 수로 나눔
+   * 16: 1 + log(고유 단어 수)로 나눔
+   * 32: rank/(rank+1) -> 0~1 사이의 값으로 스케일링
+   *
+   * 비트마스크를 사용하여 옵션을 조합할 수 있음
+   * 예: 8 | 32 -> 고유 단어 수로 나누고 0~1 스케일링
+   */
+  normalization?: number;
+};
