@@ -13,7 +13,6 @@ import type {
   Expand,
   ExtractColumnType,
   FulltextColumns,
-  HighlightOptions,
   InsertData,
   InsertResult,
   LeftJoinedMarker,
@@ -21,14 +20,15 @@ import type {
   NumericColumns,
   OnConflictAction,
   ParseSelectObject,
-  RankOptions,
   ResultAvailableColumns,
   SelectAllResult,
   SelectObject,
   SingleTableValue,
   SqlExpression,
+  TsHighlightOptions,
   TsQueryConfig,
   TsQueryOptions,
+  TsRankOptions,
   VectorColumns,
   WhereCondition,
   WhereOperator,
@@ -153,10 +153,10 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    *   }),
    * })
    */
-  static highlight(
+  static tsHighlight(
     column: string,
     query: string,
-    _options?: HighlightOptions,
+    _options?: TsHighlightOptions,
   ): SqlExpression<"string"> {
     const { parser = "websearch_to_tsquery", config = "simple", ...options } = _options ?? {};
 
@@ -173,20 +173,20 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // ts_rank
-  static rank(column: string, query: string, options?: RankOptions): SqlExpression<"number"> {
-    return Puri._rank("ts_rank", column, query, options);
+  static tsRank(column: string, query: string, options?: TsRankOptions): SqlExpression<"number"> {
+    return Puri._tsRank("ts_rank", column, query, options);
   }
 
   // ts_rank_cd
-  static rankCd(column: string, query: string, options?: RankOptions): SqlExpression<"number"> {
-    return Puri._rank("ts_rank_cd", column, query, options);
+  static tsRankCd(column: string, query: string, options?: TsRankOptions): SqlExpression<"number"> {
+    return Puri._tsRank("ts_rank_cd", column, query, options);
   }
 
-  static _rank(
+  static _tsRank(
     type: "ts_rank" | "ts_rank_cd",
     column: string,
     query: string,
-    options?: RankOptions,
+    options?: TsRankOptions,
   ): SqlExpression<"number"> {
     const {
       parser = "websearch_to_tsquery",
@@ -542,7 +542,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   // WHERE FULLTEXT
-  whereSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
+  whereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
     column: TColumn,
     value: string,
     options?: TsQueryOptions | TsQueryConfig,

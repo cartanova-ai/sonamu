@@ -395,7 +395,7 @@ export type TsQueryOptions = {
   config?: TsQueryConfig;
 };
 
-export type HighlightOptions = {
+export type TsHighlightOptions = {
   /** 쿼리 변환 함수 (기본값: "websearch_to_tsquery") */
   parser?: TsQueryParser;
   /** 텍스트 검색 설정 (기본값: "simple") */
@@ -418,7 +418,7 @@ export type HighlightOptions = {
   fragmentDelimiter?: string;
 };
 
-export type RankOptions = {
+export type TsRankOptions = {
   parser?: TsQueryParser;
   config?: TsQueryConfig;
   /** 가중치 배열 [D, C, B, A] (기본값: [0.1, 0.2, 0.4, 1.0]) */

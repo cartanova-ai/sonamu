@@ -243,19 +243,19 @@ class ProjectModelClass extends BaseModelClass<
   > {
     const rows = await this.getPuri("w")
       .table("projects")
-      .whereSearch("textsearchable_index_col", search)
+      .whereTsSearch("textsearchable_index_col", search)
       .select({
         name: "projects.name",
         description: "projects.description",
-        name_highlight: Puri.highlight("projects.name", search, {
+        name_highlight: Puri.tsHighlight("projects.name", search, {
           startSel: "<mark>",
           stopSel: "</mark>",
         }),
-        description_highlight: Puri.highlight("projects.description", search),
-        rank: Puri.rank("projects.textsearchable_index_col", search, {
+        description_highlight: Puri.tsHighlight("projects.description", search),
+        rank: Puri.tsRank("projects.textsearchable_index_col", search, {
           weights: [0.1, 0.2, 0.4, 1.0],
         }),
-        rankCd: Puri.rankCd("projects.textsearchable_index_col", search, {
+        rankCd: Puri.tsRankCd("projects.textsearchable_index_col", search, {
           normalization: 8 | 32,
         }),
       })
