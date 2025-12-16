@@ -271,9 +271,8 @@ export class Template__generated extends Template {
       .map((propNode) => propNodeToZodTypeDef(propNode, importKeys))
       .join("\n");
 
-    const hasVectorProps = entity.props
-      .filter((prop) => isVectorProp(prop))
-      .map((prop) => prop.name);
+    const hasVectorProps =
+      entity.props.filter((prop) => isVectorProp(prop)).map((prop) => prop.name).length !== 0;
     const vectorFields = hasVectorProps
       ? `
   semanticQuery: z.object({

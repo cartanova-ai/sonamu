@@ -308,12 +308,6 @@ export const CompanyBaseListParams = z
     orderBy: CompanyOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type CompanyBaseListParams = z.infer<typeof CompanyBaseListParams>;
@@ -328,12 +322,6 @@ export const DepartmentBaseListParams = z
     orderBy: DepartmentOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type DepartmentBaseListParams = z.infer<typeof DepartmentBaseListParams>;
@@ -368,12 +356,6 @@ export const EmployeeBaseListParams = z
     orderBy: EmployeeOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type EmployeeBaseListParams = z.infer<typeof EmployeeBaseListParams>;
@@ -388,12 +370,6 @@ export const FileBaseListParams = z
     orderBy: FileOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type FileBaseListParams = z.infer<typeof FileBaseListParams>;
@@ -408,12 +384,6 @@ export const ProjectBaseListParams = z
     orderBy: ProjectOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type ProjectBaseListParams = z.infer<typeof ProjectBaseListParams>;
@@ -428,12 +398,6 @@ export const SyncFixtureBaseListParams = z
     orderBy: SyncFixtureOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type SyncFixtureBaseListParams = z.infer<typeof SyncFixtureBaseListParams>;
@@ -448,12 +412,6 @@ export const TagBaseListParams = z
     orderBy: TagOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
@@ -468,12 +426,6 @@ export const UserBaseListParams = z
     orderBy: UserOrderBy,
     queryMode: SonamuQueryMode,
     id: zArrayable(z.number().int().positive()),
-    semanticQuery: z.object({
-      keyword: z.string().trim().min(1),
-      threshold: z.number().optional(),
-      as: z.string().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-    }),
   })
   .partial();
 export type UserBaseListParams = z.infer<typeof UserBaseListParams>;
