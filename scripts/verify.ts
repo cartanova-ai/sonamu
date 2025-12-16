@@ -181,7 +181,11 @@ const mode = process.argv[2];
       console.error("Usage: ts-node verify.ts [clean|fast]");
       process.exit(1);
     }
+    exec(
+      `say -v Yuna "소나무 ${mode === "clean" ? "클린" : "빠른"}검증 성공했습니다![[slnc 1000]]"`,
+    );
   } catch (e) {
+    exec(`say -v Yuna "소나무 ${mode === "clean" ? "클린" : "빠른"}검증 실패![[slnc 1000]]"`);
     if (e instanceof Error) {
       console.error("\n❌ Verification failed:", e.message);
     }
