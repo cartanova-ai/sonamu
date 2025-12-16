@@ -1,5 +1,5 @@
 import { camelize } from "inflection";
-import { type Knex, knex } from "knex";
+import knex, { type Knex } from "knex";
 import {
   type Backend,
   type CancelWorkflowRunParams,

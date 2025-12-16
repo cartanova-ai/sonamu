@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type Knex, knex } from "knex";
+import knex, { type Knex } from "knex";
 import { BackendPostgres } from "../database/backend";
 import { migrate as baseMigrate, DEFAULT_SCHEMA } from "../database/base";
 
