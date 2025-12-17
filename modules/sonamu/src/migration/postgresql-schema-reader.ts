@@ -148,7 +148,7 @@ class PostgreSQLSchemaReaderClass {
           sortOrder: idx.sort_order,
         })),
         nullsNotDistinct: firstIndex.nulls_not_distinct,
-        using: firstIndex.index_type as "btree" | "hash" | "gin" | "gist" | undefined,
+        using: firstIndex.index_type as "btree" | "hash" | "gin" | "gist" | "pgroonga" | undefined,
       };
     });
 
@@ -219,34 +219,65 @@ class PostgreSQLSchemaReaderClass {
       throw new Error(`Table not found: ${tableName}`);
     }
 
-    // Indexes 조회
+    // Indexes 조회 (PGroonga 표현식 인덱스 포함)
     const indexesQuery = `
       SELECT
-        i.relname as index_name,
-        a.attname as column_name,
-        ix.indisunique as is_unique,
-        ix.indisprimary as is_primary,
-        am.amname as index_type,
-        -- NULLS FIRST/LAST 확인 (비트 연산)
-        (opt & 2) = 2 AS nulls_first,
-        -- ASC/DESC 확인
-        CASE 
-            WHEN (opt & 1) = 1 THEN 'DESC'
-            ELSE 'ASC'
-        END AS sort_order,
-        ix.indnullsnotdistinct AS nulls_not_distinct
+          i.relname AS index_name,
+          CASE
+              WHEN am.amname = 'pgroonga' AND u.attnum = 0 THEN
+                  regexp_replace(
+                      regexp_replace(
+                          TRIM(pgroonga_col.column_expr),
+                          '::text',
+                          '',
+                          'g'
+                      ),
+                      '[()]',
+                      '',
+                      'g'
+                  )
+              ELSE a.attname
+          END AS column_name,
+          ix.indisunique AS is_unique,
+          ix.indisprimary AS is_primary,
+          am.amname AS index_type,
+          COALESCE((u.opt & 2) = 2, FALSE) AS nulls_first,
+          CASE 
+              WHEN (u.opt & 1) = 1 THEN 'DESC'
+              ELSE 'ASC'
+          END AS sort_order,
+          ix.indnullsnotdistinct AS nulls_not_distinct
       FROM pg_class t
       JOIN pg_index ix ON t.oid = ix.indrelid
       JOIN pg_class i ON i.oid = ix.indexrelid
       JOIN pg_am am ON i.relam = am.oid
-        JOIN LATERAL unnest(ix.indkey, ix.indoption)
-            WITH ORDINALITY AS u(attnum, opt, ord) ON true
-        -- unnest에서 나온 attnum으로 직접 조인
-      JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = u.attnum
+      JOIN LATERAL unnest(ix.indkey, ix.indoption)
+          WITH ORDINALITY AS u(attnum, opt, ord) ON true
+      LEFT JOIN pg_attribute a ON a.attrelid = t.oid 
+          AND a.attnum = u.attnum 
+          AND u.attnum > 0
+      LEFT JOIN LATERAL (
+          SELECT 
+              unnest(
+                  CASE 
+                      WHEN pg_get_expr(ix.indexprs, ix.indrelid) ~ '^ARRAY\\[' THEN
+                          string_to_array(
+                              regexp_replace(
+                                  pg_get_expr(ix.indexprs, ix.indrelid),
+                                  '^ARRAY\\[(.*)\\]$',
+                                  '\\1'
+                              ),
+                              ', '
+                          )
+                      ELSE
+                          ARRAY[pg_get_expr(ix.indexprs, ix.indrelid)]
+                  END
+              ) as column_expr
+      ) pgroonga_col ON am.amname = 'pgroonga' AND u.attnum = 0
       WHERE t.relname = ?
-        AND a.attnum = ANY(ix.indkey)
-      ORDER BY i.relname, array_position(ix.indkey, a.attnum)
-    `;
+          AND (u.attnum > 0 OR (am.amname = 'pgroonga' AND u.attnum = 0))
+      ORDER BY i.relname, u.ord;
+`;
     const indexes = (await compareDB.raw(indexesQuery, [tableName])).rows;
 
     // Foreign Keys 조회
