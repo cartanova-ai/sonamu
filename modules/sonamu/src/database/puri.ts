@@ -226,9 +226,25 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    *   title: Puri.highlight("posts.title", search),
    * })
    */
-  static highlight(column: string, query: string): SqlExpression<"string"> {
-    return Puri.rawString(
-      `pgroonga_highlight_html(${column}, pgroonga_query_extract_keywords('${query}'))`,
+  static highlight(column: string, query: string | string[]): SqlExpression<"string">;
+  static highlight(columns: string[], query: string | string[]): SqlExpression<"string[]">;
+
+  static highlight(
+    columnOrColumns: string | string[],
+    query: string | string[],
+  ): SqlExpression<"string"> | SqlExpression<"string[]"> {
+    const queryClause = Array.isArray(query) ? `ARRAY[${query.join(",")}]` : `'${query}'`;
+
+    // 단일 컬럼인 경우
+    if (typeof columnOrColumns === "string") {
+      return Puri.rawString(
+        `pgroonga_highlight_html(${columnOrColumns}, pgroonga_query_extract_keywords(${queryClause}))`,
+      );
+    }
+
+    // 컬럼 배열인 경우
+    return Puri.rawStringArray(
+      `pgroonga_highlight_html(ARRAY[${columnOrColumns.join(",")}], pgroonga_query_extract_keywords(${queryClause}))`,
     );
   }
 
