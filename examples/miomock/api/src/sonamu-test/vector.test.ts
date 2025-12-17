@@ -4,7 +4,7 @@
  * - 실제 API 호출이 필요한 테스트는 skip 처리
  */
 
-import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding, EmbeddingClass } from "sonamu";
+import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding } from "sonamu";
 import { describe, expect, test } from "vitest";
 
 describe("vector.test.ts", () => {
@@ -65,27 +65,6 @@ describe("vector.test.ts", () => {
   });
 
   describe("Embedding", () => {
-    test("toVectorString이 올바른 형식을 반환해야 한다", () => {
-      const vector = [0.1, 0.2, 0.3, 0.4, 0.5];
-      const result = EmbeddingClass.toVectorString(vector);
-
-      expect(result).toBe("[0.1,0.2,0.3,0.4,0.5]");
-    });
-
-    test("빈 배열도 처리해야 한다", () => {
-      const vector: number[] = [];
-      const result = EmbeddingClass.toVectorString(vector);
-
-      expect(result).toBe("[]");
-    });
-
-    test("부동소수점 정밀도가 유지되어야 한다", () => {
-      const vector = [0.123456789, -0.987654321];
-      const result = EmbeddingClass.toVectorString(vector);
-
-      expect(result).toBe("[0.123456789,-0.987654321]");
-    });
-
     // API 호출이 필요한 테스트는 skip
     test.skip("Voyage AI 임베딩 생성 (API 키 필요)", async () => {
       const result = await Embedding.embedOne("테스트 텍스트", "voyage", "document");

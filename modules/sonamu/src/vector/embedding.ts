@@ -147,13 +147,6 @@ export class EmbeddingClass {
   }
 
   /**
-   * 벡터를 PostgreSQL vector 타입 문자열로 변환
-   */
-  static toVectorString(embedding: number[]): string {
-    return `[${embedding.join(",")}]`;
-  }
-
-  /**
    * 임베딩 provider의 차원 수 반환
    */
   getDimensions(provider: EmbeddingProvider): number {
