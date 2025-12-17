@@ -541,6 +541,38 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return this;
   }
 
+  /**
+   * PGroonga FullText 인덱스 검색
+   * - 사용할 PGroonga 인덱스와 동일한 컬럼 구성으로 검색해야 인덱스가 사용됩니다.
+   *
+   * 단일 컬럼 검색:
+   * ```sql
+   * WHERE name &@~ 'search'
+   * ```
+   *
+   * 복합 컬럼 검색:
+   * ```sql
+   * WHERE ARRAY[name::text, description::text] &@~ 'search'
+   * ```
+   */
+  whereSearch<TColumn extends AvailableColumns<TTables>>(
+    column: TColumn | TColumn[],
+    value: string,
+    options?: {
+      weights?: number[]; // 정수 배열
+    },
+  ): this {
+    const { weights } = options ?? {};
+    const columnExpr = Array.isArray(column)
+      ? `ARRAY[${column.map((c) => `${c}::text`).join(",")}]`
+      : column;
+    const pgroongaCondition = `pgroonga_condition(?${weights?.length ? `, weights => ARRAY[${weights.join(",")}]` : ""})`;
+
+    this.knexQuery.whereRaw(`${columnExpr} &@~ ${pgroongaCondition}`, [value]);
+
+    return this;
+  }
+
   // WHERE FULLTEXT
   whereTsSearch<TColumn extends AvailableColumns<TTables> | SqlExpression<"string">>(
     column: TColumn,
