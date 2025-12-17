@@ -31,8 +31,7 @@ export interface VectorSearchResult<T = Record<string, unknown>> {
 }
 
 /** 하이브리드 검색 결과 (Vector + FTS) */
-export interface HybridSearchResult<T = Record<string, unknown>>
-  extends VectorSearchResult<T> {
+export interface HybridSearchResult<T = Record<string, unknown>> extends VectorSearchResult<T> {
   vectorScore?: number;
   ftsScore?: number;
 }
