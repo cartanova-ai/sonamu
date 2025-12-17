@@ -130,6 +130,9 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   static rawString(sql: string): SqlExpression<"string"> {
     return { _type: "sql_expression", _return: "string", _sql: sql };
   }
+  static rawStringArray(sql: string): SqlExpression<"string[]"> {
+    return { _type: "sql_expression", _return: "string[]", _sql: sql };
+  }
   static rawNumber(sql: string): SqlExpression<"number"> {
     return { _type: "sql_expression", _return: "number", _sql: sql };
   }

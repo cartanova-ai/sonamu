@@ -96,7 +96,7 @@ export type ResultAvailableColumns<TTables extends Record<string, any>, TResult 
 // Select 값 타입 확장 (단일 컬럼 또는 SQL 표현식)
 export type SelectValue<TTables extends Record<string, any>> =
   | AvailableColumns<TTables>
-  | SqlExpression<"string" | "number" | "boolean" | "date">;
+  | SqlExpression<"string" | "number" | "boolean" | "date" | "string[]">;
 
 // 중첩 Select 객체 타입 (재귀적)
 // 예: { parent: { id: "parent.id", name: "parent.name" } }
@@ -196,7 +196,9 @@ type ParseSelectObjectWithPath<
           ? boolean
           : R extends "date"
             ? Date
-            : never
+            : R extends "string[]"
+              ? string[]
+              : never
     : IsNestedObject<TSelect[K]> extends true
       ? TSelect[K] extends NestedSelectObject<TTables>
         ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true // 주어진 테이블이 FK nullable에 leftJoin되었는지 여부에 따라 select 결과 객체의 타입이 달라집니다.
@@ -223,7 +225,9 @@ type ParseSelectObjectInner<
           ? boolean
           : R extends "date"
             ? Date
-            : never
+            : R extends "string[]"
+              ? string[]
+              : never
     : IsNestedObject<TSelect[K]> extends true
       ? TSelect[K] extends NestedSelectObject<TTables>
         ? IsNullableJoinedTable<TTables, JoinPath<Prefix, K & string>> extends true
@@ -292,7 +296,7 @@ export type ComparisonOperator = "=" | ">" | ">=" | "<" | "<=" | "<>" | "!=";
 export type WhereOperator = ComparisonOperator | "like" | "not like";
 
 // SQL Expression 타입 정의
-export type SqlExpression<T extends "string" | "number" | "boolean" | "date"> = {
+export type SqlExpression<T extends "string" | "number" | "boolean" | "date" | "string[]"> = {
   _type: "sql_expression"; // 또는 "computed_value"
   _return: T;
   _sql: string;
