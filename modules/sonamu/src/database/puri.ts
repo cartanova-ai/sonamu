@@ -203,6 +203,32 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     );
   }
 
+  /**
+   * PGroonga FullText 인덱스 검색 점수
+   *
+   * @example
+   * .select({
+   *   score: Puri.score(),
+   * })
+   */
+  static score(): SqlExpression<"number"> {
+    return Puri.rawNumber("pgroonga_score(tableoid, ctid)");
+  }
+
+  /**
+   * PGroonga FullText 인덱스 검색 하이라이팅
+   *
+   * @example
+   * .select({
+   *   title: Puri.highlight("posts.title", search),
+   * })
+   */
+  static highlight(column: string, query: string): SqlExpression<"string"> {
+    return Puri.rawString(
+      `pgroonga_highlight_html(${column}, pgroonga_query_extract_keywords('${query}'))`,
+    );
+  }
+
   // SELECT (overwrite)
   select<TSelect extends SelectObject<TTables>>(
     selectObj: TSelect,
