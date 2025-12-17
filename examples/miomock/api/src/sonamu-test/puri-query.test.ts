@@ -1,5 +1,5 @@
 import { Naite, Puri } from "sonamu";
-import { describe, vi } from "vitest";
+import { describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
 import { bootstrap, test } from "../testing/bootstrap";
 import { expectQuery } from "../testing/expect-query";
@@ -451,7 +451,103 @@ describe("Puri Query", () => {
     });
   });
 
-  describe("G. ETC", () => {
+  describe("G. VECTOR SIMILARITY", () => {
+    // 테스트용 임베딩 벡터
+    const embeddingMock = [0.1, 0.2, 0.3];
+
+    test("cosine (default)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock);
+      const query = Naite.get("puri:executed-query").first();
+
+      // columns: 1 - (col <=> vec) as similarity
+      expect(query).toContain(`1 - ("documents"."title_content_embedding" <=>`);
+      expect(query).toContain(`as "similarity"`);
+      // orderBy: col <=> vec (ASC 암시)
+      expect(query).toContain(`order by "documents"."title_content_embedding" <=>`);
+      // where: col IS NOT NULL
+      expect(query).toContain(`"documents"."title_content_embedding" is not null`);
+    });
+
+    test("l2", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "l2",
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // columns: col <-> vec as similarity (1- 없음)
+      expect(query).toContain(`"documents"."title_content_embedding" <->`);
+      expect(query).toContain(`as "similarity"`);
+      expect(query).not.toContain(`1 -`); // l2는 distance 그대로
+      // orderBy: col <-> vec
+      expect(query).toContain(`order by "documents"."title_content_embedding" <->`);
+      // where: col IS NOT NULL
+      expect(query).toContain(`"documents"."title_content_embedding" is not null`);
+    });
+
+    test("inner_product", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "inner_product",
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // columns: -(col <#> vec) as similarity
+      expect(query).toContain(`-("documents"."title_content_embedding" <#>`);
+      expect(query).toContain(`as "similarity"`);
+      // orderBy: col <#> vec
+      expect(query).toContain(`order by "documents"."title_content_embedding" <#>`);
+      // where: col IS NOT NULL
+      expect(query).toContain(`"documents"."title_content_embedding" is not null`);
+    });
+
+    test("cosine (threshold)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          method: "cosine",
+          threshold: 0.7,
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      // where: col IS NOT NULL AND col <=> vec <= (1 - threshold)
+      // threshold 0.7 → cosine_distance <= 0.3
+      expect(query).toContain(`"documents"."title_content_embedding" is not null`);
+      expect(query).toMatch(/<=> '\[.*\]'::vector <= 0\.3/);
+    });
+
+    test("as - alias (기본값)", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock);
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(`as "similarity"`);
+    });
+
+    test("as - alias 변경", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
+          as: "score", // score 설정 시
+        });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(`as "score"`);
+    });
+  });
+
+  describe("H. ETC", () => {
     test("first", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").orderBy("users.created_at", "desc").first();
