@@ -108,7 +108,7 @@ describe("ExtractColumnType", () => {
       type Tables = {
         users: MockSchema["users"];
         department: MockSchema["departments"] & LeftJoinedMarker; // nullable FK
-        company: MockSchema["companies"] & LeftJoinedMarker; // non-null FK → 마커 없음
+        company: MockSchema["companies"]; // non-null FK → 마커 없음
       };
       type Result = ExtractColumnType<Tables, "company.id">;
 
