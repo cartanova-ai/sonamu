@@ -29,7 +29,7 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "c28dfbf84e6dc852e18974e9a4b3aff513f9c6ad"
+    "checksum": "547af4730d8509c5062e710acac873b8625964f7"
   },
   {
     "path": "src/application/document/document.types.ts",

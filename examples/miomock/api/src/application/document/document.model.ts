@@ -143,12 +143,8 @@ class DocumentModelClass extends BaseModelClass<
     }
 
     // semanticQuery 조건에 따라 유사도 검색 조건 추가
-    const { embedding, as, method, threshold } = params.semanticQuery;
-    qb.vectorSimilarity("documents.title_content_embedding", embedding, {
-      as,
-      method,
-      threshold,
-    });
+    const { embedding, ...options } = params.semanticQuery;
+    qb.vectorSimilarity("documents.title_content_embedding", embedding, options);
 
     return this.executeSubsetQuery({
       subset,

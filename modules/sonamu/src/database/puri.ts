@@ -651,7 +651,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       method?: "cosine" | "l2" | "inner_product";
       threshold?: number;
       as?: TAs;
-    },
+    } = {},
   ): Puri<TSchema, TTables, TResult & Record<TAs, number>> {
     const { method = "cosine", threshold, as = "similarity" as TAs } = options;
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(as)) {
