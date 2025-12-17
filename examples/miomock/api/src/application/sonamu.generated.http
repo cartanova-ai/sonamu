@@ -424,7 +424,6 @@ Content-Type: application/json
         0
       ],
       "threshold": 0,
-      "as": "AS",
       "method": "cosine"
     }
   }

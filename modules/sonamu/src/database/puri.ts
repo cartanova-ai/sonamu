@@ -703,19 +703,15 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
    * });
    * ```
    */
-  vectorSimilarity<TAs extends string>(
+  vectorSimilarity(
     column: VectorColumns<TTables>,
     embedding: number[],
     options: {
       method?: "cosine" | "l2" | "inner_product";
       threshold?: number;
-      as?: TAs;
     } = {},
-  ): Puri<TSchema, TTables, TResult & Record<TAs, number>> {
-    const { method = "cosine", threshold, as = "similarity" as TAs } = options;
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(as)) {
-      throw new Error(`Invalid vectorSimilarity alias: ${as}`);
-    }
+  ): Puri<TSchema, TTables, TResult & { similarity: number }> {
+    const { method = "cosine", threshold } = options;
     if (
       !Array.isArray(embedding) ||
       embedding.length === 0 ||
@@ -740,15 +736,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     if (method === "cosine") {
       // cosine: similarity = 1 - cosine_distance (0~1, 높을수록 유사)
       this.knexQuery.select(
-        this.knex.raw(`1 - (?? <=> ?::vector) as ??`, [column, vectorLiteral, as]),
+        this.knex.raw(`1 - (?? <=> ?::vector) as similarity`, [column, vectorLiteral]),
       );
     } else if (method === "l2") {
       // l2: distance 그대로 반환 (낮을수록 유사)
-      this.knexQuery.select(this.knex.raw(`?? <-> ?::vector as ??`, [column, vectorLiteral, as]));
+      this.knexQuery.select(
+        this.knex.raw(`?? <-> ?::vector as similarity`, [column, vectorLiteral]),
+      );
     } else {
       // inner_product: pgvector는 음수 반환하므로 부호 반전 (높을수록 유사)
       this.knexQuery.select(
-        this.knex.raw(`-(?? <#> ?::vector) as ??`, [column, vectorLiteral, as]),
+        this.knex.raw(`-(?? <#> ?::vector) as similarity`, [column, vectorLiteral]),
       );
     }
 

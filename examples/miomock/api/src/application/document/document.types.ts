@@ -10,7 +10,6 @@ export const DocumentSimilarityListParams = DocumentBaseListParams.partial().ext
   semanticQuery: z.object({
     embedding: z.array(z.number()).min(1024).max(1024),
     threshold: z.number().optional(),
-    as: z.string().optional(),
     method: z.enum(["cosine", "l2", "inner_product"]).optional(),
   }),
 });

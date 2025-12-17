@@ -464,7 +464,7 @@ describe("Puri Query", () => {
 
       // columns: 1 - (col <=> vec) as similarity
       expect(query).toContain(`1 - ("documents"."title_content_embedding" <=>`);
-      expect(query).toContain(`as "similarity"`);
+      expect(query).toContain(`as similarity`);
       // orderBy: col <=> vec (ASC 암시)
       expect(query).toContain(`order by "documents"."title_content_embedding" <=>`);
       // where: col IS NOT NULL
@@ -482,7 +482,7 @@ describe("Puri Query", () => {
 
       // columns: col <-> vec as similarity (1- 없음)
       expect(query).toContain(`"documents"."title_content_embedding" <->`);
-      expect(query).toContain(`as "similarity"`);
+      expect(query).toContain(`as similarity`);
       expect(query).not.toContain(`1 -`); // l2는 distance 그대로
       // orderBy: col <-> vec
       expect(query).toContain(`order by "documents"."title_content_embedding" <->`);
@@ -501,7 +501,7 @@ describe("Puri Query", () => {
 
       // columns: -(col <#> vec) as similarity
       expect(query).toContain(`-("documents"."title_content_embedding" <#>`);
-      expect(query).toContain(`as "similarity"`);
+      expect(query).toContain(`as similarity`);
       // orderBy: col <#> vec
       expect(query).toContain(`order by "documents"."title_content_embedding" <#>`);
       // where: col IS NOT NULL
@@ -524,26 +524,14 @@ describe("Puri Query", () => {
       expect(query).toMatch(/<=> '\[.*\]'::vector <= 0\.3/);
     });
 
-    test("as - alias (기본값)", async () => {
+    test("as - alias (기본값: similarity)", async () => {
       const db = UserModel.getPuri("r");
       await db
         .table("documents")
         .vectorSimilarity("documents.title_content_embedding", embeddingMock);
       const query = Naite.get("puri:executed-query").first();
 
-      expect(query).toContain(`as "similarity"`);
-    });
-
-    test("as - alias 변경", async () => {
-      const db = UserModel.getPuri("r");
-      await db
-        .table("documents")
-        .vectorSimilarity("documents.title_content_embedding", embeddingMock, {
-          as: "score", // score 설정 시
-        });
-      const query = Naite.get("puri:executed-query").first();
-
-      expect(query).toContain(`as "score"`);
+      expect(query).toContain(`as similarity`);
     });
   });
 
