@@ -648,6 +648,7 @@ INSERT INTO public.knex_migrations VALUES (53, '20251215123723_alter_projects_ad
 INSERT INTO public.knex_migrations VALUES (54, '20251215123829_alter_projects.ts', 5, '2025-12-15 12:38:33.09+09');
 INSERT INTO public.knex_migrations VALUES (55, '20251216132209_alter_projects_drop1.ts', 6, '2025-12-16 13:38:53.379+09');
 INSERT INTO public.knex_migrations VALUES (56, '20251216132334_alter_projects_add1.ts', 6, '2025-12-16 13:38:53.383+09');
+INSERT INTO public.knex_migrations VALUES (57, '20251216173556_alter_projects.ts', 7, '2025-12-17 12:33:05.699+09');
 
 
 --
@@ -1989,6 +1990,13 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: projects_name_description_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX projects_name_description_index ON public.projects USING pgroonga ((ARRAY[(name)::text, description]));
 
 
 --

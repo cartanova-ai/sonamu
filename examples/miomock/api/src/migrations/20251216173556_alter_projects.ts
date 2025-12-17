@@ -1,0 +1,13 @@
+import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `CREATE INDEX projects_name_description_index ON projects USING pgroonga ((ARRAY[name::text,description::text]));`,
+  );
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("projects", (table) => {
+    table.dropIndex(["name", "description"], "projects_name_description_index");
+  });
+}

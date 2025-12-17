@@ -61,11 +61,11 @@
   },
   {
     "path": "src/application/project/project.entity.json",
-    "checksum": "3a9d9bc8389ac6e833593f17d6c1c694660e123b"
+    "checksum": "b72d850d999abc0a64986700828a23300c417757"
   },
   {
     "path": "src/application/project/project.model.ts",
-    "checksum": "b3e7958e17d33cb84d2f74f575f53a0508462fa7"
+    "checksum": "9d1cd20afa553c3b2383a2936c3293c3f1ddf4f2"
   },
   {
     "path": "src/application/project/project.types.ts",

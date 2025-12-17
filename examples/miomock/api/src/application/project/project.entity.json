@@ -62,6 +62,12 @@
       "name": "projects_textsearchable_index_col_index",
       "columns": [{ "name": "textsearchable_index_col" }],
       "using": "gin"
+    },
+    {
+      "type": "index",
+      "name": "projects_name_description_index",
+      "columns": [{ "name": "name" }, { "name": "description" }],
+      "using": "pgroonga"
     }
   ],
   "subsets": {

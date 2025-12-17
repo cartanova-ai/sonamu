@@ -115,8 +115,10 @@ export namespace ProjectService {
     {
       name: string;
       description: string | null;
-      name_highlight: string;
-      description_highlight: string;
+      score: number;
+      name_hl: string;
+      description_hl: string;
+      hl_all: string[];
     }[]
   > {
     return fetch({
