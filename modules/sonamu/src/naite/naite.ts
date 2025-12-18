@@ -349,7 +349,7 @@ export class NaiteClass {
     // 이로 인해 "직렬화 가능한 값들만 허용"하는 제약이 생깁니다.
     //
     // 이 제약을 의식하여 Naite.t에 직렬화 가능한 값만 넘기게 할 수도 있었지만, 그렇게 하면 불편해질 것 같아서 하지 않았습니다.
-    // 따라서 현재 Naite.t는 모든 값을 받을 수 있게 되어 있습니다. 
+    // 따라서 현재 Naite.t는 모든 값을 받을 수 있게 되어 있습니다.
     // 대신 이렇게(getAllTraces) 그 값들을 빼낼 때 JSON.stringify를 사용하여 강제로 직렬화 가능하게 만들었습니다,,
     for (const trace of traces) {
       const check = isSerializable(trace.data);

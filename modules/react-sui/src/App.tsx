@@ -1,6 +1,6 @@
+import { Form, Header, Segment } from "semantic-ui-react";
 import { z } from "zod";
 import { NumberInput, useTypeForm } from ".";
-import { Form, Header, Segment } from "semantic-ui-react";
 import "semantic-ui-css/semantic.min.css";
 
 export default function App() {
@@ -15,7 +15,7 @@ export default function App() {
       n1: 300,
       n2: null,
       n3: undefined,
-    }
+    },
   );
 
   return (
@@ -82,8 +82,6 @@ export const ProductListParams = ProductBaseListParams.extend({
 });
 export type ProductListParams = z.infer<typeof ProductListParams>;
 
-export function zArrayable<T extends z.ZodTypeAny>(
-  shape: T
-): z.ZodUnion<[T, z.ZodArray<T>]> {
+export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
   return z.union([shape, shape.array()]);
 }

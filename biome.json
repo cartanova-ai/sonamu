@@ -33,7 +33,8 @@
       "!**/dist",
       "!**/build",
       "!**/node_modules",
-      "!examples/**/web/src/services/**/*"
+      "!examples/**/web/src/services/**/*",
+      "!modules/create-sonamu/template"
     ]
   },
   "formatter": {

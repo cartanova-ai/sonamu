@@ -1,15 +1,12 @@
-import { FormEvent } from "react";
-import { CheckboxProps, Checkbox } from "semantic-ui-react";
+import type { FormEvent } from "react";
+import { Checkbox, type CheckboxProps } from "semantic-ui-react";
 
 export function BooleanToggle(
   props: Omit<CheckboxProps, "value"> & {
-    onChange?: (
-      event: FormEvent<HTMLInputElement>,
-      data: { value: boolean }
-    ) => void;
+    onChange?: (event: FormEvent<HTMLInputElement>, data: { value: boolean }) => void;
   } & {
     value: boolean;
-  }
+  },
 ) {
   return (
     <Checkbox

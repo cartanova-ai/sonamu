@@ -1,13 +1,10 @@
 import { DateTime } from "luxon";
-import { InputProps, Input } from "semantic-ui-react";
+import { Input, type InputProps } from "semantic-ui-react";
 
 export function SQLDateInput(
   props: InputProps & {
-    onChange?: (
-      event: React.ChangeEvent<HTMLInputElement>,
-      data: { value: string }
-    ) => void;
-  }
+    onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => void;
+  },
 ) {
   return (
     <Input
@@ -22,10 +19,7 @@ export function SQLDateInput(
         if (props.onChange) {
           return props.onChange(e, {
             ...data,
-            value:
-              data.value === ""
-                ? ""
-                : DateTime.fromISO(data.value).toSQLDate() ?? "",
+            value: data.value === "" ? "" : (DateTime.fromISO(data.value).toSQLDate() ?? ""),
           });
         }
       }}

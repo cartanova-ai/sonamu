@@ -1,6 +1,19 @@
-import React, {
-  ChangeEvent,
-  HTMLAttributes,
+/** biome-ignore-all lint: react-sui deprecated 예정이라 won't fix */
+
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { arrayMove, rectSortingStrategy, SortableContext, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import classnames from "classnames";
+import type React from "react";
+import {
+  type ChangeEvent,
+  type HTMLAttributes,
   useCallback,
   useEffect,
   useMemo,
@@ -8,21 +21,6 @@ import React, {
   useState,
 } from "react";
 import { Button, ButtonGroup } from "semantic-ui-react";
-import {
-  arrayMove,
-  rectSortingStrategy,
-  SortableContext,
-  useSortable,
-} from "@dnd-kit/sortable";
-import {
-  closestCenter,
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import classnames from "classnames";
 
 // lazy 모드에서 uploader 실행 후 최종 값을 반환
 export function upload(): Promise<string[]> {
@@ -33,7 +31,7 @@ export function upload(): Promise<string[]> {
           channel: "image-uploader",
           done: resolve,
         },
-      })
+      }),
     );
   });
 }
@@ -78,7 +76,7 @@ function useObjectUrls(files: File[]) {
   // files의 내용을 반영한 시그니처
   const signature = useMemo(
     () => files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join("|"),
-    [files]
+    [files],
   );
 
   useEffect(() => {
@@ -95,8 +93,7 @@ function useObjectUrls(files: File[]) {
 
 function asArray<T>(v: T | T[] | null | undefined): T[] {
   if (Array.isArray(v)) return v.filter(Boolean) as T[];
-  if (v == null || (typeof v === "string" && (v as any as string) === ""))
-    return [];
+  if (v == null || (typeof v === "string" && (v as any as string) === "")) return [];
   return [v as T];
 }
 
@@ -135,24 +132,20 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
         (onChange as OnChange<string>)(e as AllEvent, { value: next[0] ?? "" });
       }
     },
-    [multiple, onChange]
+    [multiple, onChange],
   );
 
   // uploader를 항상 File[] -> UploadedFile[]으로 정규화
   const uploadNormalized = useCallback(
     async (files: File[]): Promise<UploadedFile[]> => {
       if (multiple) {
-        const res = await (uploader as (fs: File[]) => Promise<UploadedFile[]>)(
-          files
-        );
+        const res = await (uploader as (fs: File[]) => Promise<UploadedFile[]>)(files);
         return res;
       }
-      const single = await (uploader as (f: File) => Promise<UploadedFile>)(
-        files[0]
-      );
+      const single = await (uploader as (f: File) => Promise<UploadedFile>)(files[0]);
       return [single];
     },
-    [uploader, multiple]
+    [uploader, multiple],
   );
 
   // ----- 통합 리스트 상태 (기존 + 신규) -----
@@ -163,12 +156,9 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const existingIds = useMemo(() => urls.map((u) => `exist:${u}`), [urls]);
   const pendingIds = useMemo(
     () => (mode === "lazy" ? pendingFiles.map((f) => pendingKeyOf(f)) : []),
-    [mode, pendingFiles]
+    [mode, pendingFiles],
   );
-  const currentIds = useMemo(
-    () => [...existingIds, ...pendingIds],
-    [existingIds, pendingIds]
-  );
+  const currentIds = useMemo(() => [...existingIds, ...pendingIds], [existingIds, pendingIds]);
 
   // order를 현재 아이템에 맞게 보정(유지 가능한 건 유지, 새로 생긴 건 뒤에 추가)
   useEffect(() => {
@@ -192,14 +182,14 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
   const idToItem = useMemo(() => {
     const map = new Map<string, UnifiedItem>();
     // exist
-    urls.forEach((u) =>
+    urls.forEach((u) => {
       map.set(`exist:${u}`, {
         id: `exist:${u}`,
         kind: "exist",
         src: u,
         name: u.split("/").pop() ?? "",
-      })
-    );
+      });
+    });
     // new
     if (mode === "lazy") {
       const previews = pendingPreviewUrls; // same order as pendingFiles
@@ -218,7 +208,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
 
   const unifiedItems: UnifiedItem[] = useMemo(
     () => order.map((id) => idToItem.get(id)).filter(Boolean) as UnifiedItem[],
-    [order, idToItem]
+    [order, idToItem],
   );
 
   const totalCount = urls.length + (mode === "lazy" ? pendingFiles.length : 0);
@@ -243,9 +233,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
 
     if (mode === "lazy") {
       // 업로드 전: 내부 pending에만 쌓아둠
-      setPendingFiles((prev) =>
-        multiple ? [...prev, ...fileList] : [fileList[0]]
-      );
+      setPendingFiles((prev) => (multiple ? [...prev, ...fileList] : [fileList[0]]));
       input.value = "";
       return;
     }
@@ -255,9 +243,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     try {
       const uploaded = await uploadNormalized(fileList);
       const uploadedUrls = uploaded.map((u) => u.url);
-      const next = multiple
-        ? [...urls, ...uploadedUrls]
-        : uploadedUrls.slice(0, 1);
+      const next = multiple ? [...urls, ...uploadedUrls] : uploadedUrls.slice(0, 1);
       emitChange(e, next);
     } catch (err) {
       console.error("Failed to upload files:", err);
@@ -374,8 +360,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
     };
 
     document.addEventListener("app:image-uploader/commit", listener);
-    return () =>
-      document.removeEventListener("app:image-uploader/commit", listener);
+    return () => document.removeEventListener("app:image-uploader/commit", listener);
   }, [handleCommit]);
 
   return (
@@ -383,7 +368,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
       {...divProps}
       className={classnames(
         `image-uploader ${multiple ? "multiple" : "single"}`,
-        divProps.className
+        divProps.className,
       )}
     >
       <input
@@ -414,10 +399,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEndUnified}
         >
-          <SortableContext
-            items={unifiedItems.map((x) => x.id)}
-            strategy={rectSortingStrategy}
-          >
+          <SortableContext items={unifiedItems.map((x) => x.id)} strategy={rectSortingStrategy}>
             {unifiedItems.map((item) => (
               <UploadedImage
                 key={item.id}
@@ -427,15 +409,11 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
                 onDelButtonClicked={
                   item.kind === "exist"
                     ? (() => {
-                        const idx = urls.findIndex(
-                          (u) => `exist:${u}` === item.id
-                        );
+                        const idx = urls.findIndex((u) => `exist:${u}` === item.id);
                         return idx >= 0 ? handleDeleteExisting(idx) : undefined;
                       })()
                     : (() => {
-                        const idx = pendingFiles.findIndex(
-                          (f) => pendingKeyOf(f) === item.id
-                        );
+                        const idx = pendingFiles.findIndex((f) => pendingKeyOf(f) === item.id);
                         return idx >= 0 ? handleDeleteNewLazy(idx) : undefined;
                       })()
                 }
@@ -460,9 +438,7 @@ export function ImageUploaderFrame(props: ImageUploaderFrameProps) {
 type UploadedImageProps = {
   id: string;
   src: string;
-  onDelButtonClicked?: (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => void;
+  onDelButtonClicked?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   handle?: boolean;
   preview: ImageUploaderFrameProps["preview"];
   name?: string;
@@ -475,14 +451,7 @@ export function UploadedImage({
   preview,
   name,
 }: UploadedImageProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     transition: null,
   });
@@ -515,14 +484,7 @@ export function UploadedImage({
     >
       {preview ? <img src={src} /> : <span>{name ?? ""}</span>}
       <ButtonGroup size="mini" className="buttons">
-        {handle && (
-          <Button
-            color="blue"
-            icon="grab"
-            {...listeners}
-            {...attributes}
-          ></Button>
-        )}
+        {handle && <Button color="blue" icon="grab" {...listeners} {...attributes}></Button>}
         <Button
           color="grey"
           icon="copy"

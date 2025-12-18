@@ -1,5 +1,7 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: 동적 라우트 로드에서 any 허용 */
+
 import { last, set } from "radashi";
-import React, { ComponentType } from "react";
+import React, { type ComponentType } from "react";
 import { Route } from "react-router-dom";
 
 type ModulePromise = () => Promise<{ default: ComponentType<any> }>;
@@ -15,9 +17,7 @@ type ModulesObject = {
       };
 };
 
-export function loadDynamicRoutes(
-  modules: Record<string, () => unknown>
-): JSX.Element[] {
+export function loadDynamicRoutes(modules: Record<string, () => unknown>): JSX.Element[] {
   const keys = Object.keys(modules);
 
   const modulesObject = keys.reduce((result, key) => {
@@ -37,6 +37,7 @@ export function loadDynamicRoutes(
   const renderModulesObject = (obj: ModulesObject) => {
     return Object.entries(obj).map(([key, child]) => {
       if (
+        // biome-ignore lint/suspicious/noPrototypeBuiltins: react-sui deprecated 예정이라 won't fix
         child.hasOwnProperty("module") &&
         typeof child.module === "function"
       ) {

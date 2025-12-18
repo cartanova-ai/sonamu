@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: Puri Subset 타입 시스템에서 any를 허용함 */
+
 /**
  * Puri Subset 타입 시스템
  *

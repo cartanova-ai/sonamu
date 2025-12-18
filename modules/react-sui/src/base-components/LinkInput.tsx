@@ -1,15 +1,10 @@
-import { InputProps, Input, Button } from "semantic-ui-react";
+import { Button, Input, type InputProps } from "semantic-ui-react";
 
 export function LinkInput(
   props: InputProps & {
-    handleButtonClick?: (
-      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-    ) => void;
-    onChange?: (
-      event: React.ChangeEvent<HTMLInputElement>,
-      data: { value: string | null }
-    ) => void;
-  }
+    handleButtonClick?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+    onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: string | null }) => void;
+  },
 ) {
   const handleButtonClick =
     props.handleButtonClick ??
@@ -25,7 +20,7 @@ export function LinkInput(
     }
 
     try {
-      new URL(someString!);
+      new URL(someString ?? "");
       return true;
     } catch (_) {
       return false;

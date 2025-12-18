@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
-import { Header, HeaderProps, Segment, SegmentProps } from "semantic-ui-react";
 import classnames from "classnames";
+import type { ReactNode } from "react";
+import { Header, type HeaderProps, Segment, type SegmentProps } from "semantic-ui-react";
 
 type PanelProps = {
   title?: string;
@@ -18,12 +18,7 @@ export function Panel({
 }: PanelProps) {
   const hasHeader = !!(title || buttons);
   return (
-    <Segment
-      basic
-      className={classnames("panel", className)}
-      style={style}
-      {...segmentProps}
-    >
+    <Segment basic className={classnames("panel", className)} style={style} {...segmentProps}>
       {hasHeader && (
         <div className="panel-header">
           <Header {...headerProps}>{title}</Header>

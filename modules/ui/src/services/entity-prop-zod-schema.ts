@@ -249,9 +249,7 @@ export namespace EntityPropZodSchema {
 
         // VIRTUAL Generated Column 타입 제한 검증
         if (result.data.generated.type === "VIRTUAL") {
-          if (
-            (VirtualGeneratedDisallowedTypes as readonly string[]).includes(result.data.type)
-          ) {
+          if ((VirtualGeneratedDisallowedTypes as readonly string[]).includes(result.data.type)) {
             return {
               success: false,
               error: new z.ZodError([

@@ -5,27 +5,187 @@
 
 // 기술 문서 카테고리 및 주제
 const categories = [
-  { name: "프로그래밍 언어", keywords: ["TypeScript", "JavaScript", "Python", "Go", "Rust", "Java", "C++", "PHP", "Ruby", "Swift"] },
-  { name: "프레임워크", keywords: ["React", "Vue", "Angular", "Next.js", "Nuxt", "Express", "NestJS", "FastAPI", "Django", "Spring"] },
-  { name: "데이터베이스", keywords: ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "SQLite", "DynamoDB", "Cassandra", "Neo4j", "InfluxDB"] },
-  { name: "인프라", keywords: ["Docker", "Kubernetes", "AWS", "GCP", "Azure", "Terraform", "Ansible", "Jenkins", "GitHub Actions", "ArgoCD"] },
-  { name: "보안", keywords: ["OAuth", "JWT", "HTTPS", "XSS", "CSRF", "SQL Injection", "암호화", "인증", "권한관리", "보안감사"] },
-  { name: "아키텍처", keywords: ["마이크로서비스", "모놀리식", "서버리스", "이벤트 드리븐", "CQRS", "헥사고날", "클린 아키텍처", "DDD", "MSA", "API Gateway"] },
-  { name: "테스팅", keywords: ["유닛 테스트", "통합 테스트", "E2E 테스트", "TDD", "BDD", "Jest", "Vitest", "Cypress", "Playwright", "성능 테스트"] },
-  { name: "DevOps", keywords: ["CI/CD", "모니터링", "로깅", "알림", "배포", "롤백", "블루그린", "카나리", "A/B 테스트", "피처 플래그"] },
-  { name: "성능 최적화", keywords: ["캐싱", "인덱싱", "쿼리 최적화", "메모이제이션", "레이지 로딩", "코드 스플리팅", "CDN", "압축", "프로파일링", "벤치마킹"] },
-  { name: "AI/ML", keywords: ["머신러닝", "딥러닝", "자연어처리", "컴퓨터비전", "임베딩", "벡터 검색", "RAG", "LLM", "프롬프트 엔지니어링", "파인튜닝"] },
+  {
+    name: "프로그래밍 언어",
+    keywords: [
+      "TypeScript",
+      "JavaScript",
+      "Python",
+      "Go",
+      "Rust",
+      "Java",
+      "C++",
+      "PHP",
+      "Ruby",
+      "Swift",
+    ],
+  },
+  {
+    name: "프레임워크",
+    keywords: [
+      "React",
+      "Vue",
+      "Angular",
+      "Next.js",
+      "Nuxt",
+      "Express",
+      "NestJS",
+      "FastAPI",
+      "Django",
+      "Spring",
+    ],
+  },
+  {
+    name: "데이터베이스",
+    keywords: [
+      "PostgreSQL",
+      "MySQL",
+      "MongoDB",
+      "Redis",
+      "Elasticsearch",
+      "SQLite",
+      "DynamoDB",
+      "Cassandra",
+      "Neo4j",
+      "InfluxDB",
+    ],
+  },
+  {
+    name: "인프라",
+    keywords: [
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "GCP",
+      "Azure",
+      "Terraform",
+      "Ansible",
+      "Jenkins",
+      "GitHub Actions",
+      "ArgoCD",
+    ],
+  },
+  {
+    name: "보안",
+    keywords: [
+      "OAuth",
+      "JWT",
+      "HTTPS",
+      "XSS",
+      "CSRF",
+      "SQL Injection",
+      "암호화",
+      "인증",
+      "권한관리",
+      "보안감사",
+    ],
+  },
+  {
+    name: "아키텍처",
+    keywords: [
+      "마이크로서비스",
+      "모놀리식",
+      "서버리스",
+      "이벤트 드리븐",
+      "CQRS",
+      "헥사고날",
+      "클린 아키텍처",
+      "DDD",
+      "MSA",
+      "API Gateway",
+    ],
+  },
+  {
+    name: "테스팅",
+    keywords: [
+      "유닛 테스트",
+      "통합 테스트",
+      "E2E 테스트",
+      "TDD",
+      "BDD",
+      "Jest",
+      "Vitest",
+      "Cypress",
+      "Playwright",
+      "성능 테스트",
+    ],
+  },
+  {
+    name: "DevOps",
+    keywords: [
+      "CI/CD",
+      "모니터링",
+      "로깅",
+      "알림",
+      "배포",
+      "롤백",
+      "블루그린",
+      "카나리",
+      "A/B 테스트",
+      "피처 플래그",
+    ],
+  },
+  {
+    name: "성능 최적화",
+    keywords: [
+      "캐싱",
+      "인덱싱",
+      "쿼리 최적화",
+      "메모이제이션",
+      "레이지 로딩",
+      "코드 스플리팅",
+      "CDN",
+      "압축",
+      "프로파일링",
+      "벤치마킹",
+    ],
+  },
+  {
+    name: "AI/ML",
+    keywords: [
+      "머신러닝",
+      "딥러닝",
+      "자연어처리",
+      "컴퓨터비전",
+      "임베딩",
+      "벡터 검색",
+      "RAG",
+      "LLM",
+      "프롬프트 엔지니어링",
+      "파인튜닝",
+    ],
+  },
 ];
 
 const documentTypes = [
-  "가이드", "튜토리얼", "레퍼런스", "API 문서", "설정 가이드", "트러블슈팅",
-  "베스트 프랙티스", "마이그레이션 가이드", "성능 분석", "보안 점검",
-  "아키텍처 설계", "코드 리뷰", "기술 블로그", "발표 자료", "FAQ"
+  "가이드",
+  "튜토리얼",
+  "레퍼런스",
+  "API 문서",
+  "설정 가이드",
+  "트러블슈팅",
+  "베스트 프랙티스",
+  "마이그레이션 가이드",
+  "성능 분석",
+  "보안 점검",
+  "아키텍처 설계",
+  "코드 리뷰",
+  "기술 블로그",
+  "발표 자료",
+  "FAQ",
 ];
 
 const actionVerbs = [
-  "구현하기", "설정하기", "최적화하기", "디버깅하기", "배포하기",
-  "테스트하기", "마이그레이션하기", "통합하기", "분석하기", "모니터링하기"
+  "구현하기",
+  "설정하기",
+  "최적화하기",
+  "디버깅하기",
+  "배포하기",
+  "테스트하기",
+  "마이그레이션하기",
+  "통합하기",
+  "분석하기",
+  "모니터링하기",
 ];
 
 const statuses = ["draft", "published", "archived"];
@@ -34,7 +194,7 @@ function escapeSQL(str: string): string {
   return str.replace(/'/g, "''").replace(/\n/g, "\\n").replace(/\r/g, "");
 }
 
-function generateTitle(category: typeof categories[0], keyword: string): string {
+function generateTitle(category: (typeof categories)[0], keyword: string): string {
   const docType = documentTypes[Math.floor(Math.random() * documentTypes.length)];
   const action = actionVerbs[Math.floor(Math.random() * actionVerbs.length)];
 
@@ -54,7 +214,7 @@ function generateTitle(category: typeof categories[0], keyword: string): string 
   return patterns[Math.floor(Math.random() * patterns.length)];
 }
 
-function generateContent(category: typeof categories[0], keyword: string, title: string): string {
+function generateContent(category: (typeof categories)[0], keyword: string, title: string): string {
   const intro = [
     `이 문서는 ${keyword}에 대한 종합적인 가이드입니다.`,
     `${keyword}는 ${category.name} 분야에서 널리 사용되는 기술입니다.`,
@@ -88,10 +248,8 @@ function generateContent(category: typeof categories[0], keyword: string, title:
     `질문이나 피드백은 언제든지 환영합니다.`,
   ];
 
-  const relatedKeywords = category.keywords.filter(k => k !== keyword).slice(0, 3);
-  const related = relatedKeywords.length > 0
-    ? `관련 기술: ${relatedKeywords.join(", ")}`
-    : "";
+  const relatedKeywords = category.keywords.filter((k) => k !== keyword).slice(0, 3);
+  const related = relatedKeywords.length > 0 ? `관련 기술: ${relatedKeywords.join(", ")}` : "";
 
   return [
     `# ${title}`,
@@ -135,7 +293,7 @@ function generateDocuments(count: number): void {
     const content = generateContent(category, keyword, title);
 
     console.log(
-      `INSERT INTO public.documents VALUES (${i}, '${timestamp}', E'${escapeSQL(title)}', E'${escapeSQL(content)}', '${status}', NULL, NULL);`
+      `INSERT INTO public.documents VALUES (${i}, '${timestamp}', E'${escapeSQL(title)}', E'${escapeSQL(content)}', '${status}', NULL, NULL);`,
     );
   }
 }

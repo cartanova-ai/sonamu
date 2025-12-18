@@ -23,13 +23,8 @@ export function KeyValueTable({
       <Table.Body>
         {rows.map(
           (
-            {
-              key,
-              value,
-              keyClassName: rowKeyClassName,
-              valueClassName: rowValueClassName,
-            },
-            rowIndex
+            { key, value, keyClassName: rowKeyClassName, valueClassName: rowValueClassName },
+            rowIndex,
           ) => (
             <Table.Row key={rowIndex}>
               <Table.Cell
@@ -41,17 +36,11 @@ export function KeyValueTable({
               >
                 {key}
               </Table.Cell>
-              <Table.Cell
-                className={classnames(
-                  "value",
-                  valueClassName,
-                  rowValueClassName
-                )}
-              >
+              <Table.Cell className={classnames("value", valueClassName, rowValueClassName)}>
                 {value}
               </Table.Cell>
             </Table.Row>
-          )
+          ),
         )}
       </Table.Body>
     </Table>

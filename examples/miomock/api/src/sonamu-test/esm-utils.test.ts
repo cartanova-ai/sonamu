@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { isHotReloadServer } from "../../../../../modules/sonamu/dist/utils/controller";
 import {
   createImportUrl,
   getDirname,
   getFilename,
 } from "../../../../../modules/sonamu/dist/utils/esm-utils";
-import { isHotReloadServer } from "../../../../../modules/sonamu/dist/utils/controller";
 
 describe("esm-utils", () => {
   describe("getFilename 테스트", () => {

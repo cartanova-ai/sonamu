@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { InputProps, Input } from "semantic-ui-react";
+import { Input, type InputProps } from "semantic-ui-react";
 
 export function NumberInput({
   inputType,
@@ -7,13 +7,11 @@ export function NumberInput({
   ...props
 }: InputProps & {
   inputType?: "text" | "number";
-  onChange?: (
-    event: React.ChangeEvent<HTMLInputElement>,
-    data: { value: number | "" }
-  ) => void;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: number | "" }) => void;
 }) {
   const [str, setStr] = useState<string>("");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: props.value 변경시에만 갱신
   useEffect(() => {
     if (Number((str ?? "").replace(/[.]/g, "")) !== props.value) {
       setStr(String(props.value ?? ""));
@@ -34,10 +32,7 @@ export function NumberInput({
           }
           return onChange(e, {
             ...data,
-            value:
-              data.value === ""
-                ? ""
-                : Number(data.value.replace(/[^0-9.-]/g, "")),
+            value: data.value === "" ? "" : Number(data.value.replace(/[^0-9.-]/g, "")),
           });
         }
       }}

@@ -1,4 +1,4 @@
-import { Button, ButtonProps, SemanticCOLORS } from "semantic-ui-react";
+import { Button, type ButtonProps, type SemanticCOLORS } from "semantic-ui-react";
 
 export type ButtonSetProps = {
   options?: {
@@ -6,7 +6,7 @@ export type ButtonSetProps = {
     text: string;
   }[];
   value?: string | number | string[];
-  onChange?: (e: any, prop: ButtonSetProps) => void;
+  onChange?: (e: unknown, prop: ButtonSetProps) => void;
   buttonProps?: ButtonProps;
   baseColor?: SemanticCOLORS;
   selectedColor?: SemanticCOLORS;
