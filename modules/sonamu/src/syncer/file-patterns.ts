@@ -3,13 +3,14 @@ import { Sonamu } from "../api/sonamu";
 import type { AbsolutePath, ApiRelativePath } from "../utils/path-utils";
 
 export type FileType =
-  | "model"
-  | "types"
-  | "functions"
-  | "generated"
+  | "config"
   | "entity"
   | "frame"
-  | "config";
+  | "functions"
+  | "generated"
+  | "model"
+  | "types"
+  | "workflow";
 
 export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
   [key in FileType]: T;
@@ -24,13 +25,14 @@ export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
  * **사용**: getChecksumPatternGroupInAbsolutePath()로 절대 경로 변환 후 glob 사용
  */
 export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
+  config: "src/sonamu.config.ts",
   entity: "src/application/**/*.entity.json",
-  types: "src/application/**/*.types.ts",
-  generated: "src/application/sonamu.generated.ts",
-  model: "src/application/**/*.model.ts",
   frame: "src/application/**/*.frame.ts",
   functions: "src/application/**/*.functions.ts",
-  config: "src/sonamu.config.ts",
+  generated: "src/application/sonamu.generated.ts",
+  model: "src/application/**/*.model.ts",
+  types: "src/application/**/*.types.ts",
+  workflow: "src/application/**/*.workflow.ts",
 };
 
 /**
