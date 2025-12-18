@@ -10,11 +10,7 @@ import {
 } from "sonamu";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
-import type {
-  DocumentListParams,
-  DocumentSaveParams,
-  DocumentSimilarityListParams,
-} from "./document.types";
+import type { DocumentListParams, DocumentSaveParams } from "./document.types";
 
 /*
   Document Model
@@ -57,7 +53,7 @@ class DocumentModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Documents" })
+  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
   async findMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams?: LP,
@@ -117,7 +113,7 @@ class DocumentModelClass extends BaseModelClass<
   }
 
   @api({ httpMethod: "POST", clients: ["axios", "swr"] })
-  async findManySemantic<T extends DocumentSubsetKey, LP extends DocumentSimilarityListParams>(
+  async findManySemantic<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams: LP,
   ): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
@@ -127,7 +123,7 @@ class DocumentModelClass extends BaseModelClass<
       search: "id" as const,
       orderBy: "id-desc" as const,
       ...rawParams,
-    } satisfies DocumentSimilarityListParams;
+    } satisfies DocumentListParams;
 
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
     if (params.id) {
@@ -143,8 +139,10 @@ class DocumentModelClass extends BaseModelClass<
     }
 
     // semanticQuery 조건에 따라 유사도 검색 조건 추가
-    const { embedding, ...options } = params.semanticQuery;
-    qb.vectorSimilarity("documents.title_content_embedding", embedding, options);
+    if (params.semanticQuery) {
+      const { embedding, ...options } = params.semanticQuery;
+      qb.vectorSimilarity("documents.title_content_embedding", embedding, options);
+    }
 
     return this.executeSubsetQuery({
       subset,

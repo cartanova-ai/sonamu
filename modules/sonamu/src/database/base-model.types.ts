@@ -7,6 +7,7 @@
  * Enhancer, SubsetQuery 교집합 등 Model 계층에서 필요한 타입 정의.
  */
 
+import type { ListResult } from "..";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriSubsetFn } from "./puri-subset.types";
@@ -151,7 +152,5 @@ export type ExecuteSubsetQueryParams<
 export type ExecuteSubsetQueryResult<
   TSubsetMapping extends Record<string, any>,
   T extends string,
-> = {
-  rows: TSubsetMapping[T][];
-  total: number;
-};
+  LP extends { queryMode?: "list" | "count" | "both" },
+> = ListResult<LP, TSubsetMapping[T]>;

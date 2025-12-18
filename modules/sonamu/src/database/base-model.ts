@@ -2,13 +2,13 @@
 
 import type { Knex } from "knex";
 import { group, isObject, omit, set } from "radashi";
+import type { ListResult } from "..";
 import { Sonamu } from "../api";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
 import type {
   EnhancerMap,
-  ExecuteSubsetQueryResult,
   ResolveSubsetIntersection,
   UnionExtractedTTables,
 } from "./base-model.types";
@@ -153,7 +153,12 @@ export class BaseModelClass<
   async executeSubsetQuery<
     T extends TSubsetKey,
     TComputedResults extends InferAllSubsets<TSubsetQueries, TLoaderQueries>,
-    LP extends { num: number; page: number; queryMode?: SonamuQueryMode },
+    LP extends {
+      num: number;
+      page: number;
+      queryMode?: SonamuQueryMode;
+      semanticQuery?: Record<string, unknown>;
+    },
   >(
     params: {
       subset: T;
@@ -162,7 +167,7 @@ export class BaseModelClass<
       debug?: boolean;
       optimizeCountQuery?: boolean;
     } & EnhancerParam<TSubsetKey, TComputedResults, TSubsetMapping>,
-  ): Promise<ExecuteSubsetQueryResult<TSubsetMapping, T>> {
+  ): Promise<ListResult<LP, TSubsetMapping[T]>> {
     const { subset, qb, params: queryParams, debug = false, optimizeCountQuery = false } = params;
 
     if (!this.loaderQueries) {
@@ -174,17 +179,37 @@ export class BaseModelClass<
     // COUNT 쿼리 실행
     const total = await this.executeCountQuery(qb, queryParams, debug, optimizeCountQuery);
 
-    // LIST 쿼리 실행
-    const computedRows = await this.executeListQuery(subset, qb, queryParams, num, page, debug);
+    const rows = await (async () => {
+      if (queryParams.queryMode === "count") {
+        return null;
+      }
 
-    // Enhancer 적용
-    const enhancer = (params as any).enhancers?.[subset];
-    const rows = (await Promise.all(
-      computedRows.map((row) => enhancer?.(row) ?? row),
-    )) as TSubsetMapping[T][];
+      // LIST 쿼리 실행
+      const computedRows = await this.executeListQuery(subset, qb, queryParams, num, page, debug);
 
-    return { rows, total };
+      // Enhancer 적용
+      const enhancer = (params as any).enhancers?.[subset];
+      const rows = (await Promise.all(
+        computedRows.map((row) => enhancer?.(row) ?? row),
+      )) as TSubsetMapping[T][];
+      return rows;
+    })();
+
+    const queryMode = queryParams.queryMode ?? "both";
+    if (queryMode === "count") {
+      return { total } as ListResult<LP, TSubsetMapping[T]>;
+    } else if (queryMode === "list") {
+      return { rows } as ListResult<LP, TSubsetMapping[T]>;
+    } else {
+      return { rows, total } as ListResult<LP, TSubsetMapping[T]>;
+    }
   }
+
+  /**
+   * queryMode가 list면 rows만 반환
+   * queryMode가 count면 total만 반환
+   * queryMode가 both면 rows와 total을 반환
+   */
 
   /**
    * COUNT 쿼리 실행 (내부 메서드)

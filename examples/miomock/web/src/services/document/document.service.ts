@@ -10,11 +10,7 @@ import {
   type SwrOptions,
   swrPostFetcher,
 } from "../sonamu.shared";
-import type {
-  DocumentListParams,
-  DocumentSaveParams,
-  DocumentSimilarityListParams,
-} from "./document.types";
+import type { DocumentListParams, DocumentSaveParams } from "./document.types";
 
 export namespace DocumentService {
   export function useDocument<T extends DocumentSubsetKey>(
@@ -36,7 +32,7 @@ export namespace DocumentService {
     });
   }
 
-  export function useDocuments<T extends DocumentSubsetKey, LP extends DocumentListParams>(
+  export function useFindMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams?: LP,
     swrOptions?: SwrOptions,
@@ -45,7 +41,7 @@ export namespace DocumentService {
       handleConditional([`/api/document/findMany`, { subset, rawParams }], swrOptions?.conditional),
     );
   }
-  export async function getDocuments<T extends DocumentSubsetKey, LP extends DocumentListParams>(
+  export async function findMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams?: LP,
   ): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
@@ -55,10 +51,7 @@ export namespace DocumentService {
     });
   }
 
-  export function useFindManySemantic<
-    T extends DocumentSubsetKey,
-    LP extends DocumentSimilarityListParams,
-  >(
+  export function useFindManySemantic<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams: LP,
     swrOptions?: SwrOptions,
@@ -73,7 +66,7 @@ export namespace DocumentService {
   }
   export async function findManySemantic<
     T extends DocumentSubsetKey,
-    LP extends DocumentSimilarityListParams,
+    LP extends DocumentListParams,
   >(subset: T, rawParams: LP): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
     return fetch({
       method: "POST",

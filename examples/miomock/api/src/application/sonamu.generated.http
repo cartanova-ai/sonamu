@@ -402,6 +402,9 @@ GET {{baseUrl}}/api/document/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[semanticQuery][embedding][0]=0
+	&rawParams[semanticQuery][threshold]=0
+	&rawParams[semanticQuery][method]=cosine
 Content-Type: application/json
 
 ###
