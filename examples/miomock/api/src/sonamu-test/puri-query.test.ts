@@ -535,7 +535,195 @@ describe("Puri Query", () => {
     });
   });
 
-  describe("H. ETC", () => {
+  describe("H. FULLTEXT SEARCH (PGroonga)", () => {
+    test("whereSearch - 단일 컬럼", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereSearch("documents.title", "검색어");
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain("documents.title &@~ pgroonga_condition('검색어')");
+    });
+
+    test("whereSearch - 복합 컬럼", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereSearch(["documents.title", "documents.content"], "검색어");
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ARRAY[documents.title::text,documents.content::text] &@~ pgroonga_condition('검색어')",
+      );
+    });
+
+    test("whereSearch - weights 옵션", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereSearch(["documents.title", "documents.content"], "검색어", {
+        weights: [10, 1],
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ARRAY[documents.title::text,documents.content::text] &@~ pgroonga_condition('검색어', weights => ARRAY[10,1])",
+      );
+    });
+
+    test("score", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({ score: Puri.score() });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain('pgroonga_score(tableoid, ctid) as "score"');
+    });
+
+    test("highlight - 단일 컬럼", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .select({ highlighted: Puri.highlight("documents.title", "검색어") });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain("pgroonga_highlight_html(documents.title, ARRAY['검색어'])");
+    });
+
+    test("highlight - 복합 컬럼", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        highlighted: Puri.highlight(["documents.title", "documents.content"], "검색어"),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "pgroonga_highlight_html(ARRAY[documents.title,documents.content], ARRAY['검색어'])",
+      );
+    });
+
+    test("highlight - 검색어 배열", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        highlighted: Puri.highlight("documents.title", ["키워드1", "키워드2"]),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "pgroonga_highlight_html(documents.title, ARRAY['키워드1','키워드2'])",
+      );
+    });
+  });
+
+  describe("I. FULLTEXT SEARCH (PostgreSQL tsvector)", () => {
+    test("whereTsSearch - 기본", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereTsSearch("documents.title", "검색어");
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain("documents.title @@ websearch_to_tsquery('simple', '검색어')");
+    });
+
+    test("whereTsSearch - config 옵션 (문자열)", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereTsSearch("documents.title", "검색어", "simple");
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain("documents.title @@ websearch_to_tsquery('simple', '검색어')");
+    });
+
+    test("whereTsSearch - config 옵션 (객체)", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").whereTsSearch("documents.title", "검색어", {
+        config: "simple",
+        parser: "plainto_tsquery",
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain("documents.title @@ plainto_tsquery('simple', '검색어')");
+    });
+
+    test("tsHighlight - 기본", async () => {
+      const db = UserModel.getPuri("r");
+      await db
+        .table("documents")
+        .select({ highlighted: Puri.tsHighlight("documents.title", "검색어") });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_headline('simple', documents.title, websearch_to_tsquery('simple', '검색어'))",
+      );
+    });
+
+    test("tsHighlight - 옵션", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        highlighted: Puri.tsHighlight("documents.content", "검색어", {
+          config: "simple",
+          parser: "plainto_tsquery",
+          startSel: "<mark>",
+          stopSel: "</mark>",
+          maxFragments: 3,
+        }),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_headline('simple', documents.content, plainto_tsquery('simple', '검색어'), 'StartSel=<mark>, StopSel=</mark>, MaxFragments=3')",
+      );
+    });
+
+    test("tsRank - 기본", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        rank: Puri.tsRank("to_tsvector('simple', documents.title)", "검색어"),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_rank(to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+      );
+    });
+
+    test("tsRank - 옵션", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        rank: Puri.tsRank("to_tsvector('simple', documents.title)", "검색어", {
+          config: "simple",
+          weights: [0.1, 0.2, 0.4, 1.0],
+        }),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_rank(ARRAY[0.1, 0.2, 0.4, 1], to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+      );
+    });
+
+    test("tsRankCd - 기본", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        rank: Puri.tsRankCd("to_tsvector('simple', documents.title)", "검색어"),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_rank_cd(to_tsvector('simple', documents.title), websearch_to_tsquery('simple', '검색어'))",
+      );
+    });
+
+    test("tsRankCd - 옵션", async () => {
+      const db = UserModel.getPuri("r");
+      await db.table("documents").select({
+        rank: Puri.tsRankCd("to_tsvector('simple', documents.title)", "검색어", {
+          config: "simple",
+          parser: "phraseto_tsquery",
+          normalization: 16,
+        }),
+      });
+      const query = Naite.get("puri:executed-query").first();
+
+      expect(query).toContain(
+        "ts_rank_cd(to_tsvector('simple', documents.title), phraseto_tsquery('simple', '검색어'), 16)",
+      );
+    });
+  });
+
+  describe("J. ETC", () => {
     test("first", async () => {
       const db = UserModel.getPuri("r");
       await db.table("users").orderBy("users.created_at", "desc").first();
