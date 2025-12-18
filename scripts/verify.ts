@@ -99,6 +99,9 @@ async function verifyClean() {
   exec("pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
 
+  exec("pnpm biome check");
+  console.log("✓ Biome check completed\n");
+
   writeLastVerified(getCurrentState());
   console.log("✅ Clean verification completed!");
 }
@@ -163,6 +166,9 @@ async function verifyFast() {
 
   exec("pnpm --filter miomock-api test");
   console.log("✓ Test completed\n");
+
+  exec("pnpm biome check");
+  console.log("✓ Biome check completed\n");
 
   writeLastVerified(currentState);
   console.log("✅ Fast verification completed!");
