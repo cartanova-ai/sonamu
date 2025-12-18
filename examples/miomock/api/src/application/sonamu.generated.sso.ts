@@ -1,9 +1,4 @@
-import type {
-  DatabaseSchemaExtend,
-  ManyToManyBaseSchema,
-  PuriLoaderQueries,
-  PuriWrapper,
-} from "sonamu";
+import type { DatabaseSchemaExtend, ManyToManyBaseSchema, PuriLoaderQueries, PuriWrapper } from "sonamu";
 import type {
   CompanyBaseSchema,
   CompanySubsetKey,

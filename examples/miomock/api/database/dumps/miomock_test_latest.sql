@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict jLO9hoWtobAfryKDR8HvkssZdzNkbUj5PT1DR3vwJrzv9JsicErwTSYSD3mIgNO
+\restrict YuaLG6bCei6Cet5qGlcdoCsdNJnV0xyPRWCTdFyb3mdKsIrbBMWq0XGLNLR8a8R
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -649,6 +649,7 @@ INSERT INTO public.knex_migrations VALUES (54, '20251215123829_alter_projects.ts
 INSERT INTO public.knex_migrations VALUES (55, '20251216132209_alter_projects_drop1.ts', 6, '2025-12-16 13:38:53.379+09');
 INSERT INTO public.knex_migrations VALUES (56, '20251216132334_alter_projects_add1.ts', 6, '2025-12-16 13:38:53.383+09');
 INSERT INTO public.knex_migrations VALUES (57, '20251216173556_alter_projects.ts', 7, '2025-12-17 12:33:05.699+09');
+INSERT INTO public.knex_migrations VALUES (58, '20251217163711_alter_projects.ts', 8, '2025-12-18 11:14:15.717+09');
 
 
 --
@@ -1796,7 +1797,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 57, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 58, true);
 
 
 --
@@ -1993,10 +1994,10 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: projects_name_description_index; Type: INDEX; Schema: public; Owner: -
+-- Name: projects_name_description_pgroonga_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX projects_name_description_index ON public.projects USING pgroonga ((ARRAY[(name)::text, description]));
+CREATE INDEX projects_name_description_pgroonga_index ON public.projects USING pgroonga ((ARRAY[(name)::text, description])) WITH (tokenizer='TokenMecab');
 
 
 --
@@ -2074,5 +2075,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict jLO9hoWtobAfryKDR8HvkssZdzNkbUj5PT1DR3vwJrzv9JsicErwTSYSD3mIgNO
+\unrestrict YuaLG6bCei6Cet5qGlcdoCsdNJnV0xyPRWCTdFyb3mdKsIrbBMWq0XGLNLR8a8R
 

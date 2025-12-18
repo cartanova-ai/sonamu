@@ -65,7 +65,7 @@
     },
     {
       "type": "index",
-      "name": "projects_name_description_index",
+      "name": "projects_name_description_pgroonga_index",
       "columns": [{ "name": "name" }, { "name": "description" }],
       "using": "pgroonga"
     }
