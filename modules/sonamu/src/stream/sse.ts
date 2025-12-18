@@ -6,11 +6,23 @@ export function createSSEFactory<T extends z.ZodObject>(
   socket: FastifyRequest["socket"],
   reply: FastifyReply,
   _events: T,
-) {
-  return new SSEConnection<T>(socket, reply);
+): SSEConnection<T> {
+  return new SSEConnectionImpl<T>(socket, reply);
 }
 
-class SSEConnection<T extends z.ZodObject> {
+export function createMockSSEFactory<T extends z.ZodObject>(_events: T): SSEConnection<T> {
+  return {
+    publish: (_event, _data) => {},
+    end: () => Promise.resolve(),
+  };
+}
+
+export interface SSEConnection<T extends z.ZodObject> {
+  publish<K extends keyof z.infer<T>>(event: K, data: z.infer<T>[K]): void;
+  end(): Promise<void>;
+}
+
+class SSEConnectionImpl<T extends z.ZodObject> implements SSEConnection<T> {
   private _closed = false;
 
   constructor(
