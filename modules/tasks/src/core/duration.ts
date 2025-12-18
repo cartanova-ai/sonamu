@@ -23,7 +23,7 @@ export type DurationString = `${number}` | `${number}${UnitAnyCase}` | `${number
 export function parseDuration(str: DurationString): Result<number> {
   if (typeof str !== "string") {
     return err(
-      new TypeError("Invalid duration format: expected a string but received " + typeof str),
+      new TypeError(`Invalid duration format: expected a string but received ${typeof str}`),
     );
   }
 
