@@ -81,7 +81,7 @@ export class BackendPostgres implements Backend {
    * false.
    */
   static async connect(
-    database: Knex.Config,
+    dbConf: Knex.Config,
     options?: BackendPostgresOptions,
   ): Promise<BackendPostgres> {
     const postProcessResponse: Knex.Config["postProcessResponse"] = (result, _queryContext) => {
@@ -89,8 +89,8 @@ export class BackendPostgres implements Backend {
         return result;
       }
 
-      if (database?.postProcessResponse) {
-        result = database.postProcessResponse(result, _queryContext);
+      if (dbConf?.postProcessResponse) {
+        result = dbConf.postProcessResponse(result, _queryContext);
       }
 
       const camelizeRow = (row: Record<string, unknown>) =>
@@ -110,7 +110,7 @@ export class BackendPostgres implements Backend {
       ...options,
     };
 
-    const knexInstance = knex({ ...database, postProcessResponse });
+    const knexInstance = knex({ ...dbConf, postProcessResponse });
     if (runMigrations) {
       await migrate(knexInstance, DEFAULT_SCHEMA);
     }

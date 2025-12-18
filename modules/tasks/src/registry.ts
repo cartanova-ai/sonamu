@@ -33,6 +33,25 @@ export class WorkflowRegistry {
     const key = registryKey(name, version);
     return this.workflows.get(key);
   }
+
+  /**
+   * Get a workflow from the registry by name and version.
+   * @param name - The workflow name
+   * @param version - The workflow version (null for unversioned)
+   * @returns The workflow if found, undefined otherwise
+   */
+  has(name: string, version: string | null): boolean {
+    const key = registryKey(name, version);
+    return this.workflows.has(key);
+  }
+
+  /**
+   * Remove a workflow from the registry by name and version.
+   */
+  remove(name: string, version: string | null): void {
+    const key = registryKey(name, version);
+    this.workflows.delete(key);
+  }
 }
 
 /**

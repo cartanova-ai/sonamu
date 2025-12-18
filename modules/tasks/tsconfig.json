@@ -34,6 +34,7 @@
     "**/__mocks__/**",
     "*.config.ts",
     "templates/openworkflow.config.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "src/database/migrations/**/*.ts"
   ]
 }
