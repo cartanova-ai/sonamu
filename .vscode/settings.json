@@ -40,5 +40,5 @@
   "files.readonlyInclude": {
     "examples/**/web/src/services/**/*": true
   },
-  "typescript.experimental.useTsgo": true
+  "typescript.experimental.useTsgo": false
 }
