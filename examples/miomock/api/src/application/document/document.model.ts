@@ -13,7 +13,7 @@ import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generate
 import type {
   DocumentListParams,
   DocumentSaveParams,
-  DocumentSimilarityListParams,
+  DocumentSemanticParams,
 } from "./document.types";
 
 /*
@@ -50,6 +50,7 @@ class DocumentModelClass extends BaseModelClass<
   ): Promise<DocumentSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
+      queryMode: "list",
       num: 1,
       page: 1,
     });
@@ -57,7 +58,7 @@ class DocumentModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Documents" })
+  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
   async findMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams?: LP,
@@ -90,6 +91,22 @@ class DocumentModelClass extends BaseModelClass<
       }
     }
 
+    // semanticQuery
+    if (params.semanticQuery) {
+      const { embedding, ...options } = params.semanticQuery;
+      const which = params.semanticQuery.which;
+      const targetColumn: Parameters<typeof qb.vectorSimilarity>[0] = (() => {
+        if (which === "title") {
+          return "documents.title_content_embedding" as const;
+        } else if (which === "content") {
+          return "documents.title_content_embedding" as const;
+        }
+        throw new BadRequestException(`Invalid which: ${which}`);
+      })();
+
+      qb.vectorSimilarity(targetColumn, embedding, options);
+    }
+
     // orderBy
     if (params.orderBy) {
       // default orderBy
@@ -116,41 +133,14 @@ class DocumentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "swr"] })
-  async findManySemantic<T extends DocumentSubsetKey, LP extends DocumentSimilarityListParams>(
+  @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocumentsByVector" })
+  async findManySemanticByVector<T extends DocumentSubsetKey>(
     subset: T,
-    rawParams: LP,
-  ): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
-    const params = {
-      num: 24,
-      page: 1,
-      search: "id" as const,
-      orderBy: "id-desc" as const,
-      ...rawParams,
-    } satisfies DocumentSimilarityListParams;
-
-    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
-    if (params.id) {
-      qb.whereIn("documents.id", asArray(params.id));
-    }
-
-    if (params.search && params.keyword && params.keyword.length > 0) {
-      if (params.search === "id") {
-        qb.where("documents.id", Number(params.keyword));
-      } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
-      }
-    }
-
-    // semanticQuery 조건에 따라 유사도 검색 조건 추가
-    const { embedding, ...options } = params.semanticQuery;
-    qb.vectorSimilarity("documents.title_content_embedding", embedding, options);
-
-    return this.executeSubsetQuery({
-      subset,
-      qb,
-      params,
-      debug: false,
+    params: DocumentSemanticParams,
+  ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
+    return this.findMany(subset, {
+      ...params,
+      queryMode: "list",
     });
   }
 

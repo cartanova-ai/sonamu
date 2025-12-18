@@ -402,30 +402,26 @@ GET {{baseUrl}}/api/document/findMany
 	&rawParams[orderBy]=id-desc
 	&rawParams[queryMode]=both
 	&rawParams[id]=0
+	&rawParams[semanticQuery][embedding][0]=0
+	&rawParams[semanticQuery][threshold]=0
+	&rawParams[semanticQuery][method]=cosine
+	&rawParams[semanticQuery][which]=WHICH
 Content-Type: application/json
 
 ###
 
-POST {{baseUrl}}/api/document/findManySemantic
+POST {{baseUrl}}/api/document/findManySemanticByVector
 Content-Type: application/json
 
 {
   "subset": "unknown",
-  "rawParams": {
+  "params": {
     "num": 24,
     "page": 1,
     "search": "id",
     "keyword": "KEYWORD",
-    "orderBy": "id-desc",
-    "queryMode": "both",
     "id": 0,
-    "semanticQuery": {
-      "embedding": [
-        0
-      ],
-      "threshold": 0,
-      "method": "cosine"
-    }
+    "semanticQuery": "unknown-nonoptional"
   }
 }
 

@@ -2,13 +2,13 @@
 
 import type { Knex } from "knex";
 import { group, isObject, omit, set } from "radashi";
+import type { ListResult } from "..";
 import { Sonamu } from "../api";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
 import type {
   EnhancerMap,
-  ExecuteSubsetQueryResult,
   ResolveSubsetIntersection,
   UnionExtractedTTables,
 } from "./base-model.types";
@@ -153,16 +153,24 @@ export class BaseModelClass<
   async executeSubsetQuery<
     T extends TSubsetKey,
     TComputedResults extends InferAllSubsets<TSubsetQueries, TLoaderQueries>,
-    LP extends { num: number; page: number; queryMode?: SonamuQueryMode },
+    LP extends {
+      num?: number;
+      page?: number;
+      queryMode?: SonamuQueryMode;
+    }
   >(
     params: {
       subset: T;
       qb: Puri<any, any, any>;
-      params: LP;
+      params: {
+        num: number;
+        page: number;
+        queryMode?: SonamuQueryMode;
+      };
       debug?: boolean;
       optimizeCountQuery?: boolean;
     } & EnhancerParam<TSubsetKey, TComputedResults, TSubsetMapping>,
-  ): Promise<ExecuteSubsetQueryResult<TSubsetMapping, T>> {
+  ): Promise<ListResult<LP, TSubsetMapping[T]>> { 
     const { subset, qb, params: queryParams, debug = false, optimizeCountQuery = false } = params;
 
     if (!this.loaderQueries) {
@@ -171,8 +179,12 @@ export class BaseModelClass<
 
     const { num, page } = queryParams;
 
-    // COUNT 쿼리 실행
+    // COUNT 쿼리 실행 (queryMode: list일 때는 0 리턴)
     const total = await this.executeCountQuery(qb, queryParams, debug, optimizeCountQuery);
+
+    if (queryParams?.queryMode === "count") {
+      return { total } as ListResult<LP, TSubsetMapping[T]>;
+    }
 
     // LIST 쿼리 실행
     const computedRows = await this.executeListQuery(subset, qb, queryParams, num, page, debug);
@@ -183,7 +195,13 @@ export class BaseModelClass<
       computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
 
-    return { rows, total };
+    if( queryParams.queryMode === 'list' ) {
+      // 리스트만 리턴
+      return { rows } as ListResult<LP, TSubsetMapping[T]>;
+    } else {
+      // 둘다 리턴
+      return { rows, total } as ListResult<LP, TSubsetMapping[T]>;
+    }
   }
 
   /**
