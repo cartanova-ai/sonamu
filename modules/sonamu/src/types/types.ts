@@ -1347,6 +1347,9 @@ export type ManyToManyBaseSchema<FromIdKey extends string, ToIdKey extends strin
   [K in `${ToIdKey}_id`]: number;
 };
 
+// 객체, 함수, 비동기 함수를 모두 포괄하는 타입
+export type Executable<T> = T | Promise<T> | (() => T) | (() => Promise<T>);
+
 export type SonamuFastifyConfig = {
   contextProvider: (
     defaultContext: Pick<Context, "request" | "reply" | "headers" | "createSSE" | "naiteStore"> &

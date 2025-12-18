@@ -624,6 +624,9 @@ importers:
       '@sonamu-kit/hmr-runner':
         specifier: workspace:^
         version: link:../hmr-runner
+      '@sonamu-kit/tasks':
+        specifier: workspace:^
+        version: link:../tasks
       '@sonamu-kit/ts-loader':
         specifier: workspace:^
         version: link:../ts-loader
@@ -669,6 +672,9 @@ importers:
       minimatch:
         specifier: ^10.0.3
         version: 10.1.1
+      node-cron:
+        specifier: ^4.2.1
+        version: 4.2.1
       node-sql-parser:
         specifier: ^5.2.0
         version: 5.3.13
@@ -870,7 +876,7 @@ importers:
         version: 2.5.1
       debug:
         specifier: ^4.3.7
-        version: 4.4.3(supports-color@10.2.2)
+        version: 4.4.3(supports-color@5.5.0)
       fastify:
         specifier: ^4.21.0
         version: 4.29.1
