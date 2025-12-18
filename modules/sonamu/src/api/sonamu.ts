@@ -6,7 +6,7 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
-import { DB, isDaemonServer } from "..";
+import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
 import { Naite } from "../naite/naite";
@@ -45,7 +45,7 @@ class SonamuClass {
         request: null,
         reply: null,
         headers: {},
-        createSSE: () => {},
+        createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
         // biome-ignore lint/suspicious/noExplicitAny: 테스팅 환경에서 컨텍스트가 주입되지 않은 경우 빈 컨텍스트 리턴
         naiteStore: new Map<string, any>(),
       } as unknown as Context;
@@ -584,7 +584,7 @@ class SonamuClass {
     // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
     this._workflows = await WorkflowManager.create(DB.getDBConfig("w"), true);
     if (!options) {
-      options = {};
+      return;
     }
 
     const enableWorker = options.enableWorker ?? isDaemonServer();
