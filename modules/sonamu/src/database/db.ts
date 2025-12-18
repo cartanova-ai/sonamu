@@ -56,28 +56,28 @@ export class DBClass {
     const instanceName = which === "w" ? "wdb" : "rdb";
 
     if (!this[instanceName]) {
-      let config: Knex.Config;
-      switch (process.env.NODE_ENV ?? "development") {
-        case "development":
-        case "staging":
-          config =
-            which === "w"
-              ? dbConfig.development_master
-              : (dbConfig.development_slave ?? dbConfig.development_master);
-          break;
-        case "production":
-          config =
-            which === "w"
-              ? dbConfig.production_master
-              : (dbConfig.production_slave ?? dbConfig.production_master);
-          break;
-        default:
-          throw new Error(`현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`);
-      }
+      const config = this.getDBConfig(which);
       this[instanceName] = knex(config);
     }
 
     return this[instanceName];
+  }
+
+  getDBConfig(which: DBPreset): Knex.Config {
+    const dbConfig = Sonamu.dbConfig;
+    switch (process.env.NODE_ENV ?? "development") {
+      case "development":
+      case "staging":
+        return which === "w"
+          ? dbConfig.development_master
+          : (dbConfig.development_slave ?? dbConfig.development_master);
+      case "production":
+        return which === "w"
+          ? dbConfig.production_master
+          : (dbConfig.production_slave ?? dbConfig.production_master);
+      default:
+        throw new Error(`현재 ENV ${process.env.NODE_ENV}에는 설정 가능한 DB설정이 없습니다.`);
+    }
   }
 
   async destroy(): Promise<void> {
