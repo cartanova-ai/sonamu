@@ -22,6 +22,7 @@ export * from "./migration/types";
 export * from "./naite/naite";
 export * from "./naite/naite-reporter";
 export * from "./stream/sse";
+export * from "./tasks/decorator";
 export * from "./template/template";
 export * from "./template/template-manager";
 export * from "./testing/fixture-manager";

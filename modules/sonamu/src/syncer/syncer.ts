@@ -7,6 +7,7 @@ import { minimatch } from "minimatch";
 import path, { dirname } from "path";
 import { group, unique } from "radashi";
 import type { z } from "zod";
+import type { ExecutableWorkflowMetadata } from "..";
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
@@ -31,6 +32,7 @@ import {
   loadApis,
   loadModels,
   loadTypes,
+  loadWorkflows,
 } from "./module-loader";
 
 type DiffGroups = {
@@ -41,6 +43,7 @@ export class Syncer {
   apis: LoadedApis = [];
   types: LoadedTypes = {};
   models: LoadedModels = {};
+  workflows: Map<string, ExecutableWorkflowMetadata[]> = new Map();
   isSyncing: boolean = false;
 
   /**
@@ -127,6 +130,7 @@ export class Syncer {
     await this.autoloadTypes();
     await this.autoloadModels();
     await this.autoloadApis();
+    await this.autoloadWorkflows();
 
     this.syncUI();
   }
@@ -199,6 +203,12 @@ export class Syncer {
     this.apis = await loadApis();
   }
 
+  async autoloadWorkflows() {
+    console.log("autoloading workflows");
+    this.workflows = await loadWorkflows();
+    await Sonamu.workflows.synchronize(this.workflows);
+  }
+
   /**
    * 실제 싱크를 수행하는 본체입니다.
    * 변경된 파일들을 타입별로 분류하고 각 타입에 맞는 액션을 실행합니다.
@@ -233,6 +243,11 @@ export class Syncer {
     // 트리거: config
     if (diffTypes.includes("config")) {
       await this.actionSyncConfig();
+    }
+
+    // 트리거: workflow
+    if (diffTypes.includes("workflow")) {
+      await this.autoloadWorkflows();
     }
 
     return {

@@ -3,15 +3,18 @@ import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { IncomingMessage, Server, ServerResponse } from "http";
+import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
+import { DB, isDaemonServer } from "..";
 import type { SonamuDBConfig } from "../database/db";
 import type { Driver } from "../file-storage/driver";
 import { Naite } from "../naite/naite";
 import type { Syncer } from "../syncer/syncer";
+import type { WorkflowManager } from "../tasks/workflow-manager";
 import type { SonamuFastifyConfig } from "../types/types";
 import type { AbsolutePath } from "../utils/path-utils";
-import type { SonamuConfig, SonamuServerOptions } from "./config";
+import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 
@@ -122,6 +125,15 @@ class SonamuClass {
     return this._storage;
   }
 
+  private _workflows: WorkflowManager | null = null;
+  get workflows(): WorkflowManager {
+    if (this._workflows === null) {
+      throw new Error("Sonamu has not been initialized");
+    }
+
+    return this._workflows;
+  }
+
   // HMR 처리
   public watcher: FSWatcher | null = null;
   private pendingFiles: string[] = [];
@@ -192,6 +204,9 @@ class SonamuClass {
       return;
     }
 
+    // Task 등록
+    await this.initializeWorkflows(this.config.tasks);
+
     // Syncer
     const { Syncer } = await import("../syncer/syncer");
     this.syncer = new Syncer();
@@ -200,6 +215,7 @@ class SonamuClass {
     await this.syncer.autoloadTypes();
     await this.syncer.autoloadModels();
     await this.syncer.autoloadApis();
+    await this.syncer.autoloadWorkflows();
 
     const { TemplateManager } = await import("../template");
     await TemplateManager.autoload();
@@ -563,12 +579,36 @@ class SonamuClass {
     }
   }
 
+  private async initializeWorkflows(options: SonamuTaskOptions | undefined) {
+    const { WorkflowManager } = await import("../tasks/workflow-manager");
+    // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
+    this._workflows = await WorkflowManager.create(DB.getDBConfig("w"), true);
+    if (!options) {
+      options = {};
+    }
+
+    const enableWorker = options.enableWorker ?? isDaemonServer();
+    const defaultWorkerOptions = {
+      concurrency: os.cpus().length - 1,
+      usePubSub: true,
+      listenDelay: 500,
+    };
+
+    if (enableWorker) {
+      await this.workflows.setupWorker({
+        ...defaultWorkerOptions,
+        ...options.workerOptions,
+      });
+    }
+  }
+
   private async boot(server: FastifyInstance, options: SonamuServerOptions) {
     const port = options.listen?.port ?? 3000;
     const host = options.listen?.host ?? "localhost";
 
     server.addHook("onClose", async () => {
       await options.lifecycle?.onShutdown?.(server);
+      await this.workflows.destroy();
       await this.destroy();
     });
 

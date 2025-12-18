@@ -4,6 +4,8 @@ import type { BaseFrameClass } from "../api/base-frame";
 import type { ApiDecoratorOptions } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import type { BaseModelClass } from "../database/base-model";
+import type { ExecutableWorkflowMetadata, WorkflowMetadata } from "../tasks/decorator";
+import type { WorkflowFunction } from "../tasks/workflow-manager";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { globAsync } from "../utils/async-utils";
 import { importMembers } from "../utils/esm-utils";
@@ -125,4 +127,43 @@ export async function loadTypes(): Promise<LoadedTypes> {
   // );
 
   return types;
+}
+
+/**
+ * *.workflow.ts 파일들에서 Workflow 메타데이터를 로드합니다.
+ */
+export async function loadWorkflows() {
+  const workflowPathsPattern = path.join(
+    Sonamu.apiRootPath,
+    runtimePath("src/application/**/*.workflow.ts"),
+  );
+  const workflowPaths = await globAsync(workflowPathsPattern);
+  const workflows: Map<string, ExecutableWorkflowMetadata[]> = new Map();
+  for (const filePath of workflowPaths) {
+    const importedMembers = await importMembers(filePath);
+    workflows.set(
+      filePath,
+      importedMembers
+        .filter(({ value }) => {
+          return (
+            typeof value === "function" &&
+            "_internal" in value &&
+            typeof value._internal === "object" &&
+            value._internal !== null &&
+            "type" in value._internal &&
+            value._internal.type === "workflow"
+          );
+        })
+        .map(({ value }) => {
+          // biome-ignore lint/suspicious/noExplicitAny: 함수 내에 삽입된 데이터를 가져오기 위함임.
+          const decorated = (value as any)._internal as WorkflowMetadata;
+          return {
+            ...decorated,
+            fn: value as WorkflowFunction<unknown, unknown>,
+          } satisfies ExecutableWorkflowMetadata;
+        }),
+    );
+  }
+
+  return workflows;
 }
