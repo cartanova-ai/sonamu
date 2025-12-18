@@ -32,6 +32,15 @@ export default defineConfig({
     },
   },
 
+  tasks: {
+    enableWorker: true,
+    workerOptions: {
+      concurrency: 1,
+      usePubSub: true,
+      listenDelay: 500,
+    },
+  },
+
   server: {
     listen: { port, host },
     plugins: {
