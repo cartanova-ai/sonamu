@@ -265,7 +265,7 @@ function genPgroongaIndexDefinition(index: MigrationIndex, table: string) {
   })();
 
   return `await knex.raw(
-  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause});\`
+  \`CREATE INDEX ${index.name} ON ${table} USING pgroonga (${columnClause}) WITH (tokenizer='TokenMecab');\`
   )`;
 }
 
