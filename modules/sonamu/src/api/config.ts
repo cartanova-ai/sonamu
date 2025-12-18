@@ -9,7 +9,8 @@ import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
 import type { Driver } from "../file-storage/driver";
-import type { SonamuFastifyConfig } from "../types/types";
+import type { WorkflowOptions } from "../tasks/workflow-manager";
+import type { Executable, SonamuFastifyConfig } from "../types/types";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
@@ -50,6 +51,7 @@ export type SonamuConfig = {
   };
 
   server: SonamuServerOptions;
+  tasks?: SonamuTaskOptions;
 };
 
 export type SonamuServerOptions = {
@@ -90,14 +92,14 @@ export type SonamuServerOptions = {
   };
 };
 
-// NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
-export type SonamuConfigExport =
-  | SonamuConfig
-  | Promise<SonamuConfig>
-  | (() => SonamuConfig)
-  | (() => Promise<SonamuConfig>);
+export type SonamuTaskOptions = {
+  // worker를 사용할지 여부, 기본적으로 daemon 모드에서만 사용됨.
+  enableWorker?: boolean;
+  workerOptions?: WorkflowOptions;
+};
 
-export function defineConfig(config: SonamuConfigExport): Promise<SonamuConfig> {
+// NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
+export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuConfig> {
   if (typeof config === "function") {
     return Promise.resolve(config());
   }
