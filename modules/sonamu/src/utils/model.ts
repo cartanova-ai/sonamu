@@ -1,5 +1,6 @@
 import type { SonamuQueryMode } from "..";
 
+
 // semanticQuery가 있으면 similarity를 추가하는 조건부 타입
 type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
   ? T & { similarity: number }
@@ -42,20 +43,20 @@ export interface BaseListParams {
   semanticQuery?: Record<string, unknown>;
 }
 
-const a: ListResult<{ queryMode: "list"; semanticQuery: {} }, { id: number; name: string }> = {
-  rows: [{ id: 1, name: "test", similarity: 0.5 }],
-};
-a.rows[0].similarity;
+// const a: ListResult<{ queryMode: "list"; semanticQuery: {} }, { id: number; name: string }> = {
+//   rows: [{ id: 1, name: "test", similarity: 0.5 }],
+// };
+// a.rows[0].similarity;
 
-// const b: ListResult<{ queryMode: "count" }, { id: number; name: string }> = {
+// // const b: ListResult<{ queryMode: "count" }, { id: number; name: string }> = {
+// //   total: 1,
+// // };
+
+// const c: ListResult<
+//   { queryMode: "both"; semanticQuery: { embedding: number[] } },
+//   { id: number; name: string }
+// > = {
+//   rows: [{ id: 1, name: "test", similarity: 0.5 }],
 //   total: 1,
 // };
-
-const c: ListResult<
-  { queryMode: "both"; semanticQuery: { embedding: number[] } },
-  { id: number; name: string }
-> = {
-  rows: [{ id: 1, name: "test", similarity: 0.5 }],
-  total: 1,
-};
-c.rows[0].similarity;
+// c.rows[0].similarity;

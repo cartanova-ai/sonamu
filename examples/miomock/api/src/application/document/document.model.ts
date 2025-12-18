@@ -46,6 +46,7 @@ class DocumentModelClass extends BaseModelClass<
   ): Promise<DocumentSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
+      queryMode: 'list',
       num: 1,
       page: 1,
     });
