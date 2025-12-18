@@ -39,6 +39,13 @@ export default defineConfig({
       usePubSub: true,
       listenDelay: 500,
     },
+    contextProvider: (defaultContext) => {
+      return {
+        ...defaultContext,
+        ip: "127.0.0.1",
+        session: {},
+      };
+    },
   },
 
   server: {

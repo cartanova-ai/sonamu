@@ -113,10 +113,10 @@
   },
   {
     "path": "src/application/user/user.workflow.ts",
-    "checksum": "cb59026b57e8fc152235014764f8615bdb54df9b"
+    "checksum": "b95b196ed14f03d65e51368e041ef4e41247437c"
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "0e0db20e1568637f00df81cd0ba2c39b1b2d993c"
+    "checksum": "4300840a3a28600f662a63244c6d138a2236bb21"
   }
 ]
