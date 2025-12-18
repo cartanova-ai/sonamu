@@ -233,18 +233,16 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     columnOrColumns: string | string[],
     query: string | string[],
   ): SqlExpression<"string"> | SqlExpression<"string[]"> {
-    const queryClause = Array.isArray(query) ? `ARRAY[${query.join(",")}]` : `'${query}'`;
+    const queryClause = `ARRAY[${(Array.isArray(query) ? query : [query]).map((q) => `'${q}'`).join(",")}]`;
 
     // 단일 컬럼인 경우
     if (typeof columnOrColumns === "string") {
-      return Puri.rawString(
-        `pgroonga_highlight_html(${columnOrColumns}, pgroonga_query_extract_keywords(${queryClause}))`,
-      );
+      return Puri.rawString(`pgroonga_highlight_html(${columnOrColumns}, ${queryClause})`);
     }
 
     // 컬럼 배열인 경우
     return Puri.rawStringArray(
-      `pgroonga_highlight_html(ARRAY[${columnOrColumns.join(",")}], pgroonga_query_extract_keywords(${queryClause}))`,
+      `pgroonga_highlight_html(ARRAY[${columnOrColumns.join(",")}], ${queryClause})`,
     );
   }
 
