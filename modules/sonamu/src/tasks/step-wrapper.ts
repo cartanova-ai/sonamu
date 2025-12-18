@@ -1,10 +1,29 @@
 import type { DurationString, StepApi } from "@sonamu-kit/tasks/internal";
+import inflection from "inflection";
 
-type SonamuStepFunction<TArgs extends unknown[], TResult> = (...args: TArgs) => TResult;
-
-type RunnableStep<TArgs extends unknown[], TResult> = {
-  run: (...args: TArgs) => Promise<TResult>;
+export type StepFunction<TArgs extends unknown[], TResult> = (...args: TArgs) => TResult;
+export type RunnableStep<TArgs extends unknown[], TResult> = {
+  run: StepFunction<TArgs, Promise<TResult>>;
 };
+
+export type MethodNames<T, TKey extends keyof T> = T[TKey] extends (
+  ...args: infer _TArgs
+) => infer _TResult
+  ? TKey
+  : never;
+
+export type MethodArguments<T, TKey extends keyof T> = T[TKey] extends (
+  ...args: infer TArgs
+) => unknown
+  ? TArgs
+  : never;
+
+export type MethodReturnType<T, TKey extends keyof T> = T[TKey] extends (
+  this: T,
+  ...args: infer _TArgs
+) => infer TResult
+  ? TResult
+  : never;
 
 export class StepWrapper {
   readonly #stepApi: StepApi;
@@ -13,36 +32,50 @@ export class StepWrapper {
     this.#stepApi = stepApi;
   }
 
-  get<TArgs extends unknown[], TResult>(
-    fn: SonamuStepFunction<TArgs, TResult>,
-  ): RunnableStep<TArgs, TResult>;
-  get<TArgs extends unknown[], TResult>(
-    config: { name?: string },
-    fn: SonamuStepFunction<TArgs, TResult>,
-  ): RunnableStep<TArgs, TResult>;
-  get<TArgs extends unknown[], TResult>(
-    ...args:
-      | [{ name?: string }, SonamuStepFunction<TArgs, TResult>]
-      | [SonamuStepFunction<TArgs, TResult>]
+  get<
+    T,
+    TKey extends keyof T,
+    TArgs extends MethodArguments<T, TKey>,
+    TResult extends MethodReturnType<T, TKey>,
+  >(config: { name: string }, object: T, name: MethodNames<T, TKey>): RunnableStep<TArgs, TResult>;
+  get<
+    T,
+    TKey extends keyof T,
+    TArgs extends MethodArguments<T, TKey>,
+    TResult extends MethodReturnType<T, TKey>,
+  >(object: T, name: MethodNames<T, TKey>): RunnableStep<TArgs, TResult>;
+  get<
+    T,
+    TKey extends keyof T,
+    TArgs extends MethodArguments<T, TKey>,
+    TResult extends MethodReturnType<T, TKey>,
+  >(
+    ...args: [{ name: string }, T, MethodNames<T, TKey>] | [T, MethodNames<T, TKey>]
   ): RunnableStep<TArgs, TResult> {
     let config: { name: string };
-    let fn: SonamuStepFunction<TArgs, TResult>;
+    let fn: StepFunction<TArgs, Exclude<TResult, never>>;
 
-    if (args.length === 1) {
-      [fn] = args;
-      config = { name: fn.name };
+    if (args.length === 2) {
+      const [rawObject, methodName] = args;
+      const method = rawObject[methodName] as CallableFunction;
+      config = { name: inflection.underscore(methodName.toString()) };
+
+      fn = (...args: TArgs) => method.bind(rawObject)(...args);
     } else {
-      const [rawConfig, rawFn] = args;
-      config = { name: rawConfig.name ?? rawFn.name };
-      fn = rawFn;
+      const [rawConfig, rawObject, name] = args;
+      const method = rawObject[name] as CallableFunction;
+
+      config = { name: rawConfig.name ?? inflection.underscore(name.toString()) };
+      fn = (...args: TArgs) => method.bind(rawObject)(...args);
     }
 
-    const run = ((stepApi: StepApi, ...args: TArgs) => {
-      const wrappedFn = () => fn.apply(this, args);
-      return stepApi.run(config, wrappedFn);
-    }).bind(this, this.#stepApi);
-
-    return { run };
+    return {
+      run: ((stepApi: StepApi) => {
+        return (...args: TArgs) => {
+          return stepApi.run(config, () => fn(...args));
+        };
+      })(this.#stepApi),
+    };
   }
 
   sleep(name: string, duration: DurationString) {

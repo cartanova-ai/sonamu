@@ -11,9 +11,13 @@ import type {
 import assert from "assert";
 import type { Knex } from "knex";
 import { schedule as cronSchedule, type ScheduledTask } from "node-cron";
+import type { ZodObject } from "zod";
+import type { Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
+import { Naite } from "../naite/naite";
+import { createMockSSEFactory } from "../stream/sse";
 import type { Executable } from "../types/types";
-import type { ExecutableWorkflowMetadata, WorkflowMetadata } from "./decorator";
+import type { WorkflowMetadata } from "./decorator";
 import { StepWrapper } from "./step-wrapper";
 
 export interface WorkflowOptions {
@@ -61,7 +65,7 @@ export class WorkflowManager {
   #worker: Worker | null;
 
   // 파일 경로 -> 파일에 정의된 워크플로우 메타데이터 목록
-  #workflowsMap: Map<string, ExecutableWorkflowMetadata[]>;
+  #workflowsMap: Map<string, WorkflowMetadata[]>;
 
   // Task 이름 -> Task 정보 및 Input 값, Workflow ID
   #scheduledTasks: Map<
@@ -84,7 +88,7 @@ export class WorkflowManager {
   /**
    * 정의된 워크플로우 및 워크플로우에 대한 scheduled tasks를 동기화합니다.
    */
-  async synchronize(workflowMap: Map<string, ExecutableWorkflowMetadata[]>) {
+  async synchronize(workflowMap: Map<string, WorkflowMetadata[]>) {
     // 1. 삭제된 파일은 일괄 삭제
     await Promise.allSettled(
       Array.from(this.#workflowsMap.entries())
@@ -124,13 +128,11 @@ export class WorkflowManager {
     await Promise.allSettled(
       Array.from(workflowMap.entries())
         .filter(([key]) => this.#workflowsMap.has(key))
-        .map<[string, [ExecutableWorkflowMetadata[], ExecutableWorkflowMetadata[]]]>(
-          ([key, newWorkflows]) => {
-            const previousWorkflows = this.#workflowsMap.get(key);
-            assert(previousWorkflows, "previous workflows not found");
-            return [key, [previousWorkflows, newWorkflows]];
-          },
-        )
+        .map<[string, [WorkflowMetadata[], WorkflowMetadata[]]]>(([key, newWorkflows]) => {
+          const previousWorkflows = this.#workflowsMap.get(key);
+          assert(previousWorkflows, "previous workflows not found");
+          return [key, [previousWorkflows, newWorkflows]];
+        })
         .map(async ([_, [previousWorkflows, newWorkflows]]) => {
           // 기존 것들을 삭제부터 해야함.
           await Promise.allSettled(
@@ -233,15 +235,35 @@ export class WorkflowManager {
   registerWorkflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
     options: WorkflowCreateOptions<Input, Output, TSchema>,
   ): RunnableWorkflow<SchemaOutput<TSchema, Input>, Output, SchemaInput<TSchema, Input>> {
-    const fn = (
+    const fn = async (
       params: Readonly<{
         input: SchemaOutput<TSchema, Input>;
         step: StepApi;
         version: string | null;
       }>,
     ) => {
+      const baseContext = {
+        request: null,
+        reply: null,
+        headers: {},
+        createSSE: (schema: ZodObject) => createMockSSEFactory(schema),
+        naiteStore: Naite.createStore(),
+        user: null,
+        passport: {
+          login: async () => {},
+          logout: () => {},
+        },
+      } as unknown as Context;
+
+      const contextProvider = Sonamu.config.tasks?.contextProvider;
+      const context: Context = contextProvider
+        ? await Promise.resolve(contextProvider(baseContext))
+        : baseContext;
+
       const step = new StepWrapper(params.step);
-      return options.function({ input: params.input, step, version: params.version });
+      return Sonamu.asyncLocalStorage.run({ context }, () =>
+        options.function({ input: params.input, step, version: params.version }),
+      );
     };
 
     const workflow = this.#ow.defineWorkflow(
@@ -274,14 +296,14 @@ export class WorkflowManager {
   // cron task들을 모두 중지
   async stopSchedules() {
     await Promise.allSettled(
-      this.#scheduledTasks.values().map(({ task }) => Promise.resolve(task.stop())),
+      Array.from(this.#scheduledTasks.values()).map(({ task }) => Promise.resolve(task.stop())),
     );
   }
 
   // cron task들을 모두 정리
   async destroySchedules() {
     await Promise.allSettled(
-      this.#scheduledTasks.values().map(({ task }) => Promise.resolve(task.destroy())),
+      Array.from(this.#scheduledTasks.values()).map(({ task }) => Promise.resolve(task.destroy())),
     );
     this.#scheduledTasks.clear();
   }

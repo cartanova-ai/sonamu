@@ -7,7 +7,7 @@ import { minimatch } from "minimatch";
 import path, { dirname } from "path";
 import { group, unique } from "radashi";
 import type { z } from "zod";
-import type { ExecutableWorkflowMetadata } from "..";
+import type { WorkflowMetadata } from "..";
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
@@ -43,7 +43,7 @@ export class Syncer {
   apis: LoadedApis = [];
   types: LoadedTypes = {};
   models: LoadedModels = {};
-  workflows: Map<string, ExecutableWorkflowMetadata[]> = new Map();
+  workflows: Map<string, WorkflowMetadata[]> = new Map();
   isSyncing: boolean = false;
 
   /**
@@ -204,7 +204,6 @@ export class Syncer {
   }
 
   async autoloadWorkflows() {
-    console.log("autoloading workflows");
     this.workflows = await loadWorkflows();
     await Sonamu.workflows.synchronize(this.workflows);
   }
