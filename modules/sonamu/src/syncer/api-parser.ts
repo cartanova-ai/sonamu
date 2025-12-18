@@ -229,6 +229,10 @@ function resolveTypeNode(typeNode: ts.TypeNode): ApiParamType {
         };
       }
       break;
+    case ts.SyntaxKind.ParenthesizedType:
+      // 괄호로 묶인 타입 (예: (A & B)[] 에서 (A & B))
+      // 내부 타입을 재귀적으로 resolve
+      return resolveTypeNode((typeNode as ts.ParenthesizedTypeNode).type);
     case undefined:
       throw new Error(`typeNode undefined`);
   }
