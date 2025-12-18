@@ -112,7 +112,11 @@
     "checksum": "45444bc63bcb4152176b333b7d8d4010a9a7fa4c"
   },
   {
+    "path": "src/application/user/user.workflow.ts",
+    "checksum": "cb59026b57e8fc152235014764f8615bdb54df9b"
+  },
+  {
     "path": "src/sonamu.config.ts",
-    "checksum": "53e60a367eb5407ccaa9d6915ae89e6d6b58d76a"
+    "checksum": "0e0db20e1568637f00df81cd0ba2c39b1b2d993c"
   }
 ]
