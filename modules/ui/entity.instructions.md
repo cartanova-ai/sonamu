@@ -8,8 +8,8 @@
   "table": "table_name",
   "title": "엔티티 제목",
   "props": [
-    { "name": "id", "type": "integer", "desc": "ID", "unsigned": true },
-    { "name": "created_at", "type": "timestamp", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
     // Additional property definitions go here
   ],
   "indexes": [],
@@ -29,12 +29,12 @@
 
 1. **id** - 기본키
    ```json
-   { "name": "id", "type": "integer", "desc": "ID", "unsigned": true }
+   { "name": "id", "type": "integer", "desc": "ID" }
    ```
 
 2. **created_at** - 등록일시
    ```json
-   { "name": "created_at", "type": "timestamp", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
+   { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
    ```
 
 ## Required Enums
@@ -53,193 +53,191 @@
 
 ## Property Types and Their Attributes
 
-### 1. Integer
+### 공통 필드 (Common Fields)
+
+모든 프로퍼티 타입에서 사용할 수 있는 공통 필드입니다:
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| name | string | ✓ | 프로퍼티 이름 |
+| desc | string | | 설명 |
+| nullable | boolean | | null 허용 여부 (기본값: false) |
+| toFilter | boolean | | 필터 조건으로 사용 여부 |
+| dbDefault | string \| number \| boolean | | DB 기본값 |
+| generated | object | | Generated Column 설정 |
+
+**Generated Column 설정:**
 ```json
 {
-  "name": "count",
-  "type": "integer",
-  "desc": "수량",
-  "unsigned": true,     // Optional, 양수만 허용
-  "nullable": true,     // Optional, 생략 시 false
-  "dbDefault": 0        // Optional
+  "generated": {
+    "type": "STORED",       // "STORED" | "VIRTUAL"
+    "expression": "lower(name)"
+  }
 }
 ```
+- `STORED`: 값이 디스크에 저장됨
+- `VIRTUAL`: 조회 시 계산됨 (json, vector, 배열 타입 사용 불가)
 
-### 2. Big Integer
+---
+
+### 1. Integer / Integer[]
 ```json
-{
-  "name": "total_amount",
-  "type": "bigInteger",
-  "desc": "총액",
-  "unsigned": true,     // Optional
-  "nullable": true,     // Optional
-  "dbDefault": 0        // Optional
-}
+{ "name": "count", "type": "integer", "desc": "수량" }
+{ "name": "scores", "type": "integer[]", "desc": "점수 목록" }
 ```
 
-### 3. Float (Required: precision, scale)
+### 2. BigInteger / BigInteger[]
 ```json
-{
-  "name": "rate",
-  "type": "float",
-  "desc": "비율",
-  "precision": 8,       // Required
-  "scale": 2,           // Required
-  "nullable": true,     // Optional
-  "dbDefault": 0.0      // Optional
-}
+{ "name": "total_amount", "type": "bigInteger", "desc": "총액" }
+{ "name": "big_numbers", "type": "bigInteger[]", "desc": "큰 숫자 목록" }
 ```
 
-### 4. Decimal (Required: precision, scale)
+### 3. String / String[]
+```json
+{ "name": "title", "type": "string", "desc": "제목", "length": 255 }
+{ "name": "tags", "type": "string[]", "desc": "태그 목록" }
+```
+- `length`: 최대 길이 (Optional, 생략 시 text)
+
+### 4. Boolean / Boolean[]
+```json
+{ "name": "is_active", "type": "boolean", "desc": "활성여부", "dbDefault": false }
+{ "name": "flags", "type": "boolean[]", "desc": "플래그 목록" }
+```
+
+### 5. Date / Date[]
+```json
+{ "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" }
+{ "name": "holidays", "type": "date[]", "desc": "휴일 목록" }
+```
+- PostgreSQL의 `timestamptz` 타입으로 매핑됨
+
+### 6. Number / Number[]
 ```json
 {
   "name": "price",
-  "type": "decimal",
+  "type": "number",
   "desc": "가격",
-  "precision": 10,      // Required
-  "scale": 2,           // Required
-  "nullable": true,     // Optional
-  "dbDefault": 0.0      // Optional
+  "precision": 10,
+  "scale": 2,
+  "numberType": "numeric"
 }
+{ "name": "rates", "type": "number[]", "desc": "비율 목록" }
 ```
+- `precision`: 전체 자릿수 (Optional)
+- `scale`: 소수점 이하 자릿수 (Optional)
+- `numberType`: `"real"` | `"double precision"` | `"numeric"` (Optional, 기본값: numeric)
 
-### 5. Double (Required: precision, scale)
+### 7. Numeric / Numeric[]
 ```json
-{
-  "name": "latitude",
-  "type": "double",
-  "desc": "위도",
-  "precision": 15,      // Required
-  "scale": 10,          // Required
-  "unsigned": true,     // Optional
-  "nullable": true,     // Optional
-  "dbDefault": 0.0      // Optional
-}
+{ "name": "exact_value", "type": "numeric", "desc": "정밀값", "precision": 20, "scale": 8 }
+{ "name": "exact_values", "type": "numeric[]", "desc": "정밀값 목록" }
 ```
+- `precision`: 전체 자릿수 (Optional)
+- `scale`: 소수점 이하 자릿수 (Optional)
+- TypeScript에서 `string`으로 매핑됨 (정밀도 유지)
 
-### 6. String (Required: length)
+### 8. UUID / UUID[]
 ```json
-{
-  "name": "title",
-  "type": "string",
-  "desc": "제목",
-  "length": 255,        // Required
-  "nullable": true,     // Optional
-  "dbDefault": "\"\""   // Optional
-}
+{ "name": "external_id", "type": "uuid", "desc": "외부 ID" }
+{ "name": "reference_ids", "type": "uuid[]", "desc": "참조 ID 목록" }
 ```
 
-### 7. Boolean
-```json
-{
-  "name": "is_active",
-  "type": "boolean",
-  "desc": "활성여부",
-  "nullable": true,     // Optional
-  "dbDefault": false    // Optional
-}
-```
-
-### 8. Date
-```json
-{
-  "name": "birth_date",
-  "type": "date",
-  "desc": "생년월일",
-  "nullable": true,     // Optional
-  "dbDefault": "\"1970-01-01\""  // Optional
-}
-```
-
-### 9. DateTime
-```json
-{
-  "name": "scheduled_at",
-  "type": "datetime",
-  "desc": "예정일시",
-  "nullable": true,     // Optional
-  "dbDefault": "\"1970-01-01 00:00:00\""  // Optional
-}
-```
-
-### 10. Timestamp
-```json
-{
-  "name": "updated_at",
-  "type": "timestamp",
-  "desc": "수정일시",
-  "dbDefault": "CURRENT_TIMESTAMP",  // Optional
-  "nullable": true      // Optional
-}
-```
-
-### 11. Text (Required: textType)
-```json
-{
-  "name": "content",
-  "type": "text",
-  "textType": "text",   // Required: "text" | "mediumtext" | "longtext"
-  "desc": "내용",
-  "nullable": true,     // Optional
-  "dbDefault": "\"\""   // Optional
-}
-```
-
-### 12. JSON (Required: id)
-```json
-{
-  "name": "tags",
-  "type": "json",
-  "id": "StringArray",  // Required: 타입 ID (StringArray, NumberArray, Unknown 등)
-  "desc": "태그 목록",
-  "nullable": true,     // Optional
-  "dbDefault": "[]"     // Optional
-}
-```
-
-### 13. Enum (Required: id, length)
+### 9. Enum / Enum[] (Required: id)
 ```json
 {
   "name": "status",
   "type": "enum",
-  "id": "ProductStatus",  // Required: enums에 정의된 Enum ID
+  "id": "ProductStatus",
   "desc": "상태",
-  "length": 16,           // Required
-  "nullable": true,       // Optional
-  "dbDefault": "\"active\""  // Optional
+  "length": 16,
+  "dbDefault": "\"active\""
+}
+{ "name": "categories", "type": "enum[]", "id": "ProductCategory", "desc": "카테고리 목록" }
+```
+- `id`: enums에 정의된 Enum ID (Required)
+- `length`: 최대 길이 (Optional, enum 타입만)
+
+**주의**: `id`로 지정한 Enum은 반드시 `enums` 객체에 정의되어 있어야 합니다.
+
+### 10. JSON (Required: id)
+```json
+{
+  "name": "metadata",
+  "type": "json",
+  "id": "ProductMetadata",
+  "desc": "메타데이터",
+  "dbDefault": "{}"
 }
 ```
-**주의**: `id`로 지정한 Enum은 반드시 `enums` 객체에 정의되어 있어야 합니다.
+- `id`: 타입 ID (Required) - 별도 타입 정의 필요
+
+### 11. Virtual (Required: id)
+```json
+{
+  "name": "full_name",
+  "type": "virtual",
+  "id": "string",
+  "desc": "전체 이름"
+}
+```
+- `id`: 타입 ID (Required)
+- DB에 컬럼이 생성되지 않음, TypeScript 타입만 생성
+
+### 12. Vector / Vector[] (Required: dimensions)
+```json
+{
+  "name": "embedding",
+  "type": "vector",
+  "dimensions": 1536,
+  "desc": "임베딩 벡터"
+}
+{ "name": "embeddings", "type": "vector[]", "dimensions": 768, "desc": "임베딩 목록" }
+```
+- `dimensions`: 벡터 차원 수 (Required)
+- pgvector 확장 필요
+
+### 13. TsVector
+```json
+{
+  "name": "search_vector",
+  "type": "tsvector",
+  "desc": "검색 벡터",
+  "generated": {
+    "type": "STORED",
+    "expression": "to_tsvector('korean', coalesce(title, '') || ' ' || coalesce(content, ''))"
+  }
+}
+```
+- PostgreSQL 전문 검색용 타입
 
 ## Relation Types
 
-모든 relation은 `onUpdate`와 `onDelete`가 **필수**입니다.
-(예외: OneToOne에서 `hasJoinColumn: false`인 경우만 불필요)
-
-### 14. BelongsToOne (Required: with, relationType, onUpdate, onDelete)
+### 14. BelongsToOne (Required: with, relationType)
 ```json
 {
   "name": "author",
   "type": "relation",
   "with": "User",
   "relationType": "BelongsToOne",
-  "onUpdate": "CASCADE",   // Required
-  "onDelete": "CASCADE",   // Required
   "desc": "작성자",
-  "nullable": true         // Optional
+  "nullable": true,              // Optional
+  "customJoinClause": "...",     // Optional
+  "useConstraint": true,         // Optional (기본값: true)
+  "onUpdate": "CASCADE",         // Optional (기본값: RESTRICT)
+  "onDelete": "CASCADE"          // Optional (기본값: RESTRICT)
 }
 ```
 
-### 15. HasMany (Required: with, relationType, joinColumn, onUpdate, onDelete)
+### 15. HasMany (Required: with, relationType, joinColumn)
 ```json
 {
   "name": "comments",
   "type": "relation",
   "with": "Comment",
   "relationType": "HasMany",
-  "joinColumn": "post_id",   // Required
-  "onUpdate": "CASCADE",     // Required
-  "onDelete": "CASCADE",     // Required
+  "joinColumn": "post_id",       // Required: 상대 엔티티의 FK 컬럼명
+  "fromColumn": "id",            // Optional: 이 엔티티의 참조 컬럼 (기본값: id)
   "desc": "댓글 목록"
 }
 ```
@@ -251,9 +249,9 @@
   "type": "relation",
   "with": "Tag",
   "relationType": "ManyToMany",
-  "joinTable": "posts__tags",  // Required: "테이블명__테이블명" 형식
-  "onUpdate": "CASCADE",       // Required
-  "onDelete": "CASCADE",       // Required
+  "joinTable": "posts__tags",    // Required: "테이블명__테이블명" 형식
+  "onUpdate": "CASCADE",         // Required
+  "onDelete": "CASCADE",         // Required
   "desc": "태그 목록"
 }
 ```
@@ -268,8 +266,10 @@
   "with": "UserProfile",
   "relationType": "OneToOne",
   "hasJoinColumn": true,
-  "onUpdate": "CASCADE",   // Required when hasJoinColumn: true
-  "onDelete": "CASCADE",   // Required when hasJoinColumn: true
+  "customJoinClause": "...",     // Optional
+  "useConstraint": true,         // Optional (기본값: true)
+  "onUpdate": "CASCADE",         // Optional (기본값: RESTRICT)
+  "onDelete": "CASCADE",         // Optional (기본값: RESTRICT)
   "desc": "프로필"
 }
 ```
@@ -309,15 +309,23 @@
 
 | Type | Required Fields |
 |------|-----------------|
-| string | length |
-| float, decimal, double | precision, scale |
-| text | textType |
+| integer, integer[], bigInteger, bigInteger[] | - |
+| string, string[] | - (length는 optional) |
+| boolean, boolean[] | - |
+| date, date[] | - |
+| number, number[] | - (precision, scale, numberType는 optional) |
+| numeric, numeric[] | - (precision, scale는 optional) |
+| uuid, uuid[] | - |
+| enum | id |
+| enum[] | id |
 | json | id |
-| enum | id, length |
-| relation (BelongsToOne) | with, relationType, onUpdate, onDelete |
-| relation (HasMany) | with, relationType, joinColumn, onUpdate, onDelete |
+| virtual | id |
+| vector, vector[] | dimensions |
+| tsvector | - |
+| relation (BelongsToOne) | with, relationType |
+| relation (HasMany) | with, relationType, joinColumn |
 | relation (ManyToMany) | with, relationType, joinTable, onUpdate, onDelete |
-| relation (OneToOne, hasJoinColumn: true) | with, relationType, hasJoinColumn, onUpdate, onDelete |
+| relation (OneToOne, hasJoinColumn: true) | with, relationType, hasJoinColumn |
 | relation (OneToOne, hasJoinColumn: false) | with, relationType, hasJoinColumn |
 
 ### Subset Rules
@@ -387,12 +395,12 @@
   "table": "products",
   "title": "상품",
   "props": [
-    { "name": "id", "type": "integer", "desc": "ID", "unsigned": true },
-    { "name": "created_at", "type": "timestamp", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
     { "name": "name", "type": "string", "desc": "상품명", "length": 255 },
-    { "name": "price", "type": "decimal", "desc": "가격", "precision": 10, "scale": 2 },
-    { "name": "description", "type": "text", "desc": "설명", "textType": "text", "nullable": true },
-    { "name": "status", "type": "enum", "id": "ProductStatus", "desc": "상태", "length": 16, "dbDefault": "\"active\"" },
+    { "name": "price", "type": "number", "desc": "가격", "precision": 10, "scale": 2 },
+    { "name": "description", "type": "string", "desc": "설명", "nullable": true },
+    { "name": "status", "type": "enum", "id": "ProductStatus", "desc": "상태", "dbDefault": "\"active\"" },
     {
       "name": "category",
       "type": "relation",
