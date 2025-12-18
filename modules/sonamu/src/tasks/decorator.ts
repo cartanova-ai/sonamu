@@ -9,7 +9,7 @@ import inflection from "inflection";
 import type { Executable } from "../types/types";
 import type { WorkflowFunction } from "./workflow-manager";
 
-// 워크플로우의 메타데이터 객체, 함수 안에 _internal 속성으로 삽입됨.
+// 워크플로우의 메타데이터 객체
 export interface WorkflowMetadata {
   type: "workflow";
   id: string;
@@ -21,12 +21,8 @@ export interface WorkflowMetadata {
     expression: string;
     input: Executable<SchemaInput<unknown, unknown> | undefined>;
   }[];
-}
-
-// 워크플로우 함수가 있는 타입
-export type ExecutableWorkflowMetadata = WorkflowMetadata & {
   fn: WorkflowFunction<unknown, unknown>;
-};
+}
 
 // 워크플로우 정의 과정에서의 옵션
 export type DefineWorkflowOptions<
@@ -41,7 +37,7 @@ export type DefineWorkflowOptions<
   schedules?: {
     name?: string;
     expression: string;
-    input?: SchemaInput<TSchema, Input>;
+    input?: Executable<SchemaInput<TSchema, Input> | undefined>;
   }[];
 };
 
@@ -67,10 +63,9 @@ export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undef
           input: schedule.input,
         };
       }),
+      fn: fn as WorkflowFunction<unknown, unknown>,
     };
 
-    // biome-ignore lint/suspicious/noExplicitAny: private 값을 삽입하기 위해서임
-    (fn as any)._internal = decorated;
-    return fn;
+    return decorated;
   };
 }

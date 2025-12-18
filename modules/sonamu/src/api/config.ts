@@ -11,6 +11,7 @@ import type { Knex } from "knex";
 import type { Driver } from "../file-storage/driver";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
 import type { Executable, SonamuFastifyConfig } from "../types/types";
+import type { AuthContext, Context } from "./context";
 
 export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
@@ -96,6 +97,10 @@ export type SonamuTaskOptions = {
   // worker를 사용할지 여부, 기본적으로 daemon 모드에서만 사용됨.
   enableWorker?: boolean;
   workerOptions?: WorkflowOptions;
+  contextProvider: (
+    defaultContext: Pick<Context, "reply" | "request" | "headers" | "createSSE" | "naiteStore"> &
+      AuthContext,
+  ) => Context | Promise<Context>;
 };
 
 // NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
