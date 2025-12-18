@@ -29,11 +29,11 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "bc1960ba26e1e3f3f4597a0d20a0c4a9e677b491"
+    "checksum": "fd658dd6bfd81b42c89504c874de3fe9c4cf1920"
   },
   {
     "path": "src/application/document/document.types.ts",
-    "checksum": "14d1faf860d3273d9f1326258746ffc13239cd69"
+    "checksum": "d149d326bf0e81392c04ee5c5885c8c8e208f82a"
   },
   {
     "path": "src/application/employee/employee.entity.json",

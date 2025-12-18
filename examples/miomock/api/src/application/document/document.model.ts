@@ -10,7 +10,11 @@ import {
 } from "sonamu";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
-import type { DocumentListParams, DocumentSaveParams } from "./document.types";
+import type {
+  DocumentListParams,
+  DocumentSaveParams,
+  DocumentSemanticParams,
+} from "./document.types";
 
 /*
   Document Model
@@ -46,7 +50,7 @@ class DocumentModelClass extends BaseModelClass<
   ): Promise<DocumentSubsetMapping[T] | null> {
     const { rows } = await this.findMany(subset, {
       ...listParams,
-      queryMode: 'list',
+      queryMode: "list",
       num: 1,
       page: 1,
     });
@@ -90,15 +94,16 @@ class DocumentModelClass extends BaseModelClass<
     // semanticQuery
     if (params.semanticQuery) {
       const { embedding, ...options } = params.semanticQuery;
-      const which = params.semanticQuery.which ?? 'title';
-      const targetColumn = (() => {
-        if(which === 'title') {
+      const which = params.semanticQuery.which;
+      const targetColumn: Parameters<typeof qb.vectorSimilarity>[0] = (() => {
+        if (which === "title") {
           return "documents.title_content_embedding" as const;
-        } else if(which === 'content') {
+        } else if (which === "content") {
           return "documents.title_content_embedding" as const;
         }
-        throw exhaustive(which);
+        throw new BadRequestException(`Invalid which: ${which}`);
       })();
+
       qb.vectorSimilarity(targetColumn, embedding, options);
     }
 
@@ -131,40 +136,12 @@ class DocumentModelClass extends BaseModelClass<
   @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocumentsByVector" })
   async findManySemanticByVector<T extends DocumentSubsetKey>(
     subset: T,
-    params: Omit<DocumentListParams, 'semanticQuery' | 'orderBy' | 'queryMode'> & {
-      semanticQuery: {
-        embedding: number[];
-        threshold?: number;
-        method?: "cosine" | "inner_product" | "l2";
-      }
-    }, 
+    params: DocumentSemanticParams,
   ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
     return this.findMany(subset, {
       ...params,
-      queryMode: 'list',
-      semanticQuery: params.semanticQuery,
-    })
-  }
-
-  @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocuments" })
-  async findManySemanticByText<T extends DocumentSubsetKey>(
-    subset: T,
-    params: Omit<DocumentListParams, 'semanticQuery' | 'orderBy' | 'queryMode'> & {
-      semanticQuery: {
-        text: string;
-        threshold?: number;
-        method?: "cosine" | "l2" | "inner_product";
-      }
-    },
-  ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
-    const embedding = [] as any;
-    return this.findManySemanticByVector(subset, {  
-      ...params,
-      semanticQuery: {
-        embedding,
-        ...params.semanticQuery,
-      },
-    })
+      queryMode: "list",
+    });
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"] })

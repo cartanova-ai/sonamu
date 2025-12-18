@@ -10,7 +10,7 @@ import {
   type SwrOptions,
   swrPostFetcher,
 } from "../sonamu.shared";
-import type { DocumentListParams, DocumentSaveParams } from "./document.types";
+import type { DocumentListParams, DocumentSaveParams, DocumentSemanticParams } from "./document.types";
 
 export namespace DocumentService {
   export function useDocument<T extends DocumentSubsetKey>(
@@ -51,27 +51,27 @@ export namespace DocumentService {
     });
   }
 
-  export function useFindManySemantic<T extends DocumentSubsetKey, LP extends DocumentListParams>(
+  export function useSimilarDocumentsByVector<T extends DocumentSubsetKey>(
     subset: T,
-    rawParams: LP,
+    params: DocumentSemanticParams,
     swrOptions?: SwrOptions,
-  ): SWRResponse<ListResult<LP, DocumentSubsetMapping[T]>, SWRError> {
+  ): SWRResponse<{ rows: DocumentSubsetMapping[T] & { similarity: number }[] }, SWRError> {
     return useSWR(
       handleConditional(
-        [`/api/document/findManySemantic`, { subset, rawParams }],
+        [`/api/document/findManySemanticByVector`, { subset, params }],
         swrOptions?.conditional,
       ),
       swrPostFetcher,
     );
   }
-  export async function findManySemantic<
-    T extends DocumentSubsetKey,
-    LP extends DocumentListParams,
-  >(subset: T, rawParams: LP): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
+  export async function getSimilarDocumentsByVector<T extends DocumentSubsetKey>(
+    subset: T,
+    params: DocumentSemanticParams,
+  ): Promise<{ rows: DocumentSubsetMapping[T] & { similarity: number }[] }> {
     return fetch({
       method: "POST",
-      url: `/api/document/findManySemantic`,
-      data: { subset, rawParams },
+      url: `/api/document/findManySemanticByVector`,
+      data: { subset, params },
     });
   }
 
