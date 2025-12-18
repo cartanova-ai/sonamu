@@ -27,61 +27,65 @@ async function bootstrap() {
     await Sonamu.init(false, false);
   }
 
-  await tsicli(process.argv, {
-    types: {
-      "#entityId": {
-        type: "autocomplete",
-        name: "#entityId",
-        message: "Please input #entityId",
-        choices: EntityManager.getAllParentIds().map((entityId) => ({
-          title: entityId,
-          value: entityId,
-        })),
+  try {
+    await tsicli(process.argv, {
+      types: {
+        "#entityId": {
+          type: "autocomplete",
+          name: "#entityId",
+          message: "Please input #entityId",
+          choices: EntityManager.getAllParentIds().map((entityId) => ({
+            title: entityId,
+            value: entityId,
+          })),
+        },
+        "#recordIds": "number[]",
+        "#name": "string",
       },
-      "#recordIds": "number[]",
-      "#name": "string",
-    },
-    args: [
-      ["fixture", "init"],
-      ["fixture", "import", "#entityId", "#recordIds"],
-      ["fixture", "sync"],
-      ["migrate", "run"],
-      ["migrate", "check"],
-      ["migrate", "rollback"],
-      ["migrate", "reset"],
-      ["migrate", "clear"],
-      ["migrate", "status"],
-      ["stub", "practice", "#name"],
-      ["stub", "entity", "#name"],
-      ["scaffold", "model", "#entityId"],
-      ["scaffold", "model_test", "#entityId"],
-      ["scaffold", "view_list", "#entityId"],
-      ["scaffold", "view_form", "#entityId"],
-      ["ui"],
-      ["sync"],
-      ["dev"],
-      ["build"],
-      ["start"],
-    ],
-    runners: {
-      migrate_status,
-      migrate_run,
-      fixture_init,
-      fixture_import,
-      fixture_sync,
-      stub_practice,
-      stub_entity,
-      scaffold_model,
-      scaffold_model_test,
-      ui,
-      // scaffold_view_list,
-      // scaffold_view_form,
-      sync,
-      dev,
-      build,
-      start,
-    },
-  });
+      args: [
+        ["fixture", "init"],
+        ["fixture", "import", "#entityId", "#recordIds"],
+        ["fixture", "sync"],
+        ["migrate", "run"],
+        ["migrate", "check"],
+        ["migrate", "rollback"],
+        ["migrate", "reset"],
+        ["migrate", "clear"],
+        ["migrate", "status"],
+        ["stub", "practice", "#name"],
+        ["stub", "entity", "#name"],
+        ["scaffold", "model", "#entityId"],
+        ["scaffold", "model_test", "#entityId"],
+        ["scaffold", "view_list", "#entityId"],
+        ["scaffold", "view_form", "#entityId"],
+        ["ui"],
+        ["sync"],
+        ["dev"],
+        ["build"],
+        ["start"],
+      ],
+      runners: {
+        migrate_status,
+        migrate_run,
+        fixture_init,
+        fixture_import,
+        fixture_sync,
+        stub_practice,
+        stub_entity,
+        scaffold_model,
+        scaffold_model_test,
+        ui,
+        // scaffold_view_list,
+        // scaffold_view_form,
+        sync,
+        dev,
+        build,
+        start,
+      },
+    });
+  } finally {
+    await Sonamu.destroy();
+  }
 }
 
 bootstrap().finally(async () => {
