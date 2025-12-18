@@ -65,6 +65,16 @@ export class DBClass {
 
   getDBConfig(which: DBPreset): Knex.Config {
     const dbConfig = Sonamu.dbConfig;
+    if (process.env.NODE_ENV === "test") {
+      return {
+        ...dbConfig.test,
+        // 단일 풀
+        pool: {
+          min: 1,
+          max: 1,
+        },
+      };
+    }
     switch (process.env.NODE_ENV ?? "development") {
       case "development":
       case "staging":

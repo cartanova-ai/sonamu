@@ -680,7 +680,7 @@ class SonamuClass {
   async destroy(): Promise<void> {
     const { BaseModel } = await import("../database/base-model");
     await BaseModel.destroy();
-    await this.workflows.destroy();
+    await this._workflows?.destroy();
     await this.watcher?.close();
     this.storage?.destroy();
   }
