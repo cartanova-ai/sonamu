@@ -151,6 +151,33 @@ export class OpenWorkflow {
     this.registry.register(workflow as Workflow<unknown, unknown, unknown>);
     return new RunnableWorkflow(this, workflow);
   }
+
+  /**
+   * Unregister a workflow from the registry.
+   * @param name - The workflow name
+   * @param version - The workflow version (null for unversioned)
+   * @example
+   * ```ts
+   * ow.unregisterWorkflow("my-workflow", "v1");
+   * ```
+   */
+  unregisterWorkflow(name: string, version: string | null): void {
+    this.registry.remove(name, version);
+  }
+
+  /**
+   * Check if a workflow is registered in the registry.
+   * @param name - The workflow name
+   * @param version - The workflow version (null for unversioned)
+   * @returns True if the workflow is registered, false otherwise
+   * @example
+   * ```ts
+   * ow.isWorkflowRegistered("my-workflow", "v1");
+   * ```
+   */
+  isWorkflowRegistered(name: string, version: string | null): boolean {
+    return this.registry.has(name, version);
+  }
 }
 
 /**
