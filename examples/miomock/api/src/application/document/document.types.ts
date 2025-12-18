@@ -8,6 +8,7 @@ export const DocumentListParams = DocumentBaseListParams.extend({
       embedding: z.array(z.number()).min(1024).max(1024),
       threshold: z.number().optional(),
       method: z.enum(["cosine", "l2", "inner_product"]).optional(),
+      which: z.enum(["title", "content"]).optional(),
     })
     .optional(),
 });

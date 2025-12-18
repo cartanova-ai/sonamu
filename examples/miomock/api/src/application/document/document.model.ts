@@ -87,6 +87,21 @@ class DocumentModelClass extends BaseModelClass<
       }
     }
 
+    // semanticQuery
+    if (params.semanticQuery) {
+      const { embedding, ...options } = params.semanticQuery;
+      const which = params.semanticQuery.which ?? 'title';
+      const targetColumn = (() => {
+        if(which === 'title') {
+          return "documents.title_content_embedding" as const;
+        } else if(which === 'content') {
+          return "documents.title_content_embedding" as const;
+        }
+        throw exhaustive(which);
+      })();
+      qb.vectorSimilarity(targetColumn, embedding, options);
+    }
+
     // orderBy
     if (params.orderBy) {
       // default orderBy
@@ -113,44 +128,43 @@ class DocumentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "swr"] })
-  async findManySemantic<T extends DocumentSubsetKey, LP extends DocumentListParams>(
+  @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocumentsByVector" })
+  async findManySemanticByVector<T extends DocumentSubsetKey>(
     subset: T,
-    rawParams: LP,
-  ): Promise<ListResult<LP, DocumentSubsetMapping[T]>> {
-    const params = {
-      num: 24,
-      page: 1,
-      search: "id" as const,
-      orderBy: "id-desc" as const,
-      ...rawParams,
-    } satisfies DocumentListParams;
-
-    const { qb, onSubset: _ } = this.getSubsetQueries(subset);
-    if (params.id) {
-      qb.whereIn("documents.id", asArray(params.id));
-    }
-
-    if (params.search && params.keyword && params.keyword.length > 0) {
-      if (params.search === "id") {
-        qb.where("documents.id", Number(params.keyword));
-      } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+    params: Omit<DocumentListParams, 'semanticQuery' | 'orderBy' | 'queryMode'> & {
+      semanticQuery: {
+        embedding: number[];
+        threshold?: number;
+        method?: "cosine" | "inner_product" | "l2";
       }
-    }
+    }, 
+  ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
+    return this.findMany(subset, {
+      ...params,
+      queryMode: 'list',
+      semanticQuery: params.semanticQuery,
+    })
+  }
 
-    // semanticQuery 조건에 따라 유사도 검색 조건 추가
-    if (params.semanticQuery) {
-      const { embedding, ...options } = params.semanticQuery;
-      qb.vectorSimilarity("documents.title_content_embedding", embedding, options);
-    }
-
-    return this.executeSubsetQuery({
-      subset,
-      qb,
-      params,
-      debug: false,
-    });
+  @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocuments" })
+  async findManySemanticByText<T extends DocumentSubsetKey>(
+    subset: T,
+    params: Omit<DocumentListParams, 'semanticQuery' | 'orderBy' | 'queryMode'> & {
+      semanticQuery: {
+        text: string;
+        threshold?: number;
+        method?: "cosine" | "l2" | "inner_product";
+      }
+    },
+  ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
+    const embedding = [] as any;
+    return this.findManySemanticByVector(subset, {  
+      ...params,
+      semanticQuery: {
+        embedding,
+        ...params.semanticQuery,
+      },
+    })
   }
 
   @api({ httpMethod: "GET", clients: ["axios", "swr"] })
