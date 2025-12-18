@@ -328,11 +328,56 @@
 
 ### Index Rules
 
+인덱스는 `name`, `type`, `columns` 필드가 필수입니다.
+
+**기본 인덱스:**
 ```json
-{ "type": "index", "columns": ["user_id"] }
-{ "type": "unique", "columns": ["email"] }
-{ "type": "index", "columns": ["status", "created_at"] }
+{ "name": "users_user_id_index", "type": "index", "columns": [{ "name": "user_id" }] }
+{ "name": "users_email_unique", "type": "unique", "columns": [{ "name": "email" }] }
+{ "name": "users_status_created_at_index", "type": "index", "columns": [{ "name": "status" }, { "name": "created_at" }] }
 ```
+
+**정렬 순서 및 NULL 순서 지정:**
+```json
+{ "name": "users_created_at_index", "type": "index", "columns": [{ "name": "created_at", "sortOrder": "DESC", "nullsFirst": true }] }
+```
+
+**인덱스 방식 지정 (using):**
+```json
+{ "name": "users_tags_index", "type": "index", "columns": [{ "name": "tags" }], "using": "gin" }
+{ "name": "users_content_index", "type": "index", "columns": [{ "name": "content" }], "using": "pgroonga" }
+```
+- using 옵션: `btree` (기본값), `hash`, `gin`, `gist`, `pgroonga`
+
+**Unique 인덱스 NULL 처리:**
+```json
+{ "name": "users_email_unique", "type": "unique", "columns": [{ "name": "email" }], "nullsNotDistinct": true }
+```
+
+**벡터 인덱스 (HNSW):** - 권장
+```json
+{
+  "name": "embeddings_hnsw_index",
+  "type": "hnsw",
+  "columns": [{ "name": "embedding", "vectorOps": "vector_cosine_ops" }],
+  "m": 16,
+  "efConstruction": 64
+}
+```
+- `vectorOps`: `vector_cosine_ops` (코사인 거리, 권장), `vector_ip_ops` (내적), `vector_l2_ops` (유클리드 거리)
+- `m`: 각 노드의 최대 연결 수 (기본값: 16, 범위: 2~100)
+- `efConstruction`: 구성 시 탐색 범위 (기본값: 64, 범위: 4~1000)
+
+**벡터 인덱스 (IVFFlat):**
+```json
+{
+  "name": "embeddings_ivfflat_index",
+  "type": "ivfflat",
+  "columns": [{ "name": "embedding", "vectorOps": "vector_cosine_ops" }],
+  "lists": 100
+}
+```
+- `lists`: 클러스터링 리스트 수 (권장값: sqrt(row_count) ~ row_count/1000)
 
 ## Complete Example
 
@@ -369,8 +414,8 @@
     }
   ],
   "indexes": [
-    { "type": "index", "columns": ["category_id"] },
-    { "type": "index", "columns": ["status"] }
+    { "name": "products_category_id_index", "type": "index", "columns": [{ "name": "category_id" }] },
+    { "name": "products_status_index", "type": "index", "columns": [{ "name": "status" }] }
   ],
   "subsets": {
     "A": ["id", "name", "price", "status", "category.id", "category.name"],
