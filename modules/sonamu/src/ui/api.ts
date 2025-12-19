@@ -765,7 +765,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       // ui-web 빌드 파일 서빙
       const uiDistPath = path.resolve(import.meta.dirname, "../ui-web");
-      console.log({ uiDistPath });
       server.register(await import("@fastify/static"), {
         root: path.join(uiDistPath, "assets"),
         prefix: "/assets",
