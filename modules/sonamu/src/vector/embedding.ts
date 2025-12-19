@@ -1,6 +1,6 @@
-import { createOpenAI, type OpenAIProvider } from "@ai-sdk/openai";
+import type { OpenAIProvider } from "@ai-sdk/openai";
 import { type EmbeddingModel, embedMany } from "ai";
-import { VoyageAIClient } from "voyageai";
+import type { VoyageAIClient } from "voyageai";
 import { Sonamu } from "../api/sonamu";
 import { DEFAULT_VECTOR_CONFIG } from "./config";
 import type {
@@ -31,7 +31,8 @@ export class EmbeddingClass {
   /**
    * Voyage AI 클라이언트 초기화
    */
-  private getVoyageClient(): VoyageAIClient {
+  private async getVoyageClient(): Promise<VoyageAIClient> {
+    const { VoyageAIClient } = await import("voyageai");
     const apiKey = Sonamu.secrets?.voyage_api_key ?? process.env.VOYAGE_API_KEY;
     if (!apiKey) {
       throw new Error("VOYAGE_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.");
@@ -42,7 +43,8 @@ export class EmbeddingClass {
   /**
    * OpenAI provider 생성
    */
-  private getOpenAIProvider(): OpenAIProvider {
+  private async getOpenAIProvider(): Promise<OpenAIProvider> {
+    const { createOpenAI } = await import("@ai-sdk/openai");
     const apiKey = Sonamu.secrets?.openai_api_key ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error("OPENAI_API_KEY가 설정되지 않았습니다. 환경변수를 확인하세요.");
@@ -107,7 +109,7 @@ export class EmbeddingClass {
     texts: string[],
     inputType: VectorInputType,
   ): Promise<EmbeddingResult[]> {
-    const client = this.getVoyageClient();
+    const client = await this.getVoyageClient();
     const voyageConfig = this.config.voyage;
 
     const response = await client.embed({
@@ -130,7 +132,7 @@ export class EmbeddingClass {
    * OpenAI 임베딩
    */
   private async embedOpenAI(texts: string[]): Promise<EmbeddingResult[]> {
-    const openai = this.getOpenAIProvider();
+    const openai = await this.getOpenAIProvider();
     const openaiConfig = this.config.openai;
     const model = openai.embeddingModel(openaiConfig.model);
 
