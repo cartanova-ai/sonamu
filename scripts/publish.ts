@@ -112,4 +112,5 @@ publish(
   "./modules/ui",
   "./modules/react-sui",
   "./modules/create-sonamu",
+  "./modules/tasks",
 );
