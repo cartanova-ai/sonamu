@@ -17,6 +17,10 @@
       "import": "./dist/ai/index.js",
       "types": "./dist/ai/index.d.ts"
     },
+    "./vector": {
+      "import": "./dist/vector/index.js",
+      "types": "./dist/vector/index.d.ts"
+    },
     "./ai/providers/rtzr": {
       "import": "./dist/ai/providers/rtzr/index.js",
       "types": "./dist/ai/providers/rtzr/index.d.ts"

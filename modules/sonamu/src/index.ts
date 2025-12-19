@@ -31,11 +31,6 @@ export * from "./utils/controller";
 export * from "./utils/model";
 export * from "./utils/type-utils";
 export * from "./utils/utils";
-// Vector (pgvector integration)
-export * from "./vector/chunking";
-export * from "./vector/config";
-export * from "./vector/embedding";
-export * from "./vector/types";
 
 // export * from "./api/code-converters";
 // export * from "./syncer/syncer";
