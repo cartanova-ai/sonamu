@@ -15,7 +15,7 @@ import type {
  * 임베딩 클라이언트
  * Voyage AI와 OpenAI 임베딩을 SDK 방식으로 통합 지원
  */
-export class EmbeddingClass {
+class EmbeddingClass {
   private config: VectorConfig;
 
   constructor(config: Partial<VectorConfig> = {}) {

@@ -3,11 +3,11 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
-  Embedding,
   exhaustive,
   type ListResult,
   NotFoundException,
 } from "sonamu";
+import { Embedding } from "sonamu/vector";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
 import type {

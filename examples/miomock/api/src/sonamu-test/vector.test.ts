@@ -4,7 +4,7 @@
  * - 실제 API 호출이 필요한 테스트는 skip 처리
  */
 
-import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding } from "sonamu";
+import { Chunking, DEFAULT_VECTOR_CONFIG, Embedding } from "sonamu/vector";
 import { describe, expect, test } from "vitest";
 
 describe("vector.test.ts", () => {
