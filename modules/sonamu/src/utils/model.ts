@@ -1,6 +1,5 @@
 import type { SonamuQueryMode } from "..";
 
-
 // semanticQuery가 있으면 similarity를 추가하는 조건부 타입
 type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
   ? T & { similarity: number }

@@ -157,7 +157,7 @@ export class BaseModelClass<
       num?: number;
       page?: number;
       queryMode?: SonamuQueryMode;
-    }
+    },
   >(
     params: {
       subset: T;
@@ -170,7 +170,7 @@ export class BaseModelClass<
       debug?: boolean;
       optimizeCountQuery?: boolean;
     } & EnhancerParam<TSubsetKey, TComputedResults, TSubsetMapping>,
-  ): Promise<ListResult<LP, TSubsetMapping[T]>> { 
+  ): Promise<ListResult<LP, TSubsetMapping[T]>> {
     const { subset, qb, params: queryParams, debug = false, optimizeCountQuery = false } = params;
 
     if (!this.loaderQueries) {
@@ -195,7 +195,7 @@ export class BaseModelClass<
       computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
 
-    if( queryParams.queryMode === 'list' ) {
+    if (queryParams.queryMode === "list") {
       // 리스트만 리턴
       return { rows } as ListResult<LP, TSubsetMapping[T]>;
     } else {
