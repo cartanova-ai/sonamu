@@ -105,5 +105,12 @@ export function formatCode(code: string, parser: "typescript" | "json", filePath
   }
   Naite.t("formatCode:linted", linted);
 
-  return linted.content;
+  // 포맷팅 한 번 더 (import 구문에 type 키워드 추가되는 경우 maxWidth 초과로 인한 에러 발생)
+  const formattedAgain = biome.formatContent(projectKey, linted.content, { filePath });
+  if (formattedAgain.diagnostics.filter((d) => d.severity === "error").length > 0) {
+    console.error(formattedAgain.diagnostics);
+    throw new Error("Biome format error");
+  }
+
+  return formattedAgain.content;
 }
