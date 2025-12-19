@@ -45,38 +45,35 @@ cd web
 pnpm dev
 ```
 
-### 4. Sonamu UI 열기 (엔티티 관리)
+### 4. Sonamu UI 접속 (엔티티 관리)
 
-```bash
-cd api
-pnpm sonamu ui
-```
+API 서버가 실행 중이면 자동으로 제공됩니다:
+- http://localhost:1028/sonamu-ui
 
 ## 포트 구성
 
-| 서비스     | 포트                    | URL                   |
-| ---------- | ----------------------- | --------------------- |
-| API 서버   | `BASE_PORT` (기본 1028) | http://localhost:1028 |
-| Sonamu UI  | `BASE_PORT + 1000`      | http://localhost:2028 |
-| Web        | `BASE_PORT + 2000`      | http://localhost:3028 |
-| PostgreSQL | 5432                    | -                     |
+| 서비스     | 포트                    | URL                              |
+| ---------- | ----------------------- | -------------------------------- |
+| API 서버   | `BASE_PORT` (기본 1028) | http://localhost:1028            |
+| Sonamu UI  | -                       | http://localhost:1028/sonamu-ui  |
+| Web        | `BASE_PORT + 2000`      | http://localhost:3028            |
+| PostgreSQL | 5432                    | -                                |
 
 ## 📜 주요 스크립트
 
 ### API (`api/`)
 
-| 명령어           | 설명                                   |
-| ---------------- | -------------------------------------- |
-| `pnpm dev`       | 개발 서버 시작 (HMR)                   |
-| `pnpm build`     | 프로덕션 빌드                          |
-| `pnpm start`     | 프로덕션 서버 시작                     |
-| `pnpm sonamu ui` | Sonamu UI 실행                         |
-| `pnpm test`      | 테스트 실행                            |
-| `pnpm db:up`     | Docker DB 시작                         |
-| `pnpm db:down`   | Docker DB 중지                         |
-| `pnpm db:reset`  | Docker DB 초기화 (볼륨 삭제 후 재시작) |
-| `pnpm dump`      | 테스트 DB 덤프 생성                    |
-| `pnpm seed`      | 덤프를 fixture DB에 적용               |
+| 명령어          | 설명                                   |
+| --------------- | -------------------------------------- |
+| `pnpm dev`      | 개발 서버 시작 (HMR, Sonamu UI 포함)   |
+| `pnpm build`    | 프로덕션 빌드                          |
+| `pnpm start`    | 프로덕션 서버 시작                     |
+| `pnpm test`     | 테스트 실행                            |
+| `pnpm db:up`    | Docker DB 시작                         |
+| `pnpm db:down`  | Docker DB 중지                         |
+| `pnpm db:reset` | Docker DB 초기화 (볼륨 삭제 후 재시작) |
+| `pnpm dump`     | 테스트 DB 덤프 생성                    |
+| `pnpm seed`     | 덤프를 fixture DB에 적용               |
 
 ### Web (`web/`)
 
@@ -90,7 +87,7 @@ pnpm sonamu ui
 
 ### Create New Entity
 
-1. `pnpm sonamu ui` 실행
+1. API 서버 실행 후 Sonamu UI 접속 (http://localhost:1028/sonamu-ui)
 2. Entities 탭 → "+ Entity" 클릭
 3. 엔티티 정보 입력 후 생성
 4. 자동 생성되는 파일들:
