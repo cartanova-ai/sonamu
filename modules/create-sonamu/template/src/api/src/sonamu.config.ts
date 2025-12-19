@@ -16,9 +16,6 @@ export default defineConfig({
   sync: {
     targets: ["web"],
   },
-  ui: {
-    port: 2028,
-  },
   database: {
     database: "postgresql",
     name: process.env.DATABASE_NAME ?? "database_name",
