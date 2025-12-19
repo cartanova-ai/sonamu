@@ -30,9 +30,6 @@ export type SonamuConfig = {
   sync: {
     targets: string[]; // "web", "app" 등
   };
-  ui?: {
-    port: number;
-  };
 
   database: {
     // 데이터베이스

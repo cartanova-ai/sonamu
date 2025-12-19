@@ -43,7 +43,6 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
     "@sonamu-kit/react-sui": "workspace:^",
-    "@sonamu-kit/ui": "workspace:^",
     "@swc/cli": "^0.7.8",
     "@types/bcrypt": "^6",
     "@types/node": "^24.5.0",

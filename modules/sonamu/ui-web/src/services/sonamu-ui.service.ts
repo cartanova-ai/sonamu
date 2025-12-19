@@ -29,18 +29,18 @@ export namespace SonamuUIService {
   export function getSonamuConfig(): Promise<{ projectName?: string }> {
     return fetch({
       method: "GET",
-      url: `/api/sonamu/config`,
+      url: `/sonamu-ui/api/sonamu/config`,
     });
   }
   export function useEntities(): SWRResponse<{ entities: ExtendedEntity[] }, SWRError> {
-    return useSWR<{ entities: ExtendedEntity[] }, SWRError>([`/api/entity/findMany`]);
+    return useSWR<{ entities: ExtendedEntity[] }, SWRError>([`/sonamu-ui/api/entity/findMany`]);
   }
 
   export function useTypeIds(
     filter?: "enums" | "types",
   ): SWRResponse<{ typeIds: string[] }, SWRError> {
     return useSWR<{ typeIds: string[] }, SWRError>([
-      `/api/entity/typeIds`,
+      `/sonamu-ui/api/entity/typeIds`,
       { filter, reload: "1" },
     ]);
   }
@@ -53,7 +53,7 @@ export namespace SonamuUIService {
   }) {
     return fetch({
       method: "POST",
-      url: `/api/entity/create`,
+      url: `/sonamu-ui/api/entity/create`,
       data: { form },
     });
   }
@@ -61,7 +61,7 @@ export namespace SonamuUIService {
   export function delEntity(entityId: string): Promise<{ delPaths: string[] }> {
     return fetch({
       method: "POST",
-      url: `/api/entity/del`,
+      url: `/sonamu-ui/api/entity/del`,
       data: { entityId },
     });
   }
@@ -76,7 +76,7 @@ export namespace SonamuUIService {
   ): Promise<number> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyEntityBase`,
+      url: `/sonamu-ui/api/entity/modifyEntityBase`,
       data: {
         entityId,
         newValues,
@@ -91,7 +91,7 @@ export namespace SonamuUIService {
   ): Promise<{ updated: string[] }> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifySubset`,
+      url: `/sonamu-ui/api/entity/modifySubset`,
       data: {
         entityId,
         subsetKey,
@@ -102,7 +102,7 @@ export namespace SonamuUIService {
   export function delSubset(entityId: string, subsetKey: string): Promise<number> {
     return fetch({
       method: "POST",
-      url: `/api/entity/delSubset`,
+      url: `/sonamu-ui/api/entity/delSubset`,
       data: {
         entityId,
         subsetKey,
@@ -113,7 +113,7 @@ export namespace SonamuUIService {
   export function createProp(entityId: string, newProp: EntityProp, at?: number): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/createProp`,
+      url: `/sonamu-ui/api/entity/createProp`,
       data: {
         entityId,
         at,
@@ -125,7 +125,7 @@ export namespace SonamuUIService {
   export function modifyProp(entityId: string, newProp: EntityProp, at: number): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyProp`,
+      url: `/sonamu-ui/api/entity/modifyProp`,
       data: {
         entityId,
         at,
@@ -137,7 +137,7 @@ export namespace SonamuUIService {
   export function delProp(entityId: string, at: number): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/delProp`,
+      url: `/sonamu-ui/api/entity/delProp`,
       data: {
         entityId,
         at,
@@ -148,7 +148,7 @@ export namespace SonamuUIService {
   export function moveProp(entityId: string, at: number, to: number): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/moveProp`,
+      url: `/sonamu-ui/api/entity/moveProp`,
       data: {
         entityId,
         at,
@@ -163,7 +163,7 @@ export namespace SonamuUIService {
   ): Promise<{ updated: EntityIndex[] }> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyIndexes`,
+      url: `/sonamu-ui/api/entity/modifyIndexes`,
       data: {
         entityId,
         indexes,
@@ -187,7 +187,7 @@ export namespace SonamuUIService {
   }> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyEnumLabels`,
+      url: `/sonamu-ui/api/entity/modifyEnumLabels`,
       data: {
         entityId,
         enumLabels,
@@ -198,7 +198,7 @@ export namespace SonamuUIService {
   export function createEnumId(params: { entityId: string; newEnumId: string }): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/createEnumId`,
+      url: `/sonamu-ui/api/entity/createEnumId`,
       data: params,
     });
   }
@@ -209,7 +209,7 @@ export namespace SonamuUIService {
   ): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/modifyEnumId`,
+      url: `/sonamu-ui/api/entity/modifyEnumId`,
       data: {
         entityId,
         enumId,
@@ -220,7 +220,7 @@ export namespace SonamuUIService {
   export function deleteEnumId(params: { entityId: string; enumId: string }): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/entity/deleteEnumId`,
+      url: `/sonamu-ui/api/entity/deleteEnumId`,
       data: params,
     });
   }
@@ -230,7 +230,7 @@ export namespace SonamuUIService {
   ): Promise<{ columns: { name: string; type: string }[] }> {
     return fetch({
       method: "GET",
-      url: `/api/entity/getTableColumns`,
+      url: `/sonamu-ui/api/entity/getTableColumns`,
       params: {
         entityId,
       },
@@ -238,7 +238,7 @@ export namespace SonamuUIService {
   }
 
   export function useMigrationStatus(): SWRResponse<{ status: MigrationStatus }, SWRError> {
-    return useSWR<{ status: MigrationStatus }, SWRError>([`/api/migrations/status`]);
+    return useSWR<{ status: MigrationStatus }, SWRError>([`/sonamu-ui/api/migrations/status`]);
   }
 
   export function migrationsRunAction(
@@ -247,7 +247,7 @@ export namespace SonamuUIService {
   ): Promise<MigrationResult> {
     return fetch({
       method: "POST",
-      url: `/api/migrations/runAction`,
+      url: `/sonamu-ui/api/migrations/runAction`,
       data: {
         action,
         targets,
@@ -258,7 +258,7 @@ export namespace SonamuUIService {
   export function migrationsDelCodes(codeNames: string[]): Promise<number> {
     return fetch({
       method: "POST",
-      url: `/api/migrations/delCodes`,
+      url: `/sonamu-ui/api/migrations/delCodes`,
       data: {
         codeNames,
       },
@@ -268,7 +268,7 @@ export namespace SonamuUIService {
   export function migrationsGeneratePreparedCodes(): Promise<number> {
     return fetch({
       method: "POST",
-      url: `/api/migrations/generatePreparedCodes`,
+      url: `/sonamu-ui/api/migrations/generatePreparedCodes`,
       data: {},
     });
   }
@@ -285,7 +285,7 @@ export namespace SonamuUIService {
   ): Promise<void> {
     return fetch({
       method: "GET",
-      url: `/api/tools/openVscode`,
+      url: `/sonamu-ui/api/tools/openVscode`,
       params,
     });
   }
@@ -296,7 +296,7 @@ export namespace SonamuUIService {
   }): Promise<{ suggested: string }> {
     return fetch({
       method: "GET",
-      url: `/api/tools/getSuggestion`,
+      url: `/sonamu-ui/api/tools/getSuggestion`,
       params,
     });
   }
@@ -310,14 +310,14 @@ export namespace SonamuUIService {
       } else if (params.templateGroupName === "Enums" && params.enumIds.length === 0) {
         return null;
       }
-      return [`/api/scaffolding/getStatus`, params];
+      return [`/sonamu-ui/api/scaffolding/getStatus`, params];
     })();
     return useSWR<{ statuses: ScaffoldingStatus[] }, SWRError>(route, swrPostFetcher);
   }
   export function scaffoldingGenerate(options: ScaffoldingGenerateOptions[]): Promise<number> {
     return fetch({
       method: "POST",
-      url: `/api/scaffolding/generate`,
+      url: `/sonamu-ui/api/scaffolding/generate`,
       data: {
         options,
       },
@@ -329,7 +329,7 @@ export namespace SonamuUIService {
   ): Promise<{ pathAndCodes: PathAndCode[] }> {
     return fetch({
       method: "POST",
-      url: `/api/scaffolding/preview`,
+      url: `/sonamu-ui/api/scaffolding/preview`,
       data: {
         option,
       },
@@ -342,7 +342,7 @@ export namespace SonamuUIService {
   }> {
     return fetch({
       method: "GET",
-      url: `/api/openai/messages`,
+      url: `/sonamu-ui/api/openai/messages`,
       params: { id },
     });
   }
@@ -353,7 +353,7 @@ export namespace SonamuUIService {
   }> {
     return fetch({
       method: "POST",
-      url: `/api/openai/chat`,
+      url: `/sonamu-ui/api/openai/chat`,
       data: { message },
     });
   }
@@ -361,7 +361,7 @@ export namespace SonamuUIService {
   export function clearThread(): Promise<void> {
     return fetch({
       method: "POST",
-      url: `/api/openai/clearThread`,
+      url: `/sonamu-ui/api/openai/clearThread`,
     });
   }
 
@@ -373,7 +373,7 @@ export namespace SonamuUIService {
   ): Promise<FixtureRecord[]> {
     return fetch({
       method: "POST",
-      url: `/api/fixture`,
+      url: `/sonamu-ui/api/fixture`,
       data: { sourceDB, targetDB, search, duplicateCheck },
     });
   }
@@ -384,7 +384,7 @@ export namespace SonamuUIService {
   ): Promise<FixtureImportResult[]> {
     return fetch({
       method: "POST",
-      url: `/api/fixture/import`,
+      url: `/sonamu-ui/api/fixture/import`,
       data: { db, fixtures },
     });
   }

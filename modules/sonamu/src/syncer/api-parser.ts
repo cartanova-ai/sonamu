@@ -98,7 +98,8 @@ export async function readApisFromFile(filePath: AbsolutePath): Promise<Extended
     // const p = path.join(tmpdir(), "sonamu-syncer-error.json");
     // writeFileSync(p, JSON.stringify(registeredApis, null, 2));
     // execSync(`open ${p}`);
-    throw new Error(`현재 파일에 사전 등록된 API가 없습니다. ${filePath}`);
+    // throw new Error(`현재 파일에 사전 등록된 API가 없습니다. ${filePath}`);
+    return [];
   }
 
   // 등록된 API에 현재 메소드 타입 정보 확장

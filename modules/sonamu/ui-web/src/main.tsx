@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       revalidateOnFocus: true,
     }}
   >
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<App />}>
           <Route path="/entities" element={<EntitiesLayout />}>

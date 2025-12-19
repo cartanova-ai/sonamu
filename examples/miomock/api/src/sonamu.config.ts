@@ -16,9 +16,6 @@ export default defineConfig({
   sync: {
     targets: ["web"],
   },
-  ui: {
-    port: 60000,
-  },
   database: {
     database: "postgresql",
     name: "miomock",

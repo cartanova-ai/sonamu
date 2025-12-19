@@ -46,6 +46,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "ui-web",
     "src/**/*.test.ts",
     "src/**/*.test-d.ts",
     "src/**/*.test-hold.ts",

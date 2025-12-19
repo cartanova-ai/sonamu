@@ -1,0 +1,46 @@
+{
+  "name": "ui-web",
+  "version": "0.0.1",
+  "description": "Sonamu UI Web (for only static build)",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build"
+  },
+  "type": "module",
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.0.3",
+    "@xyflow/react": "^12.9.3",
+    "@dagrejs/dagre": "^1.1.8",
+    "axios": "^1.13.2",
+    "classnames": "^2.3.2",
+    "inflection": "^2.0.1",
+    "jotai": "^2.4.2",
+    "qs": "^6.11.2",
+    "radashi": "^12.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.1",
+    "react-router-dom": "6.3.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "sass": "^1.65.1",
+    "semantic-ui-css": "^2.5.0",
+    "semantic-ui-react": "^2.1.4",
+    "swr": "^2.2.2",
+    "vite": "^7.2.4",
+    "zod": "^4.1.12",
+    "sonamu": "workspace:^",
+    "@ai-sdk/react": "2.0.104"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@sonamu-kit/react-sui": "^0.1.17"
+  }
+}

@@ -18,7 +18,6 @@
     "seed": "bash database/scripts/seed.sh"
   },
   "dependencies": {
-    "@sonamu-kit/ui": "^0.7.5",
     "@swc/core": "^1.13.5",
     "fastify": "^4",
     "knex": "^3.1.0",

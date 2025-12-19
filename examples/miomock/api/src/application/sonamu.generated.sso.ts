@@ -21,6 +21,8 @@ import type {
   SyncFixtureSubsetKey,
   TagBaseSchema,
   TagSubsetKey,
+  Test1BaseSchema,
+  Test1SubsetKey,
   UserBaseSchema,
   UserSubsetKey,
 } from "./sonamu.generated";
@@ -432,6 +434,21 @@ export const tagLoaderQueries = {
   A: [],
 } as const satisfies PuriLoaderQueries<TagSubsetKey>;
 
+// SubsetQuery: Test1
+export const test1SubsetQueries = {
+  A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
+    return qbWrapper.from("test1s").select({
+      id: "test1s.id",
+      created_at: "test1s.created_at",
+    });
+  },
+};
+
+// LoaderQuery: Test1
+export const test1LoaderQueries = {
+  A: [],
+} as const satisfies PuriLoaderQueries<Test1SubsetKey>;
+
 // SubsetQuery: User
 export const userSubsetQueries = {
   A: (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => {
@@ -508,6 +525,7 @@ declare module "sonamu" {
     projects: ProjectBaseSchema;
     sync_fixtures: SyncFixtureBaseSchema;
     tags: TagBaseSchema;
+    test1s: Test1BaseSchema;
     users: UserBaseSchema;
     projects__employees: ManyToManyBaseSchema<"employee", "project">;
     project_tags: ManyToManyBaseSchema<"project", "tag">;

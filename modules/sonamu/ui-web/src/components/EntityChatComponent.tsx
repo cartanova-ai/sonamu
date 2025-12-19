@@ -21,6 +21,7 @@ export default function EntityChatComponent({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { messages, status, sendMessage, stop } = useChat({
+    // @ts-expect-error TODO: fix this (ai-sdk stable/beta 이슈)
     transport: new DefaultChatTransport({
       api: "/api/ai/entity/chat",
     }),

@@ -30,7 +30,9 @@
   },
   "scripts": {
     "dev": "nodemon exec",
-    "build": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "build": "run-s 'build:sonamu' 'build:ui-web'",
+    "build:sonamu": "rm -rf dist && swc src -d dist --strip-leading-paths && tsc --emitDeclarationOnly",
+    "build:ui-web": "cd ui-web && pnpm install && pnpm build",
     "test:type": "vitest --typecheck test-d.ts"
   },
   "license": "MIT",
@@ -62,6 +64,7 @@
     "@fastify/static": "^7",
     "@sonamu-kit/hmr-hook": "workspace:^",
     "@sonamu-kit/hmr-runner": "workspace:^",
+    "@sonamu-kit/tasks": "workspace:^",
     "@sonamu-kit/ts-loader": "workspace:^",
     "@swc/core": "^1.13.19",
     "chalk": "^4.1.2",
@@ -76,6 +79,7 @@
     "knex": "^3.1.0",
     "mime-types": "^3.0.1",
     "minimatch": "^10.0.3",
+    "node-cron": "^4.2.1",
     "node-sql-parser": "^5.2.0",
     "pg": "^8.16.3",
     "prompts": "^2.4.2",
@@ -83,9 +87,7 @@
     "radashi": "^12.2.0",
     "tsicli": "^1.0.5",
     "vitest": "^4.0.10",
-    "zod": "^4.1.12",
-    "@sonamu-kit/tasks": "workspace:^",
-    "node-cron": "^4.2.1"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.7",
@@ -109,8 +111,8 @@
     "ai": "6.0.0-beta.138",
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
-    "typescript": "^5.9.3",
     "pgvector": "^0.2.1",
+    "typescript": "^5.9.3",
     "voyageai": "^0.0.8"
   },
   "peerDependenciesMeta": {

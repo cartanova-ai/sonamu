@@ -231,8 +231,6 @@ class SonamuClass {
       await this.syncer.sync();
 
       await this.startWatcher();
-
-      this.syncer.syncUI();
     }
 
     this.isInitialized = true;
@@ -346,10 +344,19 @@ class SonamuClass {
       },
     );
 
+    // Sonamu UI API
+    const { sonamuUIApiPlugin } = await import("../ui/api");
+    server.register(sonamuUIApiPlugin);
+
     // API 라우팅 (로컬HMR 상태와 구분)
     const { isLocal } = await import("../utils/controller");
     if (isLocal()) {
       server.all("*", async (request, reply) => {
+        // Sonamu UI
+        if (request.url.startsWith("/sonamu-ui")) {
+          return;
+        }
+
         const found = this.syncer.apis.find(
           (api) =>
             this.config.api.route.prefix + api.path === request.url.split("?")[0] &&
@@ -358,8 +365,14 @@ class SonamuClass {
         if (found) {
           return this.getApiHandler(found, config)(request, reply);
         }
-        const { NotFoundException } = await import("../exceptions/so-exceptions");
-        throw new NotFoundException("존재하지 않는 API 접근입니다.");
+
+        if (request.url.startsWith("/api/")) {
+          const { NotFoundException } = await import("../exceptions/so-exceptions");
+          throw new NotFoundException(`존재하지 않는 API 접근입니다. ${request.url}`);
+        }
+
+        // 일반 파일 접근시 별도의 에러 출력하지 않음
+        return;
       });
     } else {
       for (const api of this.syncer.apis) {

@@ -1,6 +1,7 @@
 import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
 import chalk from "chalk";
+import { EventEmitter } from "events";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import inflection from "inflection";
 import { minimatch } from "minimatch";
@@ -45,6 +46,7 @@ export class Syncer {
   models: LoadedModels = {};
   workflows: Map<string, WorkflowMetadata[]> = new Map();
   isSyncing: boolean = false;
+  eventEmitter: EventEmitter = new EventEmitter();
 
   /**
    * 체크섬이 변경된 부분에 대해 싱크를 진행합니다.
@@ -100,17 +102,24 @@ export class Syncer {
         console.log(chalk.bold(`🔄 Invalidated:`));
 
         for (const invalidatedPath of invalidatedPaths) {
-          // 만약 model.ts 파일이 변경(invalidate)되었다? 그러면 registeredApis 중에서 이 모델에 해당하는 api들은 지워줘요.
-          // registeredApis는 통으로 다 날려버릴 수 없습니다. registeredApis에 올라오는 친구들은 초기 로드시 또는 HMR시에만 등록되기 때문입니다.
-          // 따라서 model.ts 파일의 변경으로 다음번 새로운 eval이 예상되는 이 시점에서만, 이 모델에서 나온 registeredApis들을 지워줄 수 있습니다.
-          const removedApis = this.removeInvalidatedRegisteredApis(invalidatedPath);
-          if (removedApis.length > 0) {
-            console.log(
-              chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`),
-              chalk.gray(`(with ${removedApis.length} APIs)`),
+          try {
+            // 만약 model.ts 파일이 변경(invalidate)되었다? 그러면 registeredApis 중에서 이 모델에 해당하는 api들은 지워줘요.
+            // registeredApis는 통으로 다 날려버릴 수 없습니다. registeredApis에 올라오는 친구들은 초기 로드시 또는 HMR시에만 등록되기 때문입니다.
+            // 따라서 model.ts 파일의 변경으로 다음번 새로운 eval이 예상되는 이 시점에서만, 이 모델에서 나온 registeredApis들을 지워줄 수 있습니다.
+            const removedApis = this.removeInvalidatedRegisteredApis(invalidatedPath);
+            if (removedApis.length > 0) {
+              console.log(
+                chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`),
+                chalk.gray(`(with ${removedApis.length} APIs)`),
+              );
+            } else {
+              console.log(chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`));
+            }
+          } catch (e) {
+            console.error(e);
+            console.error(
+              chalk.red(`Failed to remove invalidated registered APIs for ${invalidatedPath}`),
             );
-          } else {
-            console.log(chalk.blue(`- ${path.relative(Sonamu.apiRootPath, invalidatedPath)}`));
           }
         }
       }
@@ -132,7 +141,7 @@ export class Syncer {
     await this.autoloadApis();
     await this.autoloadWorkflows();
 
-    this.syncUI();
+    this.eventEmitter.emit("onHMRCompleted");
   }
 
   removeInvalidatedRegisteredApis(
@@ -549,16 +558,6 @@ export class Syncer {
       },
       {} as Record<`${TemplateKey}${string}`, boolean>,
     );
-  }
-
-  syncUI() {
-    const uiPort = Sonamu.config.ui?.port ?? 57000;
-
-    if (!isTest()) {
-      fetch(`http://127.0.0.1:${uiPort}/api/reload`, {
-        method: "GET",
-      }).catch((e) => console.log(chalk.dim(`Failed to reload Sonamu UI: ${e.message}`)));
-    }
   }
 
   /**

@@ -22,7 +22,7 @@ import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-co
 let migrator: Migrator;
 
 async function bootstrap() {
-  const notToInit = ["dev", "build", "start", "ui"].includes(process.argv[2] ?? "");
+  const notToInit = ["dev", "build", "start"].includes(process.argv[2] ?? "");
   if (!notToInit) {
     await Sonamu.init(false, false);
   }
@@ -58,7 +58,6 @@ async function bootstrap() {
         ["scaffold", "model_test", "#entityId"],
         ["scaffold", "view_list", "#entityId"],
         ["scaffold", "view_form", "#entityId"],
-        ["ui"],
         ["sync"],
         ["dev"],
         ["build"],
@@ -74,7 +73,6 @@ async function bootstrap() {
         stub_entity,
         scaffold_model,
         scaffold_model_test,
-        ui,
         // scaffold_view_list,
         // scaffold_view_form,
         sync,
@@ -451,68 +449,4 @@ async function scaffold_model_test(entityId: string) {
   await Sonamu.syncer.generateTemplate("model_test", {
     entityId,
   });
-}
-
-async function ui() {
-  try {
-    const apiRootPath = findApiRootPath();
-
-    // 사용자 프로젝트의 패키지들 중에서 @sonamu-kit/ui를 찾습니다.
-    // 이를 위해서 createRequire를 사용하여 프로젝트 경로 기준으로 resolve합니다.
-    const projectRequire = createRequire(path.join(apiRootPath, "package.json"));
-    const uiPackagePath = projectRequire.resolve("@sonamu-kit/ui"); // 없으면 여기서 터져요(MODULE_NOT_FOUND)
-    const uiNodePath = path.join(path.dirname(uiPackagePath), "run-ui.js");
-
-    if (!(await exists(uiNodePath))) {
-      console.log(
-        chalk.red(`UI runner script not found at ${uiNodePath}. Please rebuild @sonamu-kit/ui.`),
-      );
-      return;
-    }
-
-    // UI를 별도 프로세스로 실행 (hmr-hook 활성화)
-    const uiProcess = spawn(
-      process.execPath,
-      [
-        "--import",
-        "sonamu/ts-loader-register",
-        "--import",
-        "sonamu/hmr-hook-register",
-        "--enable-source-maps",
-        "--no-warnings",
-        uiNodePath,
-      ],
-      {
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          HOT: "yes",
-          API_ROOT_PATH: apiRootPath, // UI는 얘만 알면 돼요! 나머지는 얘가 떠서 알아서 할 것임 ㅎ
-        },
-      },
-    );
-
-    // 종료 처리
-    const cleanup = () => {
-      console.log(chalk.yellow("\n\n👋 Shutting down UI server..."));
-      uiProcess.kill("SIGTERM");
-      process.exit(0);
-    };
-
-    process.on("SIGINT", cleanup);
-    process.on("SIGTERM", cleanup);
-
-    uiProcess.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(chalk.red(`❌ UI server exited with code ${code}`));
-        process.exit(code || 1);
-      }
-    });
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes("isn't declared")) {
-      console.log(`You need to install ${chalk.blue(`@sonamu-kit/ui`)} first.`);
-      return;
-    }
-    throw e;
-  }
 }

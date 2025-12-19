@@ -110,6 +110,14 @@ export const TagSearchField = z.enum(["id"]).describe("TagSearchField");
 export type TagSearchField = z.infer<typeof TagSearchField>;
 export const TagSearchFieldLabel = { id: "ID" };
 
+// Enums: Test1
+export const Test1OrderBy = z.enum(["id-desc"]).describe("Test1OrderBy");
+export type Test1OrderBy = z.infer<typeof Test1OrderBy>;
+export const Test1OrderByLabel = { "id-desc": "ID최신순" };
+export const Test1SearchField = z.enum(["id"]).describe("Test1SearchField");
+export type Test1SearchField = z.infer<typeof Test1SearchField>;
+export const Test1SearchFieldLabel = { id: "ID" };
+
 // Enums: User
 export const UserOrderBy = z.enum(["id-desc"]).describe("UserOrderBy");
 export type UserOrderBy = z.infer<typeof UserOrderBy>;
@@ -264,6 +272,15 @@ export type TagBaseSchema = z.infer<typeof TagBaseSchema> & {
   readonly __hasDefault__: readonly ["created_at", "id"];
 };
 
+// BaseSchema: Test1
+export const Test1BaseSchema = z.object({
+  id: z.int(),
+  created_at: z.date(),
+});
+export type Test1BaseSchema = z.infer<typeof Test1BaseSchema> & {
+  readonly __hasDefault__: readonly ["created_at", "id"];
+};
+
 // BaseSchema: User
 export const UserBaseSchema = z.object({
   id: z.int(),
@@ -403,6 +420,20 @@ export const TagBaseListParams = z
   })
   .partial();
 export type TagBaseListParams = z.infer<typeof TagBaseListParams>;
+
+// BaseListParams: Test1
+export const Test1BaseListParams = z
+  .object({
+    num: z.number().int().nonnegative(),
+    page: z.number().int().min(1),
+    search: Test1SearchField,
+    keyword: z.string(),
+    orderBy: Test1OrderBy,
+    queryMode: SonamuQueryMode,
+    id: zArrayable(z.number().int().positive()),
+  })
+  .partial();
+export type Test1BaseListParams = z.infer<typeof Test1BaseListParams>;
 
 // BaseListParams: User
 export const UserBaseListParams = z
@@ -710,6 +741,18 @@ export type TagSubsetMapping = {
 };
 export const TagSubsetKey = z.enum(["A"]);
 export type TagSubsetKey = z.infer<typeof TagSubsetKey>;
+
+// Subsets: Test1
+export const Test1SubsetA = z.object({
+  id: z.int(),
+  created_at: z.date(),
+});
+export type Test1SubsetA = z.infer<typeof Test1SubsetA>;
+export type Test1SubsetMapping = {
+  A: Test1SubsetA;
+};
+export const Test1SubsetKey = z.enum(["A"]);
+export type Test1SubsetKey = z.infer<typeof Test1SubsetKey>;
 
 // Subsets: User
 export const UserSubsetA = z.object({
