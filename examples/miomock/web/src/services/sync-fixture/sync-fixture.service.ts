@@ -1,4 +1,3 @@
-
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { SyncFixtureSubsetKey, SyncFixtureSubsetMapping } from "../sonamu.generated";

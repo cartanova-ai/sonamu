@@ -1,4 +1,3 @@
-
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
@@ -10,7 +9,11 @@ import {
   type SwrOptions,
   swrPostFetcher,
 } from "../sonamu.shared";
-import type { DocumentListParams, DocumentSaveParams, DocumentSemanticParams } from "./document.types";
+import type {
+  DocumentListParams,
+  DocumentSaveParams,
+  DocumentSemanticParams,
+} from "./document.types";
 
 export namespace DocumentService {
   export function useDocument<T extends DocumentSubsetKey>(

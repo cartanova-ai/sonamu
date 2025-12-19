@@ -1,4 +1,3 @@
-
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";

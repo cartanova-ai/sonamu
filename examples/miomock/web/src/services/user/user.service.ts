@@ -1,4 +1,3 @@
-
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
@@ -9,7 +8,12 @@ import {
   type SWRError,
   type SwrOptions,
 } from "../sonamu.shared";
-import type { UserListParams, UserLoginParams, UserRegisterParams, UserSaveParams } from "./user.types";
+import type {
+  UserListParams,
+  UserLoginParams,
+  UserRegisterParams,
+  UserSaveParams,
+} from "./user.types";
 
 export namespace UserService {
   export function useUser<T extends UserSubsetKey>(

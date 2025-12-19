@@ -1,4 +1,3 @@
-
 import qs from "qs";
 import useSWR, { type SWRResponse } from "swr";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
@@ -109,9 +108,7 @@ export namespace ProjectService {
     }>(`/api/project/ask`, params, handlers, options);
   }
 
-  export async function search(
-    search: string,
-  ): Promise<
+  export async function search(search: string): Promise<
     {
       name: string;
       description: string | null;
