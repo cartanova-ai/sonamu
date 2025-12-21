@@ -137,7 +137,12 @@ export class BaseModelClass<
    * 타입 검증 및 추론을 도와줌
    */
   createEnhancers<T extends TSubsetKey>(
-    enhancers: EnhancerMap<T, InferAllSubsets<TSubsetQueries, TLoaderQueries>, TSubsetMapping>,
+    enhancers: EnhancerMap<
+      T,
+      InferAllSubsets<TSubsetQueries, TLoaderQueries>,
+      TSubsetMapping,
+      TSubsetQueries
+    >,
   ) {
     return enhancers;
   }
@@ -169,7 +174,7 @@ export class BaseModelClass<
       };
       debug?: boolean;
       optimizeCountQuery?: boolean;
-    } & EnhancerParam<TSubsetKey, TComputedResults, TSubsetMapping>,
+    } & EnhancerParam<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries>,
   ): Promise<ListResult<LP, TSubsetMapping[T]>> {
     const { subset, qb, params: queryParams, debug = false, optimizeCountQuery = false } = params;
 
@@ -401,9 +406,10 @@ type EnhancerParam<
   TSubsetKey extends string,
   TComputedResults extends Record<TSubsetKey, any>,
   TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
 > = [RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping>] extends [never]
-  ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping> }
-  : { enhancers: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping> };
+  ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> }
+  : { enhancers: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> };
 
 type RequiredEnhancerKeys<
   TSubsetKey extends string,

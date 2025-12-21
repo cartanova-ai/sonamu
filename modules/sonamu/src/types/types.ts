@@ -104,6 +104,7 @@ export type UuidArrayProp = CommonProp & {
 export type VirtualProp = CommonProp & {
   type: "virtual";
   id: string;
+  virtualType?: "query" | "code"; // default: "code"
 }; // PG: none / TS: any(id) / JSON: any
 export type VectorProp = CommonProp & {
   type: "vector";
@@ -412,6 +413,14 @@ export function isJsonProp(p: unknown): p is JsonProp {
 }
 export function isVirtualProp(p: unknown): p is VirtualProp {
   return (p as VirtualProp)?.type === "virtual";
+}
+export function isVirtualCodeProp(p: unknown): p is VirtualProp {
+  if (!isVirtualProp(p)) return false;
+  return p.virtualType !== "query"; // undefined도 "code"로 취급
+}
+export function isVirtualQueryProp(p: unknown): p is VirtualProp {
+  if (!isVirtualProp(p)) return false;
+  return p.virtualType === "query";
 }
 export function isVectorSingleProp(p: unknown): p is VectorProp {
   return (p as VectorProp)?.type === "vector";
@@ -951,6 +960,7 @@ const VirtualPropSchema = z
     ...BasePropFields,
     type: z.literal("virtual"),
     id: z.string(),
+    virtualType: z.enum(["query", "code"]).optional(),
   })
   .strict();
 

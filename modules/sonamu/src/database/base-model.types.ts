@@ -63,23 +63,100 @@ export type ResolveSubsetIntersection<
 // ============================================================================
 
 /**
- * 단일 Enhancer 함수 타입
- * computed 결과를 받아 최종 mapping 타입으로 변환
+ * SubsetQueries의 Puri 반환 타입에서 TTables를 추출하고,
+ * TTables의 키 중 DatabaseSchemaExtend의 키와 일치하는 것이 메인 테이블.
+ * 해당 테이블의 BaseSchema에서 __virtual_query__ 키를 추출.
  */
-export type EnhancerFn<TComputed, TMapping> = (row: TComputed) => TMapping | Promise<TMapping>;
+type ExtractMainTable<TSubsetQueries extends Record<string, PuriSubsetFn>> = Extract<
+  keyof ExtractPuriTables<ReturnType<TSubsetQueries[keyof TSubsetQueries]>>,
+  keyof DatabaseSchemaExtend
+>;
+
+type ExtractVirtualQueryKeys<TSubsetQueries extends Record<string, PuriSubsetFn>> =
+  ExtractMainTable<TSubsetQueries> extends infer TTable extends keyof DatabaseSchemaExtend
+    ? DatabaseSchemaExtend[TTable] extends { __virtual_query__: readonly (infer K)[] }
+      ? K
+      : never
+    : never;
+
+/**
+ * TSubsetMapping에서 virtualQuery 키를 optional로 만든 타입
+ * Enhancer 필수 여부 판단 시 사용
+ */
+type OmitVirtualQueryFromMapping<TMapping, TVirtualQueryKeys> = Omit<
+  TMapping,
+  TVirtualQueryKeys & keyof TMapping
+> &
+  Partial<Pick<TMapping, TVirtualQueryKeys & keyof TMapping>>;
+
+/**
+ * Computed가 Mapping에 호환되는지 판단 (virtualQuery 키 제외)
+ */
+type IsEnhancerOptional<
+  TSubsetKey extends string,
+  TComputedResults extends Record<TSubsetKey, any>,
+  TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
+  K extends TSubsetKey,
+> = TComputedResults[K] extends OmitVirtualQueryFromMapping<
+  TSubsetMapping[K],
+  ExtractVirtualQueryKeys<TSubsetQueries>
+>
+  ? true
+  : false;
+
+/**
+ * TComputed에 query virtual props 추가
+ * appendSelect로 추가된 필드들이 row에 포함됨을 타입에 반영
+ */
+type WithVirtualQueryProps<TComputed, TMapping, TVirtualQueryKeys> = TComputed &
+  Pick<TMapping, TVirtualQueryKeys & keyof TMapping>;
+
+/**
+ * 단일 Enhancer 함수 타입
+ * computed 결과 + virtualQuery props를 받아 최종 mapping 타입으로 변환
+ */
+type EnhancerFnWithVirtualQuery<TComputed, TMapping, TVirtualQueryKeys> = (
+  row: WithVirtualQueryProps<TComputed, TMapping, TVirtualQueryKeys>,
+) => TMapping | Promise<TMapping>;
+
+/**
+ * 특정 subset의 Enhancer 함수 타입
+ */
+type EnhancerFnFor<
+  TSubsetKey extends string,
+  TComputedResults extends Record<TSubsetKey, any>,
+  TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
+  K extends TSubsetKey,
+> = EnhancerFnWithVirtualQuery<
+  TComputedResults[K],
+  TSubsetMapping[K],
+  ExtractVirtualQueryKeys<TSubsetQueries>
+>;
 
 /**
  * Enhancer가 필수인 SubsetKey 추출
  *
  * ComputedResults[K]가 SubsetMapping[K]에 할당 불가능하면 해당 K는 필수
  * (즉, virtual 필드 등 추가 변환이 필요한 경우)
+ * 단, virtualQuery 키는 무시 (사용자가 appendSelect로 직접 추가)
  */
 export type RequiredEnhancerKeys<
   TSubsetKey extends string,
   TComputedResults extends Record<TSubsetKey, any>,
   TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
 > = {
-  [K in TSubsetKey]: TComputedResults[K] extends TSubsetMapping[K] ? never : K;
+  [K in TSubsetKey]: IsEnhancerOptional<
+    TSubsetKey,
+    TComputedResults,
+    TSubsetMapping,
+    TSubsetQueries,
+    K
+  > extends true
+    ? never
+    : K;
 }[TSubsetKey];
 
 /**
@@ -87,6 +164,7 @@ export type RequiredEnhancerKeys<
  *
  * - ComputedResults[K]가 SubsetMapping[K]에 assignable하면 → enhancer 선택적
  * - 그렇지 않으면 → enhancer 필수
+ * - 단, virtualQuery 키는 무시 (사용자가 appendSelect로 직접 추가)
  *
  * @example
  * // virtual 필드 employee_count가 있는 경우
@@ -98,17 +176,28 @@ export type EnhancerMap<
   TSubsetKey extends string,
   TComputedResults extends Record<TSubsetKey, any>,
   TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
+  TRequiredKeys extends TSubsetKey = RequiredEnhancerKeys<
+    TSubsetKey,
+    TComputedResults,
+    TSubsetMapping,
+    TSubsetQueries
+  >,
 > = {
-  // Computed가 Mapping에 호환되면 선택적
-  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K] ? K : never]?: EnhancerFn<
-    TComputedResults[K],
-    TSubsetMapping[K]
+  [K in Exclude<TSubsetKey, TRequiredKeys>]?: EnhancerFnFor<
+    TSubsetKey,
+    TComputedResults,
+    TSubsetMapping,
+    TSubsetQueries,
+    K
   >;
 } & {
-  // 호환되지 않으면 필수
-  [K in TSubsetKey as TComputedResults[K] extends TSubsetMapping[K] ? never : K]: EnhancerFn<
-    TComputedResults[K],
-    TSubsetMapping[K]
+  [K in TRequiredKeys]: EnhancerFnFor<
+    TSubsetKey,
+    TComputedResults,
+    TSubsetMapping,
+    TSubsetQueries,
+    K
   >;
 };
 
@@ -140,11 +229,14 @@ export type ExecuteSubsetQueryParams<
   TSubsetKey extends string,
   TComputedResults extends Record<TSubsetKey, any>,
   TSubsetMapping extends Record<TSubsetKey, any>,
+  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
   T extends TSubsetKey,
 > = ExecuteSubsetQueryBaseParams<T> &
-  ([RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping>] extends [never]
-    ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping> }
-    : { enhancers: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping> });
+  ([RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries>] extends [
+    never,
+  ]
+    ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> }
+    : { enhancers: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> });
 
 /**
  * executeSubsetQuery 반환 타입

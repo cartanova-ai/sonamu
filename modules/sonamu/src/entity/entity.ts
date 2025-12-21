@@ -17,6 +17,7 @@ import {
   isManyToManyRelationProp,
   isOneToOneRelationProp,
   isRelationProp,
+  isVirtualCodeProp,
   isVirtualProp,
   type RelationProp,
   type StringProp,
@@ -148,7 +149,6 @@ export class Entity {
 
     // select - 입체적 구조로 생성
     const selectObj = this.buildNestedSelectObject(subsetQuery.select);
-
     lines.push(`.select(${this.stringifyNestedSelectObject(selectObj)});`);
 
     return lines.join("\n");
@@ -404,12 +404,16 @@ export class Entity {
         // 현재 테이블 필드셋은 select, virtual에 추가하고 리턴
         if (groupKey === "") {
           const realFields = fields.filter((field) => !isVirtualProp(this.propsDict[field]));
-          const virtualFields = fields.filter((field) => isVirtualProp(this.propsDict[field]));
+          // virtualType: "code" (또는 undefined)인 virtual prop만 r.virtual에 추가
+          // virtualType: "query"인 경우 사용자가 appendSelect로 직접 추가하므로 제외
+          const virtualCodeFields = fields.filter((field) =>
+            isVirtualCodeProp(this.propsDict[field]),
+          );
 
           if (prefix === "") {
             // 현재 테이블인 경우
             r.select = r.select.concat(realFields.map((field) => `${this.table}.${field}`));
-            r.virtual = r.virtual.concat(virtualFields);
+            r.virtual = r.virtual.concat(virtualCodeFields);
           } else {
             // 넘어온 테이블인 경우
             r.select = r.select.concat(

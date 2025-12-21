@@ -4,7 +4,12 @@ import { Sonamu } from "../../api";
 import type { Entity } from "../../entity/entity";
 import { EntityManager } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
-import { type EntityIndex, type EntityPropNode, isVirtualProp } from "../../types/types";
+import {
+  type EntityIndex,
+  type EntityPropNode,
+  isVirtualCodeProp,
+  isVirtualQueryProp,
+} from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
 import { propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
@@ -171,9 +176,14 @@ export class Template__generated extends Template {
     // TODO: GIN/GiST 인덱스 생성된 컬럼 추출
     const fulltextColumns: EntityIndex["columns"][] = [];
 
-    // virtual props
+    // virtual props (virtualType: "code" 또는 undefined인 것만 포함)
     const virtualProps = entity.props
-      .filter((prop) => isVirtualProp(prop))
+      .filter((prop) => isVirtualCodeProp(prop))
+      .map((prop) => prop.name);
+
+    // query virtual props (virtualType: "query"인 것만 포함)
+    const virtualQueryProps = entity.props
+      .filter((prop) => isVirtualQueryProp(prop))
       .map((prop) => prop.name);
 
     /**
@@ -209,6 +219,7 @@ export class Template__generated extends Template {
     const hasMetadata =
       fulltextColumns.length > 0 ||
       virtualProps.length > 0 ||
+      virtualQueryProps.length > 0 ||
       hasDefaultColumns.length > 0 ||
       generatedColumns.length > 0 ||
       hasVectorColumns.length > 0;
@@ -225,6 +236,9 @@ export class Template__generated extends Template {
                 : "") +
               (virtualProps.length > 0
                 ? `readonly __virtual__: readonly [${virtualProps.map((prop) => `"${prop}"`).join(", ")}],`
+                : "") +
+              (virtualQueryProps.length > 0
+                ? `readonly __virtual_query__: readonly [${virtualQueryProps.map((prop) => `"${prop}"`).join(", ")}],`
                 : "") +
               (hasDefaultColumns.length > 0
                 ? `readonly __hasDefault__: readonly [${hasDefaultColumns
