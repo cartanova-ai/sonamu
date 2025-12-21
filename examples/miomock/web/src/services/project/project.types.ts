@@ -16,12 +16,16 @@ export const ProjectSaveParams = ProjectBaseSchema.partial({
   })
   .omit({
     virtual_test: true,
+    virtual_query_test: true,
     textsearchable_index_col: true,
   });
 export type ProjectSaveParams = z.infer<typeof ProjectSaveParams>;
 
 export const StringArray = z.array(z.string());
 export type StringArray = z.infer<typeof StringArray>;
+
+export const StringType = z.string();
+export type StringType = z.infer<typeof StringType>;
 
 // Sample SSE Events
 export const ProjectAskStreamEvents = z.object({

@@ -12,6 +12,10 @@ type NumberType = z.infer<typeof NumberType>;
 const StringArray = z.array(z.string());
 type StringArray = z.infer<typeof StringArray>;
 
+// CustomScalar: StringType
+const StringType = z.string();
+type StringType = z.infer<typeof StringType>;
+
 // Enums: Company
 export const CompanyOrderBy = z.enum(["id-desc"]).describe("CompanyOrderBy");
 export type CompanyOrderBy = z.infer<typeof CompanyOrderBy>;
@@ -211,10 +215,12 @@ export const ProjectBaseSchema = z.object({
   // tags: ManyToMany Tag
   image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
+  virtual_query_test: StringType.nullable(),
   textsearchable_index_col: z.string(),
 });
 export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
   readonly __virtual__: readonly ["virtual_test"];
+  readonly __virtual_query__: readonly ["virtual_query_test"];
   readonly __hasDefault__: readonly [
     "created_at",
     "description",
@@ -223,6 +229,7 @@ export type ProjectBaseSchema = z.infer<typeof ProjectBaseSchema> & {
     "tags_id",
     "image_urls",
     "virtual_test",
+    "virtual_query_test",
     "id",
   ];
   readonly __generated__: readonly ["textsearchable_index_col"];
@@ -615,6 +622,7 @@ export const ProjectSubsetA = z.object({
   deadline: z.date().nullable(),
   image_urls: z.string().array().nullable(),
   virtual_test: NumberType.nullable(),
+  virtual_query_test: StringType.nullable(),
   employee: z.array(
     z.object({
       id: z.int(),

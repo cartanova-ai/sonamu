@@ -47,6 +47,14 @@
       "id": "NumberType"
     },
     {
+      "name": "virtual_query_test",
+      "nullable": true,
+      "desc": "virtual query prop test",
+      "type": "virtual",
+      "id": "StringType",
+      "virtualType": "query"
+    },
+    {
       "name": "textsearchable_index_col",
       "type": "tsvector",
       "desc": "FTS 테스트용",
@@ -88,7 +96,8 @@
       "tags.id",
       "tags.name",
       "image_urls",
-      "virtual_test"
+      "virtual_test",
+      "virtual_query_test"
     ],
     "P": [
       "id",
