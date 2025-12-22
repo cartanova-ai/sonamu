@@ -90,6 +90,7 @@ export namespace EntityPropZodSchema {
   export const VirtualProp = CommonProp.extend({
     type: z.literal("virtual"),
     id: z.string(),
+    virtualType: z.enum(["code", "query"]).optional(),
   });
   export const RelationOn = z.enum(["CASCADE", "SET NULL", "NO ACTION", "SET DEFAULT", "RESTRICT"]);
   export const _RelationProp = z.object({

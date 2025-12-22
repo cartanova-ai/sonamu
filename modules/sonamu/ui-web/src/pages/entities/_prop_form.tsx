@@ -33,6 +33,7 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
       precision: z.number().optional(),
       scale: z.number().optional(),
       id: z.string().optional(),
+      virtualType: z.enum(["code", "query"]).optional(),
       dimensions: z.number().optional(),
       as: z.union([z.object({ ref: z.string() }), z.any()]).optional(),
       relationType: z.enum(["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"]).optional(),
@@ -343,6 +344,22 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                   <FormTypeIdAsyncSelect {...register("id")} search />
                   <Button icon="code" size="mini" onClick={() => openVscodePreset("types")} />
                 </div>
+              </Form.Field>
+            </Form.Group>
+          )}
+          {form.type === "virtual" && (
+            <Form.Group widths="equal" style={{ width: "50%" }}>
+              <Form.Field>
+                <label>Virtual Type</label>
+                <Form.Dropdown
+                  {...register("virtualType")}
+                  selection
+                  options={[
+                    { key: "code", value: "code", text: "code" },
+                    { key: "query", value: "query", text: "query" },
+                  ]}
+                  placeholder="code (default)"
+                />
               </Form.Field>
             </Form.Group>
           )}
