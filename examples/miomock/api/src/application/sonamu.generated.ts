@@ -653,7 +653,6 @@ export const ProjectSubsetP = z.object({
   name: z.string().max(255),
   status: ProjectStatus,
   description: z.string().nullable(),
-  budget: z.string().nullable(),
   deadline: z.date().nullable(),
   image_urls: z.string().array().nullable(),
   employee: z.array(

@@ -299,9 +299,9 @@ export const projectSubsetQueries = {
       name: "projects.name",
       status: "projects.status",
       description: "projects.description",
-      budget: "projects.budget",
       deadline: "projects.deadline",
       image_urls: "projects.image_urls",
+      budget: "projects.budget",
     });
   },
 };
@@ -364,6 +364,7 @@ export const projectLoaderQueries = {
           .select({
             id: "employees.id",
             employee_number: "employees.employee_number",
+            salary: "employees.salary",
             user: {
               email: "user.email",
               username: "user.username",

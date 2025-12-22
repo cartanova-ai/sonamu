@@ -110,11 +110,12 @@
       "name",
       "status",
       "description",
-      "budget",
       "deadline",
       "tags.id",
       "tags.name",
-      "image_urls"
+      "image_urls",
+      { "field": "employee.salary", "internal": true },
+      { "field": "budget", "internal": true }
     ]
   },
   "enums": {
