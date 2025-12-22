@@ -7,7 +7,6 @@
  * Enhancer, SubsetQuery 교집합 등 Model 계층에서 필요한 타입 정의.
  */
 
-import type { ListResult } from "..";
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
 import type { PuriSubsetFn } from "./puri-subset.types";
@@ -106,34 +105,12 @@ type IsEnhancerOptional<
   : false;
 
 /**
- * TComputed에 query virtual props 추가
- * appendSelect로 추가된 필드들이 row에 포함됨을 타입에 반영
- */
-type WithVirtualQueryProps<TComputed, TMapping, TVirtualQueryKeys> = TComputed &
-  Pick<TMapping, TVirtualQueryKeys & keyof TMapping>;
-
-/**
  * 단일 Enhancer 함수 타입
  * computed 결과 + virtualQuery props를 받아 최종 mapping 타입으로 변환
  */
 type EnhancerFnWithVirtualQuery<TComputed, TMapping, TVirtualQueryKeys> = (
-  row: WithVirtualQueryProps<TComputed, TMapping, TVirtualQueryKeys>,
+  row: TComputed & Pick<TMapping, TVirtualQueryKeys & keyof TMapping>,
 ) => TMapping | Promise<TMapping>;
-
-/**
- * 특정 subset의 Enhancer 함수 타입
- */
-type EnhancerFnFor<
-  TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
-  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
-  K extends TSubsetKey,
-> = EnhancerFnWithVirtualQuery<
-  TComputedResults[K],
-  TSubsetMapping[K],
-  ExtractVirtualQueryKeys<TSubsetQueries>
->;
 
 /**
  * Enhancer가 필수인 SubsetKey 추출
@@ -184,65 +161,15 @@ export type EnhancerMap<
     TSubsetQueries
   >,
 > = {
-  [K in Exclude<TSubsetKey, TRequiredKeys>]?: EnhancerFnFor<
-    TSubsetKey,
-    TComputedResults,
-    TSubsetMapping,
-    TSubsetQueries,
-    K
+  [K in Exclude<TSubsetKey, TRequiredKeys>]?: EnhancerFnWithVirtualQuery<
+    TComputedResults[K],
+    TSubsetMapping[K],
+    ExtractVirtualQueryKeys<TSubsetQueries>
   >;
 } & {
-  [K in TRequiredKeys]: EnhancerFnFor<
-    TSubsetKey,
-    TComputedResults,
-    TSubsetMapping,
-    TSubsetQueries,
-    K
+  [K in TRequiredKeys]: EnhancerFnWithVirtualQuery<
+    TComputedResults[K],
+    TSubsetMapping[K],
+    ExtractVirtualQueryKeys<TSubsetQueries>
   >;
 };
-
-// ============================================================================
-// executeSubsetQuery
-// ============================================================================
-
-/**
- * executeSubsetQuery 기본 파라미터
- */
-export type ExecuteSubsetQueryBaseParams<TSubsetKey extends string> = {
-  subset: TSubsetKey;
-  qb: Puri<any, any, any>;
-  params: {
-    num?: number;
-    page?: number;
-    queryMode?: "list" | "count" | "both";
-  };
-  debug?: boolean;
-  optimizeCountQuery?: boolean;
-};
-
-/**
- * executeSubsetQuery 파라미터 (Enhancer 포함)
- *
- * RequiredEnhancerKeys가 없으면 enhancers 선택적, 있으면 필수
- */
-export type ExecuteSubsetQueryParams<
-  TSubsetKey extends string,
-  TComputedResults extends Record<TSubsetKey, any>,
-  TSubsetMapping extends Record<TSubsetKey, any>,
-  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
-  T extends TSubsetKey,
-> = ExecuteSubsetQueryBaseParams<T> &
-  ([RequiredEnhancerKeys<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries>] extends [
-    never,
-  ]
-    ? { enhancers?: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> }
-    : { enhancers: EnhancerMap<TSubsetKey, TComputedResults, TSubsetMapping, TSubsetQueries> });
-
-/**
- * executeSubsetQuery 반환 타입
- */
-export type ExecuteSubsetQueryResult<
-  TSubsetMapping extends Record<string, any>,
-  T extends string,
-  LP extends { queryMode?: "list" | "count" | "both" },
-> = ListResult<LP, TSubsetMapping[T]>;
