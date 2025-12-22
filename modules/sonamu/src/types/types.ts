@@ -265,6 +265,17 @@ export type EntityIndex = {
    */
   lists?: number;
 };
+
+// SubsetField 타입: string 또는 internal 옵션이 있는 객체
+export type SubsetField = string | { field: string; internal?: boolean };
+
+export function normalizeSubsetField(f: SubsetField): string {
+  return typeof f === "string" ? f : f.field;
+}
+export function isInternalSubsetField(f: SubsetField): boolean {
+  return typeof f !== "string" && f.internal === true;
+}
+
 export type EntityJson = {
   id: string;
   parentId?: string;
@@ -273,7 +284,7 @@ export type EntityJson = {
   props: EntityProp[];
   indexes: EntityIndex[];
   subsets: {
-    [subset: string]: string[];
+    [subset: string]: SubsetField[];
   };
   enums: {
     [enumId: string]: {
@@ -284,6 +295,9 @@ export type EntityJson = {
 export type EntitySubsetRow = {
   field: string;
   has: {
+    [key: string]: boolean;
+  };
+  isInternal: {
     [key: string]: boolean;
   };
   children: EntitySubsetRow[];
@@ -1182,7 +1196,12 @@ export const EntityJsonSchema = z
     parentId: z.string().optional().describe("부모 Entity ID"),
     props: z.array(EntityPropSchema),
     indexes: z.array(EntityIndexSchema),
-    subsets: z.record(z.string(), z.array(z.string())),
+    subsets: z.record(
+      z.string(),
+      z.array(
+        z.union([z.string(), z.object({ field: z.string(), internal: z.boolean().optional() })]),
+      ),
+    ),
     enums: z.record(z.string(), z.record(z.string(), z.string())),
   })
   .strict();

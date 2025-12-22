@@ -14,12 +14,15 @@ import {
   isBelongsToOneRelationProp,
   isEnumProp,
   isHasManyRelationProp,
+  isInternalSubsetField,
   isManyToManyRelationProp,
   isOneToOneRelationProp,
   isRelationProp,
   isVirtualCodeProp,
   isVirtualProp,
+  normalizeSubsetField,
   type RelationProp,
+  type SubsetField,
   type SubsetQuery,
 } from "../types/types";
 import { importMembers } from "../utils/esm-utils";
@@ -48,6 +51,9 @@ export class Entity {
   };
   indexes: EntityIndex[];
   subsets: {
+    [key: string]: string[];
+  };
+  subsetsInternal: {
     [key: string]: string[];
   };
   types: {
@@ -98,8 +104,13 @@ export class Entity {
     // indexes
     this.indexes = indexes ?? [];
 
-    // subsets
-    this.subsets = subsets ?? {};
+    // subsets: SubsetField[]를 파싱하여 subsets(일반)와 subsetsInternal(internal)로 분리
+    this.subsets = {};
+    this.subsetsInternal = {};
+    for (const [key, fields] of Object.entries(subsets ?? {})) {
+      this.subsets[key] = fields.filter((f) => !isInternalSubsetField(f)).map(normalizeSubsetField);
+      this.subsetsInternal[key] = fields.filter(isInternalSubsetField).map(normalizeSubsetField);
+    }
 
     // enums
     this.enumLabels = enums ?? {};
@@ -118,10 +129,17 @@ export class Entity {
   }
 
   /**
+   * 쿼리용 서브셋 필드를 반환합니다 (subsets + subsetsInternal 합침)
+   */
+  getSubsetFieldsForQuery(subsetKey: string): string[] {
+    return [...(this.subsets[subsetKey] ?? []), ...(this.subsetsInternal[subsetKey] ?? [])];
+  }
+
+  /**
    * 주어진 이름(subsetKey)의 subset을 실제로 가져오는 Puri 코드 구현체 string을 반환합니다.
    */
   getPuriSubsetQuery(subsetKey: string): string {
-    const subset = this.subsets[subsetKey];
+    const subset = this.getSubsetFieldsForQuery(subsetKey);
     const subsetQuery = this.resolveSubsetQuery("", subset);
 
     const lines: string[] = [];
@@ -262,7 +280,7 @@ export class Entity {
   }
 
   getPuriLoaderQuery(subsetKey: string): string {
-    const subset = this.subsets[subsetKey];
+    const subset = this.getSubsetFieldsForQuery(subsetKey);
     const { loaders } = this.resolveSubsetQuery("", subset);
 
     const lines: string[] = [`[`];
@@ -369,7 +387,7 @@ export class Entity {
     subset SELECT/JOIN/LOADER 결과 리턴
   */
   getSubsetQuery(subsetKey: string): SubsetQuery {
-    const subset = this.subsets[subsetKey];
+    const subset = this.getSubsetFieldsForQuery(subsetKey);
 
     const result: SubsetQuery = this.resolveSubsetQuery("", subset);
     return result;
@@ -781,6 +799,17 @@ export class Entity {
   }
 
   toJson(): EntityJson {
+    // subsets와 subsetsInternal을 SubsetField[] 형태로 복원
+    const subsets: { [key: string]: SubsetField[] } = {};
+    for (const key of Object.keys(this.subsets)) {
+      const normalFields: SubsetField[] = this.subsets[key];
+      const internalFields: SubsetField[] = (this.subsetsInternal[key] ?? []).map((field) => ({
+        field,
+        internal: true,
+      }));
+      subsets[key] = [...normalFields, ...internalFields];
+    }
+
     return {
       id: this.id,
       parentId: this.parentId,
@@ -788,7 +817,7 @@ export class Entity {
       title: this.title,
       props: this.props,
       indexes: this.indexes,
-      subsets: this.subsets,
+      subsets,
       enums: this.enumLabels,
     };
   }
@@ -798,7 +827,12 @@ export class Entity {
     const subsetRows = this.getSubsetRows();
     this.subsets = Object.fromEntries(
       Object.entries(this.subsets).map(([subsetKey]) => {
-        return [subsetKey, this.subsetRowsToSubsetFields(subsetRows, subsetKey)];
+        return [subsetKey, this.subsetRowsToSubsetFields(subsetRows, subsetKey, false)];
+      }),
+    );
+    this.subsetsInternal = Object.fromEntries(
+      Object.entries(this.subsetsInternal).map(([subsetKey]) => {
+        return [subsetKey, this.subsetRowsToSubsetFields(subsetRows, subsetKey, true)];
       }),
     );
 
@@ -816,6 +850,7 @@ export class Entity {
 
   getSubsetRows(
     _subsets?: { [key: string]: string[] },
+    _subsetsInternal?: { [key: string]: string[] },
     prefixes: string[] = [],
   ): EntitySubsetRow[] {
     if (prefixes.length > 10) {
@@ -823,16 +858,23 @@ export class Entity {
     }
 
     const subsets = _subsets ?? this.subsets;
+    const subsetsInternal = _subsetsInternal ?? this.subsetsInternal;
     const subsetKeys = Object.keys(subsets);
     const allFields = unique(subsetKeys.flatMap((key) => subsets[key]));
+    // internal 필드도 allFields에 포함 (relation 탐색용)
+    const allInternalFields = unique(subsetKeys.flatMap((key) => subsetsInternal[key] ?? []));
+    const combinedFields = unique([...allFields, ...allInternalFields]);
 
     return this.props.map((prop) => {
       if (
         prop.type === "relation" &&
-        allFields.find((f) => f.startsWith(`${[...prefixes, prop.name].join(".")}.`))
+        combinedFields.find((f) => f.startsWith(`${[...prefixes, prop.name].join(".")}.`))
       ) {
         const relEntity = EntityManager.get(prop.with);
-        const children = relEntity.getSubsetRows(subsets, [...prefixes, `${prop.name}`]);
+        const children = relEntity.getSubsetRows(subsets, subsetsInternal, [
+          ...prefixes,
+          `${prop.name}`,
+        ]);
 
         return {
           field: prop.name,
@@ -845,9 +887,15 @@ export class Entity {
               return [subsetKey, children.every((child) => child.has[subsetKey] === true)];
             }),
           ),
+          isInternal: Object.fromEntries(
+            subsetKeys.map((subsetKey) => {
+              return [subsetKey, children.every((child) => child.isInternal[subsetKey] === true)];
+            }),
+          ),
         };
       }
 
+      const field = [...prefixes, prop.name].join(".");
       return {
         field: prop.name,
         children: [],
@@ -857,22 +905,35 @@ export class Entity {
           subsetKeys.map((subsetKey) => {
             const subsetFields = subsets[subsetKey];
             const has = subsetFields.some((f) => {
-              const field = [...prefixes, prop.name].join(".");
               return f === field || f.startsWith(`${field}.`);
             });
             return [subsetKey, has];
+          }),
+        ),
+        isInternal: Object.fromEntries(
+          subsetKeys.map((subsetKey) => {
+            const internalFields = subsetsInternal[subsetKey] ?? [];
+            const isInternal = internalFields.some((f) => {
+              return f === field || f.startsWith(`${field}.`);
+            });
+            return [subsetKey, isInternal];
           }),
         ),
       };
     });
   }
 
-  subsetRowsToSubsetFields(subsetRows: EntitySubsetRow[], subsetKey: string): string[] {
+  subsetRowsToSubsetFields(
+    subsetRows: EntitySubsetRow[],
+    subsetKey: string,
+    internal: boolean = false,
+  ): string[] {
+    const hasKey = internal ? "isInternal" : "has";
     return subsetRows
       .map((subsetRow) => {
         if (subsetRow.children.length > 0) {
-          return this.subsetRowsToSubsetFields(subsetRow.children, subsetKey);
-        } else if (subsetRow.has[subsetKey]) {
+          return this.subsetRowsToSubsetFields(subsetRow.children, subsetKey, internal);
+        } else if (subsetRow[hasKey][subsetKey]) {
           return subsetRow.prefixes.concat(subsetRow.field).join(".");
         } else {
           return null;
