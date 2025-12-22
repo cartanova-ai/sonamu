@@ -25,6 +25,11 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: ["**/*.test.ts", "**/testing/**", "**/node_modules/**", "**/dist/**"],
     },
-    includeTaskLocation: true
+    includeTaskLocation: true,
+    server: {
+      deps: {
+        inline: ["sonamu"],
+      },
+    },
   },
 });
