@@ -1205,11 +1205,13 @@ export class JoinClauseGroup<
   TResolved: 쿼리 실행 후 반환될 결과 타입
   TReturning: RETURNING 절에 사용될 타입
 */
-export class ResolvedPuri<TResolved, TReturning> {
+export class ResolvedPuri<TResolved, TReturning> implements Promise<TResolved> {
   constructor(
     public knexQuery: Knex.QueryBuilder,
     private knex: Knex,
   ) {}
+
+  [Symbol.toStringTag]: string = "Promise";
 
   toQuery(): string {
     return this.knexQuery.toQuery();
@@ -1227,11 +1229,13 @@ export class ResolvedPuri<TResolved, TReturning> {
     Naite.t("puri:executed-query", this.toQuery());
     return this.knexQuery.then(onfulfilled as any, onrejected);
   }
+
   catch<TResult2 = never>(
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResolved | TResult2> {
     return this.knexQuery.catch(onrejected);
   }
+
   finally(onfinally?: (() => void) | null): Promise<TResolved> {
     return this.knexQuery.finally(onfinally);
   }
