@@ -20,7 +20,6 @@ import {
   isVirtualCodeProp,
   isVirtualProp,
   type RelationProp,
-  type StringProp,
   type SubsetQuery,
 } from "../types/types";
 import { importMembers } from "../utils/esm-utils";
@@ -609,25 +608,12 @@ export class Entity {
       },
     );
 
-    return Object.keys(groups).flatMap((key) => {
+    return Object.keys(groups).flatMap<EntityPropNode, EntityPropNode[]>((key) => {
       const group = groups[key];
 
       // 일반 prop 처리
       if (key === "") {
         return group.map((propName) => {
-          // FIXME: 이거 나중에 없애야함
-          if (propName === "말도안되는프롭명__이거왜타입처리가꼬여서이러지?") {
-            return {
-              nodeType: "plain" as const,
-              prop: {
-                type: "string",
-                name: "uuid",
-                length: 128,
-              } as StringProp,
-              children: [],
-            } as EntityPropNode;
-          }
-
           const prop = entity.props.find((p) => p.name === propName);
           if (prop === undefined) {
             console.log({ propName, groups });
@@ -636,7 +622,6 @@ export class Entity {
           return {
             nodeType: "plain" as const,
             prop,
-            children: [],
           };
         });
       }
@@ -660,7 +645,6 @@ export class Entity {
               name: `${key}_id`,
               nullable: prop.nullable,
             },
-            children: [],
           };
         }
       }
@@ -675,9 +659,9 @@ export class Entity {
           : ("array" as const);
 
       return {
+        nodeType,
         prop,
         children,
-        nodeType,
       };
     });
   }
