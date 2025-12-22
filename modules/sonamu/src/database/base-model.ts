@@ -1,9 +1,10 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
 
 import type { Knex } from "knex";
-import { group, isObject, omit, set } from "radashi";
+import { cloneDeep, group, isObject, omit, set } from "radashi";
 import type { ListResult } from "..";
 import { Sonamu } from "../api";
+import { EntityManager } from "../entity/entity-manager";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
@@ -193,9 +194,17 @@ export class BaseModelClass<
 
     // Enhancer 적용
     const enhancer = (params as any).enhancers?.[subset];
-    const rows = (await Promise.all(
+    const enhancedRows = (await Promise.all(
       computedRows.map((row) => enhancer?.(row) ?? row),
     )) as TSubsetMapping[T][];
+
+    // Internal 필드 제거
+    const entity = EntityManager.get(this.modelName);
+    const internalFields = entity.subsetsInternal[subset] ?? [];
+    const rows =
+      internalFields.length > 0
+        ? enhancedRows.map((row) => this.omitInternalFields(row, internalFields))
+        : enhancedRows;
 
     if (queryParams.queryMode === "list") {
       // 리스트만 리턴
@@ -203,6 +212,49 @@ export class BaseModelClass<
     } else {
       // 둘다 리턴
       return { rows, total } as ListResult<LP, TSubsetMapping[T]>;
+    }
+  }
+
+  /**
+   * 객체에서 internal 필드 제거
+   * 중첩 필드(예: "user.email") 및 배열(예: "employees.salary")도 처리
+   */
+  omitInternalFields<T extends object>(row: T, fields: string[]): T {
+    const result = cloneDeep(row);
+    for (const field of fields) {
+      this.deleteField(result, field.split("."));
+    }
+    return result;
+  }
+
+  /**
+   * 중첩 필드 삭제 (배열 내 객체도 처리)
+   */
+  deleteField(obj: any, parts: string[]): void {
+    if (!obj || typeof obj !== "object") {
+      return;
+    }
+
+    if (parts.length === 1) {
+      if (Array.isArray(obj)) {
+        obj.forEach((item) => {
+          if (item && typeof item === "object") {
+            delete item[parts[0]];
+          }
+        });
+      } else {
+        delete obj[parts[0]];
+      }
+      return;
+    }
+
+    const [first, ...rest] = parts;
+    const next = obj[first];
+
+    if (Array.isArray(next)) {
+      next.map((item) => this.deleteField(item, rest));
+    } else if (next && typeof next === "object") {
+      this.deleteField(next, rest);
     }
   }
 
