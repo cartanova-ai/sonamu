@@ -254,6 +254,52 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       })
       .catch(defaultCatch);
   };
+
+  // Internal 필드 추가/제거 함수
+  const appendFieldOnSubsetInternal = (subsetKey: string, field: string) => {
+    if (!entity) {
+      return;
+    }
+    const internalSubset = entity.subsetsInternal?.[subsetKey] ?? [];
+    if (internalSubset.includes(field)) {
+      return;
+    }
+
+    const newInternalSubset = [...internalSubset, field];
+    // 일반 subset에서 제거
+    const newSubset = (entity.subsets[subsetKey] ?? []).filter((f) => f !== field);
+
+    SonamuUIService.modifySubset(entity.id, subsetKey, newSubset, newInternalSubset)
+      .then(({ updated, updatedInternal }) => {
+        entity.subsets[subsetKey] = updated;
+        entity.subsetsInternal = entity.subsetsInternal ?? {};
+        entity.subsetsInternal[subsetKey] = updatedInternal ?? [];
+        mutate();
+      })
+      .catch(defaultCatch);
+  };
+
+  const omitFieldOnSubsetInternal = (subsetKey: string, field: string) => {
+    if (!entity) {
+      return;
+    }
+    const internalSubset = entity.subsetsInternal?.[subsetKey] ?? [];
+    if (!internalSubset.includes(field)) {
+      return;
+    }
+
+    const newInternalSubset = internalSubset.filter((f) => f !== field);
+
+    SonamuUIService.modifySubset(entity.id, subsetKey, entity.subsets[subsetKey], newInternalSubset)
+      .then(({ updated, updatedInternal }) => {
+        entity.subsets[subsetKey] = updated;
+        entity.subsetsInternal = entity.subsetsInternal ?? {};
+        entity.subsetsInternal[subsetKey] = updatedInternal ?? [];
+        mutate();
+      })
+      .catch(defaultCatch);
+  };
+
   const expandRelationEntity = (at: number) => () => {
     if (!entities || !entity) {
       return;
@@ -284,6 +330,9 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         ...r,
         prefixes: [...srcRow.prefixes, srcRow.field],
         has: Object.fromEntries(Object.keys(entity.subsets).map((subsetKey) => [subsetKey, false])),
+        isInternal: Object.fromEntries(
+          Object.keys(entity.subsets).map((subsetKey) => [subsetKey, false]),
+        ),
         isOpen: false,
       }));
     entity.flattenSubsetRows.splice(at + 1, 0, ...newSubsetRows);
@@ -987,24 +1036,50 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   )}
                                 </>
                               ) : (
-                                <Checkbox
-                                  checked={subsetRow.has[subsetKey]}
-                                  onChange={(_e, data) => {
-                                    if (data.checked === false) {
-                                      // 서브셋의 필드 삭제
-                                      omitFieldOnSubset(
-                                        subsetKey,
-                                        [...subsetRow.prefixes, subsetRow.field].join("."),
+                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                  <Checkbox
+                                    checked={subsetRow.has[subsetKey]}
+                                    onChange={(_e, data) => {
+                                      const field = [...subsetRow.prefixes, subsetRow.field].join(
+                                        ".",
                                       );
-                                    } else if (data.checked === true) {
-                                      // 서브셋에 필드 추가
-                                      appendFieldOnSubset(
-                                        subsetKey,
-                                        [...subsetRow.prefixes, subsetRow.field].join("."),
+                                      if (data.checked === false) {
+                                        // 서브셋의 필드 삭제
+                                        omitFieldOnSubset(subsetKey, field);
+                                      } else if (data.checked === true) {
+                                        // 서브셋에 필드 추가 (internal에서 제거)
+                                        if (subsetRow.isInternal?.[subsetKey]) {
+                                          omitFieldOnSubsetInternal(subsetKey, field);
+                                        }
+                                        appendFieldOnSubset(subsetKey, field);
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    size="mini"
+                                    content="I"
+                                    circular
+                                    basic={!subsetRow.isInternal?.[subsetKey]}
+                                    color={subsetRow.isInternal?.[subsetKey] ? "orange" : undefined}
+                                    style={{ fontSize: ".5em", padding: "4px 6px" }}
+                                    title="Internal: 쿼리만 수행하고 결과 타입에서 제외"
+                                    onClick={() => {
+                                      const field = [...subsetRow.prefixes, subsetRow.field].join(
+                                        ".",
                                       );
-                                    }
-                                  }}
-                                />
+                                      if (subsetRow.isInternal?.[subsetKey]) {
+                                        // internal 해제
+                                        omitFieldOnSubsetInternal(subsetKey, field);
+                                      } else {
+                                        // internal 설정 (일반에서 제거)
+                                        if (subsetRow.has[subsetKey]) {
+                                          omitFieldOnSubset(subsetKey, field);
+                                        }
+                                        appendFieldOnSubsetInternal(subsetKey, field);
+                                      }
+                                    }}
+                                  />
+                                </div>
                               )}
                             </Table.Cell>
                           ))}

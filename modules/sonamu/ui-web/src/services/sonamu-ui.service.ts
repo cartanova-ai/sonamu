@@ -88,7 +88,8 @@ export namespace SonamuUIService {
     entityId: string,
     subsetKey: string,
     fields: string[],
-  ): Promise<{ updated: string[] }> {
+    fieldsInternal?: string[],
+  ): Promise<{ updated: string[]; updatedInternal?: string[] }> {
     return fetch({
       method: "POST",
       url: `/sonamu-ui/api/entity/modifySubset`,
@@ -96,6 +97,7 @@ export namespace SonamuUIService {
         entityId,
         subsetKey,
         fields,
+        fieldsInternal,
       },
     });
   }

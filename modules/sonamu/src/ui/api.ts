@@ -345,15 +345,23 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           entityId: string;
           subsetKey: string;
           fields: string[];
+          fieldsInternal?: string[];
         };
       }>("/api/entity/modifySubset", async (request) => {
         return await waitForHMRCompleted(async () => {
-          const { entityId, subsetKey, fields } = request.body;
+          const { entityId, subsetKey, fields, fieldsInternal } = request.body;
           const entity = EntityManager.get(entityId);
           entity.subsets[subsetKey] = fields;
+          if (fieldsInternal !== undefined) {
+            if (fieldsInternal.length > 0) {
+              entity.subsetsInternal[subsetKey] = fieldsInternal;
+            } else {
+              delete entity.subsetsInternal[subsetKey];
+            }
+          }
           await entity.save();
 
-          return { updated: fields };
+          return { updated: fields, updatedInternal: fieldsInternal };
         });
       });
 
@@ -367,6 +375,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           const { entityId, subsetKey } = request.body;
           const entity = EntityManager.get(entityId);
           delete entity.subsets[subsetKey];
+          delete entity.subsetsInternal[subsetKey];
           await entity.save();
 
           return 1;
