@@ -4,6 +4,7 @@ export type * from "./api/context";
 export * from "./api/decorators";
 export * from "./api/sonamu";
 export * from "./database/base-model";
+export * from "./database/base-model.types";
 export * from "./database/db";
 export * from "./database/puri";
 export * from "./database/puri.types";

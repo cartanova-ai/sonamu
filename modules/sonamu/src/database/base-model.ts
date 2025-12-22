@@ -7,14 +7,11 @@ import { Sonamu } from "../api";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
-import type {
-  EnhancerMap,
-  ResolveSubsetIntersection,
-  UnionExtractedTTables,
-} from "./base-model.types";
+import type { EnhancerMap, ResolveSubsetIntersection } from "./base-model.types";
 import type { DBPreset } from "./db";
 import { DB } from "./db";
 import { Puri } from "./puri";
+import type { UnionExtractedTTables } from "./puri.types";
 import type { InferAllSubsets, PuriLoaderQueries, PuriSubsetFn } from "./puri-subset.types";
 import { PuriWrapper } from "./puri-wrapper";
 import { UpsertBuilder } from "./upsert-builder";

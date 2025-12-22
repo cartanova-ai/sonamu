@@ -3,7 +3,7 @@
 import type { QueryResult } from "pg";
 import type { DatabaseForeignKeys, DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
-import type { PuriWrapper } from "./puri-wrapper";
+import type { PuriSubsetFn } from "./puri-subset.types";
 
 // ============================================
 // 내부 타입 키 (메타데이터)
@@ -342,15 +342,12 @@ export type InsertData<T> = Omit<
 export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
 
 // SubsetQuery를 위한 타입 유틸리티
-type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>
+export type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>
   ? TTables
   : never;
 export type UnionExtractedTTables<
   SubsetKey extends string,
-  SubsetQueries extends Record<
-    SubsetKey,
-    (qbWrapper: PuriWrapper<DatabaseSchemaExtend>) => Puri<any, any, any>
-  >,
+  SubsetQueries extends Record<SubsetKey, PuriSubsetFn>,
 > = {
   [K in SubsetKey]: ExtractTTables<ReturnType<SubsetQueries[K]>>;
 }[SubsetKey];

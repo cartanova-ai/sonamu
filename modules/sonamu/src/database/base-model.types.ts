@@ -9,25 +9,8 @@
 
 import type { DatabaseSchemaExtend } from "../types/types";
 import type { Puri } from "./puri";
+import type { ExtractTTables } from "./puri.types";
 import type { PuriSubsetFn } from "./puri-subset.types";
-
-// ============================================================================
-// Puri 테이블 추출 유틸리티
-// ============================================================================
-
-/**
- * Puri 인스턴스에서 TTables 타입 추출
- */
-export type ExtractPuriTables<T> = T extends Puri<any, infer TTables, any> ? TTables : never;
-
-/**
- * SubsetQueries에서 모든 TTables의 유니온 추출
- * getSubsetQueries의 qb 타입 정의에 사용
- */
-export type UnionExtractedTTables<
-  TSubsetKey extends string,
-  TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn>,
-> = ExtractPuriTables<ReturnType<TSubsetQueries[TSubsetKey]>>;
 
 // ============================================================================
 // Subset 교집합 계산 (onSubset 메서드용)
@@ -36,11 +19,12 @@ export type UnionExtractedTTables<
 /**
  * 두 Puri의 테이블 교집합을 가진 새로운 Puri 생성
  */
-type MergePuriTables<A, B, TA = ExtractPuriTables<A>, TB = ExtractPuriTables<B>> = Puri<
-  DatabaseSchemaExtend,
-  Pick<TA, Extract<keyof TA, keyof TB>>,
-  any
->;
+type MergePuriTables<
+  A extends Puri<any, any, any>,
+  B extends Puri<any, any, any>,
+  TA = ExtractTTables<A>,
+  TB = ExtractTTables<B>,
+> = Puri<DatabaseSchemaExtend, Pick<TA, Extract<keyof TA, keyof TB>>, any>;
 
 /**
  * 서브셋 키 배열을 순회하며 테이블 교집합 Puri 계산
@@ -67,7 +51,7 @@ export type ResolveSubsetIntersection<
  * 해당 테이블의 BaseSchema에서 __virtual_query__ 키를 추출.
  */
 type ExtractMainTable<TSubsetQueries extends Record<string, PuriSubsetFn>> = Extract<
-  keyof ExtractPuriTables<ReturnType<TSubsetQueries[keyof TSubsetQueries]>>,
+  keyof ExtractTTables<ReturnType<TSubsetQueries[keyof TSubsetQueries]>>,
   keyof DatabaseSchemaExtend
 >;
 
