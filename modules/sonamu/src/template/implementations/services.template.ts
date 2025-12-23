@@ -11,6 +11,7 @@ import type { TemplateOptions } from "../../types/types";
 import { ApiParamType } from "../../types/types";
 import { assertDefined } from "../../utils/utils";
 import { Template } from "../template";
+import { zodTypeToTsTypeDef } from "../zod-converter";
 
 export class Template__services extends Template {
   constructor() {
@@ -45,6 +46,44 @@ export class Template__services extends Template {
       const functions: string[] = [];
 
       for (const api of modelApis) {
+        // @stream 데코레이터가 있으면 SSE 스트림 함수 생성
+        if (api.streamOptions) {
+          const paramsWithoutContext = api.parameters.filter(
+            (param) =>
+              !ApiParamType.isContext(param.type) &&
+              !ApiParamType.isRefKnex(param.type) &&
+              !(param.optional === true && param.name.startsWith("_")),
+          );
+
+          const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
+          const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
+
+          const methodNameStream = api.options.resourceName
+            ? `use${inflection.camelize(api.options.resourceName)}`
+            : `use${inflection.camelize(api.methodName)}`;
+          const methodNameStreamCamelized = inflection.camelize(methodNameStream, true);
+
+          const eventsTypeDef = zodTypeToTsTypeDef(api.streamOptions.events);
+
+          const paramsDefAsObject =
+            paramsWithoutContext.length > 0
+              ? `{ ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
+              : "{}";
+
+          functions.push(
+            `
+export function ${methodNameStreamCamelized}(
+  params: ${paramsDef ? `{ ${paramsWithoutContext.map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, importKeys)}`).join(", ")} }` : "{}"},
+  handlers: EventHandlers<${eventsTypeDef} & { end?: () => void }>,
+  options: SSEStreamOptions
+) {
+  return useSSEStream<${eventsTypeDef}>(\`${apiBaseUrl}\`, ${paramsDefAsObject}, handlers, options);
+}
+            `.trim(),
+          );
+          continue;
+        }
+
         // Context 제외한 파라미터
         const paramsWithoutContext = api.parameters.filter(
           (param) =>
@@ -219,7 +258,7 @@ ${functions.join("\n\n")}
         `import { queryOptions, useQuery, useMutation } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
-        `import { type ListResult, fetch } from './sonamu.shared';`,
+        `import { type ListResult, fetch, type EventHandlers, type SSEStreamOptions, useSSEStream } from './sonamu.shared';`,
       ],
     };
   }

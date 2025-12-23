@@ -31,7 +31,13 @@ import type {
   UserSubsetKey,
   UserSubsetMapping,
 } from "./sonamu.generated";
-import { fetch, type ListResult } from "./sonamu.shared";
+import {
+  type EventHandlers,
+  fetch,
+  type ListResult,
+  type SSEStreamOptions,
+  useSSEStream,
+} from "./sonamu.shared";
 import type {
   SyncFixtureListParams,
   SyncFixtureSaveParams,
@@ -486,11 +492,44 @@ export namespace ProjectService {
       mutationFn: (params: { ids: number[] }) => del(params.ids),
     });
 
-  export async function ask(prompt: string): Promise<void> {
-    return fetch({
-      method: "GET",
-      url: `/api/project/ask?${qs.stringify({ prompt })}`,
-    });
+  export function useAsk(
+    _params: { prompt: string },
+    handlers: EventHandlers<
+      {
+        onToken: {
+          token: string;
+        };
+        onComplete: {
+          fullText: string;
+        };
+        onError: {
+          error: {
+            name: string;
+            message: string;
+            cause?: any;
+            stack?: string;
+          };
+        };
+      } & { end?: () => void }
+    >,
+    options: SSEStreamOptions,
+  ) {
+    return useSSEStream<{
+      onToken: {
+        token: string;
+      };
+      onComplete: {
+        fullText: string;
+      };
+      onError: {
+        error: {
+          name: string;
+          message: string;
+          cause?: any;
+          stack?: string;
+        };
+      };
+    }>(`/api/project/ask`, { prompt }, handlers, options);
   }
 
   export async function search(search: string): Promise<
