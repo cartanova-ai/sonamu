@@ -1,5 +1,6 @@
 import path from "node:path";
-import { defineConfig, FSDriver, S3Driver } from "sonamu";
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 const host = "localhost";
 const port = 1028;
@@ -73,23 +74,32 @@ export default defineConfig({
       },
     },
 
-    storage: (() => {
-      if (process.env.NODE_ENV === "production") {
-        return new S3Driver({
-          bucket: process.env.S3_BUCKET || "sonamu_default_bucket",
-          region: process.env.S3_REGION || "ap-northeast-2",
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "sonamu_default_aws_access_key_id",
-            secretAccessKey:
-              process.env.AWS_SECRET_ACCESS_KEY ?? "sonamu_default_aws_secret_access_key",
+    storage: {
+      default: process.env.DRIVE_DISK ?? "fs",
+      drivers: {
+        fs: drivers.fs({
+          location: path.join(import.meta.dirname, "/../public/uploaded"),
+          visibility: "public",
+          urlBuilder: {
+            generateURL(key) {
+              return `/api/public/uploaded/${key}`;
+            },
+            generateSignedURL(key) {
+              return `/api/public/uploaded/${key}`;
+            },
           },
-        });
-      }
-      return new FSDriver({
-        location: path.join(import.meta.dirname, "/../", "public", "uploaded"),
-        urlPrefix: "/api/public/uploaded",
-      });
-    })(),
+        }),
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+          },
+          region: process.env.S3_REGION ?? "ap-northeast-2",
+          bucket: process.env.S3_BUCKET ?? "sonamu_default_bucket",
+          visibility: "private",
+        }),
+      },
+    },
 
     lifecycle: {
       onStart: () => {
