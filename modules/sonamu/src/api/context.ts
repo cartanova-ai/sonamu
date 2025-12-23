@@ -2,8 +2,8 @@ import type { FastifyReply, FastifyRequest, PassportUser } from "fastify";
 import type { RouteGenericInterface } from "fastify/types/route";
 import type { IncomingHttpHeaders, IncomingMessage, Server, ServerResponse } from "http";
 import type { ZodObject } from "zod";
-import type { FileStorage } from "../file-storage/file-storage";
 import type { NaiteStore } from "../naite/naite";
+import type { UploadedFile } from "../storage/uploaded-file";
 import type { createSSEFactory } from "../stream/sse";
 
 // biome-ignore lint/suspicious/noEmptyInterface: Context 확장 타입
@@ -26,6 +26,6 @@ export type AuthContext = {
 };
 
 export type UploadContext = {
-  file?: FileStorage;
-  files: FileStorage[];
+  file?: UploadedFile;
+  files: UploadedFile[];
 };

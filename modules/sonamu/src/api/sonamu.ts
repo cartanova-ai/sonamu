@@ -8,8 +8,8 @@ import path from "path";
 import type { ZodObject } from "zod";
 import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { SonamuDBConfig } from "../database/db";
-import type { Driver } from "../file-storage/driver";
 import { Naite } from "../naite/naite";
+import type { StorageManager } from "../storage/storage-manager";
 import type { Syncer } from "../syncer/syncer";
 import type { WorkflowManager } from "../tasks/workflow-manager";
 import type { SonamuFastifyConfig } from "../types/types";
@@ -117,11 +117,14 @@ class SonamuClass {
     return this._secrets;
   }
 
-  private _storage: Driver | null = null;
-  set storage(storage: Driver) {
-    this._storage = storage;
-  }
-  get storage(): Driver | null {
+  private _storage: StorageManager | null = null;
+  /**
+   * StorageManager 인스턴스
+   */
+  get storage(): StorageManager {
+    if (!this._storage) {
+      throw new Error("Storage has not been initialized. Check storage config.");
+    }
     return this._storage;
   }
 
@@ -250,9 +253,10 @@ class SonamuClass {
     const server = fastify(options.fastify);
     this.server = server;
 
-    // Storage 설정 저장
+    // Storage 설정 → StorageManager 생성
     if (options.storage) {
-      this.storage = options.storage;
+      const { StorageManager } = await import("../storage/storage-manager");
+      this._storage = new StorageManager(options.storage);
     }
 
     // 플러그인 등록
@@ -714,7 +718,6 @@ class SonamuClass {
     await BaseModel.destroy();
     await this._workflows?.destroy();
     await this.watcher?.close();
-    this.storage?.destroy();
   }
 }
 export const Sonamu = new SonamuClass();

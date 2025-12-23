@@ -8,7 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOption
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
-import type { Driver } from "../file-storage/driver";
+import type { StorageConfig } from "../storage/types";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
 import type { Executable, SonamuFastifyConfig } from "../types/types";
 import type { AuthContext, Context } from "./context";
@@ -84,7 +84,24 @@ export type SonamuServerOptions = {
 
   apiConfig: SonamuFastifyConfig;
 
-  storage?: Driver;
+  /**
+   * Storage 드라이버 설정.
+   * DRIVE_DISK 환경변수로 사용할 드라이버를 선택합니다. (기본값: default 키)
+   *
+   * @example
+   * ```typescript
+   * import { drivers } from "sonamu/storage";
+   *
+   * storage: {
+   *   default: process.env.DRIVE_DISK ?? "fs",
+   *   drivers: {
+   *     fs: drivers.fs({ location: "./uploads", urlBuilder: { ... } }),
+   *     s3: drivers.s3({ bucket: "my-bucket", region: "ap-northeast-2", ... }),
+   *   }
+   * }
+   * ```
+   */
+  storage?: StorageConfig;
 
   lifecycle?: {
     onStart?: (server: FastifyInstance) => Promise<void> | void;

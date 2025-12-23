@@ -294,24 +294,19 @@ export function upload(options: UploadDecoratorOptions = {}) {
         files: [],
       };
 
-      const storage = Sonamu.storage;
-      if (!storage) {
-        throw new Error("Storage가 설정되지 않았습니다.");
-      }
-
-      const { FileStorage } = await import("../file-storage/file-storage");
+      const { UploadedFile } = await import("../storage/uploaded-file");
       if (options.mode === "multiple") {
         const rawFilesIterator = request.files();
         for await (const rawFile of rawFilesIterator) {
           if (rawFile) {
             await rawFile.toBuffer();
-            uploadContext.files.push(new FileStorage(rawFile, storage));
+            uploadContext.files.push(new UploadedFile(rawFile));
           }
         }
       } else {
         const rawFile = await request.file();
         if (rawFile) {
-          uploadContext.file = new FileStorage(rawFile, storage);
+          uploadContext.file = new UploadedFile(rawFile);
         }
       }
 
