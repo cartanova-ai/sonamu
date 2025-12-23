@@ -255,6 +255,9 @@ ${functions.join("\n\n")}
       body: namespaces.join("\n\n"),
       importKeys: diff(unique(importKeys), [...typeParamNames, "ListResult"]),
       customHeaders: [
+        "/** biome-ignore-all lint: generated는 무시 */",
+        "/** biome-ignore-all assist: generated는 무시 */",
+        "",
         `import { queryOptions, useQuery, useMutation } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
