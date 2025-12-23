@@ -1,5 +1,6 @@
 import path from "path";
-import { defineConfig, FSDriver, S3Driver } from "sonamu";
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
 
 const host = "localhost";
 const port = 10280;
@@ -90,26 +91,32 @@ export default defineConfig({
       },
     },
 
-    storage: (() => {
-      if (
-        process.env.NODE_ENV === "production" &&
-        process.env.AWS_ACCESS_KEY_ID &&
-        process.env.AWS_SECRET_ACCESS_KEY
-      ) {
-        return new S3Driver({
-          bucket: "miomock",
-          region: "ap-northeast-2",
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    storage: {
+      default: process.env.DRIVE_DISK ?? "fs",
+      drivers: {
+        fs: drivers.fs({
+          location: path.join(import.meta.dirname, "/../public/uploaded"),
+          visibility: "public",
+          urlBuilder: {
+            async generateURL(key) {
+              return `/api/public/uploaded/${key}`;
+            },
+            async generateSignedURL(key) {
+              return `/api/public/uploaded/${key}`;
+            },
           },
-        });
-      }
-      return new FSDriver({
-        location: path.join(import.meta.dirname, "/../", "public", "uploaded"),
-        urlPrefix: "/api/public/uploaded",
-      });
-    })(),
+        }),
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+          },
+          region: "ap-northeast-2",
+          bucket: "miomock",
+          visibility: "private",
+        }),
+      },
+    },
 
     lifecycle: {
       onStart: () => {

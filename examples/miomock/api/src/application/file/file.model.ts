@@ -149,7 +149,7 @@ class FileModelClass extends BaseModelClass<
 
     return {
       file: {
-        name: file.clientName,
+        name: file.filename,
         url,
         mime_type: file.mimetype,
       },
@@ -173,7 +173,7 @@ class FileModelClass extends BaseModelClass<
         const md5 = await file.md5();
         const key = `${md5}.${file.extname}`;
         return {
-          name: file.clientName,
+          name: file.filename,
           url: await file.saveToDisk(key),
           mime_type: file.mimetype,
         };
