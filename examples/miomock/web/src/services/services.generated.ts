@@ -493,7 +493,7 @@ export namespace ProjectService {
     });
 
   export function useAsk(
-    _params: { prompt: string },
+    params: { prompt: string },
     handlers: EventHandlers<
       {
         onToken: {
@@ -529,7 +529,7 @@ export namespace ProjectService {
           stack?: string;
         };
       };
-    }>(`/api/project/ask`, { prompt }, handlers, options);
+    }>(`/api/project/ask`, params, handlers, options);
   }
 
   export async function search(search: string): Promise<

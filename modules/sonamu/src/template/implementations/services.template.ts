@@ -55,7 +55,6 @@ export class Template__services extends Template {
               !(param.optional === true && param.name.startsWith("_")),
           );
 
-          const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
           const apiBaseUrl = `${Sonamu.config.api.route.prefix}${api.path}`;
 
           const methodNameStream = api.options.resourceName
@@ -65,19 +64,20 @@ export class Template__services extends Template {
 
           const eventsTypeDef = zodTypeToTsTypeDef(api.streamOptions.events);
 
+          // 파라미터를 객체 형태로 정의 (타입과 실제 값 모두에 사용)
           const paramsDefAsObject =
             paramsWithoutContext.length > 0
-              ? `{ ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
+              ? `{ ${paramsWithoutContext.map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, importKeys)}`).join(", ")} }`
               : "{}";
 
           functions.push(
             `
 export function ${methodNameStreamCamelized}(
-  params: ${paramsDef ? `{ ${paramsWithoutContext.map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, importKeys)}`).join(", ")} }` : "{}"},
+  params: ${paramsDefAsObject},
   handlers: EventHandlers<${eventsTypeDef} & { end?: () => void }>,
   options: SSEStreamOptions
 ) {
-  return useSSEStream<${eventsTypeDef}>(\`${apiBaseUrl}\`, ${paramsDefAsObject}, handlers, options);
+  return useSSEStream<${eventsTypeDef}>(\`${apiBaseUrl}\`, params, handlers, options);
 }
             `.trim(),
           );
