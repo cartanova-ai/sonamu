@@ -1,8 +1,8 @@
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import EntitiesLayout from "./pages/entities/_layout.tsx";
 import EntitiesShowPage from "./pages/entities/show.tsx";
 import FixtureIndex from "./pages/fixture/index.tsx";
