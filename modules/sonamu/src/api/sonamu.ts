@@ -363,7 +363,7 @@ class SonamuClass {
             (api.options.httpMethod ?? "GET") === request.method.toUpperCase(),
         );
         if (found) {
-          return this.getApiHandler(found, config)(request, reply);
+          return this.createApiHandler(found, config)(request, reply);
         }
 
         if (request.url.startsWith("/api/")) {
@@ -385,13 +385,13 @@ class SonamuClass {
         server.route({
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
-          handler: this.getApiHandler(api, config),
+          handler: this.createApiHandler(api, config),
         }); // END server.route
       }
     }
   }
 
-  getApiHandler(
+  createApiHandler(
     api: ExtendedApi,
     config: SonamuFastifyConfig,
   ): (request: FastifyRequest, reply: FastifyReply) => Promise<unknown> {
@@ -429,56 +429,74 @@ class SonamuClass {
       // Content-Type
       reply.type(api.options.contentType ?? "application/json");
 
-      // createSSEFactory 함수에 미리 request의 socket과 reply를 바인딩.
-      const { createSSEFactory } = await import("../stream/sse");
-      const createSSE = (<T extends ZodObject>(
-        _request: FastifyRequest,
-        _reply: FastifyReply,
-        _events: T,
-      ) => createSSEFactory(_request.socket, _reply, _events)).bind(null, request, reply);
+      // Context 생성
+      const context: Context = await this.createContext(config, request, reply);
 
-      const context: Context = {
-        ...(await Promise.resolve(
-          config.contextProvider(
-            {
-              request,
-              reply,
-              headers: request.headers,
-              createSSE,
-              naiteStore: Naite.createStore(),
-              // auth
-              user: request.user ?? null,
-              passport: {
-                login: request.login.bind(request) as AuthContext["passport"]["login"],
-                logout: request.logout.bind(request) as AuthContext["passport"]["logout"],
-              },
-            },
+      // 모델 메소드 args 생성하여 호출
+      const { ApiParamType } = await import("../types/types");
+      const args = api.parameters.map((param) => {
+        // Context 인젝션
+        if (ApiParamType.isContext(param.type)) {
+          return context;
+        } else {
+          return reqBody[param.name];
+        }
+      });
+      return this.invokeModelMethod(api, args, context, reply);
+    };
+  }
+
+  async invokeModelMethod(
+    api: ExtendedApi,
+    args: unknown[],
+    context: Context,
+    reply: FastifyReply,
+  ): Promise<unknown> {
+    const model = this.syncer.models[api.modelName];
+    return this.asyncLocalStorage.run({ context }, async () => {
+      // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
+      const result = await (model as any)[api.methodName].apply(model, args);
+      reply.type(api.options.contentType ?? "application/json");
+
+      return result;
+    });
+  }
+
+  async createContext(
+    config: SonamuFastifyConfig,
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<Context> {
+    // createSSEFactory 함수에 미리 request의 socket과 reply를 바인딩.
+    const { createSSEFactory } = await import("../stream/sse");
+    const createSSE = (<T extends ZodObject>(
+      _request: FastifyRequest,
+      _reply: FastifyReply,
+      _events: T,
+    ) => createSSEFactory(_request.socket, _reply, _events)).bind(null, request, reply);
+
+    const context: Context = {
+      ...(await Promise.resolve(
+        config.contextProvider(
+          {
             request,
             reply,
-          ),
-        )),
-      };
-
-      const model = this.syncer.models[api.modelName];
-      return this.asyncLocalStorage.run({ context }, async () => {
-        const { ApiParamType } = await import("../types/types");
-        // biome-ignore lint/suspicious/noExplicitAny: model은 모델 인스턴스이므로 메서드 호출 가능
-        const result = await (model as any)[api.methodName].apply(
-          model,
-          api.parameters.map((param) => {
-            // Context 인젝션
-            if (ApiParamType.isContext(param.type)) {
-              return context;
-            } else {
-              return reqBody[param.name];
-            }
-          }),
-        );
-        reply.type(api.options.contentType ?? "application/json");
-
-        return result;
-      });
+            headers: request.headers,
+            createSSE,
+            naiteStore: Naite.createStore(),
+            // auth
+            user: request.user ?? null,
+            passport: {
+              login: request.login.bind(request) as AuthContext["passport"]["login"],
+              logout: request.logout.bind(request) as AuthContext["passport"]["logout"],
+            },
+          },
+          request,
+          reply,
+        ),
+      )),
     };
+    return context;
   }
 
   async startWatcher(): Promise<void> {
