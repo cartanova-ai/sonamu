@@ -293,6 +293,10 @@ export class WorkflowManager {
 
   // Worker를 초기화
   async startWorker() {
+    if (!this.#worker) {
+      return;
+    }
+
     await this.#backend.initialize();
     await this.#worker?.start();
   }

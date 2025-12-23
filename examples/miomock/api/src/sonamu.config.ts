@@ -30,7 +30,7 @@ export default defineConfig({
   },
 
   tasks: {
-    enableWorker: true,
+    enableWorker: !["true", "1"].includes(process.env.DISABLE_WORKER ?? "false"),
     workerOptions: {
       concurrency: 1,
       usePubSub: true,
