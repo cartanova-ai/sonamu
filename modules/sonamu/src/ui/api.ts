@@ -26,6 +26,7 @@ import {
   TemplateKey,
 } from "../types/types";
 import { nonNullable } from "../utils/utils";
+import { setAiApi } from "./ai-api";
 
 export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
   fastify.register(
@@ -53,6 +54,8 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         await waitPromise;
         return result;
       }
+
+      await setAiApi(server);
 
       server.get("/api/sonamu/config", async () => {
         return Sonamu.config;
