@@ -256,7 +256,7 @@ import { defaultCatch } from '@/services/sonamu.shared';
 // import { useCommonModal } from "@/admin-common/CommonModal";
 
 import { ${names.capital}SaveParams } from '@/services/${names.fs}/${names.fs}.types';
-import { ${names.capital}Service } from '@/services/${names.fs}/${names.fs}.service';
+import { ${names.capital}Service } from '@/services/services.generated';
 import { ${names.capital}SubsetA } from '@/services/sonamu.generated';
 ${unique(
   columns

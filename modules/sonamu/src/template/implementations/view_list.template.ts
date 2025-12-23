@@ -326,7 +326,7 @@ import { DateTime } from "luxon";
 import { DelButton, EditButton, AppBreadcrumbs, AddButton, useSelection, useListParams, SonamuCol, numF, formatDate, formatDateTime } from '@sonamu-kit/react-sui';
 
 import { ${names.capital}SubsetA } from "@/services/sonamu.generated";
-import { ${names.capital}Service } from '@/services/${names.fs}/${names.fs}.service';
+import { ${names.capital}Service } from '@/services/services.generated';
 import { ${names.capital}ListParams } from '@/services/${names.fs}/${names.fs}.types';
 ${columnImports}
 ${filterColumns
@@ -346,7 +346,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, error, isLoading } = ${names.capital}Service.use${
+  const { data, refetch, isLoading } = ${names.capital}Service.use${
     names.capitalPlural
   }('A', listParams);
   const { rows, total } = data ?? {};
@@ -359,7 +359,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
     }
 
     ${names.capital}Service.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -371,7 +371,7 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
     }
 
     ${names.capital}Service.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

@@ -63,7 +63,7 @@ class ${entityId}ModelClass extends BaseModelClass<
 > {
   modelName = "${entityId}";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${entityId}" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "${entityId}" })
   async findById<T extends ${entityId}SubsetKey>(
     subset: T,
     id: number
@@ -93,7 +93,7 @@ class ${entityId}ModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "${names.capitalPlural}" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "${names.capitalPlural}" })
   async findMany<T extends ${entityId}SubsetKey, LP extends ${entityId}ListParams>(
     subset: T,
     rawParams?: LP,
@@ -156,7 +156,7 @@ class ${entityId}ModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(
     spa: ${entityId}SaveParams[]
   ): Promise<number[]> {
@@ -175,7 +175,7 @@ class ${entityId}ModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: [ "admin" ] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: [ "admin" ] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

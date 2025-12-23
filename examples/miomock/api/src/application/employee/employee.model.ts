@@ -23,7 +23,7 @@ class EmployeeModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Employee",
   })
   async findById<T extends EmployeeSubsetKey>(
@@ -57,7 +57,7 @@ class EmployeeModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Employees",
   })
   async findMany<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
@@ -170,7 +170,7 @@ class EmployeeModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: EmployeeSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -187,7 +187,7 @@ class EmployeeModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

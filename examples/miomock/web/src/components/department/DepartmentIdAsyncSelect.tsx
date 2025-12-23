@@ -5,8 +5,8 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
-import { DepartmentService } from "../../services/department/department.service";
 import type { DepartmentListParams } from "../../services/department/department.types";
+import { DepartmentService } from "../../services/services.generated";
 import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../../services/sonamu.generated";
 
 export function DepartmentIdAsyncSelect<T extends DepartmentSubsetKey>({

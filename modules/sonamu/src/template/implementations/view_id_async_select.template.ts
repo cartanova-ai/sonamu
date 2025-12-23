@@ -40,7 +40,7 @@ import { DropdownProps, DropdownItemProps, DropdownOnSearchChangeData, Dropdown 
 import { ${names.capital}SubsetKey, ${
         names.capital
       }SubsetMapping } from "@/services/sonamu.generated";
-import { ${names.capital}Service } from "@/services/${names.fs}/${names.fs}.service";
+import { ${names.capital}Service } from "@/services/services.generated";
 import { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 
 export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>(

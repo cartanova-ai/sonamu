@@ -23,7 +23,7 @@ class DepartmentModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Department",
   })
   async findById<T extends DepartmentSubsetKey>(
@@ -57,7 +57,7 @@ class DepartmentModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Departments",
   })
   async findMany<T extends DepartmentSubsetKey, LP extends DepartmentListParams>(
@@ -125,7 +125,7 @@ class DepartmentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: DepartmentSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -142,7 +142,7 @@ class DepartmentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

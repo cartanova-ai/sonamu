@@ -23,8 +23,8 @@ import {
 } from "semantic-ui-react";
 import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
 import { TagSearchInput } from "@/components/tag/TagSearchInput";
+import { TagService } from "@/services/services.generated";
 import type { TagSubsetA } from "@/services/sonamu.generated";
-import { TagService } from "@/services/tag/tag.service";
 import { TagListParams } from "@/services/tag/tag.types";
 
 type TagListProps = {};
@@ -38,7 +38,7 @@ export default function TagList({}: TagListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = TagService.useTags("A", listParams);
+  const { data, refetch, isLoading } = TagService.useTags("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -49,7 +49,7 @@ export default function TagList({}: TagListProps) {
     }
 
     TagService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -61,7 +61,7 @@ export default function TagList({}: TagListProps) {
     }
 
     TagService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

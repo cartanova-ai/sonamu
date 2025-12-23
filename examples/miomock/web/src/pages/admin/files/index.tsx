@@ -31,8 +31,8 @@ import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
 import { ImageUploader } from "@/admin-common/ImageUploader";
 import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
 import { FileSearchInput } from "@/components/file/FileSearchInput";
-import { FileService } from "@/services/file/file.service";
 import { FileListParams, FileSaveParams } from "@/services/file/file.types";
+import { FileService } from "@/services/services.generated";
 import type { FileSubsetA } from "@/services/sonamu.generated";
 
 type FileListProps = {};
@@ -80,7 +80,7 @@ export default function FileList({}: FileListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = FileService.useFiles("A", listParams);
+  const { data, refetch, isLoading } = FileService.useFiles("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -91,7 +91,7 @@ export default function FileList({}: FileListProps) {
     }
 
     FileService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -103,7 +103,7 @@ export default function FileList({}: FileListProps) {
     }
 
     FileService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -201,7 +201,7 @@ export default function FileList({}: FileListProps) {
                       setUploading(true);
                       try {
                         const _urls = await upload();
-                        mutate();
+                        refetch();
                       } finally {
                         setUploading(false);
                       }
@@ -243,7 +243,7 @@ export default function FileList({}: FileListProps) {
                       setUploading(true);
                       try {
                         const _urls = await upload();
-                        mutate();
+                        refetch();
                       } finally {
                         setUploading(false);
                       }

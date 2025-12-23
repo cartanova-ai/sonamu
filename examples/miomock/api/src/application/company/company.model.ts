@@ -24,7 +24,7 @@ class CompanyModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Company",
   })
   async findById<T extends CompanySubsetKey>(
@@ -58,7 +58,7 @@ class CompanyModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Companies",
   })
   async findMany<T extends CompanySubsetKey, LP extends CompanyListParams>(
@@ -111,7 +111,7 @@ class CompanyModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: CompanySaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -128,7 +128,7 @@ class CompanyModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

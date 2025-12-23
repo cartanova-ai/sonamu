@@ -37,7 +37,7 @@ describe("TemplateManager", () => {
           "generated",
           "generated_sso",
           "generated_http",
-          "service",
+          "services",
           "view_list",
           "view_form",
           "model_test",
@@ -105,7 +105,7 @@ describe("TemplateManager", () => {
 
         expect(keys).toContain("entity");
         expect(keys).toContain("model");
-        expect(keys).toContain("service");
+        expect(keys).toContain("services");
       });
     });
 

@@ -1237,19 +1237,7 @@ export const TemplateOptions = z.object({
   bridge: z.object({
     entityId: z.string(),
   }),
-  service: z.object({
-    namesRecord: z.object({
-      fs: z.string(),
-      fsPlural: z.string(),
-      camel: z.string(),
-      camelPlural: z.string(),
-      capital: z.string(),
-      capitalPlural: z.string(),
-      upper: z.string(),
-      constant: z.string(),
-    }),
-    modelTsPath: z.string(),
-  }),
+  services: z.object({}),
   view_list: z.object({
     entityId: z.string(),
     extra: z.unknown(),
@@ -1302,7 +1290,7 @@ export const TemplateKey = z.enum([
   "model",
   "model_test",
   "bridge",
-  "service",
+  "services",
   "view_list",
   "view_list_columns",
   "view_search_input",

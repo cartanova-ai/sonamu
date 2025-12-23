@@ -24,7 +24,7 @@ class FileModelClass extends BaseModelClass<
 > {
   modelName = "File";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "File" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "File" })
   async findById<T extends FileSubsetKey>(subset: T, id: number): Promise<FileSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -51,7 +51,7 @@ class FileModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Files" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Files" })
   async findMany<T extends FileSubsetKey, LP extends FileListParams>(
     subset: T,
     rawParams?: LP,
@@ -102,7 +102,7 @@ class FileModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: FileSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -119,7 +119,7 @@ class FileModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

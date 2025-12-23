@@ -11,9 +11,9 @@ import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { UserService } from "@/services/services.generated";
 import type { UserSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
-import { UserService } from "@/services/user/user.service";
 import { UserSaveParams } from "@/services/user/user.types";
 
 export default function UsersFormPage() {

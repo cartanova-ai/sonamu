@@ -22,7 +22,7 @@ class SyncFixtureModelClass extends BaseModelClass<
 > {
   modelName = "SyncFixture";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "SyncFixture" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "SyncFixture" })
   async findById<T extends SyncFixtureSubsetKey>(
     subset: T,
     id: number,
@@ -52,7 +52,7 @@ class SyncFixtureModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "SyncFixtures" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "SyncFixtures" })
   async findMany<T extends SyncFixtureSubsetKey, LP extends SyncFixtureListParams>(
     subset: T,
     rawParams?: LP,
@@ -111,7 +111,7 @@ class SyncFixtureModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: SyncFixtureSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -128,7 +128,7 @@ class SyncFixtureModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

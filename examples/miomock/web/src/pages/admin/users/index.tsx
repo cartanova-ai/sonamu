@@ -24,8 +24,8 @@ import {
 } from "semantic-ui-react";
 import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
 import { UserSearchInput } from "@/components/user/UserSearchInput";
+import { UserService } from "@/services/services.generated";
 import { UserRoleLabel, type UserSubsetA } from "@/services/sonamu.generated";
-import { UserService } from "@/services/user/user.service";
 import { UserListParams } from "@/services/user/user.types";
 
 type UserListProps = {};
@@ -39,7 +39,7 @@ export default function UserList({}: UserListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = UserService.useUsers("A", listParams);
+  const { data, refetch, isLoading } = UserService.useUsers("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -50,7 +50,7 @@ export default function UserList({}: UserListProps) {
     }
 
     UserService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -62,7 +62,7 @@ export default function UserList({}: UserListProps) {
     }
 
     UserService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

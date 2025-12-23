@@ -3,7 +3,7 @@ import {
   ImageUploaderFrame,
   type ImageUploaderFrameProps,
 } from "@sonamu-kit/react-sui";
-import { FileService } from "../services/file/file.service";
+import { FileService } from "@/services/services.generated";
 
 export type ImageUploaderProps = {} & DistributiveOmit<ImageUploaderFrameProps, "uploader">;
 

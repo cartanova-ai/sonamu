@@ -5,8 +5,8 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
+import { UserService } from "../../services/services.generated";
 import type { UserSubsetKey, UserSubsetMapping } from "../../services/sonamu.generated";
-import { UserService } from "../../services/user/user.service";
 import type { UserListParams } from "../../services/user/user.types";
 
 export function UserIdAsyncSelect<T extends UserSubsetKey>({

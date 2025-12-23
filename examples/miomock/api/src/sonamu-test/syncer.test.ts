@@ -143,7 +143,14 @@ describe("Syncer", () => {
       await syncer.doSyncActions(paths);
 
       const writeFiles = Naite.get("fs/promises:writeFile").result();
-      expect(writeFiles.length).toBeGreaterThan(4);
+      const webRootPath = join(apiRootPath, "../web");
+      expect(writeFiles.map((f) => f.path).sort()).toStrictEqual([
+        join(apiRootPath, "src/application/sonamu.generated.http"),
+        join(webRootPath, "src/services/company/company.types.ts"),
+        join(webRootPath, "src/services/services.generated.ts"),
+        join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),
+      ]);
+      expect(writeFiles.length).toBeGreaterThanOrEqual(2);
     });
 
     // 목적: config 파일이 변경되면 .sonamu.env 파일이 재생성되는지 확인
@@ -1015,7 +1022,7 @@ describe("Syncer", () => {
     // 목적: 다양한 템플릿 키에 대해 checkExistsGenCode가 정상적으로 동작하는지 확인
     test("다양한 템플릿 키", async () => {
       // 여러 템플릿 타입에 대해 테스트
-      const templateKeys = ["entity", "model", "init_types", "service"] as const;
+      const templateKeys = ["entity", "model", "init_types", "services"] as const;
 
       // 각 템플릿 키에 대해 checkExistsGenCode 실행 및 검증
       for (const key of templateKeys) {
@@ -1492,15 +1499,15 @@ describe("Syncer", () => {
       });
 
       // 목적: handleModelOrFrameChange에서 모킹된 service 템플릿 적용 확인
-      test("handleModelOrFrameChange - 모킹된 service 템플릿", async () => {
-        const originalService = TemplateManager.get("service");
+      test("handleModelOrFrameChange - 모킹된 services 템플릿", async () => {
+        const originalService = TemplateManager.get("services");
 
-        class CustomServiceTemplate extends Template {
+        class CustomServicesTemplate extends Template {
           constructor() {
-            super("service");
+            super("services");
           }
 
-          async render(options: TemplateOptions["service"]) {
+          async render(options: TemplateOptions["services"]) {
             const result = await originalService.render(options);
             return {
               ...result,
@@ -1513,7 +1520,7 @@ describe("Syncer", () => {
           }
         }
 
-        const spy = mockTemplateManagerGet("service", new CustomServiceTemplate());
+        const spy = mockTemplateManagerGet("services", new CustomServicesTemplate());
 
         try {
           await syncer.handleModelOrFrameChange({

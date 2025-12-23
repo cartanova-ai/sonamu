@@ -5,8 +5,8 @@ import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
-import { EmployeeService } from "@/services/employee/employee.service";
 import { EmployeeSaveParams } from "@/services/employee/employee.types";
+import { EmployeeService } from "@/services/services.generated";
 import type { EmployeeSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 

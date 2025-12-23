@@ -33,7 +33,7 @@ class UserModelClass extends BaseModelClass<
 > {
   modelName = "User";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "User" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
   async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -61,7 +61,7 @@ class UserModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Users",
     timeout: 1000,
   })
@@ -124,7 +124,7 @@ class UserModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: UserSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -141,7 +141,7 @@ class UserModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 
@@ -153,7 +153,7 @@ class UserModelClass extends BaseModelClass<
     return ids.length;
   }
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async getMyIP(): Promise<{ ip: string }> {
     const context = Sonamu.getContext();
     return {
@@ -161,7 +161,7 @@ class UserModelClass extends BaseModelClass<
     };
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async me(): Promise<UserSubsetMapping["SS"] | null> {
     const context = Sonamu.getContext();
 
@@ -174,7 +174,7 @@ class UserModelClass extends BaseModelClass<
     return user;
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async login(params: UserLoginParams): Promise<{ user: UserSubsetMapping["SS"] }> {
     const rdb = this.getDB("r");
     const context = Sonamu.getContext();
@@ -202,14 +202,14 @@ class UserModelClass extends BaseModelClass<
     return { user: await this.findById("SS", user.id) };
   }
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async logout(): Promise<{ message: string }> {
     const context = Sonamu.getContext();
     await context.passport.logout();
     return { message: "로그아웃 되었습니다" };
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async register(params: UserRegisterParams): Promise<{ user: UserSubsetMapping["SS"] }> {
     const rdb = this.getDB("r");
     const wdb = this.getDB("w");
@@ -251,7 +251,7 @@ class UserModelClass extends BaseModelClass<
   //   return users;
   // }
 
-  @api({ httpMethod: "GET" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   @transactional({ readOnly: true })
   async trxTest(): Promise<void> {
     const wdb = this.getPuri("w");

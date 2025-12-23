@@ -23,8 +23,8 @@ import {
 } from "semantic-ui-react";
 import { EmployeeOrderBySelect } from "@/components/employee/EmployeeOrderBySelect";
 import { EmployeeSearchInput } from "@/components/employee/EmployeeSearchInput";
-import { EmployeeService } from "@/services/employee/employee.service";
 import { EmployeeListParams } from "@/services/employee/employee.types";
+import { EmployeeService } from "@/services/services.generated";
 import type { EmployeeSubsetA } from "@/services/sonamu.generated";
 
 type EmployeeListProps = {};
@@ -38,7 +38,7 @@ export default function EmployeeList({}: EmployeeListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = EmployeeService.useEmployees("A", listParams);
+  const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -49,7 +49,7 @@ export default function EmployeeList({}: EmployeeListProps) {
     }
 
     EmployeeService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -61,7 +61,7 @@ export default function EmployeeList({}: EmployeeListProps) {
     }
 
     EmployeeService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

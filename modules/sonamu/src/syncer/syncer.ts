@@ -375,22 +375,7 @@ export class Syncer {
   }
 
   /**
-   * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
-   * @returns 생성된 파일 경로 배열.
-   */
-  async actionGenerateSchemas(): Promise<AbsolutePath[]> {
-    return (
-      await Promise.all([
-        generateTemplate("generated_sso", {}, { overwrite: true }),
-        generateTemplate("generated", {}, { overwrite: true }),
-      ])
-    )
-      .flat()
-      .flat();
-  }
-
-  /**
-   * *.service.ts를 생성합니다.
+   * services.generated.ts를 생성합니다.
    * @param paramsArray
    * @returns 생성된 파일 경로 배열.
    */
@@ -400,14 +385,29 @@ export class Syncer {
     }[],
   ): Promise<string[]> {
     Naite.t("actionGenerateServices", paramsArray);
+
+    // services.generated.ts 통합 파일 생성
+    const servicesFile = await generateTemplate(
+      "services",
+      {},
+      {
+        overwrite: true,
+      },
+    );
+
+    return [...servicesFile];
+  }
+
+  /**
+   * sonamu.generated.ts와 sonamu.generated.sso.ts를 생성합니다.
+   * @returns 생성된 파일 경로 배열.
+   */
+  async actionGenerateSchemas(): Promise<AbsolutePath[]> {
     return (
-      await Promise.all(
-        paramsArray.map(async (params) =>
-          generateTemplate("service", params as TemplateOptions["service"], {
-            overwrite: true,
-          }),
-        ),
-      )
+      await Promise.all([
+        generateTemplate("generated_sso", {}, { overwrite: true }),
+        generateTemplate("generated", {}, { overwrite: true }),
+      ])
     )
       .flat()
       .flat();

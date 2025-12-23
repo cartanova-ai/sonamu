@@ -1,7 +1,8 @@
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { UserService } from "../services/services.generated";
 import type { UserSubsetSS } from "../services/sonamu.generated";
-import { UserService } from "../services/user/user.service";
 import type { UserLoginParams } from "../services/user/user.types";
 
 interface AuthContextType {
@@ -9,7 +10,7 @@ interface AuthContextType {
   loading: boolean;
   login: (loginParams: UserLoginParams) => void;
   logout: () => void;
-  mutate: () => void;
+  refetch: () => void;
 }
 
 const AuthContext = React.createContext<AuthContextType>({
@@ -17,14 +18,15 @@ const AuthContext = React.createContext<AuthContextType>({
 } as AuthContextType);
 
 export function AuthProvider({ children }: { children?: React.ReactNode }) {
-  const { data: user, isLoading: swrLoading, mutate } = UserService.useMe();
-  const [loading, setLoading] = useState<boolean>(swrLoading);
+  const queryClient = useQueryClient();
+  const { data: user, isLoading, refetch } = UserService.useMe();
+  const [loading, setLoading] = useState<boolean>(isLoading);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    setLoading(swrLoading);
-  }, [swrLoading]);
+    setLoading(isLoading);
+  }, [isLoading]);
 
   const value = {
     user: user ?? null,
@@ -32,15 +34,15 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     login: (loginParams: UserLoginParams) => {
       setLoading(true);
       UserService.login(loginParams)
-        .then(({ user: _user }) => {
+        .then(async ({ user: _user }) => {
           const from =
             (location.state as { from?: { pathname?: string } } | undefined)?.from?.pathname ??
             "/admin";
 
-          mutate().then(() => {
-            navigate(from, { replace: true });
-            setLoading(false);
-          });
+          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
+          navigate(from, { replace: true });
+          setLoading(false);
         })
         .catch((error) => {
           console.error("Login failed:", error);
@@ -51,14 +53,15 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
     logout: () => {
       setLoading(true);
       UserService.logout()
-        .then(() => {
-          mutate();
+        .then(async () => {
+          await queryClient.invalidateQueries({ queryKey: ["User", "me"] });
+          await queryClient.refetchQueries({ queryKey: ["User", "me"] });
         })
         .finally(() => {
           setLoading(false);
         });
     },
-    mutate,
+    refetch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

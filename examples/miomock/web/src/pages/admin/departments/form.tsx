@@ -7,11 +7,11 @@ import { defaultCatch } from "../../../services/sonamu.shared";
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "../../../admin-common/CommonModal";
 
-import { CompanyIdAsyncSelect } from "../../../components/company/CompanyIdAsyncSelect";
-import { DepartmentIdAsyncSelect } from "../../../components/department/DepartmentIdAsyncSelect";
-import { DepartmentService } from "../../../services/department/department.service";
-import { DepartmentSaveParams } from "../../../services/department/department.types";
-import type { DepartmentSubsetA } from "../../../services/sonamu.generated";
+import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
+import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
+import { DepartmentSaveParams } from "@/services/department/department.types";
+import { DepartmentService } from "@/services/services.generated";
+import type { DepartmentSubsetA } from "@/services/sonamu.generated";
 
 export default function DepartmentsFormPage() {
   // 라우팅 searchParams

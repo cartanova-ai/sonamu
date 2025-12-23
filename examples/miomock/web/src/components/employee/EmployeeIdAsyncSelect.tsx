@@ -5,8 +5,8 @@ import {
   type DropdownOnSearchChangeData,
   type DropdownProps,
 } from "semantic-ui-react";
-import { EmployeeService } from "../../services/employee/employee.service";
 import type { EmployeeListParams } from "../../services/employee/employee.types";
+import { EmployeeService } from "../../services/services.generated";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../../services/sonamu.generated";
 
 export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({

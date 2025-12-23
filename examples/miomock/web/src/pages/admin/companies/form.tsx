@@ -3,9 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
-
-import { CompanyService } from "@/services/company/company.service";
 import { CompanySaveParams } from "@/services/company/company.types";
+import { CompanyService } from "@/services/services.generated";
 import type { CompanySubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 

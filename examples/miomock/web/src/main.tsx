@@ -1,22 +1,25 @@
 import { loadDynamicRoutes } from "@sonamu-kit/react-sui";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { SWRConfig } from "swr";
 import App from "./App";
 import { AuthProvider } from "./admin-common/auth";
-import { swrFetcher } from "./services/sonamu.shared";
 import "semantic-ui-css/semantic.min.css";
 import "./index.css";
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+  },
+});
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <SWRConfig
-    value={{
-      errorRetryInterval: 3000,
-      errorRetryCount: 3,
-      fetcher: swrFetcher,
-      revalidateOnFocus: true,
-    }}
-  >
+  <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
         <Routes>
@@ -27,5 +30,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         </Routes>
       </AuthProvider>
     </BrowserRouter>
-  </SWRConfig>,
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>,
 );

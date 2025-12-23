@@ -33,7 +33,7 @@ class ProjectModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Project",
   })
   async findById<T extends ProjectSubsetKey>(
@@ -67,7 +67,7 @@ class ProjectModelClass extends BaseModelClass<
 
   @api({
     httpMethod: "GET",
-    clients: ["axios", "swr"],
+    clients: ["axios", "tanstack-query"],
     resourceName: "Projects",
   })
   async findMany<T extends ProjectSubsetKey, LP extends ProjectListParams>(
@@ -132,7 +132,7 @@ class ProjectModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: ProjectSaveParams[]): Promise<number[]> {
     const puri = this.getPuri("w");
 
@@ -172,7 +172,7 @@ class ProjectModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

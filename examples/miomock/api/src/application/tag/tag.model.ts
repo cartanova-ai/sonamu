@@ -22,7 +22,7 @@ class TagModelClass extends BaseModelClass<
 > {
   modelName = "Tag";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tag" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Tag" })
   async findById<T extends TagSubsetKey>(subset: T, id: number): Promise<TagSubsetMapping[T]> {
     const { rows } = await this.findMany(subset, {
       id,
@@ -49,7 +49,7 @@ class TagModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Tags" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Tags" })
   async findMany<T extends TagSubsetKey, LP extends TagListParams>(
     subset: T,
     rawParams?: LP,
@@ -100,7 +100,7 @@ class TagModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: TagSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -117,7 +117,7 @@ class TagModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

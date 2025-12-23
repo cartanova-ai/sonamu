@@ -24,8 +24,8 @@ import {
 } from "semantic-ui-react";
 import { DepartmentOrderBySelect } from "@/components/department/DepartmentOrderBySelect";
 import { DepartmentSearchInput } from "@/components/department/DepartmentSearchInput";
-import { DepartmentService } from "@/services/department/department.service";
 import { DepartmentListParams } from "@/services/department/department.types";
+import { DepartmentService } from "@/services/services.generated";
 import type { DepartmentSubsetA } from "@/services/sonamu.generated";
 
 type DepartmentListProps = {};
@@ -39,7 +39,7 @@ export default function DepartmentList({}: DepartmentListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = DepartmentService.useDepartments("A", listParams);
+  const { data, refetch, isLoading } = DepartmentService.useDepartments("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -50,7 +50,7 @@ export default function DepartmentList({}: DepartmentListProps) {
     }
 
     DepartmentService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -62,7 +62,7 @@ export default function DepartmentList({}: DepartmentListProps) {
     }
 
     DepartmentService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

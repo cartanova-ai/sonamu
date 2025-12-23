@@ -3,9 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
-
-import { FileService } from "@/services/file/file.service";
 import { FileSaveParams } from "@/services/file/file.types";
+import { FileService } from "@/services/services.generated";
 import type { FileSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 

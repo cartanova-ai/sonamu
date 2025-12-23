@@ -27,7 +27,7 @@ class DocumentModelClass extends BaseModelClass<
 > {
   modelName = "Document";
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"], resourceName: "Document" })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Document" })
   async findById<T extends DocumentSubsetKey>(
     subset: T,
     id: number,
@@ -58,7 +58,7 @@ class DocumentModelClass extends BaseModelClass<
     return rows[0] ?? null;
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async findMany<T extends DocumentSubsetKey, LP extends DocumentListParams>(
     subset: T,
     rawParams?: LP,
@@ -133,7 +133,11 @@ class DocumentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", clients: ["axios", "swr"], resourceName: "SimilarDocumentsByVector" })
+  @api({
+    httpMethod: "POST",
+    clients: ["axios", "tanstack-query"],
+    resourceName: "SimilarDocumentsByVector",
+  })
   async findManySemanticByVector<T extends DocumentSubsetKey>(
     subset: T,
     params: DocumentSemanticParams,
@@ -144,7 +148,7 @@ class DocumentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "swr"] })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
   async embedQuery(
     text: string,
     model: "voyage" | "openai",
@@ -155,7 +159,7 @@ class DocumentModelClass extends BaseModelClass<
     return queryResult.embedding;
   }
 
-  @api({ httpMethod: "POST" })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
   async save(spa: DocumentSaveParams[]): Promise<number[]> {
     const wdb = this.getPuri("w");
 
@@ -172,7 +176,7 @@ class DocumentModelClass extends BaseModelClass<
     });
   }
 
-  @api({ httpMethod: "POST", guards: ["admin"] })
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
   async del(ids: number[]): Promise<number> {
     const wdb = this.getPuri("w");
 

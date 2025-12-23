@@ -23,8 +23,8 @@ import {
 } from "semantic-ui-react";
 import { CompanyOrderBySelect } from "@/components/company/CompanyOrderBySelect";
 import { CompanySearchInput } from "@/components/company/CompanySearchInput";
-import { CompanyService } from "@/services/company/company.service";
 import { CompanyListParams } from "@/services/company/company.types";
+import { CompanyService } from "@/services/services.generated";
 import type { CompanySubsetA } from "@/services/sonamu.generated";
 
 type CompanyListProps = {};
@@ -38,7 +38,7 @@ export default function CompanyList({}: CompanyListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = CompanyService.useCompanies("A", listParams);
+  const { data, refetch, isLoading } = CompanyService.useCompanies("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -49,7 +49,7 @@ export default function CompanyList({}: CompanyListProps) {
     }
 
     CompanyService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -61,7 +61,7 @@ export default function CompanyList({}: CompanyListProps) {
     }
 
     CompanyService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 

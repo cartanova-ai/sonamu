@@ -115,7 +115,14 @@ async function resolveRenderedTemplate(
   const importDefs = importKeys
     .reduce(
       (r, importKey) => {
-        const modulePath = EntityManager.getModulePath(importKey);
+        let modulePath = importKey;
+        try {
+          modulePath = EntityManager.getModulePath(importKey);
+        } catch (error) {
+          throw new Error(
+            `[resolveRenderedTemplate:${key}] ${importKey} 모듈 경로 찾기 실패: ${error}`,
+          );
+        }
         let importPath = modulePath;
         if (modulePath.includes("/") || modulePath.includes(".")) {
           importPath = wrapIf(path.relative(path.dirname(filePath), modulePath), (p) => [

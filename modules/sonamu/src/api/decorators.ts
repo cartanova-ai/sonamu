@@ -21,7 +21,12 @@ export interface GuardKeys {
   user: true;
 }
 export type GuardKey = keyof GuardKeys;
-export type ServiceClient = "axios" | "axios-multipart" | "swr" | "window-fetch";
+export type ServiceClient =
+  | "axios"
+  | "axios-multipart"
+  | "tanstack-query"
+  | "tanstack-mutation"
+  | "window-fetch";
 export type ApiDecoratorOptions = {
   httpMethod?: HTTPMethods;
   contentType?:

@@ -7,8 +7,8 @@ import { ImageUploader } from "@/admin-common/ImageUploader";
 import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
-import { ProjectService } from "@/services/project/project.service";
 import { ProjectSaveParams } from "@/services/project/project.types";
+import { ProjectService } from "@/services/services.generated";
 import type { ProjectSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 

@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
+import { TagService } from "@/services/services.generated";
 import type { TagSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
-import { TagService } from "@/services/tag/tag.service";
 import { TagSaveParams } from "@/services/tag/tag.types";
 
 export default function TagsFormPage() {

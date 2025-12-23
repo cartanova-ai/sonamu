@@ -24,8 +24,8 @@ import {
 } from "semantic-ui-react";
 import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
 import { ProjectSearchInput } from "@/components/project/ProjectSearchInput";
-import { ProjectService } from "@/services/project/project.service";
 import { ProjectListParams } from "@/services/project/project.types";
+import { ProjectService } from "@/services/services.generated";
 import { ProjectStatusLabel, type ProjectSubsetA } from "@/services/sonamu.generated";
 
 type ProjectListProps = {};
@@ -39,7 +39,7 @@ export default function ProjectList({}: ProjectListProps) {
   });
 
   // 리스트 쿼리
-  const { data, mutate, isLoading } = ProjectService.useProjects("A", listParams);
+  const { data, refetch, isLoading } = ProjectService.useProjects("A", listParams);
   const { rows, total } = data ?? {};
 
   // 삭제
@@ -50,7 +50,7 @@ export default function ProjectList({}: ProjectListProps) {
     }
 
     ProjectService.del(ids).then(() => {
-      mutate();
+      refetch();
     });
   };
 
@@ -62,7 +62,7 @@ export default function ProjectList({}: ProjectListProps) {
     }
 
     ProjectService.del(selectedKeys).then(() => {
-      mutate();
+      refetch();
     });
   };
 
