@@ -10,7 +10,7 @@ import { MigrationActionForm } from "../entities/_action_form";
 
 type MigrationsIndexProps = {};
 export default function MigrationsIndex(_props: MigrationsIndexProps) {
-  const { data, error, mutate } = SonamuUIService.useMigrationStatus();
+  const { data, error, refetch } = SonamuUIService.useMigrationStatus();
   const { status } = data ?? {};
   const { preparedCodes, conns, codes } = status ?? {};
   const migrationStatusError = status?.error;
@@ -64,7 +64,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
     setLoading(true);
     SonamuUIService.migrationsDelCodes(selectedCodeNames)
       .then(() => {
-        mutate();
+        refetch();
       })
       .catch(defaultCatch)
       .finally(() => {
@@ -78,7 +78,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
       .then(() => {
         // TS컴파일을 위해 0.5초 대기
         setTimeout(() => {
-          mutate();
+          refetch();
         }, 500);
       })
       .catch(defaultCatch)
@@ -97,7 +97,7 @@ export default function MigrationsIndex(_props: MigrationsIndexProps) {
     const targets = _targets ?? selectedConnKeys;
     openModal(<MigrationActionForm action={action} targets={targets} conns={conns} />, {
       onCompleted: () => {
-        mutate();
+        refetch();
       },
     });
   };

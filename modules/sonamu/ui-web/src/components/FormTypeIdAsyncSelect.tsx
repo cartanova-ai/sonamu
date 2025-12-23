@@ -15,7 +15,7 @@ export function FormTypeIdAsyncSelect({
     propName: string;
   };
 }) {
-  const { data, isLoading, mutate } = SonamuUIService.useTypeIds(filter);
+  const { data, isLoading, refetch } = SonamuUIService.useTypeIds(filter);
   const { typeIds } = data ?? {};
 
   const promptAddEnum = () => {
@@ -35,7 +35,7 @@ export function FormTypeIdAsyncSelect({
       newEnumId,
     })
       .then(() => {
-        mutate();
+        refetch();
         setTimeout(() => {
           if (props.onChange) {
             props.onChange({} as SyntheticEvent<HTMLElement, Event>, {
@@ -62,7 +62,7 @@ export function FormTypeIdAsyncSelect({
         selectOnBlur={false}
         {...props}
       />
-      <Button icon="refresh" size="mini" onClick={() => mutate()} />
+      <Button icon="refresh" size="mini" onClick={() => refetch()} />
       {withAddEnumButton && <Button icon="plus" size="mini" onClick={() => promptAddEnum()} />}
     </>
   );

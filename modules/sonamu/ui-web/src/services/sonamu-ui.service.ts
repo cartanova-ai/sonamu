@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import type {
   DuplicateCheckOptions,
   Entity,
@@ -12,14 +13,7 @@ import type {
   PathAndCode,
   SonamuDBConfig,
 } from "sonamu";
-import useSWR, { type SWRResponse } from "swr";
-import { fetch, swrPostFetcher } from "./sonamu.shared";
-
-type SWRError = {
-  name: string;
-  message: string;
-  statusCode: number;
-};
+import { fetch } from "./sonamu.shared";
 
 export type ExtendedEntity = Entity & {
   flattenSubsetRows: FlattenSubsetRow[];
@@ -32,17 +26,27 @@ export namespace SonamuUIService {
       url: `/sonamu-ui/api/sonamu/config`,
     });
   }
-  export function useEntities(): SWRResponse<{ entities: ExtendedEntity[] }, SWRError> {
-    return useSWR<{ entities: ExtendedEntity[] }, SWRError>([`/sonamu-ui/api/entity/findMany`]);
+  export function useEntities() {
+    return useQuery({
+      queryKey: ["entities", "findMany"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/entity/findMany`,
+        }) as Promise<{ entities: ExtendedEntity[] }>,
+    });
   }
 
-  export function useTypeIds(
-    filter?: "enums" | "types",
-  ): SWRResponse<{ typeIds: string[] }, SWRError> {
-    return useSWR<{ typeIds: string[] }, SWRError>([
-      `/sonamu-ui/api/entity/typeIds`,
-      { filter, reload: "1" },
-    ]);
+  export function useTypeIds(filter?: "enums" | "types") {
+    return useQuery({
+      queryKey: ["entity", "typeIds", filter],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/entity/typeIds`,
+          params: { filter, reload: "1" },
+        }) as Promise<{ typeIds: string[] }>,
+    });
   }
 
   export function createEntity(form: {
@@ -239,8 +243,15 @@ export namespace SonamuUIService {
     });
   }
 
-  export function useMigrationStatus(): SWRResponse<{ status: MigrationStatus }, SWRError> {
-    return useSWR<{ status: MigrationStatus }, SWRError>([`/sonamu-ui/api/migrations/status`]);
+  export function useMigrationStatus() {
+    return useQuery({
+      queryKey: ["migrations", "status"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/migrations/status`,
+        }) as Promise<{ status: MigrationStatus }>,
+    });
   }
 
   export function migrationsRunAction(
@@ -303,18 +314,26 @@ export namespace SonamuUIService {
     });
   }
 
-  export function useScaffoldingStatus(
-    params: ScaffoldingGetStatusParams,
-  ): SWRResponse<{ statuses: ScaffoldingStatus[] }, SWRError> {
-    const route = (() => {
+  export function useScaffoldingStatus(params: ScaffoldingGetStatusParams) {
+    const enabled = (() => {
       if (params.entityIds.length === 0 || params.templateKeys.length === 0) {
-        return null;
+        return false;
       } else if (params.templateGroupName === "Enums" && params.enumIds.length === 0) {
-        return null;
+        return false;
       }
-      return [`/sonamu-ui/api/scaffolding/getStatus`, params];
+      return true;
     })();
-    return useSWR<{ statuses: ScaffoldingStatus[] }, SWRError>(route, swrPostFetcher);
+
+    return useQuery({
+      queryKey: ["scaffolding", "getStatus", params],
+      queryFn: () =>
+        fetch({
+          method: "POST",
+          url: `/sonamu-ui/api/scaffolding/getStatus`,
+          data: params,
+        }) as Promise<{ statuses: ScaffoldingStatus[] }>,
+      enabled,
+    });
   }
   export function scaffoldingGenerate(options: ScaffoldingGenerateOptions[]): Promise<number> {
     return fetch({

@@ -20,9 +20,8 @@ type EntitiesShowPageProps = {};
 export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   const { showSearch } = useOutletContext<{ showSearch: boolean }>();
 
-  const { data, error, mutate } = SonamuUIService.useEntities();
+  const { data, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
-  const isLoading = !error && !data;
 
   // naviagte
   const navigate = useNavigate();
@@ -50,7 +49,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
     SonamuUIService.delEntity(entity.id)
       .then(() => {
-        mutate();
+        refetch();
         navigate("/entities");
       })
       .catch(defaultCatch);
@@ -153,7 +152,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                 )
                   .then(({ updated }) => {
                     entity.enumLabels = updated;
-                    mutate();
+                    refetch();
                   })
                   .catch(defaultCatch);
               }
@@ -232,7 +231,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifySubset(entity.id, subsetKey, newSubset)
       .then(({ updated }) => {
         entity.subsets[subsetKey] = updated;
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -250,7 +249,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifySubset(entity.id, subsetKey, newSubset)
       .then(({ updated }) => {
         entity.subsets[subsetKey] = updated;
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -274,7 +273,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         entity.subsets[subsetKey] = updated;
         entity.subsetsInternal = entity.subsetsInternal ?? {};
         entity.subsetsInternal[subsetKey] = updatedInternal ?? [];
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -295,7 +294,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         entity.subsets[subsetKey] = updated;
         entity.subsetsInternal = entity.subsetsInternal ?? {};
         entity.subsetsInternal[subsetKey] = updatedInternal ?? [];
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -382,7 +381,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifySubset(entity.id, subsetKey, newSubset)
       .then(({ updated }) => {
         entity.subsets[subsetKey] = updated;
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -405,7 +404,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           [which]: value,
         })
           .then(() => {
-            mutate();
+            refetch();
             return resolve();
           })
           .catch((e) => {
@@ -445,7 +444,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
           await SonamuUIService.createProp(entity.id, data as EntityProp, at);
         }
 
-        mutate();
+        refetch();
         setTimeout(() => {
           setCursor({
             ...cursor,
@@ -466,7 +465,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     }
 
     await SonamuUIService.delProp(entity.id, at);
-    mutate();
+    refetch();
     setTimeout(() => {
       setCursor({
         ...cursor,
@@ -516,7 +515,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         SonamuUIService.modifyIndexes(entity.id, newIndexes)
           .then(({ updated }) => {
             entity.indexes = updated;
-            mutate();
+            refetch();
             setTimeout(() => {
               setCursor({
                 ...cursor,
@@ -542,7 +541,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifyIndexes(entity.id, newIndexes)
       .then(({ updated }) => {
         entity.indexes = updated;
-        mutate();
+        refetch();
         setTimeout(() => {
           setCursor({
             ...cursor,
@@ -564,7 +563,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifySubset(entity!.id, subsetKey, ["id"])
       .then(({ updated }) => {
         entity!.subsets[subsetKey] = updated;
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -577,7 +576,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.delSubset(entity!.id, subsetKey)
       .then((_res) => {
         delete entity!.subsets[subsetKey];
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -621,7 +620,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.modifyEnumLabels(entity.id, enumLabelsArrayToEnumLabels(enumLabelsArray))
       .then(({ updated }) => {
         entity.enumLabels = updated;
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -635,7 +634,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
       after: newEnumId,
     })
       .then(() => {
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -650,7 +649,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
     SonamuUIService.deleteEnumId({ entityId: entity.id, enumId })
       .then(() => {
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -666,7 +665,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
 
     SonamuUIService.createEnumId({ entityId: entity.id, newEnumId })
       .then(() => {
-        mutate();
+        refetch();
       })
       .catch(defaultCatch);
   };
@@ -763,7 +762,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                         }
 
                         SonamuUIService.moveProp(entity.id, at, to).then(() => {
-                          mutate();
+                          refetch();
 
                           dragStartPropIndex.current = null;
                           setDragEnterPropIndex(null);

@@ -87,7 +87,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const {
     data: scaffoldingData,
     isLoading: scaffoldingIsLoading,
-    mutate: scaffoldMutate,
+    refetch: scaffoldRefetch,
   } = SonamuUIService.useScaffoldingStatus(selected);
   const { statuses } = scaffoldingData ?? {};
 
@@ -133,7 +133,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     }));
     SonamuUIService.scaffoldingGenerate(options)
       .then(() => {
-        scaffoldMutate();
+        scaffoldRefetch();
       })
       .catch(defaultCatch);
   };

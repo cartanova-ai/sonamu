@@ -1,7 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: fetching 함수는 any사용 */
 
 import axios, { type AxiosRequestConfig } from "axios";
-import qs from "qs";
 import type { ZodIssue } from "zod";
 
 const baseURL = "";
@@ -22,30 +21,6 @@ export async function fetch(options: AxiosRequestConfig) {
       throw new SonamuError(e.response.status, d.message, d.issues);
     }
     throw e;
-  }
-}
-
-export async function swrFetcher(args: [string, object]): Promise<any> {
-  try {
-    const [url, params] = args;
-    const res = await axios.get(`${baseURL}${url}?${qs.stringify(params)}`);
-    return res.data;
-  } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
-    error.statusCode = e.response?.data.statusCode ?? e.response.status;
-    throw error;
-  }
-}
-
-export async function swrPostFetcher(args: [string, object]): Promise<any> {
-  try {
-    const [url, params] = args;
-    const res = await axios.post(`${baseURL}${url}`, params);
-    return res.data;
-  } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
-    error.statusCode = e.response?.data.statusCode ?? e.response.status;
-    throw error;
   }
 }
 

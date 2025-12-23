@@ -11,9 +11,8 @@ type EntitiesLayoutProps = {};
 export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const context = useOutletContext<{ showSearch: boolean }>();
 
-  const { data, error, mutate } = SonamuUIService.useEntities();
+  const { data, error, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
-  const isLoading = !error && !data;
 
   const params = useParams<{ entityId: string }>();
 
@@ -36,7 +35,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
         }
       },
       onCompleted: (newEntityId) => {
-        mutate();
+        refetch();
         setTimeout(() => {
           navigate(`/entities/${newEntityId}`);
         }, 200);
@@ -45,14 +44,14 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   };
 
   const handleEntityCreated = (entityId: string) => {
-    mutate();
+    refetch();
     setTimeout(() => {
       navigate(`/entities/${entityId}`);
     }, 200);
   };
 
   const handleEntityUpdated = (_entityId: string, _updatedFields: string[]) => {
-    mutate();
+    refetch();
   };
 
   return (
