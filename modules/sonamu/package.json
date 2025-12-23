@@ -1,6 +1,6 @@
 {
   "name": "sonamu",
-  "version": "0.7.15",
+  "version": "0.7.16",
   "description": "Sonamu — TypeScript Fullstack API Framework",
   "keywords": [
     "typescript",
@@ -107,12 +107,13 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@ai-sdk/openai": "3.0.0-beta.75",
-    "@ai-sdk/provider": "3.0.0-beta.22",
-    "@ai-sdk/provider-utils": "4.0.0-beta.40",
+    "@ai-sdk/openai": "3.0.0",
+    "@ai-sdk/provider": "3.0.0",
+    "@ai-sdk/provider-utils": "4.0.0",
+    "@ai-sdk/anthropic": "3.0.0",
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.13.5",
-    "ai": "6.0.0-beta.138",
+    "ai": "6.0.1",
     "fastify": "^4.23.2",
     "knex": "^3.1.0",
     "pgvector": "^0.2.1",
@@ -127,6 +128,9 @@
       "optional": true
     },
     "@ai-sdk/provider-utils": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
       "optional": true
     },
     "ai": {

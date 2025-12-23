@@ -13,7 +13,7 @@ const config: Knex.Config = {
 } as const;
 
 // Use Postgres (configured with Knex config)
-const backend = await BackendPostgres.connect(config, {
+const backend = new BackendPostgres(config, {
   runMigrations: false,
 });
 
