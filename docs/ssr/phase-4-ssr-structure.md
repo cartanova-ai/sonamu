@@ -2,6 +2,32 @@
 
 > **목표**: SSR 렌더링 파이프라인 구축 및 타입 안전한 preload 설정 구조
 
+## 핵심 설계 변경
+
+### SSR 데이터 로딩 방식
+
+**기존 계획 (HTTP 경유):**
+```
+registerSSR → preloadConfig 생성
+→ entry-server.js에서 web의 Services 호출 (axios)
+→ API 서버 HTTP 요청
+→ queryClient.prefetchQuery
+```
+
+**새로운 방식 (직접 호출):**
+```
+registerSSR → preloadConfig 생성
+→ Sonamu.invokeApiForSSR로 API Model 메소드 직접 호출
+→ 결과를 entry-server.js에 전달
+→ queryClient.setQueryData로 직접 주입
+```
+
+**장점:**
+1. HTTP 오버헤드 제거 (서버 내부에서 직접 호출)
+2. SonamuContext의 세션 정보 완벽 동기화 (ALS 활용)
+
+---
+
 ## 4.1 Entry 파일 구조 생성
 
 ### 작업 위치
@@ -124,14 +150,13 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { renderToString } from 'react-dom/server';
 import Main from './Main';
 import { routeTree } from './routeTree.gen';
-import * as Services from './services/services.generated';
 
-export type PreloadConfig = {
-  query: string;
-  params: any[];
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
 };
 
-export async function render(url: string, preloadConfig: PreloadConfig[] = []) {
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
   // QueryClient 생성
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -142,14 +167,9 @@ export async function render(url: string, preloadConfig: PreloadConfig[] = []) {
     },
   });
   
-  // Preload queries
-  for (const { query, params } of preloadConfig) {
-    const [namespace, method] = query.split('.');
-    const queryOptionsFn = (Services as any)[namespace][method];
-    if (queryOptionsFn) {
-      const queryOptions = queryOptionsFn(...params);
-      await queryClient.prefetchQuery(queryOptions);
-    }
+  // Preloaded 데이터를 queryClient에 직접 주입
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
   }
   
   // Dehydrate
@@ -224,8 +244,9 @@ export async function render(url: string, preloadConfig: PreloadConfig[] = []) {
 ```typescript
 // Branded type - 실수로 일반 객체 사용 방지
 export type SSRQuery = { 
-  query: string; 
-  params: any[] 
+  modelName: string;   // 'UserModel'
+  methodName: string;  // 'findById'
+  params: any[];       // [subset, id] - Context 제외한 실제 파라미터
 } & { __brand: 'SSRQuery' };
 
 export type PreloadConfig = SSRQuery[];
@@ -237,6 +258,11 @@ export type SSRRoute = {
     title?: string;
     meta?: Array<{ name?: string; property?: string; content: string }>;
   };
+};
+
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
 };
 ```
 
@@ -307,10 +333,11 @@ export class Template__queries extends Template {
         const paramsDef = apiParamToTsCode(paramsWithoutContext, importKeys);
         const paramNames = paramsWithoutContext.map(p => p.name).join(', ');
         
-        // getUser 형태로 생성 (실제로는 getUserQueryOptions 호출)
+        // getUser 형태로 생성 (실제로는 Model의 findById 호출)
         functions.push(`
   export const ${api.methodName} = ${typeParamsDef}(${paramsDef}): SSRQuery => ({
-    query: '${modelName}Service.${api.methodName}QueryOptions',
+    modelName: '${api.modelName}',
+    methodName: '${api.methodName}',
     params: [${paramNames}]
   } as SSRQuery);
         `.trim());
@@ -383,12 +410,13 @@ if (diffGroups.entity.length > 0 || diffGroups.model.length > 0) {
 mkdir -p /Users/minsangk/Development/sonamu/modules/sonamu/src/ssr
 ```
 
-### 2. types.ts (이미 4.2에서 정의)
+### 2. types.ts
 
 ```typescript
 export type SSRQuery = { 
-  query: string; 
-  params: any[] 
+  modelName: string;
+  methodName: string;
+  params: any[];
 } & { __brand: 'SSRQuery' };
 
 export type PreloadConfig = SSRQuery[];
@@ -400,6 +428,11 @@ export type SSRRoute = {
     title?: string;
     meta?: Array<{ name?: string; property?: string; content: string }>;
   };
+};
+
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
 };
 ```
 
@@ -462,7 +495,7 @@ export function matchPath(pattern: string, url: string): Record<string, string> 
 
 ```typescript
 export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from './registry';
-export type { SSRRoute, SSRQuery, PreloadConfig } from './types';
+export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from './types';
 ```
 
 ### 확인 사항
@@ -471,7 +504,53 @@ export type { SSRRoute, SSRQuery, PreloadConfig } from './types';
 
 ---
 
-## 4.4 Syncer에 autoloadSSRRoutes 추가
+## 4.4 Sonamu에 invokeApiForSSR 추가
+
+### 작업 파일
+
+`/Users/minsangk/Development/sonamu/modules/sonamu/src/api/sonamu.ts`
+
+### invokeApiForSSR 메소드 추가
+
+기존 `createContext`, `invokeModelMethod`를 재사용하여 SSR 전용 API 호출 메소드 추가:
+
+```typescript
+/**
+ * SSR용 API 호출 (HTTP 오버헤드 없이 직접 호출)
+ * createApiHandler의 로직을 재사용하되, request 파싱 대신 params 직접 사용
+ */
+async invokeApiForSSR(
+  api: ExtendedApi,
+  params: any[],
+  config: SonamuFastifyConfig,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<unknown> {
+  // Context 생성 (기존 메소드 재사용)
+  const context = await this.createContext(config, request, reply);
+  
+  // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
+  const { ApiParamType } = await import("../types/types");
+  let paramsIndex = 0;
+  const args = api.parameters.map((param) => {
+    if (ApiParamType.isContext(param.type)) {
+      return context;
+    }
+    return params[paramsIndex++];
+  });
+  
+  // 모델 메소드 호출 (기존 메소드 재사용)
+  return this.invokeModelMethod(api, args, context, reply);
+}
+```
+
+### 확인 사항
+- [ ] TypeScript 컴파일 에러 없음
+- [ ] createContext, invokeModelMethod 재사용 확인
+
+---
+
+## 4.5 Syncer에 autoloadSSRRoutes 추가
 
 ### 작업 파일
 
@@ -566,6 +645,7 @@ async syncFromWatcher(event: string, filePath: AbsolutePath): Promise<void> {
 - [ ] queries.template.ts 생성
 - [ ] SSRQuery 타입 정의
 - [ ] ssr 폴더 및 헬퍼 파일 생성
+- [ ] Sonamu에 invokeApiForSSR 추가
 - [ ] Syncer autoloadSSRRoutes 구현
 - [ ] HMR 동작 확인
 

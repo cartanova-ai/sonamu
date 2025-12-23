@@ -39,7 +39,7 @@ registerSSR({
     // dehydratedState.queries에서 데이터 찾기
     const queries = Object.values(dehydratedState.queries || {});
     const userQuery = queries.find((q: any) => 
-      q.queryKey?.[0] === 'getUser'
+      q.queryKey?.[0] === 'User' && q.queryKey?.[1] === 'getUser'
     );
     const user = userQuery?.state?.data;
     
@@ -61,10 +61,20 @@ import { UserService, EmployeeService } from '@/queries.generated';
 
 registerSSR({
   path: '/dashboard/:userId',
-  preload: (params) => [
-    UserService.getUser('A', Number(params.userId)),
-    EmployeeService.getEmployees('B', { limit: 10 }),
-  ],
+  preload: (params) => {
+    const userId = Number(params.userId);
+    
+    return [
+      // 사용자 정보
+      UserService.getUser('A', userId),
+      
+      // 사용자의 직원 목록
+      EmployeeService.getEmployees('B', { 
+        userId,
+        limit: 20 
+      }),
+    ];
+  },
   head: (dehydratedState) => ({
     title: 'Dashboard',
   }),
@@ -89,43 +99,86 @@ registerSSR({
 
 ```typescript
 import type { ViteDevServer } from 'vite';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import path from 'path';
-import type { SSRRoute } from './types';
+import type { SSRRoute, PreloadedData } from './types';
+import type { SonamuFastifyConfig } from '../types/types';
 
 export async function renderSSR(
   url: string,
   route: SSRRoute,
   params: Record<string, string>,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  config: SonamuFastifyConfig,
   vite: ViteDevServer,
 ): Promise<string> {
+  const { Sonamu } = await import('../api/sonamu');
+  
   // 1. preload 실행 → SSRQuery[] 획득
   const preloadConfig = route.preload ? route.preload(params) : [];
   
-  // 2. index.html 읽기
+  // 2. Sonamu.invokeApiForSSR로 API 직접 호출
+  const preloadedData: PreloadedData[] = [];
+  
+  for (const { modelName, methodName, params: apiParams } of preloadConfig) {
+    // ExtendedApi 찾기
+    const api = Sonamu.syncer.apis.find(
+      a => a.modelName === modelName && a.methodName === methodName
+    );
+    
+    if (!api) {
+      console.warn(`API not found: ${modelName}.${methodName}`);
+      continue;
+    }
+    
+    try {
+      // API 직접 호출 (HTTP 오버헤드 없음)
+      const result = await Sonamu.invokeApiForSSR(
+        api,
+        apiParams,
+        request,
+        reply,
+        config
+      );
+      
+      // queryKey 생성: [엔티티명, 메소드명, ...파라미터]
+      const entityName = modelName.replace('Model', '').replace('Frame', '');
+      preloadedData.push({
+        queryKey: [entityName, methodName, ...apiParams],
+        data: result,
+      });
+    } catch (e) {
+      console.error(`Failed to preload ${modelName}.${methodName}:`, e);
+      // 에러 발생 시 해당 쿼리는 스킵 (CSR로 fallback)
+    }
+  }
+  
+  // 3. index.html 읽기
   const fs = await import('fs/promises');
   const indexHtmlPath = path.join(vite.config.root, 'index.html');
   let template = await fs.readFile(indexHtmlPath, 'utf-8');
   template = await vite.transformIndexHtml(url, template);
   
-  // 3. entry-server 로드 및 렌더링
+  // 4. entry-server 로드 및 렌더링
   const { render } = await vite.ssrLoadModule('/src/entry-server.generated.tsx');
-  const { html: appHtml, dehydratedState } = await render(url, preloadConfig);
+  const { html: appHtml, dehydratedState } = await render(url, preloadedData);
   
-  // 4. SSR 데이터 스크립트 생성
+  // 5. SSR 데이터 스크립트 생성
   const ssrDataScript = `
     <script>
       window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, '\\u003c')};
     </script>
   `;
   
-  // 5. head 생성
+  // 6. head 생성
   const headTags = route.head 
     ? generateHeadTags(route.head(dehydratedState)) 
     : '';
   
-  // 6. 치환
+  // 7. 치환
   const html = template
-    .replace('<!--app-head-->', headTags + ssrDataScript)
+    .replace('<!--app-head-->', headTags + '\n    ' + ssrDataScript)
     .replace('<!--app-html-->', appHtml);
   
   return html;
@@ -166,7 +219,7 @@ function escapeHtml(str: string): string {
 ```typescript
 export { renderSSR } from './renderer';
 export { registerSSR, getSSRRoutes, matchSSRRoute, clearSSRRoutes } from './registry';
-export type { SSRRoute, SSRQuery, PreloadConfig } from './types';
+export type { SSRRoute, SSRQuery, PreloadConfig, PreloadedData } from './types';
 ```
 
 ### 확인 사항
@@ -184,58 +237,85 @@ export type { SSRRoute, SSRQuery, PreloadConfig } from './types';
 ### withFastify 메서드의 Vite 미들웨어 부분 수정
 
 ```typescript
-if (isLocal()) {
-  // Dev 모드: Vite dev server
-  const vite = await this.createViteDevServer();
+async withFastify(
+  server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+  config: SonamuFastifyConfig,
+  options?: {
+    enableSync?: boolean;
+    doSilent?: boolean;
+  },
+) {
+  // ... 기존 코드
   
-  // Vite middleware 등록
-  server.all('*', async (request, reply) => {
-    // Sonamu UI는 skip
-    if (request.url.startsWith('/sonamu-ui')) {
-      return;
-    }
+  const { isLocal } = await import("../utils/controller");
+  
+  if (isLocal()) {
+    // Dev 모드: Vite dev server
+    const vite = await this.createViteDevServer();
     
-    // API는 skip
-    if (request.url.startsWith(this.config.api.route.prefix)) {
-      return;
-    }
-    
-    const url = request.url;
-    
-    // SSR 라우트 체크
-    const { matchSSRRoute } = await import('../ssr');
-    const match = matchSSRRoute(url);
-    
-    if (match) {
-      // SSR 렌더링
-      try {
-        const { renderSSR } = await import('../ssr');
-        const html = await renderSSR(url, match.route, match.params, vite);
-        reply.type('text/html').send(html);
+    // Vite middleware 등록
+    server.all('*', async (request, reply) => {
+      // Sonamu UI는 skip
+      if (request.url.startsWith('/sonamu-ui')) {
         return;
-      } catch (e) {
-        console.error('SSR Error:', e);
-        console.log('Falling back to CSR...');
-        // fallback to CSR (아래 로직 실행)
       }
-    }
-    
-    // CSR (기존 로직)
-    try {
-      const fs = await import('fs/promises');
-      let template = await fs.readFile(
-        path.join(vite.config.root, 'index.html'),
-        'utf-8'
-      );
-      template = await vite.transformIndexHtml(url, template);
       
-      reply.type('text/html').send(template);
-    } catch (e) {
-      vite.ssrFixStacktrace(e as Error);
-      console.error(e);
-      reply.status(500).send((e as Error).message);
-    }
-  });
+      // API는 skip
+      if (request.url.startsWith(this.config.api.route.prefix)) {
+        return;
+      }
+      
+      const url = request.url;
+      
+      // SSR 라우트 체크
+      const { matchSSRRoute } = await import('../ssr');
+      const match = matchSSRRoute(url);
+      
+      if (match) {
+        // SSR 렌더링
+        try {
+          const { renderSSR } = await import('../ssr');
+          const html = await renderSSR(
+            url, 
+            match.route, 
+            match.params, 
+            request, 
+            reply, 
+            config, 
+            vite
+          );
+          reply.type('text/html').send(html);
+          return;
+        } catch (e) {
+          console.error('SSR Error:', e);
+          console.log('Falling back to CSR...');
+          // fallback to CSR (아래 로직 실행)
+        }
+      }
+      
+      // CSR (기존 로직)
+      try {
+        const fs = await import('fs/promises');
+        let template = await fs.readFile(
+          path.join(vite.config.root, 'index.html'),
+          'utf-8'
+        );
+        template = await vite.transformIndexHtml(url, template);
+        
+        reply.type('text/html').send(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        console.error(e);
+        reply.status(500).send((e as Error).message);
+      }
+    });
+  } else {
+    // Production 모드 (Phase 6에서 구현)
+    // ...
+  }
+  
+  // API 라우팅 설정
+  // ... 기존 코드
 }
 ```
 
@@ -279,7 +359,7 @@ http://localhost:10280/users/1
 - [ ] title 태그: "User: [사용자명]"
 - [ ] og:title meta 태그 존재
 - [ ] window.__SONAMU_SSR__ 확인 (개발자 도구)
-- [ ] 네트워크 탭: `/api/user/findById` 요청 없음 (prefetch됨)
+- [ ] 네트워크 탭: `/api/user/findById` 요청 없음 (SSR에서 처리됨)
 
 #### 4. 개발자 도구 확인
 
@@ -291,6 +371,10 @@ window.__SONAMU_SSR__
 // queries 내부 구조 확인
 Object.keys(window.__SONAMU_SSR__.queries)
 // 확인: queryHash 목록
+
+// 특정 쿼리 데이터 확인
+const queries = Object.values(window.__SONAMU_SSR__.queries);
+queries.find(q => q.queryKey[0] === 'User')
 ```
 
 #### 5. Hydration 확인
@@ -320,13 +404,18 @@ http://localhost:10280/employees
 ```
 1. 브라우저 → GET /users/1
 2. Sonamu → SSR 렌더링
-   2-1. UserService.getUser 실행 (서버에서)
-   2-2. QueryClient에 데이터 캐시
-   2-3. React 렌더링
-   2-4. dehydrate
+   2-1. registerSSR의 preload 실행
+   2-2. Sonamu.invokeApiForSSR로 UserModel.findById 직접 호출 (ALS로 Context 주입)
+   2-3. QueryClient.setQueryData로 데이터 주입
+   2-4. React 렌더링
+   2-5. dehydrate
 3. Sonamu → HTML 응답 (데이터 포함)
 4. 브라우저 → Hydrate (추가 요청 없음)
 ```
+
+**장점 확인**:
+- ✅ HTTP 오버헤드 없음 (서버 내부에서 직접 Model 호출)
+- ✅ 세션 정보 자동 동기화 (ALS 활용)
 
 #### CSR 라우트 (/employees)
 ```
@@ -343,8 +432,8 @@ http://localhost:10280/employees
 1. 콘솔에서 에러 메시지 확인
 2. `import.meta.env.SSR` 체크 누락 확인
 3. Browser API 사용 여부 확인 (window, document 등)
-4. entry-server.generated.tsx에서 Services import 확인
-5. preloadConfig의 query 문자열 확인
+4. invokeApiForSSR의 파라미터 매핑 확인
+5. Context 파라미터 위치 확인
 
 **Hydration mismatch 발생 시**:
 1. 서버와 클라이언트 렌더링 결과 비교
@@ -354,17 +443,24 @@ http://localhost:10280/employees
 
 **타입 에러 발생 시**:
 1. queries.generated.ts 재생성 확인
-2. services.generated.ts와 시그니처 일치 확인
-3. tsconfig.json paths 설정 확인
+2. modelName, methodName 정확한지 확인
+3. params 배열 순서 확인 (Context 제외)
+
+**데이터가 안 나올 때**:
+1. registerSSR의 preload 함수 리턴값 확인
+2. Sonamu.syncer.apis에서 API 찾아지는지 확인
+3. invokeApiForSSR 에러 로그 확인
+4. dehydratedState에 데이터 들어있는지 확인
 
 ### 확인 사항
 - [ ] SSR 라우트에서 HTML에 컨텐츠 포함
 - [ ] head 태그 정상 렌더링
-- [ ] prefetch된 데이터로 초기 렌더링
+- [ ] preload된 데이터로 초기 렌더링
 - [ ] hydration 에러 없음
 - [ ] 이후 네비게이션 정상 동작
 - [ ] 비SSR 라우트는 CSR로 동작
 - [ ] 개발자 도구에서 데이터 흐름 확인
+- [ ] HTTP 오버헤드 없음 확인 (서버 로그)
 
 ---
 
@@ -402,7 +498,7 @@ registerSSR({
   head: (dehydratedState) => {
     const queries = Object.values(dehydratedState.queries || {});
     const projectQuery = queries.find((q: any) => 
-      q.queryKey?.[0] === 'getProject'
+      q.queryKey?.[0] === 'Project' && q.queryKey?.[1] === 'getProject'
     );
     const project = projectQuery?.state?.data;
     
@@ -418,28 +514,42 @@ registerSSR({
 });
 ```
 
-### 조건부 preload 예시
+### 인증이 필요한 페이지
+
+```typescript
+registerSSR({
+  path: '/my/profile',
+  preload: (params) => [
+    // ALS를 통해 Context가 자동 주입되므로
+    // 현재 로그인한 사용자 정보를 가져올 수 있음
+    UserService.getMe(),
+  ],
+  head: (dehydratedState) => {
+    const queries = Object.values(dehydratedState.queries || {});
+    const meQuery = queries.find((q: any) => 
+      q.queryKey?.[0] === 'User' && q.queryKey?.[1] === 'getMe'
+    );
+    const me = meQuery?.state?.data;
+    
+    return {
+      title: me ? `${me.name}'s Profile` : 'My Profile',
+    };
+  },
+});
+```
+
+### 조건부 preload
 
 ```typescript
 registerSSR({
   path: '/dashboard',
   preload: (params) => {
-    // URL query string에서 필터 조건 추출
-    const url = new URL(params.__fullUrl || '');
-    const filter = url.searchParams.get('filter');
-    
-    const preloads = [
-      UserService.getMe(),  // 현재 사용자는 항상
+    // URL에서 query string 추출 불가능하므로
+    // 기본 데이터만 preload
+    return [
+      UserService.getMe(),
+      ProjectService.getProjects('A', { limit: 10 }),
     ];
-    
-    // 조건부 preload
-    if (filter === 'projects') {
-      preloads.push(ProjectService.getProjects('A', { limit: 20 }));
-    } else if (filter === 'users') {
-      preloads.push(UserService.getUsers('B', { limit: 20 }));
-    }
-    
-    return preloads;
   },
 });
 ```
@@ -454,6 +564,8 @@ registerSSR({
 - [ ] SSR 동작 테스트
 - [ ] Hydration 확인
 - [ ] 에러 핸들링 확인
+- [ ] HTTP 오버헤드 없음 확인
+- [ ] 세션 동기화 확인
 - [ ] 추가 SSR 라우트 작성 (선택)
 
 ---
