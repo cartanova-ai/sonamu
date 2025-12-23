@@ -79,6 +79,8 @@ describe("Migrator test", () => {
 
       const dbUser = Sonamu.config.database.defaultOptions.connection?.user ?? "root";
       expect(Naite.get("migrator:getStatus:conns").first()).toMatchObject([
+        // 이거 아래에 나타나는 순서가 중요한 테스트입니다!
+        // 이 순서는 Sonamu UI의 DB Migration 탭에 표시되는 순서와 동일합니다.
         {
           connKey: "test",
           connString: `pg://${dbUser}@0.0.0.0:5432/miomock_test`,
@@ -88,10 +90,10 @@ describe("Migrator test", () => {
           status: 0,
         },
         {
-          connKey: "fixture_remote",
-          connString: `pg://${dbUser}@0.0.0.0:5432/miomock_fixture_remote`,
+          connKey: "fixture",
+          connString: `pg://${dbUser}@0.0.0.0:5432/miomock_fixture`,
           currentVersion: expect.any(String),
-          name: "fixture_remote",
+          name: "fixture",
           pending: [],
           status: 0,
         },
@@ -1002,7 +1004,7 @@ describe("Migrator test", () => {
         // when: 여러 DB에 병렬 적용, 각 DB별 독립적 결과
         const result = await migrator.runAction("apply", [
           "test",
-          "fixture_remote",
+          "fixture",
           "development_master",
           "production_master",
         ]);

@@ -9,5 +9,5 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pgroonga;
 
 CREATE DATABASE miomock;
-CREATE DATABASE miomock_fixture_remote;
+CREATE DATABASE miomock_fixture;
 CREATE DATABASE miomock_test;

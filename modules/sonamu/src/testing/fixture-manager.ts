@@ -87,7 +87,7 @@ export class FixtureManagerClass {
     }
 
     this.tdb = knex(Sonamu.dbConfig.test);
-    this.fdb = knex(Sonamu.dbConfig.fixture_remote);
+    this.fdb = knex(Sonamu.dbConfig.fixture);
   }
 
   async getChecksum(db: Knex, tableName: string) {
@@ -100,7 +100,7 @@ export class FixtureManagerClass {
     pg_dump로 원격 DB를 덤프하고, pg_restore로 로컬에 복원합니다.
   */
   async sync() {
-    const fixtureConn = Sonamu.dbConfig.fixture_remote.connection as Knex.PgConnectionConfig;
+    const fixtureConn = Sonamu.dbConfig.fixture.connection as Knex.PgConnectionConfig;
     const testConn = Sonamu.dbConfig.test.connection as Knex.PgConnectionConfig;
 
     // 1. 로컬 test DB 연결 종료 및 재생성
@@ -182,8 +182,7 @@ export class FixtureManagerClass {
     }
 
     // 픽스쳐DB, 실DB
-    const fixtureDatabase = (Sonamu.dbConfig.fixture_remote.connection as Knex.ConnectionConfig)
-      .database;
+    const fixtureDatabase = (Sonamu.dbConfig.fixture.connection as Knex.ConnectionConfig).database;
     const realDatabase = (Sonamu.dbConfig.production_master.connection as Knex.ConnectionConfig)
       .database;
 

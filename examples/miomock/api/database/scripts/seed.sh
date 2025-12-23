@@ -7,8 +7,7 @@ source .env
 
 set -e # 에러 발생 시 즉시 중단
 
-SOURCE_DB="miomock_test"
-FIXTURE_DB="miomock_fixture_remote"
+FIXTURE_DB="miomock_fixture"
 DUMP_FILE="database/dumps/miomock_test_latest.sql"
 
 # sonamu.config.ts의 DB 설정 사용

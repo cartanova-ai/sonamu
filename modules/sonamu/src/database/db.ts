@@ -6,15 +6,23 @@ import { Sonamu } from "../api";
 import type { DatabaseConfig, SonamuConfig } from "../api/config";
 import { TransactionContext } from "./transaction-context";
 
+/**
+ * 여러 설정 객체를 순차적으로 deep merge합니다.
+ * undefined/null인 인자는 무시됩니다.
+ */
+function mergeConfigs<T extends object>(...configs: (Partial<T> | undefined | null)[]): T {
+  return configs.reduce<T>((acc, config) => (config ? assign(acc, config as T) : acc), {} as T);
+}
+
 export type DBPreset = "w" | "r";
 
 export type SonamuDBConfig = {
   development_master: Knex.Config;
   development_slave: Knex.Config;
-  test: Knex.Config;
-  fixture_remote: Knex.Config;
   production_master: Knex.Config;
   production_slave: Knex.Config;
+  fixture: Knex.Config;
+  test: Knex.Config;
 };
 
 export class DBClass {
@@ -120,48 +128,37 @@ export class DBClass {
       config.defaultOptions,
     );
 
-    // 로컬 환경 설정
-    const test: DatabaseConfig = assign(defaultKnexConfig, {
-      connection: {
-        database: `${config.name}_test`,
-        ...config.defaultOptions?.connection,
-      },
-    });
-
-    // 개발 환경 설정
-    const devMasterOptions = config.environments?.development;
-    const devSlaveOptions = config.environments?.development_slave;
-    const development_master = assign(defaultKnexConfig, devMasterOptions ?? {});
-    const development_slave = assign(
-      assign(defaultKnexConfig, devMasterOptions ?? {}),
-      devSlaveOptions ?? {},
-    );
-    // NOTE: fixture remote는 default connection의 DB를 override해선 안됨.
-    const fixture_remote = assign(
-      assign(assign(defaultKnexConfig, devMasterOptions ?? {}), {
-        connection: {
-          database: `${config.name}_fixture_remote`,
-        },
-      }),
-      config.environments?.remote_fixture ?? {},
-    );
-
-    // 프로덕션 환경 설정
-    const prodMasterOptions = config.environments?.production ?? {};
-    const prodSlaveOptions = config.environments?.production_slave ?? {};
-    const production_master = assign(defaultKnexConfig, prodMasterOptions);
-    const production_slave = assign(
-      assign(defaultKnexConfig, prodMasterOptions),
-      prodSlaveOptions ?? {},
-    );
-
+    // biome-ignore format: 설정 구조 가독성을 위해 여러 줄로 유지
     return {
-      test,
-      fixture_remote,
-      development_master,
-      development_slave,
-      production_master,
-      production_slave,
+      // 여기에 나열한 순서대로 Sonamu UI의 DB Migration 탭에 표시됩니다.
+      test: mergeConfigs(
+        defaultKnexConfig, 
+        { connection: { database: `${config.name}_test` } },
+        config.environments?.test
+      ),
+      fixture: mergeConfigs(
+        defaultKnexConfig, 
+        { connection: { database: `${config.name}_fixture` } },
+        config.environments?.fixture,
+      ),
+      development_master: mergeConfigs(
+        defaultKnexConfig, 
+        config.environments?.development
+      ),
+      development_slave: mergeConfigs(
+        defaultKnexConfig,
+        config.environments?.development,
+        config.environments?.development_slave,
+      ),
+      production_master: mergeConfigs(
+        defaultKnexConfig, 
+        config.environments?.production
+      ),
+      production_slave: mergeConfigs(
+        defaultKnexConfig,
+        config.environments?.production,
+        config.environments?.production_slave,
+      ),
     };
   }
 

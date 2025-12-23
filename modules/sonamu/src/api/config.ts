@@ -44,7 +44,8 @@ export type SonamuConfig = {
       development_slave?: DatabaseConfig;
       production?: DatabaseConfig;
       production_slave?: DatabaseConfig;
-      remote_fixture?: DatabaseConfig;
+      fixture?: DatabaseConfig;
+      test?: DatabaseConfig;
     };
   };
 
