@@ -109,49 +109,6 @@ export const SonamuSemanticParams = z
 export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
 
 /*
-  SWR
-*/
-export type SwrOptions = {
-  conditional?: () => boolean;
-};
-export type SWRError = {
-  name: string;
-  message: string;
-  statusCode: number;
-};
-export async function swrFetcher(args: [string, object]): Promise<any> {
-  try {
-    const [url, params] = args;
-    const res = await axios.get(`${url}?${qs.stringify(params)}`);
-    return res.data;
-  } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
-    error.statusCode = e.response?.data.statusCode ?? e.response.status;
-    throw error;
-  }
-}
-export async function swrPostFetcher(args: [string, object]): Promise<any> {
-  try {
-    const [url, params] = args;
-    const res = await axios.post(url, params);
-    return res.data;
-  } catch (e: any) {
-    const error: any = new Error(e.response.data.message ?? e.response.message ?? "Unknown");
-    error.statusCode = e.response?.data.statusCode ?? e.response.status;
-    throw error;
-  }
-}
-export function handleConditional(
-  args: [string, object],
-  conditional?: () => boolean,
-): [string, object] | null {
-  if (conditional) {
-    return conditional() ? args : null;
-  }
-  return args;
-}
-
-/*
   Utils
 */
 export function zArrayable<T extends z.ZodTypeAny>(shape: T): z.ZodUnion<[T, z.ZodArray<T>]> {
