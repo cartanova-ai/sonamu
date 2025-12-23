@@ -77,10 +77,14 @@ export class WorkflowManager {
     }
   >;
 
-  private constructor(backend: BackendPostgres) {
+  // BackendPostgres에서 처리하는 것들이 있어서 Knex 커넥션이 아니라 설정값을 넣어줘야함.
+  constructor(dbConf: Knex.Config, runMigrations: boolean = true) {
+    const backend = new BackendPostgres(dbConf, { runMigrations });
+
     this.#backend = backend;
     this.#ow = new OpenWorkflow({ backend });
     this.#worker = null;
+
     this.#workflowsMap = new Map();
     this.#scheduledTasks = new Map();
   }
@@ -283,9 +287,14 @@ export class WorkflowManager {
   }
 
   // Worker를 설정 후 시작
-  async setupWorker(options: WorkflowOptions) {
+  setupWorker(options: WorkflowOptions) {
     this.#worker = this.#ow.newWorker(options);
-    await this.#worker.start();
+  }
+
+  // Worker를 초기화
+  async startWorker() {
+    await this.#backend.initialize();
+    await this.#worker?.start();
   }
 
   // Worker를 중지
@@ -317,14 +326,5 @@ export class WorkflowManager {
 
   [Symbol.asyncDispose]() {
     return this.destroy();
-  }
-
-  // BackendPostgres에서 처리하는 것들이 있어서 Knex 커넥션이 아니라 설정값을 넣어줘야함.
-  static async create(
-    dbConf: Knex.Config,
-    runMigrations: boolean = true,
-  ): Promise<WorkflowManager> {
-    const backend = await BackendPostgres.connect(dbConf, { runMigrations });
-    return new WorkflowManager(backend);
   }
 }

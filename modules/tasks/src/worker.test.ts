@@ -8,10 +8,11 @@ describe("Worker", () => {
   let backend: BackendPostgres;
 
   beforeEach(async () => {
-    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+    backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
       runMigrations: false,
     });
+    await backend.initialize();
   });
 
   afterEach(async () => {

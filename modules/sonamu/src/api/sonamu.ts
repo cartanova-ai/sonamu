@@ -595,7 +595,7 @@ class SonamuClass {
   private async initializeWorkflows(options: SonamuTaskOptions | undefined) {
     const { WorkflowManager } = await import("../tasks/workflow-manager");
     // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
-    this._workflows = await WorkflowManager.create(DB.getDBConfig("w"), true);
+    this._workflows = new WorkflowManager(DB.getDBConfig("w"));
     if (!options) {
       return;
     }
@@ -608,7 +608,7 @@ class SonamuClass {
     };
 
     if (enableWorker) {
-      await this.workflows.setupWorker({
+      this.workflows.setupWorker({
         ...defaultWorkerOptions,
         ...options.workerOptions,
       });
@@ -645,6 +645,7 @@ class SonamuClass {
     server
       .listen({ port, host })
       .then(async () => {
+        await this.workflows.startWorker();
         await options.lifecycle?.onStart?.(server);
       })
       .catch(async (err) => {

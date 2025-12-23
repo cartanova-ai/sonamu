@@ -40,18 +40,76 @@ interface BackendPostgresOptions {
  * Manages a connection to a Postgres database for workflow operations.
  */
 export class BackendPostgres implements Backend {
-  private knex: Knex;
+  private config: Knex.Config;
   private namespaceId: string;
   private usePubSub: boolean;
   private pubsub: PostgresPubSub | null = null;
+  private initialized: boolean = false;
+  private runMigrations: boolean;
 
-  private constructor(knex: Knex, namespaceId: string, usePubSub: boolean) {
-    this.knex = knex;
+  private _knex: Knex | null = null;
+  private get knex(): Knex {
+    if (!this._knex) {
+      this._knex = knex(this.config);
+    }
+
+    return this._knex;
+  }
+
+  constructor(config: Knex.Config, options?: BackendPostgresOptions) {
+    this.config = {
+      ...config,
+      postProcessResponse: (result, _queryContext) => {
+        if (result === null || result === undefined) {
+          return result;
+        }
+
+        if (config?.postProcessResponse) {
+          result = config.postProcessResponse(result, _queryContext);
+        }
+
+        const camelizeRow = (row: Record<string, unknown>) =>
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [camelize(key, true), value]),
+          );
+
+        if (Array.isArray(result)) {
+          return result.map(camelizeRow);
+        }
+
+        return camelizeRow(result);
+      },
+    };
+
+    const { namespaceId, usePubSub, runMigrations } = {
+      namespaceId: DEFAULT_NAMESPACE_ID,
+      usePubSub: true,
+      runMigrations: true,
+      ...options,
+    };
+
     this.namespaceId = namespaceId;
     this.usePubSub = usePubSub;
+    this.runMigrations = runMigrations;
+  }
+
+  async initialize() {
+    if (this.initialized) {
+      return;
+    }
+
+    if (this.runMigrations) {
+      await migrate(this.config, DEFAULT_SCHEMA);
+    }
+
+    this.initialized = true;
   }
 
   async subscribe(callback: OnSubscribed) {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     if (!this.usePubSub) {
       return;
     }
@@ -64,6 +122,10 @@ export class BackendPostgres implements Backend {
   }
 
   async publish(payload?: string): Promise<void> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     if (!this.usePubSub) {
       return;
     }
@@ -75,56 +137,21 @@ export class BackendPostgres implements Backend {
     );
   }
 
-  /**
-   * Create and initialize a new BackendPostgres instance. This will
-   * automatically run migrations on startup unless `runMigrations` is set to
-   * false.
-   */
-  static async connect(
-    dbConf: Knex.Config,
-    options?: BackendPostgresOptions,
-  ): Promise<BackendPostgres> {
-    const postProcessResponse: Knex.Config["postProcessResponse"] = (result, _queryContext) => {
-      if (result === null || result === undefined) {
-        return result;
-      }
-
-      if (dbConf?.postProcessResponse) {
-        result = dbConf.postProcessResponse(result, _queryContext);
-      }
-
-      const camelizeRow = (row: Record<string, unknown>) =>
-        Object.fromEntries(Object.entries(row).map(([key, value]) => [camelize(key, true), value]));
-
-      if (Array.isArray(result)) {
-        return result.map(camelizeRow);
-      }
-
-      return camelizeRow(result);
-    };
-
-    const { namespaceId, runMigrations, usePubSub } = {
-      namespaceId: DEFAULT_NAMESPACE_ID,
-      runMigrations: true,
-      usePubSub: true,
-      ...options,
-    };
-
-    const knexInstance = knex({ ...dbConf, postProcessResponse });
-    if (runMigrations) {
-      await migrate(knexInstance, DEFAULT_SCHEMA);
+  async stop(): Promise<void> {
+    if (!this.initialized) {
+      return;
     }
 
-    return new BackendPostgres(knexInstance, namespaceId, usePubSub);
-  }
-
-  async stop(): Promise<void> {
     await this.pubsub?.destroy();
     this.pubsub = null;
     await this.knex.destroy();
   }
 
   async createWorkflowRun(params: CreateWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -155,6 +182,10 @@ export class BackendPostgres implements Backend {
   }
 
   async getWorkflowRun(params: GetWorkflowRunParams): Promise<WorkflowRun | null> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const workflowRun = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -189,6 +220,10 @@ export class BackendPostgres implements Backend {
   }
 
   async listWorkflowRuns(params: ListWorkflowRunsParams): Promise<PaginatedResponse<WorkflowRun>> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
 
@@ -232,6 +267,10 @@ export class BackendPostgres implements Backend {
   }
 
   async claimWorkflowRun(params: ClaimWorkflowRunParams): Promise<WorkflowRun | null> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const claimed = await this.knex
       .with("expired", (qb) =>
         qb
@@ -288,6 +327,10 @@ export class BackendPostgres implements Backend {
   }
 
   async extendWorkflowRunLease(params: ExtendWorkflowRunLeaseParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -309,6 +352,10 @@ export class BackendPostgres implements Backend {
   }
 
   async sleepWorkflowRun(params: SleepWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     // 'succeeded' status is deprecated
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -333,6 +380,10 @@ export class BackendPostgres implements Backend {
   }
 
   async completeWorkflowRun(params: CompleteWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -359,6 +410,10 @@ export class BackendPostgres implements Backend {
   }
 
   async failWorkflowRun(params: FailWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const { workflowRunId, error } = params;
     const { initialIntervalMs, backoffCoefficient, maximumIntervalMs } = DEFAULT_RETRY_POLICY;
 
@@ -403,6 +458,10 @@ export class BackendPostgres implements Backend {
   }
 
   async cancelWorkflowRun(params: CancelWorkflowRunParams): Promise<WorkflowRun> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -447,6 +506,10 @@ export class BackendPostgres implements Backend {
   }
 
   async createStepAttempt(params: CreateStepAttemptParams): Promise<StepAttempt> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [stepAttempt] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts")
@@ -473,6 +536,10 @@ export class BackendPostgres implements Backend {
   }
 
   async getStepAttempt(params: GetStepAttemptParams): Promise<StepAttempt | null> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const stepAttempt = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts")
@@ -484,6 +551,10 @@ export class BackendPostgres implements Backend {
   }
 
   async listStepAttempts(params: ListStepAttemptsParams): Promise<PaginatedResponse<StepAttempt>> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
 
@@ -569,6 +640,10 @@ export class BackendPostgres implements Backend {
   }
 
   async completeStepAttempt(params: CompleteStepAttemptParams): Promise<StepAttempt> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts as sa")
@@ -598,6 +673,10 @@ export class BackendPostgres implements Backend {
   }
 
   async failStepAttempt(params: FailStepAttemptParams): Promise<StepAttempt> {
+    if (!this.initialized) {
+      throw new Error("Backend not initialized");
+    }
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts as sa")

@@ -10,11 +10,12 @@ async function getBackend(): Promise<BackendPostgres> {
     return _backend;
   }
 
-  _backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+  _backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
     runMigrations: true,
     namespaceId: randomUUID(),
   });
 
+  await _backend.initialize();
   return _backend;
 }
 

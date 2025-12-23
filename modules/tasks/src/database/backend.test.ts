@@ -5,10 +5,12 @@ import { testBackend } from "./backend.testsuite";
 
 testBackend({
   setup: async () => {
-    return await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+    const backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
       runMigrations: false,
     });
+    await backend.initialize();
+    return backend;
   },
   teardown: async (backend) => {
     await (backend as BackendPostgres).stop();

@@ -8,10 +8,11 @@ describe("StepExecutor", () => {
   let backend: BackendPostgres;
 
   beforeAll(async () => {
-    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+    backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
       runMigrations: false,
     });
+    await backend.initialize();
   });
 
   afterAll(async () => {
@@ -164,10 +165,11 @@ describe("executeWorkflow", () => {
   let backend: BackendPostgres;
 
   beforeAll(async () => {
-    backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+    backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
       namespaceId: randomUUID(),
       runMigrations: false,
     });
+    await backend.initialize();
   });
 
   afterAll(async () => {

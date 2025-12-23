@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import knex, { type Knex } from "knex";
+import type { Knex } from "knex";
 import { BackendPostgres } from "../database/backend";
 import { migrate as baseMigrate, DEFAULT_SCHEMA } from "../database/base";
 
@@ -20,7 +20,7 @@ export const KNEX_GLOBAL_CONFIG: Knex.Config = {
 } as const;
 
 export async function migrate(): Promise<void> {
-  await baseMigrate(knex(KNEX_GLOBAL_CONFIG), DEFAULT_SCHEMA);
+  await baseMigrate(KNEX_GLOBAL_CONFIG, DEFAULT_SCHEMA);
 }
 
 export async function createBackend(): Promise<BackendPostgres> {
@@ -28,9 +28,11 @@ export async function createBackend(): Promise<BackendPostgres> {
     return backend;
   }
 
-  backend = await BackendPostgres.connect(KNEX_GLOBAL_CONFIG, {
+  backend = new BackendPostgres(KNEX_GLOBAL_CONFIG, {
     namespaceId: randomUUID(),
+    runMigrations: false,
   });
+  await backend.initialize();
 
   return backend;
 }
