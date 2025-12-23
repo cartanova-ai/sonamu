@@ -161,6 +161,13 @@ export class Syncer {
   }
 
   async copySharedToTargets(targets: string[]): Promise<void> {
+    // 특정 변수 치환을 위해서 사용합니다.
+    const convertMap = {
+      baseUrl:
+        Sonamu.config.server.baseUrl ??
+        `http://${Sonamu.config.server.listen?.host ?? "localhost"}:${Sonamu.config.server.listen?.port ?? 3000}`,
+    };
+
     for (const target of targets) {
       // 지금 가져가려는 이 파일은 Sonamu 코드베이스의 일부입니다.
       // 그런데 dist 속 빌드된 소스 코드 파일이 필요한 것이 아니고, src에만 있는 텍스트 파일이 필요합니다.
@@ -178,6 +185,12 @@ export class Syncer {
         );
       }
 
+      const fullText = await readFile(srcPath, "utf-8");
+      const convertedText = Object.entries(convertMap).reduce(
+        (acc, [key, value]) => acc.replace(`$[[${key}]]`, value),
+        fullText,
+      );
+
       // 이건 프로젝트에 .ts 소스 코드 파일을 생성하는 것이므로 src의 .ts 경로로 갑니다.
       const destPath = path.join(Sonamu.appRootPath, target, "src/services/sonamu.shared.ts");
 
@@ -187,12 +200,11 @@ export class Syncer {
         console.warn(`Created directory '${path.dirname(destPath)}' because it did not exist.`);
       }
 
-      if (await areFilesSame(srcPath, destPath)) {
+      if (await areFilesSame({ data: convertedText }, { path: destPath })) {
         continue;
       }
 
-      await writeFile(destPath, await readFile(srcPath));
-
+      await writeFile(destPath, convertedText);
       !isTest() &&
         console.log(
           chalk.bold("Copied: ") + chalk.blue(path.relative(Sonamu.appRootPath, destPath)),

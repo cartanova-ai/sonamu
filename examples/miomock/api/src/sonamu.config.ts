@@ -46,6 +46,7 @@ export default defineConfig({
   },
 
   server: {
+    baseUrl: `http://${host}:${port}`,
     listen: { port, host },
     plugins: {
       formbody: true,

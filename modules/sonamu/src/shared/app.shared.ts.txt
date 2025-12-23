@@ -322,7 +322,7 @@ export function useSSEStream<T extends Record<string, any>>(
 
       // URL에 파라미터 추가 - 절대 URL로 변환
       const queryString = qs.stringify(params);
-      const baseUrl = url.startsWith("http") ? url : `https://dev.amrintl.com${url}`;
+      const baseUrl = url.startsWith("http") ? url : `$[[baseUrl]]${url}`;
       const fullUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
       const eventSource = new EventSource(fullUrl);
