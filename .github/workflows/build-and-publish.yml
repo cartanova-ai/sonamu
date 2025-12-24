@@ -33,7 +33,7 @@ jobs:
           - 5432:5432
 
     steps:
-      - name: Configure AWS Credentials for China region audience
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           audience: sts.amazonaws.com.cn
