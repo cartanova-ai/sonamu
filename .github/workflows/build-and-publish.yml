@@ -33,6 +33,13 @@ jobs:
           - 5432:5432
 
     steps:
+      - name: Configure AWS Credentials for China region audience
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          audience: sts.amazonaws.com.cn
+          aws-region: ap-northeast-2
+          role-to-assume: arn:aws:iam::788833265042:role/GitHubActions
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
