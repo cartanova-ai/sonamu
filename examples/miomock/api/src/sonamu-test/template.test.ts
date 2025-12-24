@@ -6,8 +6,8 @@ import {
   TemplateManagerClass,
   type TemplateOptions,
 } from "sonamu";
+import { bootstrap } from "sonamu/test";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
-import { bootstrap } from "../testing/bootstrap";
 
 bootstrap(vi);
 

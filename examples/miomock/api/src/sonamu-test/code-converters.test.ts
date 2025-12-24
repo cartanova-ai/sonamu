@@ -1,6 +1,6 @@
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 import { z } from "zod";
-import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 

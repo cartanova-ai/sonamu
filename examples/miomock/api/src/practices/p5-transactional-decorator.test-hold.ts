@@ -1,5 +1,5 @@
 // import { describe, test, expect } from "vitest";
-// import { bootstrap } from "../testing/bootstrap";
+// import { bootstrap } from "sonamu/test";
 // import { BaseModelClass, transactional } from "sonamu";
 // import { UserSaveParams } from "../application/user/user.types";
 // import assert from "assert";

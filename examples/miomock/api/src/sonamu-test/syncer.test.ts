@@ -2,6 +2,7 @@ import assert from "assert";
 import { join } from "path";
 import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonamu";
 import { Naite, Sonamu, Template } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
 import type { EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
 import {
@@ -11,7 +12,6 @@ import {
 import type { RenderedTemplate } from "../../../../../modules/sonamu/dist/template/template";
 import { TemplateManager } from "../../../../../modules/sonamu/dist/template/template-manager";
 import type { AbsolutePath } from "../../../../../modules/sonamu/dist/utils/path-utils";
-import { bootstrap, test } from "../testing/bootstrap";
 import { mockTemplateManagerGet } from "../testing/test-helpers";
 
 interface WriteFileRecord {

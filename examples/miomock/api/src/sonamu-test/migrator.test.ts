@@ -6,8 +6,8 @@ import {
   Naite,
   Sonamu,
 } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { afterEach, beforeAll, describe, expect, vi } from "vitest";
-import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGet } from "../testing/test-helpers";
 
 bootstrap(vi);

@@ -1,6 +1,6 @@
 import { EntityManager } from "sonamu";
+import { bootstrap } from "sonamu/test";
 import { describe, expect, it, vi } from "vitest";
-import { bootstrap } from "../testing/bootstrap";
 
 bootstrap(vi);
 

@@ -5,8 +5,8 @@ import {
   type PgColumn,
   PostgreSQLSchemaReader,
 } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
-import { bootstrap, test } from "../testing/bootstrap";
 import { mockEntityManagerGetMultiple } from "../testing/test-helpers";
 
 bootstrap(vi);

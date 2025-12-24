@@ -1,9 +1,9 @@
 import assert from "assert";
 import type { Knex } from "knex";
 import { Puri, Sonamu } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
-import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 describe("Puri Wrapper", () => {

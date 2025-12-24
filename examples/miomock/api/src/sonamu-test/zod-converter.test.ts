@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/suspicious/noTemplateCurlyInString: <이럴 때 아니면 any 언제 씁니까> */
+
+import { bootstrap } from "sonamu/test";
 import { describe, test, vi } from "vitest";
 import { z } from "zod";
-import { bootstrap } from "../testing/bootstrap";
 
 bootstrap(vi);
 

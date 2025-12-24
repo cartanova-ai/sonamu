@@ -1,7 +1,7 @@
 import { Naite, Puri } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
 import { UserModel } from "../application/user/user.model";
-import { bootstrap, test } from "../testing/bootstrap";
 import { expectQuery } from "../testing/expect-query";
 
 bootstrap(vi);

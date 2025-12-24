@@ -1,4 +1,5 @@
 import type { EnhancerMap, RequiredEnhancerKeys } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { describe, expectTypeOf, vi } from "vitest";
 import type {
   ProjectSubsetA,
@@ -7,7 +8,6 @@ import type {
   ProjectSubsetP,
 } from "../application/sonamu.generated";
 import type { projectSubsetQueries } from "../application/sonamu.generated.sso";
-import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 

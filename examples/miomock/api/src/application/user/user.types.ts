@@ -11,6 +11,12 @@ export type UserListParams = z.infer<typeof UserListParams>;
 export const UserSaveParams = UserBaseSchema.partial({
   id: true,
   created_at: true,
+  birth_date: true,
+  last_login_at: true,
+  bio: true,
+  is_verified: true,
+  deleted_at: true,
+  password: true,
 });
 
 export type UserSaveParams = z.infer<typeof UserSaveParams>;

@@ -1,7 +1,7 @@
+import { test } from "sonamu/test";
 import { describe, expect } from "vitest";
 import z from "zod";
 import { caster, fastifyCaster } from "../../../../../modules/sonamu/dist/api/caster";
-import { test } from "../testing/bootstrap";
 
 describe("caster", () => {
   describe("헬퍼 함수 테스트", () => {

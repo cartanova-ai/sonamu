@@ -109,7 +109,7 @@
   },
   {
     "path": "src/application/user/user.types.ts",
-    "checksum": "45444bc63bcb4152176b333b7d8d4010a9a7fa4c"
+    "checksum": "b614d06489f6010d4f004adb3267db658e240a7f"
   },
   {
     "path": "src/application/user/user.workflow.ts",

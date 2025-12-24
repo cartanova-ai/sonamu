@@ -1,7 +1,7 @@
 import { api, registeredApis, stream, transactional, upload } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
 import z from "zod";
-import { bootstrap, test } from "../testing/bootstrap";
 
 bootstrap(vi);
 

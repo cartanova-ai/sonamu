@@ -1,5 +1,5 @@
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
-import { bootstrap, test } from "./bootstrap";
 import { loadFixtures } from "./fixture";
 
 bootstrap(vi);

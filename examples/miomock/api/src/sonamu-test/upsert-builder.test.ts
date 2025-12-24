@@ -1,6 +1,6 @@
 import { DB, isRefField, Naite, Sonamu, type UBRef, UpsertBuilder } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
-import { bootstrap, test } from "../testing/bootstrap";
 import { expectUB } from "../testing/expect-ub";
 
 bootstrap(vi);

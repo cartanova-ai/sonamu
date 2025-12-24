@@ -2,8 +2,8 @@ import { constants } from "fs";
 import { access } from "fs/promises";
 import { join } from "path";
 import { Naite, Sonamu } from "sonamu";
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
-import { bootstrap, test } from "./bootstrap";
 
 bootstrap(vi);
 describe("Mocks Testing", () => {
