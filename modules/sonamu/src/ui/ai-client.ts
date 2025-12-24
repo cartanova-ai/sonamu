@@ -1,13 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: AI SDK의 타입이 명확하지 않아 any를 허용함 */
-import { anthropic } from "@ai-sdk/anthropic";
-import {
-  type LanguageModel,
-  type ModelMessage,
-  type StreamTextResult,
-  stepCountIs,
-  streamText,
-  tool,
-} from "ai";
+import type { LanguageModel, ModelMessage, StreamTextResult } from "ai";
 import assert from "assert";
 import fs from "fs";
 import path from "path";
@@ -29,16 +21,36 @@ type ValidationError = {
 };
 
 class AIClient {
-  private model = anthropic("claude-sonnet-4-5");
+  private model: LanguageModel | null = null;
+  private aiSdk:
+    | (typeof import("ai") & {
+        anthropic?: typeof import("@ai-sdk/anthropic").anthropic;
+      })
+    | null = null;
 
   async init() {
-    console.log("AI client initialized with AI SDK");
+    try {
+      const { anthropic } = await import("@ai-sdk/anthropic");
+      const aiModule = await import("ai");
+      this.aiSdk = { ...aiModule, anthropic };
+      this.model = anthropic("claude-sonnet-4-5");
+      console.log("AI client initialized with AI SDK");
+    } catch (error) {
+      console.warn(
+        "AI SDK packages not installed. Install @ai-sdk/anthropic and ai to use AI features.",
+      );
+      throw error;
+    }
   }
 
   handleFixture(
     messages: ModelMessage[],
     fixtureRecords: FixtureRecord[],
   ): StreamTextResult<any, any> {
+    if (!this.aiSdk || !this.model) {
+      throw new Error("AI SDK not initialized. Call init() first.");
+    }
+
     // 현재 fixtureRecords에서 사용된 엔티티들의 구조 정보 수집
     const usedEntityIds = [...new Set(fixtureRecords.map((r) => r.entityId))];
     const entityStructures = usedEntityIds.map((entityId) => {
@@ -82,6 +94,8 @@ class AIClient {
         createFixtures({ fixtures: [{ entityId: "User", id: -1, columns: { name: "홍길동", email: "hong@example.com" } }] })
       `;
 
+    const { streamText, tool } = this.aiSdk;
+
     return streamText({
       model: this.model,
       system: systemMessage,
@@ -102,10 +116,14 @@ class AIClient {
           }),
           execute: async ({
             updates,
+          }: {
+            updates: Array<{ fixtureId: string; updates: Record<string, unknown> }>;
           }): Promise<{ success: boolean; updatedRecords: FixtureRecord[] }> => {
             // fixtureRecords를 복사하고 업데이트 적용
             const updatedRecords: FixtureRecord[] = fixtureRecords.map((record) => {
-              const update = updates.find((u) => u.fixtureId === record.fixtureId);
+              const update = updates.find(
+                (u: { fixtureId: string }) => u.fixtureId === record.fixtureId,
+              );
               if (update) {
                 // columns의 value를 업데이트
                 for (const [columnName, newValue] of Object.entries(update.updates)) {
@@ -137,44 +155,48 @@ class AIClient {
           }),
           execute: async ({
             fixtures,
+          }: {
+            fixtures: Array<{ entityId: string; id: number; columns: Record<string, unknown> }>;
           }): Promise<{ success: boolean; updatedRecords: FixtureRecord[] }> => {
-            const newRecords: FixtureRecord[] = fixtures.map((fixture) => {
-              const entity = EntityManager.get(fixture.entityId);
+            const newRecords: FixtureRecord[] = fixtures.map(
+              (fixture: { entityId: string; id: number; columns: Record<string, unknown> }) => {
+                const entity = EntityManager.get(fixture.entityId);
 
-              // 엔티티 props를 기반으로 columns 구성
-              const columns: FixtureRecord["columns"] = {};
-              for (const prop of entity.props) {
-                if (prop.type === "virtual") continue;
+                // 엔티티 props를 기반으로 columns 구성
+                const columns: FixtureRecord["columns"] = {};
+                for (const prop of entity.props) {
+                  if (prop.type === "virtual") continue;
 
-                let value = fixture.columns[prop.name] ?? null;
+                  let value = fixture.columns[prop.name] ?? null;
 
-                if (prop.name === "created_at") {
-                  // 현재 시간으로 설정
-                  value = new Date().toISOString();
-                } else if (
-                  prop.type === "relation" &&
-                  (prop.relationType === "HasMany" || prop.relationType === "ManyToMany")
-                ) {
-                  // 배열로 변환
-                  value = Array.isArray(value) ? value : [value].filter(nonNullable);
+                  if (prop.name === "created_at") {
+                    // 현재 시간으로 설정
+                    value = new Date().toISOString();
+                  } else if (
+                    prop.type === "relation" &&
+                    (prop.relationType === "HasMany" || prop.relationType === "ManyToMany")
+                  ) {
+                    // 배열로 변환
+                    value = Array.isArray(value) ? value : [value].filter(nonNullable);
+                  }
+
+                  columns[prop.name] = {
+                    prop,
+                    value: value as FixtureRecord["columns"][string]["value"],
+                  };
                 }
 
-                columns[prop.name] = {
-                  prop,
-                  value: value as FixtureRecord["columns"][string]["value"],
+                return {
+                  fixtureId: `${fixture.entityId}#${fixture.id}`,
+                  entityId: fixture.entityId,
+                  id: fixture.id,
+                  columns,
+                  fetchedRecords: [],
+                  belongsRecords: [],
+                  override: false,
                 };
-              }
-
-              return {
-                fixtureId: `${fixture.entityId}#${fixture.id}`,
-                entityId: fixture.entityId,
-                id: fixture.id,
-                columns,
-                fetchedRecords: [],
-                belongsRecords: [],
-                override: false,
-              };
-            });
+              },
+            );
 
             // 새 레코드들의 relation 컬럼을 확인하여 기존 레코드들의 역방향 relation 업데이트
             for (const newRecord of newRecords) {
@@ -232,6 +254,10 @@ class AIClient {
   }
 
   handleEntity(messages: ModelMessage[]): StreamTextResult<any, any> {
+    if (!this.aiSdk || !this.model) {
+      throw new Error("AI SDK not initialized. Call init() first.");
+    }
+
     // entity.instructions.md 파일 읽기 (dist/ui 또는 src/ui에서 실행되므로 패키지 루트 기준으로 접근)
     const instructionsPath = path.join(
       import.meta.dirname,
@@ -326,6 +352,8 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
 | "onUpdate가 필수" | 해당 relation prop에 onUpdate, onDelete 추가 ("CASCADE") |
       `;
 
+    const { streamText, tool, stepCountIs } = this.aiSdk;
+
     return streamText({
       model: this.model as unknown as LanguageModel,
       system: systemMessage,
@@ -337,7 +365,7 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
             "새로운 Entity를 생성합니다. 사용자가 새로운 엔티티나 테이블 생성을 요청할 때 사용하세요.",
           inputSchema: TemplateOptions.shape.entity,
           execute: async (
-            entity,
+            entity: z.infer<typeof TemplateOptions.shape.entity>,
           ): Promise<{
             success: boolean;
             entityId: string;
@@ -388,6 +416,10 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
             entityId,
             updates,
             mode = "merge",
+          }: {
+            entityId: string;
+            updates: Partial<z.infer<typeof TemplateOptions.shape.entity>>;
+            mode?: "merge" | "replace";
           }): Promise<{
             success: boolean;
             entityId: string;
@@ -432,10 +464,11 @@ updateEntity({ entityId: "Project", updates: { props: [{ name: "priority", type:
                 const normalizedSubsetsInternal: { [key: string]: string[] } = {};
 
                 for (const [key, fields] of Object.entries(updates.subsets)) {
-                  normalizedSubsets[key] = fields
-                    .filter((f) => !isInternalSubsetField(f))
+                  const fieldArray = fields as string[];
+                  normalizedSubsets[key] = fieldArray
+                    .filter((f: string) => !isInternalSubsetField(f))
                     .map(normalizeSubsetField);
-                  normalizedSubsetsInternal[key] = fields
+                  normalizedSubsetsInternal[key] = fieldArray
                     .filter(isInternalSubsetField)
                     .map(normalizeSubsetField);
                 }
