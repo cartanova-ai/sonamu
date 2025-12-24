@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 
 const LAST_VERIFIED_FILE = ".last-verified";
-const ROOT_DIR = resolve(__dirname, "..");
+const ROOT_DIR = resolve(import.meta.dirname, "..");
 
 interface VerifiedState {
   head: string;
