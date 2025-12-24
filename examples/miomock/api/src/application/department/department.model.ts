@@ -121,7 +121,6 @@ class DepartmentModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
-      debug: true,
     });
   }
 

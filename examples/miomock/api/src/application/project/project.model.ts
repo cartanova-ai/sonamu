@@ -128,7 +128,6 @@ class ProjectModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
-      debug: true,
     });
   }
 
@@ -255,8 +254,7 @@ class ProjectModelClass extends BaseModelClass<
         name_hl: Puri.highlight("projects.name", search),
         description_hl: Puri.highlight("projects.description", search),
         hl_all: Puri.highlight(["projects.name", "projects.description"], search),
-      })
-      .debug();
+      });
 
     return rows;
   }

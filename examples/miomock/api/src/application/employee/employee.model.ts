@@ -166,7 +166,6 @@ class EmployeeModelClass extends BaseModelClass<
       qb,
       params,
       enhancers,
-      debug: true,
     });
   }
 
