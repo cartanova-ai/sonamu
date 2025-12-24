@@ -19,7 +19,8 @@ RUN cd /tmp && \
     rm -rf /tmp/mecab-ko-dic*
 
 # 한국어 사전 경로 설정
-RUN echo "dicdir = /usr/lib/aarch64-linux-gnu/mecab/dic/mecab-ko-dic" > /etc/mecabrc
+# lib 폴더의 실제 아키텍처명은 uname -m을 쓰는게 더 명확할 수도 있음
+RUN echo "dicdir = /usr/lib/$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)/mecab/dic/mecab-ko-dic" > /etc/mecabrc
 
 # 버전 라벨링 (Sonamu 버전과 동일하게 설정)
 LABEL version="0.7.0"
