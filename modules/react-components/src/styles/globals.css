@@ -1,0 +1,639 @@
+@import url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.min.css");
+@import "react-day-picker/dist/style.css";
+@import "tailwindcss";
+
+/* Tailwind v4: 외부 패키지에서 사용할 때 소스 경로 지정 */
+@source "../components/**/*.tsx";
+@source "../hooks/**/*.ts";
+@source "../lib/**/*.ts";
+
+/* VSCode CSS 린터: Tailwind v4의 새 문법 경고 무시 */
+/* @custom-variant, @theme는 Tailwind v4에서 정상 작동 */
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Typography font sizes */
+  --text-2xl: 24px;
+  --text-xl: 18px;
+  --text-lg: 15px;
+  --text-base: 13px;
+  --text-sm: 12px;
+  --text-xs: 11px;
+  /* The default background color for the application. */
+  --background: rgba(255, 255, 255, 1);
+  /* The default color for elements or text that appears on top of the background. */
+  --foreground: rgba(23, 23, 23, 1);
+  /* The background color for cards, modals, and other containers. */
+  --card: rgba(255, 255, 255, 1);
+  /* The default color for text or elements that appear on top of cards, modals and other background containers. */
+  --card-foreground: rgba(23, 23, 23, 1);
+  /* The background color for dropdowns and tooltips. */
+  --popover: rgba(255, 255, 255, 1);
+  /* The default color for text or elements that appear on top of dropdowns and tooltips. */
+  --popover-foreground: rgba(23, 23, 23, 1);
+  /* The primary color used for buttons, links, and other interactive elements. */
+  --primary: rgba(94, 105, 209, 1);
+  /* The default color for text or elements that appear on top of primary colored elements. */
+  --primary-foreground: rgba(255, 255, 255, 1);
+  /* The secondary color used for secondary(but NOT-DESTRUCTIVE) buttons and interactive elements. */
+  --secondary: rgba(245, 245, 247, 1);
+  /* The default color for text or elements that appear on top of secondary colored elements. */
+  --secondary-foreground: rgba(23, 23, 23, 1);
+  /* The muted color used for less prominent elements, such as disabled buttons or disabled text. */
+  --muted: rgba(245, 245, 247, 1);
+  /* The default color for text or elements that appear on top of muted colored elements. */
+  --muted-foreground: rgba(113, 113, 122, 1);
+  /* The accent color used for highlights, links, and other interactive elements. */
+  --accent: rgba(93, 133, 255, 1);
+  /* The default color for text or elements that appear on top of accent colored elements. */
+  --accent-foreground: rgba(255, 255, 255, 1);
+  /* The color used for background in destructive actions, such as delete buttons or error messages. */
+  --destructive: rgba(239, 68, 68, 1);
+  /* The default color for text or elements that appear on top of destructive colored elements. */
+  --destructive-foreground: rgba(255, 255, 255, 1);
+  /* The default border color for elements such as inputs, buttons, and other containers. */
+  --border: rgba(229, 229, 234, 1);
+  /* The default background color for input fields once the text has been filled. Should be either transparent or match the input-background. */
+  --input: rgba(0, 0, 0, 0);
+  /* The default background color for input fields, text areas, and other input elements. */
+  --input-background: rgba(248, 248, 250, 1);
+  /* The background color for switch toggle in the off state. */
+  --switch-background: rgba(229, 229, 234, 1);
+  /* The default font weight for medium text. */
+  --font-weight-medium: 500;
+  /* The default font weight for normal text. */
+  --font-weight-normal: 400;
+  /* The color for focus rings, outlines, and other focus indicators. */
+  --ring: rgba(94, 105, 209, 1);
+  /* Shadow for small elevations, such as cards or modals. */
+  --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 2px 4px 0px rgba(0, 0, 0, 0.04);
+  /* The color for chart elements, such as a bar or line in a chart. */
+  --chart-1: rgba(94, 105, 209, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-2: rgba(93, 133, 255, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-3: rgba(146, 164, 255, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-4: rgba(114, 226, 159, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-5: rgba(242, 190, 0, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-6: rgba(255, 153, 153, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-7: rgba(132, 227, 183, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-8: rgba(197, 245, 200, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-9: rgba(255, 238, 182, 1);
+  /* The color for another chart element, such as a bar or line in a chart. */
+  --chart-10: rgba(255, 204, 153, 1);
+  /* The default border radius for elements such as buttons, tooltip, and other containers. */
+  --radius: 5px;
+  /* Border radius for button elements. */
+  --radius-button: 5px;
+  /* Border radius for card elements. */
+  --radius-card: 5px;
+  /* Border radius for navigation elements. */
+  --radius-nav: 10px;
+  /* Border radius for toggle elements. */
+  --radius-toggle: 20px;
+  /* Computed border radius values for Tailwind */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: var(--radius-nav);
+  /* The background color for sidebars, navigation menus, and other persistent elements. */
+  --sidebar: rgba(250, 250, 252, 1);
+  /* The default color for text or elements that appear on top of sidebars, navigation menus, and other persistent elements. */
+  --sidebar-foreground: rgba(23, 23, 23, 1);
+  /* The primary color used for buttons, links, and other interactive elements in sidebars and navigation menus. */
+  --sidebar-primary: rgba(94, 105, 209, 1);
+  /* The default color for text or elements that appear on top of primary colored elements in sidebars and navigation menus. */
+  --sidebar-primary-foreground: rgba(255, 255, 255, 1);
+  /* The accent color used for highlights, links, and other interactive elements in sidebars and navigation menus. */
+  --sidebar-accent: rgba(93, 133, 255, 1);
+  /* The default color for text or elements that appear on top of accent colored elements in sidebars and navigation menus. */
+  --sidebar-accent-foreground: rgba(255, 255, 255, 1);
+  /* The default border color for elements in sidebars and navigation menus. */
+  --sidebar-border: rgba(229, 229, 234, 1);
+  /* The default color for focus rings, outlines, and other focus indicators in sidebars and navigation menus. */
+  --sidebar-ring: rgba(94, 105, 209, 1);
+}
+
+.dark {
+  --background: rgba(9, 9, 9, 1);
+  --foreground: rgba(255, 255, 255, 1);
+  --card: rgba(29, 31, 36, 1);
+  --card-foreground: rgba(255, 255, 255, 1);
+  --popover: rgba(26, 28, 31, 1);
+  --popover-foreground: rgba(255, 255, 255, 1);
+  --primary: rgba(94, 105, 209, 1);
+  --primary-foreground: rgba(254, 254, 255, 1);
+  --secondary: rgba(35, 38, 44, 1);
+  --secondary-foreground: rgba(227, 228, 232, 1);
+  --muted: rgba(149, 150, 153, 1);
+  --muted-foreground: rgba(149, 150, 153, 1);
+  --accent: rgba(93, 133, 255, 1);
+  --accent-foreground: rgba(255, 255, 255, 1);
+  --destructive: rgba(255, 101, 101, 1);
+  --destructive-foreground: rgba(255, 255, 255, 1);
+  --border: rgba(42, 44, 49, 1);
+  --input: rgba(0, 0, 0, 0);
+  --input-background: rgba(29, 31, 36, 1);
+  --switch-background: rgba(52, 54, 59, 1);
+  --ring: rgba(83, 107, 229, 1);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: rgba(94, 105, 209, 1);
+  --chart-2: rgba(93, 133, 255, 1);
+  --chart-3: rgba(146, 164, 255, 1);
+  --chart-4: rgba(114, 226, 159, 1);
+  --chart-5: rgba(242, 190, 0, 1);
+  --chart-6: rgba(255, 153, 153, 1);
+  --chart-7: rgba(132, 227, 183, 1);
+  --chart-8: rgba(197, 245, 200, 1);
+  --chart-9: rgba(255, 238, 182, 1);
+  --chart-10: rgba(255, 204, 153, 1);
+  --sidebar: rgba(21, 22, 25, 1);
+  --sidebar-foreground: rgba(255, 255, 255, 1);
+  --sidebar-primary: rgba(94, 105, 209, 1);
+  --sidebar-primary-foreground: rgba(254, 254, 255, 1);
+  --sidebar-accent: rgba(93, 133, 255, 1);
+  --sidebar-accent-foreground: rgba(255, 255, 255, 1);
+  --sidebar-border: rgba(38, 39, 43, 1);
+  --sidebar-ring: rgba(83, 107, 229, 1);
+}
+
+/* VSCode CSS 린터: Tailwind v4의 @theme 문법 경고 무시 */
+@theme inline {
+  /* Font Sizes - Tailwind v4 매핑 */
+  --font-size-2xl: 24px;
+  --font-size-xl: 18px;
+  --font-size-lg: 15px;
+  --font-size-base: 13px;
+  --font-size-sm: 12px;
+  --font-size-xs: 11px;
+  
+  /* Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-9: var(--chart-9);
+  --color-chart-10: var(--chart-10);
+  
+  /* Border Radius */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: var(--radius-nav);
+  --radius-button: var(--radius-button);
+  --radius-card: var(--radius-card);
+  --radius-nav: var(--radius-nav);
+  --radius-toggle: var(--radius-toggle);
+  
+  /* Shadow */
+  --shadow-sm: var(--elevation-sm);
+  
+  /* Sidebar Colors */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Animations - tailwindcss-animate 대체 */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-collapsible-down: collapsible-down 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-fade-out: fade-out 0.2s ease-out;
+  --animate-slide-in-from-top: slide-in-from-top 0.2s ease-out;
+  --animate-slide-in-from-bottom: slide-in-from-bottom 0.2s ease-out;
+  --animate-slide-in-from-left: slide-in-from-left 0.2s ease-out;
+  --animate-slide-in-from-right: slide-in-from-right 0.2s ease-out;
+  --animate-slide-out-to-top: slide-out-to-top 0.2s ease-out;
+  --animate-slide-out-to-bottom: slide-out-to-bottom 0.2s ease-out;
+  --animate-slide-out-to-left: slide-out-to-left 0.2s ease-out;
+  --animate-slide-out-to-right: slide-out-to-right 0.2s ease-out;
+  --animate-spin: spin 1s linear infinite;
+  --animate-ping: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-bounce: bounce 1s infinite;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  }
+
+}
+
+/* Semantic UI의 font-size: 100%를 강제 override (Tailwind v4에서 필수) */
+/* Tailwind utilities보다 높은 우선순위로 적용 */
+@layer utilities {
+  .text-base {
+    font-size: var(--text-base) !important;
+  }
+  .text-sm {
+    font-size: var(--text-sm) !important;
+  }
+  .text-lg {
+    font-size: var(--text-lg) !important;
+  }
+  .text-xl {
+    font-size: var(--text-xl) !important;
+  }
+  .text-2xl {
+    font-size: var(--text-2xl) !important;
+  }
+  .text-xs {
+    font-size: var(--text-xs) !important;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h2 {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h3 {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h4 {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    label {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-sm);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    button {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Custom component styles */
+@layer components {
+  /* Sidebar link styles - reset default anchor styles */
+  [data-sidebar] a,
+  [data-slot="sidebar"] a,
+  [data-slot="sidebar-menu-sub-button"] {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  [data-slot="sidebar-menu-sub-button"]:hover,
+  [data-sidebar] a:hover {
+    color: var(--sidebar-accent-foreground) !important;
+    background-color: var(--sidebar-accent) !important;
+    text-decoration: none !important;
+  }
+
+  [data-slot="sidebar-menu-sub-button"][data-active="true"] {
+    color: var(--sidebar-accent-foreground) !important;
+    background-color: var(--sidebar-accent) !important;
+  }
+
+  [data-slot="pagination-link"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    width: 2rem;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    transition: all 0.2s;
+  }
+
+  [data-slot="pagination-ellipsis"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2rem;
+    width: 2rem;
+  }
+
+  [data-slot="table-container"] {
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+
+  [data-slot="table-row"] {
+    border-color: color-mix(in srgb, var(--border) 40%, transparent);
+  }
+
+  /* Calendar date range styles - react-day-picker v8 */
+  .rdp {
+    --rdp-cell-size: 2rem;
+    --rdp-accent-color: var(--primary);
+    --rdp-background-color: var(--primary);
+  }
+
+  /* Range selection - start date */
+  .rdp-day_range_start:not(.rdp-day_range_end) {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
+  }
+
+  /* Range selection - end date */
+  .rdp-day_range_end:not(.rdp-day_range_start) {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+  }
+
+  /* Range selection - single day (start = end) */
+  .rdp-day_range_start.rdp-day_range_end {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Range selection - middle dates (연결된 배경) */
+  .rdp-day_range_middle {
+    background-color: color-mix(in srgb, var(--primary) 15%, transparent) !important;
+    border-radius: 0 !important;
+  }
+
+  /* Hover states */
+  .rdp-day:not(.rdp-day_selected):not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle):hover {
+    background-color: var(--secondary) !important;
+  }
+
+  /* Selected single date */
+  .rdp-day_selected:not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle) {
+    background-color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+  }
+}
+
+/* Keyframe animations - tailwindcss-animate 대체 */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in-from-top {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-out-to-top {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes slide-out-to-bottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes slide-out-to-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes slide-out-to-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
