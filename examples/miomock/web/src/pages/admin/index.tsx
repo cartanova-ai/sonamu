@@ -1,5 +1,6 @@
+import { Button } from "@sonamu-kit/react-components/components";
 import { useNavigate } from "react-router-dom";
-import { Button, Container, Header, Segment } from "semantic-ui-react";
+import { Container, Header, Segment } from "semantic-ui-react";
 import { useAuth } from "@/admin-common/auth";
 
 export default function AdminIndexPage() {
@@ -32,14 +33,14 @@ export default function AdminIndexPage() {
               {user.created_at ? new Date(user.created_at).toLocaleDateString("ko-KR") : "-"}
             </p>
 
-            <Button color="red" onClick={handleLogout}>
+            <Button variant="secondary" onClick={handleLogout}>
               로그아웃
             </Button>
           </>
         ) : (
           <>
             <p>로그인이 필요합니다.</p>
-            <Button color="teal" onClick={() => navigate("/admin/login-test")}>
+            <Button variant="secondary" onClick={() => navigate("/admin/login-test")}>
               로그인
             </Button>
           </>
@@ -48,13 +49,23 @@ export default function AdminIndexPage() {
 
       <Segment>
         <Header as="h3">관리 메뉴</Header>
-        <Button.Group vertical>
-          <Button onClick={() => navigate("/admin/companies")}>회사 관리</Button>
-          <Button onClick={() => navigate("/admin/users")}>사용자 관리</Button>
-          <Button onClick={() => navigate("/admin/departments")}>부서 관리</Button>
-          <Button onClick={() => navigate("/admin/employees")}>직원 관리</Button>
-          <Button onClick={() => navigate("/admin/projects")}>프로젝트 관리</Button>
-        </Button.Group>
+        <div className="inline-flex flex-col gap-2">
+          <Button variant="default" onClick={() => navigate("/admin/companies")}>
+            회사 관리
+          </Button>
+          <Button variant="default" onClick={() => navigate("/admin/users")}>
+            사용자 관리
+          </Button>
+          <Button variant="default" onClick={() => navigate("/admin/departments")}>
+            부서 관리
+          </Button>
+          <Button variant="default" onClick={() => navigate("/admin/employees")}>
+            직원 관리
+          </Button>
+          <Button variant="default" onClick={() => navigate("/admin/projects")}>
+            프로젝트 관리
+          </Button>
+        </div>
       </Segment>
     </Container>
   );

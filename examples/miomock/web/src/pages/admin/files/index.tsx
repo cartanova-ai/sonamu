@@ -1,8 +1,7 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import {
-  AddButton,
   AppBreadcrumbs,
-  DelButton,
-  EditButton,
   formatDateTime,
   type SonamuCol,
   upload,
@@ -12,21 +11,27 @@ import {
 } from "@sonamu-kit/react-sui";
 import classNames from "classnames";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Breadcrumb,
-  Button,
   Checkbox,
   Form,
   Label,
   Message,
   Pagination,
   Segment,
+  Button as SUIButton,
   Table,
   TableRow,
   Transition,
 } from "semantic-ui-react";
 import z from "zod";
+
+// Icons
+const PlusIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:plus" {...props} />;
+const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:pencil" {...props} />;
+const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
+
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
 import { ImageUploader } from "@/admin-common/ImageUploader";
 import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
@@ -37,6 +42,8 @@ import type { FileSubsetA } from "@/services/sonamu.generated";
 
 type FileListProps = {};
 export default function FileList({}: FileListProps) {
+  const navigate = useNavigate();
+
   // Eager 모드 테스트 상태
   const eagerForm = useTypeForm(FileSaveParams, {
     name: "",
@@ -195,7 +202,7 @@ export default function FileList({}: FileListProps) {
               </Form.Group>
               <Form.Group>
                 <Form.Field width={16}>
-                  <Button
+                  <SUIButton
                     color="green"
                     onClick={async () => {
                       setUploading(true);
@@ -209,7 +216,7 @@ export default function FileList({}: FileListProps) {
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)
-                  </Button>
+                  </SUIButton>
                   <span style={{ marginLeft: "1em" }}>
                     {lazyForm.form.url ? lazyForm.form.url : "파일 대기 중"}
                   </span>
@@ -237,7 +244,7 @@ export default function FileList({}: FileListProps) {
               </Form.Group>
               <Form.Group>
                 <Form.Field width={16}>
-                  <Button
+                  <SUIButton
                     color="green"
                     onClick={async () => {
                       setUploading(true);
@@ -251,7 +258,7 @@ export default function FileList({}: FileListProps) {
                     loading={uploading}
                   >
                     저장 (클릭 시 업로드 시작)
-                  </Button>
+                  </SUIButton>
                   <span style={{ marginLeft: "1em" }}>
                     {`${lazyMultipleForm.form.urls.length}개의 파일 대기 중`}
                   </span>
@@ -270,7 +277,13 @@ export default function FileList({}: FileListProps) {
         <div className="buttons-row">
           <div className={classNames("count", { hidden: isLoading })}>{total} 건</div>
           <div className="buttons">
-            <AddButton currentRoute={PAGE.route} icon="write" label="추가" />
+            <Button
+              size="sm"
+              onClick={() => navigate(`${PAGE.route}/form`, { state: { from: PAGE.route } })}
+            >
+              <PlusIcon />
+              추가
+            </Button>
           </div>
         </div>
 
@@ -327,12 +340,18 @@ export default function FileList({}: FileListProps) {
                   ))
                 }
                 <Table.Cell collapsing>
-                  <EditButton
-                    as={Link}
-                    to={`${PAGE.route}/form?id=${row.id}`}
-                    state={{ from: PAGE.route }}
-                  />
-                  <DelButton onClick={() => confirmDel([row.id])} />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(`${PAGE.route}/form?id=${row.id}`, { state: { from: PAGE.route } })
+                    }
+                  >
+                    <EditIcon />
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => confirmDel([row.id])}>
+                    <TrashIcon />
+                  </Button>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -354,12 +373,12 @@ export default function FileList({}: FileListProps) {
         <Transition visible={selectedKeys.length > 0} animation="slide left" duration={500}>
           <Message size="small" color="violet" className="text-center">
             <span className="px-4">{selectedKeys.length}개 선택됨</span>
-            <Button size="tiny" color="violet" onClick={() => deselectAll()}>
+            <SUIButton size="tiny" color="violet" onClick={() => deselectAll()}>
               선택 해제
-            </Button>
-            <Button size="tiny" color="red" onClick={confirmDelSelected}>
+            </SUIButton>
+            <SUIButton size="tiny" color="red" onClick={confirmDelSelected}>
               일괄 삭제
-            </Button>
+            </SUIButton>
           </Message>
         </Transition>
       </div>

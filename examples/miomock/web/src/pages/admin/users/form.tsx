@@ -1,3 +1,5 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import {
   BackLink,
   BooleanToggle,
@@ -8,8 +10,12 @@ import {
 } from "@sonamu-kit/react-sui";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
+import { Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
+
+// Icons
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
+
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
 import { UserService } from "@/services/services.generated";
 import type { UserSubsetA } from "@/services/sonamu.generated";
@@ -150,7 +156,10 @@ export function UsersForm({ id, mode }: UsersFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
+              <Button type="submit" onClick={handleSubmit}>
+                <SaveIcon />
+                저장
+              </Button>
             </Segment>
           </Form>
         </Segment>

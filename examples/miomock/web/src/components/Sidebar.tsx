@@ -1,7 +1,14 @@
+import { Icon as IconifyIcon, type IconProps as IconifyIconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import classNames from "classnames";
 import { Link, useLocation } from "react-router-dom";
-import { Button, Icon, type IconProps, Menu } from "semantic-ui-react";
+import { Icon, type IconProps, Menu } from "semantic-ui-react";
 import { useAuth } from "../admin-common/auth";
+
+// Icons
+const SignOutIcon = (props: Omit<IconifyIconProps, "icon">) => (
+  <IconifyIcon icon="lucide:log-out" {...props} />
+);
 
 interface SidebarProps {
   className?: string;
@@ -97,8 +104,8 @@ export default function Sidebar({ className }: SidebarProps) {
       </Menu>
       {user && (
         <div style={{ padding: "1em" }}>
-          <Button fluid color="red" onClick={handleLogout}>
-            <Icon name="sign out" />
+          <Button variant="destructive" className="w-full" onClick={handleLogout}>
+            <SignOutIcon />
             로그아웃
           </Button>
         </div>

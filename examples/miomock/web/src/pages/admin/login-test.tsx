@@ -1,6 +1,7 @@
+import { Button } from "@sonamu-kit/react-components/components";
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Form, Grid, Header, Message, Segment } from "semantic-ui-react";
+import { Form, Grid, Header, Message, Segment } from "semantic-ui-react";
 import { useAuth } from "@/admin-common/auth";
 
 export default function LoginTestPage() {
@@ -50,14 +51,12 @@ export default function LoginTestPage() {
                   <p>이메일: {user.email}</p>
                   <p>역할: {user.role}</p>
                 </Message>
-                <Button color="red" fluid size="large" onClick={handleLogout}>
+                <Button variant="destructive" className="w-full" size="lg" onClick={handleLogout}>
                   로그아웃
                 </Button>
                 <Button
-                  color="teal"
-                  fluid
-                  size="large"
-                  style={{ marginTop: ".5em" }}
+                  className="w-full mt-2"
+                  size="lg"
                   onClick={() => navigate("/admin")}
                 >
                   관리자 페이지로 이동
@@ -86,7 +85,7 @@ export default function LoginTestPage() {
                   onKeyPress={handleKeyPress}
                 />
 
-                <Button color="teal" fluid size="large" onClick={handleSubmit}>
+                <Button className="w-full" size="lg" onClick={handleSubmit}>
                   로그인
                 </Button>
               </div>

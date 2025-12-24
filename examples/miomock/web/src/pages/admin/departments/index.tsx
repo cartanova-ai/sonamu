@@ -1,8 +1,7 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import {
-  AddButton,
   AppBreadcrumbs,
-  DelButton,
-  EditButton,
   formatDateTime,
   numF,
   type SonamuCol,
@@ -10,14 +9,20 @@ import {
   useSelection,
 } from "@sonamu-kit/react-sui";
 import classNames from "classnames";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
+// Icons
+const PlusIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:plus" {...props} />;
+const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:pencil" {...props} />;
+const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
+
 import {
   Breadcrumb,
-  Button,
   Checkbox,
   Message,
   Pagination,
   Segment,
+  Button as SUIButton,
   Table,
   TableRow,
   Transition,
@@ -30,6 +35,8 @@ import type { DepartmentSubsetA } from "@/services/sonamu.generated";
 
 type DepartmentListProps = {};
 export default function DepartmentList({}: DepartmentListProps) {
+  const navigate = useNavigate();
+
   // 리스트 필터
   const { listParams, register } = useListParams(DepartmentListParams, {
     num: 12,
@@ -124,7 +131,13 @@ export default function DepartmentList({}: DepartmentListProps) {
         <div className="buttons-row">
           <div className={classNames("count", { hidden: isLoading })}>{total} 건</div>
           <div className="buttons">
-            <AddButton currentRoute={PAGE.route} icon="write" label="추가" />
+            <Button
+              size="sm"
+              onClick={() => navigate(`${PAGE.route}/form`, { state: { from: PAGE.route } })}
+            >
+              <PlusIcon />
+              추가
+            </Button>
           </div>
         </div>
 
@@ -181,12 +194,18 @@ export default function DepartmentList({}: DepartmentListProps) {
                   ))
                 }
                 <Table.Cell collapsing>
-                  <EditButton
-                    as={Link}
-                    to={`${PAGE.route}/form?id=${row.id}`}
-                    state={{ from: PAGE.route }}
-                  />
-                  <DelButton onClick={() => confirmDel([row.id])} />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigate(`${PAGE.route}/form?id=${row.id}`, { state: { from: PAGE.route } })}
+                  >
+                    <EditIcon />
+                    수정
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => confirmDel([row.id])}>
+                    <TrashIcon />
+                    삭제
+                  </Button>
                 </Table.Cell>
               </Table.Row>
             ))}
@@ -208,12 +227,12 @@ export default function DepartmentList({}: DepartmentListProps) {
         <Transition visible={selectedKeys.length > 0} animation="slide left" duration={500}>
           <Message size="small" color="violet" className="text-center">
             <span className="px-4">{selectedKeys.length}개 선택됨</span>
-            <Button size="tiny" color="violet" onClick={() => deselectAll()}>
+            <SUIButton size="tiny" color="violet" onClick={() => deselectAll()}>
               선택 해제
-            </Button>
-            <Button size="tiny" color="red" onClick={confirmDelSelected}>
+            </SUIButton>
+            <SUIButton size="tiny" color="red" onClick={confirmDelSelected}>
               일괄 삭제
-            </Button>
+            </SUIButton>
           </Message>
         </Transition>
       </div>

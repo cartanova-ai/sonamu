@@ -1,8 +1,15 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import { BackLink, formatDateTime, upload, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
+import { Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
 import { useCommonModal } from "@/admin-common/CommonModal";
+
+// Icons
+const SaveIcon = (props: Omit<IconProps, "icon">) => (
+  <Icon icon="lucide:save" {...props} />
+);
 import { ImageUploader } from "@/admin-common/ImageUploader";
 import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
@@ -141,14 +148,14 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             <Segment basic textAlign="center">
               <Button
                 type="submit"
-                primary
                 onClick={async () => {
                   const urls = await upload();
                   handleSubmit(urls);
                 }}
-                content="저장"
-                icon="save"
-              />
+              >
+                <SaveIcon />
+                저장
+              </Button>
             </Segment>
           </Form>
         </Segment>

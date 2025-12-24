@@ -1,8 +1,15 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: axios 사용 시 타입 추론 어려우므로 허용 */
 
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
-import { Button, Label, Segment } from "semantic-ui-react";
+import { Label, Segment } from "semantic-ui-react";
+
+// Icons
+const TrashIcon = (props: Omit<IconProps, "icon">) => (
+  <Icon icon="lucide:trash-2" {...props} />
+);
 
 type ApiLog = {
   id: string;
@@ -125,7 +132,8 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
         <Label attached="top" color="purple">
           API 로그
         </Label>
-        <Button size="tiny" onClick={() => setApiLogs([])} disabled={apiLogs.length === 0}>
+        <Button size="sm" onClick={() => setApiLogs([])} disabled={apiLogs.length === 0}>
+          <TrashIcon />
           로그 지우기
         </Button>
       </div>

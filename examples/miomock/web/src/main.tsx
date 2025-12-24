@@ -7,6 +7,7 @@ import App from "./App";
 import { AuthProvider } from "./admin-common/auth";
 import "semantic-ui-css/semantic.min.css";
 import "./index.css";
+import "@sonamu-kit/react-components/styles";
 
 const queryClient = new QueryClient({
   defaultOptions: {

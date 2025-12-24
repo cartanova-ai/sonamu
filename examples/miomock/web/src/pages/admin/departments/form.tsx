@@ -1,8 +1,13 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Form, Header, Input, Segment } from "semantic-ui-react";
+import { Form, Header, Input, Segment } from "semantic-ui-react";
 import { defaultCatch } from "../../../services/sonamu.shared";
+
+// Icons
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
 // import { ImageUploader } from 'src/admin-common/ImageUploader';
 // import { useCommonModal } from "../../../admin-common/CommonModal";
@@ -113,7 +118,10 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
               </Form.Field>
             </Form.Group>
             <Segment basic textAlign="center">
-              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
+              <Button type="submit" onClick={handleSubmit}>
+                <SaveIcon />
+                저장
+              </Button>
             </Segment>
           </Form>
         </Segment>

@@ -1,6 +1,7 @@
+import { Button } from "@sonamu-kit/react-components/components";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Form, Grid, Header, Message, Segment } from "semantic-ui-react";
+import { Form, Grid, Header, Message, Segment } from "semantic-ui-react";
 import { useAuth } from "@/admin-common/auth";
 
 export default function LoginPage() {
@@ -58,14 +59,13 @@ export default function LoginPage() {
               onKeyPress={handleKeyPress}
             />
 
-            <Button color="teal" fluid size="large" onClick={handleSubmit}>
+            <Button className="w-full" size="lg" onClick={handleSubmit}>
               로그인
             </Button>
 
             {user !== null && (
               <Button
-                color="teal"
-                style={{ marginTop: ".5em" }}
+                className="mt-2"
                 onClick={() =>
                   navigate(
                     (location.state as { from?: { pathname?: string } })?.from?.pathname ??

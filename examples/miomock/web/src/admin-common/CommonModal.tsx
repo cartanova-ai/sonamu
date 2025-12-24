@@ -1,7 +1,12 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button } from "@sonamu-kit/react-components/components";
 import { atom, useAtom } from "jotai";
 import type React from "react";
 import { useEffect } from "react";
-import { Button, Modal, type ModalProps } from "semantic-ui-react";
+import { Modal, type ModalProps } from "semantic-ui-react";
+
+// Icons
+const XIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:x" {...props} />;
 
 type ExtendedModalProps = ModalProps & {
   onCompleted?: (data?: unknown) => void;
@@ -57,7 +62,15 @@ export function CommonModal({}: CommonModalProps) {
       }}
     >
       <Modal.Actions>
-        <Button icon="close" inverted circular className="floating-close" onClick={closeAndClear} />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="floating-close"
+          onClick={closeAndClear}
+          aria-label="Close"
+        >
+          <XIcon />
+        </Button>
       </Modal.Actions>
       <Modal.Content>
         <Modal.Description>{reactNode}</Modal.Description>
