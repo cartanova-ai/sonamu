@@ -1,5 +1,6 @@
-import React, { useRef, useState, useCallback } from "react";
-import { X, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
+import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
@@ -49,9 +50,7 @@ export function MultiImageUploader({
         const newValue = [...(value || []), ...uploadedUrls];
 
         // Limit to maxImages if specified
-        const limitedValue = maxImages
-          ? newValue.slice(0, maxImages)
-          : newValue;
+        const limitedValue = maxImages ? newValue.slice(0, maxImages) : newValue;
         onChange?.(null, { value: limitedValue });
       } catch (error) {
         console.error("Upload failed:", error);
@@ -59,7 +58,7 @@ export function MultiImageUploader({
         setIsUploading(false);
       }
     },
-    [uploader, onChange, disabled, value, maxImages]
+    [uploader, onChange, disabled, value, maxImages],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +73,7 @@ export function MultiImageUploader({
       setDragOver(false);
       handleFilesChange(e.dataTransfer.files);
     },
-    [handleFilesChange]
+    [handleFilesChange],
   );
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -122,16 +121,9 @@ export function MultiImageUploader({
       {value?.map((url, index) => (
         <div
           key={`${url}-${index}`}
-          className={cn(
-            "relative rounded-lg border overflow-hidden",
-            sizeClasses[previewSize]
-          )}
+          className={cn("relative rounded-lg border overflow-hidden", sizeClasses[previewSize])}
         >
-          <img
-            src={url}
-            alt={`Uploaded ${index + 1}`}
-            className="h-full w-full object-cover"
-          />
+          <img src={url} alt={`Uploaded ${index + 1}`} className="h-full w-full object-cover" />
           {!disabled && (
             <Button
               type="button"
@@ -160,7 +152,7 @@ export function MultiImageUploader({
               ? "border-primary bg-primary/5"
               : "border-muted-foreground/25 hover:border-muted-foreground/50",
             disabled && "opacity-50 cursor-not-allowed",
-            isUploading && "cursor-wait"
+            isUploading && "cursor-wait",
           )}
         >
           {isUploading ? (

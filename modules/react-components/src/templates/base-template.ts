@@ -1,6 +1,6 @@
-import { TemplateKey, TemplateOptions } from "../types/types";
-import { EntityNamesRecord } from "../entity/entity-manager";
-import { RenderedTemplate } from "../syncer/syncer";
+import type { EntityNamesRecord } from "../entity/entity-manager";
+import type { RenderedTemplate } from "../syncer/syncer";
+import type { TemplateKey, TemplateOptions } from "../types/types";
 
 export abstract class Template {
   constructor(public key: TemplateKey) {}

@@ -1,18 +1,12 @@
 "use client";
 
-import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker, DateRange } from "react-day-picker";
+import * as React from "react";
+import { type DateRange, DayPicker } from "react-day-picker";
 
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 function Calendar({
   className,
@@ -60,8 +54,18 @@ function Calendar({
   // Generate years from 1900 to current year + 10
   const years = Array.from({ length: new Date().getFullYear() - 1900 + 11 }, (_, i) => 1900 + i);
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const isRangeMode = props.mode === "range" && props.numberOfMonths === 2;
@@ -86,8 +90,7 @@ function Calendar({
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse mx-auto",
         head_row: "flex justify-center",
-        head_cell:
-          "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
+        head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
         row: "flex w-full mt-2 justify-center",
         cell: cn(
           "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected].day-range-end)]:rounded-r-md",
@@ -106,11 +109,9 @@ function Calendar({
         day_selected:
           "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:text-muted-foreground",
+        day_outside: "day-outside text-muted-foreground aria-selected:text-muted-foreground",
         day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...classNames,
       }}
@@ -123,14 +124,15 @@ function Calendar({
         ),
         Caption: ({ displayMonth, displayIndex }) => {
           // Determine which month state to use based on displayIndex
-          const currentDisplayMonth = isRangeMode && displayIndex === 1 ? secondMonth : displayMonth;
+          const currentDisplayMonth =
+            isRangeMode && displayIndex === 1 ? secondMonth : displayMonth;
           const displayYear = currentDisplayMonth.getFullYear();
           const displayMonthIndex = currentDisplayMonth.getMonth();
 
           const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
             const newDate = new Date(currentDisplayMonth);
             newDate.setMonth(parseInt(e.target.value));
-            
+
             if (isRangeMode && displayIndex === 1) {
               setSecondMonth(newDate);
             } else {
@@ -141,7 +143,7 @@ function Calendar({
           const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
             const newDate = new Date(currentDisplayMonth);
             newDate.setFullYear(parseInt(e.target.value));
-            
+
             if (isRangeMode && displayIndex === 1) {
               setSecondMonth(newDate);
             } else {

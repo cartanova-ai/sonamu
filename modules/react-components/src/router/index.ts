@@ -1,3 +1,2 @@
-// Router configuration will be exported here
-// Example: export { router, routeTree } from "./routes";
-
+// Router utilities
+export { loadDynamicRoutes } from "./dynamic-routes";

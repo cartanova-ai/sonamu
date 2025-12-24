@@ -4,15 +4,9 @@ import { z } from "zod";
 function isZodNumberAnyway(zodType: z.ZodType<any>) {
   if (zodType instanceof z.ZodNumber) {
     return true;
-  } else if (
-    zodType instanceof z.ZodNullable &&
-    zodType._def.innerType instanceof z.ZodNumber
-  ) {
+  } else if (zodType instanceof z.ZodNullable && zodType._def.innerType instanceof z.ZodNumber) {
     return true;
-  } else if (
-    zodType instanceof z.ZodOptional &&
-    zodType._def.innerType instanceof z.ZodNumber
-  ) {
+  } else if (zodType instanceof z.ZodOptional && zodType._def.innerType instanceof z.ZodNumber) {
     return true;
   } else if (
     zodType instanceof z.ZodOptional &&
@@ -41,17 +35,12 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
         return Number(raw);
       }
     }
-  } else if (
-    zodType instanceof z.ZodBoolean &&
-    (raw === "true" || raw === "false")
-  ) {
+  } else if (zodType instanceof z.ZodBoolean && (raw === "true" || raw === "false")) {
     // boolean
     return raw === "true";
   } else if (zodType instanceof z.ZodArray) {
     // array
-    return raw.map((elem: any) =>
-      caster(zodType.element as z.ZodType<any>, elem)
-    );
+    return raw.map((elem: any) => caster(zodType.element as z.ZodType<any>, elem));
   } else if (zodType instanceof z.ZodObject && typeof raw === "object") {
     // object
     return Object.keys(raw).reduce((r, rawKey) => {

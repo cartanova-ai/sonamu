@@ -1,5 +1,6 @@
-import React, { useRef, useState, useCallback } from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
+import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
@@ -50,7 +51,7 @@ export function ImageUploader({
         setIsUploading(false);
       }
     },
-    [uploader, onChange, disabled]
+    [uploader, onChange, disabled],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +70,7 @@ export function ImageUploader({
       const file = e.dataTransfer.files?.[0] ?? null;
       handleFileChange(file);
     },
-    [handleFileChange]
+    [handleFileChange],
   );
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -122,7 +123,7 @@ export function ImageUploader({
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50",
           disabled && "opacity-50 cursor-not-allowed",
-          isUploading && "cursor-wait"
+          isUploading && "cursor-wait",
         )}
       >
         {isUploading ? (
@@ -132,11 +133,7 @@ export function ImageUploader({
           </div>
         ) : value ? (
           <>
-            <img
-              src={value}
-              alt="Uploaded"
-              className="h-full w-full object-cover rounded-lg"
-            />
+            <img src={value} alt="Uploaded" className="h-full w-full object-cover rounded-lg" />
             {!disabled && (
               <Button
                 type="button"
@@ -159,4 +156,3 @@ export function ImageUploader({
     </div>
   );
 }
-

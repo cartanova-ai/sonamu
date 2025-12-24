@@ -600,6 +600,9 @@ importers:
       qs:
         specifier: ^6.14.0
         version: 6.14.0
+      radashi:
+        specifier: ^12.7.1
+        version: 12.7.1
       react:
         specifier: ^18.2.0
         version: 18.3.1

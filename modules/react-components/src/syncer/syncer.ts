@@ -1,4 +1,4 @@
-import { TemplateKey, TemplateOptions } from "../types/types";
+import type { TemplateKey, TemplateOptions } from "../types/types";
 
 /**
  * 렌더링된 템플릿 결과 타입
@@ -15,4 +15,3 @@ export type RenderedTemplate = {
     options: TemplateOptions[TemplateKey];
   }[];
 };
-

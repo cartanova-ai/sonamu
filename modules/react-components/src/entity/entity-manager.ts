@@ -1,15 +1,8 @@
 import inflection from "inflection";
-import { EntityJson, EntityProp, EntityPropNode } from "../types/types";
+import type { EntityJson, EntityProp, EntityPropNode } from "../types/types";
 
 export type EntityNamesRecord = Record<
-  | "fs"
-  | "fsPlural"
-  | "camel"
-  | "camelPlural"
-  | "capital"
-  | "capitalPlural"
-  | "upper"
-  | "constant",
+  "fs" | "fsPlural" | "camel" | "camelPlural" | "capital" | "capitalPlural" | "upper" | "constant",
   string
 > & {
   parentFs?: string;
@@ -59,10 +52,12 @@ export class Entity {
     return fieldExprs.flatMap((fieldExpr) => {
       const prop = this.props.find((p) => p.name === fieldExpr);
       if (!prop) return [];
-      return [{
-        nodeType: "plain" as const,
-        prop,
-      }];
+      return [
+        {
+          nodeType: "plain" as const,
+          prop,
+        },
+      ];
     });
   }
 
@@ -78,10 +73,7 @@ export class Entity {
 
     // Subsets 등록
     Object.keys(this.subsets).forEach((subsetKey) => {
-      EntityManager.setModulePath(
-        `${this.id}Subset${subsetKey}`,
-        modulePath
-      );
+      EntityManager.setModulePath(`${this.id}Subset${subsetKey}`, modulePath);
     });
 
     // 기본 타입들 등록
@@ -217,9 +209,7 @@ class EntityManagerClass {
 
     return {
       fs: inflection.dasherize(inflection.underscore(entityId)).toLowerCase(),
-      fsPlural: inflection
-        .dasherize(inflection.underscore(pluralized))
-        .toLowerCase(),
+      fsPlural: inflection.dasherize(inflection.underscore(pluralized)).toLowerCase(),
       camel: inflection.camelize(entityId, true),
       camelPlural: inflection.camelize(pluralized, true),
       capital: entityId,
@@ -241,4 +231,3 @@ class EntityManagerClass {
 }
 
 export const EntityManager = new EntityManagerClass();
-

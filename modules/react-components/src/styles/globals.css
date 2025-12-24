@@ -66,7 +66,8 @@
   /* The color for focus rings, outlines, and other focus indicators. */
   --ring: rgba(94, 105, 209, 1);
   /* Shadow for small elevations, such as cards or modals. */
-  --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.04), 0px 2px 4px 0px rgba(0, 0, 0, 0.04);
+  --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.04),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.04);
   /* The color for chart elements, such as a bar or line in a chart. */
   --chart-1: rgba(94, 105, 209, 1);
   /* The color for another chart element, such as a bar or line in a chart. */
@@ -173,7 +174,7 @@
   --font-size-base: 13px;
   --font-size-sm: 12px;
   --font-size-xs: 11px;
-  
+
   /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -206,7 +207,7 @@
   --color-chart-8: var(--chart-8);
   --color-chart-9: var(--chart-9);
   --color-chart-10: var(--chart-10);
-  
+
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -216,10 +217,10 @@
   --radius-card: var(--radius-card);
   --radius-nav: var(--radius-nav);
   --radius-toggle: var(--radius-toggle);
-  
+
   /* Shadow */
   --shadow-sm: var(--elevation-sm);
-  
+
   /* Sidebar Colors */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -229,7 +230,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  
+
   /* Animations - tailwindcss-animate 대체 */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -264,9 +265,9 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+      Roboto, sans-serif;
   }
-
 }
 
 /* Semantic UI의 font-size: 100%를 강제 override (Tailwind v4에서 필수) */
@@ -298,56 +299,64 @@
 @layer base {
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
     h1 {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-2xl);
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
 
     h2 {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-xl);
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
 
     h3 {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-lg);
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
 
     h4 {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-base);
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
 
     p {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-base);
       font-weight: var(--font-weight-normal);
       line-height: 1.5;
     }
 
     label {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-sm);
       font-weight: var(--font-weight-normal);
       line-height: 1.5;
     }
 
     button {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-base);
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
     }
 
     input {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+        Roboto, sans-serif;
       font-size: var(--text-base);
       font-weight: var(--font-weight-normal);
       line-height: 1.5;
@@ -465,17 +474,25 @@ html {
 
   /* Range selection - middle dates (연결된 배경) */
   .rdp-day_range_middle {
-    background-color: color-mix(in srgb, var(--primary) 15%, transparent) !important;
+    background-color: color-mix(
+      in srgb,
+      var(--primary) 15%,
+      transparent
+    ) !important;
     border-radius: 0 !important;
   }
 
   /* Hover states */
-  .rdp-day:not(.rdp-day_selected):not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle):hover {
+  .rdp-day:not(.rdp-day_selected):not(.rdp-day_range_start):not(
+      .rdp-day_range_end
+    ):not(.rdp-day_range_middle):hover {
     background-color: var(--secondary) !important;
   }
 
   /* Selected single date */
-  .rdp-day_selected:not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle) {
+  .rdp-day_selected:not(.rdp-day_range_start):not(.rdp-day_range_end):not(
+      .rdp-day_range_middle
+    ) {
     background-color: var(--primary) !important;
     color: var(--primary-foreground) !important;
   }
@@ -615,7 +632,8 @@ html {
 }
 
 @keyframes ping {
-  75%, 100% {
+  75%,
+  100% {
     transform: scale(2);
     opacity: 0;
   }
@@ -623,12 +641,13 @@ html {
 
 @keyframes pulse {
   50% {
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 
 @keyframes bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(-25%);
     animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
   }

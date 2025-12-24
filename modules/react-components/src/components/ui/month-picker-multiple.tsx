@@ -1,17 +1,11 @@
 "use client";
 
-import * as React from "react";
 import { format } from "date-fns";
+import * as React from "react";
+import type { DateRange } from "react-day-picker";
 import { Button } from "./button";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./select";
-import type { DateRange } from "react-day-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 /** 단일 월 또는 월 범위 값 */
 export type MonthPickerValue =
@@ -26,10 +20,7 @@ interface MonthPickerMultipleProps {
   /** Current value */
   value?: MonthPickerValue;
   /** Callback when value changes */
-  onChange?: (
-    event: null,
-    data: { value: MonthPickerValue | undefined }
-  ) => void;
+  onChange?: (event: null, data: { value: MonthPickerValue | undefined }) => void;
   /** Placeholder text when no value */
   placeholder?: string;
   /** Date format string for display */
@@ -42,20 +33,7 @@ interface MonthPickerMultipleProps {
   defaultRangeMode?: boolean;
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function MonthPickerMultiple({
   CalendarIcon,
@@ -72,29 +50,19 @@ export function MonthPickerMultiple({
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Temp states (managed internally)
-  const [tempIsRangeMode, setTempIsRangeMode] =
-    React.useState(defaultRangeMode);
+  const [tempIsRangeMode, setTempIsRangeMode] = React.useState(defaultRangeMode);
   const [tempDate, setTempDate] = React.useState<Date | undefined>();
-  const [tempDateRange, setTempDateRange] = React.useState<
-    DateRange | undefined
-  >();
-  const [tempYear, setTempYear] = React.useState<number>(
-    new Date().getFullYear()
-  );
+  const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
+  const [tempYear, setTempYear] = React.useState<number>(new Date().getFullYear());
   const [tempRangeStartYear, setTempRangeStartYear] = React.useState<number>(
-    new Date().getFullYear()
+    new Date().getFullYear(),
   );
-  const [tempRangeEndYear, setTempRangeEndYear] = React.useState<number>(
-    new Date().getFullYear()
-  );
+  const [tempRangeEndYear, setTempRangeEndYear] = React.useState<number>(new Date().getFullYear());
 
   const years = React.useMemo(
     () =>
-      Array.from(
-        { length: yearRange.end - yearRange.start + 1 },
-        (_, i) => yearRange.start + i
-      ),
-    [yearRange.start, yearRange.end]
+      Array.from({ length: yearRange.end - yearRange.start + 1 }, (_, i) => yearRange.start + i),
+    [yearRange.start, yearRange.end],
   );
 
   // Initialize temp states when popover opens
@@ -129,10 +97,7 @@ export function MonthPickerMultiple({
     if (value.type === "single") {
       return format(value.date, dateFormat);
     }
-    return `${format(value.from, dateFormat)} - ${format(
-      value.to,
-      dateFormat
-    )}`;
+    return `${format(value.from, dateFormat)} - ${format(value.to, dateFormat)}`;
   };
 
   const isSaveEnabled = () => {
@@ -176,10 +141,7 @@ export function MonthPickerMultiple({
     <div className="flex items-center gap-4">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={`gap-2 h-8 text-xs ${className}`}
-          >
+          <Button variant="outline" className={`gap-2 h-8 text-xs ${className}`}>
             <CalendarIcon className="h-4 w-4" />
             {getDisplayDate()}
             <ChevronDownIcon className="h-4 w-4" />
@@ -213,9 +175,7 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">Start Date</div>
                 <Select
                   value={tempRangeStartYear.toString()}
-                  onChange={(e) =>
-                    setTempRangeStartYear(parseInt(e.target.value))
-                  }
+                  onChange={(e) => setTempRangeStartYear(parseInt(e.target.value))}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -226,11 +186,7 @@ export function MonthPickerMultiple({
                         ? year > tempDateRange.to.getFullYear()
                         : false;
                       return (
-                        <SelectItem
-                          key={year}
-                          value={year.toString()}
-                          disabled={isDisabled}
-                        >
+                        <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
                           {year}
                         </SelectItem>
                       );
@@ -241,8 +197,7 @@ export function MonthPickerMultiple({
                   {MONTHS.map((month, idx) => {
                     const isDisabled = tempDateRange?.to
                       ? tempRangeStartYear > tempDateRange.to.getFullYear() ||
-                        (tempRangeStartYear ===
-                          tempDateRange.to.getFullYear() &&
+                        (tempRangeStartYear === tempDateRange.to.getFullYear() &&
                           idx > tempDateRange.to.getMonth())
                       : false;
                     return (
@@ -250,8 +205,7 @@ export function MonthPickerMultiple({
                         key={month}
                         variant={
                           tempDateRange?.from?.getMonth() === idx &&
-                          tempDateRange?.from?.getFullYear() ===
-                            tempRangeStartYear
+                          tempDateRange?.from?.getFullYear() === tempRangeStartYear
                             ? "default"
                             : "outline"
                         }
@@ -279,9 +233,7 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">End Date</div>
                 <Select
                   value={tempRangeEndYear.toString()}
-                  onChange={(e) =>
-                    setTempRangeEndYear(parseInt(e.target.value))
-                  }
+                  onChange={(e) => setTempRangeEndYear(parseInt(e.target.value))}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -292,11 +244,7 @@ export function MonthPickerMultiple({
                         ? year < tempDateRange.from.getFullYear()
                         : false;
                       return (
-                        <SelectItem
-                          key={year}
-                          value={year.toString()}
-                          disabled={isDisabled}
-                        >
+                        <SelectItem key={year} value={year.toString()} disabled={isDisabled}>
                           {year}
                         </SelectItem>
                       );
@@ -307,8 +255,7 @@ export function MonthPickerMultiple({
                   {MONTHS.map((month, idx) => {
                     const isDisabled = tempDateRange?.from
                       ? tempRangeEndYear < tempDateRange.from.getFullYear() ||
-                        (tempRangeEndYear ===
-                          tempDateRange.from.getFullYear() &&
+                        (tempRangeEndYear === tempDateRange.from.getFullYear() &&
                           idx < tempDateRange.from.getMonth())
                       : false;
                     return (
@@ -360,8 +307,7 @@ export function MonthPickerMultiple({
                   <Button
                     key={month}
                     variant={
-                      tempDate?.getMonth() === idx &&
-                      tempDate?.getFullYear() === tempYear
+                      tempDate?.getMonth() === idx && tempDate?.getFullYear() === tempYear
                         ? "default"
                         : "outline"
                     }
@@ -379,12 +325,7 @@ export function MonthPickerMultiple({
             </div>
           )}
           <div className="p-3 border-t flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              className="h-8 text-xs"
-            >
+            <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
               Cancel
             </Button>
             <Button

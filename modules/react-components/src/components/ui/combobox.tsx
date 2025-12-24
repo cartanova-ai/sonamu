@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { Check, ChevronsUpDown, XCircle } from "lucide-react";
+import * as React from "react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -49,7 +49,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
       className,
       clearable = false,
     },
-    ref
+    ref,
   ) => {
     const [open, setOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
@@ -75,7 +75,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
     const handleClear = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (onChange) {
         // useListParams/useTypeForm의 register는 (e, { value }) 형태를 기대함
         (onChange as any)(null, { value: undefined });
@@ -105,9 +105,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
               className={cn("w-full justify-between", className)}
             >
               <span className="flex-1 truncate text-left">
-                {value
-                  ? options.find((option) => option.value === value)?.label
-                  : placeholder}
+                {value ? options.find((option) => option.value === value)?.label : placeholder}
               </span>
               <div className="flex items-center gap-1 shrink-0 pl-2">
                 {clearable && hasValue && (
@@ -130,16 +128,12 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
                 <CommandEmpty>{emptyText}</CommandEmpty>
                 <CommandGroup>
                   {options.map((option) => (
-                    <CommandItem
-                      key={option.value}
-                      value={option.value}
-                      onSelect={handleSelect}
-                    >
+                    <CommandItem key={option.value} value={option.value} onSelect={handleSelect}>
                       {option.label}
                       <Check
                         className={cn(
                           "ml-auto",
-                          value === option.value ? "opacity-100" : "opacity-0"
+                          value === option.value ? "opacity-100" : "opacity-0",
                         )}
                       />
                     </CommandItem>
@@ -151,10 +145,9 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
         </Popover>
       </>
     );
-  }
+  },
 );
 
 Combobox.displayName = "Combobox";
 
 export { Combobox };
-

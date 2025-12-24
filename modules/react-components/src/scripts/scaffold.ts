@@ -15,15 +15,15 @@
 
 import fs from "fs";
 import path from "path";
-import { EntityManager, Entity } from "../entity/entity-manager";
-import { Template__view_list } from "../templates/view_list.template";
-import { Template__view_form } from "../templates/view_form.template";
-import { Template__view_enums_select } from "../templates/view_enums_select.template";
-import { Template__view_enums_dropdown } from "../templates/view_enums_dropdown.template";
-import { Template__view_search_input } from "../templates/view_search_input.template";
-import { Template__view_id_async_select } from "../templates/view_id_async_select.template";
-import { EntityJson, RenderingNode } from "../types/types";
 import { z } from "zod";
+import { type Entity, EntityManager } from "../entity/entity-manager";
+import { Template__view_enums_dropdown } from "../templates/view_enums_dropdown.template";
+import { Template__view_enums_select } from "../templates/view_enums_select.template";
+import { Template__view_form } from "../templates/view_form.template";
+import { Template__view_id_async_select } from "../templates/view_id_async_select.template";
+import { Template__view_list } from "../templates/view_list.template";
+import { Template__view_search_input } from "../templates/view_search_input.template";
+import type { EntityJson, RenderingNode } from "../types/types";
 
 // ===== 재귀적으로 파일 찾기 =====
 function findFiles(dir: string, pattern: RegExp): string[] {
@@ -50,7 +50,7 @@ function findFiles(dir: string, pattern: RegExp): string[] {
 function createColumnFromSubsetField(
   fieldExpr: string,
   entityJson: EntityJson,
-  _allEntityJsons: Map<string, EntityJson>
+  _allEntityJsons: Map<string, EntityJson>,
 ): RenderingNode | null {
   const parts = fieldExpr.split(".");
 
@@ -118,10 +118,7 @@ function createColumnFromSubsetField(
 
     // HasMany/ManyToMany relation의 하위 필드는 건너뛰기 (배열이므로 직접 접근 불가)
     // 대신 relation 필드 자체를 object로 렌더링 (중복 방지는 호출부에서 처리)
-    if (
-      relProp.relationType === "HasMany" ||
-      relProp.relationType === "ManyToMany"
-    ) {
+    if (relProp.relationType === "HasMany" || relProp.relationType === "ManyToMany") {
       // 중첩 필드가 있는 경우 (예: diagnoses.name_en) → 건너뛰기
       // 단독 필드인 경우는 이미 위에서 object로 처리됨
       return null;
@@ -162,7 +159,7 @@ function createColumnFromSubsetField(
 // ===== RenderingNode 생성 헬퍼 =====
 function createRenderingNode(
   entity: Entity,
-  entityJson: EntityJson
+  entityJson: EntityJson,
 ): {
   columnsNode: RenderingNode;
   listParamsNode: RenderingNode;
@@ -180,10 +177,7 @@ function createRenderingNode(
       const rootProp = entityJson.props.find((p) => p.name === parts[0]);
       if (rootProp?.type === "relation") {
         const relProp = rootProp as { relationType?: string };
-        if (
-          relProp.relationType === "HasMany" ||
-          relProp.relationType === "ManyToMany"
-        ) {
+        if (relProp.relationType === "HasMany" || relProp.relationType === "ManyToMany") {
           hasManyRelationNames.add(parts[0]);
         }
       }
@@ -192,9 +186,7 @@ function createRenderingNode(
 
   // 컬럼 노드 생성 (subset 기반)
   const columns = subsetA
-    .map((fieldExpr) =>
-      createColumnFromSubsetField(fieldExpr, entityJson, allEntityJsons)
-    )
+    .map((fieldExpr) => createColumnFromSubsetField(fieldExpr, entityJson, allEntityJsons))
     .filter((node): node is RenderingNode => node !== null);
 
   // HasMany relation 필드들을 object로 추가 (중복 방지)
@@ -328,10 +320,7 @@ function createRenderingNode(
           nullable?: boolean;
           desc?: string;
         };
-        if (
-          relProp.relationType === "BelongsToOne" ||
-          relProp.relationType === "OneToOne"
-        ) {
+        if (relProp.relationType === "BelongsToOne" || relProp.relationType === "OneToOne") {
           // FK 필드로 변환
           return [
             {
@@ -416,18 +405,10 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
   const names = entity.names;
 
   // RenderingNode 생성
-  const { columnsNode, listParamsNode, saveParamsNode } = createRenderingNode(
-    entity,
-    entityJson
-  );
+  const { columnsNode, listParamsNode, saveParamsNode } = createRenderingNode(entity, entityJson);
 
   // 출력 디렉토리 생성 (web 프로젝트 구조에 맞게 -test 접미사 추가)
-  const pagesDir = path.join(
-    outputDir,
-    "pages",
-    "admin",
-    `${names.fsPlural}-test`
-  );
+  const pagesDir = path.join(outputDir, "pages", "admin", `${names.fsPlural}-test`);
   const componentsDir = path.join(outputDir, "components", `${names.fs}-test`);
 
   fs.mkdirSync(pagesDir, { recursive: true });
@@ -439,7 +420,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
   const listResult = listTemplate.render(
     { entityId: entityJson.id, extra: undefined },
     columnsNode,
-    listParamsNode
+    listParamsNode,
   );
   const listPath = path.join(pagesDir, "index.tsx");
   fs.writeFileSync(listPath, listResult.body);
@@ -448,10 +429,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
   // 2. view_form 생성
   console.log("📄 view_form 생성 중...");
   const formTemplate = new Template__view_form();
-  const formResult = formTemplate.render(
-    { entityId: entityJson.id },
-    saveParamsNode
-  );
+  const formResult = formTemplate.render({ entityId: entityJson.id }, saveParamsNode);
   const formPath = path.join(pagesDir, "form.tsx");
   fs.writeFileSync(formPath, formResult.body);
   console.log(`   ✅ ${formPath}`);
@@ -464,10 +442,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
   const searchInputResult = searchInputTemplate.render({
     entityId: entityJson.id,
   });
-  const searchInputPath = path.join(
-    componentsDir,
-    `${names.capital}SearchInput.tsx`
-  );
+  const searchInputPath = path.join(componentsDir, `${names.capital}SearchInput.tsx`);
   fs.writeFileSync(searchInputPath, searchInputResult.body);
   console.log(`   ✅ ${searchInputPath}`);
 
@@ -479,7 +454,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
   });
   const searchFieldDropdownPath = path.join(
     componentsDir,
-    `${names.capital}SearchFieldDropdown.tsx`
+    `${names.capital}SearchFieldDropdown.tsx`,
   );
   fs.writeFileSync(searchFieldDropdownPath, searchFieldDropdownResult.body);
   console.log(`   ✅ ${searchFieldDropdownPath}`);
@@ -490,10 +465,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
     entityId: entityJson.id,
     enumId: `${names.capital}OrderBy`,
   });
-  const orderBySelectPath = path.join(
-    componentsDir,
-    `${names.capital}OrderBySelect.tsx`
-  );
+  const orderBySelectPath = path.join(componentsDir, `${names.capital}OrderBySelect.tsx`);
   fs.writeFileSync(orderBySelectPath, orderBySelectResult.body);
   console.log(`   ✅ ${orderBySelectPath}`);
 
@@ -515,8 +487,7 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
     const relProp = fkProp as { with?: string; relationType?: string };
     if (
       relProp.with &&
-      (relProp.relationType === "BelongsToOne" ||
-        relProp.relationType === "OneToOne")
+      (relProp.relationType === "BelongsToOne" || relProp.relationType === "OneToOne")
     ) {
       try {
         // 관련 entity가 등록되어 있는지 확인
@@ -530,24 +501,15 @@ async function scaffold(entityJson: EntityJson, outputDir: string) {
         });
 
         // 관련 entity의 컴포넌트 폴더에 생성
-        const relatedComponentsDir = path.join(
-          outputDir,
-          "components",
-          `${relatedNames.fs}-test`
-        );
+        const relatedComponentsDir = path.join(outputDir, "components", `${relatedNames.fs}-test`);
         fs.mkdirSync(relatedComponentsDir, { recursive: true });
 
-        const asyncSelectPath = path.join(
-          relatedComponentsDir,
-          `${relProp.with}IdAsyncSelect.tsx`
-        );
+        const asyncSelectPath = path.join(relatedComponentsDir, `${relProp.with}IdAsyncSelect.tsx`);
         fs.writeFileSync(asyncSelectPath, asyncSelectResult.body);
         console.log(`   ✅ ${asyncSelectPath}`);
       } catch (e) {
         // 관련 entity가 등록되지 않은 경우 건너뛰기
-        console.log(
-          `   ⚠️ ${relProp.with}IdAsyncSelect 생성 실패: 관련 entity 미등록`
-        );
+        console.log(`   ⚠️ ${relProp.with}IdAsyncSelect 생성 실패: 관련 entity 미등록`);
       }
     }
   }
@@ -634,9 +596,7 @@ async function main() {
     }
 
     const entityJsons = loadEntityJsons(inputPath);
-    console.log(
-      `📋 발견된 Entity: ${entityJsons.map((e) => e.id).join(", ")}\n`
-    );
+    console.log(`📋 발견된 Entity: ${entityJsons.map((e) => e.id).join(", ")}\n`);
 
     for (const entityJson of entityJsons) {
       await scaffold(entityJson, outputDir);

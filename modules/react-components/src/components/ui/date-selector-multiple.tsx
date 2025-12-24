@@ -1,11 +1,11 @@
 "use client";
 
-import * as React from "react";
 import { format } from "date-fns";
-import { Button } from "./button";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import { Calendar } from "./calendar";
+import * as React from "react";
 import type { DateRange } from "react-day-picker";
+import { Button } from "./button";
+import { Calendar } from "./calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 /** 단일 날짜 또는 날짜 범위 값 */
 export type DateSelectorValue =
@@ -20,10 +20,7 @@ interface DateSelectorMultipleProps {
   /** Current value */
   value?: DateSelectorValue;
   /** Callback when value changes */
-  onChange?: (
-    event: null,
-    data: { value: DateSelectorValue | undefined }
-  ) => void;
+  onChange?: (event: null, data: { value: DateSelectorValue | undefined }) => void;
   /** Placeholder text when no value */
   placeholder?: string;
   /** Date format string for display */
@@ -51,14 +48,9 @@ export function DateSelectorMultiple({
   const [isOpen, setIsOpen] = React.useState(false);
 
   // Temp states (managed internally)
-  const [tempIsRangeMode, setTempIsRangeMode] =
-    React.useState(defaultRangeMode);
-  const [tempSingleDate, setTempSingleDate] = React.useState<
-    Date | undefined
-  >();
-  const [tempDateRange, setTempDateRange] = React.useState<
-    DateRange | undefined
-  >();
+  const [tempIsRangeMode, setTempIsRangeMode] = React.useState(defaultRangeMode);
+  const [tempSingleDate, setTempSingleDate] = React.useState<Date | undefined>();
+  const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>();
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
 
   // Initialize temp states when popover opens
@@ -91,10 +83,7 @@ export function DateSelectorMultiple({
     if (value.type === "single") {
       return format(value.date, dateFormat);
     }
-    return `${format(value.from, dateFormat)} - ${format(
-      value.to,
-      dateFormat
-    )}`;
+    return `${format(value.from, dateFormat)} - ${format(value.to, dateFormat)}`;
   };
 
   const isSaveEnabled = () => {
@@ -138,10 +127,7 @@ export function DateSelectorMultiple({
     <div className="flex items-center justify-between">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={`gap-2 h-8 text-xs ${className}`}
-          >
+          <Button variant="outline" className={`gap-2 h-8 text-xs ${className}`}>
             <CalendarIcon className="h-4 w-4" />
             {getDisplayDate()}
             <ChevronDownIcon className="h-4 w-4" />
@@ -191,12 +177,7 @@ export function DateSelectorMultiple({
             />
           )}
           <div className="p-3 border-t flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              className="h-8 text-xs"
-            >
+            <Button variant="outline" size="sm" onClick={handleCancel} className="h-8 text-xs">
               Cancel
             </Button>
             <Button

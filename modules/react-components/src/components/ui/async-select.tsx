@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { Check, ChevronsUpDown, Loader2, XCircle } from "lucide-react";
+import * as React from "react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -70,17 +70,17 @@ export function AsyncSelect<T = number>({
   // 검색어 디바운스
   React.useEffect(() => {
     if (!onSearch) return;
-    
+
     const timer = setTimeout(() => {
       onSearch(keyword);
     }, searchDebounce);
-    
+
     return () => clearTimeout(timer);
   }, [keyword, onSearch, searchDebounce]);
 
   const selectedOption = React.useMemo(
     () => options.find((opt) => opt.value === value),
-    [options, value]
+    [options, value],
   );
 
   const handleSelect = (selectedValue: T | undefined) => {
@@ -112,7 +112,7 @@ export function AsyncSelect<T = number>({
           disabled={disabled || isLoading}
           className={cn(
             "w-full justify-between hover:!bg-background hover:!text-foreground dark:hover:!bg-input/30",
-            className
+            className,
           )}
         >
           <span className="flex-1 truncate text-left">
@@ -146,9 +146,7 @@ export function AsyncSelect<T = number>({
             onValueChange={setKeyword}
           />
           <CommandList>
-            <CommandEmpty>
-              {isLoading ? loadingText : emptyText}
-            </CommandEmpty>
+            <CommandEmpty>{isLoading ? loadingText : emptyText}</CommandEmpty>
             <CommandGroup>
               {clearable && (
                 <CommandItem
@@ -156,12 +154,7 @@ export function AsyncSelect<T = number>({
                   onSelect={() => handleSelect(undefined)}
                   className="cursor-pointer hover:bg-accent"
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      !hasValue ? "opacity-100" : "opacity-0"
-                    )}
-                  />
+                  <Check className={cn("mr-2 h-4 w-4", !hasValue ? "opacity-100" : "opacity-0")} />
                   ALL
                 </CommandItem>
               )}
@@ -175,7 +168,7 @@ export function AsyncSelect<T = number>({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
+                      value === option.value ? "opacity-100" : "opacity-0",
                     )}
                   />
                   {option.label}
@@ -190,4 +183,3 @@ export function AsyncSelect<T = number>({
 }
 
 AsyncSelect.displayName = "AsyncSelect";
-

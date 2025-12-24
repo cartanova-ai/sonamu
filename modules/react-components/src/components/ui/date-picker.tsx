@@ -1,32 +1,28 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
+import * as React from "react";
 
-import { cn } from "../../lib/utils"
-import { Button } from "./button"
-import { Calendar } from "./calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "./popover"
+import { cn } from "../../lib/utils";
+import { Button } from "./button";
+import { Calendar } from "./calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 interface DatePickerProps {
-  value?: Date
-  onChange?: (event: null, data: { value: Date | undefined }) => void
-  placeholder?: string
-  disabled?: boolean
-  className?: string
+  value?: Date;
+  onChange?: (event: null, data: { value: Date | undefined }) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
 }
 
 /**
  * Date Picker Component
- * 
+ *
  * Based on shadcn/ui Date Picker pattern:
  * @see https://ui.shadcn.com/docs/components/date-picker
- * 
+ *
  * Example usage:
  * ```tsx
  * const [date, setDate] = useState<Date>()
@@ -50,7 +46,7 @@ export function DatePicker({
           className={cn(
             "w-full justify-start text-left font-normal",
             "data-[empty=true]:text-muted-foreground",
-            className
+            className,
           )}
         >
           <CalendarIcon />
@@ -63,14 +59,14 @@ export function DatePicker({
           selected={value}
           onSelect={(date) => {
             if (onChange) {
-              onChange(null, { value: date })
+              onChange(null, { value: date });
             }
           }}
           initialFocus
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 /**
@@ -84,7 +80,7 @@ export function DatePickerWithDropdown({
   disabled = false,
   className,
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -95,7 +91,7 @@ export function DatePickerWithDropdown({
           className={cn(
             "w-full justify-between font-normal",
             !value && "text-muted-foreground",
-            className
+            className,
           )}
         >
           {value ? value.toLocaleDateString() : placeholder}
@@ -109,13 +105,12 @@ export function DatePickerWithDropdown({
           captionLayout="dropdown"
           onSelect={(selectedDate) => {
             if (onChange) {
-              onChange(null, { value: selectedDate })
+              onChange(null, { value: selectedDate });
             }
-            setOpen(false)
+            setOpen(false);
           }}
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-

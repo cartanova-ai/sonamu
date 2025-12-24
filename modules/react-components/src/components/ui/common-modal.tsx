@@ -1,16 +1,9 @@
 "use client";
 
-import * as React from "react";
 import { atom, useAtom } from "jotai";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "./dialog";
+import type * as React from "react";
 import { cn } from "../../lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
 type ExtendedModalProps = {
   title?: string;
@@ -35,13 +28,7 @@ type CommonModalProps = {
 
 export function CommonModal({ className }: CommonModalProps) {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
-  const {
-    open,
-    reactNode,
-    title,
-    description,
-    className: modalClassName,
-  } = atomValue;
+  const { open, reactNode, title, description, className: modalClassName } = atomValue;
 
   const closeAndClear = () => {
     setAtomValue({
@@ -63,9 +50,7 @@ export function CommonModal({ className }: CommonModalProps) {
         {(title || description) && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
-            {description && (
-              <DialogDescription>{description}</DialogDescription>
-            )}
+            {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
         )}
         {reactNode}
@@ -78,10 +63,7 @@ export function useCommonModal() {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
   const { open, reactNode, onCompleted } = atomValue;
 
-  const openModal = (
-    reactNode: React.ReactNode,
-    props?: ExtendedModalProps
-  ) => {
+  const openModal = (reactNode: React.ReactNode, props?: ExtendedModalProps) => {
     setAtomValue({
       open: true,
       reactNode,
