@@ -1,4 +1,5 @@
 #! /usr/bin/env zx
+import path from "node:path";
 import { DescribeImagesCommand, ECRPUBLICClient } from "@aws-sdk/client-ecr-public";
 import { $ } from "zx";
 
@@ -41,8 +42,8 @@ async function deploy() {
       --platform linux/amd64,linux/arm64 \
       --tag ${AWS_ECR_PUBLIC_REGISTRY_URL}:v${version} \
       --tag ${AWS_ECR_PUBLIC_REGISTRY_URL}:latest \
-      --file Dockerfile \
-      .
+      --file ${path.join(import.meta.dirname, "..", "images", "postgres", "Dockerfile")} \
+      ${path.join(import.meta.dirname, "..", "images", "postgres")}
   `;
 }
 
