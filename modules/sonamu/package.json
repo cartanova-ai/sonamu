@@ -25,6 +25,10 @@
       "import": "./dist/storage/index.js",
       "types": "./dist/storage/index.d.ts"
     },
+    "./test": {
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts"
+    },
     "./ai/providers/rtzr": {
       "import": "./dist/ai/providers/rtzr/index.js",
       "types": "./dist/ai/providers/rtzr/index.d.ts"
