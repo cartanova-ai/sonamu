@@ -516,16 +516,14 @@ export const SonamuQueryMode = z.enum(["both", "list", "count"]);
 export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
 
 /* Semantic Query */
-export const SonamuSemanticParams = z
-  .object({
-    semanticQuery: z.object({
-      embedding: z.array(z.number()).min(1024).max(1024),
-      threshold: z.number().optional(),
-      method: z.enum(["cosine", "l2", "inner_product"]).optional(),
-      which: z.string(),
-    }),
-  })
-  .partial();
+export const SonamuSemanticParams = z.object({
+  semanticQuery: z.object({
+    embedding: z.array(z.number()).min(1024).max(1024),
+    threshold: z.number().optional(),
+    method: z.enum(["cosine", "l2", "inner_product"]).optional(),
+  }),
+  which: z.string(),
+});
 export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
 
 /* Knex Migration */
