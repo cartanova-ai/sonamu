@@ -34,7 +34,6 @@ class AIClient {
       const aiModule = await import("ai");
       this.aiSdk = { ...aiModule, anthropic };
       this.model = anthropic("claude-sonnet-4-5");
-      console.log("AI client initialized with AI SDK");
     } catch (error) {
       console.warn(
         "AI SDK packages not installed. Install @ai-sdk/anthropic and ai to use AI features.",
