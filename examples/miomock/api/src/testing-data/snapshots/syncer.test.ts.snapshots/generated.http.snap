@@ -405,7 +405,7 @@ GET {{baseUrl}}/api/document/findMany
 	&rawParams[semanticQuery][embedding][0]=0
 	&rawParams[semanticQuery][threshold]=0
 	&rawParams[semanticQuery][method]=cosine
-	&rawParams[semanticQuery][which]=WHICH
+	&rawParams[which]=title
 Content-Type: application/json
 
 ###
@@ -420,8 +420,17 @@ Content-Type: application/json
     "page": 1,
     "search": "id",
     "keyword": "KEYWORD",
+    "orderBy": "id-desc",
+    "queryMode": "both",
     "id": 0,
-    "semanticQuery": "unknown-nonoptional"
+    "semanticQuery": {
+      "embedding": [
+        0
+      ],
+      "threshold": 0,
+      "method": "cosine"
+    },
+    "which": "title"
   }
 }
 
