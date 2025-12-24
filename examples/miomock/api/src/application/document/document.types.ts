@@ -1,18 +1,18 @@
 import { SonamuSemanticParams } from "sonamu";
-import type { z } from "zod";
+import { z } from "zod";
 import { DocumentBaseListParams, DocumentBaseSchema } from "../sonamu.generated";
 
-// Document - ListParams
-export const DocumentListParams = DocumentBaseListParams.extend(SonamuSemanticParams.shape);
-export type DocumentListParams = z.infer<typeof DocumentListParams>;
-
-export const DocumentSemanticParams = DocumentListParams.omit({
-  orderBy: true,
-  queryMode: true,
-}).required({
-  semanticQuery: true,
+// Document - SemanticParams
+export const DocumentSemanticParams = DocumentBaseListParams.extend(
+  SonamuSemanticParams.shape,
+).extend({
+  which: z.enum(["title", "content"]),
 });
 export type DocumentSemanticParams = z.infer<typeof DocumentSemanticParams>;
+
+// Document - ListParams
+export const DocumentListParams = DocumentSemanticParams.partial();
+export type DocumentListParams = z.infer<typeof DocumentListParams>;
 
 // Document - SaveParams
 export const DocumentSaveParams = DocumentBaseSchema.partial({

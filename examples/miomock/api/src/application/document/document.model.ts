@@ -3,9 +3,11 @@ import {
   asArray,
   BadRequestException,
   BaseModelClass,
+  type ExtractTTables,
   exhaustive,
   type ListResult,
   NotFoundException,
+  type VectorColumns,
 } from "sonamu";
 import { Embedding } from "sonamu/vector";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
@@ -94,11 +96,13 @@ class DocumentModelClass extends BaseModelClass<
     // semanticQuery
     if (params.semanticQuery) {
       const { embedding, ...options } = params.semanticQuery;
-      const which = params.semanticQuery.which;
-      const targetColumn: Parameters<typeof qb.vectorSimilarity>[0] = (() => {
+      const which = params.which;
+      const targetColumn: VectorColumns<ExtractTTables<typeof qb>> = (() => {
         if (which === "title") {
+          // title이면 title 컬럼 사용
           return "documents.title_content_embedding" as const;
         } else if (which === "content") {
+          // content이면 content 컬럼 사용
           return "documents.title_content_embedding" as const;
         }
         throw new BadRequestException(`Invalid which: ${which}`);
