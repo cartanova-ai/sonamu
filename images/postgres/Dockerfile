@@ -20,3 +20,6 @@ RUN cd /tmp && \
 
 # 한국어 사전 경로 설정
 RUN echo "dicdir = /usr/lib/aarch64-linux-gnu/mecab/dic/mecab-ko-dic" > /etc/mecabrc
+
+# 버전 라벨링 (Sonamu 버전과 동일하게 설정)
+LABEL version="0.7.0"

@@ -3,9 +3,7 @@ name: miomock
 services:
   pg:
     platform: linux/arm64
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: public.ecr.aws/m9z8n2p9/cartanova/sonamu-postgres:latest
     container_name: miomock-pg
     volumes:
       - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql

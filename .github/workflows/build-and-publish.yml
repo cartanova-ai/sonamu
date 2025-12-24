@@ -17,12 +17,13 @@ jobs:
     services:
       # miomock의 PostgreSQL docker compose와 같음
       postgres:
-        image: pgvector/pgvector:pg18
+        image: public.ecr.aws/m9z8n2p9/cartanova/sonamu-postgres:latest
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: miomock123
           # miomock 외 테스트는 postgres에서. miomock은 추후에 스크립트로 데이터베이스를 생성합니다.
           POSTGRES_DB: postgres
+          TZ: Asia/Seoul
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -32,6 +33,14 @@ jobs:
           - 5432:5432
 
     steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -50,6 +59,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # 빌드와는 별개로 우선 업데이트일 경우에만, ECR Public에 이미지를 배포합니다.
+      - name: Publish Image
+        run: pnpm publish:image
+
       - name: Build
         run: pnpm build
 
@@ -59,20 +72,6 @@ jobs:
           sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
           sudo apt-get update && sudo apt-get install -y postgresql-client-18
-
-          # services 컨테이너에 PGroonga + MeCab 설치
-          CONTAINER_ID=$(docker ps -qf "ancestor=pgvector/pgvector:pg18")
-          docker exec $CONTAINER_ID bash -c 'apt-get update && apt-get install -y wget'
-          docker exec $CONTAINER_ID bash -c 'wget -O /usr/share/keyrings/groonga-archive-keyring.gpg https://packages.groonga.org/debian/groonga-archive-keyring.gpg'
-          docker exec $CONTAINER_ID bash -c 'echo "deb [signed-by=/usr/share/keyrings/groonga-archive-keyring.gpg] https://packages.groonga.org/debian bookworm main" > /etc/apt/sources.list.d/groonga.list'
-          docker exec $CONTAINER_ID bash -c 'apt-get update && apt-get install -y postgresql-18-pgdg-pgroonga groonga-tokenizer-mecab mecab libmecab-dev build-essential curl'
-
-          # MeCab-ko-dic 설치
-          docker exec $CONTAINER_ID bash -c 'cd /tmp && curl -LO https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz && tar xzf mecab-ko-dic-2.1.1-20180720.tar.gz && cd mecab-ko-dic-2.1.1-20180720 && ./configure && make && make install && rm -rf /tmp/mecab-ko-dic*'
-
-          # 한국어 사전 경로 설정 (x86_64)
-          docker exec $CONTAINER_ID bash -c 'echo "dicdir = /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ko-dic" > /etc/mecabrc'
-
           # init.sql 실행
           PGPASSWORD=miomock123 psql -U postgres -d template1 -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
 
@@ -87,11 +86,12 @@ jobs:
       # miomock-api의 테스트를 실행합니다.
       - name: Miomock unit test
         run: scripts/miomock-unit-test.sh
-      # Tasks쪽 통합 테스트를 실행합니다.
+
+      # Tasks 관련 통합 테스트를 실행합니다.
       - name: Task Queue integration test
         run: scripts/task-queue-integration-test.sh
 
       # npm에 퍼블리시합니다.
       # 인증은 trusted publisher로 따로 처리됩니다(https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow).
       - name: Publish
-        run: pnpm publish-those-not-published-yet
+        run: pnpm publish:packages

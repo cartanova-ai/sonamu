@@ -1,5 +1,7 @@
 {
   "private": true,
+  "version": "0.7.20",
+  "type": "module",
   "scripts": {
     "build:tools:ts-loader": "pnpm --filter @sonamu-kit/ts-loader build",
     "build:tools:hmr-hook": "pnpm --filter @sonamu-kit/hmr-hook build",
@@ -14,7 +16,8 @@
     "build:miomock": "pnpm --filter miomock-api --filter miomock-web build",
     "build": "pnpm -r build",
     "dev": "pnpm --parallel --filter !sonamu-docs --filter !ui-web dev",
-    "publish-those-not-published-yet": "tsx scripts/publish.ts",
+    "publish:image": "tsx scripts/publish-image.ts",
+    "publish:packages": "tsx scripts/publish.ts",
     "format": "biome format --write",
     "check": "biome check",
     "verify:clean": "tsx scripts/verify.ts clean",
@@ -29,6 +32,8 @@
     "cowsay": "^1.6.0",
     "npm-run-all": "^4.1.5",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zx": "^8.8.5",
+    "@aws-sdk/client-ecr-public": "^3.958.0"
   }
 }
