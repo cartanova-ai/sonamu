@@ -1,11 +1,12 @@
 import assert from "assert";
 import chalk from "chalk";
 import { mkdir, readdir, unlink, writeFile } from "fs/promises";
-import knex, { type Knex } from "knex";
+import type { Knex } from "knex";
 import path from "path";
 import { group, sum, unique } from "radashi";
 import { Sonamu } from "../api";
 import { DB, type SonamuDBConfig } from "../database/db";
+import { createKnexInstance } from "../database/knex";
 import { EntityManager } from "../entity/entity-manager";
 import { ServiceUnavailableException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
@@ -67,7 +68,7 @@ export class Migrator {
     const statuses = await Promise.all(
       connKeys.map(async (connKey) => {
         const knexOptions = Sonamu.dbConfig[connKey];
-        const tConn = knex(knexOptions);
+        const tConn = createKnexInstance(knexOptions);
 
         const status = await (async () => {
           try {
@@ -131,7 +132,7 @@ export class Migrator {
         return [];
       }
 
-      const compareDBconn = knex(Sonamu.dbConfig[status0conn.connKey]);
+      const compareDBconn = createKnexInstance(Sonamu.dbConfig[status0conn.connKey]);
       const genCodes = await this.compareMigrations(compareDBconn);
 
       await compareDBconn.destroy();
@@ -184,7 +185,7 @@ export class Migrator {
     const conns = await Promise.all(
       configs.map(async (config) => ({
         connKey: config.connKey,
-        knex: knex(config.options),
+        knex: createKnexInstance(config.options),
       })),
     );
 
@@ -402,7 +403,7 @@ export class Migrator {
     }
 
     // 기존 Shadow DB 삭제 후 Shadow DB 생성
-    const tdb = knex(Sonamu.dbConfig.test);
+    const tdb = createKnexInstance(Sonamu.dbConfig.test);
     !isTest() && console.log(chalk.magenta(`${shadowDatabase} 삭제`));
     await tdb.raw(`DROP DATABASE IF EXISTS ${shadowDatabase}`);
     await tdb.raw(`
@@ -414,7 +415,7 @@ export class Migrator {
     await tdb.raw(`CREATE DATABASE ${shadowDatabase} TEMPLATE ${tdbConn.database}`);
 
     // Shadow DB에 연결
-    const sdb = knex({
+    const sdb = createKnexInstance({
       ...Sonamu.dbConfig.test,
       connection: {
         ...tdbConn,

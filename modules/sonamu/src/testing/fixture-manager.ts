@@ -3,12 +3,13 @@ import chalk from "chalk";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import inflection from "inflection";
-import knex, { type Knex } from "knex";
+import type { Knex } from "knex";
 import { unique } from "radashi";
 import { inspect } from "util";
 import { Sonamu } from "../api";
 import { BaseModel } from "../database/base-model";
 import type { SonamuDBConfig } from "../database/db";
+import { createKnexInstance } from "../database/knex";
 import { type UBRef, UpsertBuilder } from "../database/upsert-builder";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
@@ -86,8 +87,8 @@ export class FixtureManagerClass {
       }
     }
 
-    this.tdb = knex(Sonamu.dbConfig.test);
-    this.fdb = knex(Sonamu.dbConfig.fixture);
+    this.tdb = createKnexInstance(Sonamu.dbConfig.test);
+    this.fdb = createKnexInstance(Sonamu.dbConfig.fixture);
   }
 
   async getChecksum(db: Knex, tableName: string) {
@@ -254,8 +255,8 @@ export class FixtureManagerClass {
     searchOptions: FixtureSearchOptions,
     duplicateCheck?: DuplicateCheckOptions,
   ) {
-    const sourceDB = knex(Sonamu.dbConfig[sourceDBName]);
-    const targetDB = knex(Sonamu.dbConfig[targetDBName]);
+    const sourceDB = createKnexInstance(Sonamu.dbConfig[sourceDBName]);
+    const targetDB = createKnexInstance(Sonamu.dbConfig[targetDBName]);
 
     const { entityId, field, value, searchType } = searchOptions;
 
@@ -442,7 +443,7 @@ export class FixtureManagerClass {
     this.uuidToFixtureId = new Map();
     this.skippedFixtures = new Map();
 
-    const db = knex(Sonamu.dbConfig[dbName]);
+    const db = createKnexInstance(Sonamu.dbConfig[dbName]);
     const results: FixtureImportResult[] = [];
 
     try {

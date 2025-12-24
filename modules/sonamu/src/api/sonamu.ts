@@ -170,7 +170,7 @@ class SonamuClass {
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
-    this.config.database.database = this.config.database.database ?? "postgresql";
+    this.config.database.database = this.config.database.database ?? "pg";
 
     // API 키 환경변수 로드
     const secrets: SonamuSecrets = {};

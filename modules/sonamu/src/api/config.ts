@@ -32,8 +32,8 @@ export type SonamuConfig = {
   };
 
   database: {
-    // 데이터베이스
-    database?: "postgresql";
+    // 데이터베이스(pg는 pg 모듈, pgnative는 pg-native 모듈의 설치가 필요합니다.)
+    database?: "pg" | "pgnative";
     // 기본 데이터베이스 이름
     name: string;
     // 모든 환경에 적용될 기본 Knex 옵션

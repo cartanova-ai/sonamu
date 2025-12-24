@@ -1,9 +1,9 @@
 import { AsyncLocalStorage } from "async_hooks";
-import knex, { type Knex } from "knex";
+import type { Knex } from "knex";
 import { assign } from "radashi";
-
 import { Sonamu } from "../api";
 import type { DatabaseConfig, SonamuConfig } from "../api/config";
+import { createKnexInstance } from "./knex";
 import { TransactionContext } from "./transaction-context";
 
 /**
@@ -49,7 +49,7 @@ export class DBClass {
       } else if (this.wdb) {
         return this.wdb;
       } else {
-        this.wdb = knex({
+        this.wdb = createKnexInstance({
           ...dbConfig.test,
           // 단일 풀
           pool: {
@@ -65,7 +65,7 @@ export class DBClass {
 
     if (!this[instanceName]) {
       const config = this.getDBConfig(which);
-      this[instanceName] = knex(config);
+      this[instanceName] = createKnexInstance(config);
     }
 
     return this[instanceName];
@@ -112,7 +112,7 @@ export class DBClass {
   public generateDBConfig(config: SonamuConfig["database"]): SonamuDBConfig {
     const defaultKnexConfig: Partial<DatabaseConfig> = assign(
       {
-        client: "pg",
+        client: "postgresql",
         pool: {
           min: 1,
           max: 5,

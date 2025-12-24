@@ -18,7 +18,7 @@ export default defineConfig({
     targets: ["web"],
   },
   database: {
-    database: "postgresql",
+    database: "pg",
     name: "miomock",
     defaultOptions: {
       connection: {

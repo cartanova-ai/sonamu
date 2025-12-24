@@ -18,7 +18,7 @@ export default defineConfig({
     targets: ["web"],
   },
   database: {
-    database: "postgresql",
+    database: "pg",
     name: process.env.DATABASE_NAME ?? "database_name",
     defaultOptions: {
       connection: {

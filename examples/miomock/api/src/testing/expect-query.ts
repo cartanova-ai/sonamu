@@ -18,7 +18,12 @@ export type QueryPart =
   | "having";
 
 const parser = new Parser();
-const dbOption = () => ({ database: Sonamu.config.database.database });
+// NOTE: node-sql-parser는 postgresql이라고 지정해야함.
+const dbOption = () => ({
+  database: ["pg", "pgnative"].includes(Sonamu.config.database.database ?? "pg")
+    ? "postgresql"
+    : undefined,
+});
 
 /**
  * SQL 쿼리 문자열을 AST(Abstract Syntax Tree)로 파싱
