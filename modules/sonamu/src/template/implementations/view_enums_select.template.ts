@@ -46,7 +46,7 @@ export function ${enumId}Select({
   disabled,
   className,
 }: ${enumId}SelectProps) {
-  // Filter out empty string values to avoid Radix UI error
+  // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
   const validOptions = ${enumId}.options.filter((key) => key !== "");
 
   return (
@@ -55,6 +55,9 @@ export function ${enumId}Select({
         <SelectValue placeholder={placeholder ?? "${label}"} />
       </SelectTrigger>
       <SelectContent>
+        {clearable && (
+          <SelectItem value="">전체</SelectItem>
+        )}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
             {(textPrefix ?? "") + ${enumId}Label[key]}
