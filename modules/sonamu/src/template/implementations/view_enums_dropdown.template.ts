@@ -23,27 +23,38 @@ export class Template__view_enums_dropdown extends Template {
       ...this.getTargetAndPath(names, enumId),
       body: `
 import React from 'react';
-import {
-  Dropdown,
-  DropdownProps,
-} from 'semantic-ui-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@sonamu-kit/react-components/components';
 
 import { ${enumId}Label } from '@/services/sonamu.generated';
 
-export function ${enumId}Dropdown(props: DropdownProps) {
-  const options = Object.entries(${enumId}Label).map(([key, label]) => {
-    return {
-      key,
-      value: key,
-      text: "${label}: " + label,
-    };
-  });
+export type ${enumId}DropdownProps = {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function ${enumId}Dropdown({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  className,
+}: ${enumId}DropdownProps) {
   return (
-    <Dropdown
-      className="label"
-      options={options}
-      {...props}
-    />
+    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+      <SelectTrigger className={className ?? "w-auto"}>
+        <SelectValue placeholder={placeholder ?? "${label}"} />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(${enumId}Label).map(([key, label]) => (
+          <SelectItem key={key} value={key}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
       `.trim(),

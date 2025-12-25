@@ -20,44 +20,70 @@ export class Template__view_search_input extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React from "react";
-import { useState } from "react";
-import { DropdownProps, Input, InputProps } from "semantic-ui-react";
+import React, { useState } from "react";
+import { Icon, type IconProps } from "@iconify/react";
+import { Input, Button } from "@sonamu-kit/react-components/components";
 import { ${names.capital}SearchFieldDropdown } from "@/components/${names.fs}/${names.capital}SearchFieldDropdown";
 
-export function ${names.capital}SearchInput({
-  input: { value: inputValue, onChange: inputOnChange, ...inputProps },
-  dropdown: dropdownProps,
-}: {
-  input: InputProps;
-  dropdown: DropdownProps;
-}) {
-  const [keyword, setKeyword] = useState<string>(inputValue ?? '');
+// Icons
+const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:search" {...props} />;
 
-  const handleKeyDown = (e: { key: string }) => {
-    if (inputOnChange && e.key === 'Enter') {
-      inputOnChange(e as any, {
-        value: keyword,
-      });
+export type ${names.capital}SearchInputProps = {
+  input: {
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+  dropdown: {
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  };
+};
+
+export function ${names.capital}SearchInput({
+  input: { value: inputValue, onChange: inputOnChange },
+  dropdown: dropdownProps,
+}: ${names.capital}SearchInputProps) {
+  const [keyword, setKeyword] = useState<string>(inputValue ?? "");
+
+  const handleSearch = () => {
+    if (inputOnChange) {
+      const syntheticEvent = {
+        target: { value: keyword },
+        currentTarget: { value: keyword },
+      } as React.ChangeEvent<HTMLInputElement>;
+      inputOnChange(syntheticEvent);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
   return (
+    <div className="flex items-center gap-1">
+      <${names.capital}SearchFieldDropdown {...dropdownProps} />
+      <div className="relative flex items-center">
     <Input
-      size="small"
+          type="text"
       placeholder="검색..."
-      style={{ margin: 0 }}
-      label={<${names.capital}SearchFieldDropdown {...dropdownProps} />}
-      labelPosition="left"
-      action={{
-        icon: 'search',
-        onClick: () => handleKeyDown({ key: 'Enter' }),
-      }}
-      {...inputProps}
+          className="h-8 w-[200px] pr-8"
       value={keyword}
-      onChange={(e, { value }) => setKeyword(value)}
+          onChange={(e) => setKeyword(e.target.value)}
       onKeyDown={handleKeyDown}
     />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 h-8 w-8"
+          onClick={handleSearch}
+        >
+          <SearchIcon className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }
       `.trim(),

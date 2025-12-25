@@ -35,69 +35,123 @@ export class Template__view_id_async_select extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React, { useState, useEffect, SyntheticEvent } from "react";
-import { DropdownProps, DropdownItemProps, DropdownOnSearchChangeData, Dropdown } from "semantic-ui-react";
-import { ${names.capital}SubsetKey, ${
-        names.capital
-      }SubsetMapping } from "@/services/sonamu.generated";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { AsyncSelect, AsyncSelectOption, MultiSelect, MultiSelectOption } from "@sonamu-kit/react-components/components";
+import { ${names.capital}SubsetKey, ${names.capital}SubsetMapping } from "@/services/sonamu.generated";
 import { ${names.capital}Service } from "@/services/services.generated";
 import { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 
-export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>(
-  { subset, baseListParams, textField, valueField, ...props }: DropdownProps & {
-    subset: T;
-    baseListParams?: ${names.capital}ListParams;
-    textField${textField ? "?" : ""}: keyof ${names.capital}SubsetMapping[T];
-    valueField?: keyof ${names.capital}SubsetMapping[T];
-  },
-) {
-  const [options, setOptions] = useState<DropdownItemProps[]>([]);
+export type ${names.capital}IdAsyncSelectProps<T extends ${names.capital}SubsetKey> = {
+  subset: T;
+  baseListParams?: ${names.capital}ListParams;
+  textField${textField ? "?" : ""}: keyof ${names.capital}SubsetMapping[T];
+  valueField?: keyof ${names.capital}SubsetMapping[T];
+  placeholder?: string;
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+  multiple?: boolean;
+} & (
+  | {
+      multiple?: false;
+      value?: number | null;
+      onChange?: (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void;
+    }
+  | {
+      multiple: true;
+      value?: number[];
+      onChange?: (e: React.SyntheticEvent | null, data: { value: number[] }) => void;
+    }
+);
+
+export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>({
+  subset,
+  value,
+  onChange,
+  baseListParams,
+  textField,
+  valueField,
+  placeholder = "${entity.title ?? names.constant}",
+  clearable,
+  disabled,
+  className,
+  multiple = false,
+}: ${names.capital}IdAsyncSelectProps<T>) {
   const [listParams, setListParams] = useState<${names.capital}ListParams>(
-    baseListParams ?? {},
+    baseListParams ?? {}
   );
 
-  const { data, error } = ${names.capital}Service.use${names.capitalPlural}(subset, listParams);
-  const { rows: ${names.camelPlural}, total } = data ?? {};
+  const { data, isLoading } = ${names.capital}Service.use${names.capitalPlural}(subset, listParams);
+  const { rows: ${names.camelPlural} } = data ?? {};
 
-  useEffect(() => {
-    setOptions(
-      (${names.camelPlural} ?? []).map((${names.camel}) => {
-        return {
-          key: ${names.camel}.id,
-          value: ${names.camel}[valueField ?? 'id'] as string | number,
-          text: String(${names.camel}[textField${textField ? ` ?? '${textField}'` : ""}]),
-        };
-      }),
-    );
-  }, [${names.camelPlural}]);
+  // 옵션 생성
+  const options = useMemo(() => {
+    return (${names.camelPlural} ?? []).map((${names.camel}) => ({
+      value: String(${names.camel}[valueField ?? "id"] as number),
+      label: String(${names.camel}[textField${textField ? ` ?? "${textField}"` : ""}]),
+    }));
+  }, [${names.camelPlural}, textField, valueField]);
 
+  // baseListParams 변경 시 반영
   useEffect(() => {
-    setListParams({
-      ...listParams,
+    setListParams((prev) => ({
+      ...prev,
       ...baseListParams,
-    });
+    }));
   }, [baseListParams]);
 
-  const handleSearchChange = (
-    e: SyntheticEvent<HTMLElement, Event>,
-    data: DropdownOnSearchChangeData,
-  ) => {
-    setListParams({
-      ...listParams,
-      keyword: data.searchQuery,
-    });
+  // 검색어 변경 핸들러
+  const handleSearch = useCallback((keyword: string) => {
+    setListParams((prev) => ({
+      ...prev,
+      keyword: keyword || undefined,
+    }));
+  }, []);
+
+  // Multiple select
+  if (multiple) {
+    const multiValue = Array.isArray(value) ? value.map(String) : [];
+
+    const handleMultiChange = (selectedValues: string[]) => {
+      if (onChange) {
+        const numericValues = selectedValues.map(Number);
+        (onChange as (e: React.SyntheticEvent | null, data: { value: number[] }) => void)(null, { value: numericValues });
+      }
+    };
+
+    return (
+      <MultiSelect
+        options={options}
+        onValueChange={handleMultiChange}
+        defaultValue={multiValue}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={className}
+      />
+    );
+  }
+
+  // Single select
+  const singleValue = typeof value === "number" ? value : undefined;
+
+  const handleSingleChange = (e: React.SyntheticEvent | null, data: { value: string | undefined }) => {
+    if (onChange) {
+      const numericValue = data.value ? Number(data.value) : undefined;
+      (onChange as (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void)(e, { value: numericValue });
+    }
   };
 
   return (
-    <Dropdown
-      placeholder="${entity.title ?? names.constant}"
-      selection
-      options={options}
-      onSearchChange={handleSearchChange}
-      disabled={!${names.camelPlural}}
-      loading={!${names.camelPlural}}
-      selectOnBlur={false}
-      {...props}
+    <AsyncSelect
+      options={options as AsyncSelectOption<string>[]}
+      value={singleValue !== undefined ? String(singleValue) : undefined}
+      onChange={handleSingleChange}
+      isLoading={isLoading}
+      placeholder={placeholder}
+      clearable={clearable}
+      disabled={disabled}
+      className={className}
+      onSearch={handleSearch}
     />
   );
 }

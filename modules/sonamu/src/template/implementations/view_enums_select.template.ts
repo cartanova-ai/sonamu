@@ -47,7 +47,7 @@ export function ${enumId}Select({
   className,
 }: ${enumId}SelectProps) {
   // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
-  const validOptions = ${enumId}.options.filter((key) => key !== "");
+  const validOptions = ${enumId}.options.filter((key) => (key as string) !== "");
 
   return (
     <Select value={value ?? ""} onChange={onChange} disabled={disabled}>

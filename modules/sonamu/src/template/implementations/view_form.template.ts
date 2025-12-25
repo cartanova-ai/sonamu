@@ -311,7 +311,7 @@ export class Template__view_form extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { Icon as IconifyIcon } from "@iconify/react";
+import { Icon, type IconProps } from "@iconify/react";
 import {
   Button,
   Card,
@@ -355,15 +355,9 @@ ${unique(
 ).join("\n")}
 
 // Icons
-const FormIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
-  <IconifyIcon icon="mdi:form-select" {...props} />
-);
-const ArrowLeftIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
-  <IconifyIcon icon="lucide:arrow-left" {...props} />
-);
-const SaveIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
-  <IconifyIcon icon="lucide:save" {...props} />
-);
+const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
+const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:arrow-left" {...props} />;
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
 export default function ${names.capitalPlural}FormPage() {
   const [searchParams] = useSearchParams();
