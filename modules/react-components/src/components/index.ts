@@ -32,7 +32,6 @@ export type { AsyncSelectOption, AsyncSelectProps } from "./ui/async-select";
 export { AsyncSelect } from "./ui/async-select";
 // export type { BadgeProps } from "./ui/badge";
 export { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-export { BackLink } from "./ui/back-link";
 export { Badge, badgeVariants } from "./ui/badge";
 export {
   Breadcrumb,

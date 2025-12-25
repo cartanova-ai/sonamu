@@ -6,7 +6,6 @@ import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/ty
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
-import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 
 export class Template__view_form extends Template {
   constructor() {
@@ -22,13 +21,13 @@ export class Template__view_form extends Template {
 
   wrapFC(body: string, label?: string): string {
     return [
-      `<Form.Field>${label ? `\n   <label>${label}</label>` : ""}`,
-      body,
-      `</Form.Field>`,
+      `<div className="space-y-2">${label ? `\n  <Label>${label}</Label>` : ""}`,
+      `  ${body}`,
+      `</div>`,
     ].join("\n");
   }
   wrapFG(body: string, label?: string): string {
-    return [`<Form.Group widths="equal">`, this.wrapFC(body, label), `</Form.Group>`].join("\n");
+    return this.wrapFC(body, label);
   }
 
   renderColumnImport(entityId: string, col: RenderingNode) {
@@ -64,24 +63,30 @@ export class Template__view_form extends Template {
         if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 512) {
           return `<Input placeholder="${col.label}" ${regExpr} />`;
         } else {
-          return `<TextArea rows={8} placeholder="${col.label}" ${regExpr} />`;
+          return `<Textarea rows={8} placeholder="${col.label}" ${regExpr} />`;
         }
-      case "datetime":
-        return `<Input type="datetime-local" ${regExpr} />`;
       case "string-datetime":
-        return `<SQLDateTimeInput ${regExpr} />`;
+        return `<DatePicker ${regExpr} />`;
       case "string-date":
-        return `<SQLDateInput ${regExpr} />`;
+        return `<DatePicker ${regExpr} />`;
       case "number-id":
         return `<input type="hidden" ${regExpr} />`;
       case "number-plain":
-        return `<NumberInput placeholder="${col.label}" ${regExpr} />`;
+        return `<Input type="number" placeholder="${col.label}" ${regExpr} />`;
       case "boolean":
-        return `<BooleanToggle ${regExpr} />`;
+        return `<Switch ${regExpr} />`;
       case "string-image":
-        return `<ImageUploader multiple={false} ${regExpr} />`;
+        return `<ImageUploader
+                    ${regExpr}
+                    uploader={async (file: File) => {
+                      const { file: uploadedFile } = await FileService.upload(file);
+                      return uploadedFile.url;
+                    }}
+                    previewSize="md"
+                  />`;
       case "array-images":
-        return `<ImageUploader multiple={true} ${regExpr} maxSize={5} />`;
+        return `{/* TODO: Implement multiple image uploader */}
+                  <Input placeholder="${col.label}" ${regExpr} />`;
       case "enums":
         try {
           let enumId: string;
@@ -91,11 +96,9 @@ export class Template__view_form extends Template {
             const { id } = getEnumInfoFromColName(entityId, col.name);
             enumId = `${id}Select`;
           }
-          return `<${enumId} ${regExpr} ${
-            col.optional || col.nullable ? "clearable" : ""
-          } textPrefix="" />`;
+          return `<${enumId} ${regExpr} ${col.optional || col.nullable ? "clearable" : ""} />`;
         } catch {
-          return `<>찾을 수 없는 Enum ${col.name}</>`;
+          return `<span className="text-destructive">찾을 수 없는 Enum ${col.name}</span>`;
         }
       case "number-fk_id":
         try {
@@ -108,14 +111,77 @@ export class Template__view_form extends Template {
           return `<Input ${regExpr} />`;
         }
       case "array":
-        return `<>${col.name} array</>`;
+        return `<span className="text-muted-foreground">${col.name} array</span>`;
       case "object":
-        return `<>${col.name} object</>`;
-      case "vector":
-        // vector 타입은 일반적으로 API를 통해 생성되므로 읽기 전용으로 표시
-        return `<div className="p-8px text-gray-500">[Vector: ${col.name}] - 임베딩 데이터는 API를 통해 자동 생성됩니다.</div>`;
+        return `<span className="text-muted-foreground">${col.name} object</span>`;
       default:
         throw new Error(`대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`);
+    }
+  }
+
+  // New style rendering for feed-sites style form
+  renderColumnNew(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
+    const regExpr = `{...register("${col.name}")}`;
+
+    switch (col.renderType) {
+      case "string-plain":
+        if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 256) {
+          return `<Input className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+        } else {
+          return `<Textarea className="text-xs bg-white" rows={4} placeholder="${col.label}" ${regExpr} />`;
+        }
+      case "string-datetime":
+        return `<Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    value={toDatetimeLocalString(form.${col.name})}
+                    onChange={(e) => setForm({ ...form, ${col.name}: fromDatetimeLocalString(e.target.value) })}
+                  />`;
+      case "string-date":
+        return `<Input
+                    type="date"
+                    className="h-8 text-xs bg-white"
+                    value={toDateString(form.${col.name})}
+                    onChange={(e) => setForm({ ...form, ${col.name}: fromDateString(e.target.value) })}
+                  />`;
+      case "number-id":
+        return `<input type="hidden" ${regExpr} />`;
+      case "number-plain":
+        return `<Input type="number" className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+      case "boolean":
+        return `<Switch ${regExpr} />`;
+      case "string-image":
+        return `<Input className="h-8 text-xs bg-white" placeholder="Image URL" ${regExpr} />`;
+      case "array-images":
+        return `<Input className="h-8 text-xs bg-white" placeholder="Image URLs" ${regExpr} />`;
+      case "enums":
+        try {
+          let enumId: string;
+          if (col.name === "orderBy") {
+            enumId = `${names.capital}${inflection.camelize(col.name)}Select`;
+          } else {
+            const { id } = getEnumInfoFromColName(entityId, col.name);
+            enumId = `${id}Select`;
+          }
+          return `<${enumId} ${regExpr} ${col.optional || col.nullable ? "clearable" : ""} />`;
+        } catch {
+          return `<Input className="h-8 text-xs bg-white" ${regExpr} />`;
+        }
+      case "number-fk_id":
+        try {
+          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
+          const fkId = `${relProp.with}IdAsyncSelect`;
+          return `<${fkId} subset="A" ${regExpr} ${
+            col.optional || col.nullable ? "clearable" : ""
+          } className="h-8 text-xs" />`;
+        } catch {
+          return `<Input type="number" className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+        }
+      case "array":
+      case "object":
+        return `<Input className="h-8 text-xs bg-white" placeholder="${col.name}" ${regExpr} />`;
+      default:
+        return `<Input className="h-8 text-xs bg-white" ${regExpr} />`;
     }
   }
 
@@ -132,11 +198,9 @@ export class Template__view_form extends Template {
         } else if (col.zodType instanceof z.ZodNumber) {
           value = 0;
         } else if (col.zodType instanceof z.ZodEnum) {
-          value = Object.keys(col.zodType.options)[0];
+          value = Object.keys(col.zodType.enum)[0];
         } else if (col.zodType instanceof z.ZodBoolean) {
           value = false;
-        } else if (col.zodType instanceof z.ZodDate) {
-          value = new Date();
         } else if (col.zodType instanceof z.ZodString) {
           if (col.renderType === "string-datetime") {
             value = "now()";
@@ -157,12 +221,23 @@ export class Template__view_form extends Template {
   }
 
   async render({ entityId }: TemplateOptions["view_form"]) {
-    const saveParamsZodType = await getZodTypeById(`${entityId}SaveParams`);
-    const saveParamsNode = zodTypeToRenderingNode(saveParamsZodType);
-
     const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
-    const columns = (saveParamsNode.children as RenderingNode[])
+
+    // SaveParams 타입을 로드하여 saveParamsNode 생성
+    const { loadTypes } = await import("../../syncer/module-loader");
+    const loadedTypes = await loadTypes();
+    const SaveParamsZodType = loadedTypes[`${entityId}SaveParams`];
+
+    if (!SaveParamsZodType) {
+      throw new Error(`SaveParams for ${entityId} not found. Did you run 'sonamu sync'?`);
+    }
+
+    // Zod 타입을 RenderingNode로 변환
+    const { zodTypeToRenderingNode } = await import("../zod-converter");
+    const saveParamsNode = zodTypeToRenderingNode(SaveParamsZodType);
+
+    const columns = ((saveParamsNode?.children ?? []) as RenderingNode[])
       .filter((col) => col.name !== "id")
       .map((col) => {
         const propCandidate = entity.props.find((prop) => prop.name === col.name);
@@ -236,28 +311,41 @@ export class Template__view_form extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React, { useEffect, useState, Dispatch, SetStateAction, forwardRef, Ref, useImperativeHandle, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Icon as IconifyIcon } from "@iconify/react";
 import {
   Button,
-  Checkbox,
-  Form,
-  Header,
-  Input,
-  Segment,
-  TextArea,
-  Label,
-} from 'semantic-ui-react';
-import { DateTime } from "luxon";
-
-import { BackLink, LinkInput, NumberInput, BooleanToggle, SQLDateTimeInput, SQLDateInput, useTypeForm, useGoBack, formatDateTime } from "@sonamu-kit/react-sui";
-import { defaultCatch } from '@/services/sonamu.shared';
-// import { ImageUploader } from '@/admin-common/ImageUploader';
-// import { useCommonModal } from "@/admin-common/CommonModal";
-
-import { ${names.capital}SaveParams } from '@/services/${names.fs}/${names.fs}.types';
-import { ${names.capital}Service } from '@/services/services.generated';
-import { ${names.capital}SubsetA } from '@/services/sonamu.generated';
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}
+} from "@sonamu-kit/react-components/components";
+import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ${names.capital}Service } from "@/services/services.generated";
+import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
+        columns.filter((col) => col.renderType === "enums").length > 0
+          ? "\nimport { " +
+            unique(
+              columns
+                .filter((col) => col.renderType === "enums")
+                .map((col) => {
+                  try {
+                    const { id } = getEnumInfoFromColName(entityId, col.name);
+                    return `${id}, ${id}Label`;
+                  } catch {
+                    return "";
+                  }
+                }),
+            )
+              .filter(Boolean)
+              .join(", ") +
+            ' } from "@/services/sonamu.generated";'
+          : ""
+      }
+import { defaultCatch } from "@/services/sonamu.shared";${columns.some((col) => col.renderType === "string-image") ? '\nimport { FileService } from "@/services/file/file.service";' : ""}
+import { ${names.capital}SaveParams } from "@/services/${names.fs}/${names.fs}.types";
 ${unique(
   columns
     .filter((col) => ["number-fk_id", "enums"].includes(col.renderType))
@@ -266,119 +354,196 @@ ${unique(
     }),
 ).join("\n")}
 
+// Icons
+const FormIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
+  <IconifyIcon icon="mdi:form-select" {...props} />
+);
+const ArrowLeftIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
+  <IconifyIcon icon="lucide:arrow-left" {...props} />
+);
+const SaveIcon = (props: Omit<React.ComponentProps<typeof IconifyIcon>, "icon">) => (
+  <IconifyIcon icon="lucide:save" {...props} />
+);
+
 export default function ${names.capitalPlural}FormPage() {
-  // 라우팅 searchParams
   const [searchParams] = useSearchParams();
   const query = {
-    id: searchParams.get('id') ?? undefined,
+    id: searchParams.get("id") ?? undefined,
   };
 
   return <${names.capitalPlural}Form id={query?.id ? Number(query.id) : undefined} />;
 }
+
 type ${names.capitalPlural}FormProps = {
   id?: number;
-  mode?: 'page' | 'modal';
+  mode?: "page" | "modal";
 };
+
 export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}FormProps) {
-  // 편집시 기존 row
-  const [row, setRow] = useState<${names.capital}SubsetA | undefined>();
+  const [_row, setRow] = useState<${names.capital}SubsetA | undefined>();
 
-  // ${names.capital}SaveParams 폼
-  const { form, setForm, register } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(
-    defaultValue,
-  ).replace(/"now\(\)"/g, "DateTime.local().toSQL()!.slice(0, 19)")});
+  const { form, setForm, register } = useTypeForm(${
+    names.capital
+  }SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
+${(() => {
+  const hasDatetime = columns.some((col) => col.renderType === "string-datetime");
+  const hasDate = columns.some((col) => col.renderType === "string-date");
+  if (!hasDatetime && !hasDate) return "";
 
-  // 수정일 때 기존 row 콜
+  let helpers = "\n";
+  if (hasDatetime) {
+    helpers += `  // datetime-local 형식으로 변환 (YYYY-MM-DDTHH:MM)
+  const toDatetimeLocalString = (date: Date | string | null | undefined): string => {
+    if (!date) return "";
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toISOString().slice(0, 16);
+  };
+
+  // datetime-local 문자열을 Date로 변환
+  const fromDatetimeLocalString = (value: string): Date | null => {
+    if (!value) return null;
+    return new Date(value);
+  };
+`;
+  }
+  if (hasDate) {
+    helpers += `  // date 형식으로 변환 (YYYY-MM-DD)
+  const toDateString = (date: Date | string | null | undefined): string => {
+    if (!date) return "";
+    const d = typeof date === "string" ? new Date(date) : date;
+    return d.toISOString().split("T")[0];
+  };
+
+  // date 문자열을 Date로 변환
+  const fromDateString = (value: string): Date | null => {
+    if (!value) return null;
+    return new Date(value);
+  };
+`;
+  }
+  return helpers;
+})()}
   useEffect(() => {
     if (id) {
-      ${names.capital}Service.get${names.capital}('A', id).then((row) => {
+      ${names.capital}Service.get${names.capital}("A", id).then((row) => {
         setRow(row);
-        setForm({
-          ...row,
-          ${columns
-            .filter((col) => col.renderType === "number-fk_id")
-            .map((col) => {
-              if (col.nullable) {
-                return `${col.name}: row.${col.name.replace("_id", "?.id")} ?? null`;
-              } else {
-                return `${col.name}: row.${col.name.replace("_id", ".id")}`;
-              }
-            })
-            .join(",\n")}
-        });
+        setForm((prevForm) => ({
+          ...prevForm,
+          ...row,${(() => {
+            const fkColumns = columns.filter((col) => col.renderType === "number-fk_id");
+            if (fkColumns.length === 0) return "";
+            return (
+              "\n          " +
+              fkColumns
+                .map((col) => {
+                  const relationName = col.name.replace("_id", "");
+                  if (col.nullable) {
+                    return `${col.name}: row.${relationName}?.id ?? null`;
+                  } else {
+                    return `${col.name}: row.${relationName}.id`;
+                  }
+                })
+                .join(",\n          ") +
+              ","
+            );
+          })()}
+        }));
       });
     }
-  }, [id]);
+  }, [id, setForm]);
 
-  // CommonModal
-  // const { doneModal, closeModal } = useCommonModal();
-
-  // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
-    ${names.capital}Service.save([form]).then(([id]) => {
-      if( mode === 'modal' ) {
-        // doneModal();
-      } else {
-        goBack('/admin/${names.fsPlural}');
-      }
-    }).catch(defaultCatch);
-  }, [ form, mode, id ]);
+    ${names.capital}Service.save([form])
+      .then(() => {
+        if (mode === "modal") {
+          // modal mode
+        } else {
+          goBack("/admin/${names.fsPlural}");
+        }
+      })
+      .catch(defaultCatch);
+  }, [form, mode, goBack]);
 
-  // 페이지
   const PAGE = {
-    title: \`${entity.title ?? names.capital}\${id ? \`#\${id} 수정\` : ' 등록'}\`,
-  }
+    title: \`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\`,
+  };
 
   return (
-    <div className="form">
-      <Segment padded basic>
-        <Segment padded color="grey">
-          <div className="header-row">
-            <Header>
-              {PAGE.title}
-            </Header>
-            { mode !== 'modal' && <div className="buttons">
-              <BackLink primary size="tiny" to="/admin/${
-                names.fsPlural
-              }" content="목록" icon="list" />
-            </div>}
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-[1800px] mx-auto p-8">
+        <div className="space-y-6 mb-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FormIcon className="h-5 w-5" />
+              <span className="text-lg font-semibold h-5">{PAGE.title}</span>
+            </div>
+            {mode !== "modal" && (
+              <Button variant="outline" onClick={() => goBack("/admin/${names.fsPlural}")} className="gap-2">
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back To List
+              </Button>
+            )}
           </div>
-          <Form>
-            ${columns
-              .map((col) => {
-                if (col.name === "created_at") {
-                  return `{form.id && (${this.wrapFG(
-                    `<div className="p-8px">{formatDateTime(form.${col.name})}</div>`,
-                    "등록일시",
-                  )})}`;
-                } else {
-                  return this.wrapFG(
-                    this.renderColumn(entityId, col, names),
-                    (() => {
-                      if (col.label.endsWith("Id")) {
-                        try {
-                          const entity = EntityManager.get(col.label.replace("Id", ""));
-                          return entity.title ?? col.label;
-                        } catch {
-                          return col.label;
-                        }
-                      }
-                      return col.label;
-                    })(),
-                  );
-                }
-              })
-              .join("\n")}
-            <Segment basic textAlign="center">
-              <Button type="submit" primary onClick={handleSubmit} content="저장" icon="save" />
-            </Segment>
-          </Form>
-        </Segment>
-      </Segment>
+
+          {/* Form Card */}
+          <Card className="border-border/40 bg-gray-50 shadow-sm">
+            <CardHeader className="px-4 border-b border-gray-200 flex items-center">
+              <CardTitle className="text-sm font-medium leading-none m-0">
+                {PAGE.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+${columns
+  .filter((col) => col.name !== "created_at")
+  .map((col) => {
+    const label = (() => {
+      if (col.label.endsWith("Id")) {
+        try {
+          const entity = EntityManager.get(col.label.replace("Id", ""));
+          return entity.title ?? col.label;
+        } catch {
+          return col.label;
+        }
+      }
+      return col.label;
+    })();
+    return `                {/* ${label} */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">${label}</label>
+                  ${this.renderColumnNew(entityId, col, names)}
+                </div>`;
+  })
+  .join("\n\n")}
+
+                {/* Save Button */}
+                <div className="flex items-center justify-between pt-4">
+                  {form.id && form.created_at && (
+                    <div className="flex items-center">
+                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <span className="text-xs text-gray-600">
+                        {String(form.created_at)}
+                      </span>
+                    </div>
+                  )}
+                  <Button
+                    onClick={handleSubmit}
+                    className="gap-2 bg-primary hover:bg-primary/90"
+                  >
+                    <SaveIcon className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
-};
+}
       `.trim(),
       importKeys: [],
       preTemplates,
