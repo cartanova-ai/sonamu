@@ -29,9 +29,6 @@
     "react-day-picker": "catalog:",
     "react-dom": "catalog:",
     "react-router-dom": "catalog:",
-    "react-semantic-ui-datepickers": "catalog:",
-    "semantic-ui-css": "catalog:",
-    "semantic-ui-react": "catalog:",
     "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },

@@ -763,15 +763,6 @@ importers:
       react-router-dom:
         specifier: 'catalog:'
         version: 6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-semantic-ui-datepickers:
-        specifier: 'catalog:'
-        version: 2.17.2(prop-types@15.8.1)(react@18.3.1)
-      semantic-ui-css:
-        specifier: 'catalog:'
-        version: 2.5.0
-      semantic-ui-react:
-        specifier: 'catalog:'
-        version: 2.1.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.4.0
