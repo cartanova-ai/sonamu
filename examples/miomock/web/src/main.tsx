@@ -6,8 +6,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./admin-common/auth";
 import "semantic-ui-css/semantic.min.css";
-import "./index.css";
-import "@sonamu-kit/react-components/styles";
+import "./styles/tailwind.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

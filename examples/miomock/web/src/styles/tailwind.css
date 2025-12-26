@@ -1,0 +1,12 @@
+/* miomock Web 패키지용 Tailwind CSS 설정 */
+/* react-components 스타일 import (상대 경로로 직접 import) */
+@import "../../../../../modules/react-components/src/styles/globals.css";
+
+/* Tailwind v4: 소스 경로 지정 */
+/* miomock web 패키지의 소스 파일들 */
+@source "../../src/**/*.tsx";
+@source "../../src/**/*.ts";
+
+/* node_modules 내의 react-components 패키지 (pnpm workspace) */
+@source "../../../../../modules/react-components/src/**/*.tsx";
+@source "../../../../../modules/react-components/src/**/*.ts";
