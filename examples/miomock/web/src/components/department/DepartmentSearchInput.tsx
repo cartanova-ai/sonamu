@@ -1,40 +1,67 @@
+import { Icon, type IconProps } from "@iconify/react";
+import { Button, Input } from "@sonamu-kit/react-components/components";
+import type React from "react";
 import { useState } from "react";
-import { type DropdownProps, Input, type InputProps } from "semantic-ui-react";
-import { DepartmentSearchFieldDropdown } from "../../components/department/DepartmentSearchFieldDropdown";
+import { DepartmentSearchFieldDropdown } from "@/components/department/DepartmentSearchFieldDropdown";
+
+// Icons
+const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:search" {...props} />;
+
+export type DepartmentSearchInputProps = {
+  input: {
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  };
+  dropdown: {
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  };
+};
 
 export function DepartmentSearchInput({
-  input: { value: inputValue, onChange: inputOnChange, ...inputProps },
+  input: { value: inputValue, onChange: inputOnChange },
   dropdown: dropdownProps,
-}: {
-  input: InputProps;
-  dropdown: DropdownProps;
-}) {
+}: DepartmentSearchInputProps) {
   const [keyword, setKeyword] = useState<string>(inputValue ?? "");
 
-  const handleKeyDown = (e: { key: string }) => {
-    if (inputOnChange && e.key === "Enter") {
-      // biome-ignore lint/suspicious/noExplicitAny: handleKeyDown 동시 사용을 위해 허용
-      inputOnChange(e as any, {
-        value: keyword,
-      });
+  const handleSearch = () => {
+    if (inputOnChange) {
+      const syntheticEvent = {
+        target: { value: keyword },
+        currentTarget: { value: keyword },
+      } as React.ChangeEvent<HTMLInputElement>;
+      inputOnChange(syntheticEvent);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
   return (
-    <Input
-      size="small"
-      placeholder="검색..."
-      style={{ margin: 0 }}
-      label={<DepartmentSearchFieldDropdown {...dropdownProps} />}
-      labelPosition="left"
-      action={{
-        icon: "search",
-        onClick: () => handleKeyDown({ key: "Enter" }),
-      }}
-      {...inputProps}
-      value={keyword}
-      onChange={(_e, { value }) => setKeyword(value)}
-      onKeyDown={handleKeyDown}
-    />
+    <div className="flex items-center gap-1">
+      <DepartmentSearchFieldDropdown {...dropdownProps} />
+      <div className="relative flex items-center">
+        <Input
+          type="text"
+          placeholder="검색..."
+          className="h-8 w-[200px] pr-8"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 h-8 w-8"
+          onClick={handleSearch}
+        >
+          <SearchIcon className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }

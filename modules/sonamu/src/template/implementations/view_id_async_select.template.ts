@@ -18,16 +18,36 @@ export class Template__view_id_async_select extends Template {
     const names = EntityManager.getNamesFromId(entityId);
 
     const entity = EntityManager.get(entityId);
+
+    // textField가 지정되지 않은 경우 모든 subset에 공통으로 있는 필드 찾기
     if (!textField) {
-      const pickedProp = entity.props.find((prop) => ["name", "title"].includes(prop.name));
-      if (pickedProp) {
-        textField = pickedProp.name;
-      } else {
-        const candidateProp = entity.props.find((prop) => prop.type === "string");
-        if (candidateProp) {
-          textField = candidateProp.name;
+      const subsetKeys = Object.keys(entity.subsets);
+      if (subsetKeys.length > 0) {
+        // 모든 subset에 공통으로 포함된 직접 필드만 추출
+        const commonFields = subsetKeys.reduce((common, key) => {
+          const fields = entity.subsets[key]
+            .filter(path => !path.includes('.')) // 직접 필드만
+            .map(path => path);
+          return common.filter(field => fields.includes(field));
+        }, entity.subsets[subsetKeys[0]].filter(path => !path.includes('.')));
+
+        // 우선순위: name > title > 첫 번째 string 타입
+        const pickedProp = entity.props.find((prop) =>
+          ["name", "title"].includes(prop.name) && commonFields.includes(prop.name)
+        );
+        if (pickedProp) {
+          textField = pickedProp.name;
         } else {
-          console.log("textField 찾을 수 없음");
+          const candidateProp = entity.props.find((prop) =>
+            prop.type === "string" && commonFields.includes(prop.name)
+          );
+          if (candidateProp) {
+            textField = candidateProp.name;
+          } else {
+            // 공통 필드가 없으면 id 사용
+            textField = "id";
+            console.log(`Warning: ${entityId}에 모든 subset에 공통으로 포함된 string 필드가 없어 id를 사용합니다`);
+          }
         }
       }
     }
@@ -86,10 +106,20 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
 
   // 옵션 생성
   const options = useMemo(() => {
-    return (${names.camelPlural} ?? []).map((${names.camel}) => ({
-      value: String(${names.camel}[valueField ?? "id"] as number),
-      label: String(${names.camel}[textField${textField ? ` ?? "${textField}"` : ""}]),
-    }));
+    return (${names.camelPlural} ?? []).map((${names.camel}) => {
+      // textField가 지정되지 않은 경우 기본값 사용
+      const label = (() => {
+        if (textField) {
+          return String(${names.camel}[textField]);
+        }
+        return String(${names.camel}.${textField || 'id'});
+      })();
+
+      return {
+        value: String(${names.camel}[valueField ?? "id"] as number),
+        label,
+      };
+    });
   }, [${names.camelPlural}, textField, valueField]);
 
   // baseListParams 변경 시 반영

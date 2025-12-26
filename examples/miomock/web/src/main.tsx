@@ -3,10 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import App from "./App";
-import { AuthProvider } from "./admin-common/auth";
 import "semantic-ui-css/semantic.min.css";
 import "./styles/tailwind.css";
+import App from "./App";
+import { AuthProvider } from "./admin-common/auth";
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -1,15 +1,15 @@
 import { Icon, type IconProps } from "@iconify/react";
-import { Button } from "@sonamu-kit/react-components/components";
-import { BackLink, formatDateTime, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+} from "@sonamu-kit/react-components/components";
+import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Form, Header, Input, Segment } from "semantic-ui-react";
-import { useCommonModal } from "@/admin-common/CommonModal";
-
-// Icons
-const SaveIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="lucide:save" {...props} />
-);
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
 import { EmployeeSaveParams } from "@/services/employee/employee.types";
@@ -17,8 +17,14 @@ import { EmployeeService } from "@/services/services.generated";
 import type { EmployeeSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
+// Icons
+const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
+const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
+  <Icon icon="lucide:arrow-left" {...props} />
+);
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
+
 export default function EmployeesFormPage() {
-  // 라우팅 searchParams
   const [searchParams] = useSearchParams();
   const query = {
     id: searchParams.get("id") ?? undefined,
@@ -26,15 +32,15 @@ export default function EmployeesFormPage() {
 
   return <EmployeesForm id={query?.id ? Number(query.id) : undefined} />;
 }
+
 type EmployeesFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
+
 export function EmployeesForm({ id, mode }: EmployeesFormProps) {
-  // 편집시 기존 row
   const [_row, setRow] = useState<EmployeeSubsetA | undefined>();
 
-  // EmployeeSaveParams 폼
   const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
     user_id: 0,
     department_id: null,
@@ -44,96 +50,141 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
     notes: null,
   });
 
-  // 수정일 때 기존 row 콜
   useEffect(() => {
     if (id) {
       EmployeeService.getEmployee("A", id).then((row) => {
         setRow(row);
-        setForm({
+        setForm((prevForm) => ({
+          ...prevForm,
           ...row,
           user_id: row.user.id,
           department_id: row.department?.id ?? null,
-        });
+        }));
       });
     }
   }, [id, setForm]);
 
-  // CommonModal
-  const { doneModal } = useCommonModal();
-
-  // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     EmployeeService.save([form])
-      .then(([_id]) => {
+      .then(() => {
         if (mode === "modal") {
-          doneModal();
+          // modal mode
         } else {
           goBack("/admin/employees");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack, doneModal]);
+  }, [form, mode, goBack]);
 
-  // 페이지
   const PAGE = {
-    title: `직원${id ? `#${id} 수정` : " 등록"}`,
+    title: `직원${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
-    <div className="form">
-      <Segment padded basic>
-        <Segment padded color="grey">
-          <div className="header-row">
-            <Header>{PAGE.title}</Header>
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-[1800px] mx-auto p-8">
+        <div className="space-y-6 mb-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FormIcon className="h-5 w-5" />
+              <span className="text-lg font-semibold h-5">{PAGE.title}</span>
+            </div>
             {mode !== "modal" && (
-              <div className="buttons">
-                <BackLink primary size="tiny" to="/admin/employees" content="목록" icon="list" />
-              </div>
+              <Button
+                variant="outline"
+                onClick={() => goBack("/admin/employees")}
+                className="gap-2"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back To List
+              </Button>
             )}
           </div>
-          <Form>
-            {form.id && (
-              <Form.Group widths="equal">
-                <Form.Field>
-                  <label>등록일시</label>
-                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
-                </Form.Field>
-              </Form.Group>
-            )}
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>USER</label>
-                <UserIdAsyncSelect {...register("user_id")} subset="A" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>부서</label>
-                <DepartmentIdAsyncSelect {...register("department_id")} clearable subset="A" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>사번</label>
-                <Input placeholder="사번" {...register(`employee_number`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>SALARY</label>
-                <Input placeholder="SALARY" {...register(`salary`)} />
-              </Form.Field>
-            </Form.Group>
-            <Segment basic textAlign="center">
-              <Button type="submit" onClick={handleSubmit}>
-                <SaveIcon />
-                저장
-              </Button>
-            </Segment>
-          </Form>
-        </Segment>
-      </Segment>
+
+          {/* Form Card */}
+          <Card className="border-border/40 bg-gray-50 shadow-sm">
+            <CardHeader className="px-4 border-b border-gray-200 flex items-center">
+              <CardTitle className="text-sm font-medium leading-none m-0">{PAGE.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* USER */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">USER</label>
+                  <UserIdAsyncSelect subset="A" {...register("user_id")} className="h-8 text-xs" />
+                </div>
+
+                {/* 부서 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">부서</label>
+                  <DepartmentIdAsyncSelect
+                    subset="A"
+                    {...register("department_id")}
+                    clearable
+                    className="h-8 text-xs"
+                  />
+                </div>
+
+                {/* 사번 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">사번</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="사번"
+                    {...register("employee_number")}
+                  />
+                </div>
+
+                {/* SALARY */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">SALARY</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="SALARY"
+                    {...register("salary")}
+                  />
+                </div>
+
+                {/* 입사일 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">입사일</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("hire_date")}
+                  />
+                </div>
+
+                {/* 비고 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">비고</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="비고"
+                    {...register("notes")}
+                  />
+                </div>
+
+                {/* Save Button */}
+                <div className="flex items-center justify-between pt-4">
+                  {form.id && form.created_at && (
+                    <div className="flex items-center">
+                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <span className="text-xs text-gray-600">{String(form.created_at)}</span>
+                    </div>
+                  )}
+                  <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90">
+                    <SaveIcon className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

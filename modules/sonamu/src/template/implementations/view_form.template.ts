@@ -144,6 +144,12 @@ export class Template__view_form extends Template {
                     value={toDateString(form.${col.name})}
                     onChange={(e) => setForm({ ...form, ${col.name}: fromDateString(e.target.value) })}
                   />`;
+      case "datetime":
+        return `<Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    ${regExpr}
+                  />`;
       case "number-id":
         return `<input type="hidden" ${regExpr} />`;
       case "number-plain":
@@ -421,9 +427,10 @@ ${(() => {
     if (id) {
       ${names.capital}Service.get${names.capital}("A", id).then((row) => {
         setRow(row);
+        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...row,${(() => {
+          ...rowData,${(() => {
             const fkColumns = columns.filter((col) => col.renderType === "number-fk_id");
             if (fkColumns.length === 0) return "";
             return (

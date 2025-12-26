@@ -1,29 +1,30 @@
 import { Icon, type IconProps } from "@iconify/react";
-import { Button } from "@sonamu-kit/react-components/components";
 import {
-  BackLink,
-  BooleanToggle,
-  formatDateTime,
-  SQLDateInput,
-  useGoBack,
-  useTypeForm,
-} from "@sonamu-kit/react-sui";
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Switch,
+} from "@sonamu-kit/react-components/components";
+import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
-import { useCommonModal } from "@/admin-common/CommonModal";
-
-// Icons
-const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
-
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
 import { UserService } from "@/services/services.generated";
 import type { UserSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
 
+// Icons
+const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
+const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
+  <Icon icon="lucide:arrow-left" {...props} />
+);
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
+
 export default function UsersFormPage() {
-  // 라우팅 searchParams
   const [searchParams] = useSearchParams();
   const query = {
     id: searchParams.get("id") ?? undefined,
@@ -31,139 +32,172 @@ export default function UsersFormPage() {
 
   return <UsersForm id={query?.id ? Number(query.id) : undefined} />;
 }
+
 type UsersFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
+
 export function UsersForm({ id, mode }: UsersFormProps) {
-  // 편집시 기존 row
   const [_row, setRow] = useState<UserSubsetA | undefined>();
 
-  // UserSaveParams 폼
   const { form, setForm, register } = useTypeForm(UserSaveParams, {
     email: "",
     username: "",
-    password: "",
-    birth_date: null,
     role: "normal",
-    last_login_at: null,
-    bio: null,
-    is_verified: false,
-    deleted_at: null,
   });
 
-  // 수정일 때 기존 row 콜
   useEffect(() => {
     if (id) {
       UserService.getUser("A", id).then((row) => {
         setRow(row);
-        setForm({
-          password: "", // 비밀번호는 수정이 아니라 새걸 입력하는 것으로!
-          ...row,
-        });
+        const { created_at: _created_at, ...rowData } = row;
+        setForm((prevForm) => ({
+          ...prevForm,
+          ...rowData,
+        }));
       });
     }
   }, [id, setForm]);
 
-  const { doneModal } = useCommonModal();
-
-  // 저장
   const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     UserService.save([form])
-      .then(([_id]) => {
+      .then(() => {
         if (mode === "modal") {
-          doneModal();
+          // modal mode
         } else {
           goBack("/admin/users");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack, doneModal]);
+  }, [form, mode, goBack]);
 
-  // 페이지
   const PAGE = {
-    title: `USER${id ? `#${id} 수정` : " 등록"}`,
+    title: `USER${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
-    <div className="form">
-      <Segment padded basic>
-        <Segment padded color="grey">
-          <div className="header-row">
-            <Header>{PAGE.title}</Header>
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-[1800px] mx-auto p-8">
+        <div className="space-y-6 mb-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FormIcon className="h-5 w-5" />
+              <span className="text-lg font-semibold h-5">{PAGE.title}</span>
+            </div>
             {mode !== "modal" && (
-              <div className="buttons">
-                <BackLink primary size="tiny" to="/admin/users" content="목록" icon="list" />
-              </div>
+              <Button variant="outline" onClick={() => goBack("/admin/users")} className="gap-2">
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back To List
+              </Button>
             )}
           </div>
-          <Form>
-            {form.id && (
-              <Form.Group widths="equal">
-                <Form.Field>
-                  <label>등록일시</label>
-                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
-                </Form.Field>
-              </Form.Group>
-            )}
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>이메일</label>
-                <Input placeholder="이메일" {...register(`email`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>이름</label>
-                <Input placeholder="이름" {...register(`username`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>비밀번호</label>
-                <Input placeholder="비밀번호" {...register(`password`)} type="password" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>생일</label>
-                <SQLDateInput {...register(`birth_date`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>ROLE</label>
-                <UserRoleSelect {...register(`role`)} textPrefix="" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>LASTLOGIN일시</label>
-                <Input type="datetime-local" {...register(`last_login_at`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>BIO</label>
-                <TextArea rows={8} placeholder="BIO" {...register(`bio`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>ISVERIFIED</label>
-                <BooleanToggle {...register(`is_verified`)} />
-              </Form.Field>
-            </Form.Group>
-            <Segment basic textAlign="center">
-              <Button type="submit" onClick={handleSubmit}>
-                <SaveIcon />
-                저장
-              </Button>
-            </Segment>
-          </Form>
-        </Segment>
-      </Segment>
+
+          {/* Form Card */}
+          <Card className="border-border/40 bg-gray-50 shadow-sm">
+            <CardHeader className="px-4 border-b border-gray-200 flex items-center">
+              <CardTitle className="text-sm font-medium leading-none m-0">{PAGE.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* 이메일 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">이메일</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="이메일"
+                    {...register("email")}
+                  />
+                </div>
+
+                {/* 이름 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">이름</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="이름"
+                    {...register("username")}
+                  />
+                </div>
+
+                {/* 비밀번호 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">비밀번호</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="비밀번호"
+                    {...register("password")}
+                  />
+                </div>
+
+                {/* 생일 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">생일</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("birth_date")}
+                  />
+                </div>
+
+                {/* ROLE */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">ROLE</label>
+                  <UserRoleSelect {...register("role")} />
+                </div>
+
+                {/* LASTLOGIN일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">LASTLOGIN일시</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("last_login_at")}
+                  />
+                </div>
+
+                {/* BIO */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">BIO</label>
+                  <Input className="h-8 text-xs bg-white" placeholder="BIO" {...register("bio")} />
+                </div>
+
+                {/* ISVERIFIED */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">ISVERIFIED</label>
+                  <Switch {...register("is_verified")} />
+                </div>
+
+                {/* 삭제일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">삭제일시</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("deleted_at")}
+                  />
+                </div>
+
+                {/* Save Button */}
+                <div className="flex items-center justify-between pt-4">
+                  {form.id && form.created_at && (
+                    <div className="flex items-center">
+                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <span className="text-xs text-gray-600">{String(form.created_at)}</span>
+                    </div>
+                  )}
+                  <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90">
+                    <SaveIcon className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

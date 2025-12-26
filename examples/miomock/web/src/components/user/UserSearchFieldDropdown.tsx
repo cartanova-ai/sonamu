@@ -1,14 +1,41 @@
-import { Dropdown, type DropdownProps } from "semantic-ui-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import type React from "react";
 
-import { UserSearchFieldLabel } from "../../services/sonamu.generated";
+import { UserSearchFieldLabel } from "@/services/sonamu.generated";
 
-export function UserSearchFieldDropdown(props: DropdownProps) {
-  const options = Object.entries(UserSearchFieldLabel).map(([key, label]) => {
-    return {
-      key,
-      value: key,
-      text: `검색: ${label}`,
-    };
-  });
-  return <Dropdown className="label" options={options} {...props} />;
+export type UserSearchFieldDropdownProps = {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function UserSearchFieldDropdown({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  className,
+}: UserSearchFieldDropdownProps) {
+  return (
+    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+      <SelectTrigger className={className ?? "w-auto"}>
+        <SelectValue placeholder={placeholder ?? "검색"} />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(UserSearchFieldLabel).map(([key, label]) => (
+          <SelectItem key={key} value={key}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }

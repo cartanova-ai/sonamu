@@ -14,7 +14,7 @@ function App() {
   return (
     <div className="app">
       <div className="app-layout">
-        {!isLoginPage && <Sidebar className="app-sidebar" />}
+        {!isLoginPage && <Sidebar />}
         <div className="app-content">
           <Suspense>
             <Outlet />

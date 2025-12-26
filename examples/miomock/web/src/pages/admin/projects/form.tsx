@@ -1,16 +1,16 @@
 import { Icon, type IconProps } from "@iconify/react";
-import { Button } from "@sonamu-kit/react-components/components";
-import { BackLink, formatDateTime, upload, useGoBack, useTypeForm } from "@sonamu-kit/react-sui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ImageUploader,
+  Input,
+} from "@sonamu-kit/react-components/components";
+import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Form, Header, Input, Segment, TextArea } from "semantic-ui-react";
-import { useCommonModal } from "@/admin-common/CommonModal";
-
-// Icons
-const SaveIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="lucide:save" {...props} />
-);
-import { ImageUploader } from "@/admin-common/ImageUploader";
 import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
@@ -19,8 +19,14 @@ import { ProjectService } from "@/services/services.generated";
 import type { ProjectSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
+// Icons
+const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
+const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
+  <Icon icon="lucide:arrow-left" {...props} />
+);
+const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
+
 export default function ProjectsFormPage() {
-  // 라우팅 searchParams
   const [searchParams] = useSearchParams();
   const query = {
     id: searchParams.get("id") ?? undefined,
@@ -28,138 +34,162 @@ export default function ProjectsFormPage() {
 
   return <ProjectsForm id={query?.id ? Number(query.id) : undefined} />;
 }
+
 type ProjectsFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
+
 export function ProjectsForm({ id, mode }: ProjectsFormProps) {
-  // 편집시 기존 row
   const [_row, setRow] = useState<ProjectSubsetA | undefined>();
 
-  // ProjectSaveParams 폼
   const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
     name: "",
     status: "planning",
     description: null,
-    employee_ids: [],
-    tag_ids: [],
-    image_urls: [],
     budget: null,
     deadline: null,
+    image_urls: null,
+    employee_ids: [],
+    tag_ids: [],
   });
 
-  // 수정일 때 기존 row 콜
   useEffect(() => {
     if (id) {
       ProjectService.getProject("A", id).then((row) => {
         setRow(row);
-        setForm({
+        setForm((prevForm) => ({
+          ...prevForm,
           ...row,
-          employee_ids: row.employee ? row.employee.map((e) => e.id) : [],
-          tag_ids: row.tags ? row.tags.map((t) => t.id) : [],
-          image_urls: row.image_urls ?? [],
-        });
+        }));
       });
     }
   }, [id, setForm]);
 
-  // CommonModal
-  const { doneModal } = useCommonModal();
-
-  // 저장
   const { goBack } = useGoBack();
-  const handleSubmit = useCallback(
-    (urls: string[]) => {
-      ProjectService.save([{ ...form, image_urls: urls }])
-        .then(([_id]) => {
-          if (mode === "modal") {
-            doneModal();
-          } else {
-            goBack("/admin/projects");
-          }
-        })
-        .catch(defaultCatch);
-    },
-    [form, mode, goBack, doneModal],
-  );
+  const handleSubmit = useCallback(() => {
+    ProjectService.save([form])
+      .then(() => {
+        if (mode === "modal") {
+          // modal mode
+        } else {
+          goBack("/admin/projects");
+        }
+      })
+      .catch(defaultCatch);
+  }, [form, mode, goBack]);
 
-  // 페이지
   const PAGE = {
-    title: `PROJECT${id ? `#${id} 수정` : " 등록"}`,
+    title: `PROJECT${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
-    <div className="form">
-      <Segment padded basic>
-        <Segment padded color="grey">
-          <div className="header-row">
-            <Header>{PAGE.title}</Header>
+    <div className="flex-1 overflow-auto">
+      <div className="max-w-[1800px] mx-auto p-8">
+        <div className="space-y-6 mb-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FormIcon className="h-5 w-5" />
+              <span className="text-lg font-semibold h-5">{PAGE.title}</span>
+            </div>
             {mode !== "modal" && (
-              <div className="buttons">
-                <BackLink primary size="tiny" to="/admin/projects" content="목록" icon="list" />
-              </div>
+              <Button variant="outline" onClick={() => goBack("/admin/projects")} className="gap-2">
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back To List
+              </Button>
             )}
           </div>
-          <Form>
-            {form.id && (
-              <Form.Group widths="equal">
-                <Form.Field>
-                  <label>등록일시</label>
-                  <div className="p-8px">{formatDateTime(form.created_at)}</div>
-                </Form.Field>
-              </Form.Group>
-            )}
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>PROJECT명</label>
-                <Input placeholder="PROJECT명" {...register(`name`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>상태</label>
-                <ProjectStatusSelect {...register(`status`)} textPrefix="" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>설명</label>
-                <TextArea rows={8} placeholder="설명" {...register(`description`)} />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>EmployeeIds</label>
-                <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>Tags</label>
-                <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
-              </Form.Field>
-            </Form.Group>
-            <Form.Group widths="equal">
-              <Form.Field>
-                <label>ImageUrls</label>
-                <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
-              </Form.Field>
-            </Form.Group>
-            <Segment basic textAlign="center">
-              <Button
-                type="submit"
-                onClick={async () => {
-                  const urls = await upload();
-                  handleSubmit(urls);
-                }}
-              >
-                <SaveIcon />
-                저장
-              </Button>
-            </Segment>
-          </Form>
-        </Segment>
-      </Segment>
+
+          {/* Form Card */}
+          <Card className="border-border/40 bg-gray-50 shadow-sm">
+            <CardHeader className="px-4 border-b border-gray-200 flex items-center">
+              <CardTitle className="text-sm font-medium leading-none m-0">{PAGE.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* PROJECT명 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">PROJECT명</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="PROJECT명"
+                    {...register("name")}
+                  />
+                </div>
+
+                {/* 상태 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">상태</label>
+                  <ProjectStatusSelect {...register("status")} />
+                </div>
+
+                {/* 설명 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">설명</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="설명"
+                    {...register("description")}
+                  />
+                </div>
+
+                {/* 예산 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">예산</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="예산"
+                    {...register("budget")}
+                  />
+                </div>
+
+                {/* 마감일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">마감일시</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("deadline")}
+                  />
+                </div>
+
+                {/* 이미지URLS */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
+                  <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
+                </div>
+
+                {/* EmployeeIds */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
+                  <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
+                </div>
+
+                {/* TagIds */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">TagIds</label>
+                  <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
+                </div>
+
+                {/* Save Button */}
+                <div className="flex items-center justify-between pt-4">
+                  {form.id && form.created_at && (
+                    <div className="flex items-center">
+                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <span className="text-xs text-gray-600">{String(form.created_at)}</span>
+                    </div>
+                  )}
+                  <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90">
+                    <SaveIcon className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

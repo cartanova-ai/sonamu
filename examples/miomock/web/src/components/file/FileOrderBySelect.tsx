@@ -1,25 +1,49 @@
-import { Dropdown, type DropdownProps } from "semantic-ui-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components/components";
+import type React from "react";
 
-import { FileOrderBy, FileOrderByLabel } from "../../services/sonamu.generated";
+import { FileOrderBy, FileOrderByLabel } from "@/services/sonamu.generated";
 
 export type FileOrderBySelectProps = {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   placeholder?: string;
   textPrefix?: string;
-} & DropdownProps;
-export function FileOrderBySelect({ placeholder, textPrefix, ...props }: FileOrderBySelectProps) {
-  const typeOptions = FileOrderBy.options.map((key) => ({
-    key,
-    value: key,
-    text: (textPrefix ?? "정렬: ") + FileOrderByLabel[key],
-  }));
+  clearable?: boolean;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function FileOrderBySelect({
+  value,
+  onChange,
+  placeholder,
+  textPrefix,
+  clearable,
+  disabled,
+  className,
+}: FileOrderBySelectProps) {
+  // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
+  const validOptions = FileOrderBy.options.filter((key) => (key as string) !== "");
 
   return (
-    <Dropdown
-      placeholder={placeholder ?? "정렬"}
-      selection
-      options={typeOptions}
-      selectOnBlur={false}
-      {...props}
-    />
+    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder ?? "정렬"} />
+      </SelectTrigger>
+      <SelectContent>
+        {clearable && <SelectItem value="">전체</SelectItem>}
+        {validOptions.map((key) => (
+          <SelectItem key={key} value={key}>
+            {(textPrefix ?? "") + FileOrderByLabel[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

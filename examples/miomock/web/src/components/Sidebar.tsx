@@ -1,14 +1,7 @@
-import { Icon as IconifyIcon, type IconProps as IconifyIconProps } from "@iconify/react";
+import { Icon } from "@iconify/react";
 import { Button } from "@sonamu-kit/react-components/components";
-import classNames from "classnames";
 import { Link, useLocation } from "react-router-dom";
-import { Icon, type IconProps, Menu } from "semantic-ui-react";
 import { useAuth } from "../admin-common/auth";
-
-// Icons
-const SignOutIcon = (props: Omit<IconifyIconProps, "icon">) => (
-  <IconifyIcon icon="lucide:log-out" {...props} />
-);
 
 interface SidebarProps {
   className?: string;
@@ -21,46 +14,14 @@ interface MenuItemProps {
 }
 
 const menuItems: MenuItemProps[] = [
-  {
-    title: "홈",
-    path: "/admin",
-    icon: "home",
-  },
-  {
-    title: "회사 관리",
-    path: "/admin/companies",
-    icon: "building",
-  },
-  {
-    title: "사용자 관리",
-    path: "/admin/users",
-    icon: "users",
-  },
-  {
-    title: "부서 관리",
-    path: "/admin/departments",
-    icon: "archive",
-  },
-  {
-    title: "직원 관리",
-    path: "/admin/employees",
-    icon: "handshake",
-  },
-  {
-    title: "프로젝트 관리",
-    path: "/admin/projects",
-    icon: "folder",
-  },
-  {
-    title: "태그 관리",
-    path: "/admin/tags",
-    icon: "tag",
-  },
-  {
-    title: "파일 업로드",
-    path: "/admin/files",
-    icon: "upload",
-  },
+  { title: "홈", path: "/admin", icon: "lucide:home" },
+  { title: "회사 관리", path: "/admin/companies", icon: "lucide:building" },
+  { title: "사용자 관리", path: "/admin/users", icon: "lucide:users" },
+  { title: "부서 관리", path: "/admin/departments", icon: "lucide:archive" },
+  { title: "직원 관리", path: "/admin/employees", icon: "lucide:handshake" },
+  { title: "프로젝트 관리", path: "/admin/projects", icon: "lucide:folder" },
+  { title: "태그 관리", path: "/admin/tags", icon: "lucide:tag" },
+  { title: "파일 업로드", path: "/admin/files", icon: "lucide:upload" },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
@@ -74,38 +35,47 @@ export default function Sidebar({ className }: SidebarProps) {
     return location.pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
-    logout();
-  };
-
   return (
-    <div className={classNames("sidebar", className)}>
-      <div className="sidebar-header">
-        <h3>Sonamu Admin</h3>
+    <div className={`flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground shrink-0 ${className || ""}`}>
+      {/* Header */}
+      <div className="flex shrink-0 flex-col gap-2 p-4 border-b border-sidebar-border">
+        <h3 className="text-lg font-semibold">Sonamu Admin</h3>
         {user && (
-          <div style={{ fontSize: "0.9em", marginTop: "0.5em", color: "#666" }}>
+          <div className="text-sm text-sidebar-foreground/70">
             {user.username} ({user.role})
           </div>
         )}
       </div>
-      <Menu vertical fluid className="sidebar-menu">
-        {menuItems.map((item) => (
-          <Menu.Item
-            key={item.path}
-            as={Link}
-            to={item.path}
-            active={isActive(item.path)}
-            className="sidebar-menu-item"
-          >
-            {item.icon && <Icon name={item.icon as IconProps["icon"]} />}
-            {item.title}
-          </Menu.Item>
-        ))}
-      </Menu>
+
+      {/* Menu Content */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2">
+        <nav className="flex w-full min-w-0 flex-col gap-1">
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`
+                flex w-full items-center gap-2 overflow-hidden rounded-md px-3 py-2 text-left text-sm outline-none
+                transition-colors
+                hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
+                ${isActive(item.path)
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground"
+                }
+              `}
+            >
+              {item.icon && <Icon icon={item.icon} className="size-4 shrink-0" />}
+              <span className="truncate">{item.title}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {/* Footer */}
       {user && (
-        <div style={{ padding: "1em" }}>
-          <Button variant="destructive" className="w-full" onClick={handleLogout}>
-            <SignOutIcon />
+        <div className="flex shrink-0 flex-col gap-2 p-2 border-t border-sidebar-border">
+          <Button variant="destructive" className="w-full" onClick={logout}>
+            <Icon icon="lucide:log-out" className="size-4" />
             로그아웃
           </Button>
         </div>
