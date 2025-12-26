@@ -1,9 +1,10 @@
+import { getLogger } from "@logtape/logtape";
 import assert from "assert";
 import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
 import { isEqual } from "radashi";
 import type { z } from "zod";
-import type { BaseModelClass } from "../database/base-model";
+import { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
 import {
   PuriTransactionWrapper,
@@ -11,7 +12,9 @@ import {
   type TransactionalOptions,
 } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
+import { asCategory } from "../logger/category";
 import type { ApiParam, ApiParamType } from "../types/types";
+import { BaseFrameClass } from "./base-frame";
 import type { UploadContext } from "./context";
 import { Sonamu } from "./sonamu";
 
@@ -102,7 +105,7 @@ export function api(options: ApiDecoratorOptions = {}) {
     ...options,
   };
 
-  return (target: DecoratorTarget, propertyKey: string) => {
+  return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
     assert(
       modelName,
@@ -142,11 +145,32 @@ export function api(options: ApiDecoratorOptions = {}) {
         options,
       });
     }
+
+    const originalMethod = descriptor.value;
+    descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
+      if (this instanceof BaseModelClass) {
+        getLogger(asCategory(this.modelName, "model")).debug("api: {httpMethod} {model}.{method}", {
+          httpMethod: options.httpMethod,
+          model: modelName,
+          method: methodName,
+        });
+      }
+
+      if (this instanceof BaseFrameClass) {
+        getLogger(asCategory(this.frameName, "frame")).debug("api: {httpMethod} {model}.{method}", {
+          httpMethod: options.httpMethod,
+          model: modelName,
+          method: methodName,
+        });
+      }
+
+      return originalMethod.apply(this, args);
+    };
   };
 }
 
 export function stream(options: StreamDecoratorOptions) {
-  return (target: DecoratorTarget, propertyKey: string) => {
+  return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
     assert(
       modelName,
@@ -198,25 +222,47 @@ export function stream(options: StreamDecoratorOptions) {
         streamOptions: options,
       });
     }
+
+    const originalMethod = descriptor.value;
+    descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
+      if (this instanceof BaseModelClass) {
+        getLogger(asCategory(this.modelName, "model")).debug("stream: {model}.{method}", {
+          model: modelName,
+          method: methodName,
+        });
+      }
+
+      if (this instanceof BaseFrameClass) {
+        getLogger(asCategory(this.frameName, "frame")).debug("stream: {model}.{method}", {
+          model: modelName,
+          method: methodName,
+        });
+      }
+
+      return originalMethod.apply(this, args);
+    };
   };
 }
 
 export function transactional(options: TransactionalOptions = {}) {
   const { isolation, readOnly, dbPreset = "w" } = options;
 
-  return (_target: DecoratorTarget, _propertyKey: string, descriptor: PropertyDescriptor) => {
+  return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
+    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
+    assert(
+      modelName,
+      `modelName is required on @stream decorator on ${target.constructor.name}.${propertyKey}`,
+    );
+    const methodName = propertyKey;
 
     descriptor.value = async function (this: BaseModelClass, ...args: unknown[]) {
-      const existingContext = DB.transactionStorage.getStore();
+      this.logger.debug("transactional: {model}.{method}", {
+        model: modelName,
+        method: methodName,
+      });
 
-      // 이미 AsyncLocalStorage 컨텍스트 안에 있는지 확인
-      if (existingContext) {
-        // 해당 preset의 트랜잭션이 이미 있으면 재사용
-        if (existingContext.getTransaction(dbPreset)) {
-          return originalMethod.apply(this, args);
-        }
-      }
+      const existingContext = DB.transactionStorage.getStore();
 
       // AsyncLocalStorage 컨텍스트 없거나 해당 preset의 트랜잭션이 없으면 새로 시작
       const startTransaction = async () => {
@@ -224,6 +270,7 @@ export function transactional(options: TransactionalOptions = {}) {
 
         return puri.knex.transaction(
           async (trx) => {
+            this.logger.debug("new transaction context: {dbPreset}", { dbPreset });
             const trxWrapper = new PuriTransactionWrapper(trx, new UpsertBuilder());
             // TransactionContext에 트랜잭션 저장
             DB.getTransactionContext().setTransaction(dbPreset, trxWrapper);
@@ -232,6 +279,7 @@ export function transactional(options: TransactionalOptions = {}) {
               return await originalMethod.apply(this, args);
             } finally {
               // 트랜잭션 제거
+              this.logger.debug("delete transaction context: {dbPreset}", { dbPreset });
               DB.getTransactionContext().deleteTransaction(dbPreset);
             }
           },
@@ -242,10 +290,16 @@ export function transactional(options: TransactionalOptions = {}) {
       // AsyncLocalStorage 컨텍스트가 없으면 새로 생성
       if (!existingContext) {
         return DB.runWithTransaction(startTransaction);
-      } else {
-        // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
-        return startTransaction();
       }
+
+      // 이미 AsyncLocalStorage 컨텍스트 안에 있는지 확인 후 해당 preset의 트랜잭션이 이미 있으면 재사용
+      if (existingContext?.getTransaction(dbPreset)) {
+        this.logger.debug("reuse transaction context: {dbPreset}", { dbPreset });
+        return originalMethod.apply(this, args);
+      }
+
+      // 컨텍스트는 있지만 이 preset의 트랜잭션은 없는 경우 (같은 컨텍스트 내에서 실행)
+      return startTransaction();
     };
 
     return descriptor;
@@ -258,14 +312,14 @@ export function transactional(options: TransactionalOptions = {}) {
  * @returns
  */
 export function upload(options: UploadDecoratorOptions = {}) {
-  return (_target: DecoratorTarget, _propertyKey: string, descriptor: PropertyDescriptor) => {
+  return (target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
-    const modelName = _target.constructor.name.match(/(.+)Class$/)?.[1];
+    const modelName = target.constructor.name.match(/(.+)Class$/)?.[1];
     assert(
       modelName,
-      `modelName is required on @upload decorator on ${_target.constructor.name}.${_propertyKey}`,
+      `modelName is required on @upload decorator on ${target.constructor.name}.${propertyKey}`,
     );
-    const methodName = _propertyKey;
+    const methodName = propertyKey;
 
     // registeredApis에서 해당 API 찾아서 uploadOptions 추가
     const existingApi = registeredApis.find(
@@ -287,7 +341,21 @@ export function upload(options: UploadDecoratorOptions = {}) {
       });
     }
 
-    descriptor.value = async function (this: BaseModelClass, ...args: unknown[]) {
+    descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
+      if (this instanceof BaseModelClass) {
+        getLogger(asCategory(this.modelName, "model")).debug("upload: {model}.{method}", {
+          model: modelName,
+          method: methodName,
+        });
+      }
+
+      if (this instanceof BaseFrameClass) {
+        getLogger(asCategory(this.frameName, "frame")).debug("upload: {model}.{method}", {
+          model: modelName,
+          method: methodName,
+        });
+      }
+
       const { request } = Sonamu.getContext();
       const uploadContext: UploadContext = {
         file: undefined,

@@ -61,7 +61,9 @@ class ${entityId}ModelClass extends BaseModelClass<
   typeof ${names.camel}SubsetQueries,
   typeof ${names.camel}LoaderQueries
 > {
-  modelName = "${entityId}";
+  constructor() {
+    super("${entityId}", ${names.camel}SubsetQueries, ${names.camel}LoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "${entityId}" })
   async findById<T extends ${entityId}SubsetKey>(
@@ -188,7 +190,7 @@ class ${entityId}ModelClass extends BaseModelClass<
   }
 }
 
-export const ${entityId}Model = new ${entityId}ModelClass(${names.camel}SubsetQueries, ${names.camel}LoaderQueries);
+export const ${entityId}Model = new ${entityId}ModelClass();
       `.trim(),
       importKeys: [],
     };

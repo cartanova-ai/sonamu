@@ -20,7 +20,9 @@ class TagModelClass extends BaseModelClass<
   typeof tagSubsetQueries,
   typeof tagLoaderQueries
 > {
-  modelName = "Tag";
+  constructor() {
+    super("Tag", tagSubsetQueries, tagLoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Tag" })
   async findById<T extends TagSubsetKey>(subset: T, id: number): Promise<TagSubsetMapping[T]> {
@@ -130,4 +132,4 @@ class TagModelClass extends BaseModelClass<
   }
 }
 
-export const TagModel = new TagModelClass(tagSubsetQueries, tagLoaderQueries);
+export const TagModel = new TagModelClass();

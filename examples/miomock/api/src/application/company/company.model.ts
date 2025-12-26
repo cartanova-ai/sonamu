@@ -20,7 +20,9 @@ class CompanyModelClass extends BaseModelClass<
   typeof companySubsetQueries,
   typeof companyLoaderQueries
 > {
-  modelName = "Company";
+  constructor() {
+    super("Company", companySubsetQueries, companyLoaderQueries);
+  }
 
   @api({
     httpMethod: "GET",
@@ -73,6 +75,7 @@ class CompanyModelClass extends BaseModelClass<
       orderBy: "id-desc" as const,
       ...rawParams,
     } satisfies CompanyListParams;
+    this.logger.info("findMany", { subset, rawParams });
 
     // build queries
     const { qb, onSubset: _ } = this.getSubsetQueries(subset);
@@ -141,4 +144,4 @@ class CompanyModelClass extends BaseModelClass<
   }
 }
 
-export const CompanyModel = new CompanyModelClass(companySubsetQueries, companyLoaderQueries);
+export const CompanyModel = new CompanyModelClass();

@@ -5,6 +5,10 @@ packages:
   - '!modules/create-sonamu/template/**/*'
 
 catalog:
+  "@logtape/fastify": 1.3.5
+  "@logtape/logtape": 1.3.5
+  "@logtape/pretty": 1.3.5
+  "@logtape/redaction": 1.3.5
   '@adonisjs/ace': ^13.3.0
   '@adonisjs/tsconfig': ^1.4.1
   '@ai-sdk/anthropic': ^3.0.0

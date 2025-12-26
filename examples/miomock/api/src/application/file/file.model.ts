@@ -22,7 +22,9 @@ class FileModelClass extends BaseModelClass<
   typeof fileSubsetQueries,
   typeof fileLoaderQueries
 > {
-  modelName = "File";
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "File" })
   async findById<T extends FileSubsetKey>(subset: T, id: number): Promise<FileSubsetMapping[T]> {
@@ -186,4 +188,4 @@ class FileModelClass extends BaseModelClass<
   }
 }
 
-export const FileModel = new FileModelClass(fileSubsetQueries, fileLoaderQueries);
+export const FileModel = new FileModelClass();

@@ -27,7 +27,9 @@ class DocumentModelClass extends BaseModelClass<
   typeof documentSubsetQueries,
   typeof documentLoaderQueries
 > {
-  modelName = "Document";
+  constructor() {
+    super("Document", documentSubsetQueries, documentLoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Document" })
   async findById<T extends DocumentSubsetKey>(
@@ -193,4 +195,4 @@ class DocumentModelClass extends BaseModelClass<
   }
 }
 
-export const DocumentModel = new DocumentModelClass(documentSubsetQueries, documentLoaderQueries);
+export const DocumentModel = new DocumentModelClass();

@@ -21,6 +21,10 @@ const FetchProjectsOutputSchema = z.object({
 type FetchProjectsOutputSchema = z.infer<typeof FetchProjectsOutputSchema>;
 
 class ProjectAgentClass extends BaseAgentClass<ProjectAgentContext> {
+  constructor() {
+    super("ProjectAgent");
+  }
+
   @tools({
     name: "fetchProjects",
     description: "Fetch projects from the database",

@@ -19,7 +19,9 @@ class EmployeeModelClass extends BaseModelClass<
   typeof employeeSubsetQueries,
   typeof employeeLoaderQueries
 > {
-  modelName = "Employee";
+  constructor() {
+    super("Employee", employeeSubsetQueries, employeeLoaderQueries);
+  }
 
   @api({
     httpMethod: "GET",
@@ -199,4 +201,4 @@ class EmployeeModelClass extends BaseModelClass<
   }
 }
 
-export const EmployeeModel = new EmployeeModelClass(employeeSubsetQueries, employeeLoaderQueries);
+export const EmployeeModel = new EmployeeModelClass();

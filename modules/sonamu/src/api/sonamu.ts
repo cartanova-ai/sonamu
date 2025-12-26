@@ -1,3 +1,4 @@
+import { dispose as logtapeDispose } from "@logtape/logtape";
 import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
@@ -158,10 +159,19 @@ class SonamuClass {
     const { findApiRootPath } = await import("../utils/utils");
     this.apiRootPath = apiRootPath ?? findApiRootPath();
 
+    // 설정을 로딩하는 것부터 시작
     const { loadConfig } = await import("./config");
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
+
+    // 로깅 설정
+    const { configureLogTape } = await import("../logger/configure");
+    if (this.config.logging !== false) {
+      await configureLogTape({
+        ...this.config.logging,
+      });
+    }
 
     // DB 로드
     const { DB } = await import("../database/db");
@@ -224,8 +234,17 @@ class SonamuClass {
     }
 
     const options = this.config.server;
-    const fastify = (await import("fastify")).default;
-    const server = fastify(options.fastify);
+    const { default: fastify } = await import("fastify");
+    const { getLogTapeFastifyLogger } = await import("@logtape/fastify");
+    const server = fastify({
+      ...options.fastify,
+      logger:
+        this.config.logging !== false
+          ? getLogTapeFastifyLogger({
+              category: this.config.logging?.fastifyCategory ?? ["fastify"],
+            })
+          : undefined,
+    });
     this.server = server;
 
     // Storage 설정 → StorageManager 생성
@@ -924,9 +943,13 @@ class SonamuClass {
 
   async destroy(): Promise<void> {
     const { BaseModel } = await import("../database/base-model");
+    // 먼저 처리해야함.
     await BaseModel.destroy();
-    await this._workflows?.destroy();
-    await this.watcher?.close();
+    await Promise.allSettled([
+      this._workflows?.destroy() ?? Promise.resolve(),
+      this.watcher?.close() ?? Promise.resolve(),
+      logtapeDispose(),
+    ]);
   }
 }
 

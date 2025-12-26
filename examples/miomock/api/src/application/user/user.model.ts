@@ -31,7 +31,9 @@ class UserModelClass extends BaseModelClass<
   typeof userSubsetQueries,
   typeof userLoaderQueries
 > {
-  modelName = "User";
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
   async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
@@ -274,4 +276,4 @@ class UserModelClass extends BaseModelClass<
   }
 }
 
-export const UserModel = new UserModelClass(userSubsetQueries, userLoaderQueries);
+export const UserModel = new UserModelClass();

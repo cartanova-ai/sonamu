@@ -20,7 +20,9 @@ class SyncFixtureModelClass extends BaseModelClass<
   typeof syncFixtureSubsetQueries,
   typeof syncFixtureLoaderQueries
 > {
-  modelName = "SyncFixture";
+  constructor() {
+    super("SyncFixture", syncFixtureSubsetQueries, syncFixtureLoaderQueries);
+  }
 
   @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "SyncFixture" })
   async findById<T extends SyncFixtureSubsetKey>(
@@ -141,7 +143,4 @@ class SyncFixtureModelClass extends BaseModelClass<
   }
 }
 
-export const SyncFixtureModel = new SyncFixtureModelClass(
-  syncFixtureSubsetQueries,
-  syncFixtureLoaderQueries,
-);
+export const SyncFixtureModel = new SyncFixtureModelClass();

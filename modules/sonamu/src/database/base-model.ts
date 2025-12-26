@@ -1,10 +1,11 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Puri의 타입은 개별 모델에서 확정되므로 BaseModel에서는 any를 허용함 */
-
+import { getLogger, type Logger } from "@logtape/logtape";
 import type { Knex } from "knex";
 import { cloneDeep, group, isObject, omit, set } from "radashi";
 import type { ListResult } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
+import { asCategory } from "../logger/category";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
@@ -33,12 +34,15 @@ export class BaseModelClass<
   TSubsetQueries extends Record<TSubsetKey, PuriSubsetFn> = never,
   TLoaderQueries extends PuriLoaderQueries<TSubsetKey> = never,
 > {
-  public modelName: string = "Unknown";
+  protected readonly logger: Logger;
 
   constructor(
+    public readonly modelName: string = this.constructor.name,
     protected subsetQueries?: TSubsetQueries,
     protected loaderQueries?: TLoaderQueries,
-  ) {}
+  ) {
+    this.logger = getLogger(asCategory(this.modelName, "model"));
+  }
 
   getDB(which: DBPreset): Knex {
     return DB.getDB(which);

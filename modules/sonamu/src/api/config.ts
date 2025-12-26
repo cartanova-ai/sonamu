@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOption
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
+import type { SonamuLoggingOptions } from "../logger/configure";
 import type { StorageConfig } from "../storage/types";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
 import type { Executable, SonamuFastifyConfig } from "../types/types";
@@ -17,7 +18,7 @@ export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
 };
 
-export type SonamuConfig = {
+export type SonamuConfig<TSinkId extends string = string, TFilterId extends string = string> = {
   projectName?: string;
 
   api: {
@@ -49,6 +50,7 @@ export type SonamuConfig = {
     };
   };
 
+  logging?: false | SonamuLoggingOptions<TSinkId, TFilterId>;
   server: SonamuServerOptions;
   tasks?: SonamuTaskOptions;
 };
@@ -57,7 +59,7 @@ export type SonamuServerOptions = {
   // 프로젝트 외부에서 접근할 수 있는 URL. 기본값은 {server.listen.host}:{server.listen.port} 입니다.
   baseUrl?: string;
 
-  fastify?: FastifyServerOptions;
+  fastify?: Omit<FastifyServerOptions, "logger">;
 
   listen?: {
     port: number;

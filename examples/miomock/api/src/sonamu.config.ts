@@ -1,3 +1,5 @@
+import { getConsoleSink } from "@logtape/logtape";
+import { getPrettyFormatter } from "@logtape/pretty";
 import path from "path";
 import { defineConfig } from "sonamu";
 import { drivers } from "sonamu/storage";
@@ -28,6 +30,25 @@ export default defineConfig({
         password: process.env.MIOMOCK_DB_PASSWORD ?? "miomock123",
       },
     },
+  },
+
+  logging: {
+    sinks: {
+      console: getConsoleSink({
+        formatter: getPrettyFormatter({
+          timestamp: "time",
+          categoryWidth: 20,
+          categoryTruncate: "middle",
+        }),
+      }),
+    },
+    loggers: [
+      {
+        category: ["sonamu"],
+        sinks: ["console"],
+        lowestLevel: "debug",
+      },
+    ],
   },
 
   tasks: {

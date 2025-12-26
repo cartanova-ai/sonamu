@@ -19,7 +19,9 @@ class DepartmentModelClass extends BaseModelClass<
   typeof departmentSubsetQueries,
   typeof departmentLoaderQueries
 > {
-  modelName = "Department";
+  constructor() {
+    super("Department", departmentSubsetQueries, departmentLoaderQueries);
+  }
 
   @api({
     httpMethod: "GET",
@@ -154,7 +156,4 @@ class DepartmentModelClass extends BaseModelClass<
   }
 }
 
-export const DepartmentModel = new DepartmentModelClass(
-  departmentSubsetQueries,
-  departmentLoaderQueries,
-);
+export const DepartmentModel = new DepartmentModelClass();

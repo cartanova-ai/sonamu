@@ -68,6 +68,10 @@
     ".swcrc.project-default"
   ],
   "dependencies": {
+    "@logtape/logtape": "catalog:",
+    "@logtape/pretty": "catalog:",
+    "@logtape/redaction": "catalog:",
+    "@logtape/fastify": "catalog:",
     "@aws-sdk/client-s3": "catalog:",
     "@aws-sdk/s3-request-presigner": "catalog:",
     "@biomejs/js-api": "catalog:",

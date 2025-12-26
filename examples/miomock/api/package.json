@@ -38,7 +38,10 @@
     "radashi": "catalog:",
     "sonamu": "workspace:^",
     "voyageai": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@logtape/logtape": "catalog:",
+    "@logtape/pretty": "catalog:",
+    "@logtape/redaction": "catalog:"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

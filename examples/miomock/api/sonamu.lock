@@ -5,7 +5,7 @@
   },
   {
     "path": "src/application/company/company.model.ts",
-    "checksum": "cf3e47a16ba39e5234addfa5bad01cfdce02131e"
+    "checksum": "b8205ec26bf758f9cbd2d2b805686d72129937bb"
   },
   {
     "path": "src/application/company/company.types.ts",
@@ -17,7 +17,7 @@
   },
   {
     "path": "src/application/department/department.model.ts",
-    "checksum": "a6bd2b15cfdcd9c103a921be70485a8570bcf30e"
+    "checksum": "73895b5ff19c3d392d65931c87241c6d0146ba35"
   },
   {
     "path": "src/application/department/department.types.ts",
@@ -29,7 +29,7 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "86f77798ea68806883f573e7fa19f4d7d12a375f"
+    "checksum": "10c78c9a137d63ef94e0370f5164b9df28b98ce8"
   },
   {
     "path": "src/application/document/document.types.ts",
@@ -41,7 +41,7 @@
   },
   {
     "path": "src/application/employee/employee.model.ts",
-    "checksum": "8c5cf0e5885a217461f8f130df2db29f3b05ae68"
+    "checksum": "42356da8b60005a80ffb6080b487f04f1fd4b9bd"
   },
   {
     "path": "src/application/employee/employee.types.ts",
@@ -53,7 +53,7 @@
   },
   {
     "path": "src/application/file/file.model.ts",
-    "checksum": "dbccd80af31b4bba58c1a8f31cb233c8e1edf4cf"
+    "checksum": "0392576c74b15f0b22313da39eb4eddd6d5433f6"
   },
   {
     "path": "src/application/file/file.types.ts",
@@ -65,7 +65,7 @@
   },
   {
     "path": "src/application/project/project.model.ts",
-    "checksum": "afd42cea43c2ca9d53b6d209ba874d621d828be0"
+    "checksum": "2cea2fcf57c176909d7d94c94e4d03ccbd41e9f3"
   },
   {
     "path": "src/application/project/project.types.ts",
@@ -81,7 +81,7 @@
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.model.ts",
-    "checksum": "8069a687cb78710ed7df8c218c2f9b15095ce260"
+    "checksum": "d6b78991b2949ad32bc1ccc6adc221c91e068837"
   },
   {
     "path": "src/application/sync-fixture/sync-fixture.types.ts",
@@ -93,7 +93,7 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "d5ad3c3182a0f285f5914c1b73b81239b547ad19"
+    "checksum": "aa1e7662f295724a0a14d98c4c4e1d125c4ac364"
   },
   {
     "path": "src/application/tag/tag.types.ts",
@@ -105,7 +105,7 @@
   },
   {
     "path": "src/application/user/user.model.ts",
-    "checksum": "da612ee43173d286b8c0818ed1f2edfd6dd0a170"
+    "checksum": "d2776c8c8b1ae02c510a650e8c3b896fc482f95d"
   },
   {
     "path": "src/application/user/user.types.ts",
@@ -117,6 +117,6 @@
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "54f0b0bdcbd8877000f64a49210828b2ddf3e57d"
+    "checksum": "2c06d786da90a10e9a88d587cc9213c3ed9cdc06"
   }
 ]

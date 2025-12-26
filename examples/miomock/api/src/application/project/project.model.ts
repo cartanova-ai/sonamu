@@ -29,7 +29,9 @@ class ProjectModelClass extends BaseModelClass<
   typeof projectSubsetQueries,
   typeof projectLoaderQueries
 > {
-  modelName = "Project";
+  constructor() {
+    super("Project", projectSubsetQueries, projectLoaderQueries);
+  }
 
   @api({
     httpMethod: "GET",
@@ -260,4 +262,4 @@ class ProjectModelClass extends BaseModelClass<
   }
 }
 
-export const ProjectModel = new ProjectModelClass(projectSubsetQueries, projectLoaderQueries);
+export const ProjectModel = new ProjectModelClass();

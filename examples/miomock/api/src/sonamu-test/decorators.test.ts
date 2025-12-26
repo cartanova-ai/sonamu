@@ -27,20 +27,20 @@ describe("decorators", () => {
     test("@api 후 @stream → 에러", () => {
       const target = createMockTarget("PracticeModel", "findMany");
 
-      api({ httpMethod: "GET", clients: ["axios"] })(target, "findMany");
+      api({ httpMethod: "GET", clients: ["axios"] })(target, "findMany", { value: () => {} });
 
       expect(() => {
-        stream({ type: "sse", events: mockEvents })(target, "findMany");
+        stream({ type: "sse", events: mockEvents })(target, "findMany", { value: () => {} });
       }).toThrow("You can use only one of @api or @stream");
     });
 
     test("@stream 후 @api → 에러", () => {
       const target = createMockTarget("PracticeModel", "findMany");
 
-      stream({ type: "sse", events: mockEvents })(target, "findMany");
+      stream({ type: "sse", events: mockEvents })(target, "findMany", { value: () => {} });
 
       expect(() => {
-        api({ httpMethod: "GET", clients: ["axios"] })(target, "findMany");
+        api({ httpMethod: "GET", clients: ["axios"] })(target, "findMany", { value: () => {} });
       }).toThrow("You can use only one of @api or @stream");
     });
   });
@@ -49,7 +49,7 @@ describe("decorators", () => {
     test("기본 등록", () => {
       const target = createMockTarget("PracticeModel", "findMany");
       const decorator = api({ httpMethod: "GET", clients: ["axios"] });
-      decorator(target, "findMany");
+      decorator(target, "findMany", { value: () => {} });
       expect(registeredApis).toHaveLength(1);
       expect(registeredApis[0]).toMatchObject({
         modelName: "PracticeModel",
@@ -61,7 +61,7 @@ describe("decorators", () => {
     test("path 커스텀", () => {
       const target = createMockTarget("PracticeModel", "findMany");
       const decorator = api({ path: "/custom/path" });
-      decorator(target, "findMany");
+      decorator(target, "findMany", { value: () => {} });
 
       expect(registeredApis[0]?.path).toEqual("/custom/path");
     });
@@ -71,20 +71,20 @@ describe("decorators", () => {
       const target = createMockTarget("PracticeModel", "findMany");
 
       // 첫 번째 등록
-      api({ path: "/path/a" })(target, "findMany");
+      api({ path: "/path/a" })(target, "findMany", { value: () => {} });
 
       // 같은 메서드에 다른 path로 등록 시도
       expect(() => {
-        api({ path: "/path/b" })(target, "findMany");
+        api({ path: "/path/b" })(target, "findMany", { value: () => {} });
       }).toThrow("conflicting path");
     });
 
     test("options 충돌 → 에러", () => {
       // assertNoConflictingOptions 간접 테스트
       const target = createMockTarget("PracticeModel", "findMany");
-      api({ guards: ["admin"] })(target, "findMany");
+      api({ guards: ["admin"] })(target, "findMany", { value: () => {} });
       expect(() => {
-        api({ guards: ["user"] })(target, "findMany");
+        api({ guards: ["user"] })(target, "findMany", { value: () => {} });
       }).toThrow("conflicting options");
     });
   });
@@ -99,7 +99,7 @@ describe("decorators", () => {
     test("기본 등록", () => {
       const target = createMockTarget("PracticeModel", "subscribe");
       const decorator = stream({ type: "sse", events: mockEvents });
-      decorator(target, "subscribe");
+      decorator(target, "subscribe", { value: () => {} });
 
       expect(registeredApis).toHaveLength(1);
       expect(registeredApis[0]).toMatchObject({
@@ -121,7 +121,7 @@ describe("decorators", () => {
         events: mockEvents,
         path: "/custom/stream",
       });
-      decorator(target, "subscribe");
+      decorator(target, "subscribe", { value: () => {} });
 
       expect(registeredApis[0]?.path).toEqual("/custom/stream");
     });
@@ -129,19 +129,19 @@ describe("decorators", () => {
     test("path 충돌 → 에러", () => {
       const target = createMockTarget("PracticeModel", "subscribe");
 
-      stream({ type: "sse", events: mockEvents, path: "/path/a" })(target, "subscribe");
+      stream({ type: "sse", events: mockEvents, path: "/path/a" })(target, "subscribe", { value: () => {} });
       expect(() => {
-        stream({ type: "sse", events: mockEvents, path: "/path/b" })(target, "subscribe");
+        stream({ type: "sse", events: mockEvents, path: "/path/b" })(target, "subscribe", { value: () => {} });
       }).toThrow("conflicting path");
     });
 
     test("options 충돌 → 에러", () => {
       const target = createMockTarget("PracticeModel", "subscribe");
 
-      stream({ type: "sse", events: mockEvents, guards: ["admin"] })(target, "subscribe");
+      stream({ type: "sse", events: mockEvents, guards: ["admin"] })(target, "subscribe", { value: () => {} });
 
       expect(() => {
-        stream({ type: "sse", events: mockEvents, guards: ["user"] })(target, "subscribe");
+        stream({ type: "sse", events: mockEvents, guards: ["user"] })(target, "subscribe", { value: () => {} }  );
       }).toThrow("conflicting options");
     });
   });
@@ -151,7 +151,7 @@ describe("decorators", () => {
       const target = createMockTarget("PracticeModel", "save");
 
       // @api 먼저
-      api({ httpMethod: "POST", clients: ["axios"] })(target, "save");
+      api({ httpMethod: "POST", clients: ["axios"] })(target, "save", { value: () => {} });
 
       // @upload 추가
       upload({ mode: "multiple" })(target, "save", {
@@ -184,7 +184,7 @@ describe("decorators", () => {
       upload({ mode: "single" })(target, "save", {
         value: () => {},
       });
-      api({ path: "/practice/save" })(target, "save");
+      api({ path: "/practice/save" })(target, "save", { value: () => {} });
 
       expect(registeredApis).toHaveLength(1);
       expect(registeredApis[0]?.path).toEqual("/practice/save"); // 채워짐
