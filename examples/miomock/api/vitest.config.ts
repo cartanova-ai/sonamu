@@ -9,7 +9,7 @@ export default defineConfig({
     globals: true,
     globalSetup: ["./src/testing/global.ts"],
     setupFiles: ["./src/testing/setup-mocks.ts"],
-    reporters: [NaiteVitestReporter],
+    reporters: ["default", NaiteVitestReporter],
     pool: "forks",
     maxWorkers: 1,
     isolate: false,

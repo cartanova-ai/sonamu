@@ -24,29 +24,34 @@ export class Template__view_id_async_select extends Template {
       const subsetKeys = Object.keys(entity.subsets);
       if (subsetKeys.length > 0) {
         // 모든 subset에 공통으로 포함된 직접 필드만 추출
-        const commonFields = subsetKeys.reduce((common, key) => {
-          const fields = entity.subsets[key]
-            .filter(path => !path.includes('.')) // 직접 필드만
-            .map(path => path);
-          return common.filter(field => fields.includes(field));
-        }, entity.subsets[subsetKeys[0]].filter(path => !path.includes('.')));
+        const commonFields = subsetKeys.reduce(
+          (common, key) => {
+            const fields = entity.subsets[key]
+              .filter((path) => !path.includes(".")) // 직접 필드만
+              .map((path) => path);
+            return common.filter((field) => fields.includes(field));
+          },
+          entity.subsets[subsetKeys[0]].filter((path) => !path.includes(".")),
+        );
 
         // 우선순위: name > title > 첫 번째 string 타입
-        const pickedProp = entity.props.find((prop) =>
-          ["name", "title"].includes(prop.name) && commonFields.includes(prop.name)
+        const pickedProp = entity.props.find(
+          (prop) => ["name", "title"].includes(prop.name) && commonFields.includes(prop.name),
         );
         if (pickedProp) {
           textField = pickedProp.name;
         } else {
-          const candidateProp = entity.props.find((prop) =>
-            prop.type === "string" && commonFields.includes(prop.name)
+          const candidateProp = entity.props.find(
+            (prop) => prop.type === "string" && commonFields.includes(prop.name),
           );
           if (candidateProp) {
             textField = candidateProp.name;
           } else {
             // 공통 필드가 없으면 id 사용
             textField = "id";
-            console.log(`Warning: ${entityId}에 모든 subset에 공통으로 포함된 string 필드가 없어 id를 사용합니다`);
+            console.log(
+              `Warning: ${entityId}에 모든 subset에 공통으로 포함된 string 필드가 없어 id를 사용합니다`,
+            );
           }
         }
       }
@@ -112,7 +117,7 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
         if (textField) {
           return String(${names.camel}[textField]);
         }
-        return String(${names.camel}.${textField || 'id'});
+        return String(${names.camel}.${textField || "id"});
       })();
 
       return {
