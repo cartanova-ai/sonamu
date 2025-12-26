@@ -202,7 +202,7 @@ class UserModelClass extends BaseModelClass<
     return { user: await this.findById("SS", user.id) };
   }
 
-  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-mutation"] })
   async logout(): Promise<{ message: string }> {
     const context = Sonamu.getContext();
     await context.passport.logout();

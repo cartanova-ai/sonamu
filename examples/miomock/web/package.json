@@ -14,7 +14,6 @@
     "@sonamu-kit/react-components": "workspace:^",
     "@sonamu-kit/react-sui": "workspace:^",
     "@tanstack/react-query": "catalog:",
-    "@tanstack/react-query-devtools": "catalog:",
     "@tanstack/react-router": "catalog:",
     "axios": "catalog:",
     "class-variance-authority": "catalog:",
@@ -36,8 +35,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/vite": "catalog:",
-    "@tanstack/router-devtools": "^1.143.11",
-    "@tanstack/router-vite-plugin": "^1.143.11",
+    "@tanstack/router-vite-plugin": "catalog:",
+    "@tanstack/react-router-devtools": "catalog:",
     "@types/luxon": "catalog:",
     "@types/node": "catalog:",
     "@types/prop-types": "catalog:",

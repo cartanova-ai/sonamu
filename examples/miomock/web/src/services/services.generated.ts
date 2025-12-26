@@ -191,16 +191,9 @@ export namespace UserService {
     });
   }
 
-  export const logoutQueryOptions = () =>
-    queryOptions({
-      queryKey: ["User", "logout"],
-      queryFn: () => logout(),
-    });
-
-  export const useLogout = (options?: { enabled?: boolean }) =>
-    useQuery({
-      ...logoutQueryOptions(),
-      ...options,
+  export const useLogoutMutation = () =>
+    useMutation({
+      mutationFn: (params: void) => logout(),
     });
 
   export async function register(

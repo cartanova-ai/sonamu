@@ -1276,6 +1276,8 @@ export const TemplateOptions = z.object({
     entityId: z.string(),
     enumId: z.string(),
   }),
+  queries: z.object({}),
+  entry_server: z.object({}),
 });
 export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
@@ -1298,6 +1300,8 @@ export const TemplateKey = z.enum([
   "view_enums_select",
   "view_enums_dropdown",
   "view_enums_buttonset",
+  "queries",
+  "entry_server",
 ]);
 export type TemplateKey = z.infer<typeof TemplateKey>;
 

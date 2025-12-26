@@ -67,7 +67,9 @@ export default function Sidebar({ className }: SidebarProps) {
                 }
               `}
             >
-              {item.icon && <Icon icon={item.icon} className="size-4 shrink-0" />}
+              <div className="size-4 shrink-0">
+                {item.icon && <Icon icon={item.icon} className="size-4 shrink-0" />}
+              </div>
               <span className="truncate">{item.title}</span>
             </Link>
           ))}

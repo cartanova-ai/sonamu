@@ -215,14 +215,14 @@ class SonamuClass {
     const { Syncer } = await import("../syncer/syncer");
     this.syncer = new Syncer();
 
-    // Autoload: Models / Types / APIs
+    // Autoload: Models / Types / APIs / Workflows / Templates / SSR Routes
     await this.syncer.autoloadTypes();
     await this.syncer.autoloadModels();
     await this.syncer.autoloadApis();
     await this.syncer.autoloadWorkflows();
-
     const { TemplateManager } = await import("../template");
     await TemplateManager.autoload();
+    await this.syncer.autoloadSSRRoutes();
 
     const { isLocal, isTest } = await import("../utils/controller");
     if (isLocal()) {
@@ -233,7 +233,6 @@ class SonamuClass {
     const { isHotReloadServer } = await import("../utils/controller");
     if (isLocal() && !isTest() && isHotReloadServer() && enableSync) {
       await this.syncer.sync();
-
       await this.startWatcher();
     }
 
@@ -353,83 +352,50 @@ class SonamuClass {
     const { sonamuUIApiPlugin } = await import("../ui/api");
     server.register(sonamuUIApiPlugin);
 
-    // API 라우팅 (로컬HMR 상태와 구분)
+    // 로컬/프로덕션 환경 분기
     const { isLocal } = await import("../utils/controller");
+    const webPath = path.join(this.appRootPath, "web");
+    const hasWeb = fs.existsSync(webPath);
+
     if (isLocal()) {
-      server.all("*", async (request, reply) => {
-        // Sonamu UI
-        if (request.url.startsWith("/sonamu-ui")) {
-          return;
-        }
-
-        const found = this.syncer.apis.find(
-          (api) =>
-            this.config.api.route.prefix + api.path === request.url.split("?")[0] &&
-            (api.options.httpMethod ?? "GET") === request.method.toUpperCase(),
-        );
-        if (found) {
-          return this.createApiHandler(found, config)(request, reply);
-        }
-
-        if (request.url.startsWith("/api/")) {
-          const { NotFoundException } = await import("../exceptions/so-exceptions");
-          throw new NotFoundException(`존재하지 않는 API 접근입니다. ${request.url}`);
-        }
-
-        // 일반 파일 접근시 별도의 에러 출력하지 않음
-        return;
-      });
+      // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
+      if (hasWeb) {
+        await this.setupViteDevServer(server, webPath, config);
+      }
     } else {
+      // 프로덕션 환경: 개별 API 라우트 + 정적 파일 서빙
       for (const api of this.syncer.apis) {
-        // model
         if (this.syncer.models[api.modelName] === undefined) {
           throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
         }
 
-        // route
         server.route({
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
           handler: this.createApiHandler(api, config),
-        }); // END server.route
+        });
+      }
+
+      if (hasWeb) {
+        await this.setupStaticWebServer(server, webPath, config);
       }
     }
-
-    // Web 서빙 (API 라우팅 이후)
-    await this.setupWebServer(server);
   }
 
-  private async setupWebServer(
-    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
-  ): Promise<void> {
-    const webPath = path.join(this.appRootPath, "web");
-
-    // Web 프로젝트 없으면 스킵
-    if (!fs.existsSync(webPath)) {
-      return;
-    }
-
-    const { isLocal } = await import("../utils/controller");
-
-    if (isLocal()) {
-      // Dev 모드: Vite middleware
-      await this.setupViteDevServer(server, webPath);
-    } else {
-      // Production 모드: 정적 파일 서빙
-      await this.setupStaticWebServer(server, webPath);
-    }
-  }
+  // biome-ignore lint/suspicious/noExplicitAny: ViteDevServer 타입을 동적으로 로드해야 함
+  private viteServer: any = null;
 
   private async setupViteDevServer(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     webPath: string,
+    config: SonamuFastifyConfig,
   ): Promise<void> {
     // @fastify/middie 등록 (Connect-style middleware 지원)
     await server.register((await import("@fastify/middie")).default);
 
     const vite = await import("vite");
 
-    const viteServer = await vite.createServer({
+    this.viteServer = await vite.createServer({
       root: webPath,
       server: {
         middlewareMode: true,
@@ -437,22 +403,85 @@ class SonamuClass {
           server: server.server,
         },
       },
-      appType: "spa",
+      appType: "custom",
     });
 
-    // Vite middleware 등록 (API와 Sonamu UI 경로는 제외)
+    // Vite middleware 등록 (Vite 에셋 처리)
     server.use((req, res, next) => {
-      // API와 Sonamu UI 요청은 Fastify 라우트가 처리하도록 스킵
-      if (req.url?.startsWith("/api") || req.url?.startsWith("/sonamu-ui")) {
+      // API와 Sonamu UI는 Fastify 라우트가 처리하도록 skip
+      if (req.url?.startsWith(this.config.api.route.prefix) || req.url?.startsWith("/sonamu-ui")) {
         return next();
       }
       // 나머지는 Vite middleware로 전달
-      return viteServer.middlewares(req, res, next);
+      return this.viteServer.middlewares(req, res, next);
+    });
+
+    // API 동적 라우팅 (catch-all 전에 등록)
+    for (const api of this.syncer.apis) {
+      if (this.syncer.models[api.modelName] === undefined) {
+        throw new Error(`정의되지 않은 모델에 접근 ${api.modelName}`);
+      }
+
+      server.route({
+        method: api.options.httpMethod ?? "GET",
+        url: this.config.api.route.prefix + api.path,
+        handler: this.createApiHandler(api, config),
+      });
+    }
+
+    // Catch-all 핸들러: SSR + CSR fallback
+    server.setNotFoundHandler(async (request, reply) => {
+      const url = request.url;
+
+      // SSR 라우트 체크
+      const { matchSSRRoute } = await import("../ssr");
+      const match = matchSSRRoute(url);
+
+      if (match) {
+        console.log(`[SSR] Matched route: ${match.route.path}`);
+        // SSR 렌더링
+        try {
+          const { renderSSR } = await import("../ssr");
+          const html = await renderSSR(
+            url,
+            match.route,
+            match.params,
+            request,
+            reply,
+            config,
+            this.viteServer,
+          );
+          reply.type("text/html").send(html);
+          return;
+        } catch (e) {
+          console.error("SSR Error:", e);
+          console.log("Falling back to CSR...");
+          // fallback to CSR (아래 로직 실행)
+        }
+      }
+
+      // CSR fallback
+      try {
+        const fs = await import("node:fs/promises");
+        let template = await fs.readFile(
+          path.join(this.viteServer.config.root, "index.html"),
+          "utf-8",
+        );
+        template = await this.viteServer.transformIndexHtml(url, template);
+
+        reply.type("text/html").send(template);
+        return;
+      } catch (e) {
+        this.viteServer.ssrFixStacktrace(e as Error);
+        console.error(e);
+        reply.status(500).send((e as Error).message);
+        return;
+      }
     });
 
     // 서버 종료 시 Vite도 종료
     server.addHook("onClose", async () => {
-      await viteServer.close();
+      await this.viteServer.close();
     });
 
     console.log("✓ Vite dev server integrated");
@@ -461,6 +490,7 @@ class SonamuClass {
   private async setupStaticWebServer(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     webPath: string,
+    _config: SonamuFastifyConfig,
   ): Promise<void> {
     const distPath = path.join(webPath, "dist");
 
@@ -552,6 +582,35 @@ class SonamuClass {
       });
       return this.invokeModelMethod(api, args, context, reply);
     };
+  }
+
+  /**
+   * SSR용 API 호출 (HTTP 오버헤드 없이 직접 호출)
+   * createApiHandler의 로직을 재사용하되, request 파싱 대신 params 직접 사용
+   */
+  async invokeApiForSSR(
+    api: ExtendedApi,
+    // biome-ignore lint/suspicious/noExplicitAny: SSR에서 다양한 타입의 params를 받아야 함
+    params: any[],
+    config: SonamuFastifyConfig,
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<unknown> {
+    // Context 생성 (기존 메소드 재사용)
+    const context = await this.createContext(config, request, reply);
+
+    // args 생성: Context 파라미터는 주입, 나머지는 params에서 가져오기
+    const { ApiParamType } = await import("../types/types");
+    let paramsIndex = 0;
+    const args = api.parameters.map((param) => {
+      if (ApiParamType.isContext(param.type)) {
+        return context;
+      }
+      return params[paramsIndex++];
+    });
+
+    // 모델 메서드 호출 (기존 메서드 재사용)
+    return this.invokeModelMethod(api, args, context, reply);
   }
 
   async invokeModelMethod(

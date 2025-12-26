@@ -25,6 +25,10 @@
       "import": "./dist/storage/index.js",
       "types": "./dist/storage/index.d.ts"
     },
+    "./ssr": {
+      "import": "./dist/ssr/index.js",
+      "types": "./dist/ssr/index.d.ts"
+    },
     "./test": {
       "import": "./dist/testing/index.js",
       "types": "./dist/testing/index.d.ts"
@@ -118,10 +122,10 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@ai-sdk/provider-utils": "catalog:",
-    "@ai-sdk/anthropic": "catalog:",
     "@swc/cli": "catalog:",
     "@swc/core": "catalog:",
     "ai": "catalog:",

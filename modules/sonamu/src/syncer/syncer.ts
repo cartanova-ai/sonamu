@@ -12,6 +12,7 @@ import type { WorkflowMetadata } from "..";
 import { registeredApis } from "../api/decorators";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../entity/entity-manager";
+import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import { TemplateManager } from "../template/template-manager";
 import type { GenerateOptions, PathAndCode } from "../types/types";
@@ -63,6 +64,18 @@ export class Syncer {
     const changedFiles = await findChangedFilesUsingChecksums();
     if (changedFiles.length === 0) {
       console.log(chalk.black.bgGreen(centerText("All files are synced!")));
+
+      // 변경사항이 없어도 SSR 템플릿은 생성 (초기 설정 시, 이미 존재하면 스킵)
+      try {
+        await generateTemplate("queries", {}, { overwrite: false });
+        await generateTemplate("entry_server", {}, { overwrite: false });
+      } catch (e) {
+        // 파일이 이미 존재하면 무시
+        if (!(e instanceof AlreadyProcessedException)) {
+          console.error("Failed to generate SSR templates:", e);
+        }
+      }
+
       return;
     }
 
@@ -88,6 +101,18 @@ export class Syncer {
    */
   async syncFromWatcher(event: string, diffFilePath: AbsolutePath): Promise<void> {
     if (event !== "change" && event !== "add" && event !== "unlink") {
+      return;
+    }
+
+    // SSR 설정 파일 변경 감지
+    if (diffFilePath.includes("/src/ssr/")) {
+      console.log(chalk.bold.yellow("SSR config changed - reloading..."));
+      // SSR 파일도 invalidate 후 reload
+      if (!isTest()) {
+        await hot.invalidateFile(diffFilePath, event);
+      }
+      await this.autoloadSSRRoutes();
+      this.eventEmitter.emit("onHMRCompleted");
       return;
     }
 
@@ -227,6 +252,36 @@ export class Syncer {
   async autoloadWorkflows() {
     this.workflows = await loadWorkflows();
     await Sonamu.workflows.synchronize(this.workflows);
+  }
+
+  async autoloadSSRRoutes(): Promise<void> {
+    const ssrConfigPath = path.join(Sonamu.apiRootPath, "src/ssr");
+
+    // 기존 routes 초기화
+    const { clearSSRRoutes } = await import("../ssr");
+    clearSSRRoutes();
+
+    // ssr 폴더 없으면 스킵
+    if (!(await exists(ssrConfigPath))) {
+      return;
+    }
+
+    // ssr 폴더 안의 모든 .ts 파일 로드
+    const { globAsync } = await import("../utils/async-utils");
+    const { importMembers } = await import("../utils/esm-utils");
+    const { runtimePath } = await import("../utils/path-utils");
+
+    // runtimePath를 사용하여 개발/프로덕션 환경에 맞는 확장자 처리
+    const files = await globAsync(path.join(ssrConfigPath, runtimePath("**/*.ts")));
+
+    for (const file of files) {
+      try {
+        // importMembers를 사용하면 파일의 side effect(registerSSR 호출)가 실행됨
+        await importMembers(file);
+      } catch (e) {
+        console.error(`Failed to load SSR route: ${file}`, e);
+      }
+    }
   }
 
   /**
@@ -371,6 +426,10 @@ export class Syncer {
 
     await this.actionGenerateServices(params);
     await this.actionGenerateHttps();
+
+    // queries.generated.ts 및 entry-server.generated.tsx 재생성
+    await generateTemplate("queries", {}, { overwrite: true });
+    await generateTemplate("entry_server", {}, { overwrite: true });
   }
 
   // web/.sonamu.env 에 현재 설정값 저장

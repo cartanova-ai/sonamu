@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { type ReactNode, Suspense } from "react";
 import "./App.css";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { useAuth } from "./admin-common/auth";
 import Sidebar from "./components/Sidebar";
 
@@ -22,6 +23,7 @@ function App({ children }: AppProps) {
           <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
         </div>
       </div>
+      {import.meta.env.DEV && <TanStackRouterDevtools initialIsOpen={false} />}
     </div>
   );
 }

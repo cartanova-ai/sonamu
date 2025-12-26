@@ -21,7 +21,11 @@
     "sync:dump": "pnpm seed && pnpm sonamu migrate run && pnpm dump"
   },
   "dependencies": {
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/provider": "catalog:",
+    "@ai-sdk/provider-utils": "catalog:",
     "@swc/core": "catalog:",
+    "ai": "catalog:",
     "bcrypt": "catalog:",
     "chalk": "catalog:",
     "chokidar": "catalog:",
@@ -31,15 +35,11 @@
     "fastify-file-upload": "catalog:",
     "knex": "catalog:",
     "pg": "catalog:",
+    "pgvector": "catalog:",
     "radashi": "catalog:",
     "sonamu": "workspace:^",
-    "zod": "catalog:",
-    "@ai-sdk/openai": "catalog:",
-    "@ai-sdk/provider": "catalog:",
-    "@ai-sdk/provider-utils": "catalog:",
-    "ai": "catalog:",
     "voyageai": "catalog:",
-    "pgvector": "catalog:"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

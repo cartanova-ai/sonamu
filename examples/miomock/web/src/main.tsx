@@ -1,35 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
-import ReactDOM from "react-dom/client";
-import { routeTree } from "./routeTree.gen";
-import "./styles/tailwind.css";
+import { QueryClientProvider } from "@tanstack/react-query";
+import type React from "react";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5000,
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-  },
-});
-
-const router = createRouter({
-  routeTree,
-  context: { queryClient },
-  defaultPreload: "intent",
-});
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+export default function Main({
+  children,
+  queryClient,
+}: {
+  children: React.ReactNode;
+  // biome-ignore lint/suspicious/noExplicitAny: QueryClient 타입을 any로 받아야 함
+  queryClient: any;
+}) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
-
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <QueryClientProvider client={queryClient}>
-    <RouterProvider router={router} />
-    <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>,
-);

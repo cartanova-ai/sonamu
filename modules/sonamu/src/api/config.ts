@@ -121,6 +121,16 @@ export type SonamuTaskOptions = {
   ) => Context | Promise<Context>;
 };
 
+export type SonamuSSROptions = {
+  /**
+   * Hydration 전략
+   * - 'none': 항상 새로 렌더링 (hydration mismatch 걱정 없음, 권장)
+   * - 'full': React hydration 시도 (서버 HTML 재사용, mismatch 주의)
+   * @default 'none'
+   */
+  hydration?: "none" | "full";
+};
+
 // NOTE(Haze, 251209): config에는 T, Promise<T>, () => T, () => Promise<T>가 모두 올 수 있어야 함.
 export function defineConfig(config: Executable<SonamuConfig>): Promise<SonamuConfig> {
   if (typeof config === "function") {

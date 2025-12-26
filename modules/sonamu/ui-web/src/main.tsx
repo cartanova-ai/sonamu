@@ -24,6 +24,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<App />}>
+          <Route index element={<div />} />
           <Route path="/entities" element={<EntitiesLayout />}>
             <Route path=":entityId" element={<EntitiesShowPage />} />
           </Route>
