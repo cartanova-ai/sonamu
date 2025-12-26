@@ -35,7 +35,8 @@
       "!**/node_modules",
       "!examples/**/web/src/services/**/*",
       "!modules/create-sonamu/template",
-      "!modules/docs/**/*"
+      "!modules/docs/**/*",
+      "!**/routeTree.gen.ts"
     ]
   },
   "formatter": {
