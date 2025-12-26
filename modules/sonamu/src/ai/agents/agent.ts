@@ -5,7 +5,7 @@ import type { Agent, ToolSet } from "ai";
 import { ToolLoopAgent } from "ai";
 import { AsyncLocalStorage } from "async_hooks";
 import inflection from "inflection";
-import { asCategory } from "../../logger/category";
+import { convertDomainToCategory } from "../../logger/category";
 import type { AgentConfig, RegisteredToolDefinition, ToolDecoratorOptions } from "./types";
 
 const toolDefinitions: RegisteredToolDefinition[] = [];
@@ -17,7 +17,7 @@ export class BaseAgentClass<TStore> {
   private _als = new AsyncLocalStorage<TStore>();
 
   constructor(public readonly agentName: string = this.constructor.name) {
-    this.logger = getLogger(asCategory(this.agentName, "agent"));
+    this.logger = getLogger(convertDomainToCategory(this.agentName, "agent"));
   }
 
   public get store() {

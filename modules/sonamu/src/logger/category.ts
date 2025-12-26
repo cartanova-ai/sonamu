@@ -14,7 +14,7 @@ export function isSameCategory(
   return categoryA.every((category, index) => categoryBArr[index] === category);
 }
 
-export function asCategory(name: string, type: "model" | "frame" | "agent"): readonly string[] {
+export function convertDomainToCategory(name: string, type: "model" | "frame" | "agent"): readonly string[] {
   return [
     "sonamu",
     // SomeAgentClass -> some_agent, SomeModelClass -> some_model, SomeFrameClass -> some_frame
@@ -24,4 +24,8 @@ export function asCategory(name: string, type: "model" | "frame" | "agent"): rea
       .join("_"),
     type,
   ];
+}
+
+export function convertNaiteKeyToCategory(key: string): readonly string[] {
+  return key.split(".").flatMap(stem => stem.split(":"));
 }

@@ -4,6 +4,8 @@ import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import type { ComparisonOperator } from "../database/puri.types";
 import { isSerializable } from "../utils/object-utils";
+import { getLogger } from "@logtape/logtape";
+import { convertNaiteKeyToCategory } from "../logger/category";
 
 // StackFrame 타입
 interface StackFrame {
@@ -267,6 +269,11 @@ export class NaiteClass {
 
       // 항상 배열로 관리
       const existing = store.get(name) ?? [];
+      getLogger(["naite", ...convertNaiteKeyToCategory(name)]).debug(`naite: {name} ${existing.length === 0 ? "is empty state" : `already existing with ${existing.length === 0} entries`}, appending new entry`, {
+        name,
+        value,
+      });
+
       store.set(name, [...existing, trace]);
     } catch {
       // Context 없는 상황에서 Naite.t 호출

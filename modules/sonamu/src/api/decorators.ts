@@ -12,7 +12,7 @@ import {
   type TransactionalOptions,
 } from "../database/puri-wrapper";
 import { UpsertBuilder } from "../database/upsert-builder";
-import { asCategory } from "../logger/category";
+import { convertDomainToCategory } from "../logger/category";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { BaseFrameClass } from "./base-frame";
 import type { UploadContext } from "./context";
@@ -149,7 +149,7 @@ export function api(options: ApiDecoratorOptions = {}) {
     const originalMethod = descriptor.value;
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(asCategory(this.modelName, "model")).debug("api: {httpMethod} {model}.{method}", {
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug("api: {httpMethod} {model}.{method}", {
           httpMethod: options.httpMethod,
           model: modelName,
           method: methodName,
@@ -157,7 +157,7 @@ export function api(options: ApiDecoratorOptions = {}) {
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(asCategory(this.frameName, "frame")).debug("api: {httpMethod} {model}.{method}", {
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("api: {httpMethod} {model}.{method}", {
           httpMethod: options.httpMethod,
           model: modelName,
           method: methodName,
@@ -226,14 +226,14 @@ export function stream(options: StreamDecoratorOptions) {
     const originalMethod = descriptor.value;
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(asCategory(this.modelName, "model")).debug("stream: {model}.{method}", {
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug("stream: {model}.{method}", {
           model: modelName,
           method: methodName,
         });
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(asCategory(this.frameName, "frame")).debug("stream: {model}.{method}", {
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("stream: {model}.{method}", {
           model: modelName,
           method: methodName,
         });
@@ -343,14 +343,14 @@ export function upload(options: UploadDecoratorOptions = {}) {
 
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(asCategory(this.modelName, "model")).debug("upload: {model}.{method}", {
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug("upload: {model}.{method}", {
           model: modelName,
           method: methodName,
         });
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(asCategory(this.frameName, "frame")).debug("upload: {model}.{method}", {
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("upload: {model}.{method}", {
           model: modelName,
           method: methodName,
         });

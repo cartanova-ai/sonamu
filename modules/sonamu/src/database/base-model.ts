@@ -5,7 +5,7 @@ import { cloneDeep, group, isObject, omit, set } from "radashi";
 import type { ListResult } from "..";
 import { Sonamu } from "../api";
 import { EntityManager } from "../entity/entity-manager";
-import { asCategory } from "../logger/category";
+import { convertDomainToCategory } from "../logger/category";
 import type { DatabaseSchemaExtend, SonamuQueryMode } from "../types/types";
 import { getJoinTables, getTableNamesFromWhere } from "../utils/sql-parser";
 import { chunk } from "../utils/utils";
@@ -41,7 +41,7 @@ export class BaseModelClass<
     protected subsetQueries?: TSubsetQueries,
     protected loaderQueries?: TLoaderQueries,
   ) {
-    this.logger = getLogger(asCategory(this.modelName, "model"));
+    this.logger = getLogger(convertDomainToCategory(this.modelName, "model"));
   }
 
   getDB(which: DBPreset): Knex {
