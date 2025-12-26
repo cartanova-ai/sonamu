@@ -2,6 +2,7 @@ import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import fs from "fs";
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import os from "os";
 import path from "path";
@@ -393,6 +394,109 @@ class SonamuClass {
         }); // END server.route
       }
     }
+
+    // Web 서빙 (API 라우팅 이후)
+    await this.setupWebServer(server);
+  }
+
+  private async setupWebServer(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+  ): Promise<void> {
+    const webPath = path.join(this.appRootPath, "web");
+
+    // Web 프로젝트 없으면 스킵
+    if (!fs.existsSync(webPath)) {
+      return;
+    }
+
+    const { isLocal } = await import("../utils/controller");
+
+    if (isLocal()) {
+      // Dev 모드: Vite middleware
+      await this.setupViteDevServer(server, webPath);
+    } else {
+      // Production 모드: 정적 파일 서빙
+      await this.setupStaticWebServer(server, webPath);
+    }
+  }
+
+  private async setupViteDevServer(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+    webPath: string,
+  ): Promise<void> {
+    // @fastify/middie 등록 (Connect-style middleware 지원)
+    await server.register((await import("@fastify/middie")).default);
+
+    const vite = await import("vite");
+
+    const viteServer = await vite.createServer({
+      root: webPath,
+      server: {
+        middlewareMode: true,
+        hmr: {
+          server: server.server,
+        },
+      },
+      appType: "spa",
+    });
+
+    // Vite middleware 등록 (API와 Sonamu UI 경로는 제외)
+    server.use((req, res, next) => {
+      // API와 Sonamu UI 요청은 Fastify 라우트가 처리하도록 스킵
+      if (req.url?.startsWith("/api") || req.url?.startsWith("/sonamu-ui")) {
+        return next();
+      }
+      // 나머지는 Vite middleware로 전달
+      return viteServer.middlewares(req, res, next);
+    });
+
+    // 서버 종료 시 Vite도 종료
+    server.addHook("onClose", async () => {
+      await viteServer.close();
+    });
+
+    console.log("✓ Vite dev server integrated");
+  }
+
+  private async setupStaticWebServer(
+    server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
+    webPath: string,
+  ): Promise<void> {
+    const distPath = path.join(webPath, "dist");
+
+    if (!fs.existsSync(distPath)) {
+      console.warn(`⚠ Web dist not found: ${distPath}`);
+      return;
+    }
+
+    // /assets/* 정적 파일 서빙
+    server.register(await import("@fastify/static"), {
+      root: path.join(distPath, "assets"),
+      prefix: "/assets",
+      decorateReply: false,
+      setHeaders: (res, filePath) => {
+        // Hash 있는 파일은 장기 캐싱
+        if (filePath.includes("-") && (filePath.endsWith(".js") || filePath.endsWith(".css"))) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    });
+
+    // SPA fallback
+    server.setNotFoundHandler(async (request, reply) => {
+      // /api, /sonamu-ui는 404 그대로
+      if (request.url.startsWith("/api") || request.url.startsWith("/sonamu-ui")) {
+        reply.code(404).send({ error: "Not Found" });
+        return;
+      }
+
+      // 나머지는 index.html 반환 (react-router-dom이 처리)
+      const indexPath = path.join(distPath, "index.html");
+      const html = fs.readFileSync(indexPath, "utf-8");
+      reply.type("text/html").send(html);
+    });
+
+    console.log("✓ Static web server configured");
   }
 
   createApiHandler(

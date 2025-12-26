@@ -6,7 +6,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "sonamu dev",
-    "build": "sonamu build",
+    "build": "pnpm build:web && sonamu build",
+    "build:web": "cd ../web && pnpm build",
     "start": "sonamu start",
     "start:all": "./start.sh",
     "test": "vitest run",
