@@ -36,7 +36,9 @@ export default function Sidebar({ className }: SidebarProps) {
   };
 
   return (
-    <div className={`flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground shrink-0 ${className || ""}`}>
+    <div
+      className={`flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground shrink-0 ${className || ""}`}
+    >
       {/* Header */}
       <div className="flex shrink-0 flex-col gap-2 p-4 border-b border-sidebar-border">
         <h3 className="text-lg font-semibold">Sonamu Admin</h3>
@@ -58,9 +60,10 @@ export default function Sidebar({ className }: SidebarProps) {
                 flex w-full items-center gap-2 overflow-hidden rounded-md px-3 py-2 text-left text-sm outline-none
                 transition-colors
                 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
-                ${isActive(item.path)
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground"
+                ${
+                  isActive(item.path)
+                    ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground"
                 }
               `}
             >
