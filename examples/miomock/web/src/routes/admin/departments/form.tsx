@@ -7,15 +7,25 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { DepartmentSaveParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
 import type { DepartmentSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/departments/form")({
+  validateSearch: formSearchSchema,
+  component: DepartmentsFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -24,13 +34,9 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function DepartmentsFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <DepartmentsForm id={query?.id ? Number(query.id) : undefined} />;
+function DepartmentsFormPage() {
+  const { id } = Route.useSearch();
+  return <DepartmentsForm id={id} />;
 }
 
 type DepartmentsFormProps = {
@@ -39,6 +45,7 @@ type DepartmentsFormProps = {
 };
 
 export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
+  const router = useRouter();
   const [_row, setRow] = useState<DepartmentSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(DepartmentSaveParams, {
@@ -61,7 +68,10 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
     DepartmentService.save([form])
       .then(() => {
@@ -72,7 +82,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
     title: `부서${id ? ` #${id} Edit` : " Create"}`,

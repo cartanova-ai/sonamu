@@ -8,7 +8,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  Badge,
   Button,
   Card,
   CardContent,
@@ -27,18 +26,21 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { UserService } from "@/services/services.generated";
+import { EmployeeListParams } from "@/services/employee/employee.types";
+import { EmployeeService } from "@/services/services.generated";
 import {
-  UserOrderBy,
-  UserOrderByLabel,
-  UserRoleLabel,
-  UserSearchField,
-  UserSearchFieldLabel,
+  EmployeeOrderBy,
+  EmployeeOrderByLabel,
+  EmployeeSearchField,
+  EmployeeSearchFieldLabel,
 } from "@/services/sonamu.generated";
-import { UserListParams } from "@/services/user/user.types";
+
+export const Route = createFileRoute("/admin/employees/")({
+  component: EmployeeList,
+});
 
 // Icons
 const ListIcon = (props: Omit<IconProps, "icon">) => (
@@ -48,9 +50,9 @@ const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-p
 const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
 const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
 
-type UserListProps = {};
+type EmployeeListProps = {};
 
-export default function UserList({}: UserListProps) {
+function EmployeeList({}: EmployeeListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
@@ -59,16 +61,16 @@ export default function UserList({}: UserListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(UserListParams, {
+  const { listParams, register } = useListParamsTanstack(EmployeeListParams, {
     num: 10,
     page: 1,
     keyword: "",
-    search: UserSearchField.options[0],
-    orderBy: UserOrderBy.options[0],
+    search: EmployeeSearchField.options[0],
+    orderBy: EmployeeOrderBy.options[0],
   });
 
   // 리스트 쿼리
-  const { data, refetch, isLoading } = UserService.useUsers("A", listParams);
+  const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
   const { rows, total } = data ?? {};
 
   // 페이지네이션
@@ -107,7 +109,7 @@ export default function UserList({}: UserListProps) {
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      UserService.del([itemToDelete.id]).then(() => {
+      EmployeeService.del([itemToDelete.id]).then(() => {
         refetch();
       });
     }
@@ -117,8 +119,8 @@ export default function UserList({}: UserListProps) {
 
   // 현재 경로와 타이틀
   const PAGE = {
-    route: "/admin/users",
-    title: "USER",
+    route: "/admin/employees",
+    title: "직원",
   };
 
   return (
@@ -141,9 +143,9 @@ export default function UserList({}: UserListProps) {
                       <SelectValue placeholder="Search Type" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {UserSearchField.options.map((key) => (
+                      {EmployeeSearchField.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          {UserSearchFieldLabel[key]}
+                          {EmployeeSearchFieldLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -167,7 +169,7 @@ export default function UserList({}: UserListProps) {
                   <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
-                      onClick={() => navigate(`${PAGE.route}/form`)}
+                      onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">Create</span>
                     </Button>
@@ -180,9 +182,9 @@ export default function UserList({}: UserListProps) {
                       <SelectValue placeholder="Sort" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {UserOrderBy.options.map((key) => (
+                      {EmployeeOrderBy.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          Sort: {UserOrderByLabel[key]}
+                          Sort: {EmployeeOrderByLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -205,14 +207,12 @@ export default function UserList({}: UserListProps) {
                     </TableHead>
                     <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
                     <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">이메일</TableHead>
-                    <TableHead className="h-9 text-xs">이름</TableHead>
-                    <TableHead className="h-9 text-xs">생일</TableHead>
-                    <TableHead className="h-9 text-xs">ROLE</TableHead>
-                    <TableHead className="h-9 text-xs">LASTLOGIN일시</TableHead>
-                    <TableHead className="h-9 text-xs">BIO</TableHead>
-                    <TableHead className="h-9 text-xs">ISVERIFIED</TableHead>
-                    <TableHead className="h-9 text-xs">삭제일시</TableHead>
+                    <TableHead className="h-9 text-xs">사번</TableHead>
+                    <TableHead className="h-9 text-xs">SALARY</TableHead>
+                    <TableHead className="h-9 text-xs">입사일</TableHead>
+                    <TableHead className="h-9 text-xs">비고</TableHead>
+                    <TableHead className="h-9 text-xs">USER</TableHead>
+                    <TableHead className="h-9 text-xs">부서</TableHead>
                     <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -234,39 +234,27 @@ export default function UserList({}: UserListProps) {
                               {datetimeF(row.created_at)}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.email}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.username}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.employee_number}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.salary}</TableCell>
                           <TableCell className="py-3 text-xs">
                             <span className="text-xs text-muted-foreground">
-                              {row.birth_date ? datetimeF(row.birth_date) : "-"}
+                              {row.hire_date ? datetimeF(row.hire_date) : "-"}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{UserRoleLabel[row.role]}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.notes}</TableCell>
                           <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {row.last_login_at ? datetimeF(row.last_login_at) : "-"}
-                            </span>
+                            <span className="text-xs">{JSON.stringify(row.user)}</span>
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.bio}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            {row.is_verified ? (
-                              <Badge variant="default">O</Badge>
-                            ) : (
-                              <Badge variant="secondary">X</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {row.deleted_at ? datetimeF(row.deleted_at) : "-"}
-                            </span>
-                          </TableCell>
+                          <TableCell className="py-3 text-xs">{row.department?.name}</TableCell>
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => navigate(`${PAGE.route}/form?id=${row.id}`)}
+                                onClick={() =>
+                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
+                                }
                               >
                                 <EditIcon className="h-3 w-3" />
                               </Button>

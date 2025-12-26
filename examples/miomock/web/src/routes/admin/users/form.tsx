@@ -5,19 +5,27 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  ImageUploader,
   Input,
+  Switch,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
-import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
-import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
-import { ProjectSaveParams } from "@/services/project/project.types";
-import { ProjectService } from "@/services/services.generated";
-import type { ProjectSubsetA } from "@/services/sonamu.generated";
+import { z } from "zod";
+import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { UserService } from "@/services/services.generated";
+import type { UserSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+import { UserSaveParams } from "@/services/user/user.types";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/users/form")({
+  validateSearch: formSearchSchema,
+  component: UsersFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -26,61 +34,57 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function ProjectsFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <ProjectsForm id={query?.id ? Number(query.id) : undefined} />;
+function UsersFormPage() {
+  const { id } = Route.useSearch();
+  return <UsersForm id={id} />;
 }
 
-type ProjectsFormProps = {
+type UsersFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
 
-export function ProjectsForm({ id, mode }: ProjectsFormProps) {
-  const [_row, setRow] = useState<ProjectSubsetA | undefined>();
+export function UsersForm({ id, mode }: UsersFormProps) {
+  const router = useRouter();
+  const [_row, setRow] = useState<UserSubsetA | undefined>();
 
-  const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
-    name: "",
-    status: "planning",
-    description: null,
-    budget: null,
-    deadline: null,
-    image_urls: null,
-    employee_ids: [],
-    tag_ids: [],
+  const { form, setForm, register } = useTypeForm(UserSaveParams, {
+    email: "",
+    username: "",
+    role: "normal",
   });
 
   useEffect(() => {
     if (id) {
-      ProjectService.getProject("A", id).then((row) => {
+      UserService.getUser("A", id).then((row) => {
         setRow(row);
+        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...row,
+          ...rowData,
         }));
       });
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
-    ProjectService.save([form])
+    UserService.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/projects");
+          goBack("/admin/users");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
-    title: `PROJECT${id ? ` #${id} Edit` : " Create"}`,
+    title: `USER${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
@@ -94,7 +98,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => goBack("/admin/projects")} className="gap-2">
+              <Button variant="outline" onClick={() => goBack("/admin/users")} className="gap-2">
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
@@ -108,68 +112,82 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* PROJECT명 */}
+                {/* 이메일 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">PROJECT명</label>
+                  <label className="block text-xs mb-1 text-gray-600">이메일</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="PROJECT명"
-                    {...register("name")}
+                    placeholder="이메일"
+                    {...register("email")}
                   />
                 </div>
 
-                {/* 상태 */}
+                {/* 이름 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">상태</label>
-                  <ProjectStatusSelect {...register("status")} />
-                </div>
-
-                {/* 설명 */}
-                <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">설명</label>
+                  <label className="block text-xs mb-1 text-gray-600">이름</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="설명"
-                    {...register("description")}
+                    placeholder="이름"
+                    {...register("username")}
                   />
                 </div>
 
-                {/* 예산 */}
+                {/* 비밀번호 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">예산</label>
+                  <label className="block text-xs mb-1 text-gray-600">비밀번호</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="예산"
-                    {...register("budget")}
+                    placeholder="비밀번호"
+                    {...register("password")}
                   />
                 </div>
 
-                {/* 마감일시 */}
+                {/* 생일 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">마감일시</label>
+                  <label className="block text-xs mb-1 text-gray-600">생일</label>
                   <Input
                     type="datetime-local"
                     className="h-8 text-xs bg-white"
-                    {...register("deadline")}
+                    {...register("birth_date")}
                   />
                 </div>
 
-                {/* 이미지URLS */}
+                {/* ROLE */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
-                  <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
+                  <label className="block text-xs mb-1 text-gray-600">ROLE</label>
+                  <UserRoleSelect {...register("role")} />
                 </div>
 
-                {/* EmployeeIds */}
+                {/* LASTLOGIN일시 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
-                  <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
+                  <label className="block text-xs mb-1 text-gray-600">LASTLOGIN일시</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("last_login_at")}
+                  />
                 </div>
 
-                {/* TagIds */}
+                {/* BIO */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">TagIds</label>
-                  <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
+                  <label className="block text-xs mb-1 text-gray-600">BIO</label>
+                  <Input className="h-8 text-xs bg-white" placeholder="BIO" {...register("bio")} />
+                </div>
+
+                {/* ISVERIFIED */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">ISVERIFIED</label>
+                  <Switch {...register("is_verified")} />
+                </div>
+
+                {/* 삭제일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">삭제일시</label>
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("deleted_at")}
+                  />
                 </div>
 
                 {/* Save Button */}

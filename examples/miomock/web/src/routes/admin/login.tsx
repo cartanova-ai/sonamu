@@ -7,9 +7,13 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/admin-common/auth";
+
+export const Route = createFileRoute("/admin/login")({
+  component: LoginPage,
+});
 
 // Icons
 const MailIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:mail" {...props} />;
@@ -19,13 +23,11 @@ const LogInIcon = (props: Omit<IconProps, "icon">) => (
 );
 const UserIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:user" {...props} />;
 
-export default function LoginPage() {
+function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const { login, user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const handleSubmit = () => {
     login({ email, password });
@@ -95,11 +97,10 @@ export default function LoginPage() {
               variant="outline"
               className="w-full h-11 gap-2"
               style={{ borderColor: "#6ee7b7", color: "#059669" }}
-              onClick={() =>
-                navigate(
-                  (location.state as { from?: { pathname?: string } })?.from?.pathname ?? "/admin",
-                )
-              }
+              onClick={() => {
+                // 이미 로그인된 경우 admin 페이지로 이동
+                window.location.href = "/admin";
+              }}
             >
               <UserIcon className="h-4 w-4" />
               {user.username}으로 로그인

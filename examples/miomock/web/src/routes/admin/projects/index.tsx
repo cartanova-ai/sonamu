@@ -26,9 +26,9 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, numF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
 import {
@@ -38,6 +38,10 @@ import {
   ProjectSearchFieldLabel,
   ProjectStatusLabel,
 } from "@/services/sonamu.generated";
+
+export const Route = createFileRoute("/admin/projects/")({
+  component: ProjectList,
+});
 
 // Icons
 const ListIcon = (props: Omit<IconProps, "icon">) => (
@@ -49,7 +53,7 @@ const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" 
 
 type ProjectListProps = {};
 
-export default function ProjectList({}: ProjectListProps) {
+function ProjectList({}: ProjectListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
@@ -58,7 +62,7 @@ export default function ProjectList({}: ProjectListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(ProjectListParams, {
+  const { listParams, register } = useListParamsTanstack(ProjectListParams, {
     num: 10,
     page: 1,
     keyword: "",
@@ -166,7 +170,7 @@ export default function ProjectList({}: ProjectListProps) {
                   <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
-                      onClick={() => navigate(`${PAGE.route}/form`)}
+                      onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">Create</span>
                     </Button>
@@ -261,7 +265,9 @@ export default function ProjectList({}: ProjectListProps) {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => navigate(`${PAGE.route}/form?id=${row.id}`)}
+                                onClick={() =>
+                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
+                                }
                               >
                                 <EditIcon className="h-3 w-3" />
                               </Button>

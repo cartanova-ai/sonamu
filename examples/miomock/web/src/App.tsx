@@ -1,24 +1,25 @@
-import { Suspense } from "react";
+import { useRouterState } from "@tanstack/react-router";
+import { type ReactNode, Suspense } from "react";
 import "./App.css";
-import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./admin-common/auth";
 import Sidebar from "./components/Sidebar";
 
-function App() {
-  const location = useLocation();
+interface AppProps {
+  children?: ReactNode;
+}
+
+function App({ children }: AppProps) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user: _ } = useAuth();
 
-  const isLoginPage =
-    location.pathname === "/admin/login" || location.pathname === "/admin/login-test";
+  const isLoginPage = pathname === "/admin/login" || pathname === "/admin/login-test";
 
   return (
     <div className="app">
       <div className="app-layout">
         {!isLoginPage && <Sidebar />}
         <div className="app-content">
-          <Suspense>
-            <Outlet />
-          </Suspense>
+          <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
         </div>
       </div>
     </div>

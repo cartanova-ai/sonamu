@@ -5,17 +5,29 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ImageUploader,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
-import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
-import { EmployeeSaveParams } from "@/services/employee/employee.types";
-import { EmployeeService } from "@/services/services.generated";
-import type { EmployeeSubsetA } from "@/services/sonamu.generated";
+import { z } from "zod";
+import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
+import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
+import { ProjectSaveParams } from "@/services/project/project.types";
+import { ProjectService } from "@/services/services.generated";
+import type { ProjectSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/projects/form")({
+  validateSearch: formSearchSchema,
+  component: ProjectsFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -24,61 +36,61 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function EmployeesFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <EmployeesForm id={query?.id ? Number(query.id) : undefined} />;
+function ProjectsFormPage() {
+  const { id } = Route.useSearch();
+  return <ProjectsForm id={id} />;
 }
 
-type EmployeesFormProps = {
+type ProjectsFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
 
-export function EmployeesForm({ id, mode }: EmployeesFormProps) {
-  const [_row, setRow] = useState<EmployeeSubsetA | undefined>();
+export function ProjectsForm({ id, mode }: ProjectsFormProps) {
+  const router = useRouter();
+  const [_row, setRow] = useState<ProjectSubsetA | undefined>();
 
-  const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
-    user_id: 0,
-    department_id: null,
-    employee_number: "",
-    salary: null,
-    hire_date: null,
-    notes: null,
+  const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
+    name: "",
+    status: "planning",
+    description: null,
+    budget: null,
+    deadline: null,
+    image_urls: null,
+    employee_ids: [],
+    tag_ids: [],
   });
 
   useEffect(() => {
     if (id) {
-      EmployeeService.getEmployee("A", id).then((row) => {
+      ProjectService.getProject("A", id).then((row) => {
         setRow(row);
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
-          user_id: row.user.id,
-          department_id: row.department?.id ?? null,
         }));
       });
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
-    EmployeeService.save([form])
+    ProjectService.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/employees");
+          goBack("/admin/projects");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
-    title: `직원${id ? ` #${id} Edit` : " Create"}`,
+    title: `PROJECT${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
@@ -92,11 +104,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button
-                variant="outline"
-                onClick={() => goBack("/admin/employees")}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={() => goBack("/admin/projects")} className="gap-2">
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
@@ -110,61 +118,68 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* USER */}
+                {/* PROJECT명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">USER</label>
-                  <UserIdAsyncSelect subset="A" {...register("user_id")} className="h-8 text-xs" />
-                </div>
-
-                {/* 부서 */}
-                <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">부서</label>
-                  <DepartmentIdAsyncSelect
-                    subset="A"
-                    {...register("department_id")}
-                    clearable
-                    className="h-8 text-xs"
-                  />
-                </div>
-
-                {/* 사번 */}
-                <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">사번</label>
+                  <label className="block text-xs mb-1 text-gray-600">PROJECT명</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="사번"
-                    {...register("employee_number")}
+                    placeholder="PROJECT명"
+                    {...register("name")}
                   />
                 </div>
 
-                {/* SALARY */}
+                {/* 상태 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">SALARY</label>
+                  <label className="block text-xs mb-1 text-gray-600">상태</label>
+                  <ProjectStatusSelect {...register("status")} />
+                </div>
+
+                {/* 설명 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">설명</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="SALARY"
-                    {...register("salary")}
+                    placeholder="설명"
+                    {...register("description")}
                   />
                 </div>
 
-                {/* 입사일 */}
+                {/* 예산 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">입사일</label>
+                  <label className="block text-xs mb-1 text-gray-600">예산</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="예산"
+                    {...register("budget")}
+                  />
+                </div>
+
+                {/* 마감일시 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">마감일시</label>
                   <Input
                     type="datetime-local"
                     className="h-8 text-xs bg-white"
-                    {...register("hire_date")}
+                    {...register("deadline")}
                   />
                 </div>
 
-                {/* 비고 */}
+                {/* 이미지URLS */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">비고</label>
-                  <Input
-                    className="h-8 text-xs bg-white"
-                    placeholder="비고"
-                    {...register("notes")}
-                  />
+                  <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
+                  <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
+                </div>
+
+                {/* EmployeeIds */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
+                  <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
+                </div>
+
+                {/* TagIds */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">TagIds</label>
+                  <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
                 </div>
 
                 {/* Save Button */}

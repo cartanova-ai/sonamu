@@ -8,6 +8,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -26,17 +27,22 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CompanyListParams } from "@/services/company/company.types";
-import { CompanyService } from "@/services/services.generated";
+import { UserService } from "@/services/services.generated";
 import {
-  CompanyOrderBy,
-  CompanyOrderByLabel,
-  CompanySearchField,
-  CompanySearchFieldLabel,
+  UserOrderBy,
+  UserOrderByLabel,
+  UserRoleLabel,
+  UserSearchField,
+  UserSearchFieldLabel,
 } from "@/services/sonamu.generated";
+import { UserListParams } from "@/services/user/user.types";
+
+export const Route = createFileRoute("/admin/users/")({
+  component: UserList,
+});
 
 // Icons
 const ListIcon = (props: Omit<IconProps, "icon">) => (
@@ -46,9 +52,9 @@ const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-p
 const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
 const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
 
-type CompanyListProps = {};
+type UserListProps = {};
 
-export default function CompanyList({}: CompanyListProps) {
+function UserList({}: UserListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
@@ -57,16 +63,16 @@ export default function CompanyList({}: CompanyListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(CompanyListParams, {
+  const { listParams, register } = useListParamsTanstack(UserListParams, {
     num: 10,
     page: 1,
     keyword: "",
-    search: CompanySearchField.options[0],
-    orderBy: CompanyOrderBy.options[0],
+    search: UserSearchField.options[0],
+    orderBy: UserOrderBy.options[0],
   });
 
   // 리스트 쿼리
-  const { data, refetch, isLoading } = CompanyService.useCompanies("A", listParams);
+  const { data, refetch, isLoading } = UserService.useUsers("A", listParams);
   const { rows, total } = data ?? {};
 
   // 페이지네이션
@@ -105,7 +111,7 @@ export default function CompanyList({}: CompanyListProps) {
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      CompanyService.del([itemToDelete.id]).then(() => {
+      UserService.del([itemToDelete.id]).then(() => {
         refetch();
       });
     }
@@ -115,8 +121,8 @@ export default function CompanyList({}: CompanyListProps) {
 
   // 현재 경로와 타이틀
   const PAGE = {
-    route: "/admin/companies",
-    title: "COMPANY",
+    route: "/admin/users",
+    title: "USER",
   };
 
   return (
@@ -139,9 +145,9 @@ export default function CompanyList({}: CompanyListProps) {
                       <SelectValue placeholder="Search Type" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CompanySearchField.options.map((key) => (
+                      {UserSearchField.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          {CompanySearchFieldLabel[key]}
+                          {UserSearchFieldLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -165,7 +171,7 @@ export default function CompanyList({}: CompanyListProps) {
                   <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
-                      onClick={() => navigate(`${PAGE.route}/form`)}
+                      onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">Create</span>
                     </Button>
@@ -178,9 +184,9 @@ export default function CompanyList({}: CompanyListProps) {
                       <SelectValue placeholder="Sort" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CompanyOrderBy.options.map((key) => (
+                      {UserOrderBy.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          Sort: {CompanyOrderByLabel[key]}
+                          Sort: {UserOrderByLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -203,7 +209,14 @@ export default function CompanyList({}: CompanyListProps) {
                     </TableHead>
                     <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
                     <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">회사명</TableHead>
+                    <TableHead className="h-9 text-xs">이메일</TableHead>
+                    <TableHead className="h-9 text-xs">이름</TableHead>
+                    <TableHead className="h-9 text-xs">생일</TableHead>
+                    <TableHead className="h-9 text-xs">ROLE</TableHead>
+                    <TableHead className="h-9 text-xs">LASTLOGIN일시</TableHead>
+                    <TableHead className="h-9 text-xs">BIO</TableHead>
+                    <TableHead className="h-9 text-xs">ISVERIFIED</TableHead>
+                    <TableHead className="h-9 text-xs">삭제일시</TableHead>
                     <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -225,14 +238,41 @@ export default function CompanyList({}: CompanyListProps) {
                               {datetimeF(row.created_at)}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.email}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.username}</TableCell>
+                          <TableCell className="py-3 text-xs">
+                            <span className="text-xs text-muted-foreground">
+                              {row.birth_date ? datetimeF(row.birth_date) : "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3 text-xs">{UserRoleLabel[row.role]}</TableCell>
+                          <TableCell className="py-3 text-xs">
+                            <span className="text-xs text-muted-foreground">
+                              {row.last_login_at ? datetimeF(row.last_login_at) : "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3 text-xs">{row.bio}</TableCell>
+                          <TableCell className="py-3 text-xs">
+                            {row.is_verified ? (
+                              <Badge variant="default">O</Badge>
+                            ) : (
+                              <Badge variant="secondary">X</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-xs">
+                            <span className="text-xs text-muted-foreground">
+                              {row.deleted_at ? datetimeF(row.deleted_at) : "-"}
+                            </span>
+                          </TableCell>
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => navigate(`${PAGE.route}/form?id=${row.id}`)}
+                                onClick={() =>
+                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
+                                }
                               >
                                 <EditIcon className="h-3 w-3" />
                               </Button>

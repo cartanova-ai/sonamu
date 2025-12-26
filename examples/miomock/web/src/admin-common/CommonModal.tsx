@@ -1,8 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-} from "@sonamu-kit/react-components/components";
+import { Dialog, DialogContent, DialogDescription } from "@sonamu-kit/react-components/components";
 import { atom, useAtom } from "jotai";
 import type React from "react";
 import { useEffect } from "react";

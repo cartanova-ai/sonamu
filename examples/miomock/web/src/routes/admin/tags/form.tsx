@@ -7,13 +7,23 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { FileSaveParams } from "@/services/file/file.types";
-import { FileService } from "@/services/services.generated";
-import type { FileSubsetA } from "@/services/sonamu.generated";
+import { z } from "zod";
+import { TagService } from "@/services/services.generated";
+import type { TagSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+import { TagSaveParams } from "@/services/tag/tag.types";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/tags/form")({
+  validateSearch: formSearchSchema,
+  component: TagsFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -22,57 +32,52 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function FilesFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <FilesForm id={query?.id ? Number(query.id) : undefined} />;
+function TagsFormPage() {
+  const { id } = Route.useSearch();
+  return <TagsForm id={id} />;
 }
 
-type FilesFormProps = {
+type TagsFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
 
-export function FilesForm({ id, mode }: FilesFormProps) {
-  const [_row, setRow] = useState<FileSubsetA | undefined>();
+export function TagsForm({ id, mode }: TagsFormProps) {
+  const router = useRouter();
+  const [_row, setRow] = useState<TagSubsetA | undefined>();
 
-  const { form, setForm, register } = useTypeForm(FileSaveParams, {
-    mime_type: "",
-    name: "",
-    url: "",
-  });
+  const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
 
   useEffect(() => {
     if (id) {
-      FileService.getFile("A", id).then((row) => {
+      TagService.getTag("A", id).then((row) => {
         setRow(row);
-        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...rowData,
+          ...row,
         }));
       });
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
-    FileService.save([form])
+    TagService.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/files");
+          goBack("/admin/tags");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
-    title: `FILE${id ? ` #${id} Edit` : " Create"}`,
+    title: `TAG${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
@@ -86,7 +91,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => goBack("/admin/files")} className="gap-2">
+              <Button variant="outline" onClick={() => goBack("/admin/tags")} className="gap-2">
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
@@ -100,30 +105,14 @@ export function FilesForm({ id, mode }: FilesFormProps) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* MIME타입 */}
+                {/* 태그명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">MIME타입</label>
+                  <label className="block text-xs mb-1 text-gray-600">태그명</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="MIME타입"
-                    {...register("mime_type")}
-                  />
-                </div>
-
-                {/* FILE명 */}
-                <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">FILE명</label>
-                  <Input
-                    className="h-8 text-xs bg-white"
-                    placeholder="FILE명"
+                    placeholder="태그명"
                     {...register("name")}
                   />
-                </div>
-
-                {/* URL */}
-                <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">URL</label>
-                  <Input className="h-8 text-xs bg-white" placeholder="URL" {...register("url")} />
                 </div>
 
                 {/* Save Button */}

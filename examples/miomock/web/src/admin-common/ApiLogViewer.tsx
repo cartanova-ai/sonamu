@@ -6,9 +6,7 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 
 // Icons
-const TrashIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="lucide:trash-2" {...props} />
-);
+const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
 
 type ApiLog = {
   id: string;
@@ -233,22 +231,26 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
                   </div>
                 )}
 
-                {!bodyOnly && log.responseHeaders && Object.keys(log.responseHeaders).length > 0 && (
-                  <div style={{ marginBottom: "0.5em" }}>
-                    <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>Response Headers:</div>
-                    <pre
-                      style={{
-                        margin: 0,
-                        padding: "0.5em",
-                        backgroundColor: "#252526",
-                        borderRadius: "4px",
-                        overflowX: "auto",
-                      }}
-                    >
-                      {JSON.stringify(log.responseHeaders, null, 2)}
-                    </pre>
-                  </div>
-                )}
+                {!bodyOnly &&
+                  log.responseHeaders &&
+                  Object.keys(log.responseHeaders).length > 0 && (
+                    <div style={{ marginBottom: "0.5em" }}>
+                      <div style={{ color: "#9cdcfe", marginBottom: "0.25em" }}>
+                        Response Headers:
+                      </div>
+                      <pre
+                        style={{
+                          margin: 0,
+                          padding: "0.5em",
+                          backgroundColor: "#252526",
+                          borderRadius: "4px",
+                          overflowX: "auto",
+                        }}
+                      >
+                        {JSON.stringify(log.responseHeaders, null, 2)}
+                      </pre>
+                    </div>
+                  )}
 
                 {log.responseBody !== undefined && (
                   <div style={{ marginBottom: "0.5em" }}>

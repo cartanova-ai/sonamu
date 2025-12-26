@@ -7,13 +7,23 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { CompanySaveParams } from "@/services/company/company.types";
-import { CompanyService } from "@/services/services.generated";
-import type { CompanySubsetA } from "@/services/sonamu.generated";
+import { z } from "zod";
+import { FileSaveParams } from "@/services/file/file.types";
+import { FileService } from "@/services/services.generated";
+import type { FileSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/files/form")({
+  validateSearch: formSearchSchema,
+  component: FilesFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -22,28 +32,29 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function CompaniesFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <CompaniesForm id={query?.id ? Number(query.id) : undefined} />;
+function FilesFormPage() {
+  const { id } = Route.useSearch();
+  return <FilesForm id={id} />;
 }
 
-type CompaniesFormProps = {
+type FilesFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
 
-export function CompaniesForm({ id, mode }: CompaniesFormProps) {
-  const [_row, setRow] = useState<CompanySubsetA | undefined>();
+export function FilesForm({ id, mode }: FilesFormProps) {
+  const router = useRouter();
+  const [_row, setRow] = useState<FileSubsetA | undefined>();
 
-  const { form, setForm, register } = useTypeForm(CompanySaveParams, { name: "" });
+  const { form, setForm, register } = useTypeForm(FileSaveParams, {
+    mime_type: "",
+    name: "",
+    url: "",
+  });
 
   useEffect(() => {
     if (id) {
-      CompanyService.getCompany("A", id).then((row) => {
+      FileService.getFile("A", id).then((row) => {
         setRow(row);
         const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
@@ -54,21 +65,24 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
-    CompanyService.save([form])
+    FileService.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/companies");
+          goBack("/admin/files");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
-    title: `COMPANY${id ? ` #${id} Edit` : " Create"}`,
+    title: `FILE${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
@@ -82,11 +96,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button
-                variant="outline"
-                onClick={() => goBack("/admin/companies")}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={() => goBack("/admin/files")} className="gap-2">
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
@@ -100,14 +110,30 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* 회사명 */}
+                {/* MIME타입 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">회사명</label>
+                  <label className="block text-xs mb-1 text-gray-600">MIME타입</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="회사명"
+                    placeholder="MIME타입"
+                    {...register("mime_type")}
+                  />
+                </div>
+
+                {/* FILE명 */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">FILE명</label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="FILE명"
                     {...register("name")}
                   />
+                </div>
+
+                {/* URL */}
+                <div className="space-y-2">
+                  <label className="block text-xs mb-1 text-gray-600">URL</label>
+                  <Input className="h-8 text-xs bg-white" placeholder="URL" {...register("url")} />
                 </div>
 
                 {/* Save Button */}

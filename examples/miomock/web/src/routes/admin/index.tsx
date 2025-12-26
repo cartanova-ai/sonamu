@@ -5,10 +5,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@sonamu-kit/react-components/components";
-import { useNavigate } from "react-router-dom";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/admin-common/auth";
 
-export default function AdminIndexPage() {
+export const Route = createFileRoute("/admin/")({
+  component: AdminIndexPage,
+});
+
+function AdminIndexPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -48,7 +52,7 @@ export default function AdminIndexPage() {
           ) : (
             <>
               <p>로그인이 필요합니다.</p>
-              <Button variant="secondary" onClick={() => navigate("/admin/login-test")}>
+              <Button variant="secondary" onClick={() => navigate({ to: "/admin/login-test" })}>
                 로그인
               </Button>
             </>
@@ -62,19 +66,19 @@ export default function AdminIndexPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 w-24">
-            <Button variant="default" onClick={() => navigate("/admin/companies")}>
+            <Button variant="default" onClick={() => navigate({ to: "/admin/companies" })}>
               회사 관리
             </Button>
-            <Button variant="default" onClick={() => navigate("/admin/users")}>
+            <Button variant="default" onClick={() => navigate({ to: "/admin/users" })}>
               사용자 관리
             </Button>
-            <Button variant="default" onClick={() => navigate("/admin/departments")}>
+            <Button variant="default" onClick={() => navigate({ to: "/admin/departments" })}>
               부서 관리
             </Button>
-            <Button variant="default" onClick={() => navigate("/admin/employees")}>
+            <Button variant="default" onClick={() => navigate({ to: "/admin/employees" })}>
               직원 관리
             </Button>
-            <Button variant="default" onClick={() => navigate("/admin/projects")}>
+            <Button variant="default" onClick={() => navigate({ to: "/admin/projects" })}>
               프로젝트 관리
             </Button>
           </div>

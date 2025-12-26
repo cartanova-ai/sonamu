@@ -10,8 +10,11 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
-import { useNavigate } from "react-router-dom";
+
+export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
+
 import { useAuth } from "@/admin-common/auth";
 
 // Icons
@@ -25,7 +28,7 @@ const LogOutIcon = (props: Omit<IconProps, "icon">) => (
 );
 const HomeIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:home" {...props} />;
 
-export default function LoginTestPage() {
+function LoginTestPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
@@ -76,7 +79,7 @@ export default function LoginTestPage() {
               <Button
                 className="w-full h-11 gap-2 text-white font-medium shadow-md"
                 style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
-                onClick={() => navigate("/admin")}
+                onClick={() => navigate({ to: "/admin" })}
               >
                 <HomeIcon className="h-4 w-4" />
                 관리자 페이지로 이동

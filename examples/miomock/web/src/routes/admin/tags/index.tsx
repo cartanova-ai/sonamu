@@ -26,17 +26,21 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { EmployeeListParams } from "@/services/employee/employee.types";
-import { EmployeeService } from "@/services/services.generated";
+import { TagService } from "@/services/services.generated";
 import {
-  EmployeeOrderBy,
-  EmployeeOrderByLabel,
-  EmployeeSearchField,
-  EmployeeSearchFieldLabel,
+  TagOrderBy,
+  TagOrderByLabel,
+  TagSearchField,
+  TagSearchFieldLabel,
 } from "@/services/sonamu.generated";
+import { TagListParams } from "@/services/tag/tag.types";
+
+export const Route = createFileRoute("/admin/tags/")({
+  component: TagList,
+});
 
 // Icons
 const ListIcon = (props: Omit<IconProps, "icon">) => (
@@ -46,9 +50,9 @@ const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-p
 const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
 const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
 
-type EmployeeListProps = {};
+type TagListProps = {};
 
-export default function EmployeeList({}: EmployeeListProps) {
+function TagList({}: TagListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
@@ -57,16 +61,16 @@ export default function EmployeeList({}: EmployeeListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParams(EmployeeListParams, {
+  const { listParams, register } = useListParamsTanstack(TagListParams, {
     num: 10,
     page: 1,
     keyword: "",
-    search: EmployeeSearchField.options[0],
-    orderBy: EmployeeOrderBy.options[0],
+    search: TagSearchField.options[0],
+    orderBy: TagOrderBy.options[0],
   });
 
   // 리스트 쿼리
-  const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
+  const { data, refetch, isLoading } = TagService.useTags("A", listParams);
   const { rows, total } = data ?? {};
 
   // 페이지네이션
@@ -105,7 +109,7 @@ export default function EmployeeList({}: EmployeeListProps) {
 
   const handleConfirmDelete = () => {
     if (itemToDelete) {
-      EmployeeService.del([itemToDelete.id]).then(() => {
+      TagService.del([itemToDelete.id]).then(() => {
         refetch();
       });
     }
@@ -115,8 +119,8 @@ export default function EmployeeList({}: EmployeeListProps) {
 
   // 현재 경로와 타이틀
   const PAGE = {
-    route: "/admin/employees",
-    title: "직원",
+    route: "/admin/tags",
+    title: "TAG",
   };
 
   return (
@@ -139,9 +143,9 @@ export default function EmployeeList({}: EmployeeListProps) {
                       <SelectValue placeholder="Search Type" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {EmployeeSearchField.options.map((key) => (
+                      {TagSearchField.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          {EmployeeSearchFieldLabel[key]}
+                          {TagSearchFieldLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -165,7 +169,7 @@ export default function EmployeeList({}: EmployeeListProps) {
                   <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
-                      onClick={() => navigate(`${PAGE.route}/form`)}
+                      onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
                       <span className="text-xs">Create</span>
                     </Button>
@@ -178,9 +182,9 @@ export default function EmployeeList({}: EmployeeListProps) {
                       <SelectValue placeholder="Sort" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
-                      {EmployeeOrderBy.options.map((key) => (
+                      {TagOrderBy.options.map((key) => (
                         <SelectItem key={key} value={key}>
-                          Sort: {EmployeeOrderByLabel[key]}
+                          Sort: {TagOrderByLabel[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -203,12 +207,7 @@ export default function EmployeeList({}: EmployeeListProps) {
                     </TableHead>
                     <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
                     <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">사번</TableHead>
-                    <TableHead className="h-9 text-xs">SALARY</TableHead>
-                    <TableHead className="h-9 text-xs">입사일</TableHead>
-                    <TableHead className="h-9 text-xs">비고</TableHead>
-                    <TableHead className="h-9 text-xs">USER</TableHead>
-                    <TableHead className="h-9 text-xs">부서</TableHead>
+                    <TableHead className="h-9 text-xs">태그명</TableHead>
                     <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -230,25 +229,16 @@ export default function EmployeeList({}: EmployeeListProps) {
                               {datetimeF(row.created_at)}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.employee_number}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.salary}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {row.hire_date ? datetimeF(row.hire_date) : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.notes}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs">{JSON.stringify(row.user)}</span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.department?.name}</TableCell>
+                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => navigate(`${PAGE.route}/form?id=${row.id}`)}
+                                onClick={() =>
+                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
+                                }
                               >
                                 <EditIcon className="h-3 w-3" />
                               </Button>

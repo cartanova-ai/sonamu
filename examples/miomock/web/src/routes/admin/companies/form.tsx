@@ -7,13 +7,23 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { TagService } from "@/services/services.generated";
-import type { TagSubsetA } from "@/services/sonamu.generated";
+import { z } from "zod";
+import { CompanySaveParams } from "@/services/company/company.types";
+import { CompanyService } from "@/services/services.generated";
+import type { CompanySubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
-import { TagSaveParams } from "@/services/tag/tag.types";
+
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
+
+export const Route = createFileRoute("/admin/companies/form")({
+  validateSearch: formSearchSchema,
+  component: CompaniesFormPage,
+});
 
 // Icons
 const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
@@ -22,52 +32,53 @@ const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
 );
 const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
-export default function TagsFormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
-
-  return <TagsForm id={query?.id ? Number(query.id) : undefined} />;
+function CompaniesFormPage() {
+  const { id } = Route.useSearch();
+  return <CompaniesForm id={id} />;
 }
 
-type TagsFormProps = {
+type CompaniesFormProps = {
   id?: number;
   mode?: "page" | "modal";
 };
 
-export function TagsForm({ id, mode }: TagsFormProps) {
-  const [_row, setRow] = useState<TagSubsetA | undefined>();
+export function CompaniesForm({ id, mode }: CompaniesFormProps) {
+  const router = useRouter();
+  const [_row, setRow] = useState<CompanySubsetA | undefined>();
 
-  const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
+  const { form, setForm, register } = useTypeForm(CompanySaveParams, { name: "" });
 
   useEffect(() => {
     if (id) {
-      TagService.getTag("A", id).then((row) => {
+      CompanyService.getCompany("A", id).then((row) => {
         setRow(row);
+        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...row,
+          ...rowData,
         }));
       });
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
+  const goBack = (to: string) => {
+    router.navigate({ to });
+  };
+
   const handleSubmit = useCallback(() => {
-    TagService.save([form])
+    CompanyService.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/tags");
+          goBack("/admin/companies");
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
-    title: `TAG${id ? ` #${id} Edit` : " Create"}`,
+    title: `COMPANY${id ? ` #${id} Edit` : " Create"}`,
   };
 
   return (
@@ -81,7 +92,11 @@ export function TagsForm({ id, mode }: TagsFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => goBack("/admin/tags")} className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => goBack("/admin/companies")}
+                className="gap-2"
+              >
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
@@ -95,12 +110,12 @@ export function TagsForm({ id, mode }: TagsFormProps) {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">
-                {/* 태그명 */}
+                {/* 회사명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">태그명</label>
+                  <label className="block text-xs mb-1 text-gray-600">회사명</label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="태그명"
+                    placeholder="회사명"
                     {...register("name")}
                   />
                 </div>
