@@ -15,8 +15,7 @@
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc",
-    "lint": "eslint src",
-    "scaffold": "npx tsx src/scripts/scaffold.ts"
+    "lint": "eslint src"
   },
   "dependencies": {
     "@hookform/resolvers": "catalog:",
