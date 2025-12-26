@@ -9,29 +9,29 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sonamu-kit/react-sui": "^0.1.17",
-    "axios": "^1.13.2",
-    "dotenv": "^17.2.3",
-    "jotai": "^2.14.0",
-    "qs": "^6.14.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.3.0",
-    "react-semantic-ui-datepickers": "^2.17.1",
-    "semantic-ui-css": "^2.5.0",
-    "semantic-ui-react": "^2.1.5",
-    "swr": "^2.3.7",
-    "zod": "^4.1.12",
-    "classnames": "^2.5.1"
+    "@sonamu-kit/react-sui": "workspace:^",
+    "axios": "catalog:",
+    "dotenv": "catalog:",
+    "jotai": "catalog:",
+    "qs": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-router-dom": "catalog:",
+    "react-semantic-ui-datepickers": "catalog:",
+    "semantic-ui-css": "catalog:",
+    "semantic-ui-react": "catalog:",
+    "swr": "catalog:",
+    "zod": "catalog:",
+    "classnames": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "24.5.0",
-    "@types/qs": "^6.14.0",
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react-swc": "^4.1.3",
-    "sass": "^1.92.1",
-    "typescript": "^5.9.3",
-    "vite": "^7.2.4"
+    "@types/node": "catalog:",
+    "@types/qs": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react-swc": "catalog:",
+    "sass": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
   }
 }

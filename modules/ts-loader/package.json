@@ -23,13 +23,13 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@loaderkit/resolve": "^1.0.4",
-    "@swc/core": "^1.13.5",
-    "json5": "^2.2.3"
+    "@loaderkit/resolve": "catalog:",
+    "@swc/core": "catalog:",
+    "json5": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "typescript": "^5.9.3"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public",

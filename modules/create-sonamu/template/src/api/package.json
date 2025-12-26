@@ -18,17 +18,17 @@
     "seed": "bash database/scripts/seed.sh"
   },
   "dependencies": {
-    "@swc/core": "^1.13.5",
-    "fastify": "^4",
-    "knex": "^3.1.0",
-    "sonamu": "^0.7.21",
-    "zod": "^4.1.12",
-    "dotenv": "^17.2.2"
+    "@swc/core": "catalog:",
+    "fastify": "catalog:",
+    "knex": "catalog:",
+    "sonamu": "workspace:^",
+    "zod": "catalog:",
+    "dotenv": "catalog:"
   },
   "devDependencies": {
-    "@swc/cli": "^0.7.8",
-    "@types/node": "^24.5.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.10"
+    "@swc/cli": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
