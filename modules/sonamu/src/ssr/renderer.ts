@@ -11,14 +11,12 @@ export async function renderSSR(
   request: FastifyRequest,
   reply: FastifyReply,
   config: SonamuFastifyConfig,
-  vite: ViteDevServer,
+  vite?: ViteDevServer,
 ): Promise<string> {
   const { Sonamu } = await import("../api/sonamu");
 
-  // 1. preload 실행 → SSRQuery[] 획득
+  // 1. preload 실행 → SSRQuery[] 획득 (dev/prod 공통)
   const preloadConfig = route.preload ? route.preload(params) : [];
-
-  // 2. Sonamu.invokeApiForSSR로 API 직접 호출
   const preloadedData: PreloadedData[] = [];
 
   for (const { modelName, methodName, params: apiParams, serviceKey } of preloadConfig) {
@@ -47,28 +45,47 @@ export async function renderSSR(
     }
   }
 
-  // 3. index.html 읽기
-  const fs = await import("node:fs/promises");
-  const indexHtmlPath = path.join(vite.config.root, "index.html");
-  let template = await fs.readFile(indexHtmlPath, "utf-8");
-  template = await vite.transformIndexHtml(url, template);
+  // 2. dev/prod 분기
+  let template: string;
+  let render: (
+    url: string,
+    preloadedData: PreloadedData[],
+  ) => Promise<{ html: string; dehydratedState: unknown }>;
 
-  // 4. entry-server 로드 및 렌더링
-  const { render } = await vite.ssrLoadModule("/src/entry-server.generated.tsx");
+  if (vite) {
+    // Dev: Vite Dev Server 사용
+    const fs = await import("node:fs/promises");
+    const indexHtmlPath = path.join(vite.config.root, "index.html");
+    template = await fs.readFile(indexHtmlPath, "utf-8");
+    template = await vite.transformIndexHtml(url, template);
+    const entryModule = await vite.ssrLoadModule("/src/entry-server.generated.tsx");
+    render = entryModule.render;
+  } else {
+    // Prod: 빌드된 파일 사용
+    const fs = await import("node:fs");
+    const webDistPath = path.join(Sonamu.apiRootPath, "public", "web");
+    const ssrPath = path.join(Sonamu.apiRootPath, "dist", "ssr");
+
+    template = fs.readFileSync(path.join(webDistPath, "index.html"), "utf-8");
+    const entryModule = await import(path.join(ssrPath, "entry-server.generated.js"));
+    render = entryModule.render;
+  }
+
+  // 3. SSR 렌더링 (dev/prod 공통)
   const { html: appHtml, dehydratedState } = await render(url, preloadedData);
 
-  // 5. SSR 데이터 스크립트 생성
+  // 4. SSR 데이터 스크립트 생성
   const ssrDataScript = `
     <script>
       ${dehydratedState ? `window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")};` : ""}
     </script>
   `;
 
-  // 6. head 생성
+  // 5. head 생성
   const headTags = route.head ? generateHeadTags(route.head(dehydratedState)) : "";
-  const devCssLinks = `
-  <link rel="stylesheet" href="/src/styles/tailwind.css" />
-`;
+
+  // 6. Dev에서만 CSS 링크 추가 (prod는 빌드된 index.html에 이미 포함)
+  const devCssLinks = vite ? `<link rel="stylesheet" href="/src/styles/tailwind.css" />` : "";
 
   // 7. 치환
   const html = template

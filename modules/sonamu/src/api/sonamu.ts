@@ -489,30 +489,74 @@ class SonamuClass {
 
   private async setupStaticWebServer(
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
-    webPath: string,
-    _config: SonamuFastifyConfig,
+    _webPath: string,
+    config: SonamuFastifyConfig,
   ): Promise<void> {
-    const distPath = path.join(webPath, "dist");
+    // 경로 명확화: api/public/web, api/dist/ssr
+    const webDistPath = path.join(this.apiRootPath, "public", "web");
+    const ssrPath = path.join(this.apiRootPath, "dist", "ssr");
 
-    if (!fs.existsSync(distPath)) {
-      console.warn(`⚠ Web dist not found: ${distPath}`);
+    if (!fs.existsSync(webDistPath)) {
+      console.warn(`⚠ Web dist not found: ${webDistPath}`);
       return;
     }
 
-    // /assets/* 정적 파일 서빙
-    server.register(await import("@fastify/static"), {
-      root: path.join(distPath, "assets"),
-      prefix: "/assets",
-      decorateReply: false,
-      setHeaders: (res, filePath) => {
-        // Hash 있는 파일은 장기 캐싱
-        if (filePath.includes("-") && (filePath.endsWith(".js") || filePath.endsWith(".css"))) {
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    // SSR entry 존재 여부 확인
+    const ssrEntryPath = path.join(ssrPath, "entry-server.generated.js");
+    const ssrAvailable = fs.existsSync(ssrEntryPath);
+
+    if (!ssrAvailable) {
+      console.warn(`⚠ SSR entry not found: ${ssrEntryPath}`);
+      console.warn("  SSR will be disabled. Only CSR will work.");
+    }
+
+    // SSR 라우트 로드 (production에서만, 사용자 프로젝트의 ssr/routes.ts)
+    if (ssrAvailable) {
+      const ssrRoutesPath = path.join(this.apiRootPath, "dist", "ssr", "routes.js");
+      if (fs.existsSync(ssrRoutesPath)) {
+        await import(ssrRoutesPath);
+        console.log("✓ SSR routes loaded");
+      } else {
+        console.warn(`⚠ SSR routes not found: ${ssrRoutesPath}`);
+      }
+    }
+
+    // 롤링 업데이트 대응: asset hash 불일치 시 현재 버전 직접 서빙
+    server.get("/assets/:filename", async (request, reply) => {
+      const requestedFile = (request.params as { filename: string }).filename;
+      const assetsDir = path.join(webDistPath, "assets");
+
+      // index-*.js 또는 index-*.css 요청인 경우
+      if (/^index-[a-f0-9]+\.(js|css)$/.test(requestedFile)) {
+        const ext = requestedFile.split(".").pop();
+        const files = fs.readdirSync(assetsDir);
+        const currentFile = files.find((f) => f.startsWith("index-") && f.endsWith(`.${ext}`));
+
+        if (currentFile) {
+          const filePath = path.join(assetsDir, currentFile);
+          const content = fs.readFileSync(filePath);
+          reply.type(ext === "js" ? "application/javascript" : "text/css");
+          reply.header("Cache-Control", "public, max-age=31536000, immutable");
+          return reply.send(content);
         }
-      },
+      }
+
+      // 일반 파일 서빙
+      const filePath = path.join(assetsDir, requestedFile);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath);
+        const ext = requestedFile.split(".").pop();
+        reply.type(ext === "js" ? "application/javascript" : ext === "css" ? "text/css" : "");
+        if (requestedFile.includes("-")) {
+          reply.header("Cache-Control", "public, max-age=31536000, immutable");
+        }
+        return reply.send(content);
+      }
+
+      reply.code(404).send("Not found");
     });
 
-    // SPA fallback
+    // SPA/SSR 라우팅
     server.setNotFoundHandler(async (request, reply) => {
       // /api, /sonamu-ui는 404 그대로
       if (request.url.startsWith("/api") || request.url.startsWith("/sonamu-ui")) {
@@ -520,13 +564,40 @@ class SonamuClass {
         return;
       }
 
-      // 나머지는 index.html 반환 (react-router-dom이 처리)
-      const indexPath = path.join(distPath, "index.html");
+      const url = request.url;
+
+      // SSR 라우트 체크
+      if (ssrAvailable) {
+        const { matchSSRRoute } = await import("../ssr");
+        const match = matchSSRRoute(url);
+
+        if (match) {
+          try {
+            // renderSSR 재사용 (vite 없이 호출 = production 모드)
+            const { renderSSR } = await import("../ssr/renderer");
+            const html = await renderSSR(url, match.route, match.params, request, reply, config);
+            reply.type("text/html").send(html);
+            console.log(`[SSR] Matched route: ${match.route.path}`);
+            return;
+          } catch (e) {
+            console.error("[SSR Error]", {
+              url: request.url,
+              route: match.route.path,
+              error: e instanceof Error ? e.message : String(e),
+              timestamp: new Date().toISOString(),
+            });
+            // CSR로 fallback
+          }
+        }
+      }
+
+      // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
+      const indexPath = path.join(webDistPath, "index.html");
       const html = fs.readFileSync(indexPath, "utf-8");
       reply.type("text/html").send(html);
     });
 
-    console.log("✓ Static web server configured");
+    console.log(`✓ Static web server configured with ${ssrAvailable ? "SSR" : "CSR only"} support`);
   }
 
   createApiHandler(

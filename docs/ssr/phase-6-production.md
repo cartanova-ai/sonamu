@@ -70,6 +70,11 @@ export default defineConfig({
       },
     },
   },
+
+  // ➕ 추가: SSR 빌드 시 의존성 번들링
+  ssr: {
+    noExternal: true,
+  },
 });
 ```
 
@@ -77,6 +82,9 @@ export default defineConfig({
 - `outDir: 'dist/client'`: 클라이언트 빌드 결과물 위치
 - `emptyOutDir: true`: 빌드 전 기존 파일 삭제
 - `manualChunks`: vendor 라이브러리를 별도 chunk로 분리하여 캐싱 최적화
+- `ssr.noExternal: true`: SSR 빌드 시 모든 의존성을 번들에 포함
+
+> **중요 - `ssr.noExternal`**: 기본적으로 Vite SSR 빌드는 `react`, `@tanstack/*` 등을 외부화(externalize)해서 `node_modules`에서 찾으려고 합니다. 하지만 빌드된 `entry-server.generated.js`는 `api` 폴더에서 실행되고, `api`에는 이 패키지들이 없으므로 `Cannot find package 'react'` 에러가 발생합니다. `noExternal: true`로 모든 의존성을 번들에 포함시켜야 합니다. (번들 크기 ~5MB지만 서버에서만 사용되므로 문제없음)
 
 > **참고**: `ssrManifest`는 code splitting된 chunk들의 preload 최적화용인데, TanStack Router가 `defaultPreload: 'intent'`로 hover 시 자동 preload 해주므로 불필요합니다.
 
