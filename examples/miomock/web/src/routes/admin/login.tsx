@@ -13,10 +13,7 @@ import { useAuth } from "@/admin-common/auth";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
-    meta: [
-      { title: "Miomock - Admin Login" },
-      { name: "description", content: "관리자 로그인" },
-    ],
+    meta: [{ title: "Miomock - Admin Login" }, { name: "description", content: "관리자 로그인" }],
   }),
   component: LoginPage,
 });
