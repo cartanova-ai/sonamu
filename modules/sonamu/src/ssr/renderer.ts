@@ -88,7 +88,8 @@ export async function renderSSR(
   const devCssLinks = vite ? `<link rel="stylesheet" href="/src/styles/tailwind.css" />` : "";
 
   // 7. 치환
-  const html = template
+  const templateWithoutTitle = headTags ? template.replace(/<title>.*<\/title>/, "") : template;
+  const html = templateWithoutTitle
     .replace("<!--app-head-->", `${devCssLinks}\n    ${headTags}\n    ${ssrDataScript}`)
     .replace("<!--app-html-->", appHtml);
 
