@@ -1,5 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
-import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import dotenv from "dotenv";
 import path from "path";
@@ -9,14 +9,7 @@ dotenv.config({ path: ".sonamu.env" });
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, isSsrBuild }) => ({
-  plugins: [
-    react(),
-    tailwindcss(),
-    TanStackRouterVite({
-      routesDirectory: "./src/routes",
-      generatedRouteTree: "./src/routeTree.gen.ts",
-    }),
-  ],
+  plugins: [react(), tailwindcss(), tanstackRouter()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

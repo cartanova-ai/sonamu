@@ -37,8 +37,8 @@
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/vite": "catalog:",
-    "@tanstack/router-vite-plugin": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
     "@types/luxon": "catalog:",
     "@types/node": "catalog:",
     "@types/prop-types": "catalog:",
