@@ -145,7 +145,9 @@ describe("Syncer", () => {
       const writeFiles = Naite.get("fs/promises:writeFile").result();
       const webRootPath = join(apiRootPath, "../web");
       expect(writeFiles.map((f) => f.path).sort()).toStrictEqual([
+        join(apiRootPath, "src/application/queries.generated.ts"),
         join(apiRootPath, "src/application/sonamu.generated.http"),
+        join(webRootPath, "src/entry-server.generated.tsx"),
         join(webRootPath, "src/services/company/company.types.ts"),
         join(webRootPath, "src/services/services.generated.ts"),
         join(webRootPath, "src/services/sync-fixture/sync-fixture.types.ts"),
