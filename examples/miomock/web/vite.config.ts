@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
 dotenv.config({ path: ".sonamu.env" });
 
 // https://vitejs.dev/config/
-export default defineConfig(({ isSsrBuild }) => ({
+export default defineConfig(({ command, isSsrBuild }) => ({
   plugins: [
     react(),
     tailwindcss(),
@@ -44,6 +44,6 @@ export default defineConfig(({ isSsrBuild }) => ({
     },
   },
   ssr: {
-    noExternal: true, // Production SSR: 모든 의존성을 번들에 포함
+    noExternal: command === "build" ? true : undefined, // Production 빌드시에만 모든 의존성 번들에 포함
   },
 }));
