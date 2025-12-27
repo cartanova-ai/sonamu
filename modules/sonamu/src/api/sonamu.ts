@@ -18,12 +18,8 @@ import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
+import { getSecrets, type SonamuSecrets } from "./secret";
 
-export type SonamuSecrets = {
-  anthropic_api_key?: string;
-  voyage_api_key?: string;
-  openai_api_key?: string;
-};
 class SonamuClass {
   public isInitialized: boolean = false;
   public asyncLocalStorage: AsyncLocalStorage<{
@@ -110,13 +106,7 @@ class SonamuClass {
     return this._config;
   }
 
-  private _secrets: SonamuSecrets | null = null;
-  set secrets(secrets: SonamuSecrets) {
-    this._secrets = secrets;
-  }
-  get secrets(): SonamuSecrets | null {
-    return this._secrets;
-  }
+  public readonly secrets: SonamuSecrets = getSecrets();
 
   private _storage: StorageManager | null = null;
   /**
@@ -172,21 +162,6 @@ class SonamuClass {
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
-
-    // API 키 환경변수 로드
-    const secrets: SonamuSecrets = {};
-    if (process.env.ANTHROPIC_API_KEY) {
-      secrets.anthropic_api_key = process.env.ANTHROPIC_API_KEY;
-    }
-    if (process.env.VOYAGE_API_KEY) {
-      secrets.voyage_api_key = process.env.VOYAGE_API_KEY;
-    }
-    if (process.env.OPENAI_API_KEY) {
-      secrets.openai_api_key = process.env.OPENAI_API_KEY;
-    }
-    if (Object.keys(secrets).length > 0) {
-      this.secrets = secrets;
-    }
 
     // DB 로드
     const { DB } = await import("../database/db");
@@ -954,4 +929,5 @@ class SonamuClass {
     await this.watcher?.close();
   }
 }
+
 export const Sonamu = new SonamuClass();
