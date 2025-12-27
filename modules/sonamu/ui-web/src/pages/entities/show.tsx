@@ -671,7 +671,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
   };
 
   // Props Drag&Drop
-  const dragStartPropIndex = useRef<number | null>();
+  const dragStartPropIndex = useRef<number | null>(null);
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
 
   return (

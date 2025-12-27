@@ -171,7 +171,7 @@ export function useSheetTable(options: {
   };
 
   // 키 타이머 (1초 이내 입력인 경우 keyword를 누적하고 아닌 경우 초기화 후 입력)
-  const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>();
+  const keyTimerRef = useRef<{ keyword: string; timestamp: number } | null>(null);
   const keySwitchRef = useRef<boolean>(true);
   // biome-ignore lint/correctness/useExhaustiveDependencies: 키 스트로크 관련 이벤트만
   useEffect(() => {

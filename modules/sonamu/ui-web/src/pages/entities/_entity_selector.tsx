@@ -10,7 +10,7 @@ export function EntitySelector({}: EntitySelectorProps) {
 
   const { doneModal } = useCommonModal();
 
-  const valueRef = useRef<string | null>();
+  const valueRef = useRef<string | null>(null);
 
   return (
     <div className="form entity-selector">
