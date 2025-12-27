@@ -384,7 +384,7 @@ export type ControlledModalProps = {
 };
 
 export function useModal<T extends object>(
-  ModalComponent: (props: T & ControlledModalProps) => JSX.Element,
+  ModalComponent: (props: T & ControlledModalProps) => React.ReactElement,
   defaultProps: T,
 ) {
   const [modalProps, setModalProps] = useState<T & { open: boolean }>({
