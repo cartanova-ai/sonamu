@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import Main from "./main";
 import { routeTree } from "./routeTree.gen";
 import "./styles/tailwind.css";
+import { dateReviver } from "./services/sonamu.shared";
 
 // SSR 데이터 타입
 declare global {
@@ -25,7 +26,9 @@ const queryClient = new QueryClient({
 });
 
 // SSR 데이터 복원
-const dehydratedState = window.__SONAMU_SSR__;
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
 if (dehydratedState) {
   hydrate(queryClient, dehydratedState);
 }
