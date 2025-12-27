@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "pnpm build:client && pnpm build:server",
+    "build:all": "pnpm build:client && pnpm build:server",
     "build:client": "tsc && vite build --outDir dist/client",
     "build:server": "vite build --ssr src/entry-server.generated.tsx --outDir dist/server",
     "preview": "vite preview"

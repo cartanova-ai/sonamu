@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "sonamu dev",
     "build": "pnpm build:web && sonamu build",
-    "build:web": "cd ../web && pnpm build && cd ../api && cp -r ../web/dist/client/* public/web/ && cp -r ../web/dist/server/* dist/ssr/",
+    "build:web": "cd ../web && pnpm build:all && cd ../api && mkdir -p public/web && cp -r ../web/dist/client/* public/web/ && mkdir -p dist/ssr && cp -r ../web/dist/server/* dist/ssr/",
     "start": "sonamu start",
     "start:all": "./start.sh",
     "test": "vitest run",
