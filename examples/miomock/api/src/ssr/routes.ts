@@ -27,5 +27,5 @@ registerSSR({
   head: () => ({
     title: "Miomock - Admin Login",
   }),
-  preload: () => [],
+  preload: () => [UserService.me()],
 });
