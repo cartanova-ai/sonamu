@@ -1,18 +1,44 @@
-import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import App from "@/App";
 import { AuthProvider } from "@/admin-common/auth";
 
-interface RouterContext {
+export interface RouterContext {
   queryClient: QueryClient;
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  component: () => (
-    <AuthProvider>
-      <App>
-        <Outlet />
-      </App>
-    </AuthProvider>
-  ),
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1.0" },
+      { title: "Miomock: Sonamu shines evergreen" },
+    ],
+  }),
+  component: RootComponent,
 });
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/sonamu.svg" />
+        <HeadContent />
+      </head>
+      <body>
+        <div id="root">
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <App>
+                <Outlet />
+              </App>
+            </AuthProvider>
+          </QueryClientProvider>
+        </div>
+        <Scripts />
+      </body>
+    </html>
+  );
+}

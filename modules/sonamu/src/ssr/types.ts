@@ -11,10 +11,7 @@ export type PreloadConfig = SSRQuery[];
 export type SSRRoute = {
   path: string;
   preload?: (params: Record<string, string>) => PreloadConfig;
-  head?: (dehydratedState: unknown) => {
-    title?: string;
-    meta?: Array<{ name?: string; property?: string; content: string }>;
-  };
+  disableHydrate?: boolean;
 };
 
 export type PreloadedData = {

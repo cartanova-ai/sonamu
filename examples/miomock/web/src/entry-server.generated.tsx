@@ -2,7 +2,6 @@ import { dehydrate, QueryClient } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { Suspense } from "react";
 import { renderToString } from "react-dom/server";
-import Main from "./main";
 import { routeTree } from "./routeTree.gen";
 
 export type PreloadedData = {
@@ -45,12 +44,10 @@ export async function render(url: string, preloadedData: PreloadedData[] = []) {
   // 라우터 초기화: SSR에서 반드시 await router.load() 호출 필요
   await router.load();
 
-  // renderToString 사용
+  // RouterProvider만 렌더링 (Suspense로 래핑 - hydration mismatch 방지)
   const appHtml = renderToString(
     <Suspense fallback={null}>
-      <Main queryClient={queryClient}>
-        <RouterProvider router={router} />
-      </Main>
+      <RouterProvider router={router} />
     </Suspense>,
   );
 

@@ -39,6 +39,12 @@ import {
 } from "@/services/sonamu.generated";
 
 export const Route = createFileRoute("/admin/companies/")({
+  head: () => ({
+    meta: [
+      { title: "Miomock - Companies List" },
+      { name: "description", content: "회사 목록 관리" },
+    ],
+  }),
   component: CompanyList,
 });
 

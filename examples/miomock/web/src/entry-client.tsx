@@ -1,7 +1,6 @@
 import { hydrate, QueryClient } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
-import Main from "./main";
 import { routeTree } from "./routeTree.gen";
 import "./styles/tailwind.css";
 import { dateReviver } from "./services/sonamu.shared";
@@ -11,15 +10,18 @@ declare global {
   interface Window {
     // biome-ignore lint/suspicious/noExplicitAny: SSR 데이터를 any 타입으로 받아야 함
     __SONAMU_SSR__?: any;
+    __SONAMU_SSR_CONFIG__?: {
+      disableHydrate?: boolean;
+    };
   }
 }
 
-// QueryClient 생성 (서버와 동일한 설정 사용)
+// QueryClient 생성
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5000,
-      retry: false, // 서버와 동일하게 설정
+      retry: false,
       refetchOnMount: false,
     },
   },
@@ -32,6 +34,9 @@ const dehydratedState = window.__SONAMU_SSR__
 if (dehydratedState) {
   hydrate(queryClient, dehydratedState);
 }
+
+// SSR Config 확인
+const ssrConfig = window.__SONAMU_SSR_CONFIG__;
 
 // Router 생성
 const router = createRouter({
@@ -46,31 +51,22 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// Root element
-const root = document.getElementById("root");
-if (!root) {
-  throw new Error("Root element not found");
-}
-
 await router.load();
 
-const app = (
-  <Main queryClient={queryClient}>
-    <RouterProvider router={router} />
-  </Main>
-);
-
-if (root.innerHTML && dehydratedState) {
-  // React hydration 시도 (서버 HTML 재사용)
-  ReactDOM.hydrateRoot(root, app);
-
-  // 디버깅: hydration 후 클라이언트 HTML과 비교
-  setTimeout(() => {
-    // detectHydrationMismatch(serverHTML, root.innerHTML);
-  }, 100);
+// SSR/CSR 모두 document 전체에 렌더링
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR 페이지
+  if (ssrConfig?.disableHydrate) {
+    // disableHydrate: document 전체 새로 렌더링
+    console.log("[Sonamu] Hydration disabled, rendering as CSR");
+    ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+  } else {
+    // 정상 hydration: document 전체 hydrate
+    ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+  }
 } else {
-  // CSR 페이지 - 새로 렌더링
-  ReactDOM.createRoot(root).render(app);
+  // Pure CSR 페이지: document 전체 렌더링
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
 }
 
 // Chrome Extension용 Devtools
