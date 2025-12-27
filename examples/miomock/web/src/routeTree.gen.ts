@@ -27,6 +27,7 @@ import { Route as AdminFilesFormRouteImport } from './routes/admin/files/form'
 import { Route as AdminEmployeesFormRouteImport } from './routes/admin/employees/form'
 import { Route as AdminDepartmentsFormRouteImport } from './routes/admin/departments/form'
 import { Route as AdminCompaniesFormRouteImport } from './routes/admin/companies/form'
+import { Route as AdminCompaniesCompanyIdRouteImport } from './routes/admin/companies/$companyId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -118,12 +119,18 @@ const AdminCompaniesFormRoute = AdminCompaniesFormRouteImport.update({
   path: '/admin/companies/form',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCompaniesCompanyIdRoute = AdminCompaniesCompanyIdRouteImport.update({
+  id: '/admin/companies/$companyId',
+  path: '/admin/companies/$companyId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
   '/admin/departments/form': typeof AdminDepartmentsFormRoute
   '/admin/employees/form': typeof AdminEmployeesFormRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
   '/admin/departments/form': typeof AdminDepartmentsFormRoute
   '/admin/employees/form': typeof AdminEmployeesFormRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/login-test': typeof AdminLoginTestRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/companies/$companyId': typeof AdminCompaniesCompanyIdRoute
   '/admin/companies/form': typeof AdminCompaniesFormRoute
   '/admin/departments/form': typeof AdminDepartmentsFormRoute
   '/admin/employees/form': typeof AdminEmployeesFormRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/login-test'
     | '/admin'
+    | '/admin/companies/$companyId'
     | '/admin/companies/form'
     | '/admin/departments/form'
     | '/admin/employees/form'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/login-test'
     | '/admin'
+    | '/admin/companies/$companyId'
     | '/admin/companies/form'
     | '/admin/departments/form'
     | '/admin/employees/form'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/login-test'
     | '/admin/'
+    | '/admin/companies/$companyId'
     | '/admin/companies/form'
     | '/admin/departments/form'
     | '/admin/employees/form'
@@ -248,6 +260,7 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AdminLoginTestRoute: typeof AdminLoginTestRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminCompaniesCompanyIdRoute: typeof AdminCompaniesCompanyIdRoute
   AdminCompaniesFormRoute: typeof AdminCompaniesFormRoute
   AdminDepartmentsFormRoute: typeof AdminDepartmentsFormRoute
   AdminEmployeesFormRoute: typeof AdminEmployeesFormRoute
@@ -392,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCompaniesFormRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/companies/$companyId': {
+      id: '/admin/companies/$companyId'
+      path: '/admin/companies/$companyId'
+      fullPath: '/admin/companies/$companyId'
+      preLoaderRoute: typeof AdminCompaniesCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   AdminLoginTestRoute: AdminLoginTestRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminCompaniesCompanyIdRoute: AdminCompaniesCompanyIdRoute,
   AdminCompaniesFormRoute: AdminCompaniesFormRoute,
   AdminDepartmentsFormRoute: AdminDepartmentsFormRoute,
   AdminEmployeesFormRoute: AdminEmployeesFormRoute,

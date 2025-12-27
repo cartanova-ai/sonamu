@@ -49,6 +49,7 @@ const ListIcon = (props: Omit<IconProps, "icon">) => (
 const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-pen" {...props} />;
 const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
 const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
+const EyeIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:eye" {...props} />;
 
 type CompanyListProps = {};
 
@@ -232,6 +233,14 @@ function CompanyList({}: CompanyListProps) {
                           <TableCell className="py-3 text-xs">{row.name}</TableCell>
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 rounded bg-cyan-500 hover:bg-cyan-600 text-white"
+                                onClick={() => navigate({ to: `${PAGE.route}/${row.id}` })}
+                              >
+                                <EyeIcon className="h-3 w-3" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
