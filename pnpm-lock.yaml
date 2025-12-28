@@ -93,6 +93,12 @@ catalogs:
     '@hookform/resolvers':
       specifier: ^5.2.2
       version: 5.2.2
+    '@iconify-json/lucide':
+      specifier: ^1.2.82
+      version: 1.2.82
+    '@iconify-json/mdi':
+      specifier: ^1.2.3
+      version: 1.2.3
     '@iconify/json':
       specifier: ^2.2.421
       version: 2.2.421
@@ -679,6 +685,12 @@ importers:
       '@biomejs/biome':
         specifier: 'catalog:'
         version: 2.3.7
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.82
+      '@iconify-json/mdi':
+        specifier: 'catalog:'
+        version: 1.2.3
       '@sonamu-kit/react-sui':
         specifier: workspace:^
         version: link:../../../modules/react-sui
@@ -2821,6 +2833,12 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@iconify-json/lucide@1.2.82':
+    resolution: {integrity: sha512-fHZWegspOZonl5GNTvOkHsjnTMdSslFh3EzpzUtRyLxO8bOonqk2OTU3hCl0k4VXzViMjqpRK3X1sotnuBXkFA==}
+
+  '@iconify-json/mdi@1.2.3':
+    resolution: {integrity: sha512-O3cLwbDOK7NNDf2ihaQOH5F9JglnulNDFV7WprU2dSoZu3h3cWH//h74uQAB87brHmvFVxIOkuBX2sZSzYhScg==}
 
   '@iconify/json@2.2.421':
     resolution: {integrity: sha512-jc0BOjmdVz4DxfYlvJWEBl8FIdOtgRCDZkyOEDFlHqCnfw6Yyr41fDaiECU/FSzkqjwNuKu5H10N7bLN+JPQGA==}
@@ -12465,6 +12483,14 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@iconify-json/lucide@1.2.82':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/mdi@1.2.3':
+    dependencies:
+      '@iconify/types': 2.0.0
 
   '@iconify/json@2.2.421':
     dependencies:

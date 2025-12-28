@@ -42,6 +42,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
+    "@iconify-json/lucide": "catalog:",
+    "@iconify-json/mdi": "catalog:",
     "@sonamu-kit/react-sui": "workspace:^",
     "@swc/cli": "catalog:",
     "@types/bcrypt": "catalog:",
