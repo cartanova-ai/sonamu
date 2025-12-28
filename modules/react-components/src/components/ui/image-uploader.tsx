@@ -8,7 +8,7 @@ import { Button } from "./button";
 
 export type ImageUploaderProps = {
   value?: string | null;
-  onChange?: (e: unknown, data: { value: string | null }) => void;
+  onValueChange?: (value: string | null) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   uploader: (file: File) => Promise<string>;
   placeholder?: string;
@@ -20,7 +20,7 @@ export type ImageUploaderProps = {
 
 export function ImageUploader({
   value,
-  onChange,
+  onValueChange,
   onBlur,
   uploader,
   placeholder = "Click to upload image",
@@ -46,14 +46,14 @@ export function ImageUploader({
       setIsUploading(true);
       try {
         const uploadedUrl = await uploader(file);
-        onChange?.(null, { value: uploadedUrl });
+        onValueChange?.(uploadedUrl);
       } catch (error) {
         console.error("Upload failed:", error);
       } finally {
         setIsUploading(false);
       }
     },
-    [uploader, onChange, disabled],
+    [uploader, onValueChange, disabled],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +92,7 @@ export function ImageUploader({
   const handleClear = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onChange?.(null, { value: null });
+    onValueChange?.(null);
   };
 
   const handleClick = () => {

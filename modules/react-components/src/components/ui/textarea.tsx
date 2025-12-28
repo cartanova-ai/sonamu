@@ -1,13 +1,21 @@
 import * as React from "react";
-
+import type { Override } from "../../lib/helpers";
 import { cn } from "../../lib/utils";
 
-export type TextareaProps = Omit<React.ComponentProps<"textarea">, "onChange"> & {
-  onChange?: (event: React.ChangeEvent<HTMLTextAreaElement>, data: { value: string }) => void;
-};
+export type TextareaProps = Override<
+  React.ComponentProps<"textarea">,
+  {
+    onValueChange?: (value: string) => void;
+  }
+>;
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, onChange, ...props }, ref) => {
+  ({ className, onValueChange, onChange, ...props }, ref) => {
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onValueChange?.(e.target.value);
+      onChange?.(e);
+    };
+
     return (
       <textarea
         className={cn(
@@ -15,12 +23,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className,
         )}
         ref={ref}
-        onChange={(e) => {
-          if (onChange) {
-            onChange(e, { value: e.target.value });
-          }
-        }}
         {...props}
+        onChange={handleChange}
       />
     );
   },

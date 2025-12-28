@@ -26,7 +26,7 @@ interface ComboboxProps {
   options: ComboboxOption[];
   name?: string;
   value?: string;
-  onChange?: (e: unknown, data: { value: string | undefined }) => void;
+  onValueChange?: (value: string | undefined) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -42,7 +42,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
       options,
       name,
       value,
-      onChange,
+      onValueChange,
       onBlur,
       placeholder = "Select option...",
       searchPlaceholder = "Search...",
@@ -61,28 +61,14 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
 
     const handleSelect = (currentValue: string) => {
       const newValue = currentValue === value ? "" : currentValue;
-
-      if (inputRef.current) {
-        inputRef.current.value = newValue;
-
-        const nativeEvent = new Event("change", { bubbles: true });
-        Object.defineProperty(nativeEvent, "target", {
-          writable: false,
-          value: inputRef.current,
-        });
-        inputRef.current.dispatchEvent(nativeEvent);
-      }
+      onValueChange?.(newValue || undefined);
       setOpen(false);
     };
 
     const handleClear = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-
-      if (onChange) {
-        // useListParams/useTypeForm의 register는 (e, { value }) 형태를 기대함
-        onChange(null, { value: undefined });
-      }
+      onValueChange?.(undefined);
       setOpen(false);
     };
 
@@ -90,14 +76,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
 
     return (
       <>
-        <input
-          type="hidden"
-          ref={inputRef}
-          name={name}
-          value={value || ""}
-          onChange={(e) => onChange?.(e, { value: e.target.value })}
-          onBlur={onBlur}
-        />
+        <input type="hidden" ref={inputRef} name={name} value={value || ""} onBlur={onBlur} />
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button

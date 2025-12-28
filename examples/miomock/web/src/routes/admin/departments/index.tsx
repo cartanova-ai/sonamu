@@ -13,6 +13,7 @@ import {
   CardHeader,
   Checkbox,
   Input,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
@@ -25,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, numF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { DepartmentListParams } from "@/services/department/department.types";
@@ -56,7 +57,7 @@ function DepartmentList({}: DepartmentListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParamsTanstack(DepartmentListParams, {
+  const { listParams, register } = useListParams(DepartmentListParams, {
     num: 10,
     page: 1,
     keyword: "",
@@ -67,11 +68,6 @@ function DepartmentList({}: DepartmentListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = DepartmentService.useDepartments("A", listParams);
   const { rows, total } = data ?? {};
-
-  // 페이지네이션
-  const itemsPerPage = listParams.num ?? 10;
-  const currentPage = listParams.page ?? 1;
-  const totalPages = Math.ceil((total ?? 0) / itemsPerPage);
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -197,7 +193,7 @@ function DepartmentList({}: DepartmentListProps) {
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox
                         checked={isAllSelected()}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        onValueChange={(value) => handleSelectAll(value)}
                       />
                     </TableHead>
                     <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
@@ -264,56 +260,11 @@ function DepartmentList({}: DepartmentListProps) {
               </Table>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-6">
-                <div className="text-xs text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1}-
-                  {Math.min(currentPage * itemsPerPage, total ?? 0)} of {total ?? 0} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === 1}
-                    onClick={() => register("page").onChange(null, { value: currentPage - 1 })}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {(() => {
-                      const maxVisible = 6;
-                      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                      const endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                      if (endPage - startPage + 1 < maxVisible) {
-                        startPage = Math.max(1, endPage - maxVisible + 1);
-                      }
-                      return Array.from(
-                        { length: endPage - startPage + 1 },
-                        (_, i) => startPage + i,
-                      ).map((page) => (
-                        <Button
-                          key={page}
-                          variant="outline"
-                          size="sm"
-                          className={`h-8 w-8 text-xs ${page === currentPage ? "bg-primary text-primary-foreground" : ""}`}
-                          onClick={() => register("page").onChange(null, { value: page })}
-                        >
-                          {page}
-                        </Button>
-                      ));
-                    })()}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === totalPages}
-                    onClick={() => register("page").onChange(null, { value: currentPage + 1 })}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <Pagination
+                {...register("page")}
+                total={total ?? 0}
+                itemsPerPage={listParams.num ?? 10}
+              />
             </CardContent>
           </Card>
         </div>

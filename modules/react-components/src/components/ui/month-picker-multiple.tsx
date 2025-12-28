@@ -175,7 +175,9 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">Start Date</div>
                 <Select
                   value={tempRangeStartYear.toString()}
-                  onChange={(e) => setTempRangeStartYear(parseInt(e.target.value))}
+                  onValueChange={(value) => {
+                    if (value) setTempRangeStartYear(parseInt(value));
+                  }}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -233,7 +235,9 @@ export function MonthPickerMultiple({
                 <div className="text-xs text-muted-foreground">End Date</div>
                 <Select
                   value={tempRangeEndYear.toString()}
-                  onChange={(e) => setTempRangeEndYear(parseInt(e.target.value))}
+                  onValueChange={(value) => {
+                    if (value) setTempRangeEndYear(parseInt(value));
+                  }}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue />
@@ -289,7 +293,9 @@ export function MonthPickerMultiple({
             <div className="p-4 space-y-2">
               <Select
                 value={tempYear.toString()}
-                onChange={(e) => setTempYear(parseInt(e.target.value))}
+                onValueChange={(value) => {
+                  if (value) setTempYear(parseInt(value));
+                }}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />

@@ -130,9 +130,10 @@ function Calendar({
           const displayYear = currentDisplayMonth.getFullYear();
           const displayMonthIndex = currentDisplayMonth.getMonth();
 
-          const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+          const handleMonthChange = (value: string | undefined | null) => {
+            if (!value) return;
             const newDate = new Date(currentDisplayMonth);
-            newDate.setMonth(parseInt(e.target.value));
+            newDate.setMonth(parseInt(value));
 
             if (isRangeMode && displayIndex === 1) {
               setSecondMonth(newDate);
@@ -141,9 +142,10 @@ function Calendar({
             }
           };
 
-          const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+          const handleYearChange = (value: string | undefined | null) => {
+            if (!value) return;
             const newDate = new Date(currentDisplayMonth);
-            newDate.setFullYear(parseInt(e.target.value));
+            newDate.setFullYear(parseInt(value));
 
             if (isRangeMode && displayIndex === 1) {
               setSecondMonth(newDate);
@@ -154,7 +156,7 @@ function Calendar({
 
           return (
             <div className="flex justify-center pt-1 relative items-center w-full gap-2 px-10">
-              <Select value={displayMonthIndex.toString()} onChange={handleMonthChange}>
+              <Select value={displayMonthIndex.toString()} onValueChange={handleMonthChange}>
                 <SelectTrigger className="h-7 text-xs w-[110px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -166,7 +168,7 @@ function Calendar({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={displayYear.toString()} onChange={handleYearChange}>
+              <Select value={displayYear.toString()} onValueChange={handleYearChange}>
                 <SelectTrigger className="h-7 text-xs w-[90px]">
                   <SelectValue />
                 </SelectTrigger>

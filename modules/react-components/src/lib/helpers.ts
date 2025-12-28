@@ -1,13 +1,17 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
 
-import { useSearch, useNavigate as useTanstackNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import equal from "fast-deep-equal";
-import { get as _get, set as _set, cloneDeep, intersection, isObject, uniq } from "lodash-es";
 import qs from "qs";
+import { get, isObject, set, unique } from "radashi";
 import React, { type ReactElement, useEffect, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { caster } from "./caster";
+
+// radashi에 intersection이 없으므로 직접 구현
+function intersection<T>(arr1: T[], arr2: T[]): T[] {
+  return arr1.filter((item) => arr2.includes(item));
+}
 
 // shadcn/ui용 타입 정의 (semantic-ui-react 대체)
 export type PaginationProps = {
@@ -53,10 +57,11 @@ export function paramsToSearchParams<T>(params: T): {
   );
 }
 
-type ErrorObj = {
+export type ErrorObj = {
   content: string;
   pointing?: "above" | "below" | "left" | "right";
 };
+
 export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
   zType: T,
   defaultValue: U,
@@ -72,9 +77,9 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
 
     let targetZType: unknown;
     if (zType instanceof z.ZodObject) {
-      targetZType = _get(zType.shape, zTypeObjPath);
+      targetZType = get(zType.shape, zTypeObjPath);
     } else if (zType instanceof z.ZodArray) {
-      targetZType = _get(zType, zTypeObjPath);
+      targetZType = get(zType, zTypeObjPath);
     }
 
     if (targetZType === undefined) {
@@ -92,7 +97,7 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
     setForm,
     register: (objPath: string, _emptyStringTo?: "normal" | "nullable" | "optional"): any => {
       const emptyStringTo = _emptyStringTo ?? getEmptyStringTo(zType, objPath);
-      const srcValue = _get(form, objPath) as unknown;
+      const srcValue = get(form, objPath) as unknown;
 
       const error = errorObjs.get(objPath);
 
@@ -113,27 +118,13 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
           processedValue = newValue === "" ? undefined : newValue;
         }
 
-        const newForm = cloneDeep(form);
-        _set(newForm, objPath, processedValue);
-        setForm(newForm);
+        setForm(set(form, objPath, processedValue));
       };
 
       const result: Record<string, any> = {
         value: srcValue === undefined || srcValue === null ? "" : srcValue,
-        onChange: (_e: any, prop?: any) => {
-          // semantic-ui 스타일: onChange(_e, { value }) 또는 onChange(_e, { checked })
-          if (prop && "value" in prop) {
-            updateValue(prop.value);
-          } else if (prop && "checked" in prop) {
-            updateValue(prop.checked);
-          }
-        },
+        onValueChange: (value: any) => updateValue(value),
       };
-
-      // 체크박스용 checked prop (boolean인 경우만)
-      if (typeof srcValue === "boolean") {
-        result.checked = srcValue;
-      }
 
       // error가 있으면 추가
       if (error) {
@@ -168,126 +159,85 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
   };
 }
 
+type ZodKeys<T extends z.ZodType<any>> = keyof z.infer<T>;
+
 export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infer<U>>>(
   zType: U,
   defaultValue: T,
   options?: {
-    disableSearchParams: boolean;
+    disableSearchParams?: boolean;
   },
 ) {
-  type ZodKeys = keyof z.infer<U>;
-  // 라우팅 searchParams
-  const [searchParams, setSearchParams] = useSearchParams();
-  const query = searchParamsToParams(searchParams, zType);
+  const search = useSearch({ strict: false }) as Record<string, unknown>;
+  const navigate = useNavigate();
 
-  // 리스트 필터 state
-  const [listParams, setListParams] = useState<T>({
-    ...defaultValue,
-    ...(options?.disableSearchParams !== true ? query : {}),
-  });
+  // URL에서 파라미터 파싱
+  const listParams = (() => {
+    if (options?.disableSearchParams) {
+      return defaultValue;
+    }
 
-  // 리스트 필터 변경시에 searchParams 변경
-  useEffect(() => {
-    const oldSP = paramsToSearchParams({
-      ...listParams,
-      ...searchParamsToParams(searchParams, zType),
+    const parsed = zType.safeParse(search);
+    if (parsed.success) {
+      return { ...defaultValue, ...parsed.data };
+    }
+    return defaultValue;
+  })() as T;
+
+  const setListParams = (newParams: T) => {
+    if (equal(listParams, newParams)) {
+      return;
+    }
+
+    navigate({
+      search: newParams as any,
     });
-    const newSP = paramsToSearchParams(listParams);
+  };
 
-    if (options?.disableSearchParams !== true) {
-      setSearchParams(newSP, {
-        replace: equal(oldSP, newSP),
-      });
-    }
-  }, [listParams]);
-
-  // searchParams 변경시에 리스트 필터 변경
-  useEffect(() => {
-    if (options?.disableSearchParams !== true) {
-      const query = searchParamsToParams(searchParams, zType);
-      const newListParams = {
-        ...defaultValue,
-        ...query,
+  // 함수 오버로드
+  function register(name: "page"): { value: number; onValueChange: (page: number) => void };
+  function register(name: Exclude<ZodKeys<U>, "page">): {
+    value: string;
+    onValueChange: (value: any) => void;
+  };
+  function register(name: ZodKeys<U>) {
+    if (name === "page") {
+      return {
+        value: (listParams as any).page ?? 1,
+        onValueChange: (page: number) => {
+          setListParams({ ...listParams, page } as T);
+        },
       };
-      if (equal(newListParams, listParams) === false) {
-        setListParams(newListParams);
-      }
+    } else {
+      const currentValue = (listParams as any)[name];
+      return {
+        value: currentValue ?? "",
+        onValueChange: (value: any) => {
+          setListParams({
+            ...listParams,
+            page: 1,
+            [name]: value === "" ? undefined : value,
+          } as T);
+        },
+      };
     }
-  }, [searchParams]);
+  }
 
   return {
     listParams,
     setListParams,
-    register: (name: ZodKeys): any => {
-      if (name === "page") {
-        const setPage = (newPage: number) => {
-          setListParams({
-            ...listParams,
-            page: newPage,
-          } as any);
-        };
-        return {
-          activePage: (listParams as any).page ?? 1,
-          onPageChange: (
-            _event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-            data: PaginationProps,
-          ) => {
-            setPage(Number(data.activePage ?? 1));
-          },
-          // shadcn-ui 템플릿용 onChange
-          onChange: (_e: any, prop?: { value: number }) => {
-            if (prop && "value" in prop) {
-              setPage(prop.value);
-            }
-          },
-        };
-      } else {
-        const currentValue = (listParams as any)[name];
-
-        // 공통 업데이트 로직
-        const updateListParams = (newValue: any) => {
-          setListParams({
-            ...listParams,
-            page: 1,
-            [name]: newValue === "" ? undefined : newValue,
-          });
-        };
-
-        const result: Record<string, any> = {
-          value: currentValue === undefined || currentValue === null ? "" : currentValue,
-          onChange: (_e: any, prop?: any) => {
-            // semantic-ui 스타일: onChange(_e, { value }) 또는 onChange(_e, { checked })
-            if (prop && "value" in prop) {
-              updateListParams(prop.value);
-            } else if (prop && "checked" in prop) {
-              updateListParams(prop.checked);
-            }
-          },
-        };
-
-        // 체크박스용 checked prop (boolean인 경우만)
-        if (typeof currentValue === "boolean") {
-          result.checked = currentValue;
-        }
-
-        return result;
-      }
-    },
+    register,
   };
 }
 
 export function useGoBack() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  return {
-    goBack: (to: string) => {
-      if ((location?.state as { from?: string })?.from === to) {
-        navigate(-1);
-      } else {
-        navigate(to);
-      }
-    },
+  const router = useRouter();
+
+  const goBack = () => {
+    router.history.back();
   };
+
+  return { goBack };
 }
 
 export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
@@ -332,7 +282,7 @@ export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
           }
         })();
         setSelection(
-          new Map(uniq([...selectedKeys, ...allKeys.slice(begin, end)]).map((k: T) => [k, true])),
+          new Map(unique([...selectedKeys, ...allKeys.slice(begin, end)]).map((k: T) => [k, true])),
         );
       } else {
         setLastIndex(index);
@@ -413,6 +363,7 @@ export function useModal<T extends object>(
     }),
   };
 }
+
 export function caller<T extends Function>() {
   let savedFunc: T | null = null;
   return {
@@ -440,114 +391,4 @@ export type SonamuCol<T> = {
 
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
-/**
- * TanStack Router용 useListParams
- *
- * @tanstack/react-router를 사용하는 페이지에서 사용
- * semantic-ui와 shadcn/ui 모두 지원
- */
-export function useListParamsTanstack<U extends z.ZodType<any>, T extends Partial<z.infer<U>>>(
-  zType: U,
-  defaultValue: T,
-  options?: {
-    disableSearchParams?: boolean;
-  },
-) {
-  type ZodKeys = keyof z.infer<U>;
-  const search = useSearch({ strict: false }) as Record<string, unknown>;
-  const navigate = useTanstackNavigate();
-  const disableSearchParams = options?.disableSearchParams ?? false;
-
-  // 리스트 필터 state
-  const [listParams, setListParams] = useState<T>(() => {
-    if (disableSearchParams) {
-      return defaultValue;
-    }
-
-    const paramsFromUrl: Record<string, unknown> = { ...defaultValue };
-    Object.entries(search).forEach(([key, value]) => {
-      if (key in defaultValue) {
-        const defaultVal = (defaultValue as Record<string, unknown>)[key];
-        if (typeof defaultVal === "number") {
-          paramsFromUrl[key] = Number(value);
-        } else {
-          paramsFromUrl[key] = value;
-        }
-      }
-    });
-
-    try {
-      return zType.parse(paramsFromUrl);
-    } catch {
-      return defaultValue;
-    }
-  });
-
-  // 리스트 필터 변경시에 searchParams 변경
-  useEffect(() => {
-    if (disableSearchParams) {
-      return;
-    }
-
-    const newSearch: Record<string, unknown> = {};
-    Object.entries(listParams).forEach(([key, value]) => {
-      if (value != null && value !== "" && value !== defaultValue[key as keyof T]) {
-        newSearch[key] = value;
-      }
-    });
-
-    // TanStack Router의 search 업데이트
-    navigate({ search: newSearch } as any);
-  }, [listParams, disableSearchParams, defaultValue, navigate]);
-
-  return {
-    listParams,
-    setListParams,
-    register: (name: ZodKeys): any => {
-      if (name === "page") {
-        return {
-          activePage: (listParams as any).page ?? 1,
-          onPageChange: (
-            _event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
-            data: PaginationProps,
-          ) => {
-            setListParams({
-              ...listParams,
-              page: Number(data.activePage ?? 1),
-            } as any);
-          },
-        };
-      } else {
-        const currentValue = (listParams as any)[name];
-
-        // 공통 업데이트 로직
-        const updateListParams = (newValue: any) => {
-          setListParams({
-            ...listParams,
-            page: 1,
-            [name]: newValue === "" ? undefined : newValue,
-          } as any);
-        };
-
-        const result: Record<string, any> = {
-          value: currentValue === undefined || currentValue === null ? "" : currentValue,
-          onChange: (_e: any, prop?: any) => {
-            // semantic-ui 스타일: onChange(_e, { value }) 또는 onChange(_e, { checked })
-            if (prop && "value" in prop) {
-              updateListParams(prop.value);
-            } else if (prop && "checked" in prop) {
-              updateListParams(prop.checked);
-            }
-          },
-        };
-
-        // 체크박스용 checked prop (boolean인 경우만)
-        if (typeof currentValue === "boolean") {
-          result.checked = currentValue;
-        }
-
-        return result;
-      }
-    },
-  };
-}
+export type Override<T, U> = Omit<T, keyof U> & U;

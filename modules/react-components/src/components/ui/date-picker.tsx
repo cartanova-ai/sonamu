@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 interface DatePickerProps {
   value?: Date;
-  onChange?: (event: null, data: { value: Date | undefined }) => void;
+  onValueChange?: (date: Date | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -26,12 +26,12 @@ interface DatePickerProps {
  * Example usage:
  * ```tsx
  * const [date, setDate] = useState<Date>()
- * <DatePicker value={date} onChange={(e, { value }) => setDate(value)} />
+ * <DatePicker value={date} onValueChange={(date) => setDate(date)} />
  * ```
  */
 export function DatePicker({
   value,
-  onChange,
+  onValueChange,
   placeholder = "Pick a date",
   disabled = false,
   className,
@@ -58,9 +58,7 @@ export function DatePicker({
           mode="single"
           selected={value}
           onSelect={(date) => {
-            if (onChange) {
-              onChange(null, { value: date });
-            }
+            onValueChange?.(date);
           }}
           initialFocus
         />
@@ -75,7 +73,7 @@ export function DatePicker({
  */
 export function DatePickerWithDropdown({
   value,
-  onChange,
+  onValueChange,
   placeholder = "Select date",
   disabled = false,
   className,
@@ -104,9 +102,7 @@ export function DatePickerWithDropdown({
           selected={value}
           captionLayout="dropdown"
           onSelect={(selectedDate) => {
-            if (onChange) {
-              onChange(null, { value: selectedDate });
-            }
+            onValueChange?.(selectedDate);
             setOpen(false);
           }}
         />

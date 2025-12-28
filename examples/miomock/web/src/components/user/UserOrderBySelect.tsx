@@ -11,7 +11,7 @@ import { UserOrderBy, UserOrderByLabel } from "@/services/sonamu.generated";
 
 export type UserOrderBySelectProps = {
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onValueChange?: (value: string | null | undefined) => void;
   placeholder?: string;
   textPrefix?: string;
   clearable?: boolean;
@@ -21,7 +21,7 @@ export type UserOrderBySelectProps = {
 
 export function UserOrderBySelect({
   value,
-  onChange,
+  onValueChange,
   placeholder,
   textPrefix,
   clearable,
@@ -32,7 +32,7 @@ export function UserOrderBySelect({
   const validOptions = UserOrderBy.options.filter((key) => (key as string) !== "");
 
   return (
-    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder ?? "정렬"} />
       </SelectTrigger>

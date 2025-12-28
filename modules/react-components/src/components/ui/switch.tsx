@@ -2,47 +2,27 @@
 
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import * as React from "react";
-
+import type { Override } from "../../lib/helpers";
 import { cn } from "../../lib/utils";
 
-type SwitchProps = Omit<
+type SwitchProps = Override<
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>,
-  "onCheckedChange" | "onChange"
-> & {
-  name?: string;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onBlur?: React.FocusEventHandler<HTMLInputElement>;
-};
+  {
+    name?: string;
+    onValueChange?: (checked: boolean) => void;
+    onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  }
+>;
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, name, checked, defaultChecked, onChange, onBlur, ...props }, ref) => {
+  ({ className, name, checked, defaultChecked, onValueChange, onBlur, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleCheckedChange = (newChecked: boolean) => {
-      if (onChange) {
-        // Create a synthetic event with the new checked value
-        const syntheticEvent = {
-          target: {
-            name,
-            type: "checkbox",
-            checked: newChecked,
-            value: newChecked ? "on" : "",
-          },
-          currentTarget: {
-            name,
-            type: "checkbox",
-            checked: newChecked,
-            value: newChecked ? "on" : "",
-          },
-          preventDefault: () => {},
-          stopPropagation: () => {},
-        } as React.ChangeEvent<HTMLInputElement>;
-
-        onChange(syntheticEvent);
-      }
+      onValueChange?.(newChecked);
     };
 
     return (

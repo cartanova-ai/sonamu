@@ -3,7 +3,6 @@ import {
   type AsyncSelectOption,
   MultiSelect,
 } from "@sonamu-kit/react-components/components";
-import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CompanyListParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
@@ -23,19 +22,19 @@ export type CompanyIdAsyncSelectProps<T extends CompanySubsetKey> = {
   | {
       multiple?: false;
       value?: number | null;
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void;
+      onValueChange?: (value: number | undefined) => void;
     }
   | {
       multiple: true;
       value?: number[];
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number[] }) => void;
+      onValueChange?: (value: number[]) => void;
     }
 );
 
 export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   subset,
   value,
-  onChange,
+  onValueChange,
   baseListParams,
   textField,
   valueField,
@@ -79,12 +78,8 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
     const multiValue = Array.isArray(value) ? value.map(String) : [];
 
     const handleMultiChange = (selectedValues: string[]) => {
-      if (onChange) {
-        const numericValues = selectedValues.map(Number);
-        (onChange as (e: React.SyntheticEvent | null, data: { value: number[] }) => void)(null, {
-          value: numericValues,
-        });
-      }
+      const numericValues = selectedValues.map(Number);
+      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
     };
 
     return (
@@ -102,20 +97,16 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (e: unknown, data: { value: string | undefined }) => {
-    if (onChange) {
-      const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: unknown, data: { value: number | undefined }) => void)(e, {
-        value: numericValue,
-      });
-    }
+  const handleSingleChange = (value: string | undefined) => {
+    const numericValue = value ? Number(value) : undefined;
+    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
   };
 
   return (
     <AsyncSelect
       options={options as AsyncSelectOption<string>[]}
       value={singleValue !== undefined ? String(singleValue) : undefined}
-      onChange={handleSingleChange}
+      onValueChange={handleSingleChange}
       isLoading={isLoading}
       placeholder={placeholder}
       clearable={clearable}

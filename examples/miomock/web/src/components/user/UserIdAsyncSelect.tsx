@@ -22,19 +22,19 @@ export type UserIdAsyncSelectProps<T extends UserSubsetKey> = {
   | {
       multiple?: false;
       value?: number | null;
-      onChange?: (e: unknown, data: { value: number | undefined }) => void;
+      onValueChange?: (value: number | undefined) => void;
     }
   | {
       multiple: true;
       value?: number[];
-      onChange?: (e: unknown, data: { value: number[] }) => void;
+      onValueChange?: (value: number[]) => void;
     }
 );
 
 export function UserIdAsyncSelect<T extends UserSubsetKey>({
   subset,
   value,
-  onChange,
+  onValueChange,
   baseListParams,
   textField,
   valueField,
@@ -78,12 +78,8 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
     const multiValue = Array.isArray(value) ? value.map(String) : [];
 
     const handleMultiChange = (selectedValues: string[]) => {
-      if (onChange) {
-        const numericValues = selectedValues.map(Number);
-        (onChange as (e: unknown, data: { value: number[] }) => void)(null, {
-          value: numericValues,
-        });
-      }
+      const numericValues = selectedValues.map(Number);
+      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
     };
 
     return (
@@ -101,20 +97,16 @@ export function UserIdAsyncSelect<T extends UserSubsetKey>({
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (e: unknown, data: { value: string | undefined }) => {
-    if (onChange) {
-      const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: unknown, data: { value: number | undefined }) => void)(e, {
-        value: numericValue,
-      });
-    }
+  const handleSingleChange = (value: string | undefined) => {
+    const numericValue = value ? Number(value) : undefined;
+    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
   };
 
   return (
     <AsyncSelect
       options={options as AsyncSelectOption<string>[]}
       value={singleValue !== undefined ? String(singleValue) : undefined}
-      onChange={handleSingleChange}
+      onValueChange={handleSingleChange}
       isLoading={isLoading}
       placeholder={placeholder}
       clearable={clearable}

@@ -11,7 +11,7 @@ import { DepartmentOrderBy, DepartmentOrderByLabel } from "@/services/sonamu.gen
 
 export type DepartmentOrderBySelectProps = {
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onValueChange?: (value: string | null | undefined) => void;
   placeholder?: string;
   textPrefix?: string;
   clearable?: boolean;
@@ -21,7 +21,7 @@ export type DepartmentOrderBySelectProps = {
 
 export function DepartmentOrderBySelect({
   value,
-  onChange,
+  onValueChange,
   placeholder,
   textPrefix,
   clearable,
@@ -32,7 +32,7 @@ export function DepartmentOrderBySelect({
   const validOptions = DepartmentOrderBy.options.filter((key) => (key as string) !== "");
 
   return (
-    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder ?? "정렬"} />
       </SelectTrigger>

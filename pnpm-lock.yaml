@@ -243,9 +243,6 @@ catalogs:
     '@types/inflection':
       specifier: ^2.0.0
       version: 2.0.0
-    '@types/lodash-es':
-      specifier: ^4.17.12
-      version: 4.17.12
     '@types/luxon':
       specifier: ^3.0.3
       version: 3.7.1
@@ -405,9 +402,6 @@ catalogs:
     knex:
       specifier: ^3.1.0
       version: 3.1.0
-    lodash-es:
-      specifier: ^4.17.21
-      version: 4.17.21
     luxon:
       specifier: ^3.0.3
       version: 3.7.2
@@ -1182,9 +1176,6 @@ importers:
       jotai:
         specifier: 'catalog:'
         version: 2.15.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@19.2.3)
-      lodash-es:
-        specifier: 'catalog:'
-        version: 4.17.21
       next-themes:
         specifier: 'catalog:'
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1234,9 +1225,6 @@ importers:
       '@types/inflection':
         specifier: 'catalog:'
         version: 2.0.0
-      '@types/lodash-es':
-        specifier: 'catalog:'
-        version: 4.17.12
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.7
@@ -1249,9 +1237,6 @@ importers:
       postcss:
         specifier: 'catalog:'
         version: 8.5.6
-      react-router-dom:
-        specifier: 'catalog:'
-        version: 6.30.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.1.18
@@ -5074,12 +5059,6 @@ packages:
 
   '@types/jsonfile@6.1.4':
     resolution: {integrity: sha512-D5qGUYwjvnNNextdU59/+fI+spnwtTFmyQP0h+PfIOSkNfpU6AOICUOkm4i0OnSk+NyjdPJrxCDro0sJsWlRpQ==}
-
-  '@types/lodash-es@4.17.12':
-    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
-
-  '@types/lodash@4.17.21':
-    resolution: {integrity: sha512-FOvQ0YPD5NOfPgMzJihoT+Za5pdkDJWcbpuj1DjaKZIr/gxodQjY/uWEFlTNqW2ugXHUiL8lRQgw63dzKHZdeQ==}
 
   '@types/luxon@3.7.1':
     resolution: {integrity: sha512-H3iskjFIAn5SlJU7OuxUmTEpebK6TKB8rxZShDslBMZJ5u9S//KM1sbdAisiSrqwLQncVjnpi2OK2J51h+4lsg==}
@@ -14872,12 +14851,6 @@ snapshots:
   '@types/jsonfile@6.1.4':
     dependencies:
       '@types/node': 24.10.1
-
-  '@types/lodash-es@4.17.12':
-    dependencies:
-      '@types/lodash': 4.17.21
-
-  '@types/lodash@4.17.21': {}
 
   '@types/luxon@3.7.1': {}
 

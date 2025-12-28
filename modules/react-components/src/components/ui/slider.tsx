@@ -1,45 +1,26 @@
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import * as React from "react";
-
+import type { Override } from "../../lib/helpers";
 import { cn } from "../../lib/utils";
 
-type SliderProps = Omit<
+type SliderProps = Override<
   React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>,
-  "onValueChange" | "onChange"
-> & {
-  name?: string;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
-  onBlur?: React.FocusEventHandler<HTMLInputElement>;
-};
+  {
+    name?: string;
+    onValueChange?: (value: number) => void;
+    onBlur?: React.FocusEventHandler<HTMLInputElement>;
+  }
+>;
 
 const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
-  ({ className, name, value, defaultValue, onChange, onBlur, ...props }, ref) => {
+  ({ className, name, value, defaultValue, onValueChange, onBlur, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
-    const handleValueChange = (newValue: number[]) => {
-      if (onChange) {
-        const syntheticEvent = {
-          target: {
-            name,
-            type: "range",
-            value: newValue[0]?.toString() || "",
-            valueAsNumber: newValue[0] ?? 0,
-          },
-          currentTarget: {
-            name,
-            type: "range",
-            value: newValue[0]?.toString() || "",
-            valueAsNumber: newValue[0] ?? 0,
-          },
-          preventDefault: () => {},
-          stopPropagation: () => {},
-        } as React.ChangeEvent<HTMLInputElement>;
-
-        onChange(syntheticEvent);
-      }
+    const handleValueChange = (values: number[]) => {
+      onValueChange?.(values[0]);
     };
 
     return (

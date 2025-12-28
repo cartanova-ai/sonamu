@@ -4,21 +4,18 @@ import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
 import XCircleIcon from "~icons/lucide/x-circle";
-
+import type { Override } from "../../lib/helpers";
 import { cn } from "../../lib/utils";
 
-type SelectProps = Omit<
+type SelectProps = Override<
   React.ComponentProps<typeof SelectPrimitive.Root>,
-  "onValueChange" | "onChange"
-> & {
-  name?: string;
-  onChange?: (
-    e: React.ChangeEvent<HTMLSelectElement>,
-    data: { value: string | undefined | null },
-  ) => void;
-  onBlur?: React.FocusEventHandler<HTMLSelectElement>;
-  clearable?: boolean;
-};
+  {
+    name?: string;
+    onValueChange?: (value: string | undefined | null) => void;
+    onBlur?: React.FocusEventHandler<HTMLSelectElement>;
+    clearable?: boolean;
+  }
+>;
 
 // Context for passing clearable state to SelectTrigger
 type SelectContextValue = {
@@ -29,39 +26,18 @@ type SelectContextValue = {
 const SelectContext = React.createContext<SelectContextValue>({});
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
-  ({ name, value, defaultValue, onChange, onBlur, clearable, children, ...props }, ref) => {
+  ({ name, value, defaultValue, onValueChange, onBlur, clearable, children, ...props }, ref) => {
     const selectRef = React.useRef<HTMLSelectElement>(null);
 
     // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => selectRef.current!);
 
     const handleValueChange = (newValue: string) => {
-      if (onChange) {
-        const syntheticEvent = {
-          target: {
-            name,
-            type: "select-one",
-            value: newValue,
-          },
-          currentTarget: {
-            name,
-            type: "select-one",
-            value: newValue,
-          },
-          preventDefault: () => {},
-          stopPropagation: () => {},
-        } as React.ChangeEvent<HTMLSelectElement>;
-
-        // useListParams/useTypeForm의 register는 (e, { value }) 형태를 기대함
-        onChange(syntheticEvent, { value: newValue });
-      }
+      onValueChange?.(newValue);
     };
 
     const handleClear = () => {
-      if (onChange) {
-        // undefined로 설정하여 필터 해제
-        onChange({} as React.ChangeEvent<HTMLSelectElement>, { value: undefined });
-      }
+      onValueChange?.(undefined);
     };
 
     const hasValue = Boolean(value);

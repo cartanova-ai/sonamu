@@ -28,8 +28,8 @@ export interface AsyncSelectProps<T = number> {
   options: AsyncSelectOption<T>[];
   /** 현재 선택된 값 */
   value?: T | null;
-  /** 값 변경 핸들러 (semantic-ui 스타일) */
-  onChange?: (e: unknown, data: { value: T | undefined }) => void;
+  /** 값 변경 핸들러 */
+  onValueChange?: (value: T | undefined) => void;
   /** 로딩 상태 */
   isLoading?: boolean;
   /** placeholder 텍스트 */
@@ -55,7 +55,7 @@ export interface AsyncSelectProps<T = number> {
 export function AsyncSelect<T = number>({
   options,
   value,
-  onChange,
+  onValueChange,
   isLoading = false,
   placeholder = "Select...",
   searchPlaceholder = "Search...",
@@ -87,18 +87,14 @@ export function AsyncSelect<T = number>({
   );
 
   const handleSelect = (selectedValue: T | undefined) => {
-    if (onChange) {
-      onChange(null, { value: selectedValue });
-    }
+    onValueChange?.(selectedValue);
     setOpen(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onChange) {
-      onChange(null, { value: undefined });
-    }
+    onValueChange?.(undefined);
     setOpen(false);
   };
 

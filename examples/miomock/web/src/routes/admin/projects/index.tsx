@@ -13,6 +13,7 @@ import {
   CardHeader,
   Checkbox,
   Input,
+  Pagination,
   Select,
   SelectContent,
   SelectItem,
@@ -25,7 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, numF, useListParamsTanstack } from "@sonamu-kit/react-components/lib";
+import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { ProjectListParams } from "@/services/project/project.types";
@@ -57,7 +58,7 @@ function ProjectList({}: ProjectListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
   // 리스트 필터
-  const { listParams, register } = useListParamsTanstack(ProjectListParams, {
+  const { listParams, register } = useListParams(ProjectListParams, {
     num: 10,
     page: 1,
     keyword: "",
@@ -68,11 +69,6 @@ function ProjectList({}: ProjectListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = ProjectService.useProjects("A", listParams);
   const { rows, total } = data ?? {};
-
-  // 페이지네이션
-  const itemsPerPage = listParams.num ?? 10;
-  const currentPage = listParams.page ?? 1;
-  const totalPages = Math.ceil((total ?? 0) / itemsPerPage);
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -196,10 +192,7 @@ function ProjectList({}: ProjectListProps) {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-gray-100">
                     <TableHead className="h-9 text-xs w-[40px]">
-                      <Checkbox
-                        checked={isAllSelected()}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                      />
+                      <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
                     <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
                     <TableHead className="h-9 text-xs">등록일시</TableHead>
@@ -225,7 +218,7 @@ function ProjectList({}: ProjectListProps) {
                           <TableCell className="py-3">
                             <Checkbox
                               checked={selectedItems.has(row.id)}
-                              onChange={() => handleToggleItem(row.id)}
+                              onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
                           <TableCell className="py-3 text-xs">{row.id}</TableCell>
@@ -283,56 +276,11 @@ function ProjectList({}: ProjectListProps) {
               </Table>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-6">
-                <div className="text-xs text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1}-
-                  {Math.min(currentPage * itemsPerPage, total ?? 0)} of {total ?? 0} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === 1}
-                    onClick={() => register("page").onChange(null, { value: currentPage - 1 })}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {(() => {
-                      const maxVisible = 6;
-                      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                      const endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                      if (endPage - startPage + 1 < maxVisible) {
-                        startPage = Math.max(1, endPage - maxVisible + 1);
-                      }
-                      return Array.from(
-                        { length: endPage - startPage + 1 },
-                        (_, i) => startPage + i,
-                      ).map((page) => (
-                        <Button
-                          key={page}
-                          variant="outline"
-                          size="sm"
-                          className={`h-8 w-8 text-xs ${page === currentPage ? "bg-primary text-primary-foreground" : ""}`}
-                          onClick={() => register("page").onChange(null, { value: page })}
-                        >
-                          {page}
-                        </Button>
-                      ));
-                    })()}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === totalPages}
-                    onClick={() => register("page").onChange(null, { value: currentPage + 1 })}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <Pagination
+                {...register("page")}
+                total={total ?? 0}
+                itemsPerPage={listParams.num ?? 10}
+              />
             </CardContent>
           </Card>
         </div>

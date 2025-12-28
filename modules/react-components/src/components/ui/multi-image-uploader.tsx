@@ -8,7 +8,7 @@ import { Button } from "./button";
 
 export type MultiImageUploaderProps = {
   value?: string[];
-  onChange?: (e: unknown, data: { value: string[] }) => void;
+  onValueChange?: (value: string[]) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   uploader: (file: File) => Promise<string>;
   placeholder?: string;
@@ -21,7 +21,7 @@ export type MultiImageUploaderProps = {
 
 export function MultiImageUploader({
   value = [],
-  onChange,
+  onValueChange,
   onBlur,
   uploader,
   placeholder = "Click to upload",
@@ -53,14 +53,14 @@ export function MultiImageUploader({
 
         // Limit to maxImages if specified
         const limitedValue = maxImages ? newValue.slice(0, maxImages) : newValue;
-        onChange?.(null, { value: limitedValue });
+        onValueChange?.(limitedValue);
       } catch (error) {
         console.error("Upload failed:", error);
       } finally {
         setIsUploading(false);
       }
     },
-    [uploader, onChange, disabled, value, maxImages],
+    [uploader, onValueChange, disabled, value, maxImages],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +95,7 @@ export function MultiImageUploader({
   const handleRemove = (index: number) => {
     const newValue = [...(value || [])];
     newValue.splice(index, 1);
-    onChange?.(null, { value: newValue });
+    onValueChange?.(newValue);
   };
 
   const handleClick = () => {

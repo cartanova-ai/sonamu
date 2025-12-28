@@ -11,7 +11,7 @@ import { UserRole, UserRoleLabel } from "@/services/sonamu.generated";
 
 export type UserRoleSelectProps = {
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onValueChange?: (value: string | null | undefined) => void;
   placeholder?: string;
   textPrefix?: string;
   clearable?: boolean;
@@ -21,7 +21,7 @@ export type UserRoleSelectProps = {
 
 export function UserRoleSelect({
   value,
-  onChange,
+  onValueChange,
   placeholder,
   textPrefix,
   clearable,
@@ -32,7 +32,7 @@ export function UserRoleSelect({
   const validOptions = UserRole.options.filter((key) => (key as string) !== "");
 
   return (
-    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder ?? "ROLE"} />
       </SelectTrigger>

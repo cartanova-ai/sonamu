@@ -1,13 +1,21 @@
 import * as React from "react";
-
+import type { Override } from "../../lib/helpers";
 import { cn } from "../../lib/utils";
 
-export type InputProps = Omit<React.ComponentProps<"input">, "onChange"> & {
-  onChange?: (event: React.ChangeEvent<HTMLInputElement>, data: { value: string }) => void;
-};
+export type InputProps = Override<
+  React.ComponentProps<"input">,
+  {
+    onValueChange?: (value: string) => void;
+  }
+>;
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, onChange, ...props }, ref) => {
+  ({ className, type, onValueChange, onChange, ...props }, ref) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      onValueChange?.(e.target.value);
+      onChange?.(e);
+    };
+
     return (
       <input
         type={type}
@@ -19,12 +27,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className,
         )}
         ref={ref}
-        onChange={(e) => {
-          if (onChange) {
-            onChange(e, { value: e.target.value });
-          }
-        }}
         {...props}
+        onChange={handleChange}
       />
     );
   },

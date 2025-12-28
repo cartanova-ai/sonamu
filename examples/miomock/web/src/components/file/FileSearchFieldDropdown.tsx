@@ -11,7 +11,7 @@ import { FileSearchFieldLabel } from "@/services/sonamu.generated";
 
 export type FileSearchFieldDropdownProps = {
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onValueChange?: (value: string | null | undefined) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -19,13 +19,13 @@ export type FileSearchFieldDropdownProps = {
 
 export function FileSearchFieldDropdown({
   value,
-  onChange,
+  onValueChange,
   placeholder,
   disabled,
   className,
 }: FileSearchFieldDropdownProps) {
   return (
-    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={className ?? "w-auto"}>
         <SelectValue placeholder={placeholder ?? "검색"} />
       </SelectTrigger>
