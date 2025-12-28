@@ -1,3 +1,4 @@
+export { Pagination } from "../components/ui/pagination";
 export { caster, fastifyCaster } from "./caster";
 export {
   arrayableToArray,
@@ -27,4 +28,3 @@ export {
 } from "./helpers";
 export { useIsMobile } from "./use-mobile";
 export { cn } from "./utils";
-export { Pagination } from "../components/ui/pagination";

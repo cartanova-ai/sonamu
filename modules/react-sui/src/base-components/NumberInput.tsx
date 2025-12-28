@@ -11,7 +11,6 @@ export function NumberInput({
 }) {
   const [str, setStr] = useState<string>("");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: props.value 변경시에만 갱신
   useEffect(() => {
     if (Number((str ?? "").replace(/[.]/g, "")) !== props.value) {
       setStr(String(props.value ?? ""));
