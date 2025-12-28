@@ -5,7 +5,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@sonamu-kit/react-components/components";
-import type React from "react";
 
 import { DepartmentOrderBy, DepartmentOrderByLabel } from "@/services/sonamu.generated";
 

@@ -5,7 +5,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@sonamu-kit/react-components/components";
-import type React from "react";
 
 import { FileSearchFieldLabel } from "@/services/sonamu.generated";
 
