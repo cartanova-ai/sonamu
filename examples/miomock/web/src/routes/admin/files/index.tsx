@@ -12,7 +12,9 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
+  ImageUploader,
   Input,
+  MultiImageUploader,
   Pagination,
   Select,
   SelectContent,
@@ -26,13 +28,17 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, useListParams, useTypeForm } from "@sonamu-kit/react-components/lib";
+import {
+  datetimeF,
+  lazyUpload,
+  useListParams,
+  useTypeForm,
+} from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import z from "zod";
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
-// import { ImageUploader } from "@/admin-common/ImageUploader";
-import { FileListParams } from "@/services/file/file.types";
+import { FileListParams, FileSaveParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
 import {
   FileOrderBy,
@@ -61,20 +67,20 @@ function FileList({}: FileListProps) {
   const [itemToDelete, setItemToDelete] = useState<{ id: number } | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // // Eager 모드 테스트 상태
-  // const eagerForm = useTypeForm(FileSaveParams, {
-  //   name: "",
-  //   url: "",
-  //   mime_type: "",
-  // });
-  // const eagerMultipleForm = useTypeForm(
-  //   z.object({
-  //     urls: z.array(z.string()),
-  //   }),
-  //   {
-  //     urls: [],
-  //   },
-  // );
+  // Eager 모드 테스트 상태
+  const eagerForm = useTypeForm(FileSaveParams, {
+    name: "",
+    url: "",
+    mime_type: "",
+  });
+  const eagerMultipleForm = useTypeForm(
+    z.object({
+      urls: z.array(z.string()),
+    }),
+    {
+      urls: [],
+    },
+  );
 
   // Lazy 모드 테스트 상태
   const lazyForm = useTypeForm(
@@ -177,7 +183,13 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 업로드 (즉시 업로드)
                     </label>
-                    {/* <ImageUploader multiple={false} {...eagerForm.register("url")} /> */}
+                    <ImageUploader
+                      {...eagerForm.register("url")}
+                      uploader={async (file: File) => {
+                        const response = await FileService.upload(file);
+                        return response.file.url;
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -194,7 +206,13 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 업로드 (즉시 업로드)
                     </label>
-                    {/* <ImageUploader multiple={true} {...eagerMultipleForm.register("urls")} /> */}
+                    <MultiImageUploader
+                      {...eagerMultipleForm.register("urls")}
+                      uploader={async (file: File) => {
+                        const response = await FileService.upload(file);
+                        return response.file.url;
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -211,7 +229,14 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 선택 (업로드 대기)
                     </label>
-                    {/* <ImageUploader mode="lazy" multiple={false} {...lazyForm.register("url")} /> */}
+                    <ImageUploader
+                      mode="lazy"
+                      {...lazyForm.register("url")}
+                      uploader={async (file: File) => {
+                        const response = await FileService.upload(file);
+                        return response.file.url;
+                      }}
+                    />
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
@@ -219,7 +244,7 @@ function FileList({}: FileListProps) {
                       onClick={async () => {
                         setUploading(true);
                         try {
-                          // await upload();
+                          await lazyUpload();
                           refetch();
                         } finally {
                           setUploading(false);
@@ -251,13 +276,15 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 선택 (업로드 대기)
                     </label>
-                    {/* <ImageUploader
+                    <MultiImageUploader
                       mode="lazy"
                       accept="image/*"
-                      preview={false}
-                      multiple={true}
                       {...lazyMultipleForm.register("urls")}
-                    /> */}
+                      uploader={async (file: File) => {
+                        const response = await FileService.upload(file);
+                        return response.file.url;
+                      }}
+                    />
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
@@ -265,7 +292,7 @@ function FileList({}: FileListProps) {
                       onClick={async () => {
                         setUploading(true);
                         try {
-                          // await upload();
+                          await lazyUpload();
                           refetch();
                         } finally {
                           setUploading(false);

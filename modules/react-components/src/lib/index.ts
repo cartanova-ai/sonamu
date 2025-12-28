@@ -26,5 +26,6 @@ export {
   useSelection,
   useTypeForm,
 } from "./helpers";
+export { lazyUpload } from "./lazy-upload";
 export { useIsMobile } from "./use-mobile";
 export { cn } from "./utils";
