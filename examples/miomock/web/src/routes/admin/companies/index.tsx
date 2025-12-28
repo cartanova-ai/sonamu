@@ -1,4 +1,3 @@
-import { Icon, type IconProps } from "@iconify/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +36,11 @@ import {
   CompanySearchField,
   CompanySearchFieldLabel,
 } from "@/services/sonamu.generated";
+import EyeIcon from "~icons/lucide/eye";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/companies/")({
   head: () => ({
@@ -47,15 +51,6 @@ export const Route = createFileRoute("/admin/companies/")({
   }),
   component: CompanyList,
 });
-
-// Icons
-const ListIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="mdi:format-list-bulleted" {...props} />
-);
-const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-pen" {...props} />;
-const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
-const EyeIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:eye" {...props} />;
 
 type CompanyListProps = {};
 

@@ -1,4 +1,3 @@
-import { Icon, type IconProps } from "@iconify/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,18 +36,14 @@ import {
   EmployeeSearchField,
   EmployeeSearchFieldLabel,
 } from "@/services/sonamu.generated";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/employees/")({
   component: EmployeeList,
 });
-
-// Icons
-const ListIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="mdi:format-list-bulleted" {...props} />
-);
-const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-pen" {...props} />;
-const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
 
 type EmployeeListProps = {};
 

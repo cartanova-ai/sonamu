@@ -1,4 +1,3 @@
-import { Icon, type IconProps } from "@iconify/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,19 +39,15 @@ import {
   FileSearchField,
   FileSearchFieldLabel,
 } from "@/services/sonamu.generated";
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
+import UploadIcon from "~icons/mdi/upload";
 
 export const Route = createFileRoute("/admin/files/")({
   component: FileList,
 });
-
-// Icons
-const ListIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="mdi:format-list-bulleted" {...props} />
-);
-const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-pen" {...props} />;
-const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
-const UploadIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:upload" {...props} />;
 
 type FileListProps = {};
 

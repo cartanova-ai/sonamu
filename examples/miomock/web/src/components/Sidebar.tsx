@@ -1,6 +1,15 @@
-import { Icon } from "@iconify/react";
 import { Button } from "@sonamu-kit/react-components/components";
 import { Link, useRouterState } from "@tanstack/react-router";
+import type React from "react";
+import ArchiveIcon from "~icons/lucide/archive";
+import BuildingIcon from "~icons/lucide/building";
+import FolderIcon from "~icons/lucide/folder";
+import HandshakeIcon from "~icons/lucide/handshake";
+import HomeIcon from "~icons/lucide/home";
+import LogOutIcon from "~icons/lucide/log-out";
+import TagIcon from "~icons/lucide/tag";
+import UploadIcon from "~icons/lucide/upload";
+import UsersIcon from "~icons/lucide/users";
 import { useAuth } from "../admin-common/auth";
 
 interface SidebarProps {
@@ -10,18 +19,18 @@ interface SidebarProps {
 interface MenuItemProps {
   title: string;
   path: string;
-  icon?: string;
+  icon?: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
 const menuItems: MenuItemProps[] = [
-  { title: "홈", path: "/admin", icon: "lucide:home" },
-  { title: "회사 관리", path: "/admin/companies", icon: "lucide:building" },
-  { title: "사용자 관리", path: "/admin/users", icon: "lucide:users" },
-  { title: "부서 관리", path: "/admin/departments", icon: "lucide:archive" },
-  { title: "직원 관리", path: "/admin/employees", icon: "lucide:handshake" },
-  { title: "프로젝트 관리", path: "/admin/projects", icon: "lucide:folder" },
-  { title: "태그 관리", path: "/admin/tags", icon: "lucide:tag" },
-  { title: "파일 업로드", path: "/admin/files", icon: "lucide:upload" },
+  { title: "홈", path: "/admin", icon: HomeIcon },
+  { title: "회사 관리", path: "/admin/companies", icon: BuildingIcon },
+  { title: "사용자 관리", path: "/admin/users", icon: UsersIcon },
+  { title: "부서 관리", path: "/admin/departments", icon: ArchiveIcon },
+  { title: "직원 관리", path: "/admin/employees", icon: HandshakeIcon },
+  { title: "프로젝트 관리", path: "/admin/projects", icon: FolderIcon },
+  { title: "태그 관리", path: "/admin/tags", icon: TagIcon },
+  { title: "파일 업로드", path: "/admin/files", icon: UploadIcon },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
@@ -68,7 +77,7 @@ export default function Sidebar({ className }: SidebarProps) {
               `}
             >
               <div className="size-4 shrink-0">
-                {item.icon && <Icon icon={item.icon} className="size-4 shrink-0" />}
+                {item.icon && <item.icon className="size-4 shrink-0" />}
               </div>
               <span className="truncate">{item.title}</span>
             </Link>
@@ -80,7 +89,7 @@ export default function Sidebar({ className }: SidebarProps) {
       {user && (
         <div className="flex shrink-0 flex-col gap-2 p-2 border-t border-sidebar-border">
           <Button variant="destructive" className="w-full" onClick={logout}>
-            <Icon icon="lucide:log-out" className="size-4" />
+            <LogOutIcon className="size-4" />
             로그아웃
           </Button>
         </div>

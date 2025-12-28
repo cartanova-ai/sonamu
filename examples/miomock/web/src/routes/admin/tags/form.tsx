@@ -1,4 +1,3 @@
-import { Icon, type IconProps } from "@iconify/react";
 import {
   Button,
   Card,
@@ -15,6 +14,9 @@ import { TagService } from "@/services/services.generated";
 import type { TagSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { TagSaveParams } from "@/services/tag/tag.types";
+import ArrowLeftIcon from "~icons/lucide/arrow-left";
+import SaveIcon from "~icons/lucide/save";
+import FormIcon from "~icons/mdi/form-select";
 
 const formSearchSchema = z.object({
   id: z.number().optional(),
@@ -24,13 +26,6 @@ export const Route = createFileRoute("/admin/tags/form")({
   validateSearch: formSearchSchema,
   component: TagsFormPage,
 });
-
-// Icons
-const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
-const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="lucide:arrow-left" {...props} />
-);
-const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
 function TagsFormPage() {
   const { id } = Route.useSearch();

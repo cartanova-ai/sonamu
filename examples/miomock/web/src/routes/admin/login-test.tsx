@@ -1,4 +1,3 @@
-import { Icon as IconifyIcon, type IconProps } from "@iconify/react";
 import {
   Alert,
   AlertDescription,
@@ -12,21 +11,15 @@ import {
 } from "@sonamu-kit/react-components/components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React from "react";
+import HomeIcon from "~icons/lucide/home";
+import LockIcon from "~icons/lucide/lock";
+import LogInIcon from "~icons/lucide/log-in";
+import LogOutIcon from "~icons/lucide/log-out";
+import MailIcon from "~icons/lucide/mail";
 
 export const Route = createFileRoute("/admin/login-test")({ component: LoginTestPage });
 
 import { useAuth } from "@/admin-common/auth";
-
-// Icons
-const MailIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:mail" {...props} />;
-const LockIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:lock" {...props} />;
-const LogInIcon = (props: Omit<IconProps, "icon">) => (
-  <IconifyIcon icon="lucide:log-in" {...props} />
-);
-const LogOutIcon = (props: Omit<IconProps, "icon">) => (
-  <IconifyIcon icon="lucide:log-out" {...props} />
-);
-const HomeIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:home" {...props} />;
 
 function LoginTestPage() {
   const [email, setEmail] = React.useState("");

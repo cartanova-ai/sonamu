@@ -1,4 +1,3 @@
-import { Icon, type IconProps } from "@iconify/react";
 import {
   Button,
   Card,
@@ -17,6 +16,9 @@ import { UserService } from "@/services/services.generated";
 import type { UserSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
+import ArrowLeftIcon from "~icons/lucide/arrow-left";
+import SaveIcon from "~icons/lucide/save";
+import FormIcon from "~icons/mdi/form-select";
 
 const formSearchSchema = z.object({
   id: z.number().optional(),
@@ -26,13 +28,6 @@ export const Route = createFileRoute("/admin/users/form")({
   validateSearch: formSearchSchema,
   component: UsersFormPage,
 });
-
-// Icons
-const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
-const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => (
-  <Icon icon="lucide:arrow-left" {...props} />
-);
-const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
 
 function UsersFormPage() {
   const { id } = Route.useSearch();

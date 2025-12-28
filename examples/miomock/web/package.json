@@ -11,7 +11,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@iconify/react": "catalog:",
     "@radix-ui/react-slot": "catalog:",
     "@sonamu-kit/react-components": "workspace:^",
     "@tanstack/react-query": "catalog:",
@@ -30,6 +29,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@svgr/core": "catalog:",
+    "@svgr/plugin-jsx": "catalog:",
+    "@svgr/plugin-svgo": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",
@@ -42,6 +45,7 @@
     "sass": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
+    "unplugin-icons": "catalog:",
     "vite": "catalog:"
   }
 }

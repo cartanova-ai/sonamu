@@ -1,4 +1,3 @@
-import { Icon as IconifyIcon, type IconProps } from "@iconify/react";
 import {
   Button,
   Card,
@@ -10,6 +9,10 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/admin-common/auth";
+import LockIcon from "~icons/lucide/lock";
+import LogInIcon from "~icons/lucide/log-in";
+import MailIcon from "~icons/lucide/mail";
+import UserIcon from "~icons/lucide/user";
 
 export const Route = createFileRoute("/admin/login")({
   head: () => ({
@@ -17,14 +20,6 @@ export const Route = createFileRoute("/admin/login")({
   }),
   component: LoginPage,
 });
-
-// Icons
-const MailIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:mail" {...props} />;
-const LockIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:lock" {...props} />;
-const LogInIcon = (props: Omit<IconProps, "icon">) => (
-  <IconifyIcon icon="lucide:log-in" {...props} />
-);
-const UserIcon = (props: Omit<IconProps, "icon">) => <IconifyIcon icon="lucide:user" {...props} />;
 
 function LoginPage() {
   const [email, setEmail] = useState("");

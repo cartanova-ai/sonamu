@@ -1,11 +1,8 @@
-import { Icon, type IconProps } from "@iconify/react";
 import { Button, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
 import { CompanySearchFieldDropdown } from "@/components/company/CompanySearchFieldDropdown";
-
-// Icons
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:search" {...props} />;
+import SearchIcon from "~icons/lucide/search";
 
 export type CompanySearchInputProps = {
   input: {

@@ -3,13 +3,23 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react-swc";
 import dotenv from "dotenv";
 import path from "path";
+import Icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 
 dotenv.config({ path: ".sonamu.env" });
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, isSsrBuild }) => ({
-  plugins: [react(), tailwindcss(), tanstackRouter()],
+  plugins: [
+    react(),
+    Icons({
+      compiler: "jsx",
+      jsx: "react",
+      autoInstall: true,
+    }),
+    tailwindcss(),
+    tanstackRouter(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -17,7 +27,6 @@ export default defineConfig(({ command, isSsrBuild }) => ({
   },
   server: {
     host: "0.0.0.0",
-    port: 10281,
     proxy: {
       "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
     },
