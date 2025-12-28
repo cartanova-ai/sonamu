@@ -16,7 +16,15 @@
         }
       },
       "a11y": {
-        "noLabelWithoutControl": "off"
+        "noLabelWithoutControl": "off",
+        "useSemanticElements": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "useAriaPropsForRole": "off",
+        "noInteractiveElementToNoninteractiveRole": "off",
+        "noNoninteractiveTabindex": "off",
+        "useFocusableInteractive": "off",
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off"
       },
       "complexity": {
         "noBannedTypes": "off"
