@@ -1,6 +1,9 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { Check, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 import * as React from "react";
+import CheckIcon from "~icons/lucide/check";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+import ChevronUpIcon from "~icons/lucide/chevron-up";
+import XCircleIcon from "~icons/lucide/x-circle";
 
 import { cn } from "../../lib/utils";
 
@@ -9,7 +12,10 @@ type SelectProps = Omit<
   "onValueChange" | "onChange"
 > & {
   name?: string;
-  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+  onChange?: (
+    e: React.ChangeEvent<HTMLSelectElement>,
+    data: { value: string | undefined | null },
+  ) => void;
   onBlur?: React.FocusEventHandler<HTMLSelectElement>;
   clearable?: boolean;
 };
@@ -26,6 +32,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ name, value, defaultValue, onChange, onBlur, clearable, children, ...props }, ref) => {
     const selectRef = React.useRef<HTMLSelectElement>(null);
 
+    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => selectRef.current!);
 
     const handleValueChange = (newValue: string) => {
@@ -46,14 +53,14 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         } as React.ChangeEvent<HTMLSelectElement>;
 
         // useListParams/useTypeForm의 register는 (e, { value }) 형태를 기대함
-        (onChange as any)(syntheticEvent, { value: newValue });
+        onChange(syntheticEvent, { value: newValue });
       }
     };
 
     const handleClear = () => {
       if (onChange) {
         // undefined로 설정하여 필터 해제
-        (onChange as any)(null, { value: undefined });
+        onChange({} as React.ChangeEvent<HTMLSelectElement>, { value: undefined });
       }
     };
 
@@ -108,7 +115,7 @@ const SelectTrigger = React.forwardRef<
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background data-placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}
@@ -116,14 +123,14 @@ const SelectTrigger = React.forwardRef<
       <span className="flex-1 truncate text-left">{children}</span>
       <div className="flex items-center gap-1 shrink-0 pl-2">
         {clearable && hasValue && (
-          <XCircle
+          <XCircleIcon
             className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100 transition-opacity"
             onPointerDownCapture={handleClear}
             onMouseDownCapture={handleClear}
           />
         )}
         <SelectPrimitive.Icon asChild>
-          <ChevronDown className="h-4 w-4 opacity-50" />
+          <ChevronDownIcon className="h-4 w-4 opacity-50" />
         </SelectPrimitive.Icon>
       </div>
     </SelectPrimitive.Trigger>
@@ -140,7 +147,7 @@ const SelectScrollUpButton = React.forwardRef<
     className={cn("flex cursor-default items-center justify-center py-1", className)}
     {...props}
   >
-    <ChevronUp className="h-4 w-4" />
+    <ChevronUpIcon className="h-4 w-4" />
   </SelectPrimitive.ScrollUpButton>
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -154,7 +161,7 @@ const SelectScrollDownButton = React.forwardRef<
     className={cn("flex cursor-default items-center justify-center py-1", className)}
     {...props}
   >
-    <ChevronDown className="h-4 w-4" />
+    <ChevronDownIcon className="h-4 w-4" />
   </SelectPrimitive.ScrollDownButton>
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
@@ -167,7 +174,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
+        "relative z-50 max-h-[--radix-select-content-available-height] min-w-32 overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-select-content-transform-origin]",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className,
@@ -180,7 +187,7 @@ const SelectContent = React.forwardRef<
         className={cn(
           "p-1",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+            "h-(--radix-select-trigger-height) w-full min-w-(--radix-select-trigger-width)",
         )}
       >
         {children}
@@ -210,14 +217,14 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
       className,
     )}
     {...props}
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <CheckIcon className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
     </span>
 

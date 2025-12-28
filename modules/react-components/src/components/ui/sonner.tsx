@@ -1,6 +1,10 @@
-import { CircleCheck, Info, LoaderCircle, OctagonX, TriangleAlert } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
+import CircleCheckIcon from "~icons/lucide/circle-check";
+import InfoIcon from "~icons/lucide/info";
+import LoaderCircleIcon from "~icons/lucide/loader-circle";
+import OctagonXIcon from "~icons/lucide/octagon-x";
+import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -12,11 +16,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       icons={{
-        success: <CircleCheck className="h-4 w-4" />,
-        info: <Info className="h-4 w-4" />,
-        warning: <TriangleAlert className="h-4 w-4" />,
-        error: <OctagonX className="h-4 w-4" />,
-        loading: <LoaderCircle className="h-4 w-4 animate-spin" />,
+        success: <CircleCheckIcon className="h-4 w-4" />,
+        info: <InfoIcon className="h-4 w-4" />,
+        warning: <TriangleAlertIcon className="h-4 w-4" />,
+        error: <OctagonXIcon className="h-4 w-4" />,
+        loading: <LoaderCircleIcon className="h-4 w-4 animate-spin" />,
       }}
       toastOptions={{
         classNames: {

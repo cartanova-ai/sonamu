@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import * as React from "react";
 import { type DateRange, DayPicker } from "react-day-picker";
+import ChevronLeftIcon from "~icons/lucide/chevron-left";
+import ChevronRightIcon from "~icons/lucide/chevron-right";
 
 import { cn } from "../../lib/utils";
 import { buttonVariants } from "./button";
@@ -117,10 +118,10 @@ function Calendar({
       }}
       components={{
         IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("size-4", className)} {...props} />
+          <ChevronLeftIcon className={cn("size-4", className)} {...props} />
         ),
         IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("size-4", className)} {...props} />
+          <ChevronRightIcon className={cn("size-4", className)} {...props} />
         ),
         Caption: ({ displayMonth, displayIndex }) => {
           // Determine which month state to use based on displayIndex

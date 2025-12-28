@@ -1,7 +1,10 @@
 "use client";
 
-import { Check, ChevronsUpDown, Loader2, XCircle } from "lucide-react";
 import * as React from "react";
+import CheckIcon from "~icons/lucide/check";
+import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
+import Loader2Icon from "~icons/lucide/loader2";
+import XCircleIcon from "~icons/lucide/x-circle";
 
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -15,7 +18,7 @@ import {
 } from "./command";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
-export interface AsyncSelectOption<T = any> {
+export interface AsyncSelectOption<T = unknown> {
   value: T;
   label: string;
 }
@@ -26,7 +29,7 @@ export interface AsyncSelectProps<T = number> {
   /** 현재 선택된 값 */
   value?: T | null;
   /** 값 변경 핸들러 (semantic-ui 스타일) */
-  onChange?: (e: any, data: { value: T | undefined }) => void;
+  onChange?: (e: unknown, data: { value: T | undefined }) => void;
   /** 로딩 상태 */
   isLoading?: boolean;
   /** placeholder 텍스트 */
@@ -111,13 +114,13 @@ export function AsyncSelect<T = number>({
           aria-expanded={open}
           disabled={disabled || isLoading}
           className={cn(
-            "w-full justify-between hover:!bg-background hover:!text-foreground dark:hover:!bg-input/30",
+            "w-full justify-between hover:bg-background! hover:text-foreground! dark:hover:bg-input/30!",
             className,
           )}
         >
           <span className="flex-1 truncate text-left">
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2Icon className="h-4 w-4 animate-spin" />
             ) : selectedOption ? (
               selectedOption.label
             ) : (
@@ -131,10 +134,10 @@ export function AsyncSelect<T = number>({
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={handleClear}
               >
-                <XCircle className="h-4 w-4 opacity-50 hover:opacity-100 transition-opacity" />
+                <XCircleIcon className="h-4 w-4 opacity-50 hover:opacity-100 transition-opacity" />
               </span>
             )}
-            <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+            <ChevronsUpDownIcon className="h-4 w-4 shrink-0 opacity-50" />
           </div>
         </Button>
       </PopoverTrigger>
@@ -154,7 +157,9 @@ export function AsyncSelect<T = number>({
                   onSelect={() => handleSelect(undefined)}
                   className="cursor-pointer hover:bg-accent"
                 >
-                  <Check className={cn("mr-2 h-4 w-4", !hasValue ? "opacity-100" : "opacity-0")} />
+                  <CheckIcon
+                    className={cn("mr-2 h-4 w-4", !hasValue ? "opacity-100" : "opacity-0")}
+                  />
                   ALL
                 </CommandItem>
               )}
@@ -165,7 +170,7 @@ export function AsyncSelect<T = number>({
                   onSelect={() => handleSelect(option.value)}
                   className="cursor-pointer"
                 >
-                  <Check
+                  <CheckIcon
                     className={cn(
                       "mr-2 h-4 w-4",
                       value === option.value ? "opacity-100" : "opacity-0",

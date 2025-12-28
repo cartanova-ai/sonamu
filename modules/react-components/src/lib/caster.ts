@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: caster 함수에는 any가 필요함 */
 import { z } from "zod";
 
 // optional, nullable 무관하게 ZodNumber 체크
@@ -30,7 +31,10 @@ export function caster(zodType: z.ZodType<any>, raw: any): any {
       // zArrayable Number 케이스 처리
       if (Array.isArray(raw)) {
         const numType = options.find((opt) => opt instanceof z.ZodNumber);
-        return raw.map((elem: any) => caster(numType!, elem));
+        if (!numType) {
+          throw new Error("Expected to find a number type in union");
+        }
+        return raw.map((elem: any) => caster(numType, elem));
       } else {
         return Number(raw);
       }

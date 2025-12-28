@@ -1,12 +1,14 @@
-import { Loader2, Upload, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import Loader2Icon from "~icons/lucide/loader2";
+import UploadIcon from "~icons/lucide/upload";
+import XIcon from "~icons/lucide/x";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
 export type ImageUploaderProps = {
   value?: string | null;
-  onChange?: (e: any, data: { value: string | null }) => void;
+  onChange?: (e: unknown, data: { value: string | null }) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   uploader: (file: File) => Promise<string>;
   placeholder?: string;
@@ -128,7 +130,7 @@ export function ImageUploader({
       >
         {isUploading ? (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" />
+            <Loader2Icon className="h-6 w-6 animate-spin" />
             <span className="text-xs">Uploading...</span>
           </div>
         ) : value ? (
@@ -142,13 +144,13 @@ export function ImageUploader({
                 className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                 onClick={handleClear}
               >
-                <X className="h-3 w-3" />
+                <XIcon className="h-3 w-3" />
               </Button>
             )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground p-2">
-            <Upload className="h-6 w-6" />
+            <UploadIcon className="h-6 w-6" />
             <span className="text-xs text-center">{placeholder}</span>
           </div>
         )}

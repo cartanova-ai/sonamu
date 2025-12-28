@@ -16,6 +16,7 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
   ({ className, name, value, defaultValue, onChange, onBlur, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleValueChange = (newValue: number[]) => {

@@ -18,6 +18,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
   ({ className, name, checked, defaultChecked, onChange, onBlur, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleCheckedChange = (newChecked: boolean) => {

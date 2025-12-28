@@ -1,12 +1,14 @@
-import { Loader2, Plus, X } from "lucide-react";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import Loader2Icon from "~icons/lucide/loader2";
+import PlusIcon from "~icons/lucide/plus";
+import XIcon from "~icons/lucide/x";
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
 
 export type MultiImageUploaderProps = {
   value?: string[];
-  onChange?: (e: any, data: { value: string[] }) => void;
+  onChange?: (e: unknown, data: { value: string[] }) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   uploader: (file: File) => Promise<string>;
   placeholder?: string;
@@ -132,7 +134,7 @@ export function MultiImageUploader({
               className="absolute top-1 right-1 h-6 w-6 rounded-full"
               onClick={() => handleRemove(index)}
             >
-              <X className="h-3 w-3" />
+              <XIcon className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -157,12 +159,12 @@ export function MultiImageUploader({
         >
           {isUploading ? (
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              <Loader2Icon className="h-6 w-6 animate-spin" />
               <span className="text-xs">Uploading...</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 text-muted-foreground p-2">
-              <Plus className="h-6 w-6" />
+              <PlusIcon className="h-6 w-6" />
               <span className="text-xs text-center">{placeholder}</span>
             </div>
           )}

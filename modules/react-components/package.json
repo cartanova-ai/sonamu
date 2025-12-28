@@ -57,7 +57,6 @@
     "input-otp": "catalog:",
     "jotai": "catalog:",
     "lodash-es": "catalog:",
-    "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
@@ -76,6 +75,7 @@
     "react-router-dom": "catalog:"
   },
   "devDependencies": {
+    "@iconify/json": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@types/inflection": "catalog:",
@@ -86,6 +86,7 @@
     "postcss": "catalog:",
     "react-router-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:"
   }
 }

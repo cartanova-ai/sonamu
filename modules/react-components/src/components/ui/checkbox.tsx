@@ -1,8 +1,8 @@
 "use client";
 
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import { CheckIcon } from "lucide-react";
 import * as React from "react";
+import CheckIcon from "~icons/lucide/check";
 
 import { cn } from "../../lib/utils";
 
@@ -19,6 +19,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   ({ className, name, checked, defaultChecked, onChange, onBlur, ...props }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleCheckedChange = (newChecked: boolean | "indeterminate") => {

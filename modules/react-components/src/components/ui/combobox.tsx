@@ -1,7 +1,9 @@
 "use client";
 
-import { Check, ChevronsUpDown, XCircle } from "lucide-react";
 import * as React from "react";
+import CheckIcon from "~icons/lucide/check";
+import ChevronsUpDownIcon from "~icons/lucide/chevrons-up-down";
+import XCircleIcon from "~icons/lucide/x-circle";
 
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
@@ -24,7 +26,7 @@ interface ComboboxProps {
   options: ComboboxOption[];
   name?: string;
   value?: string;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  onChange?: (e: unknown, data: { value: string | undefined }) => void;
   onBlur?: React.FocusEventHandler<HTMLInputElement>;
   placeholder?: string;
   searchPlaceholder?: string;
@@ -54,6 +56,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
     const [open, setOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // biome-ignore lint/style/noNonNullAssertion: useImperativeHandle은 ref가 할당된 후 실행되므로 안전함
     React.useImperativeHandle(ref, () => inputRef.current!);
 
     const handleSelect = (currentValue: string) => {
@@ -78,7 +81,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
 
       if (onChange) {
         // useListParams/useTypeForm의 register는 (e, { value }) 형태를 기대함
-        (onChange as any)(null, { value: undefined });
+        onChange(null, { value: undefined });
       }
       setOpen(false);
     };
@@ -92,7 +95,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
           ref={inputRef}
           name={name}
           value={value || ""}
-          onChange={onChange}
+          onChange={(e) => onChange?.(e, { value: e.target.value })}
           onBlur={onBlur}
         />
         <Popover open={open} onOpenChange={setOpen}>
@@ -114,10 +117,10 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={handleClear}
                   >
-                    <XCircle className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
+                    <XCircleIcon className="h-4 w-4 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
                   </span>
                 )}
-                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                <ChevronsUpDownIcon className="h-4 w-4 opacity-50" />
               </div>
             </Button>
           </PopoverTrigger>
@@ -130,7 +133,7 @@ const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(
                   {options.map((option) => (
                     <CommandItem key={option.value} value={option.value} onSelect={handleSelect}>
                       {option.label}
-                      <Check
+                      <CheckIcon
                         className={cn(
                           "ml-auto",
                           value === option.value ? "opacity-100" : "opacity-0",
