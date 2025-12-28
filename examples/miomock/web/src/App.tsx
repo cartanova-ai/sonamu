@@ -1,7 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
-import { type ReactNode, Suspense } from "react";
-import "./App.css";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { type ReactNode, Suspense } from "react";
 import { useAuth } from "./admin-common/auth";
 import Sidebar from "./components/Sidebar";
 
@@ -16,10 +15,10 @@ function App({ children }: AppProps) {
   const isLoginPage = pathname === "/admin/login" || pathname === "/admin/login-test";
 
   return (
-    <div className="app">
-      <div className="app-layout">
+    <div className="h-screen">
+      <div className="flex h-screen md:flex-row flex-col">
         {!isLoginPage && <Sidebar />}
-        <div className="app-content">
+        <div className="flex-1 p-8 md:p-4 bg-white overflow-auto">
           <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
         </div>
       </div>
