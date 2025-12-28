@@ -41,6 +41,6 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@sonamu-kit/react-sui": "workspace:^"
+    "@sonamu-kit/react-sui": "0.1.17"
   }
 }
