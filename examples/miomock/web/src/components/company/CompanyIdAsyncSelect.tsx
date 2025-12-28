@@ -102,16 +102,12 @@ export function CompanyIdAsyncSelect<T extends CompanySubsetKey>({
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (
-    e: React.SyntheticEvent | null,
-    data: { value: string | undefined },
-  ) => {
+  const handleSingleChange = (e: unknown, data: { value: string | undefined }) => {
     if (onChange) {
       const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void)(
-        e,
-        { value: numericValue },
-      );
+      (onChange as (e: unknown, data: { value: number | undefined }) => void)(e, {
+        value: numericValue,
+      });
     }
   };
 

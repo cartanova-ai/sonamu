@@ -3,7 +3,6 @@ import {
   type AsyncSelectOption,
   MultiSelect,
 } from "@sonamu-kit/react-components/components";
-import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TagService } from "@/services/services.generated";
 import type { TagSubsetKey, TagSubsetMapping } from "@/services/sonamu.generated";
@@ -23,12 +22,12 @@ export type TagIdAsyncSelectProps<T extends TagSubsetKey> = {
   | {
       multiple?: false;
       value?: number | null;
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void;
+      onChange?: (e: unknown, data: { value: number | undefined }) => void;
     }
   | {
       multiple: true;
       value?: number[];
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number[] }) => void;
+      onChange?: (e: unknown, data: { value: number[] }) => void;
     }
 );
 
@@ -81,7 +80,7 @@ export function TagIdAsyncSelect<T extends TagSubsetKey>({
     const handleMultiChange = (selectedValues: string[]) => {
       if (onChange) {
         const numericValues = selectedValues.map(Number);
-        (onChange as (e: React.SyntheticEvent | null, data: { value: number[] }) => void)(null, {
+        (onChange as (e: unknown, data: { value: number[] }) => void)(null, {
           value: numericValues,
         });
       }
@@ -102,16 +101,12 @@ export function TagIdAsyncSelect<T extends TagSubsetKey>({
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (
-    e: React.SyntheticEvent | null,
-    data: { value: string | undefined },
-  ) => {
+  const handleSingleChange = (e: unknown, data: { value: string | undefined }) => {
     if (onChange) {
       const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void)(
-        e,
-        { value: numericValue },
-      );
+      (onChange as (e: unknown, data: { value: number | undefined }) => void)(e, {
+        value: numericValue,
+      });
     }
   };
 

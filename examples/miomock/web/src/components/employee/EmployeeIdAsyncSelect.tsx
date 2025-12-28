@@ -3,7 +3,6 @@ import {
   type AsyncSelectOption,
   MultiSelect,
 } from "@sonamu-kit/react-components/components";
-import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EmployeeListParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
@@ -23,12 +22,12 @@ export type EmployeeIdAsyncSelectProps<T extends EmployeeSubsetKey> = {
   | {
       multiple?: false;
       value?: number | null;
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void;
+      onChange?: (e: unknown, data: { value: number | undefined }) => void;
     }
   | {
       multiple: true;
       value?: number[];
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number[] }) => void;
+      onChange?: (e: unknown, data: { value: number[] }) => void;
     }
 );
 
@@ -91,7 +90,7 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
     const handleMultiChange = (selectedValues: string[]) => {
       if (onChange) {
         const numericValues = selectedValues.map(Number);
-        (onChange as (e: React.SyntheticEvent | null, data: { value: number[] }) => void)(null, {
+        (onChange as (e: unknown, data: { value: number[] }) => void)(null, {
           value: numericValues,
         });
       }
@@ -112,16 +111,12 @@ export function EmployeeIdAsyncSelect<T extends EmployeeSubsetKey>({
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (
-    e: React.SyntheticEvent | null,
-    data: { value: string | undefined },
-  ) => {
+  const handleSingleChange = (e: unknown, data: { value: string | undefined }) => {
     if (onChange) {
       const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void)(
-        e,
-        { value: numericValue },
-      );
+      (onChange as (e: unknown, data: { value: number | undefined }) => void)(e, {
+        value: numericValue,
+      });
     }
   };
 
