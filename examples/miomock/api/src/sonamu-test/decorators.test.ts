@@ -129,19 +129,27 @@ describe("decorators", () => {
     test("path 충돌 → 에러", () => {
       const target = createMockTarget("PracticeModel", "subscribe");
 
-      stream({ type: "sse", events: mockEvents, path: "/path/a" })(target, "subscribe", { value: () => {} });
+      stream({ type: "sse", events: mockEvents, path: "/path/a" })(target, "subscribe", {
+        value: () => {},
+      });
       expect(() => {
-        stream({ type: "sse", events: mockEvents, path: "/path/b" })(target, "subscribe", { value: () => {} });
+        stream({ type: "sse", events: mockEvents, path: "/path/b" })(target, "subscribe", {
+          value: () => {},
+        });
       }).toThrow("conflicting path");
     });
 
     test("options 충돌 → 에러", () => {
       const target = createMockTarget("PracticeModel", "subscribe");
 
-      stream({ type: "sse", events: mockEvents, guards: ["admin"] })(target, "subscribe", { value: () => {} });
+      stream({ type: "sse", events: mockEvents, guards: ["admin"] })(target, "subscribe", {
+        value: () => {},
+      });
 
       expect(() => {
-        stream({ type: "sse", events: mockEvents, guards: ["user"] })(target, "subscribe", { value: () => {} }  );
+        stream({ type: "sse", events: mockEvents, guards: ["user"] })(target, "subscribe", {
+          value: () => {},
+        });
       }).toThrow("conflicting options");
     });
   });

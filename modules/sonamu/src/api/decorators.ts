@@ -149,19 +149,25 @@ export function api(options: ApiDecoratorOptions = {}) {
     const originalMethod = descriptor.value;
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(convertDomainToCategory(this.modelName, "model")).debug("api: {httpMethod} {model}.{method}", {
-          httpMethod: options.httpMethod,
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug(
+          "api: {httpMethod} {model}.{method}",
+          {
+            httpMethod: options.httpMethod,
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("api: {httpMethod} {model}.{method}", {
-          httpMethod: options.httpMethod,
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug(
+          "api: {httpMethod} {model}.{method}",
+          {
+            httpMethod: options.httpMethod,
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       return originalMethod.apply(this, args);
@@ -226,17 +232,23 @@ export function stream(options: StreamDecoratorOptions) {
     const originalMethod = descriptor.value;
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(convertDomainToCategory(this.modelName, "model")).debug("stream: {model}.{method}", {
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug(
+          "stream: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("stream: {model}.{method}", {
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug(
+          "stream: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       return originalMethod.apply(this, args);
@@ -343,17 +355,23 @@ export function upload(options: UploadDecoratorOptions = {}) {
 
     descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       if (this instanceof BaseModelClass) {
-        getLogger(convertDomainToCategory(this.modelName, "model")).debug("upload: {model}.{method}", {
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.modelName, "model")).debug(
+          "upload: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       if (this instanceof BaseFrameClass) {
-        getLogger(convertDomainToCategory(this.frameName, "frame")).debug("upload: {model}.{method}", {
-          model: modelName,
-          method: methodName,
-        });
+        getLogger(convertDomainToCategory(this.frameName, "frame")).debug(
+          "upload: {model}.{method}",
+          {
+            model: modelName,
+            method: methodName,
+          },
+        );
       }
 
       const { request } = Sonamu.getContext();

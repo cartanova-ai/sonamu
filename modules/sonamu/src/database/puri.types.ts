@@ -342,9 +342,8 @@ export type InsertData<T> = Omit<
 export type InsertResult = Pick<QueryResult<any>, "command" | "rowCount" | "rows" | "oid">;
 
 // SubsetQuery를 위한 타입 유틸리티
-export type ExtractTTables<T extends Puri<any, any, any>> = T extends Puri<any, infer TTables, any>
-  ? TTables
-  : never;
+export type ExtractTTables<T extends Puri<any, any, any>> =
+  T extends Puri<any, infer TTables, any> ? TTables : never;
 export type UnionExtractedTTables<
   SubsetKey extends string,
   SubsetQueries extends Record<SubsetKey, PuriSubsetFn>,
