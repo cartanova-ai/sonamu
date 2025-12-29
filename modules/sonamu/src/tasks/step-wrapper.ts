@@ -70,11 +70,20 @@ export class StepWrapper {
     }
 
     return {
-      run: ((stepApi: StepApi) => {
-        return (...args: TArgs) => {
-          return stepApi.run(config, () => fn(...args));
-        };
-      })(this.#stepApi),
+      run: ((stepApi: StepApi, ...args: TArgs) => {
+        return stepApi.run(config, () => fn(...args));
+      }).bind(null, this.#stepApi),
+    };
+  }
+
+  define<TArgs extends unknown[], TResult>(
+    config: { name: string },
+    fn: StepFunction<TArgs, TResult>,
+  ) {
+    return {
+      run: ((stepApi: StepApi, ...args: TArgs) => {
+        return stepApi.run(config, () => fn(...args));
+      }).bind(null, this.#stepApi),
     };
   }
 
