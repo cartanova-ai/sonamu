@@ -109,7 +109,7 @@ publish(
   "./modules/hmr-hook",
   "./modules/hmr-runner",
   "./modules/sonamu",
-  "./modules/react-sui",
+  "./modules/react-components",
   "./modules/create-sonamu",
   "./modules/tasks",
 );
