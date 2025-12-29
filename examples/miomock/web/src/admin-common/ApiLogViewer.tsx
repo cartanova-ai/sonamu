@@ -118,9 +118,13 @@ export function ApiLogViewer({ bodyOnly = false }: { bodyOnly?: boolean }) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
           <div className="text-sm font-semibold text-purple-700">API 로그</div>
-          <Button size="sm" onClick={() => setApiLogs([])} disabled={apiLogs.length === 0}>
-            <TrashIcon className="h-4 w-4" />
-            <span className="ml-1">로그 지우기</span>
+          <Button
+            size="sm"
+            onClick={() => setApiLogs([])}
+            disabled={apiLogs.length === 0}
+            icon={<TrashIcon />}
+          >
+            로그 지우기
           </Button>
         </div>
       </CardHeader>

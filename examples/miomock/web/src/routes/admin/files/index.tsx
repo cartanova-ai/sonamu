@@ -251,11 +251,9 @@ function FileList({}: FileListProps) {
                         }
                       }}
                       disabled={uploading}
+                      icon={<UploadIcon />}
                     >
-                      <UploadIcon className="h-3.5 w-3.5 mr-1" />
-                      <span className="text-xs">
-                        {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
-                      </span>
+                      {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
                     </Button>
                     <span className="text-xs text-gray-500">
                       {lazyForm.form.url ? lazyForm.form.url : "파일 대기 중"}
@@ -299,11 +297,9 @@ function FileList({}: FileListProps) {
                         }
                       }}
                       disabled={uploading}
+                      icon={<UploadIcon />}
                     >
-                      <UploadIcon className="h-3.5 w-3.5 mr-1" />
-                      <span className="text-xs">
-                        {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
-                      </span>
+                      {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
                     </Button>
                     <span className="text-xs text-gray-500">
                       {`${lazyMultipleForm.form.urls.length}개의 파일 대기 중`}
@@ -346,7 +342,6 @@ function FileList({}: FileListProps) {
                     />
                     <Button
                       variant="ghost"
-                      size="icon"
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
                     >
                       <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -421,23 +416,19 @@ function FileList({}: FileListProps) {
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+                                variant="yellow"
+                                size="xs"
+                                icon={<EditIcon />}
                                 onClick={() =>
                                   navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
                                 }
-                              >
-                                <EditIcon className="h-3 w-3" />
-                              </Button>
+                              />
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-red-500 hover:bg-red-600 text-white"
+                                variant="red"
+                                size="xs"
+                                icon={<TrashIcon />}
                                 onClick={() => handleDeleteClick(row.id)}
-                              >
-                                <TrashIcon className="h-3 w-3" />
-                              </Button>
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
@@ -456,8 +447,6 @@ function FileList({}: FileListProps) {
           </Card>
         </div>
       </div>
-
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -472,6 +461,7 @@ function FileList({}: FileListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      ;
     </div>
   );
 }

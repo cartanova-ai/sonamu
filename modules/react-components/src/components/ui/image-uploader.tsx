@@ -231,7 +231,7 @@ export function ImageUploader({
               <Button
                 type="button"
                 variant="destructive"
-                size="icon"
+                size="xs"
                 className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                 onClick={handleClear}
               >

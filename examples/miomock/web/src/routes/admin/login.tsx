@@ -94,13 +94,13 @@ function LoginPage() {
             <Button
               variant="outline"
               className="w-full h-11 gap-2"
+              icon={<UserIcon />}
               style={{ borderColor: "#6ee7b7", color: "#059669" }}
               onClick={() => {
                 // 이미 로그인된 경우 admin 페이지로 이동
                 window.location.href = "/admin";
               }}
             >
-              <UserIcon className="h-4 w-4" />
               {user.username}으로 로그인
             </Button>
           )}

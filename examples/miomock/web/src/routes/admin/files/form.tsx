@@ -91,8 +91,11 @@ export function FilesForm({ id, mode }: FilesFormProps) {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => goBack("/admin/files")} className="gap-2">
-                <ArrowLeftIcon className="h-4 w-4" />
+              <Button
+                variant="outline"
+                onClick={() => goBack("/admin/files")}
+                icon={<ArrowLeftIcon />}
+              >
                 Back To List
               </Button>
             )}
@@ -139,8 +142,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
-                  <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90">
-                    <SaveIcon className="h-4 w-4" />
+                  <Button onClick={handleSubmit} icon={<SaveIcon />}>
                     Save
                   </Button>
                 </div>

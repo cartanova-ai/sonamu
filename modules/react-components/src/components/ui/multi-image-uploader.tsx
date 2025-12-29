@@ -229,21 +229,19 @@ export function MultiImageUploader({
 
       {/* Existing and pending images */}
       {displayUrls?.map((url, index) => (
-        <div
-          key={`${url}-${index}`}
-          className={cn("relative rounded-lg border overflow-hidden", sizeClasses[previewSize])}
-        >
-          <img src={url} alt={`Uploaded ${index + 1}`} className="h-full w-full object-cover" />
+        <div key={`${url}-${index}`} className={cn("relative", sizeClasses[previewSize])}>
+          <div className="h-full w-full rounded-lg border overflow-hidden">
+            <img src={url} alt={`Uploaded ${index + 1}`} className="h-full w-full object-cover" />
+          </div>
           {!disabled && (
             <Button
               type="button"
               variant="destructive"
-              size="icon"
-              className="absolute top-1 right-1 h-6 w-6 rounded-full"
+              size="xs"
+              className="absolute -top-2 -right-2 rounded-full"
+              icon={<XIcon />}
               onClick={() => handleRemove(index)}
-            >
-              <XIcon className="h-3 w-3" />
-            </Button>
+            />
           )}
         </div>
       ))}

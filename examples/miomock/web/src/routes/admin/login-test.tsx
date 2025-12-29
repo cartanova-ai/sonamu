@@ -65,16 +65,15 @@ function LoginTestPage() {
                   <p>역할: {user.role}</p>
                 </AlertDescription>
               </Alert>
-              <Button variant="outline" className="w-full h-11 gap-2" onClick={handleLogout}>
-                <LogOutIcon className="h-4 w-4" />
+              <Button variant="outline" onClick={handleLogout} icon={<LogOutIcon />}>
                 로그아웃
               </Button>
               <Button
+                icon={<HomeIcon />}
                 className="w-full h-11 gap-2 text-white font-medium shadow-md"
                 style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
                 onClick={() => navigate({ to: "/admin" })}
               >
-                <HomeIcon className="h-4 w-4" />
                 관리자 페이지로 이동
               </Button>
             </div>
@@ -112,11 +111,11 @@ function LoginTestPage() {
               </div>
 
               <Button
+                icon={<LogInIcon />}
                 className="w-full h-11 gap-2 text-white font-medium shadow-md"
                 style={{ background: "linear-gradient(90deg, #10b981 0%, #059669 100%)" }}
                 onClick={handleSubmit}
               >
-                <LogInIcon className="h-4 w-4" />
                 Login
               </Button>
             </>

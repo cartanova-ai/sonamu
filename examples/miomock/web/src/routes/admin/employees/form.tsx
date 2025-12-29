@@ -100,9 +100,8 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
               <Button
                 variant="outline"
                 onClick={() => goBack("/admin/employees")}
-                className="gap-2"
+                icon={<ArrowLeftIcon />}
               >
-                <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
             )}
@@ -180,8 +179,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
-                  <Button onClick={handleSubmit} className="gap-2 bg-primary hover:bg-primary/90">
-                    <SaveIcon className="h-4 w-4" />
+                  <Button onClick={handleSubmit} icon={<SaveIcon />}>
                     Save
                   </Button>
                 </div>

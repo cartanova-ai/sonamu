@@ -157,11 +157,10 @@ function CompanyList({}: CompanyListProps) {
                     />
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
@@ -228,31 +227,39 @@ function CompanyList({}: CompanyListProps) {
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-cyan-500 hover:bg-cyan-600 text-white"
+                                variant="blue"
+                                size="xs"
+                                icon={<EyeIcon />}
                                 onClick={() => navigate({ to: `${PAGE.route}/${row.id}` })}
-                              >
-                                <EyeIcon className="h-3 w-3" />
-                              </Button>
+                              />
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+                                variant="yellow"
+                                size="xs"
+                                icon={<EditIcon />}
                                 onClick={() =>
                                   navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
                                 }
                               >
-                                <EditIcon className="h-3 w-3" />
+                                수정
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-red-500 hover:bg-red-600 text-white"
-                                onClick={() => handleDeleteClick(row.id)}
+                                variant="blue"
+                                size="xs"
+                                icon={<EditIcon />}
+                                loading={true}
+                                onClick={() =>
+                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
+                                }
                               >
-                                <TrashIcon className="h-3 w-3" />
+                                수정2
                               </Button>
+                              <Button
+                                variant="red"
+                                size="xs"
+                                icon={<TrashIcon />}
+                                loading={true}
+                                onClick={() => handleDeleteClick(row.id)}
+                              />
                             </div>
                           </TableCell>
                         </TableRow>

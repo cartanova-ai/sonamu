@@ -151,7 +151,6 @@ function ProjectList({}: ProjectListProps) {
                     />
                     <Button
                       variant="ghost"
-                      size="icon"
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
                     >
                       <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -250,23 +249,19 @@ function ProjectList({}: ProjectListProps) {
                           <TableCell className="py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+                                variant="yellow"
+                                size="xs"
+                                icon={<EditIcon />}
                                 onClick={() =>
                                   navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
                                 }
-                              >
-                                <EditIcon className="h-3 w-3" />
-                              </Button>
+                              />
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 rounded bg-red-500 hover:bg-red-600 text-white"
+                                variant="red"
+                                size="xs"
+                                icon={<TrashIcon />}
                                 onClick={() => handleDeleteClick(row.id)}
-                              >
-                                <TrashIcon className="h-3 w-3" />
-                              </Button>
+                              />
                             </div>
                           </TableCell>
                         </TableRow>

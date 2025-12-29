@@ -34,7 +34,6 @@ const buttonVariants = cva(
         // button sizes
         // - 아이콘만 있는 버튼: 정사각형 (px-0 aspect-square)
         // - 텍스트 / 아이콘 + 텍스트 버튼: 일반 패딩 유지 (가로 자동 확장)
-        // - 아이콘 크기는 버튼 크기에 비례
         xs: "h-6 px-2 py-1 text-xs [&_svg]:size-3 has-[>svg]:px-1.5 has-[>svg:only-child]:px-0 has-[>svg:only-child]:aspect-square",
         sm: "h-7 px-3 py-1.5 text-xs [&_svg]:size-3.5 has-[>svg]:px-2 has-[>svg:only-child]:px-0 has-[>svg:only-child]:aspect-square",
         default:

@@ -88,8 +88,7 @@ export default function Sidebar({ className }: SidebarProps) {
       {/* Footer */}
       {user && (
         <div className="flex shrink-0 flex-col gap-2 p-2 border-t border-sidebar-border">
-          <Button variant="destructive" className="w-full" onClick={logout}>
-            <LogOutIcon className="size-4" />
+          <Button variant="destructive" onClick={logout} icon={<LogOutIcon />}>
             로그아웃
           </Button>
         </div>

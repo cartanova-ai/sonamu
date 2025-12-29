@@ -66,21 +66,11 @@ function AdminIndexPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-2 w-24">
-            <Button variant="default" onClick={() => navigate({ to: "/admin/companies" })}>
-              회사 관리
-            </Button>
-            <Button variant="default" onClick={() => navigate({ to: "/admin/users" })}>
-              사용자 관리
-            </Button>
-            <Button variant="default" onClick={() => navigate({ to: "/admin/departments" })}>
-              부서 관리
-            </Button>
-            <Button variant="default" onClick={() => navigate({ to: "/admin/employees" })}>
-              직원 관리
-            </Button>
-            <Button variant="default" onClick={() => navigate({ to: "/admin/projects" })}>
-              프로젝트 관리
-            </Button>
+            <Button onClick={() => navigate({ to: "/admin/companies" })}>회사 관리</Button>
+            <Button onClick={() => navigate({ to: "/admin/users" })}>사용자 관리</Button>
+            <Button onClick={() => navigate({ to: "/admin/departments" })}>부서 관리</Button>
+            <Button onClick={() => navigate({ to: "/admin/employees" })}>직원 관리</Button>
+            <Button onClick={() => navigate({ to: "/admin/projects" })}>프로젝트 관리</Button>
           </div>
         </CardContent>
       </Card>

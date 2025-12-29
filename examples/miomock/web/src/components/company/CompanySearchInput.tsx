@@ -49,15 +49,7 @@ export function CompanySearchInput({
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute right-0 h-8 w-8"
-          onClick={handleSearch}
-        >
-          <SearchIcon className="h-4 w-4" />
-        </Button>
+        <Button type="button" variant="ghost" onClick={handleSearch} icon={<SearchIcon />} />
       </div>
     </div>
   );
