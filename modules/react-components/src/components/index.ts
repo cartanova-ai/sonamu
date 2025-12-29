@@ -1,9 +1,5 @@
-// TODO: ButtonProps, BadgeProps, ToggleProps 타입이 없음.
+// TODO:  BadgeProps, ToggleProps 타입이 없음.
 // UI Components - Form & Input
-export { Button, buttonVariants } from "./ui/button";
-
-// export type { ButtonProps } from "./ui/button";
-
 export type { DateRange } from "react-day-picker";
 // Hooks
 export { toast, useToast } from "../hooks/use-toast";
@@ -42,6 +38,7 @@ export {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "./ui/breadcrumb";
+export { Button, type ButtonProps, buttonVariants } from "./ui/button";
 // Date & Time
 export { Calendar } from "./ui/calendar";
 export {
