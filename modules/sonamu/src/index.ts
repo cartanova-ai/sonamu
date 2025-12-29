@@ -3,6 +3,8 @@ export * from "./api/config";
 export type * from "./api/context";
 export * from "./api/decorators";
 export * from "./api/sonamu";
+export { cache } from "./cache/decorator";
+export type { CacheDecoratorOptions } from "./cache/types";
 export * from "./database/base-model";
 export * from "./database/base-model.types";
 export * from "./database/db";

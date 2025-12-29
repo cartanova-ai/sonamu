@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOption
 import type { QsPluginOptions } from "fastify-qs";
 import type { SsePluginOptions } from "fastify-sse-v2/lib/types";
 import type { Knex } from "knex";
+import type { CacheConfig } from "../cache/types";
 import type { SonamuLoggingOptions } from "../logger/configure";
 import type { StorageConfig } from "../storage/types";
 import type { WorkflowOptions } from "../tasks/workflow-manager";
@@ -105,6 +106,27 @@ export type SonamuServerOptions = {
    * ```
    */
   storage?: StorageConfig;
+
+  /**
+   * Cache 설정 (BentoCache 기반)
+   *
+   * @example
+   * ```typescript
+   * import { drivers, store } from "sonamu/cache";
+   *
+   * cache: {
+   *   default: 'main',
+   *   stores: {
+   *     main: store()
+   *       .useL1Layer(drivers.memory({ maxSize: '100mb' }))
+   *       .useL2Layer(drivers.redis({ connection: redisConnection }))
+   *       .useBus(drivers.redisBus({ connection: redisConnection }))
+   *   },
+   *   ttl: '1h',
+   * }
+   * ```
+   */
+  cache?: CacheConfig;
 
   lifecycle?: {
     onStart?: (server: FastifyInstance) => Promise<void> | void;

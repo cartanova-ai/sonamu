@@ -9,6 +9,7 @@ import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
 import { createMockSSEFactory, DB, isDaemonServer } from "..";
+import type { CacheConfig, CacheManager } from "../cache/types";
 import type { SonamuDBConfig } from "../database/db";
 import { Naite } from "../naite/naite";
 import type { StorageManager } from "../storage/storage-manager";
@@ -120,6 +121,17 @@ class SonamuClass {
     return this._storage;
   }
 
+  private _cache: CacheManager | null = null;
+  /**
+   * CacheManager 인스턴스 (BentoCache)
+   */
+  get cache(): CacheManager {
+    if (!this._cache) {
+      throw new Error("Cache has not been initialized. Check cache config in sonamu.config.ts.");
+    }
+    return this._cache;
+  }
+
   private _workflows: WorkflowManager | null = null;
   get workflows(): WorkflowManager {
     if (this._workflows === null) {
@@ -186,6 +198,9 @@ class SonamuClass {
     // upsert가 제대로 작동하려면 entity의 unique index 정보가 필요하기 때문입니다.
     const { EntityManager } = await import("../entity/entity-manager");
     await EntityManager.autoload(doSilent);
+
+    // Cache 초기화
+    await this.initializeCache(this.config.server.cache, forTesting);
 
     // 테스팅인 경우 싱크 없이 중단
     if (forTesting) {
@@ -842,6 +857,29 @@ class SonamuClass {
     }
   }
 
+  private async initializeCache(config: CacheConfig | undefined, forTesting: boolean) {
+    const { setCacheManagerRef } = await import("../cache/decorator");
+
+    // 테스트 환경에서 메모리 드라이버 자동 사용
+    if (forTesting) {
+      const { createTestCacheManager } = await import("../cache/cache-manager");
+      this._cache = createTestCacheManager();
+      setCacheManagerRef(this._cache);
+      return;
+    }
+
+    // 설정이 없으면 캐시 비활성화
+    if (!config) {
+      setCacheManagerRef(null);
+      return;
+    }
+
+    // 설정에 따라 CacheManager 생성
+    const { createCacheManager } = await import("../cache/cache-manager");
+    this._cache = createCacheManager(config);
+    setCacheManagerRef(this._cache);
+  }
+
   private async initializeWorkflows(options: SonamuTaskOptions | undefined) {
     const { WorkflowManager } = await import("../tasks/workflow-manager");
     // NOTE: @sonamu-kit/tasks 안에선 knex config를 수정하기 때문에 connection이 아닌 config 째로 보냅니다.
@@ -947,6 +985,7 @@ class SonamuClass {
     await BaseModel.destroy();
     await Promise.allSettled([
       this._workflows?.destroy() ?? Promise.resolve(),
+      this._cache?.disconnect() ?? Promise.resolve(),
       this.watcher?.close() ?? Promise.resolve(),
       logtapeDispose(),
     ]);
