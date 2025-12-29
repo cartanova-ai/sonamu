@@ -118,11 +118,11 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
 
   const loggers: LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">[] =
     options.loggers ?? [];
-  
+
   // logtape의 meta logger 표시를 비활성화
   loggers.push({
-    category: ["logtape"],
-    lowestLevel: "warning"
+    category: ["logtape", "meta"],
+    lowestLevel: "fatal",
   });
 
   if (loggers.every((logger) => !isSameCategory([...fastifyCategory], logger.category))) {
