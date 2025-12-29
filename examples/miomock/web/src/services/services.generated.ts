@@ -312,6 +312,20 @@ export namespace TagService {
     useMutation({
       mutationFn: (params: { ids: number[] }) => del(params.ids),
     });
+
+  export async function cached(): Promise<TagSubsetMapping["A"]> {
+    return fetch({
+      method: "GET",
+      url: `/api/tag/cached`,
+    });
+  }
+
+  export async function deleteCached(): Promise<void> {
+    return fetch({
+      method: "GET",
+      url: `/api/tag/deleteCached`,
+    });
+  }
 }
 
 export namespace SyncFixtureService {

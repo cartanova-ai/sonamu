@@ -93,7 +93,7 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "aa1e7662f295724a0a14d98c4c4e1d125c4ac364"
+    "checksum": "b65fa52d3444c1e8c406ab5792b6aefd8c480cfe"
   },
   {
     "path": "src/application/tag/tag.types.ts",
@@ -113,10 +113,10 @@
   },
   {
     "path": "src/application/user/user.workflow.ts",
-    "checksum": "b95b196ed14f03d65e51368e041ef4e41247437c"
+    "checksum": "a9e683fb4813807cbbca1a299a1c34c8798cd9a2"
   },
   {
     "path": "src/sonamu.config.ts",
-    "checksum": "2c06d786da90a10e9a88d587cc9213c3ed9cdc06"
+    "checksum": "834ab3303a20f3584f7f27a132ec0f3c1f9aef34"
   }
 ]

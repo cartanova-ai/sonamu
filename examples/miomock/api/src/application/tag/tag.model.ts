@@ -1,11 +1,14 @@
+import assert from "assert";
 import {
   api,
   asArray,
   BadRequestException,
   BaseModelClass,
+  cache,
   exhaustive,
   type ListResult,
   NotFoundException,
+  Sonamu,
 } from "sonamu";
 import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
@@ -129,6 +132,29 @@ class TagModelClass extends BaseModelClass<
     });
 
     return ids.length;
+  }
+
+  /**
+   * 캐시 테스트용 API
+   */
+  @cache({ tags: ["tag"] })
+  @api({ httpMethod: "GET", clients: ["axios"] })
+  async cached(): Promise<TagSubsetMapping["A"]> {
+    console.log(`[TagModel.cached] Cache miss - fetching from DB`);
+
+    const { rows } = await this.findMany("A", {
+      id: 1,
+      num: 1,
+      page: 1,
+    });
+    assert(rows[0]);
+
+    return rows[0];
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios"] })
+  async deleteCached(): Promise<void> {
+    await Sonamu.cache.expire({ key: "TagModel.cached" });
   }
 }
 

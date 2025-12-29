@@ -151,6 +151,18 @@ Content-Type: application/json
 
 ###
 
+GET {{baseUrl}}/api/tag/cached
+	?
+Content-Type: application/json
+
+###
+
+GET {{baseUrl}}/api/tag/deleteCached
+	?
+Content-Type: application/json
+
+###
+
 GET {{baseUrl}}/api/syncFixture/findById
 	?subset=unknown
 	&id=0
