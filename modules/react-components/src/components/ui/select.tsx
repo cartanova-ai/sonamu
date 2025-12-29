@@ -25,7 +25,9 @@ type SelectContextValue = {
 };
 const SelectContext = React.createContext<SelectContextValue>({});
 
-const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
+const Select: React.ForwardRefExoticComponent<
+  SelectProps & React.RefAttributes<HTMLSelectElement>
+> = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ name, value, defaultValue, onValueChange, onBlur, clearable, children, ...props }, ref) => {
     const selectRef = React.useRef<HTMLSelectElement>(null);
 

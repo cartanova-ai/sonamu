@@ -1,21 +1,31 @@
 {
   "name": "@sonamu-kit/react-components",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "author": "CartaNova <dev@cartanova.ai>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cartanova-ai/sonamu.git"
+  },
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/react-components.es.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./components": "./src/components/index.ts",
-    "./hooks": "./src/hooks/index.ts",
-    "./lib": "./src/lib/index.ts",
-    "./router": "./src/router/index.ts",
+    ".": "./src/index.js",
+    "./components": "./src/components/index.js",
+    "./hooks": "./src/hooks/index.js",
+    "./lib": "./src/lib/index.js",
+    "./router": "./src/router/index.js",
     "./styles": "./src/styles/globals.css"
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
-    "lint": "eslint src"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint src",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "catalog:",
@@ -79,10 +89,14 @@
     "@types/inflection": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "autoprefixer": "catalog:",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "unplugin-icons": "catalog:"
+    "unplugin-icons": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-tsconfig-paths": "catalog:"
   }
 }
