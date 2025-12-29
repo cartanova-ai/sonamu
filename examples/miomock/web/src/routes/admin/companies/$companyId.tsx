@@ -4,9 +4,17 @@ import z from "zod";
 import { CompanyService } from "@/services/services.generated";
 
 export const Route = createFileRoute("/admin/companies/$companyId")({
-  head: () => ({
+  loader: async ({ params, context }) => {
+    const { companyId } = params;
+    const company = await context.queryClient.ensureQueryData(
+      CompanyService.getCompanyQueryOptions("A", companyId),
+    );
+
+    return { company };
+  },
+  head: ({ loaderData }) => ({
     meta: [
-      { title: "Miomock - Company Detail" },
+      { title: `${loaderData?.company?.name ?? "몰라"} - Miomock` },
       { name: "description", content: "회사 상세 정보" },
     ],
   }),
