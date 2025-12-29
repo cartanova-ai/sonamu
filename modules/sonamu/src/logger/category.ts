@@ -16,14 +16,19 @@ export function isSameCategory(
 
 export function convertDomainToCategory(
   name: string,
-  type: "model" | "frame" | "agent",
+  type: "model" | "frame" | "agent" | "workflow",
 ): readonly string[] {
+  const compareItems = ["class"];
+  if (type !== "workflow") {
+    compareItems.push(type);
+  }
+
   return [
     "sonamu",
     // SomeAgentClass -> some_agent, SomeModelClass -> some_model, SomeFrameClass -> some_frame
     underscore(name)
       .split("_")
-      .filter((item) => ![type, "class"].includes(item))
+      .filter((item) => !compareItems.includes(item))
       .join("_"),
     type,
   ];

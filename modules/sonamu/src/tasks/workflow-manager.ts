@@ -1,3 +1,4 @@
+import { getLogger, type Logger } from "@logtape/logtape";
 import { BackendPostgres, OpenWorkflow, type Worker } from "@sonamu-kit/tasks";
 import type {
   RunnableWorkflow,
@@ -14,6 +15,7 @@ import { schedule as cronSchedule, type ScheduledTask } from "node-cron";
 import type { ZodObject } from "zod";
 import type { Context } from "../api/context";
 import { Sonamu } from "../api/sonamu";
+import { convertDomainToCategory } from "../logger/category";
 import { Naite } from "../naite/naite";
 import { createMockSSEFactory } from "../stream/sse";
 import type { Executable } from "../types/types";
@@ -34,6 +36,7 @@ export interface WorkflowOptions {
 // Workflow 함수의 타입, @sonamu-kit/tasks와 다른 점은 step을 한번 감싼 형태.
 export type WorkflowFunction<Input, Output> = (
   params: Readonly<{
+    logger: Logger;
     input: Input;
     step: StepWrapper;
     version: string | null;
@@ -265,8 +268,10 @@ export class WorkflowManager {
         : baseContext;
 
       const step = new StepWrapper(params.step);
+      const logger = getLogger(convertDomainToCategory(options.name, "workflow"));
+
       return Sonamu.asyncLocalStorage.run({ context }, () =>
-        options.function({ input: params.input, step, version: params.version }),
+        options.function({ input: params.input, step, version: params.version, logger }),
       );
     };
 
