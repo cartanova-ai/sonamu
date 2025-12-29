@@ -292,11 +292,62 @@ export class UpsertBuilder {
           // INSERT 모드 - RETURNING 사용
           resultRows = await wdb.insert(dataForDb).into(tableName).returning(selectFields);
         } else {
-          // UPSERT 모드 - onConflict 사용 (unique index 없으면 PK fallback)
-          const conflictColumns = table.uniqueIndexes[0]?.columns.map((c) => c.name) ?? ["id"];
+          // UPSERT 모드 - id 없는 row들의 id를 사전 조회로 채우기
+          const rowsWithoutId = dataForDb.filter((row) => !row.id);
+
+          if (rowsWithoutId.length > 0 && table.uniqueIndexes.length > 0) {
+            // 모든 uniqueIndexes로 기존 레코드 조회
+            for (const uniqueIndex of table.uniqueIndexes) {
+              const columns = uniqueIndex.columns.map((c) => c.name);
+
+              // 조회할 조건들 추출 (각 row의 unique 컬럼 값들)
+              const conditions: unknown[][] = [];
+              for (const row of rowsWithoutId) {
+                const values = columns.map((col) => row[col]);
+                // null이 포함된 조건은 제외 (PostgreSQL UNIQUE는 NULL 무시)
+                if (!values.some((v) => v == null)) {
+                  conditions.push(values);
+                }
+              }
+
+              if (conditions.length === 0) continue;
+
+              // 배치 SELECT
+              const existingRows = (await wdb(tableName)
+                .whereIn(columns, conditions as Record<string, unknown>[][])
+                .select("id", ...columns)) as Record<string, unknown>[];
+
+              // Map 생성: unique 컬럼 조합 → id
+              const existingMap = new Map<string, number>();
+              for (const existing of existingRows) {
+                const key = columns
+                  .map((col) => String(existing[col] ?? ""))
+                  .join("---delimiter---");
+                const id = existing.id;
+                if (typeof id === "number") {
+                  existingMap.set(key, id);
+                }
+              }
+
+              // id 없는 row들에 매칭되는 id 채우기
+              for (const row of rowsWithoutId) {
+                if (row.id) continue; // 이미 다른 uniqueIndex에서 채워진 경우 스킵
+
+                const key = columns.map((col) => String(row[col] ?? "")).join("---delimiter---");
+                const existingId = existingMap.get(key);
+
+                if (existingId) {
+                  row.id = existingId;
+                }
+              }
+            }
+          }
+
+          // onConflict는 id만 사용 (모든 uniqueIndexes는 이미 사전 조회로 처리됨)
+          const conflictColumns = ["id"];
 
           const allColumns = Object.keys(dataForDb[0]);
-          let updateColumns = allColumns.filter((c) => !conflictColumns.includes(c));
+          let updateColumns = allColumns.filter((c) => c !== "id");
 
           // inherit 옵션 처리 - inherit 컬럼은 update 대상에서 제외
           if (options?.inherit?.length) {
