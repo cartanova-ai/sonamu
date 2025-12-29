@@ -143,28 +143,7 @@ export default defineConfig({
     cache: {
       default: "main",
       stores: {
-        // L1: 메모리 캐시 (빠른 로컬 캐시)
-        // L2: Redis 캐시 (분산 캐시, 여러 서버 간 공유)
-        main: store()
-          .useL1Layer(cacheDrivers.memory({ maxSize: "50mb" }))
-          .useL2Layer(
-            cacheDrivers.redis({
-              connection: {
-                host: process.env.REDIS_HOST ?? "localhost",
-                port: Number(process.env.REDIS_PORT ?? 6379),
-              },
-            }),
-          )
-          .useBus(
-            cacheDrivers.redisBus({
-              connection: {
-                host: process.env.REDIS_HOST ?? "localhost",
-                port: Number(process.env.REDIS_PORT ?? 6379),
-              },
-            }),
-          ),
-        // 메모리 전용 스토어 (로컬 캐시만 필요한 경우)
-        memory: store().useL1Layer(cacheDrivers.memory({ maxSize: "10mb" })),
+        main: store().useL1Layer(cacheDrivers.memory({ maxSize: "50mb" })),
       },
       ttl: "5m",
       prefix: "",
