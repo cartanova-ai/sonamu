@@ -13,9 +13,9 @@ export function createKnexInstance(config: Knex.Config): Knex {
       conn.on("error", (err: Error) => {
         Object.defineProperty(conn, "__knex__disposed", {
           value: err,
-          writable: false,
-          configurable: false,
-          enumerable: false,
+          writable: true,
+          configurable: true,
+          enumerable: true,
         });
       });
 
