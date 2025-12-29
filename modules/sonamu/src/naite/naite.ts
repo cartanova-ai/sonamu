@@ -1,11 +1,11 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Naite는 expect와 호응하도록 any를 허용함 */
 
+import { getLogger } from "@logtape/logtape";
 import { get } from "radashi";
 import { Sonamu } from "../api/sonamu";
 import type { ComparisonOperator } from "../database/puri.types";
-import { isSerializable } from "../utils/object-utils";
-import { getLogger } from "@logtape/logtape";
 import { convertNaiteKeyToCategory } from "../logger/category";
+import { isSerializable } from "../utils/object-utils";
 
 // StackFrame 타입
 interface StackFrame {
@@ -269,10 +269,13 @@ export class NaiteClass {
 
       // 항상 배열로 관리
       const existing = store.get(name) ?? [];
-      getLogger(["naite", ...convertNaiteKeyToCategory(name)]).debug(`naite: {name} ${existing.length === 0 ? "is empty state" : `already existing with ${existing.length === 0} entries`}, appending new entry`, {
-        name,
-        value,
-      });
+      getLogger(["naite", ...convertNaiteKeyToCategory(name)]).debug(
+        `naite: {name} ${existing.length === 0 ? "is empty state" : `already existing with ${existing.length === 0} entries`}, appending new entry`,
+        {
+          name,
+          value,
+        },
+      );
 
       store.set(name, [...existing, trace]);
     } catch {
@@ -398,24 +401,6 @@ export class NaiteClass {
 
   createStore(): NaiteStore {
     return new Map<string, NaiteTrace[]>();
-  }
-
-  // 일반 로그 레벨
-  d(_message: string) {
-    // TODO: Logger 연결
-    console.log(`[DEBUG] ${_message}`);
-  }
-  i(_message: string) {
-    // TODO: Logger 연결
-    console.log(`[INFO] ${_message}`);
-  }
-  w(_message: string) {
-    // TODO: Logger 연결
-    console.log(`[WARN] ${_message}`);
-  }
-  e(_message: string) {
-    // TODO: Logger 연결
-    console.log(`[ERROR] ${_message}`);
   }
 }
 
