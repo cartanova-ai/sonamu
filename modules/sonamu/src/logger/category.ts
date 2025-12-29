@@ -14,6 +14,9 @@ export function isSameCategory(
   return categoryA.every((category, index) => categoryBArr[index] === category);
 }
 
+// 로깅 카테고리를 지정합니다.
+// 예: SomeAgentClass -> ["sonamu", "agent", "some-agent"]
+// SomeLongWorkflow -> ["sonamu", "workflow", "some-long-workflow"]
 export function convertDomainToCategory(
   name: string,
   type: "model" | "frame" | "agent" | "workflow",
@@ -23,15 +26,13 @@ export function convertDomainToCategory(
     compareItems.push(type);
   }
 
-  return [
-    "sonamu",
-    // SomeAgentClass -> some_agent, SomeModelClass -> some_model, SomeFrameClass -> some_frame
-    underscore(name)
-      .split("_")
-      .filter((item) => !compareItems.includes(item))
-      .join("_"),
-    type,
-  ];
+  // SomeAgentClass -> some_agent, SomeModelClass -> some_model, SomeFrameClass -> some_frame
+  const convertedName = underscore(name)
+    .split("_")
+    .filter((item) => !compareItems.includes(item))
+    .join("-");
+
+  return ["sonamu", type, convertedName];
 }
 
 export function convertNaiteKeyToCategory(key: string): readonly string[] {

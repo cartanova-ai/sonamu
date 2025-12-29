@@ -268,10 +268,13 @@ export class WorkflowManager {
         : baseContext;
 
       const step = new StepWrapper(params.step);
-      const logger = getLogger(convertDomainToCategory(options.name, "workflow"));
-
       return Sonamu.asyncLocalStorage.run({ context }, () =>
-        options.function({ input: params.input, step, version: params.version, logger }),
+        options.function({
+          input: params.input,
+          step,
+          version: params.version,
+          logger: getLogger(convertDomainToCategory(options.name, "workflow")),
+        }),
       );
     };
 

@@ -45,12 +45,22 @@ export type DefineWorkflowOptions<
 // 이것들은 syncer에서 한번에 load한 다음, WorkflowManager에서 synchronize를 통해 등록됨.
 export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
   options: DefineWorkflowOptions<Input, Output, TSchema>,
-) {
-  return (fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => {
+): (fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => WorkflowMetadata;
+export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
+  options: DefineWorkflowOptions<Input, Output, TSchema>,
+  fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
+): WorkflowMetadata;
+export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undefined = undefined>(
+  options: DefineWorkflowOptions<Input, Output, TSchema>,
+  fn?: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>,
+):
+  | WorkflowMetadata
+  | ((fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => WorkflowMetadata) {
+  const decorated = (fn: WorkflowFunction<SchemaOutput<TSchema, Input>, Output>) => {
     const id = randomUUID();
     const workflowName = options.name ?? inflection.underscore(fn.name);
 
-    const decorated: WorkflowMetadata = {
+    const metadata: WorkflowMetadata = {
       type: "workflow" as const,
       id,
       name: workflowName,
@@ -66,6 +76,12 @@ export function workflow<Input, Output, TSchema extends StandardSchemaV1 | undef
       fn: fn as WorkflowFunction<unknown, unknown>,
     };
 
-    return decorated;
+    return metadata;
   };
+
+  if (!fn) {
+    return decorated;
+  }
+
+  return decorated(fn);
 }
