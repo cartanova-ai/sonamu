@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ApiDecoratorOptions, AuthContext, Context } from "../api";
 import type { GuardKey } from "./../api/decorators";
+import type { CacheControlHandler } from "../cache-control/types";
 
 /*
   Utility Types
@@ -1384,4 +1385,10 @@ export type SonamuFastifyConfig = {
       options: ApiDecoratorOptions;
     },
   ) => void;
+  /**
+   * 전역 Cache-Control 핸들러입니다.
+   * 요청 타입(api, assets, ssr, csr)에 따라 Cache-Control 설정을 반환합니다.
+   * undefined를 반환하면 타입별 기본값이 적용됩니다.
+   */
+  cacheControlHandler?: CacheControlHandler;
 };
