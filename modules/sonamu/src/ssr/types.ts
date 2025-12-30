@@ -1,3 +1,5 @@
+import type { CacheControlConfig } from "../cache-control/types";
+
 // Branded type - 실수로 일반 객체 사용 방지
 export type SSRQuery = {
   modelName: string; // 'UserModel' - 서버 모델 호출용
@@ -12,6 +14,8 @@ export type SSRRoute = {
   path: string;
   preload?: (params: Record<string, string>) => PreloadConfig;
   disableHydrate?: boolean;
+  /** SSR 응답의 Cache-Control 헤더 설정. 설정하지 않으면 cacheControlHandler 또는 기본값이 적용됩니다. */
+  cacheControl?: CacheControlConfig;
 };
 
 export type PreloadedData = {
