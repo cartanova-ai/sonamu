@@ -8,7 +8,7 @@ export class Template__entry_server extends Template {
 
   getTargetAndPath() {
     return {
-      target: ":target/src",
+      target: "web/src",
       path: `entry-server.generated.tsx`,
     };
   }
