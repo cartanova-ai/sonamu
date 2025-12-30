@@ -38,7 +38,7 @@ Thumbs.db
 **/pgdata/**
 
 # Claude Code
-CLAUDE.md
+# CLAUDE.md
 .claude/
 
 # Verifier
