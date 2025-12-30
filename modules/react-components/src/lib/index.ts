@@ -20,7 +20,6 @@ export {
   sqlDateToDateString,
   type TableColumnWidth,
   // Navigation & Selection
-  useGoBack,
   useListParams,
   useModal,
   useSelection,
