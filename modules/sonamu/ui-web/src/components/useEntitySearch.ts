@@ -1,4 +1,3 @@
-import assert from "assert";
 import { group } from "radashi";
 import { useCallback, useState } from "react";
 import type { ExtendedEntity } from "../services/sonamu-ui.service";
@@ -253,14 +252,13 @@ export function useEntitySearch(options?: { items?: Item[]; ngramSize?: number }
       const grouped = group(searchResult, (r) => `${r.item.id}${Math.floor(r.score * 10) / 10}`);
 
       return Object.values(grouped)
-        .filter((group) => group !== undefined)
-        .map((group) => {
-          assert(group.length > 1);
-          const { id, title } = group[0].item;
-          const fields = group
+        .filter((items) => items !== undefined)
+        .map((items) => {
+          const { id, title } = items[0].item;
+          const fields = items
             .flatMap(({ fields }) => fields)
             .filter(Boolean) as SearchResult["fields"];
-          const score = Math.max(...group.map(({ score }) => score));
+          const score = Math.max(...items.map(({ score }) => score));
           return { item: { id, title }, fields, score };
         })
         .sort((a, b) => {

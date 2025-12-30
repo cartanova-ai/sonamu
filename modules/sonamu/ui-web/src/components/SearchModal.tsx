@@ -1,4 +1,3 @@
-import assert from "assert";
 import { group } from "radashi";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -150,14 +149,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         (field) => field.key,
       ),
     ).filter(([_, value]) => value !== undefined);
-    return grouped.map(([key, group], index) => {
-      assert(group);
+    return grouped.map(([key, items], index) => {
+      if (!items) return null;
       return (
         <div key={key} className="sub-item">
           <List.Description>
             <strong>{`Subset${key} >`}</strong>
           </List.Description>
-          {group.map((field) => (
+          {items.map((field) => (
             <List.Description
               key={field.desc}
               // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
