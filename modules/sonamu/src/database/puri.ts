@@ -144,6 +144,14 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   /**
+   * SQL 인젝션 방지를 위해 PostgreSQL 문자열 리터럴을 이스케이프합니다.
+   * 작은 따옴표(')를 두 개('')로 변환합니다.
+   */
+  private static escapeSqlLiteral(value: string): string {
+    return value.replace(/'/g, "''");
+  }
+
+  /**
    * FTS 검색어 하이라이팅
    *
    * @example
@@ -169,9 +177,10 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
     const hlOptions = hlOptionParts.length > 0 ? `, '${hlOptionParts.join(", ")}'` : "";
 
-    // TODO: rawBinding 메서드 만들어서 XSS 방지
+    // SQL 인젝션 방지를 위해 query 이스케이프 처리
+    const escapedQuery = Puri.escapeSqlLiteral(query);
     return Puri.rawString(
-      `ts_headline('${config}', ${column}, ${parser}('${config}', '${query}')${hlOptions})`,
+      `ts_headline('${config}', ${column}, ${parser}('${config}', '${escapedQuery}')${hlOptions})`,
     );
   }
 
@@ -201,8 +210,10 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     const weightClause = weights ? `ARRAY[${weights.join(", ")}], ` : "";
     const normalizationClause = normalization ? `, ${normalization}` : "";
 
+    // SQL 인젝션 방지를 위해 query 이스케이프 처리
+    const escapedQuery = Puri.escapeSqlLiteral(query);
     return Puri.rawNumber(
-      `${type}(${weightClause}${column}, ${parser}('${config}', '${query}')${normalizationClause})`,
+      `${type}(${weightClause}${column}, ${parser}('${config}', '${escapedQuery}')${normalizationClause})`,
     );
   }
 
@@ -233,7 +244,11 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     columnOrColumns: string | string[],
     query: string | string[],
   ): SqlExpression<"string"> | SqlExpression<"string[]"> {
-    const queryClause = `ARRAY[${(Array.isArray(query) ? query : [query]).map((q) => `'${q}'`).join(",")}]`;
+    // SQL 인젝션 방지를 위해 query 이스케이프 처리
+    const escapedQueries = (Array.isArray(query) ? query : [query]).map((q) =>
+      Puri.escapeSqlLiteral(q),
+    );
+    const queryClause = `ARRAY[${escapedQueries.map((q) => `'${q}'`).join(",")}]`;
 
     // 단일 컬럼인 경우
     if (typeof columnOrColumns === "string") {
