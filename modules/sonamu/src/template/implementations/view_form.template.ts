@@ -326,7 +326,8 @@ import {
   CardTitle,
   Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}
 } from "@sonamu-kit/react-components/components";
-import { useGoBack, useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ${names.capital}Service } from "@/services/services.generated";
@@ -380,6 +381,7 @@ type ${names.capitalPlural}FormProps = {
 };
 
 export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}FormProps) {
+  const router = useRouter();
   const [_row, setRow] = useState<${names.capital}SubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(${
@@ -453,18 +455,17 @@ ${(() => {
     }
   }, [id, setForm]);
 
-  const { goBack } = useGoBack();
   const handleSubmit = useCallback(() => {
     ${names.capital}Service.save([form])
       .then(() => {
         if (mode === "modal") {
           // modal mode
         } else {
-          goBack("/admin/${names.fsPlural}");
+          router.navigate({ to: "/admin/${names.fsPlural}" });
         }
       })
       .catch(defaultCatch);
-  }, [form, mode, goBack]);
+  }, [form, mode]);
 
   const PAGE = {
     title: \`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\`,
@@ -481,7 +482,7 @@ ${(() => {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => goBack("/admin/${names.fsPlural}")} className="gap-2">
+              <Button variant="outline" onClick={() => router.navigate({ to: "/admin/${names.fsPlural}" })} className="gap-2">
                 <ArrowLeftIcon className="h-4 w-4" />
                 Back To List
               </Button>
