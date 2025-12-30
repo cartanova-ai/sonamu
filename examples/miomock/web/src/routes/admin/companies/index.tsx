@@ -22,6 +22,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -63,6 +64,12 @@ function CompanyList({}: CompanyListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/companies",
+    title: "COMPANY",
+  };
+
   // 리스트 필터
   const { listParams, register } = useListParams(CompanyListParams, {
     num: 10,
@@ -75,6 +82,67 @@ function CompanyList({}: CompanyListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = CompanyService.useCompanies("A", listParams);
   const { rows, total } = data ?? {};
+
+  // 컬럼 정의
+  type CompanyRow = NonNullable<typeof rows>[number];
+  const columns: TableCol<CompanyRow>[] = [
+    {
+      label: "ID",
+      tc: (row) => <span className="text-xs">{row.id}</span>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: "등록일시",
+      tc: (row) => (
+        <span className="text-xs text-muted-foreground">{datetimeF(row.created_at)}</span>
+      ),
+      fit: true,
+    },
+    {
+      label: "회사명",
+      tc: (row) => <span className="text-xs">{row.name}</span>,
+    },
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="blue"
+            size="xs"
+            icon={<EyeIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/${row.id}` })}
+          />
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          >
+            수정
+          </Button>
+          <Button
+            variant="blue"
+            size="xs"
+            icon={<EditIcon />}
+            loading={true}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          >
+            수정2
+          </Button>
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            loading={true}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -113,12 +181,6 @@ function CompanyList({}: CompanyListProps) {
     }
     setDeleteDialogOpen(false);
     setItemToDelete(null);
-  };
-
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/companies",
-    title: "COMPANY",
   };
 
   return (
@@ -199,10 +261,11 @@ function CompanyList({}: CompanyListProps) {
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-                    <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">회사명</TableHead>
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -217,51 +280,11 @@ function CompanyList({}: CompanyListProps) {
                               onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.id}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {datetimeF(row.created_at)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="blue"
-                                size="xs"
-                                icon={<EyeIcon />}
-                                onClick={() => navigate({ to: `${PAGE.route}/${row.id}` })}
-                              />
-                              <Button
-                                variant="yellow"
-                                size="xs"
-                                icon={<EditIcon />}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              >
-                                수정
-                              </Button>
-                              <Button
-                                variant="blue"
-                                size="xs"
-                                icon={<EditIcon />}
-                                loading={true}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              >
-                                수정2
-                              </Button>
-                              <Button
-                                variant="red"
-                                size="xs"
-                                icon={<TrashIcon />}
-                                loading={true}
-                                onClick={() => handleDeleteClick(row.id)}
-                              />
-                            </div>
-                          </TableCell>
+                          {columns.map((col, idx) => (
+                            <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                              {col.tc(row)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       </Fragment>
                     ))}

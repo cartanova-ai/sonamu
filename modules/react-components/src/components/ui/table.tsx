@@ -4,6 +4,16 @@ import type * as React from "react";
 
 import { cn } from "../../lib/utils";
 
+type TableAlign = "left" | "center" | "right";
+
+type TableCol<T> = {
+  label: string | React.ReactNode;
+  tc: (row: T, rowIndex?: number) => React.ReactNode;
+  fit?: boolean;
+  className?: string;
+  align?: TableAlign;
+};
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
@@ -53,12 +63,23 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({
+  className,
+  fit,
+  align,
+  ...props
+}: React.ComponentProps<"th"> & {
+  fit?: boolean;
+  align?: TableAlign;
+}) {
   return (
     <th
       data-slot="table-head"
       className={cn(
         "text-foreground h-10 px-2 text-left font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-[2px]",
+        fit && "w-px",
+        align === "center" && "text-center",
+        align === "right" && "text-right",
         className,
       )}
       style={{ verticalAlign: "middle" }}
@@ -67,12 +88,23 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  className,
+  fit,
+  align,
+  ...props
+}: React.ComponentProps<"td"> & {
+  fit?: boolean;
+  align?: TableAlign;
+}) {
   return (
     <td
       data-slot="table-cell"
       className={cn(
         "p-2 whitespace-nowrap [&:has([role=checkbox])]:pr-0 *:[[role=checkbox]]:translate-y-[2px]",
+        fit && "w-px",
+        align === "center" && "text-center",
+        align === "right" && "text-right",
         className,
       )}
       style={{ verticalAlign: "middle" }}
@@ -91,4 +123,14 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   );
 }
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+  type TableCol,
+};

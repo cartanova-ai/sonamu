@@ -283,6 +283,7 @@ export {
   TableBody,
   TableCaption,
   TableCell,
+  type TableCol,
   TableFooter,
   TableHead,
   TableHeader,
