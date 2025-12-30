@@ -11,12 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@radix-ui/react-slot": "catalog:",
     "@sonamu-kit/react-components": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "axios": "catalog:",
-    "classnames": "catalog:",
     "clsx": "catalog:",
     "dotenv": "catalog:",
     "jotai": "catalog:",
