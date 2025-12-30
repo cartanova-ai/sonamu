@@ -49,7 +49,7 @@ export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
     },
     {
       name: "Enums" as const,
-      templateKeys: ["view_enums_select", "view_enums_dropdown"],
+      templateKeys: ["view_enums_select"],
     },
   ];
 

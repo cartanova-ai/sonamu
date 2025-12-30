@@ -1268,10 +1268,6 @@ export const TemplateOptions = z.object({
     entityId: z.string(),
     enumId: z.string(),
   }),
-  view_enums_dropdown: z.object({
-    entityId: z.string(),
-    enumId: z.string(),
-  }),
   view_enums_buttonset: z.object({
     entityId: z.string(),
     enumId: z.string(),
@@ -1298,7 +1294,6 @@ export const TemplateKey = z.enum([
   "view_id_all_select",
   "view_id_async_select",
   "view_enums_select",
-  "view_enums_dropdown",
   "view_enums_buttonset",
   "queries",
   "entry_server",
