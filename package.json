@@ -8,7 +8,6 @@
     "build:tools:hmr-runner": "pnpm --filter @sonamu-kit/hmr-runner build",
     "build:tools": "pnpm -r --filter @sonamu-kit/* --filter !@sonamu-kit/react-sui --filter !@sonamu-kit/react-components --filter !@sonamu-kit/tasks build",
     "build:lib:tasks": "pnpm --filter @sonamu-kit/tasks build",
-    "build:lib:react-sui": "pnpm --filter @sonamu-kit/react-sui build",
     "build:lib:sonamu": "pnpm --filter sonamu build",
     "build:lib": "pnpm -r --filter sonamu --filter @sonamu-kit/react-sui --filter @sonamu-kit/tasks build",
     "build:miomock:api": "pnpm --filter miomock-api build",
