@@ -69,7 +69,7 @@ function CompanyList({}: CompanyListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/companies",
-    title: "COMPANY",
+    title: "회사 리스트",
   };
 
   // 컬럼 정의
@@ -82,16 +82,16 @@ function CompanyList({}: CompanyListProps) {
       align: "center",
     },
     {
+      label: "회사명",
+      tc: (row) => <>{row.name}</>,
+    },
+    {
       label: "등록일시",
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "회사명",
-      tc: (row) => <>{row.name}</>,
-    },
-    {
-      label: "Manage",
+      label: "관리",
       fit: true,
       align: "center",
       tc: (row) => (
