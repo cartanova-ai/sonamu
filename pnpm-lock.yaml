@@ -43,7 +43,7 @@ catalogs:
       specifier: ^3.958.0
       version: 3.958.0
     '@biomejs/biome':
-      specifier: ^2.3.7
+      specifier: ^2.3.10
       version: 2.3.10
     '@biomejs/js-api':
       specifier: ^4.0.0
