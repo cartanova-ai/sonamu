@@ -2,10 +2,13 @@
 @import "react-day-picker/dist/style.css";
 @import "tailwindcss";
 
-/* Tailwind v4: 외부 패키지에서 사용할 때 소스 경로 지정 */
+/* Tailwind v4: 소스 경로 지정 */
+/* 로컬 개발 시 src 폴더 스캔 */
 @source "../components/**/*.tsx";
 @source "../hooks/**/*.ts";
 @source "../lib/**/*.ts";
+/* npm 패키지 사용 시 dist 폴더의 번들 스캔 */
+@source "../react-components.es.js";
 
 /* VSCode CSS 린터: Tailwind v4의 새 문법 경고 무시 */
 /* @custom-variant, @theme는 Tailwind v4에서 정상 작동 */
