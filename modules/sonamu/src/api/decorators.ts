@@ -4,6 +4,7 @@ import type { HTTPMethods } from "fastify";
 import inflection from "inflection";
 import { isEqual } from "radashi";
 import type { z } from "zod";
+import type { CacheControlConfig } from "../cache-control/types";
 import { BaseModelClass } from "../database/base-model";
 import { DB } from "../database/db";
 import {
@@ -44,6 +45,8 @@ export type ApiDecoratorOptions = {
   guards?: GuardKey[];
   description?: string;
   timeout?: number;
+  /** API 응답의 Cache-Control 헤더 설정. 설정하지 않으면 cacheControlHandler 또는 기본값이 적용됩니다. */
+  cacheControl?: CacheControlConfig;
 };
 export type StreamDecoratorOptions = {
   type: "sse"; // | 'ws
