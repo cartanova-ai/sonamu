@@ -176,6 +176,7 @@ class SonamuClass {
     this.config = await loadConfig(this.apiRootPath);
     // sonamu.config.ts 기본값 설정
     this.config.database.database = this.config.database.database ?? "pg";
+    this.config.database.defaultOptions.client = this.config.database.database ?? "pg";
 
     // 로깅 설정
     const { configureLogTape } = await import("../logger/configure");
