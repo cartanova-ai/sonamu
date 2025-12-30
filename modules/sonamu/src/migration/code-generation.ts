@@ -743,7 +743,12 @@ function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: Migration
           return undefined;
         }
         if (key === "columns") {
-          return (index[key] as MigrationIndex["columns"]).flatMap(identity);
+          return (index[key] as MigrationIndex["columns"]).map((col) => {
+            return Object.keys(col)
+              .sort()
+              .map((k) => `${k}=${col[k as keyof typeof col]}`)
+              .join("//");
+          });
         }
         return `${key}=${index[key as keyof MigrationIndex]}`;
       })
@@ -776,14 +781,22 @@ function genIndexDropDefinition(index: MigrationIndex) {
 /**
  * DB 조회 결과와 비교하기 위한 인덱스 기본값 설정
  */
-function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
+export function setMigrationIndexDefaults(index: MigrationIndex): MigrationIndex {
+  const supportsOrdering =
+    index.type !== "hnsw" && // type이 hnsw면 벡터 인덱스
+    index.type !== "ivfflat" && // type이 ivfflat면 벡터 인덱스
+    (!index.using || index.using === "btree"); // using 체크
+
   return {
     ...index,
     columns: index.columns.map((col) => ({
-      ...col,
-      sortOrder: col.sortOrder ?? "ASC",
-      // sortOrder에 따라 nullsFirst의 default 값 설정
-      nullsFirst: col.nullsFirst ?? col.sortOrder === "DESC",
+      name: col.name,
+      ...(supportsOrdering
+        ? {
+            sortOrder: col.sortOrder ?? "ASC",
+            nullsFirst: col.nullsFirst ?? col.sortOrder === "DESC",
+          }
+        : {}),
     })),
     nullsNotDistinct: index.nullsNotDistinct ?? false,
     using: index.using ?? "btree",
