@@ -6,132 +6,12 @@ settings:
 
 catalogs:
   default:
-    '@adonisjs/ace':
-      specifier: ^13.3.0
-      version: 13.4.0
-    '@adonisjs/tsconfig':
-      specifier: ^1.4.1
-      version: 1.4.1
-    '@ai-sdk/anthropic':
-      specifier: ^3.0.0
-      version: 3.0.1
-    '@ai-sdk/openai':
-      specifier: ^3.0.0
-      version: 3.0.1
-    '@ai-sdk/provider':
-      specifier: ^3.0.0
-      version: 3.0.0
-    '@ai-sdk/provider-utils':
-      specifier: ^4.0.0
-      version: 4.0.1
-    '@ai-sdk/react':
-      specifier: ^2.0.104
-      version: 2.0.118
-    '@astrojs/check':
-      specifier: ^0.9.5
-      version: 0.9.6
-    '@astrojs/starlight':
-      specifier: ^0.36.3
-      version: 0.36.3
-    '@aws-sdk/client-ecr-public':
-      specifier: ^3.958.0
-      version: 3.958.0
-    '@aws-sdk/client-s3':
-      specifier: ^3.958.0
-      version: 3.958.0
-    '@aws-sdk/s3-request-presigner':
-      specifier: ^3.958.0
-      version: 3.958.0
-    '@biomejs/biome':
-      specifier: ^2.3.10
-      version: 2.3.10
-    '@biomejs/js-api':
-      specifier: ^4.0.0
-      version: 4.0.0
-    '@biomejs/wasm-nodejs':
-      specifier: ^2.3.7
-      version: 2.3.10
-    '@changesets/cli':
-      specifier: ^2.29.4
-      version: 2.29.8
-    '@dagrejs/dagre':
-      specifier: ^1.1.8
-      version: 1.1.8
-    '@dnd-kit/core':
-      specifier: ^4.0.3
-      version: 4.0.3
-    '@dnd-kit/sortable':
-      specifier: ^5.1.0
-      version: 5.1.0
-    '@dnd-kit/utilities':
-      specifier: ^3.0.2
-      version: 3.2.2
-    '@expressive-code/plugin-collapsible-sections':
-      specifier: ^0.41.3
-      version: 0.41.5
-    '@fastify/cors':
-      specifier: ^8.1.0
-      version: 8.5.0
-    '@fastify/formbody':
-      specifier: ^7.1.0
-      version: 7.4.0
-    '@fastify/middie':
-      specifier: ^8.3.0
-      version: 8.3.3
-    '@fastify/multipart':
-      specifier: ^8
-      version: 8.3.1
-    '@fastify/passport':
-      specifier: ^2.2.0
-      version: 2.5.0
-    '@fastify/secure-session':
-      specifier: ^7
-      version: 7.5.1
-    '@fastify/static':
-      specifier: ^7
-      version: 7.0.4
     '@hookform/resolvers':
       specifier: ^5.2.2
       version: 5.2.2
-    '@iconify-json/lucide':
-      specifier: ^1.2.82
-      version: 1.2.82
-    '@iconify-json/mdi':
-      specifier: ^1.2.3
-      version: 1.2.3
     '@iconify/json':
       specifier: ^2.2.421
       version: 2.2.421
-    '@japa/assert':
-      specifier: ^4.1.1
-      version: 4.2.0
-    '@japa/file-system':
-      specifier: ^2.3.2
-      version: 2.3.2
-    '@japa/runner':
-      specifier: ^4.4.0
-      version: 4.4.0
-    '@japa/snapshot':
-      specifier: ^2.0.9
-      version: 2.0.10
-    '@julr/tooling-configs':
-      specifier: ^4.0.0
-      version: 4.0.0
-    '@loaderkit/resolve':
-      specifier: ^1.0.4
-      version: 1.0.4
-    '@logtape/fastify':
-      specifier: 1.3.5
-      version: 1.3.5
-    '@logtape/logtape':
-      specifier: 1.3.5
-      version: 1.3.5
-    '@logtape/pretty':
-      specifier: 1.3.5
-      version: 1.3.5
-    '@logtape/redaction':
-      specifier: 1.3.5
-      version: 1.3.5
     '@radix-ui/react-accordion':
       specifier: ^1.2.12
       version: 1.2.12
@@ -213,69 +93,15 @@ catalogs:
     '@radix-ui/react-tooltip':
       specifier: ^1.2.8
       version: 1.2.8
-    '@svgr/core':
-      specifier: ^8.1.0
-      version: 8.1.0
-    '@svgr/plugin-jsx':
-      specifier: ^8.1.0
-      version: 8.1.0
-    '@svgr/plugin-svgo':
-      specifier: ^8.1.0
-      version: 8.1.0
-    '@swc/cli':
-      specifier: ^0.7.8
-      version: 0.7.9
-    '@swc/core':
-      specifier: ^1.13.5
-      version: 1.15.7
-    '@tailwindcss/postcss':
-      specifier: ^4.0.0
-      version: 4.1.18
     '@tailwindcss/vite':
       specifier: ^4.1.17
       version: 4.1.18
-    '@tanstack/react-query':
-      specifier: ^5.90.12
-      version: 5.90.12
     '@tanstack/react-router':
       specifier: 1.143.11
       version: 1.143.11
-    '@tanstack/react-router-devtools':
-      specifier: 1.143.11
-      version: 1.143.11
-    '@tanstack/router-plugin':
-      specifier: 1.143.11
-      version: 1.143.11
-    '@types/bcrypt':
-      specifier: ^6
-      version: 6.0.0
-    '@types/fs-extra':
-      specifier: ^11.0.4
-      version: 11.0.4
     '@types/inflection':
       specifier: ^2.0.0
       version: 2.0.0
-    '@types/luxon':
-      specifier: ^3.0.3
-      version: 3.7.1
-    '@types/mime-types':
-      specifier: ^3.0.1
-      version: 3.0.1
-    '@types/node':
-      specifier: 24.10.1
-      version: 24.10.1
-    '@types/pg':
-      specifier: ^8.15.6
-      version: 8.16.0
-    '@types/picomatch':
-      specifier: ^4.0.0
-      version: 4.0.2
-    '@types/prompts':
-      specifier: ^2.0.14
-      version: 2.4.9
-    '@types/prop-types':
-      specifier: ^15.7.15
-      version: 15.7.15
     '@types/qs':
       specifier: ^6.9.7
       version: 6.14.0
@@ -285,288 +111,75 @@ catalogs:
     '@types/react-dom':
       specifier: ^19.2.3
       version: 19.2.3
-    '@types/react-syntax-highlighter':
-      specifier: ^15.5.13
-      version: 15.5.13
-    '@types/supertest':
-      specifier: ^6.0.3
-      version: 6.0.3
-    '@typescript/native-preview':
-      specifier: ^7.0.0-dev.20251225.1
-      version: 7.0.0-dev.20251226.1
     '@vitejs/plugin-react':
       specifier: 4.7.0
       version: 4.7.0
-    '@vitejs/plugin-react-swc':
-      specifier: ^4.1.3
-      version: 4.2.2
-    '@vitest/coverage-v8':
-      specifier: ^4.0.12
-      version: 4.0.16
-    '@xyflow/react':
-      specifier: ^12.9.3
-      version: 12.10.0
-    ai:
-      specifier: ^6.0.1
-      version: 6.0.3
-    astro:
-      specifier: ^5.16.0
-      version: 5.16.6
     autoprefixer:
       specifier: ^10.4.20
       version: 10.4.23
-    axios:
-      specifier: ^1.13.2
-      version: 1.13.2
-    bcrypt:
-      specifier: ^6.0.0
-      version: 6.0.0
-    bentocache:
-      specifier: ^1.5.0
-      version: 1.5.1
-    c12:
-      specifier: ^3.3.2
-      version: 3.3.3
-    c8:
-      specifier: ^10.1.3
-      version: 10.1.3
-    chalk:
-      specifier: ^4.1.2
-      version: 4.1.2
-    chokidar:
-      specifier: ^4.0.3
-      version: 4.0.3
     class-variance-authority:
       specifier: ^0.7.1
       version: 0.7.1
-    classnames:
-      specifier: ^2.3.2
-      version: 2.5.1
     clsx:
       specifier: ^2.1.1
       version: 2.1.1
     cmdk:
       specifier: ^1.1.1
       version: 1.1.1
-    corepack:
-      specifier: ^0.34.1
-      version: 0.34.5
     date-fns:
       specifier: ^4.1.0
       version: 4.1.0
-    date-fns-tz:
-      specifier: ^3.2.0
-      version: 3.2.0
-    debug:
-      specifier: ^4.3.7
-      version: 4.4.3
-    del-cli:
-      specifier: ^6.0.0
-      version: 6.0.0
-    desm:
-      specifier: ^1.3.1
-      version: 1.3.1
-    dotenv:
-      specifier: ^17.2.2
-      version: 17.2.3
     embla-carousel-react:
       specifier: ^8.6.0
       version: 8.6.0
-    esbuild:
-      specifier: ^0.27.0
-      version: 0.27.2
-    execa:
-      specifier: ^8.0.1
-      version: 8.0.1
     fast-deep-equal:
       specifier: ^3.1.3
       version: 3.1.3
-    fast-glob:
-      specifier: ^3.3.3
-      version: 3.3.3
-    fastify:
-      specifier: ^4
-      version: 4.29.1
-    fastify-qs:
-      specifier: ^4.0.0
-      version: 4.0.2
-    fastify-sse-v2:
-      specifier: ^4.2.1
-      version: 4.2.1
-    flydrive:
-      specifier: ^1.3.0
-      version: 1.3.0
-    fs-extra:
-      specifier: ^11.3.0
-      version: 11.3.3
     inflection:
       specifier: ^3.0.2
       version: 3.0.2
     input-otp:
       specifier: ^1.4.2
       version: 1.4.2
-    ioredis:
-      specifier: ^5.8.2
-      version: 5.8.2
     jotai:
       specifier: ^2.14.0
       version: 2.16.1
-    json5:
-      specifier: ^2.2.3
-      version: 2.2.3
-    knex:
-      specifier: ^3.1.0
-      version: 3.1.0
-    luxon:
-      specifier: ^3.0.3
-      version: 3.7.2
-    mime-types:
-      specifier: ^3.0.1
-      version: 3.0.2
-    minimatch:
-      specifier: ^10.0.3
-      version: 10.1.1
     next-themes:
       specifier: ^0.4.6
       version: 0.4.6
-    node-cron:
-      specifier: ^4.2.1
-      version: 4.2.1
-    node-sql-parser:
-      specifier: ^5.2.0
-      version: 5.3.13
-    nodemon:
-      specifier: ^3.1.10
-      version: 3.1.11
-    npm-run-all:
-      specifier: ^4.1.5
-      version: 4.1.5
-    p-event:
-      specifier: ^6.0.1
-      version: 6.0.1
-    p-timeout:
-      specifier: ^6.1.4
-      version: 6.1.4
-    parse-imports:
-      specifier: ^2.2.1
-      version: 2.2.1
-    pg:
-      specifier: ^8.16.3
-      version: 8.16.3
-    pg-native:
-      specifier: ^3.5.2
-      version: 3.5.2
-    pgvector:
-      specifier: ^0.2.1
-      version: 0.2.1
-    picomatch:
-      specifier: ^4.0.2
-      version: 4.0.3
     postcss:
       specifier: ^8.4.49
       version: 8.5.6
-    prompts:
-      specifier: ^2.4.2
-      version: 2.4.2
-    prop-types:
-      specifier: ^15.8.1
-      version: 15.8.1
     qs:
       specifier: ^6.11.0
       version: 6.14.0
     radashi:
       specifier: ^12.2.0
       version: 12.7.1
-    react:
-      specifier: ^19.2.3
-      version: 19.2.3
     react-day-picker:
       specifier: ^8.10.1
       version: 8.10.1
-    react-dom:
-      specifier: ^19.2.3
-      version: 19.2.3
     react-hook-form:
       specifier: ^7.66.1
       version: 7.69.0
-    react-markdown:
-      specifier: ^9.0.1
-      version: 9.1.0
     react-resizable-panels:
       specifier: ^3.0.6
       version: 3.0.6
-    react-router-dom:
-      specifier: ^6.30.2
-      version: 6.30.2
-    react-semantic-ui-datepickers:
-      specifier: ^2.17.1
-      version: 2.17.2
-    react-syntax-highlighter:
-      specifier: ^15.5.0
-      version: 15.6.6
-    read-package-up:
-      specifier: ^11.0.0
-      version: 11.0.0
-    rou3:
-      specifier: ^0.7.10
-      version: 0.7.12
-    sass:
-      specifier: ^1.92.1
-      version: 1.97.1
-    scss:
-      specifier: ^0.2.4
-      version: 0.2.4
-    semantic-ui-css:
-      specifier: ^2.5.0
-      version: 2.5.0
-    semantic-ui-react:
-      specifier: ^2.1.3
-      version: 2.1.5
-    sharp:
-      specifier: ^0.34.5
-      version: 0.34.5
     sonner:
       specifier: ^2.0.7
       version: 2.0.7
-    supertest:
-      specifier: ^7.1.1
-      version: 7.1.4
-    supports-color:
-      specifier: ^10.2.2
-      version: 10.2.2
-    swr:
-      specifier: ^2.3.7
-      version: 2.3.8
     tailwind-merge:
       specifier: ^3.4.0
       version: 3.4.0
     tailwindcss:
       specifier: ^4.0.0
       version: 4.1.18
-    ts-node:
-      specifier: ^10.9.2
-      version: 10.9.2
-    tsdown:
-      specifier: ^0.12.5
-      version: 0.12.9
-    tsicli:
-      specifier: ^1.0.5
-      version: 1.0.5
-    tsup:
-      specifier: ^8.1.0
-      version: 8.5.1
-    tsx:
-      specifier: ^4.20.6
-      version: 4.21.0
     typescript:
       specifier: ^5.9.3
       version: 5.9.3
     unplugin-icons:
       specifier: 0.20.2
       version: 0.20.2
-    uuid:
-      specifier: ^13.0.0
-      version: 13.0.0
     vaul:
       specifier: ^1.1.2
       version: 1.1.2
@@ -579,18 +192,9 @@ catalogs:
     vite-tsconfig-paths:
       specifier: ^5.1.4
       version: 5.1.4
-    vitest:
-      specifier: ^4.0.10
-      version: 4.0.16
-    voyageai:
-      specifier: ^0.0.8
-      version: 0.0.8
     zod:
       specifier: ^4.1.12
       version: 4.2.1
-    zx:
-      specifier: ^8.8.5
-      version: 8.8.5
 
 overrides:
   axios@<0.30.0: '>=0.30.0'
@@ -11744,7 +11348,7 @@ snapshots:
       '@babel/types': 7.28.5
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -11884,7 +11488,7 @@ snapshots:
       '@babel/parser': 7.28.5
       '@babel/template': 7.27.2
       '@babel/types': 7.28.5
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -12640,7 +12244,7 @@ snapshots:
       '@antfu/install-pkg': 1.1.0
       '@antfu/utils': 8.1.1
       '@iconify/types': 2.0.0
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
       globals: 15.15.0
       kolorist: 1.8.0
       local-pkg: 1.1.2
@@ -16619,6 +16223,10 @@ snapshots:
   debug@4.3.4:
     dependencies:
       ms: 2.1.2
+
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
 
   debug@4.4.3(supports-color@10.2.2):
     dependencies:
@@ -21300,7 +20908,7 @@ snapshots:
       '@antfu/install-pkg': 0.5.0
       '@antfu/utils': 0.7.10
       '@iconify/utils': 2.3.0
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
       kolorist: 1.8.0
       local-pkg: 0.5.1
       unplugin: 1.16.1
@@ -21460,7 +21068,7 @@ snapshots:
       '@volar/typescript': 2.4.27
       '@vue/language-core': 2.2.0(typescript@5.9.3)
       compare-versions: 6.1.1
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
       kolorist: 1.8.0
       local-pkg: 1.1.2
       magic-string: 0.30.21
@@ -21485,7 +21093,7 @@ snapshots:
 
   vite-tsconfig-paths@5.1.4(typescript@5.9.3)(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
-      debug: 4.4.3(supports-color@5.5.0)
+      debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.3)
     optionalDependencies:

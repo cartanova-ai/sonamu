@@ -34,7 +34,7 @@
       "types": "./dist/router/index.d.ts",
       "import": "./dist/react-components.es.js"
     },
-    "./styles": "./src/styles/globals.css"
+    "./styles": "./dist/styles/globals.css"
   },
   "scripts": {
     "dev": "vite",
