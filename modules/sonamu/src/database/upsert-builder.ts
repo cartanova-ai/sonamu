@@ -148,8 +148,11 @@ export class UpsertBuilder {
           rowValue.use ??= "id";
           table.references.add(`${rowValue.of}.${rowValue.use}`);
           return [rowKey, rowValue];
+        } else if (isArray(rowValue)) {
+          // 배열은 그대로 저장
+          return [rowKey, rowValue];
         } else if (typeof rowValue === "object" && !(rowValue instanceof Date)) {
-          // object인 경우 JSON으로 변환
+          // 일반 object인 경우 JSON으로 변환
           return [rowKey, rowValue === null ? null : JSON.stringify(rowValue)];
         } else {
           return [rowKey, rowValue];

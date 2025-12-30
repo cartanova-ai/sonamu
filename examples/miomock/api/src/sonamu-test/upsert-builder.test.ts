@@ -77,22 +77,22 @@ describe("Upsert Builder", () => {
       expect(traces[1].uuid).toBe(ref2.uuid);
     });
 
-    test("register() 시 객체/배열 필드 JSON 문자열 변환/null은 유지", async () => {
+    test("register() 시 객체는 JSON 문자열 변환, 배열은 원본 유지/null은 유지", async () => {
       const ub = new UpsertBuilder();
 
       const imageUrls = ["https://example.com/1.png", "https://example.com/2.png"];
 
-      // 배열 → JSON 문자열
+      // 배열 → 원본 유지
       ub.register("projects", {
         name: "테스트 프로젝트",
         status: "planning",
         image_urls: imageUrls,
       });
 
-      // [expectUB] 배열이 JSON 문자열로 변환됨
+      // [expectUB] 배열이 그대로 저장됨
       expectUB(ub, "row", "projects", 0).toMatchObject({
         name: "테스트 프로젝트",
-        image_urls: JSON.stringify(imageUrls),
+        image_urls: imageUrls,
       });
 
       // null 값 등록
