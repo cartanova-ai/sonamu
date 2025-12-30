@@ -77,11 +77,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {iconOnly ? (
           leadingIcon
-        ) : (
+        ) : leadingIcon ? (
           <span className="contents">
             {leadingIcon}
             {children}
           </span>
+        ) : (
+          children
         )}
       </Comp>
     );
