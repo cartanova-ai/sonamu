@@ -3,7 +3,7 @@ import { diff } from "radashi";
 import type { MigrationColumn, MigrationIndex } from "../types/types";
 import { differenceWith, intersectionBy } from "../utils/utils";
 
-export class CodeGenerator {
+class CodeGeneratorClass {
   getAlterColumnsTo(entityColumns: MigrationColumn[], dbColumns: MigrationColumn[]) {
     const columnsTo = {
       add: [] as MigrationColumn[],
@@ -55,3 +55,5 @@ export class CodeGenerator {
     return indexesTo;
   }
 }
+
+export const CodeGenerator = new CodeGeneratorClass();
