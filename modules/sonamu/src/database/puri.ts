@@ -33,6 +33,14 @@ import type {
   WhereCondition,
   WhereOperator,
 } from "./puri.types";
+import {
+  escapeSqlLiteral,
+  validateIdentifier,
+  validateNumber,
+  validateSqlExpression,
+  validateTsConfig,
+  validateTsParser,
+} from "./puri-sanitizer";
 import type { ClearStatements } from "./puri-subset.types";
 
 export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
@@ -70,6 +78,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
 
   // Static SQL helper functions for SELECT
   static count(column: string = "*"): SqlExpression<"number"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "number",
@@ -77,6 +86,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static sum(column: string): SqlExpression<"number"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "number",
@@ -84,6 +94,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static avg(column: string): SqlExpression<"number"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "number",
@@ -91,6 +102,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static max(column: string): SqlExpression<"number"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "number",
@@ -98,6 +110,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static min(column: string): SqlExpression<"number"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "number",
@@ -105,6 +118,9 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static concat(...args: string[]): SqlExpression<"string"> {
+    for (const arg of args) {
+      validateIdentifier(arg);
+    }
     return {
       _type: "sql_expression",
       _return: "string",
@@ -112,6 +128,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static upper(column: string): SqlExpression<"string"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "string",
@@ -119,6 +136,7 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     };
   }
   static lower(column: string): SqlExpression<"string"> {
+    validateIdentifier(column);
     return {
       _type: "sql_expression",
       _return: "string",
@@ -144,14 +162,6 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   }
 
   /**
-   * SQL 인젝션 방지를 위해 PostgreSQL 문자열 리터럴을 이스케이프합니다.
-   * 작은 따옴표(')를 두 개('')로 변환합니다.
-   */
-  private static escapeSqlLiteral(value: string): string {
-    return value.replace(/'/g, "''");
-  }
-
-  /**
    * FTS 검색어 하이라이팅
    *
    * @example
@@ -171,14 +181,26 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
   ): SqlExpression<"string"> {
     const { parser = "websearch_to_tsquery", config = "simple", ...options } = _options ?? {};
 
+    // SQL 인젝션 방지를 위한 검증
+    // column은 to_tsvector('config', col) 같은 SQL 표현식일 수 있으므로 validateSqlExpression 사용
+    validateSqlExpression(column);
+    validateTsParser(parser);
+    validateTsConfig(config);
+
     const hlOptionParts = Object.entries(options).map(([key, value]) => {
-      return `${inflection.camelize(key)}=${value}`;
+      // key는 TypeScript에서 정해진 옵션명만 허용되므로 안전
+      // value는 숫자 또는 문자열이므로 이스케이프 처리
+      if (typeof value === "number") {
+        validateNumber(value);
+        return `${inflection.camelize(key)}=${value}`;
+      }
+      return `${inflection.camelize(key)}=${escapeSqlLiteral(String(value))}`;
     });
 
     const hlOptions = hlOptionParts.length > 0 ? `, '${hlOptionParts.join(", ")}'` : "";
 
     // SQL 인젝션 방지를 위해 query 이스케이프 처리
-    const escapedQuery = Puri.escapeSqlLiteral(query);
+    const escapedQuery = escapeSqlLiteral(query);
     return Puri.rawString(
       `ts_headline('${config}', ${column}, ${parser}('${config}', '${escapedQuery}')${hlOptions})`,
     );
@@ -207,11 +229,30 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
       weights,
     } = options ?? {};
 
-    const weightClause = weights ? `ARRAY[${weights.join(", ")}], ` : "";
-    const normalizationClause = normalization ? `, ${normalization}` : "";
+    // SQL 인젝션 방지를 위한 검증
+    // column은 to_tsvector('config', col) 같은 SQL 표현식일 수 있으므로 validateSqlExpression 사용
+    validateSqlExpression(column);
+    validateTsParser(parser);
+    validateTsConfig(config);
+
+    // weights 배열의 각 요소가 유효한 숫자인지 검증
+    let weightClause = "";
+    if (weights) {
+      for (const w of weights) {
+        validateNumber(w);
+      }
+      weightClause = `ARRAY[${weights.join(", ")}], `;
+    }
+
+    // normalization이 유효한 숫자인지 검증
+    let normalizationClause = "";
+    if (normalization !== undefined) {
+      validateNumber(normalization);
+      normalizationClause = `, ${normalization}`;
+    }
 
     // SQL 인젝션 방지를 위해 query 이스케이프 처리
-    const escapedQuery = Puri.escapeSqlLiteral(query);
+    const escapedQuery = escapeSqlLiteral(query);
     return Puri.rawNumber(
       `${type}(${weightClause}${column}, ${parser}('${config}', '${escapedQuery}')${normalizationClause})`,
     );
@@ -244,10 +285,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     columnOrColumns: string | string[],
     query: string | string[],
   ): SqlExpression<"string"> | SqlExpression<"string[]"> {
+    // SQL 인젝션 방지를 위해 컬럼명 검증
+    if (typeof columnOrColumns === "string") {
+      validateIdentifier(columnOrColumns);
+    } else {
+      for (const col of columnOrColumns) {
+        validateIdentifier(col);
+      }
+    }
+
     // SQL 인젝션 방지를 위해 query 이스케이프 처리
-    const escapedQueries = (Array.isArray(query) ? query : [query]).map((q) =>
-      Puri.escapeSqlLiteral(q),
-    );
+    const escapedQueries = (Array.isArray(query) ? query : [query]).map((q) => escapeSqlLiteral(q));
     const queryClause = `ARRAY[${escapedQueries.map((q) => `'${q}'`).join(",")}]`;
 
     // 단일 컬럼인 경우
