@@ -65,7 +65,12 @@ export function caster(zodType: $ZodType, raw: any): any {
   } else if (zodType instanceof z.ZodNullable) {
     // nullable
     return caster(zodType.def.innerType, raw);
-  } else if (zodType instanceof z.ZodDate && new Date(raw).toString() !== "Invalid Date") {
+  } else if (
+    zodType instanceof z.ZodDate &&
+    raw !== null &&
+    raw !== undefined &&
+    new Date(raw).toString() !== "Invalid Date"
+  ) {
     // date
     return new Date(raw);
   } else {
