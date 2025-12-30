@@ -194,33 +194,24 @@ export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infe
     });
   };
 
-  // 함수 오버로드
-  function register(name: "page"): { value: number; onValueChange: (page: number) => void };
-  function register(name: Exclude<ZodKeys<U>, "page">): {
-    value: string;
-    onValueChange: (value: any) => void;
-  };
-  function register(name: ZodKeys<U>) {
-    if (name === "page") {
-      return {
-        value: (listParams as any).page ?? 1,
-        onValueChange: (page: number) => {
-          setListParams({ ...listParams, page } as T);
-        },
-      };
-    } else {
-      const currentValue = (listParams as any)[name];
-      return {
-        value: currentValue ?? "",
-        onValueChange: (value: any) => {
+  function register(name: ZodKeys<U>): any {
+    const currentValue = (listParams as any)[name];
+    const defaultVal = (defaultValue as any)[name];
+
+    return {
+      value: currentValue ?? defaultVal ?? (name === "page" ? 1 : ""),
+      onValueChange: (value: any) => {
+        if (name === "page") {
+          setListParams({ ...listParams, page: value } as T);
+        } else {
           setListParams({
             ...listParams,
             page: 1,
             [name]: value === "" ? undefined : value,
           } as T);
-        },
-      };
-    }
+        }
+      },
+    };
   }
 
   return {
