@@ -10,18 +10,20 @@ import path from "path";
 import type { ZodObject } from "zod";
 import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
+import { buildCacheControl, CachePresets } from "../cache-control/cache-control";
+import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
 import type { SonamuDBConfig } from "../database/db";
 import { Naite } from "../naite/naite";
 import type { StorageManager } from "../storage/storage-manager";
 import type { Syncer } from "../syncer/syncer";
 import type { WorkflowManager } from "../tasks/workflow-manager";
 import type { SonamuFastifyConfig } from "../types/types";
+import { exists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import { getSecrets, type SonamuSecrets } from "./secret";
-import { exists } from "../utils/fs-utils";
 
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -539,6 +541,26 @@ class SonamuClass {
     server.get("/assets/:filename", async (request, reply) => {
       const requestedFile = (request.params as { filename: string }).filename;
       const assetsDir = path.join(webDistPath, "assets");
+      const assetPath = `/assets/${requestedFile}`;
+
+      // Cache-Control 헤더 결정
+      const getCacheControlForAsset = (): CacheControlConfig => {
+        const cacheReq: CacheControlRequest = {
+          type: "assets",
+          url: request.url,
+          path: assetPath,
+          method: request.method,
+        };
+
+        // 사용자 정의 핸들러 우선
+        if (config.cacheControlHandler) {
+          const result = config.cacheControlHandler(cacheReq);
+          if (result) return result;
+        }
+
+        // 기본값: immutable
+        return CachePresets.immutable;
+      };
 
       // index-*.js 또는 index-*.css 요청인 경우
       if (/^index-[a-f0-9]+\.(js|css)$/.test(requestedFile)) {
@@ -550,7 +572,7 @@ class SonamuClass {
           const filePath = path.join(assetsDir, currentFile);
           const content = await fs.readFile(filePath);
           reply.type(ext === "js" ? "application/javascript" : "text/css");
-          reply.header("Cache-Control", "public, max-age=31536000, immutable");
+          reply.header("Cache-Control", buildCacheControl(getCacheControlForAsset()));
           return reply.send(content);
         }
       }
@@ -562,7 +584,7 @@ class SonamuClass {
         const ext = requestedFile.split(".").pop();
         reply.type(ext === "js" ? "application/javascript" : ext === "css" ? "text/css" : "");
         if (requestedFile.includes("-")) {
-          reply.header("Cache-Control", "public, max-age=31536000, immutable");
+          reply.header("Cache-Control", buildCacheControl(getCacheControlForAsset()));
         }
         return reply.send(content);
       }
@@ -608,6 +630,21 @@ class SonamuClass {
       // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
       const indexPath = path.join(webDistPath, "index.html");
       const html = await fs.readFile(indexPath, "utf-8");
+
+      // CSR용 Cache-Control 헤더 설정
+      if (config.cacheControlHandler) {
+        const csrCacheReq: CacheControlRequest = {
+          type: "csr",
+          url: request.url,
+          path: request.url.split("?")[0],
+          method: request.method,
+        };
+        const csrCacheConfig = config.cacheControlHandler(csrCacheReq);
+
+        if (csrCacheConfig) {
+          reply.header("Cache-Control", buildCacheControl(csrCacheConfig));
+        }
+      }
       reply.type("text/html").send(html);
     });
 
