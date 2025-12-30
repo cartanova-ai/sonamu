@@ -43,8 +43,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   };
 
   const scrollToElement = (id: string) => {
+    // 메모리 누수 방지: 최대 30번(3초) 시도 후 포기
+    const MAX_ATTEMPTS = 30;
+    let attempts = 0;
+
     const interval = setInterval(() => {
+      attempts++;
       const element = document.getElementById(id);
+
       if (element) {
         element.scrollIntoView({ behavior: "instant", block: "center" });
         element.style.backgroundColor = "yellow";
@@ -53,17 +59,34 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           element.style.transition = "background-color 1s";
         }, 1000);
         clearInterval(interval);
+      } else if (attempts >= MAX_ATTEMPTS) {
+        // 최대 시도 횟수 초과시 interval 정리
+        clearInterval(interval);
       }
     }, 100);
   };
 
+  /**
+   * XSS 방지를 위해 HTML 특수 문자를 이스케이프합니다.
+   */
+  const escapeHtml = (text: string): string => {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  };
+
   const highlightText = (target: string, query: string) => {
-    if (!query) return target;
+    // XSS 방지: 먼저 HTML 이스케이프 처리
+    const escapedTarget = escapeHtml(target);
+    if (!query) return escapedTarget;
 
     const escapedQuery = query.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
     const regex = new RegExp(`[${escapedQuery}]`, "gi");
 
-    return target.replace(regex, (match) => `<span style="color: green;">${match}</span>`);
+    return escapedTarget.replace(regex, (match) => `<span style="color: green;">${match}</span>`);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: query 변경시에만
