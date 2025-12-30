@@ -689,6 +689,12 @@ class SonamuClass {
       // Content-Type
       reply.type(api.options.contentType ?? "application/json");
 
+      // Cache-Control 헤더 설정
+      const apiCacheConfig = this.getApiCacheControl(api, request, config);
+      if (apiCacheConfig) {
+        reply.header("Cache-Control", buildCacheControl(apiCacheConfig));
+      }
+
       // Context 생성
       const context: Context = await this.createContext(config, request, reply);
 
@@ -704,6 +710,36 @@ class SonamuClass {
       });
       return this.invokeModelMethod(api, args, context, reply);
     };
+  }
+
+  /**
+   * API 응답에 적용할 Cache-Control 설정을 결정합니다.
+   * 우선순위: 개별 지정 > cacheControlHandler
+   */
+  private getApiCacheControl(
+    api: ExtendedApi,
+    request: FastifyRequest,
+    config: SonamuFastifyConfig,
+  ) {
+    // 데코레이터 설정 우선
+    if (api.options.cacheControl) {
+      return api.options.cacheControl;
+    }
+
+    // 전역 핸들러
+    if (config.cacheControlHandler) {
+      const cacheReq: CacheControlRequest = {
+        type: "api",
+        url: request.url,
+        path: request.routeOptions?.url ?? request.url.split("?")[0],
+        method: request.method,
+        api,
+      };
+      const result = config.cacheControlHandler(cacheReq);
+      if (result) return result;
+    }
+
+    return null;
   }
 
   /**
