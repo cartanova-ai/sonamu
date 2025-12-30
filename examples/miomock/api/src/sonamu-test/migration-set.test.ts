@@ -1,11 +1,15 @@
 import {
+  CodeGenerator,
   EntityManager,
   getMigrationSetFromEntity,
+  type MigrationIndex,
   type PgColumn,
   PostgreSQLSchemaReader,
+  setMigrationIndexDefaults,
 } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
+import { UserModel } from "../application/user/user.model";
 import {
   CompanyMigrationTestEntity,
   MigrationSetTestEntity,
@@ -326,6 +330,269 @@ describe("migration-set.ts", () => {
       const result = () => PostgreSQLSchemaReader.resolveDBColType(col);
 
       expect(result).toThrowError("resolve 불가능한 PostgreSQL 컬럼 타입: sonamu_type");
+    });
+  });
+
+  describe("PostgreSQLSchemaReader - 기존 테이블 검증", () => {
+    test("projects 테이블의 GIN 인덱스는 sortOrder/nullsFirst가 없어야 한다", async () => {
+      const rdb = UserModel.getPuri("r");
+      // when: 이미 존재하는 projects 테이블 읽기
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(rdb.knex, "projects");
+
+      // then: GIN 인덱스 확인
+      const ginIndex = migrationSet?.indexes.find(
+        (idx) => idx.name === "projects_textsearchable_index_col_index",
+      );
+
+      expect(ginIndex?.using).toBe("gin");
+      ginIndex?.columns.forEach((col) => {
+        expect(col).not.toHaveProperty("sortOrder");
+        expect(col).not.toHaveProperty("nullsFirst");
+      });
+    });
+
+    test("users 테이블의 BTREE 인덱스는 sortOrder/nullsFirst가 있어야 한다", async () => {
+      const rdb = UserModel.getPuri("r");
+      // when: users 테이블 읽기
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(rdb.knex, "users");
+
+      // then: BTREE 인덱스 확인 (email 인덱스가 있다면)
+      const btreeIndex = migrationSet?.indexes.find((idx) => idx.using === "btree" || !idx.using);
+
+      if (btreeIndex) {
+        btreeIndex.columns.forEach((col) => {
+          expect(col).toHaveProperty("sortOrder");
+          expect(col).toHaveProperty("nullsFirst");
+        });
+      }
+    });
+
+    test("PGroonga 인덱스는 sortOrder/nullsFirst가 없어야 한다", async () => {
+      const rdb = UserModel.getPuri("r");
+      // when
+      const migrationSet = await PostgreSQLSchemaReader.getMigrationSetFromDB(rdb.knex, "users");
+
+      // then: PGroonga 인덱스 확인
+      const pgroongaIndex = migrationSet?.indexes.find((idx) => idx.using === "pgroonga");
+
+      if (pgroongaIndex) {
+        pgroongaIndex.columns.forEach((col) => {
+          expect(col).not.toHaveProperty("sortOrder");
+          expect(col).not.toHaveProperty("nullsFirst");
+        });
+      }
+    });
+  });
+
+  describe("setMigrationIndexDefaults", () => {
+    test("BTREE 인덱스는 sortOrder/nullsFirst 기본값이 추가되어야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test",
+        columns: [{ name: "test_col" }],
+        using: "btree",
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "test_col", sortOrder: "ASC", nullsFirst: false }]);
+      expect(result.nullsNotDistinct).toBe(false);
+      expect(result.using).toBe("btree");
+    });
+
+    test("using이 없는 인덱스는 btree로 간주하여 기본값이 추가되어야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test",
+        columns: [{ name: "test_col" }],
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.using).toBe("btree");
+      expect(result.columns).toEqual([{ name: "test_col", sortOrder: "ASC", nullsFirst: false }]);
+    });
+
+    test("GIN 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test_gin",
+        columns: [{ name: "test_tsv" }],
+        using: "gin",
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "test_tsv" }]);
+      expect(result.columns[0]).not.toHaveProperty("sortOrder");
+      expect(result.columns[0]).not.toHaveProperty("nullsFirst");
+    });
+
+    test("GIST 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test_gist",
+        columns: [{ name: "test_col" }],
+        using: "gist",
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "test_col" }]);
+    });
+
+    test("HASH 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test_hash",
+        columns: [{ name: "test_col" }],
+        using: "hash",
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "test_col" }]);
+    });
+
+    test("HNSW 벡터 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "hnsw",
+        name: "idx_embedding_hnsw",
+        columns: [{ name: "embedding" }],
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "embedding" }]);
+    });
+
+    test("IVFFlat 벡터 인덱스는 sortOrder/nullsFirst 기본값이 추가되지 않아야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "ivfflat",
+        name: "idx_embedding_ivfflat",
+        columns: [{ name: "embedding" }],
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then
+      expect(result.columns).toEqual([{ name: "embedding" }]);
+    });
+
+    test("이미 sortOrder가 있는 경우 기존 값을 유지해야 한다", () => {
+      // given
+      const index: MigrationIndex = {
+        type: "index",
+        name: "idx_test",
+        columns: [{ name: "test_col", sortOrder: "DESC" }],
+        using: "btree",
+      };
+
+      // when
+      const result = setMigrationIndexDefaults(index);
+
+      // then: DESC는 유지, nullsFirst는 true (PostgreSQL 기본값)
+      expect(result.columns).toEqual([{ name: "test_col", sortOrder: "DESC", nullsFirst: true }]);
+    });
+  });
+
+  describe("getAlterIndexesTo - Multiple GIN Indexes", () => {
+    test("서로 다른 컬럼의 GIN 인덱스 2개를 구별할 수 있어야 한다", () => {
+      // given
+      const entityIndexes: MigrationIndex[] = [
+        {
+          type: "index",
+          name: "idx_question_tsv",
+          columns: [{ name: "question_tsv" }],
+          using: "gin",
+        },
+        {
+          type: "index",
+          name: "idx_answer_tsv",
+          columns: [{ name: "answer_tsv" }],
+          using: "gin",
+        },
+      ];
+
+      const dbIndexes: MigrationIndex[] = [
+        {
+          type: "index",
+          name: "idx_question_tsv",
+          columns: [{ name: "question_tsv" }],
+          using: "gin",
+          nullsNotDistinct: false,
+        },
+        {
+          type: "index",
+          name: "idx_answer_tsv",
+          columns: [{ name: "answer_tsv" }],
+          using: "gin",
+          nullsNotDistinct: false,
+        },
+      ];
+
+      // when
+      const result = CodeGenerator.getAlterIndexesTo(entityIndexes, dbIndexes);
+
+      // then: 정상적으로 매칭되어 add/drop 없음
+      expect(result.add).toEqual([]);
+      expect(result.drop).toEqual([]);
+    });
+
+    test("새로운 GIN 인덱스 추가를 감지할 수 있어야 한다", () => {
+      // given: Entity에 새 인덱스 추가
+      const entityIndexes: MigrationIndex[] = [
+        {
+          type: "index",
+          name: "idx_question_tsv",
+          columns: [{ name: "question_tsv" }],
+          using: "gin",
+        },
+        {
+          type: "index",
+          name: "idx_answer_tsv",
+          columns: [{ name: "answer_tsv" }],
+          using: "gin",
+        },
+      ];
+
+      const dbIndexes: MigrationIndex[] = [
+        {
+          type: "index",
+          name: "idx_question_tsv",
+          columns: [{ name: "question_tsv" }],
+          using: "gin",
+          nullsNotDistinct: false,
+        },
+      ];
+
+      // when
+      const result = CodeGenerator.getAlterIndexesTo(entityIndexes, dbIndexes);
+
+      // then: answer_tsv 인덱스가 추가로 감지됨
+      expect(result.add).toHaveLength(1);
+      expect(result.add?.[0]?.columns[0]?.name).toBe("answer_tsv");
+      expect(result.drop).toEqual([]);
     });
   });
 });
