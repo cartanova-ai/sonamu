@@ -40,6 +40,7 @@ async function deploy() {
     docker buildx build \
       --push \
       --platform linux/amd64,linux/arm64 \
+      --build-arg VERSION=${version} \
       --tag ${AWS_ECR_PUBLIC_REGISTRY_URL}:v${version} \
       --tag ${AWS_ECR_PUBLIC_REGISTRY_URL}:latest \
       --file ${path.join(import.meta.dirname, "..", "images", "postgres", "Dockerfile")} \

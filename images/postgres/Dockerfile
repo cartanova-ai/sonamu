@@ -22,5 +22,7 @@ RUN cd /tmp && \
 # lib 폴더의 실제 아키텍처명은 uname -m을 쓰는게 더 명확할 수도 있음
 RUN echo "dicdir = /usr/lib/$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)/mecab/dic/mecab-ko-dic" > /etc/mecabrc
 
-# 버전 라벨링 (Sonamu 버전과 동일하게 설정)
-LABEL version="0.7.0"
+# 버전 라벨링 (빌드 시 주입, 필수)
+ARG VERSION
+RUN test -n "$VERSION" || (echo "ERROR: VERSION argument is required" && exit 1)
+LABEL version="${VERSION}"
