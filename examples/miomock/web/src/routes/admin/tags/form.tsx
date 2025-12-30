@@ -7,8 +7,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { TagService } from "@/services/services.generated";
 import type { TagSubsetA } from "@/services/sonamu.generated";
@@ -39,6 +40,7 @@ type TagsFormProps = {
 
 export function TagsForm({ id, mode }: TagsFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<TagSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
@@ -59,17 +61,26 @@ export function TagsForm({ id, mode }: TagsFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    TagService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/tags");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = TagService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Tag"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/tags");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `TAG${id ? ` #${id} Edit` : " Create"}`,

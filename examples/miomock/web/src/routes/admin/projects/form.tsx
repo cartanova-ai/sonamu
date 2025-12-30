@@ -8,8 +8,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
@@ -43,6 +44,7 @@ type ProjectsFormProps = {
 
 export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<ProjectSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
@@ -72,17 +74,26 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    ProjectService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/projects");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = ProjectService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Project"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/projects");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `PROJECT${id ? ` #${id} Edit` : " Create"}`,

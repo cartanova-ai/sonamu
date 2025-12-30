@@ -7,8 +7,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { FileSaveParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
@@ -39,6 +40,7 @@ type FilesFormProps = {
 
 export function FilesForm({ id, mode }: FilesFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<FileSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(FileSaveParams, {
@@ -64,17 +66,26 @@ export function FilesForm({ id, mode }: FilesFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    FileService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/files");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = FileService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["File"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/files");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `FILE${id ? ` #${id} Edit` : " Create"}`,

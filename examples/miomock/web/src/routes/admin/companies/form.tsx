@@ -7,8 +7,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { CompanySaveParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
@@ -39,6 +40,8 @@ type CompaniesFormProps = {
 
 export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
   const [_row, setRow] = useState<CompanySubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(CompanySaveParams, { name: "" });
@@ -60,17 +63,26 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    CompanyService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/companies");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = CompanyService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Company"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/companies");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `COMPANY${id ? ` #${id} Edit` : " Create"}`,

@@ -7,8 +7,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
@@ -41,6 +42,7 @@ type EmployeesFormProps = {
 
 export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<EmployeeSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
@@ -70,17 +72,26 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    EmployeeService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/employees");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = EmployeeService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Employee"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/employees");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `직원${id ? ` #${id} Edit` : " Create"}`,

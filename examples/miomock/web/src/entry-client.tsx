@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5000,
       retry: false,
-      refetchOnMount: false,
+      refetchOnMount: true,
     },
   },
 });

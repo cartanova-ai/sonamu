@@ -7,8 +7,9 @@ import {
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
@@ -41,6 +42,7 @@ type DepartmentsFormProps = {
 
 export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<DepartmentSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(DepartmentSaveParams, {
@@ -67,17 +69,26 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    DepartmentService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/departments");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = DepartmentService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Department"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/departments");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `부서${id ? ` #${id} Edit` : " Create"}`,

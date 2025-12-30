@@ -8,8 +8,9 @@ import {
   Switch,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
 import { UserService } from "@/services/services.generated";
@@ -41,6 +42,7 @@ type UsersFormProps = {
 
 export function UsersForm({ id, mode }: UsersFormProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [_row, setRow] = useState<UserSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(UserSaveParams, {
@@ -66,17 +68,26 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     router.navigate({ to });
   };
 
-  const handleSubmit = useCallback(() => {
-    UserService.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          goBack("/admin/users");
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = UserService.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["User"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            goBack("/admin/users");
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: `USER${id ? ` #${id} Edit` : " Create"}`,
