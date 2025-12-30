@@ -12,8 +12,6 @@ import { getPrettyFormatter } from "@logtape/pretty";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { isSameCategory } from "./category";
 
-let _configured = false;
-
 export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends string> = {
   // fastify 로깅 카테고리 (a.b.c의 형태로 넣으면 [a, b, c]로 들어갑니다.)
   // 기본값은 ["fastify"] 입니다.
@@ -100,10 +98,6 @@ function defaultFastifyFilter(fastifyCategory: readonly string[]): Filter {
 export async function configureLogTape<TSinkId extends string, TFilterId extends string>(
   options: SonamuLoggingOptions<TSinkId, TFilterId>,
 ) {
-  if (_configured) {
-    return;
-  }
-
   const fastifyCategory = options.fastifyCategory ?? ["fastify"];
 
   const sinks = {
@@ -116,17 +110,17 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
     ...(options.filters ?? {}),
   } as Record<TFilterId | "fastify-console", FilterLike>;
 
-  const loggers: LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">[] =
-    options.loggers ?? [];
+  const loggers: Set<LoggerConfig<TSinkId | "fastify-console", TFilterId | "fastify-console">> =
+    new Set(options.loggers ?? []);
 
   // logtape의 meta logger 표시를 비활성화
-  loggers.push({
+  loggers.add({
     category: ["logtape", "meta"],
     lowestLevel: "fatal",
   });
 
-  if (loggers.every((logger) => !isSameCategory([...fastifyCategory], logger.category))) {
-    loggers.push({
+  if ([...loggers].every((logger) => !isSameCategory([...fastifyCategory], logger.category))) {
+    loggers.add({
       category: [...fastifyCategory],
       sinks: ["fastify-console"],
       lowestLevel: "info",
@@ -134,9 +128,5 @@ export async function configureLogTape<TSinkId extends string, TFilterId extends
     });
   }
 
-  try {
-    return configure({ sinks, filters, loggers, reset: true });
-  } finally {
-    _configured = true;
-  }
+  return configure({ sinks, filters, loggers: [...loggers], reset: true });
 }
