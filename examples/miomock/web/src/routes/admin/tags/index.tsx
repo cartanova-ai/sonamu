@@ -14,14 +14,10 @@ import {
   Checkbox,
   Input,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
+  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -29,20 +25,21 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
+import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
 import { TagService } from "@/services/services.generated";
-import {
-  TagOrderBy,
-  TagOrderByLabel,
-  TagSearchField,
-  TagSearchFieldLabel,
-} from "@/services/sonamu.generated";
+import { TagOrderBy, TagSearchField } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
+
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/tags/")({
+  head: () => ({
+    meta: [{ title: "TAG List" }, { name: "description", content: "TAG 목록 관리" }],
+  }),
   component: TagList,
 });
 
@@ -68,6 +65,53 @@ function TagList({}: TagListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = TagService.useTags("A", listParams);
   const { rows, total } = data ?? {};
+
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/tags",
+    title: "TAG",
+  };
+
+  // 컬럼 정의
+  type TagRow = NonNullable<typeof rows>[number];
+  const columns: TableCol<TagRow>[] = [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: "등록일시",
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: "태그명",
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          />
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -108,12 +152,6 @@ function TagList({}: TagListProps) {
     setItemToDelete(null);
   };
 
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/tags",
-    title: "TAG",
-  };
-
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
@@ -129,18 +167,11 @@ function TagList({}: TagListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`search-${listParams.search}`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TagSearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {TagSearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <TagSearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
@@ -150,10 +181,10 @@ function TagList({}: TagListProps) {
                     />
                     <Button
                       variant="ghost"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
@@ -167,18 +198,12 @@ function TagList({}: TagListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`orderBy-${listParams.orderBy}`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TagOrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {TagOrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <TagOrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>
@@ -192,10 +217,11 @@ function TagList({}: TagListProps) {
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-                    <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">태그명</TableHead>
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -210,31 +236,11 @@ function TagList({}: TagListProps) {
                               onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.id}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {datetimeF(row.created_at)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="yellow"
-                                size="xs"
-                                icon={<EditIcon />}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              />
-                              <Button
-                                variant="red"
-                                size="xs"
-                                icon={<TrashIcon />}
-                                onClick={() => handleDeleteClick(row.id)}
-                              />
-                            </div>
-                          </TableCell>
+                          {columns.map((col, idx) => (
+                            <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                              {col.tc(row)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       </Fragment>
                     ))}

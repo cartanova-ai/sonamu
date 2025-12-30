@@ -4,21 +4,20 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  ImageUploader,
+  DateInput,
   Input,
+  MultiImageUploader,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
-import { EmployeeIdAsyncSelect } from "@/components/employee/EmployeeIdAsyncSelect";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
-import { TagIdAsyncSelect } from "@/components/tag/TagIdAsyncSelect";
 import { ProjectSaveParams } from "@/services/project/project.types";
-import { ProjectService } from "@/services/services.generated";
-import type { ProjectSubsetA } from "@/services/sonamu.generated";
+import { FileService, ProjectService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -45,7 +44,6 @@ type ProjectsFormProps = {
 export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [_row, setRow] = useState<ProjectSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
     name: "",
@@ -61,7 +59,6 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   useEffect(() => {
     if (id) {
       ProjectService.getProject("A", id).then((row) => {
-        setRow(row);
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
@@ -162,29 +159,42 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 {/* 마감일시 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">마감일시</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("deadline")}
-                  />
+                  <DateInput className="h-8 text-xs bg-white" {...register("deadline")} />
                 </div>
 
                 {/* 이미지URLS */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
-                  <ImageUploader multiple={false} mode="lazy" {...register("image_urls")} />
+                  <MultiImageUploader
+                    value={Array.isArray(form.image_urls) ? form.image_urls : []}
+                    onValueChange={(urls) => setForm({ ...form, image_urls: urls })}
+                    uploader={async (file: File) => {
+                      const { file: uploadedFile } = await FileService.upload(file);
+                      return uploadedFile.url;
+                    }}
+                    previewSize="md"
+                    placeholder="이미지URLS"
+                  />
                 </div>
 
                 {/* EmployeeIds */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">EmployeeIds</label>
-                  <EmployeeIdAsyncSelect {...register("employee_ids")} multiple subset="A" />
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="employee_ids"
+                    {...register("employee_ids")}
+                  />
                 </div>
 
                 {/* TagIds */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">TagIds</label>
-                  <TagIdAsyncSelect {...register("tag_ids")} multiple subset="A" />
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder="tag_ids"
+                    {...register("tag_ids")}
+                  />
                 </div>
 
                 {/* Save Button */}

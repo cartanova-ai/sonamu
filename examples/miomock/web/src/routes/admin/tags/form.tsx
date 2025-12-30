@@ -9,12 +9,12 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { TagService } from "@/services/services.generated";
-import type { TagSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { TagSaveParams } from "@/services/tag/tag.types";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -41,14 +41,12 @@ type TagsFormProps = {
 export function TagsForm({ id, mode }: TagsFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [_row, setRow] = useState<TagSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(TagSaveParams, { name: "" });
 
   useEffect(() => {
     if (id) {
       TagService.getTag("A", id).then((row) => {
-        setRow(row);
         setForm((prevForm) => ({
           ...prevForm,
           ...row,

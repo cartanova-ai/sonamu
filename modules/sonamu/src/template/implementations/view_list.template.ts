@@ -63,18 +63,18 @@ export class Template__view_list extends Template {
       case "string-image":
         return `<>{${
           col.nullable ? `${colName} && ` : ""
-        }<img src={${colName}} className="h-8 w-8 object-cover rounded" />}</>`;
+        }<img src={${colName}} alt="${col.label ?? col.name}" className="h-8 w-8 object-cover rounded" />}</>`;
       case "datetime":
         if (col.nullable || col.name.includes(".")) {
-          return `<span className="text-xs text-muted-foreground">{${colName} ? datetimeF(${colName}) : '-'}</span>`;
+          return `<span>{${colName} ? datetimeF(${colName}) : '-'}</span>`;
         } else {
-          return `<span className="text-xs text-muted-foreground">{datetimeF(${colName})}</span>`;
+          return `<span>{datetimeF(${colName})}</span>`;
         }
       case "string-datetime":
         if (col.nullable || col.name.includes(".")) {
-          return `<span className="text-xs text-muted-foreground">{${colName} ? dateF(${colName}) : '-'}</span>`;
+          return `<span>{${colName} ? dateF(${colName}) : '-'}</span>`;
         } else {
-          return `<span className="text-xs text-muted-foreground">{dateF(${colName})}</span>`;
+          return `<span>{dateF(${colName})}</span>`;
         }
       case "boolean":
         return `<>{${colName} ? <Badge variant="default">O</Badge> : <Badge variant="secondary">X</Badge>}</>`;
@@ -87,9 +87,9 @@ export class Template__view_list extends Template {
         }
       }
       case "array-images":
-        return `<div className="flex gap-1">{ ${colName}.map((r, i) => ${
+        return `<div className="flex gap-1">{ ${colName}?.map((r, i) => ${
           col.nullable ? `r && ` : ""
-        }<img key={i} src={r} className="h-8 w-8 object-cover rounded" />) }</div>`;
+        }<img key={i} src={r} alt={\`${col.label ?? col.name} \${i + 1}\`} className="h-8 w-8 object-cover rounded" />) }</div>`;
       case "number-plain":
         return `<>{${col.nullable || col.name.includes(".") ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
@@ -249,13 +249,14 @@ export class Template__view_list extends Template {
 
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
-      .filter((col) => col.name !== "id")
+
+      .sort((a, b) => (a.name === "id" ? -1 : b.name === "id" ? 1 : 0))
       .map((col) => {
         const propCandidate = entity.props.find((p) => p.name === col.name);
         const rendered = this.renderColumn(entityId, col, names);
         return {
           name: col.name,
-          label: propCandidate?.desc ?? col.label,
+          label: col.name === "id" ? "ID" : (propCandidate?.desc ?? col.label),
           tc: `(row) => ${rendered}`,
           fit:
             col.renderType === "number-id" ||

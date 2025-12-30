@@ -4,19 +4,20 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DateInput,
   Input,
   Switch,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
 import { UserService } from "@/services/services.generated";
-import type { UserSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -43,7 +44,6 @@ type UsersFormProps = {
 export function UsersForm({ id, mode }: UsersFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [_row, setRow] = useState<UserSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(UserSaveParams, {
     email: "",
@@ -54,11 +54,9 @@ export function UsersForm({ id, mode }: UsersFormProps) {
   useEffect(() => {
     if (id) {
       UserService.getUser("A", id).then((row) => {
-        setRow(row);
-        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...rowData,
+          ...row,
         }));
       });
     }
@@ -150,11 +148,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                 {/* 생일 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">생일</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("birth_date")}
-                  />
+                  <DateInput className="h-8 text-xs bg-white" {...register("birth_date")} />
                 </div>
 
                 {/* ROLE */}
@@ -166,11 +160,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                 {/* LASTLOGIN일시 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">LASTLOGIN일시</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("last_login_at")}
-                  />
+                  <DateInput className="h-8 text-xs bg-white" {...register("last_login_at")} />
                 </div>
 
                 {/* BIO */}
@@ -188,11 +178,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                 {/* 삭제일시 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">삭제일시</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("deleted_at")}
-                  />
+                  <DateInput className="h-8 text-xs bg-white" {...register("deleted_at")} />
                 </div>
 
                 {/* Save Button */}

@@ -14,14 +14,10 @@ import {
   Checkbox,
   Input,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
+  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -29,20 +25,21 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import { EmployeeOrderBySelect } from "@/components/employee/EmployeeOrderBySelect";
+import { EmployeeSearchFieldSelect } from "@/components/employee/EmployeeSearchFieldSelect";
 import { EmployeeListParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
-import {
-  EmployeeOrderBy,
-  EmployeeOrderByLabel,
-  EmployeeSearchField,
-  EmployeeSearchFieldLabel,
-} from "@/services/sonamu.generated";
+import { EmployeeOrderBy, EmployeeSearchField } from "@/services/sonamu.generated";
+
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/employees/")({
+  head: () => ({
+    meta: [{ title: "직원 List" }, { name: "description", content: "직원 목록 관리" }],
+  }),
   component: EmployeeList,
 });
 
@@ -68,6 +65,74 @@ function EmployeeList({}: EmployeeListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = EmployeeService.useEmployees("A", listParams);
   const { rows, total } = data ?? {};
+
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/employees",
+    title: "직원",
+  };
+
+  // 컬럼 정의
+  type EmployeeRow = NonNullable<typeof rows>[number];
+  const columns: TableCol<EmployeeRow>[] = [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: "등록일시",
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: "사번",
+      tc: (row) => <>{row.employee_number}</>,
+    },
+    {
+      label: "SALARY",
+      tc: (row) => <>{row.salary}</>,
+    },
+    {
+      label: "입사일",
+      tc: (row) => <span>{row.hire_date ? datetimeF(row.hire_date) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: "비고",
+      tc: (row) => <>{row.notes}</>,
+    },
+    {
+      label: "USER",
+      tc: (row) => <span className="text-xs">{JSON.stringify(row.user)}</span>,
+    },
+    {
+      label: "부서",
+      tc: (row) => <>{row.department?.name}</>,
+    },
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          />
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -108,12 +173,6 @@ function EmployeeList({}: EmployeeListProps) {
     setItemToDelete(null);
   };
 
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/employees",
-    title: "직원",
-  };
-
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
@@ -129,18 +188,11 @@ function EmployeeList({}: EmployeeListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`search-${listParams.search}`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EmployeeSearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {EmployeeSearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <EmployeeSearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
@@ -150,10 +202,10 @@ function EmployeeList({}: EmployeeListProps) {
                     />
                     <Button
                       variant="ghost"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
@@ -167,18 +219,12 @@ function EmployeeList({}: EmployeeListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`orderBy-${listParams.orderBy}`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EmployeeOrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {EmployeeOrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <EmployeeOrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>
@@ -190,20 +236,13 @@ function EmployeeList({}: EmployeeListProps) {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent bg-gray-100">
                     <TableHead className="h-9 text-xs w-[40px]">
-                      <Checkbox
-                        checked={isAllSelected()}
-                        onValueChange={(value) => handleSelectAll(value)}
-                      />
+                      <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-                    <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">사번</TableHead>
-                    <TableHead className="h-9 text-xs">SALARY</TableHead>
-                    <TableHead className="h-9 text-xs">입사일</TableHead>
-                    <TableHead className="h-9 text-xs">비고</TableHead>
-                    <TableHead className="h-9 text-xs">USER</TableHead>
-                    <TableHead className="h-9 text-xs">부서</TableHead>
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -218,42 +257,11 @@ function EmployeeList({}: EmployeeListProps) {
                               onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.id}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {datetimeF(row.created_at)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.employee_number}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.salary}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {row.hire_date ? datetimeF(row.hire_date) : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.notes}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs">{JSON.stringify(row.user)}</span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.department?.name}</TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="yellow"
-                                size="xs"
-                                icon={<EditIcon />}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              />
-                              <Button
-                                variant="red"
-                                size="xs"
-                                icon={<TrashIcon />}
-                                onClick={() => handleDeleteClick(row.id)}
-                              />
-                            </div>
-                          </TableCell>
+                          {columns.map((col, idx) => (
+                            <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                              {col.tc(row)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       </Fragment>
                     ))}

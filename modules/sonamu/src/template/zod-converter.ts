@@ -513,7 +513,10 @@ export function zodTypeToRenderingNode(
     };
   } else if (zodType instanceof z.ZodArray) {
     const innerType = (zodType as z.ZodArray<z.ZodTypeAny>).def.element;
-    if (innerType instanceof z.ZodString && baseKey.includes("images")) {
+    if (
+      innerType instanceof z.ZodString &&
+      (baseKey.includes("images") || baseKey.includes("image"))
+    ) {
       return {
         ...def,
         renderType: "array-images",

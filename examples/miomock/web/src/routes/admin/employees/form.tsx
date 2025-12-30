@@ -4,20 +4,19 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  DateInput,
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
 import { EmployeeSaveParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
-import type { EmployeeSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -44,7 +43,6 @@ type EmployeesFormProps = {
 export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [_row, setRow] = useState<EmployeeSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(EmployeeSaveParams, {
     user_id: 0,
@@ -56,18 +54,11 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   });
 
   useEffect(() => {
-    console.log("form.hire_date", form.hire_date);
-  }, [form]);
-
-  useEffect(() => {
     if (id) {
       EmployeeService.getEmployee("A", id).then((row) => {
-        setRow(row);
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
-          user_id: row.user.id,
-          department_id: row.department?.id ?? null,
         }));
       });
     }
@@ -75,7 +66,6 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
 
   const saveMutation = EmployeeService.useSaveMutation();
   const handleSubmit = () => {
-    console.log("handleSubmit", form);
     saveMutation.mutate(
       { spa: [form] },
       {
@@ -167,7 +157,11 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 {/* 입사일 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">입사일</label>
-                  <DateInput className="h-8 text-xs bg-white" {...register("hire_date")} />
+                  <Input
+                    type="datetime-local"
+                    className="h-8 text-xs bg-white"
+                    {...register("hire_date")}
+                  />
                 </div>
 
                 {/* 비고 */}

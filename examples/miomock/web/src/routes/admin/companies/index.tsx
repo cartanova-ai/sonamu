@@ -14,11 +14,6 @@ import {
   Checkbox,
   Input,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
@@ -30,15 +25,12 @@ import {
 import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import { CompanyOrderBySelect } from "@/components/company/CompanyOrderBySelect";
+import { CompanySearchFieldSelect } from "@/components/company/CompanySearchFieldSelect";
 import { CompanyListParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
-import {
-  CompanyOrderBy,
-  CompanyOrderByLabel,
-  CompanySearchField,
-  CompanySearchFieldLabel,
-} from "@/services/sonamu.generated";
-import EyeIcon from "~icons/lucide/eye";
+import { CompanyOrderBy, CompanySearchField } from "@/services/sonamu.generated";
+
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -46,10 +38,7 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/companies/")({
   head: () => ({
-    meta: [
-      { title: "Miomock - Companies List" },
-      { name: "description", content: "회사 목록 관리" },
-    ],
+    meta: [{ title: "COMPANY List" }, { name: "description", content: "COMPANY 목록 관리" }],
   }),
   component: CompanyList,
 });
@@ -64,12 +53,6 @@ function CompanyList({}: CompanyListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number; name?: string } | null>(null);
 
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/companies",
-    title: "COMPANY",
-  };
-
   // 리스트 필터
   const { listParams, register } = useListParams(CompanyListParams, {
     num: 10,
@@ -83,25 +66,29 @@ function CompanyList({}: CompanyListProps) {
   const { data, refetch, isLoading } = CompanyService.useCompanies("A", listParams);
   const { rows, total } = data ?? {};
 
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/companies",
+    title: "COMPANY",
+  };
+
   // 컬럼 정의
   type CompanyRow = NonNullable<typeof rows>[number];
   const columns: TableCol<CompanyRow>[] = [
     {
       label: "ID",
-      tc: (row) => <span className="text-xs">{row.id}</span>,
+      tc: (row) => <>{row.id}</>,
       fit: true,
       align: "center",
     },
     {
       label: "등록일시",
-      tc: (row) => (
-        <span className="text-xs text-muted-foreground">{datetimeF(row.created_at)}</span>
-      ),
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
       label: "회사명",
-      tc: (row) => <span className="text-xs">{row.name}</span>,
+      tc: (row) => <>{row.name}</>,
     },
     {
       label: "Manage",
@@ -110,33 +97,15 @@ function CompanyList({}: CompanyListProps) {
       tc: (row) => (
         <div className="flex items-center justify-center gap-1">
           <Button
-            variant="blue"
-            size="xs"
-            icon={<EyeIcon />}
-            onClick={() => navigate({ to: `${PAGE.route}/${row.id}` })}
-          />
-          <Button
             variant="yellow"
             size="xs"
             icon={<EditIcon />}
             onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          >
-            수정
-          </Button>
-          <Button
-            variant="blue"
-            size="xs"
-            icon={<EditIcon />}
-            loading={true}
-            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
-          >
-            수정2
-          </Button>
+          />
           <Button
             variant="red"
             size="xs"
             icon={<TrashIcon />}
-            loading={true}
             onClick={() => handleDeleteClick(row.id)}
           />
         </div>
@@ -198,18 +167,11 @@ function CompanyList({}: CompanyListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`search-${listParams.search}`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CompanySearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {CompanySearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CompanySearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
@@ -236,18 +198,12 @@ function CompanyList({}: CompanyListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`orderBy-${listParams.orderBy}`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CompanyOrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {CompanyOrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CompanyOrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>

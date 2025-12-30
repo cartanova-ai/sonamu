@@ -9,14 +9,14 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { DepartmentSaveParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
-import type { DepartmentSubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -43,7 +43,6 @@ type DepartmentsFormProps = {
 export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [_row, setRow] = useState<DepartmentSubsetA | undefined>();
 
   const { form, setForm, register } = useTypeForm(DepartmentSaveParams, {
     name: "",
@@ -54,12 +53,9 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   useEffect(() => {
     if (id) {
       DepartmentService.getDepartment("A", id).then((row) => {
-        setRow(row);
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
-          company_id: row.company.id,
-          parent_id: row.parent?.id ?? null,
         }));
       });
     }

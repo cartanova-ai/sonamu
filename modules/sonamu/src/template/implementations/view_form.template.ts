@@ -49,7 +49,7 @@ export class Template__view_form extends Template {
     }
   }
 
-  renderColumn(
+  renderColumnOld(
     entityId: string,
     col: RenderingNode,
     names: EntityNamesRecord,
@@ -120,7 +120,7 @@ export class Template__view_form extends Template {
   }
 
   // New style rendering for feed-sites style form
-  renderColumnNew(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
+  renderColumn(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
     const regExpr = `{...register("${col.name}")}`;
 
     switch (col.renderType) {
@@ -131,22 +131,20 @@ export class Template__view_form extends Template {
           return `<Textarea className="text-xs bg-white" rows={4} placeholder="${col.label}" ${regExpr} />`;
         }
       case "string-datetime":
-        return `<Input
-                    type="datetime-local"
+        return `<DateInput
                     className="h-8 text-xs bg-white"
-                    value={toDatetimeLocalString(form.${col.name})}
-                    onChange={(e) => setForm({ ...form, ${col.name}: fromDatetimeLocalString(e.target.value) })}
+                    value={form.${col.name} ? new Date(form.${col.name}) : null}
+                    onValueChange={(value) => setForm({ ...form, ${col.name}: value })}
                   />`;
       case "string-date":
-        return `<Input
-                    type="date"
+        return `<DateInput
+                    mode="date"
                     className="h-8 text-xs bg-white"
-                    value={toDateString(form.${col.name})}
-                    onChange={(e) => setForm({ ...form, ${col.name}: fromDateString(e.target.value) })}
+                    value={form.${col.name} ? new Date(form.${col.name}) : null}
+                    onValueChange={(value) => setForm({ ...form, ${col.name}: value })}
                   />`;
       case "datetime":
-        return `<Input
-                    type="datetime-local"
+        return `<DateInput
                     className="h-8 text-xs bg-white"
                     ${regExpr}
                   />`;
@@ -157,9 +155,25 @@ export class Template__view_form extends Template {
       case "boolean":
         return `<Switch ${regExpr} />`;
       case "string-image":
-        return `<Input className="h-8 text-xs bg-white" placeholder="Image URL" ${regExpr} />`;
+        return `<ImageUploader
+                      ${regExpr}
+                      uploader={async (file: File) => {
+                        const { file: uploadedFile } = await FileService.upload(file);
+                        return uploadedFile.url;
+                      }}
+                      previewSize="md"
+                    />`;
       case "array-images":
-        return `<Input className="h-8 text-xs bg-white" placeholder="Image URLs" ${regExpr} />`;
+        return `<MultiImageUploader
+                    value={Array.isArray(form.${col.name}) ? form.${col.name} : []}
+                    onValueChange={(urls) => setForm({ ...form, ${col.name}: urls })}
+                    uploader={async (file: File) => {
+                      const { file: uploadedFile } = await FileService.upload(file);
+                      return uploadedFile.url;
+                    }}
+                    previewSize="md"
+                    placeholder="${col.label}"
+                  />`;
       case "enums":
         try {
           let enumId: string;
@@ -323,14 +337,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}${columns.some((col) => col.renderType === "array-images") ? "\n  MultiImageUploader," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { ${names.capital}Service } from "@/services/services.generated";
+import { ${names.capital}Service${
+        columns.some((col) => ["string-image", "array-images"].includes(col.renderType))
+          ? ", FileService"
+          : ""
+      } } from "@/services/services.generated";
 import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
         columns.filter((col) => col.renderType === "enums").length > 0
           ? "\nimport { " +
@@ -351,7 +369,7 @@ import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
             ' } from "@/services/sonamu.generated";'
           : ""
       }
-import { defaultCatch } from "@/services/sonamu.shared";${columns.some((col) => col.renderType === "string-image") ? '\nimport { FileService } from "@/services/file/file.service";' : ""}
+import { defaultCatch } from "@/services/sonamu.shared";
 import { ${names.capital}SaveParams } from "@/services/${names.fs}/${names.fs}.types";
 ${unique(
   columns
@@ -510,7 +528,7 @@ ${columns
     return `                {/* ${label} */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">${label}</label>
-                  ${this.renderColumnNew(entityId, col, names)}
+                  ${this.renderColumn(entityId, col, names)}
                 </div>`;
   })
   .join("\n\n")}

@@ -1,7 +1,7 @@
 import { Button, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
-import { CompanySearchFieldDropdown } from "@/components/company/CompanySearchFieldDropdown";
+import { CompanySearchFieldSelect } from "@/components/company/CompanySearchFieldSelect";
 import SearchIcon from "~icons/lucide/search";
 
 export type CompanySearchInputProps = {
@@ -39,7 +39,7 @@ export function CompanySearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <CompanySearchFieldDropdown {...dropdownProps} />
+      <CompanySearchFieldSelect {...dropdownProps} />
       <div className="relative flex items-center">
         <Input
           type="text"

@@ -14,14 +14,10 @@ import {
   Checkbox,
   Input,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
+  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -29,21 +25,25 @@ import {
 import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
+import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
+import { ProjectSearchFieldSelect } from "@/components/project/ProjectSearchFieldSelect";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
 import {
   ProjectOrderBy,
-  ProjectOrderByLabel,
   ProjectSearchField,
-  ProjectSearchFieldLabel,
   ProjectStatusLabel,
 } from "@/services/sonamu.generated";
+
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/projects/")({
+  head: () => ({
+    meta: [{ title: "PROJECT List" }, { name: "description", content: "PROJECT 목록 관리" }],
+  }),
   component: ProjectList,
 });
 
@@ -69,6 +69,104 @@ function ProjectList({}: ProjectListProps) {
   // 리스트 쿼리
   const { data, refetch, isLoading } = ProjectService.useProjects("A", listParams);
   const { rows, total } = data ?? {};
+
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/projects",
+    title: "PROJECT",
+  };
+
+  // 컬럼 정의
+  type ProjectRow = NonNullable<typeof rows>[number];
+  const columns: TableCol<ProjectRow>[] = [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: "등록일시",
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: "PROJECT명",
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: "상태",
+      tc: (row) => <>{ProjectStatusLabel[row.status]}</>,
+    },
+    {
+      label: "설명",
+      tc: (row) => <>{row.description}</>,
+    },
+    {
+      label: "예산",
+      tc: (row) => <>{row.budget}</>,
+    },
+    {
+      label: "마감일시",
+      tc: (row) => <span>{row.deadline ? datetimeF(row.deadline) : "-"}</span>,
+      fit: true,
+    },
+    {
+      label: "이미지URLS",
+      tc: (row) => (
+        <div className="flex gap-1">
+          {row.image_urls?.map(
+            (r, i) =>
+              r && (
+                <img
+                  key={i}
+                  src={r}
+                  alt={`ImageUrls ${i + 1}`}
+                  className="h-8 w-8 object-cover rounded"
+                />
+              ),
+          )}
+        </div>
+      ),
+    },
+    {
+      label: "virtual prop test",
+      tc: (row) => <>{row.virtual_test && numF(row.virtual_test)}</>,
+    },
+    {
+      label: "virtual query prop test",
+      tc: (row) => <>{row.virtual_query_test}</>,
+    },
+    {
+      label: "직원",
+      tc: (_row) => <>{/* array row.employee */}</>,
+    },
+    {
+      label: "TAG리스트",
+      tc: (_row) => <>{/* array row.tags */}</>,
+    },
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          />
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -109,12 +207,6 @@ function ProjectList({}: ProjectListProps) {
     setItemToDelete(null);
   };
 
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/projects",
-    title: "PROJECT",
-  };
-
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
@@ -130,18 +222,11 @@ function ProjectList({}: ProjectListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`search-${listParams.search}`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ProjectSearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {ProjectSearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProjectSearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
@@ -151,10 +236,10 @@ function ProjectList({}: ProjectListProps) {
                     />
                     <Button
                       variant="ghost"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
@@ -168,18 +253,12 @@ function ProjectList({}: ProjectListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`orderBy-${listParams.orderBy}`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ProjectOrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {ProjectOrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProjectOrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>
@@ -193,19 +272,11 @@ function ProjectList({}: ProjectListProps) {
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-                    <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">PROJECT명</TableHead>
-                    <TableHead className="h-9 text-xs">상태</TableHead>
-                    <TableHead className="h-9 text-xs">설명</TableHead>
-                    <TableHead className="h-9 text-xs">예산</TableHead>
-                    <TableHead className="h-9 text-xs">마감일시</TableHead>
-                    <TableHead className="h-9 text-xs">이미지URLS</TableHead>
-                    <TableHead className="h-9 text-xs">virtual prop test</TableHead>
-                    <TableHead className="h-9 text-xs">virtual query prop test</TableHead>
-                    <TableHead className="h-9 text-xs">직원</TableHead>
-                    <TableHead className="h-9 text-xs">TAG리스트</TableHead>
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -220,50 +291,11 @@ function ProjectList({}: ProjectListProps) {
                               onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.id}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {datetimeF(row.created_at)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            {ProjectStatusLabel[row.status]}
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.description}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.budget}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {row.deadline ? datetimeF(row.deadline) : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">
-                            {/* array row.image_urls */}
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">
-                            {row.virtual_test && numF(row.virtual_test)}
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.virtual_query_test}</TableCell>
-                          <TableCell className="py-3 text-xs">{/* array row.employee */}</TableCell>
-                          <TableCell className="py-3 text-xs">{/* array row.tags */}</TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="yellow"
-                                size="xs"
-                                icon={<EditIcon />}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              />
-                              <Button
-                                variant="red"
-                                size="xs"
-                                icon={<TrashIcon />}
-                                onClick={() => handleDeleteClick(row.id)}
-                              />
-                            </div>
-                          </TableCell>
+                          {columns.map((col, idx) => (
+                            <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                              {col.tc(row)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       </Fragment>
                     ))}

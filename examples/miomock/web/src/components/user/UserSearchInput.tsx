@@ -1,7 +1,7 @@
 import { Button, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
-import { UserSearchFieldDropdown } from "@/components/user/UserSearchFieldDropdown";
+import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
 import SearchIcon from "~icons/lucide/search";
 
 export type UserSearchInputProps = {
@@ -39,7 +39,7 @@ export function UserSearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <UserSearchFieldDropdown {...dropdownProps} />
+      <UserSearchFieldSelect {...dropdownProps} />
       <div className="relative flex items-center">
         <Input
           type="text"
@@ -49,7 +49,7 @@ export function UserSearchInput({
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <Button type="button" variant="ghost" icon={<SearchIcon />} onClick={handleSearch} />
+        <Button type="button" variant="ghost" onClick={handleSearch} icon={<SearchIcon />} />
       </div>
     </div>
   );

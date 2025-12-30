@@ -9,12 +9,12 @@ import {
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { CompanySaveParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
-import type { CompanySubsetA } from "@/services/sonamu.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
+
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
 import FormIcon from "~icons/mdi/form-select";
@@ -42,18 +42,14 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [_row, setRow] = useState<CompanySubsetA | undefined>();
-
   const { form, setForm, register } = useTypeForm(CompanySaveParams, { name: "" });
 
   useEffect(() => {
     if (id) {
       CompanyService.getCompany("A", id).then((row) => {
-        setRow(row);
-        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...rowData,
+          ...row,
         }));
       });
     }
