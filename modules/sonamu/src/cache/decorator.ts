@@ -1,3 +1,5 @@
+import type { BaseFrameClass } from "../api/base-frame";
+import { BaseModelClass } from "../database/base-model";
 import type { CacheDecoratorOptions, CacheManager } from "./types";
 
 type DecoratorTarget = { constructor: { name: string } };
@@ -86,10 +88,8 @@ function serializeArgs(args: unknown[]): string {
 export function cache(options: CacheDecoratorOptions = {}) {
   return (_target: DecoratorTarget, propertyKey: string, descriptor: PropertyDescriptor) => {
     const originalMethod = descriptor.value;
-    const modelName = _target.constructor.name.match(/(.+)Class$/)?.[1] ?? _target.constructor.name;
-    const methodName = propertyKey;
 
-    descriptor.value = async function (...args: unknown[]) {
+    descriptor.value = async function (this: BaseModelClass | BaseFrameClass, ...args: unknown[]) {
       const manager = cacheManagerRef;
 
       if (!manager) {
@@ -97,6 +97,9 @@ export function cache(options: CacheDecoratorOptions = {}) {
           "CacheManager is not initialized. Please configure 'cache' in sonamu.config.ts.",
         );
       }
+
+      const modelName = this instanceof BaseModelClass ? this.modelName : this.frameName;
+      const methodName = propertyKey;
 
       const cacheKey = generateCacheKey(modelName, methodName, args, options.key);
       const store = options.store ? manager.use(options.store) : manager;

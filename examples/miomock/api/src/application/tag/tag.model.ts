@@ -140,7 +140,7 @@ class TagModelClass extends BaseModelClass<
   @cache({ tags: ["tag"] })
   @api({ httpMethod: "GET", clients: ["axios"] })
   async cached(): Promise<TagSubsetMapping["A"]> {
-    console.log(`[TagModel.cached] Cache miss - fetching from DB`);
+    console.log(`[Tag.cached] Cache miss - fetching from DB`);
 
     const { rows } = await this.findMany("A", {
       id: 1,
@@ -154,7 +154,7 @@ class TagModelClass extends BaseModelClass<
 
   @api({ httpMethod: "GET", clients: ["axios"] })
   async deleteCached(): Promise<void> {
-    await Sonamu.cache.expire({ key: "TagModel.cached" });
+    await Sonamu.cache.expire({ key: "Tag.cached" });
   }
 }
 

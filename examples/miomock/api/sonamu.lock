@@ -93,7 +93,7 @@
   },
   {
     "path": "src/application/tag/tag.model.ts",
-    "checksum": "b65fa52d3444c1e8c406ab5792b6aefd8c480cfe"
+    "checksum": "e367e9fa6a66e768b6a9e022dff57dae840f28d0"
   },
   {
     "path": "src/application/tag/tag.types.ts",
