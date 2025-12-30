@@ -256,7 +256,7 @@ export class BaseModelClass<
     const next = obj[first];
 
     if (Array.isArray(next)) {
-      next.map((item) => this.deleteField(item, rest));
+      next.forEach((item) => this.deleteField(item, rest));
     } else if (next && typeof next === "object") {
       this.deleteField(next, rest);
     }
