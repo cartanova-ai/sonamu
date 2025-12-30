@@ -100,6 +100,7 @@ export {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "./ui/context-menu";
+export { DateInput, type DateInputProps } from "./ui/date-input";
 export { DatePicker, DatePickerWithDropdown } from "./ui/date-picker";
 export type { DateSelectorValue } from "./ui/date-selector-multiple";
 export { DateSelectorMultiple } from "./ui/date-selector-multiple";
