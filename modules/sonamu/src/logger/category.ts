@@ -1,4 +1,5 @@
-import { underscore } from "inflection";
+// NOTE: import * as inflection 혹은 import { underscore } 사용 시 오류 발생.
+import inflection from "inflection";
 import { asArray } from "../utils/model";
 
 // 두 카테고리가 동일한지 확인
@@ -27,7 +28,8 @@ export function convertDomainToCategory(
   }
 
   // SomeAgentClass -> some_agent, SomeModelClass -> some_model, SomeFrameClass -> some_frame
-  const convertedName = underscore(name)
+  const convertedName = inflection
+    .underscore(name)
     .split("_")
     .filter((item) => !compareItems.includes(item))
     .join("-");
