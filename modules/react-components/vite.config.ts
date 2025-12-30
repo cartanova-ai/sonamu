@@ -19,6 +19,7 @@ export default defineConfig({
     }),
     tailwindcss(),
   ],
+  dedupe: ["react", "react-dom", "@tanstack/react-router"],
   build: {
     lib: {
       entry: path.resolve(__dirname, "src/index.tsx"),

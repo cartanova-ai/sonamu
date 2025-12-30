@@ -14,11 +14,26 @@
   "main": "./dist/react-components.es.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./components": "./src/components/index.js",
-    "./hooks": "./src/hooks/index.js",
-    "./lib": "./src/lib/index.js",
-    "./router": "./src/router/index.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
+    "./lib": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
+    "./router": {
+      "types": "./dist/router/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
     "./styles": "./src/styles/globals.css"
   },
   "scripts": {
