@@ -144,9 +144,14 @@ class PostgreSQLSchemaReaderClass {
         name: indexName,
         columns: currentIndexes.map((idx) => ({
           name: idx.column_name,
-          nullsFirst: idx.nulls_first,
-          sortOrder: idx.sort_order,
+          ...(firstIndex.index_type === "btree"
+            ? {
+                sortOrder: idx.sort_order,
+                nullsFirst: idx.nulls_first,
+              }
+            : {}),
         })),
+
         nullsNotDistinct: firstIndex.nulls_not_distinct,
         using: firstIndex.index_type as "btree" | "hash" | "gin" | "gist" | "pgroonga" | undefined,
       };
