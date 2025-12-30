@@ -234,23 +234,34 @@ describe("cache", () => {
     // Mock target 생성 헬퍼
     const createMockTarget = (modelName: string) => ({
       constructor: { name: `${modelName}Class` },
+      frameName: modelName,
     });
+
+    // 데코레이터 적용 후 바인딩된 메서드 반환 헬퍼
+    const applyCache = <T extends (...args: unknown[]) => unknown>(
+      target: ReturnType<typeof createMockTarget>,
+      methodName: string,
+      originalFn: T,
+      options: Parameters<typeof cache>[0] = {},
+    ) => {
+      const descriptor = { value: originalFn };
+      cache(options)(target, methodName, descriptor);
+      // this를 target에 바인딩
+      return descriptor.value.bind(target) as T;
+    };
 
     test("기본 동작 - 캐시 미스 후 히트", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockResolvedValue({ id: 1, name: "test" });
-      const descriptor = { value: originalFn };
-
-      // 데코레이터 적용
-      cache({ ttl: "10s" })(target, "findById", descriptor);
+      const cachedFn = applyCache(target, "findById", originalFn, { ttl: "10s" });
 
       // 첫 번째 호출 - 캐시 미스
-      const result1 = await descriptor.value(123);
+      const result1 = await cachedFn(123);
       expect(result1).toEqual({ id: 1, name: "test" });
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 두 번째 호출 - 캐시 히트
-      const result2 = await descriptor.value(123);
+      const result2 = await cachedFn(123);
       expect(result2).toEqual({ id: 1, name: "test" });
       expect(originalFn).toHaveBeenCalledTimes(1); // 여전히 1번
     });
@@ -258,13 +269,11 @@ describe("cache", () => {
     test("다른 인자는 다른 캐시 키", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockImplementation((id) => Promise.resolve({ id }));
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "findById", originalFn, { ttl: "10s" });
 
-      cache({ ttl: "10s" })(target, "findById", descriptor);
-
-      await descriptor.value(1);
-      await descriptor.value(2);
-      await descriptor.value(1); // 캐시 히트
+      await cachedFn(1);
+      await cachedFn(2);
+      await cachedFn(1); // 캐시 히트
 
       expect(originalFn).toHaveBeenCalledTimes(2); // 1, 2 각각 한 번씩
     });
@@ -272,11 +281,9 @@ describe("cache", () => {
     test("key 옵션 - 문자열", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockResolvedValue("result");
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "method", originalFn, { key: "custom-key", ttl: "10s" });
 
-      cache({ key: "custom-key", ttl: "10s" })(target, "method", descriptor);
-
-      await descriptor.value(123);
+      await cachedFn(123);
 
       // custom-key:123 으로 캐시됨
       expect(await Sonamu.cache.has({ key: "custom-key:123" })).toBe(true);
@@ -285,27 +292,23 @@ describe("cache", () => {
     test("key 옵션 - 함수", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockResolvedValue("result");
-      const descriptor = { value: originalFn };
-
-      cache({
+      const cachedFn = applyCache(target, "method", originalFn, {
         key: (...args: unknown[]) => `user:${args[0]}:${args[1]}`,
         ttl: "10s",
-      })(target, "method", descriptor);
+      });
 
-      await descriptor.value(42, "profile");
+      await cachedFn(42, "profile");
 
       expect(await Sonamu.cache.has({ key: "user:42:profile" })).toBe(true);
     });
 
     test("자동 키 생성 - ModelName.methodName:args", async () => {
-      // Class 접미사가 제거되어 User.findById:999 형태로 키 생성
+      // modelName/frameName을 이용하여 User.findById:999 형태로 키 생성
       const target = createMockTarget("User");
       const originalFn = vi.fn().mockResolvedValue("result");
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "findById", originalFn, { ttl: "10s" });
 
-      cache({ ttl: "10s" })(target, "findById", descriptor);
-
-      await descriptor.value(999);
+      await cachedFn(999);
 
       expect(await Sonamu.cache.has({ key: "User.findById:999" })).toBe(true);
     });
@@ -313,11 +316,9 @@ describe("cache", () => {
     test("인자 없는 메서드", async () => {
       const target = createMockTarget("Config");
       const originalFn = vi.fn().mockResolvedValue({ setting: "value" });
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "getAll", originalFn, { ttl: "10s" });
 
-      cache({ ttl: "10s" })(target, "getAll", descriptor);
-
-      await descriptor.value();
+      await cachedFn();
 
       expect(await Sonamu.cache.has({ key: "Config.getAll" })).toBe(true);
     });
@@ -325,11 +326,9 @@ describe("cache", () => {
     test("복잡한 인자 직렬화", async () => {
       const target = createMockTarget("Search");
       const originalFn = vi.fn().mockResolvedValue([]);
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "search", originalFn, { ttl: "10s" });
 
-      cache({ ttl: "10s" })(target, "search", descriptor);
-
-      await descriptor.value({ query: "test", page: 1 });
+      await cachedFn({ query: "test", page: 1 });
 
       // JSON 직렬화된 키
       expect(await Sonamu.cache.has({ key: 'Search.search:[{"query":"test","page":1}]' })).toBe(
@@ -342,11 +341,9 @@ describe("cache", () => {
 
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockResolvedValue("result");
-      const descriptor = { value: originalFn };
+      const cachedFn = applyCache(target, "method", originalFn, { ttl: "10s" });
 
-      cache({ ttl: "10s" })(target, "method", descriptor);
-
-      await expect(descriptor.value()).rejects.toThrow("CacheManager is not initialized");
+      await expect(cachedFn()).rejects.toThrow("CacheManager is not initialized");
 
       // 원래대로 복원
       setCacheManagerRef(Sonamu.cache);
@@ -355,12 +352,10 @@ describe("cache", () => {
     test("factory 에러 전파", async () => {
       const target = createMockTarget("TestModel");
       const originalFn = vi.fn().mockRejectedValue(new Error("DB Error"));
-      const descriptor = { value: originalFn };
-
-      cache({ ttl: "10s" })(target, "method", descriptor);
+      const cachedFn = applyCache(target, "method", originalFn, { ttl: "10s" });
 
       // BentoCache는 factory 에러를 래핑함
-      await expect(descriptor.value()).rejects.toThrow("Factory has thrown an error");
+      await expect(cachedFn()).rejects.toThrow("Factory has thrown an error");
     });
 
     test("내부 메서드 호출 시 캐시 공유 (findById → findMany 패턴)", async () => {
@@ -375,6 +370,7 @@ describe("cache", () => {
       // 모델 객체 생성
       const model = {
         constructor: { name: "ItemModelClass" },
+        frameName: "Item",
         findMany: findManyFn,
         findById: async function (id: number) {
           const { rows } = await this.findMany({ id, num: 1, page: 1 });
@@ -416,25 +412,22 @@ describe("cache", () => {
         callCount++;
         return Promise.resolve({ count: callCount });
       });
-      const descriptor = { value: originalFn };
-
-      // 100ms TTL
-      cache({ ttl: "100ms", grace: false })(target, "getData", descriptor);
+      const cachedFn = applyCache(target, "getData", originalFn, { ttl: "100ms", grace: false });
 
       // 첫 번째 호출 - 캐시 미스
-      const result1 = await descriptor.value();
+      const result1 = await cachedFn();
       expect(result1).toEqual({ count: 1 });
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 50ms 후 - 아직 TTL 내
       vi.advanceTimersByTime(50);
-      const result2 = await descriptor.value();
+      const result2 = await cachedFn();
       expect(result2).toEqual({ count: 1 }); // 캐시된 값
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 100ms 더 경과 (총 150ms) - TTL 만료
       vi.advanceTimersByTime(100);
-      const result3 = await descriptor.value();
+      const result3 = await cachedFn();
       expect(result3).toEqual({ count: 2 }); // 새로운 값
       expect(originalFn).toHaveBeenCalledTimes(2);
 
@@ -450,25 +443,22 @@ describe("cache", () => {
         callCount++;
         return Promise.resolve({ count: callCount });
       });
-      const descriptor = { value: originalFn };
-
-      // 100ms TTL
-      cache({ ttl: "100ms", grace: "1s" })(target, "getData", descriptor);
+      const cachedFn = applyCache(target, "getData", originalFn, { ttl: "100ms", grace: "1s" });
 
       // 첫 번째 호출 - 캐시 미스
-      const result1 = await descriptor.value();
+      const result1 = await cachedFn();
       expect(result1).toEqual({ count: 1 });
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 50ms 후 - 아직 TTL 내
       vi.advanceTimersByTime(50);
-      const result2 = await descriptor.value();
+      const result2 = await cachedFn();
       expect(result2).toEqual({ count: 1 }); // 캐시된 값
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 100ms 더 경과 (총 150ms) - TTL 만료
       vi.advanceTimersByTime(100);
-      const result3 = await descriptor.value();
+      const result3 = await cachedFn();
       expect(result3).toEqual({ count: 1 }); // Stale 값 반환
       expect(originalFn).toHaveBeenCalledTimes(2); // factory는 background 실행
 
@@ -482,17 +472,15 @@ describe("cache", () => {
         callCount++;
         return Promise.resolve({ count: callCount });
       });
-      const descriptor = { value: originalFn };
-
-      cache({ ttl: "10s", forceFresh: true })(target, "getData", descriptor);
+      const cachedFn = applyCache(target, "getData", originalFn, { ttl: "10s", forceFresh: true });
 
       // 첫 번째 호출
-      const result1 = await descriptor.value();
+      const result1 = await cachedFn();
       expect(result1).toEqual({ count: 1 });
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 두 번째 호출 - forceFresh이므로 캐시 무시하고 factory 재실행
-      const result2 = await descriptor.value();
+      const result2 = await cachedFn();
       expect(result2).toEqual({ count: 2 });
       expect(originalFn).toHaveBeenCalledTimes(2);
     });
@@ -500,23 +488,24 @@ describe("cache", () => {
     test("tags - 태그 기반 무효화", async () => {
       const target = createMockTarget("Product");
       const originalFn = vi.fn().mockResolvedValue({ name: "Product A" });
-      const descriptor = { value: originalFn };
-
-      cache({ ttl: "10s", tags: ["product", "category:1"] })(target, "findById", descriptor);
+      const cachedFn = applyCache(target, "findById", originalFn, {
+        ttl: "10s",
+        tags: ["product", "category:1"],
+      });
 
       // 캐시 저장
-      await descriptor.value(1);
+      await cachedFn(1);
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 캐시 히트
-      await descriptor.value(1);
+      await cachedFn(1);
       expect(originalFn).toHaveBeenCalledTimes(1);
 
       // 태그로 무효화
       await Sonamu.cache.deleteByTag({ tags: ["product"] });
 
       // 캐시 미스 (무효화됨)
-      await descriptor.value(1);
+      await cachedFn(1);
       expect(originalFn).toHaveBeenCalledTimes(2);
     });
   });
