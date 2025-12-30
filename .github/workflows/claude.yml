@@ -1,0 +1,75 @@
+name: Claude
+
+# Claude가 올린 PR용 브랜치를 검증하기 위한 워크플로우입니다.
+
+on:
+  push:
+    branches:
+      - claude/**
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      # miomock의 PostgreSQL docker compose와 같음
+      postgres:
+        image: public.ecr.aws/m9z8n2p9/cartanova/sonamu-postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: miomock123
+          POSTGRES_DB: postgres
+          TZ: Asia/Seoul
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "25"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Setup PostgreSQL (Miomock)
+        run: |
+          # PostgreSQL 클라이언트 설치
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo apt-get update && sudo apt-get install -y postgresql-client-18
+          # init.sql 실행
+          PGPASSWORD=miomock123 psql -U postgres -d template1 -h 127.0.0.1 -f examples/miomock/api/database/fixtures/init.sql
+
+      # sonamu.lock 지우고 sync가 잘 되는지 봅니다.
+      - name: Miomock sync test
+        run: scripts/miomock-sync-test.sh
+
+      # miomock-api와 miomock-web이 제대로 실행되는지 봅니다.
+      - name: Miomock smoke test
+        run: scripts/miomock-smoke-test.sh
+
+      # miomock-api의 테스트를 실행합니다.
+      - name: Miomock unit test
+        run: scripts/miomock-unit-test.sh
+
+      # Tasks 관련 통합 테스트를 실행합니다.
+      - name: Task Queue integration test
+        run: scripts/task-queue-integration-test.sh
