@@ -14,7 +14,7 @@ export class Template__view_form extends Template {
 
   getTargetAndPath(names: EntityNamesRecord) {
     return {
-      target: "web/src/pages/admin",
+      target: "web/src/routes/admin",
       path: `${names.fsPlural}/form.tsx`,
     };
   }
@@ -317,7 +317,6 @@ export class Template__view_form extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import { Icon, type IconProps } from "@iconify/react";
 import {
   Button,
   Card,
@@ -327,9 +326,10 @@ import {
   Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
-import { useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { z } from "zod";
 import { ${names.capital}Service } from "@/services/services.generated";
 import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
         columns.filter((col) => col.renderType === "enums").length > 0
@@ -361,18 +361,22 @@ ${unique(
     }),
 ).join("\n")}
 
-// Icons
-const FormIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:form-select" {...props} />;
-const ArrowLeftIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:arrow-left" {...props} />;
-const SaveIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:save" {...props} />;
+import ArrowLeftIcon from "~icons/lucide/arrow-left";
+import SaveIcon from "~icons/lucide/save";
+import FormIcon from "~icons/mdi/form-select";
 
-export default function ${names.capitalPlural}FormPage() {
-  const [searchParams] = useSearchParams();
-  const query = {
-    id: searchParams.get("id") ?? undefined,
-  };
+const formSearchSchema = z.object({
+  id: z.number().optional(),
+});
 
-  return <${names.capitalPlural}Form id={query?.id ? Number(query.id) : undefined} />;
+export const Route = createFileRoute("/admin/${names.fsPlural}/form")({
+  validateSearch: formSearchSchema,
+  component: ${names.capitalPlural}FormPage,
+});
+
+function ${names.capitalPlural}FormPage() {
+  const { id } = Route.useSearch();
+  return <${names.capitalPlural}Form id={id} />;
 }
 
 type ${names.capitalPlural}FormProps = {
@@ -382,11 +386,9 @@ type ${names.capitalPlural}FormProps = {
 
 export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}FormProps) {
   const router = useRouter();
-  const [_row, setRow] = useState<${names.capital}SubsetA | undefined>();
+  const queryClient = useQueryClient();
 
-  const { form, setForm, register } = useTypeForm(${
-    names.capital
-  }SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
+  const { form, setForm, register } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
 ${(() => {
   const hasDatetime = columns.some((col) => col.renderType === "string-datetime");
   const hasDate = columns.some((col) => col.renderType === "string-date");
@@ -428,44 +430,34 @@ ${(() => {
   useEffect(() => {
     if (id) {
       ${names.capital}Service.get${names.capital}("A", id).then((row) => {
-        setRow(row);
-        const { created_at: _created_at, ...rowData } = row;
         setForm((prevForm) => ({
           ...prevForm,
-          ...rowData,${(() => {
-            const fkColumns = columns.filter((col) => col.renderType === "number-fk_id");
-            if (fkColumns.length === 0) return "";
-            return (
-              "\n          " +
-              fkColumns
-                .map((col) => {
-                  const relationName = col.name.replace("_id", "");
-                  if (col.nullable) {
-                    return `${col.name}: row.${relationName}?.id ?? null`;
-                  } else {
-                    return `${col.name}: row.${relationName}.id`;
-                  }
-                })
-                .join(",\n          ") +
-              ","
-            );
-          })()}
+          ...row,
         }));
       });
     }
   }, [id, setForm]);
 
-  const handleSubmit = useCallback(() => {
-    ${names.capital}Service.save([form])
-      .then(() => {
-        if (mode === "modal") {
-          // modal mode
-        } else {
-          router.navigate({ to: "/admin/${names.fsPlural}" });
-        }
-      })
-      .catch(defaultCatch);
-  }, [form, mode]);
+  const saveMutation = ${names.capital}Service.useSaveMutation();
+  const handleSubmit = () => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["${names.capital}"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            router.navigate({ to: "/admin/${names.fsPlural}" });
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  };
 
   const PAGE = {
     title: \`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\`,
@@ -482,8 +474,11 @@ ${(() => {
               <span className="text-lg font-semibold h-5">{PAGE.title}</span>
             </div>
             {mode !== "modal" && (
-              <Button variant="outline" onClick={() => router.navigate({ to: "/admin/${names.fsPlural}" })} className="gap-2">
-                <ArrowLeftIcon className="h-4 w-4" />
+              <Button
+                variant="outline"
+                onClick={() => router.navigate({ to: "/admin/${names.fsPlural}" })}
+                icon={<ArrowLeftIcon />}
+              >
                 Back To List
               </Button>
             )}
@@ -532,9 +527,8 @@ ${columns
                   )}
                   <Button
                     onClick={handleSubmit}
-                    className="gap-2 bg-primary hover:bg-primary/90"
+                    icon={<SaveIcon />}
                   >
-                    <SaveIcon className="h-4 w-4" />
                     Save
                   </Button>
                 </div>

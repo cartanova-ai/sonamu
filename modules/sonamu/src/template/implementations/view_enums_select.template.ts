@@ -22,14 +22,14 @@ export class Template__view_enums_select extends Template {
     return {
       ...this.getTargetAndPath(names, enumId),
       body: `
-import React from 'react';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@sonamu-kit/react-components/components';
 
 import { ${enumId}, ${enumId}Label } from '@/services/sonamu.generated';
 
 export type ${enumId}SelectProps = {
   value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onValueChange?: (value: string | null | undefined) => void;
   placeholder?: string;
   textPrefix?: string;
   clearable?: boolean;
@@ -39,7 +39,7 @@ export type ${enumId}SelectProps = {
 
 export function ${enumId}Select({
   value,
-  onChange,
+  onValueChange,
   placeholder,
   textPrefix,
   clearable,
@@ -50,14 +50,12 @@ export function ${enumId}Select({
   const validOptions = ${enumId}.options.filter((key) => (key as string) !== "");
 
   return (
-    <Select value={value ?? ""} onChange={onChange} disabled={disabled}>
+    <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder ?? "${label}"} />
       </SelectTrigger>
       <SelectContent>
-        {clearable && (
-          <SelectItem value="">전체</SelectItem>
-        )}
+        {clearable && <SelectItem value="">전체</SelectItem>}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
             {(textPrefix ?? "") + ${enumId}Label[key]}

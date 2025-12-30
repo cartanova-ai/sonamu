@@ -486,7 +486,7 @@ describe("Syncer", () => {
       // expectedFiles의 모든 항목이 writeFilesPaths 중 적어도 하나에 포함되어 있는지 체크
       const expectedFiles = [
         "index.tsx",
-        "SyncFixtureSearchFieldDropdown.tsx",
+        "SyncFixtureSearchFieldSelect.tsx",
         "SyncFixtureOrderBySelect.tsx",
         "SyncFixtureSearchInput.tsx",
       ];

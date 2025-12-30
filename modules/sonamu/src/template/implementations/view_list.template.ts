@@ -14,7 +14,7 @@ export class Template__view_list extends Template {
 
   getTargetAndPath(names: EntityNamesRecord) {
     return {
-      target: "web/src/pages/admin",
+      target: "web/src/routes/admin",
       path: `${names.fsPlural}/index.tsx`,
     };
   }
@@ -252,10 +252,16 @@ export class Template__view_list extends Template {
       .filter((col) => col.name !== "id")
       .map((col) => {
         const propCandidate = entity.props.find((p) => p.name === col.name);
+        const rendered = this.renderColumn(entityId, col, names);
         return {
           name: col.name,
           label: propCandidate?.desc ?? col.label,
-          tc: `(row) => ${this.renderColumn(entityId, col, names)}`,
+          tc: `(row) => ${rendered}`,
+          fit:
+            col.renderType === "number-id" ||
+            col.renderType === "datetime" ||
+            col.renderType === "string-datetime",
+          align: col.renderType === "number-id" ? "center" : undefined,
         };
       });
 
@@ -281,7 +287,7 @@ export class Template__view_list extends Template {
 
       if (col.renderType === "enums") {
         if (col.name === "search") {
-          key = "view_enums_dropdown";
+          key = "view_enums_select";
           enumId = `${names.capital}SearchField`;
           targetEntityId = names.capital;
         } else {
@@ -345,13 +351,12 @@ export class Template__view_list extends Template {
       ...this.getTargetAndPath(names),
       body: `
 import { useState, Fragment } from "react";
-import { useNavigate } from "react-router-dom";
-import { Icon, type IconProps } from "@iconify/react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { Card, CardContent, CardHeader } from "@sonamu-kit/react-components/components";
 import { Badge } from "@sonamu-kit/react-components/components";
 import { Button } from "@sonamu-kit/react-components/components";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@sonamu-kit/react-components/components";
+import { Pagination, Table, TableBody, TableCell, type TableCol, TableHead, TableHeader, TableRow } from "@sonamu-kit/react-components/components";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@sonamu-kit/react-components/components";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@sonamu-kit/react-components/components";
 import { Input } from "@sonamu-kit/react-components/components";
@@ -411,16 +416,27 @@ ${(() => {
     .filter(Boolean)
     .join("\n");
 })()}
+${
+  filterColumns.some((col) => col.name === "search")
+    ? `
+import { ${names.capital}SearchFieldSelect } from "@/components/${names.fs}/${names.capital}SearchFieldSelect";`
+    : ""
+}
+${
+  filterColumns.some((col) => col.name === "orderBy")
+    ? `
+import { ${names.capital}OrderBySelect } from "@/components/${names.fs}/${names.capital}OrderBySelect";`
+    : ""
+}
 
-// Icons
-const ListIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:format-list-bulleted" {...props} />;
-const EditIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:square-pen" {...props} />;
-const TrashIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:trash-2" {...props} />;
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="mdi:magnify" {...props} />;
+import EditIcon from "~icons/lucide/square-pen";
+import TrashIcon from "~icons/lucide/trash-2";
+import ListIcon from "~icons/mdi/format-list-bulleted";
+import SearchIcon from "~icons/mdi/magnify";
 
-type ${names.capital}ListProps = {};
+export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: "${entity.title ?? names.capital} List" },\n      { name: "description", content: "${entity.title ?? names.capital} 목록 관리" },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
 
-export default function ${names.capital}List({}: ${names.capital}ListProps) {
+function ${names.capital}List({}: ${names.capital}ListProps) {
   const navigate = useNavigate();
 
   // 상태 관리
@@ -449,10 +465,55 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
   const { data, refetch, isLoading } = ${names.capital}Service.use${names.capitalPlural}("A", listParams);
   const { rows, total } = data ?? {};
 
-  // 페이지네이션
-  const itemsPerPage = listParams.num ?? 10;
-  const currentPage = listParams.page ?? 1;
-  const totalPages = Math.ceil((total ?? 0) / itemsPerPage);
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/${names.fsPlural}",
+    title: "${entity.title ?? names.capital}",
+  };
+
+  // 컬럼 정의
+  type ${names.capital}Row = NonNullable<typeof rows>[number];
+  const columns: TableCol<${names.capital}Row>[] = [
+${columns
+  .map(
+    (col) => `    {
+      label: "${col.label}",
+      tc: ${col.tc},${
+        col.fit
+          ? `
+      fit: true,`
+          : ""
+      }${
+        col.align
+          ? `
+      align: "${col.align}",`
+          : ""
+      }
+    }`,
+  )
+  .join(",\n")},
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: \`\${PAGE.route}/form\`, search: { id: row.id } })}
+          />
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
 
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
@@ -493,12 +554,6 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
     setItemToDelete(null);
   };
 
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/${names.fsPlural}",
-    title: "${entity.title ?? names.capital}",
-  };
-
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
@@ -516,18 +571,11 @@ export default function ${names.capital}List({}: ${names.capital}ListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
 ${
   filterColumns.some((col) => col.name === "search")
-    ? `                  <Select key={\`search-\${listParams.search}\`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {${names.capital}SearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {${names.capital}SearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>`
+    ? `                  <${names.capital}SearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />`
     : ""
 }
 
@@ -539,17 +587,16 @@ ${
                     />
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
                     <Button
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
-                      onClick={() => navigate(\`\${PAGE.route}/form\`)}
+                      onClick={() => navigate({ to: \`\${PAGE.route}/form\` })}
                     >
                       <span className="text-xs">Create</span>
                     </Button>
@@ -604,18 +651,12 @@ ${filterColumns
   .join("\n")}
 ${
   filterColumns.some((col) => col.name === "orderBy")
-    ? `                  <Select key={\`orderBy-\${listParams.orderBy}\`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {${names.capital}OrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {${names.capital}OrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>`
+    ? `                  <${names.capital}OrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />`
     : ""
 }
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
@@ -631,14 +672,14 @@ ${
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox
                         checked={isAllSelected()}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        onValueChange={handleSelectAll}
                       />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-${columns
-  .map((col) => `                    <TableHead className="h-9 text-xs">${col.label}</TableHead>`)
-  .join("\n")}
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -648,36 +689,14 @@ ${columns
                         <TableCell className="py-3">
                           <Checkbox
                             checked={selectedItems.has(row.id)}
-                            onChange={() => handleToggleItem(row.id)}
+                            onValueChange={() => handleToggleItem(row.id)}
                           />
                         </TableCell>
-                        <TableCell className="py-3 text-xs">{row.id}</TableCell>
-${columns
-  .map(
-    (col) =>
-      `                        <TableCell className="py-3 text-xs">${col.tc.replace("(row) => ", "").replace("(row, rowIndex) => ", "")}</TableCell>`,
-  )
-  .join("\n")}
-                        <TableCell className="py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-                              onClick={() => navigate(\`\${PAGE.route}/form?id=\${row.id}\`)}
-                            >
-                              <EditIcon className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 rounded bg-red-500 hover:bg-red-600 text-white"
-                              onClick={() => handleDeleteClick(row.id)}
-                            >
-                              <TrashIcon className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {columns.map((col, idx) => (
+                          <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                            {col.tc(row)}
+                          </TableCell>
+                        ))}
                       </TableRow>
                     </Fragment>
                   ))}
@@ -685,52 +704,11 @@ ${columns
               </Table>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between pt-6">
-                <div className="text-xs text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, total ?? 0)} of {total ?? 0} results
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === 1}
-                    onClick={() => register("page").onChange(null, { value: currentPage - 1 })}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {(() => {
-                      const maxVisible = 6;
-                      let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                      let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                      if (endPage - startPage + 1 < maxVisible) {
-                        startPage = Math.max(1, endPage - maxVisible + 1);
-                      }
-                      return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((page) => (
-                        <Button
-                          key={page}
-                          variant="outline"
-                          size="sm"
-                          className={\`h-8 w-8 text-xs \${page === currentPage ? "bg-primary text-primary-foreground" : ""}\`}
-                          onClick={() => register("page").onChange(null, { value: page })}
-                        >
-                          {page}
-                        </Button>
-                      ));
-                    })()}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    disabled={currentPage === totalPages}
-                    onClick={() => register("page").onChange(null, { value: currentPage + 1 })}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <Pagination
+                {...register("page")}
+                total={total ?? 0}
+                itemsPerPage={listParams.num ?? 10}
+              />
             </CardContent>
           </Card>
         </div>

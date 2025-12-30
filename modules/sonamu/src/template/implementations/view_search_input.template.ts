@@ -20,13 +20,11 @@ export class Template__view_search_input extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React, { useState } from "react";
-import { Icon, type IconProps } from "@iconify/react";
-import { Input, Button } from "@sonamu-kit/react-components/components";
-import { ${names.capital}SearchFieldDropdown } from "@/components/${names.fs}/${names.capital}SearchFieldDropdown";
-
-// Icons
-const SearchIcon = (props: Omit<IconProps, "icon">) => <Icon icon="lucide:search" {...props} />;
+import { Button, Input } from "@sonamu-kit/react-components/components";
+import type React from "react";
+import { useState } from "react";
+import { ${names.capital}SearchFieldSelect } from "@/components/${names.fs}/${names.capital}SearchFieldSelect";
+import SearchIcon from "~icons/lucide/search";
 
 export type ${names.capital}SearchInputProps = {
   input: {
@@ -63,25 +61,17 @@ export function ${names.capital}SearchInput({
 
   return (
     <div className="flex items-center gap-1">
-      <${names.capital}SearchFieldDropdown {...dropdownProps} />
+      <${names.capital}SearchFieldSelect {...dropdownProps} />
       <div className="relative flex items-center">
-    <Input
+        <Input
           type="text"
-      placeholder="검색..."
+          placeholder="검색..."
           className="h-8 w-[200px] pr-8"
-      value={keyword}
+          value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-      onKeyDown={handleKeyDown}
-    />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute right-0 h-8 w-8"
-          onClick={handleSearch}
-        >
-          <SearchIcon className="h-4 w-4" />
-        </Button>
+          onKeyDown={handleKeyDown}
+        />
+        <Button type="button" variant="ghost" onClick={handleSearch} icon={<SearchIcon />} />
       </div>
     </div>
   );
