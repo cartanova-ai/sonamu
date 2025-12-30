@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: 파싱 결과이므로 any 허용 */
 
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import equal from "fast-deep-equal";
 import qs from "qs";
 import { get, isObject, set, unique } from "radashi";
@@ -228,16 +228,6 @@ export function useListParams<U extends z.ZodType<any>, T extends Partial<z.infe
     setListParams,
     register,
   };
-}
-
-export function useGoBack() {
-  const router = useRouter();
-
-  const goBack = () => {
-    router.history.back();
-  };
-
-  return { goBack };
 }
 
 export function useSelection<T>(allKeys: T[], defaultSelectedKeys: T[] = []) {
