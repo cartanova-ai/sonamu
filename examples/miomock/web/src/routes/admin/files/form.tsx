@@ -62,10 +62,6 @@ export function FilesForm({ id, mode }: FilesFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = FileService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -79,7 +75,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/files");
+            router.navigate({ to: "/admin/files" });
           }
         },
         onError: defaultCatch,
@@ -104,7 +100,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/files")}
+                onClick={() => router.navigate({ to: "/admin/files" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List

@@ -64,10 +64,6 @@ export function UsersForm({ id, mode }: UsersFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = UserService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -81,7 +77,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/users");
+            router.navigate({ to: "/admin/users" });
           }
         },
         onError: defaultCatch,
@@ -106,7 +102,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/users")}
+                onClick={() => router.navigate({ to: "/admin/users" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List

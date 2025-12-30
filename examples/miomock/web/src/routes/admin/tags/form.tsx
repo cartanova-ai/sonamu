@@ -57,10 +57,6 @@ export function TagsForm({ id, mode }: TagsFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = TagService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -74,7 +70,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/tags");
+            router.navigate({ to: "/admin/tags" });
           }
         },
         onError: defaultCatch,
@@ -99,7 +95,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/tags")}
+                onClick={() => router.navigate({ to: "/admin/tags" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List

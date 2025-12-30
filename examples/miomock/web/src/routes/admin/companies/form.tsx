@@ -59,10 +59,6 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = CompanyService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -76,7 +72,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/companies");
+            router.navigate({ to: "/admin/companies" });
           }
         },
         onError: defaultCatch,
@@ -101,7 +97,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/companies")}
+                onClick={() => router.navigate({ to: "/admin/companies" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List

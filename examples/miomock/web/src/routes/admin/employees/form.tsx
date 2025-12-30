@@ -6,7 +6,7 @@ import {
   CardTitle,
   Input,
 } from "@sonamu-kit/react-components/components";
-import { useTypeForm } from "@sonamu-kit/react-components/lib";
+import { type Override, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -55,6 +55,10 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   });
 
   useEffect(() => {
+    console.log("form.hire_date", form.hire_date);
+  }, [form]);
+
+  useEffect(() => {
     if (id) {
       EmployeeService.getEmployee("A", id).then((row) => {
         setRow(row);
@@ -68,12 +72,9 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = EmployeeService.useSaveMutation();
   const handleSubmit = () => {
+    console.log("handleSubmit", form);
     saveMutation.mutate(
       { spa: [form] },
       {
@@ -85,7 +86,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/employees");
+            router.navigate({ to: "/admin/employees" });
           }
         },
         onError: defaultCatch,
@@ -110,7 +111,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/employees")}
+                onClick={() => router.navigate({ to: "/admin/employees" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List
@@ -165,11 +166,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 {/* 입사일 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">입사일</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("hire_date")}
-                  />
+                  <DateTimeLocalInput className="h-8 text-xs bg-white" {...register("hire_date")} />
                 </div>
 
                 {/* 비고 */}
@@ -200,5 +197,30 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export type DateTimeLocalInputProps = Override<
+  React.ComponentProps<"input">,
+  {
+    value: Date | null;
+    onValueChange: (value: Date | null) => void;
+  }
+>;
+export function DateTimeLocalInput({ value, onValueChange, ...props }: DateTimeLocalInputProps) {
+  // value가 문자열이거나 빈 문자열인 경우 처리
+  const dateValue = !value
+    ? ""
+    : value instanceof Date
+      ? value.toISOString().slice(0, 16)
+      : new Date(value).toISOString().slice(0, 16);
+
+  return (
+    <Input
+      type="datetime-local"
+      value={dateValue}
+      onChange={(e) => onValueChange(e.target.value ? new Date(e.target.value) : null)}
+      {...props}
+    />
   );
 }

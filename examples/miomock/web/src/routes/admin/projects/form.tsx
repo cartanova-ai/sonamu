@@ -70,10 +70,6 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = ProjectService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -87,7 +83,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/projects");
+            router.navigate({ to: "/admin/projects" });
           }
         },
         onError: defaultCatch,
@@ -112,7 +108,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/projects")}
+                onClick={() => router.navigate({ to: "/admin/projects" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List

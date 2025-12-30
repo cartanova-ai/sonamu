@@ -65,10 +65,6 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
     }
   }, [id, setForm]);
 
-  const goBack = (to: string) => {
-    router.navigate({ to });
-  };
-
   const saveMutation = DepartmentService.useSaveMutation();
   const handleSubmit = () => {
     saveMutation.mutate(
@@ -82,7 +78,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
           if (mode === "modal") {
             // modal mode
           } else {
-            goBack("/admin/departments");
+            router.navigate({ to: "/admin/departments" });
           }
         },
         onError: defaultCatch,
@@ -107,7 +103,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
             {mode !== "modal" && (
               <Button
                 variant="outline"
-                onClick={() => goBack("/admin/departments")}
+                onClick={() => router.navigate({ to: "/admin/departments" })}
                 icon={<ArrowLeftIcon />}
               >
                 Back To List
