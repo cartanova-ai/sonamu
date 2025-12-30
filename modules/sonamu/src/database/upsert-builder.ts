@@ -23,6 +23,7 @@ type TableData = {
   rows: Record<string, unknown>[];
   uniqueIndexes: EntityIndex[];
   uniquesMap: Map<string, string>;
+  jsonColumns: string[];
 };
 
 // 참조 필드 타입
@@ -78,6 +79,7 @@ export class UpsertBuilder {
       rows: [],
       uniqueIndexes: tableSpec?.uniqueIndexes ?? [],
       uniquesMap: new Map<string, string>(),
+      jsonColumns: tableSpec?.jsonColumns ?? [],
     };
     this.tables.set(tableName, tableData);
     return tableData;
@@ -148,12 +150,12 @@ export class UpsertBuilder {
           rowValue.use ??= "id";
           table.references.add(`${rowValue.of}.${rowValue.use}`);
           return [rowKey, rowValue];
+        } else if (table.jsonColumns.includes(rowKey) && rowValue !== null) {
+          // JSON 컬럼인 경우 JSON.stringify 처리 (Knex는 JSON 타입을 지원하지 않음)
+          return [rowKey, JSON.stringify(rowValue)];
         } else if (isArray(rowValue)) {
           // 배열은 그대로 저장
           return [rowKey, rowValue];
-        } else if (typeof rowValue === "object" && !(rowValue instanceof Date)) {
-          // 일반 object인 경우 JSON으로 변환
-          return [rowKey, rowValue === null ? null : JSON.stringify(rowValue)];
         } else {
           return [rowKey, rowValue];
         }

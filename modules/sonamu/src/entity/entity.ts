@@ -795,6 +795,7 @@ export class Entity {
     EntityManager.setTableSpec({
       name: this.table,
       uniqueIndexes,
+      jsonColumns: this.props.filter((p) => p.type === "json").map((p) => p.name),
     });
   }
 

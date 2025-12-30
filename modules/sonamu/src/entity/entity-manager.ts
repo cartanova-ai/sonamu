@@ -16,6 +16,7 @@ export type EntityNamesRecord = Record<
 type TableSpec = {
   name: string;
   uniqueIndexes: EntityIndex[];
+  jsonColumns: string[];
 };
 class EntityManagerClass {
   private entities: Map<string, Entity> = new Map();
