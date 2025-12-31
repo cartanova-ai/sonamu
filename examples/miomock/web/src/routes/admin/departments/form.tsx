@@ -56,6 +56,8 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
+          company_id: row.company?.id,
+          parent_id: row.parent?.id ?? null,
         }));
       });
     }

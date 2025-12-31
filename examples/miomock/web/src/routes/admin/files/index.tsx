@@ -16,14 +16,10 @@ import {
   Input,
   MultiImageUploader,
   Pagination,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Table,
   TableBody,
   TableCell,
+  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -38,14 +34,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import z from "zod";
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
+import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
+import { FileSearchFieldSelect } from "@/components/file/FileSearchFieldSelect";
 import { FileListParams, FileSaveParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
-import {
-  FileOrderBy,
-  FileOrderByLabel,
-  FileSearchField,
-  FileSearchFieldLabel,
-} from "@/services/sonamu.generated";
+import { FileOrderBy, FileSearchField } from "@/services/sonamu.generated";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -53,6 +46,9 @@ import SearchIcon from "~icons/mdi/magnify";
 import UploadIcon from "~icons/mdi/upload";
 
 export const Route = createFileRoute("/admin/files/")({
+  head: () => ({
+    meta: [{ title: "FILE List" }, { name: "description", content: "FILE 목록 관리" }],
+  }),
   component: FileList,
 });
 
@@ -113,6 +109,61 @@ function FileList({}: FileListProps) {
   const { data, refetch, isLoading } = FileService.useFiles("A", listParams);
   const { rows, total } = data ?? {};
 
+  // 현재 경로와 타이틀
+  const PAGE = {
+    route: "/admin/files",
+    title: "FILE",
+  };
+
+  // 컬럼 정의
+  type FileRow = NonNullable<typeof rows>[number];
+  const columns: TableCol<FileRow>[] = [
+    {
+      label: "ID",
+      tc: (row) => <>{row.id}</>,
+      fit: true,
+      align: "center",
+    },
+    {
+      label: "등록일시",
+      tc: (row) => <span>{datetimeF(row.created_at)}</span>,
+      fit: true,
+    },
+    {
+      label: "MIME타입",
+      tc: (row) => <>{row.mime_type}</>,
+    },
+    {
+      label: "FILE명",
+      tc: (row) => <>{row.name}</>,
+    },
+    {
+      label: "URL",
+      tc: (row) => <>{row.url}</>,
+    },
+    {
+      label: "Manage",
+      fit: true,
+      align: "center",
+      tc: (row) => (
+        <div className="flex items-center justify-center gap-1">
+          <Button
+            variant="yellow"
+            size="xs"
+            icon={<EditIcon />}
+            onClick={() => navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })}
+          />
+          <Button
+            variant="red"
+            size="xs"
+            icon={<TrashIcon />}
+            onClick={() => handleDeleteClick(row.id)}
+          />
+        </div>
+      ),
+    },
+  ];
+
   // 선택 핸들러
   const handleToggleItem = (id: number) => {
     const newSelection = new Set(selectedItems);
@@ -150,12 +201,6 @@ function FileList({}: FileListProps) {
     }
     setDeleteDialogOpen(false);
     setItemToDelete(null);
-  };
-
-  // 현재 경로와 타이틀
-  const PAGE = {
-    route: "/admin/files",
-    title: "FILE",
   };
 
   return (
@@ -321,18 +366,11 @@ function FileList({}: FileListProps) {
               {/* Filters */}
               <div className="bg-gray-100 px-6 py-4 space-y-3">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`search-${listParams.search}`} {...register("search")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Search Type" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FileSearchField.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {FileSearchFieldLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FileSearchFieldSelect
+                    {...register("search")}
+                    placeholder="Search Type"
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
@@ -342,10 +380,10 @@ function FileList({}: FileListProps) {
                     />
                     <Button
                       variant="ghost"
+                      size="sm"
+                      icon={<SearchIcon />}
                       className="absolute right-0 top-0 h-8 w-8 hover:bg-transparent"
-                    >
-                      <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
+                    />
                   </div>
 
                   <div className="ml-auto">
@@ -359,18 +397,12 @@ function FileList({}: FileListProps) {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Select key={`orderBy-${listParams.orderBy}`} {...register("orderBy")}>
-                    <SelectTrigger className="w-[200px] h-8 bg-white border-gray-300 text-xs">
-                      <SelectValue placeholder="Sort" className="truncate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FileOrderBy.options.map((key) => (
-                        <SelectItem key={key} value={key}>
-                          Sort: {FileOrderByLabel[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FileOrderBySelect
+                    {...register("orderBy")}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
+                    className="w-[200px] h-8 bg-white border-gray-300 text-xs"
+                  />
                   <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>
@@ -384,12 +416,11 @@ function FileList({}: FileListProps) {
                     <TableHead className="h-9 text-xs w-[40px]">
                       <Checkbox checked={isAllSelected()} onValueChange={handleSelectAll} />
                     </TableHead>
-                    <TableHead className="h-9 text-xs w-[55px]">ID</TableHead>
-                    <TableHead className="h-9 text-xs">등록일시</TableHead>
-                    <TableHead className="h-9 text-xs">MIME타입</TableHead>
-                    <TableHead className="h-9 text-xs">FILE명</TableHead>
-                    <TableHead className="h-9 text-xs">URL</TableHead>
-                    <TableHead className="h-9 text-xs text-center w-[100px]">Manage</TableHead>
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit} align={col.align}>
+                        {col.label}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -404,33 +435,11 @@ function FileList({}: FileListProps) {
                               onValueChange={() => handleToggleItem(row.id)}
                             />
                           </TableCell>
-                          <TableCell className="py-3 text-xs">{row.id}</TableCell>
-                          <TableCell className="py-3 text-xs">
-                            <span className="text-xs text-muted-foreground">
-                              {datetimeF(row.created_at)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-xs">{row.mime_type}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.name}</TableCell>
-                          <TableCell className="py-3 text-xs">{row.url}</TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="yellow"
-                                size="xs"
-                                icon={<EditIcon />}
-                                onClick={() =>
-                                  navigate({ to: `${PAGE.route}/form`, search: { id: row.id } })
-                                }
-                              />
-                              <Button
-                                variant="red"
-                                size="xs"
-                                icon={<TrashIcon />}
-                                onClick={() => handleDeleteClick(row.id)}
-                              />
-                            </div>
-                          </TableCell>
+                          {columns.map((col, idx) => (
+                            <TableCell key={idx} fit={col.fit} align={col.align} className="py-3">
+                              {col.tc(row)}
+                            </TableCell>
+                          ))}
                         </TableRow>
                       </Fragment>
                     ))}
@@ -461,7 +470,6 @@ function FileList({}: FileListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      ;
     </div>
   );
 }

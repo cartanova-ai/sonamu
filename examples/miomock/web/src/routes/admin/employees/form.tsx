@@ -4,6 +4,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DateInput,
   Input,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
@@ -59,6 +60,8 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
         setForm((prevForm) => ({
           ...prevForm,
           ...row,
+          user_id: row.user?.id,
+          department_id: row.department?.id ?? null,
         }));
       });
     }
@@ -157,11 +160,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 {/* 입사일 */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">입사일</label>
-                  <Input
-                    type="datetime-local"
-                    className="h-8 text-xs bg-white"
-                    {...register("hire_date")}
-                  />
+                  <DateInput className="h-8 text-xs bg-white" {...register("hire_date")} />
                 </div>
 
                 {/* 비고 */}
