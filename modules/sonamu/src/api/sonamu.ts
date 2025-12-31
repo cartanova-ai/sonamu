@@ -3,7 +3,7 @@ import assert from "assert";
 import { AsyncLocalStorage } from "async_hooks";
 import type { FSWatcher } from "chokidar";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import fs from "fs";
+import fs from "fs/promises";
 import type { IncomingMessage, Server, ServerResponse } from "http";
 import os from "os";
 import path from "path";
@@ -21,6 +21,7 @@ import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./con
 import type { AuthContext, Context, UploadContext } from "./context";
 import type { ExtendedApi } from "./decorators";
 import { getSecrets, type SonamuSecrets } from "./secret";
+import { exists } from "../utils/fs-utils";
 
 class SonamuClass {
   public isInitialized: boolean = false;
@@ -365,7 +366,7 @@ class SonamuClass {
     // 로컬/프로덕션 환경 분기
     const { isLocal } = await import("../utils/controller");
     const webPath = path.join(this.appRootPath, "web");
-    const hasWeb = fs.existsSync(webPath);
+    const hasWeb = await exists(webPath);
 
     if (isLocal()) {
       // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
@@ -505,15 +506,16 @@ class SonamuClass {
     // 경로 명확화: api/public/web, api/dist/ssr
     const webDistPath = path.join(this.apiRootPath, "public", "web");
     const ssrPath = path.join(this.apiRootPath, "dist", "ssr");
+    const ssrEntryPath = path.join(ssrPath, "entry-server.generated.js");
+    const ssrRoutesPath = path.join(ssrPath, "routes.js");
 
-    if (!fs.existsSync(webDistPath)) {
+    if (!(await exists(webDistPath))) {
       console.warn(`⚠ Web dist not found: ${webDistPath}`);
       return;
     }
 
     // SSR entry 존재 여부 확인
-    const ssrEntryPath = path.join(ssrPath, "entry-server.generated.js");
-    const ssrAvailable = fs.existsSync(ssrEntryPath);
+    const ssrAvailable = await exists(ssrEntryPath);
 
     if (!ssrAvailable) {
       console.warn(`⚠ SSR entry not found: ${ssrEntryPath}`);
@@ -522,8 +524,10 @@ class SonamuClass {
 
     // SSR 라우트 로드 (production에서만, 사용자 프로젝트의 ssr/routes.ts)
     if (ssrAvailable) {
-      const ssrRoutesPath = path.join(this.apiRootPath, "dist", "ssr", "routes.js");
-      if (fs.existsSync(ssrRoutesPath)) {
+      if (await exists(ssrRoutesPath)) {
+        // ts-loader라면 "file://"로 시작하는 fully-resolved path만 받기에 이를 처리해주는 importMembers를 사용해야 했겠지만,
+        // 여기는 프로덕션 환경에서 loader 없이 돌아가기 때문에 "진짜 js 파일"의 "그냥" 절대경로를 바로 import해도 됩니다.
+        // 이 내용은 이 함수 내에서 아래에 나올 다른 import 호출에도 동일하게 적용됩니다.
         await import(ssrRoutesPath);
         console.log("✓ SSR routes loaded");
       } else {
@@ -539,12 +543,12 @@ class SonamuClass {
       // index-*.js 또는 index-*.css 요청인 경우
       if (/^index-[a-f0-9]+\.(js|css)$/.test(requestedFile)) {
         const ext = requestedFile.split(".").pop();
-        const files = fs.readdirSync(assetsDir);
+        const files = await fs.readdir(assetsDir);
         const currentFile = files.find((f) => f.startsWith("index-") && f.endsWith(`.${ext}`));
 
         if (currentFile) {
           const filePath = path.join(assetsDir, currentFile);
-          const content = fs.readFileSync(filePath);
+          const content = await fs.readFile(filePath);
           reply.type(ext === "js" ? "application/javascript" : "text/css");
           reply.header("Cache-Control", "public, max-age=31536000, immutable");
           return reply.send(content);
@@ -553,8 +557,8 @@ class SonamuClass {
 
       // 일반 파일 서빙
       const filePath = path.join(assetsDir, requestedFile);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath);
+      if (await exists(filePath)) {
+        const content = await fs.readFile(filePath);
         const ext = requestedFile.split(".").pop();
         reply.type(ext === "js" ? "application/javascript" : ext === "css" ? "text/css" : "");
         if (requestedFile.includes("-")) {
@@ -603,7 +607,7 @@ class SonamuClass {
 
       // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
       const indexPath = path.join(webDistPath, "index.html");
-      const html = fs.readFileSync(indexPath, "utf-8");
+      const html = await fs.readFile(indexPath, "utf-8");
       reply.type("text/html").send(html);
     });
 
