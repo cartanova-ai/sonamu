@@ -184,7 +184,6 @@ export class OpenWorkflow {
  * Declare a workflow without providing its implementation (which is provided
  * separately via `implementWorkflow`). Returns a lightweight WorkflowSpec
  * that can be used to schedule workflow runs.
- * @param config - Workflow config
  * @param spec - Workflow spec
  * @returns Workflow spec
  * @example
