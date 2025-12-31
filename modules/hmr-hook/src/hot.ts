@@ -103,7 +103,8 @@ class Hot {
     });
 
     this.#messageChannel.port1.on("message", this.#onMessage.bind(this));
-    this.#messageChannel.port1.unref();
+    // @types/node@25에서 unref 선언이 빠져서 생기는 타입 이슈를 막기 위해 임시 조치합니다...
+    (this.#messageChannel.port1 as unknown as { unref(): void }).unref();
   }
 
   /**
