@@ -1,7 +1,7 @@
 import { getConsoleSink } from "@logtape/logtape";
 import { getPrettyFormatter } from "@logtape/pretty";
 import path from "path";
-import { defineConfig } from "sonamu";
+import { CachePresets, defineConfig } from "sonamu";
 import { drivers as cacheDrivers, store } from "sonamu/cache";
 import { drivers } from "sonamu/storage";
 
@@ -110,6 +110,13 @@ export default defineConfig({
       },
       guardHandler: (_guard, _request, _api) => {
         console.log("NOTHING YET");
+      },
+      cacheControlHandler: (req) => {
+        if (req.type === "assets") {
+          return CachePresets.immutable;
+        }
+
+        return undefined;
       },
     },
 
