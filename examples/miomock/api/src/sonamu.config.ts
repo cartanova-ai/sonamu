@@ -112,11 +112,36 @@ export default defineConfig({
         console.log("NOTHING YET");
       },
       cacheControlHandler: (req) => {
-        if (req.type === "assets") {
-          return CachePresets.immutable;
-        }
+        switch (req.type) {
+          case "assets":
+            // Hash 포함된 파일: 영구 캐시
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
 
-        return undefined;
+          case "api":
+            // GET 요청만 캐싱 고려
+            if (req.method === "GET") {
+              // 특정 경로는 짧은 캐시
+              if (req.path.startsWith("/api/static-data")) {
+                return CachePresets.shortLived;
+              }
+              if (req.path.startsWith("/api/terms")) {
+                return CachePresets.mediumLived;
+              }
+            }
+            // 기본: 캐시 없음
+            return CachePresets.noCache;
+
+          case "ssr":
+            // SSR 페이지: 10초 캐시
+            return CachePresets.ssr;
+
+          case "csr":
+            // CSR fallback (index.html): 1분 캐시
+            return CachePresets.shortLived;
+        }
       },
     },
 
