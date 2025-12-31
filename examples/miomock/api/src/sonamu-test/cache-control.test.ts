@@ -7,7 +7,8 @@ import {
   Sonamu,
   type SonamuFastifyConfig,
 } from "sonamu";
-import { describe, expect, test } from "vitest";
+
+import { beforeAll, describe, expect, test } from "vitest";
 
 describe("cache-control", () => {
   describe("buildCacheControl", () => {
@@ -201,6 +202,11 @@ describe("cache-control", () => {
 });
 
 describe("API 응답 Cache-Control 헤더", () => {
+  beforeAll(async () => {
+    Sonamu.isInitialized = false;
+    await Sonamu.init(true, false, undefined, false);
+  });
+
   async function createTestServer(cacheControlHandler?: CacheControlHandler) {
     const server = fastify();
 
