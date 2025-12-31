@@ -8,7 +8,10 @@ import {
   type SonamuFastifyConfig,
 } from "sonamu";
 
-import { beforeAll, describe, expect, test } from "vitest";
+import { bootstrap, test } from "sonamu/test";
+import { beforeAll, describe, expect, vi } from "vitest";
+
+bootstrap(vi);
 
 describe("cache-control", () => {
   describe("buildCacheControl", () => {
