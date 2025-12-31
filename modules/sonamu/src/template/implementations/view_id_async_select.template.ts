@@ -60,16 +60,20 @@ export class Template__view_id_async_select extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { AsyncSelect, AsyncSelectOption, MultiSelect, MultiSelectOption } from "@sonamu-kit/react-components/components";
-import { ${names.capital}SubsetKey, ${names.capital}SubsetMapping } from "@/services/sonamu.generated";
+import {
+  AsyncSelect,
+  type AsyncSelectOption,
+  MultiSelect,
+} from "@sonamu-kit/react-components/components";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ${names.capital}Service } from "@/services/services.generated";
-import { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
+import type { ${names.capital}SubsetKey, ${names.capital}SubsetMapping } from "@/services/sonamu.generated";
+import type { ${names.capital}ListParams } from "@/services/${names.fs}/${names.fs}.types";
 
 export type ${names.capital}IdAsyncSelectProps<T extends ${names.capital}SubsetKey> = {
   subset: T;
   baseListParams?: ${names.capital}ListParams;
-  textField${textField ? "?" : ""}: keyof ${names.capital}SubsetMapping[T];
+  textField?: keyof ${names.capital}SubsetMapping[T];
   valueField?: keyof ${names.capital}SubsetMapping[T];
   placeholder?: string;
   clearable?: boolean;
@@ -80,19 +84,19 @@ export type ${names.capital}IdAsyncSelectProps<T extends ${names.capital}SubsetK
   | {
       multiple?: false;
       value?: number | null;
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void;
+      onValueChange?: (value: number | undefined) => void;
     }
   | {
       multiple: true;
       value?: number[];
-      onChange?: (e: React.SyntheticEvent | null, data: { value: number[] }) => void;
+      onValueChange?: (value: number[]) => void;
     }
 );
 
 export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKey>({
   subset,
   value,
-  onChange,
+  onValueChange,
   baseListParams,
   textField,
   valueField,
@@ -102,29 +106,17 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
   className,
   multiple = false,
 }: ${names.capital}IdAsyncSelectProps<T>) {
-  const [listParams, setListParams] = useState<${names.capital}ListParams>(
-    baseListParams ?? {}
-  );
+  const [listParams, setListParams] = useState<${names.capital}ListParams>(baseListParams ?? {});
 
   const { data, isLoading } = ${names.capital}Service.use${names.capitalPlural}(subset, listParams);
   const { rows: ${names.camelPlural} } = data ?? {};
 
   // 옵션 생성
   const options = useMemo(() => {
-    return (${names.camelPlural} ?? []).map((${names.camel}) => {
-      // textField가 지정되지 않은 경우 기본값 사용
-      const label = (() => {
-        if (textField) {
-          return String(${names.camel}[textField]);
-        }
-        return String(${names.camel}.${textField || "id"});
-      })();
-
-      return {
-        value: String(${names.camel}[valueField ?? "id"] as number),
-        label,
-      };
-    });
+    return (${names.camelPlural} ?? []).map((${names.camel}) => ({
+      value: String(${names.camel}[valueField ?? "id"] as number),
+      label: String(${names.camel}[textField ?? "${textField || "id"}"]),
+    }));
   }, [${names.camelPlural}, textField, valueField]);
 
   // baseListParams 변경 시 반영
@@ -148,10 +140,8 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
     const multiValue = Array.isArray(value) ? value.map(String) : [];
 
     const handleMultiChange = (selectedValues: string[]) => {
-      if (onChange) {
-        const numericValues = selectedValues.map(Number);
-        (onChange as (e: React.SyntheticEvent | null, data: { value: number[] }) => void)(null, { value: numericValues });
-      }
+      const numericValues = selectedValues.map(Number);
+      (onValueChange as ((value: number[]) => void) | undefined)?.(numericValues);
     };
 
     return (
@@ -169,18 +159,16 @@ export function ${names.capital}IdAsyncSelect<T extends ${names.capital}SubsetKe
   // Single select
   const singleValue = typeof value === "number" ? value : undefined;
 
-  const handleSingleChange = (e: React.SyntheticEvent | null, data: { value: string | undefined }) => {
-    if (onChange) {
-      const numericValue = data.value ? Number(data.value) : undefined;
-      (onChange as (e: React.SyntheticEvent | null, data: { value: number | undefined }) => void)(e, { value: numericValue });
-    }
+  const handleSingleChange = (value: string | undefined) => {
+    const numericValue = value ? Number(value) : undefined;
+    (onValueChange as ((value: number | undefined) => void) | undefined)?.(numericValue);
   };
 
   return (
     <AsyncSelect
       options={options as AsyncSelectOption<string>[]}
       value={singleValue !== undefined ? String(singleValue) : undefined}
-      onChange={handleSingleChange}
+      onValueChange={handleSingleChange}
       isLoading={isLoading}
       placeholder={placeholder}
       clearable={clearable}

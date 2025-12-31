@@ -49,77 +49,6 @@ export class Template__view_form extends Template {
     }
   }
 
-  renderColumnOld(
-    entityId: string,
-    col: RenderingNode,
-    names: EntityNamesRecord,
-    parent: string = "",
-  ): string {
-    let regExpr: string = "";
-    regExpr = `{...register(\`${parent}${col.name}\`)}`;
-
-    switch (col.renderType) {
-      case "string-plain":
-        if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 512) {
-          return `<Input placeholder="${col.label}" ${regExpr} />`;
-        } else {
-          return `<Textarea rows={8} placeholder="${col.label}" ${regExpr} />`;
-        }
-      case "string-datetime":
-        return `<DatePicker ${regExpr} />`;
-      case "string-date":
-        return `<DatePicker ${regExpr} />`;
-      case "number-id":
-        return `<input type="hidden" ${regExpr} />`;
-      case "number-plain":
-        return `<Input type="number" placeholder="${col.label}" ${regExpr} />`;
-      case "boolean":
-        return `<Switch ${regExpr} />`;
-      case "string-image":
-        return `<ImageUploader
-                    ${regExpr}
-                    uploader={async (file: File) => {
-                      const { file: uploadedFile } = await FileService.upload(file);
-                      return uploadedFile.url;
-                    }}
-                    previewSize="md"
-                  />`;
-      case "array-images":
-        return `{/* TODO: Implement multiple image uploader */}
-                  <Input placeholder="${col.label}" ${regExpr} />`;
-      case "enums":
-        try {
-          let enumId: string;
-          if (col.name === "orderBy") {
-            enumId = `${names.capital}${inflection.camelize(col.name)}Select`;
-          } else {
-            const { id } = getEnumInfoFromColName(entityId, col.name);
-            enumId = `${id}Select`;
-          }
-          return `<${enumId} ${regExpr} ${col.optional || col.nullable ? "clearable" : ""} />`;
-        } catch {
-          return `<span className="text-destructive">찾을 수 없는 Enum ${col.name}</span>`;
-        }
-      case "number-fk_id":
-        try {
-          const relProp = getRelationPropFromColName(entityId, col.name.replace("_id", ""));
-          const fkId = `${relProp.with}IdAsyncSelect`;
-          return `<${fkId} {...register('${col.name}')} ${
-            col.optional || col.nullable ? "clearable" : ""
-          } subset="A" />`;
-        } catch {
-          return `<Input ${regExpr} />`;
-        }
-      case "array":
-        return `<span className="text-muted-foreground">${col.name} array</span>`;
-      case "object":
-        return `<span className="text-muted-foreground">${col.name} object</span>`;
-      default:
-        throw new Error(`대응 불가능한 렌더 타입 ${col.renderType} on ${col.name}`);
-    }
-  }
-
-  // New style rendering for feed-sites style form
   renderColumn(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
     const regExpr = `{...register("${col.name}")}`;
 
@@ -130,19 +59,6 @@ export class Template__view_form extends Template {
         } else {
           return `<Textarea className="text-xs bg-white" rows={4} placeholder="${col.label}" ${regExpr} />`;
         }
-      case "string-datetime":
-        return `<DateInput
-                    className="h-8 text-xs bg-white"
-                    value={form.${col.name} ? new Date(form.${col.name}) : null}
-                    onValueChange={(value) => setForm({ ...form, ${col.name}: value })}
-                  />`;
-      case "string-date":
-        return `<DateInput
-                    mode="date"
-                    className="h-8 text-xs bg-white"
-                    value={form.${col.name} ? new Date(form.${col.name}) : null}
-                    onValueChange={(value) => setForm({ ...form, ${col.name}: value })}
-                  />`;
       case "datetime":
         return `<DateInput
                     className="h-8 text-xs bg-white"
@@ -450,7 +366,21 @@ ${(() => {
       ${names.capital}Service.get${names.capital}("A", id).then((row) => {
         setForm((prevForm) => ({
           ...prevForm,
-          ...row,
+          ...row,${(() => {
+            // relation 필드들을 찾아서 변환 코드 생성
+            const relationFields = columns
+              .filter((col) => col.renderType === "number-fk_id")
+              .map((col) => {
+                const relationName = col.name.replace(/_id$/, "");
+                if (col.nullable) {
+                  return `\n          ${col.name}: row.${relationName}?.id ?? null,`;
+                } else {
+                  return `\n          ${col.name}: row.${relationName}?.id,`;
+                }
+              })
+              .join("");
+            return relationFields;
+          })()}
         }));
       });
     }
