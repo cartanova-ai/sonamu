@@ -66,6 +66,9 @@ export class PostgresPubSub {
   // destroy the listener and close the connection, do not destroy the knex connection
   async destroy() {
     this._destroyed = true;
+    if (this._connection === null) {
+      return;
+    }
     this._connection.off("close", this._onClosed);
     await this.knex.client.destroyRawConnection(this._connection);
   }
