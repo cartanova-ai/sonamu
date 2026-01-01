@@ -116,7 +116,8 @@ export async function validateInput<RunInput, Input>(
 /**
  * Check if a workflow run status represents a terminal state.
  * @param status - The workflow run status
- * @returns True if the status is terminal (completed, failed, or canceled)
+ * @returns True if the status is terminal (succeeded, completed, failed, or canceled).
+ *          Note: 'succeeded' is deprecated in favor of 'completed'.
  */
 export function isTerminalStatus(
   status: string,
