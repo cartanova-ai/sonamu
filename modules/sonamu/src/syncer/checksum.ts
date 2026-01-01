@@ -76,10 +76,8 @@ export async function areFilesSame(...files: FileOrData[]): Promise<boolean> {
     );
   }
 
-  return checksums.every(
-    // 다음 체크섬과 비교, 만약 마지막 체크섬일 때는 첫 번째 체크섬과 비교
-    (checksum, index) => checksum === checksums[index === checksums.length - 1 ? 0 : index + 1],
-  );
+  // 모든 체크섬이 첫 번째 체크섬과 같은지 확인
+  return checksums.every((checksum) => checksum === checksums[0]);
 }
 
 async function getCurrentChecksums(): Promise<PathAndChecksum[]> {
