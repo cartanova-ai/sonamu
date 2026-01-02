@@ -28,7 +28,7 @@ export type SonamuLoggingOptions<TSinkId extends string, TFilterId extends strin
 // fastify에 대한 기본 sink 설정
 function defaultFastifySink(fastifyCategory: readonly string[]): Sink {
   const formatter = ((formatter: TextFormatter, record: LogRecord) => {
-    // Fastify API Logger의 경우, 응답 코드와 요청 URL을 추가
+    // Fastify API Route에 대한 Logger의 경우, 응답 코드와 요청 URL을 추가
     const filterFastify = (request: FastifyRequest, record: LogRecord, responseCode?: number) => {
       if (!request.url.startsWith("/api")) {
         return formatter(record);
@@ -82,12 +82,12 @@ function defaultFastifyFilter(fastifyCategory: readonly string[]): Filter {
 
     if ("req" in record.properties && record.properties.req !== null) {
       const request = record.properties.req as FastifyRequest;
-      return request.url.startsWith("/api");
+      return request.url.startsWith("/api") && request.url !== "/api/healthcheck";
     }
 
     if ("res" in record.properties && record.properties.res !== null) {
       const reply = record.properties.res as FastifyReply;
-      return reply.request.url.startsWith("/api");
+      return reply.request.url.startsWith("/api") && reply.request.url !== "/api/healthcheck";
     }
 
     return true;
