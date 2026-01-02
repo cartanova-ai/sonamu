@@ -369,22 +369,22 @@ describe("Migrator test", () => {
         "import type { Knex } from "knex";
 
         export async function up(knex: Knex): Promise<void> {
+          await knex.raw(\`CREATE INDEX users_bio_index ON users USING gist(bio);\`);
           await knex.raw(
             \`CREATE INDEX users_birth_date_index ON users USING btree(birth_date ASC NULLS LAST);\`,
           );
           await knex.raw(\`CREATE INDEX users_email_index ON users USING btree(email ASC NULLS LAST);\`);
-          await knex.raw(\`CREATE INDEX users_username_index ON users USING hash(username);\`);
           await knex.raw(\`CREATE INDEX users_role_index ON users USING gin(role);\`);
-          await knex.raw(\`CREATE INDEX users_bio_index ON users USING gist(bio);\`);
+          await knex.raw(\`CREATE INDEX users_username_index ON users USING hash(username);\`);
         }
 
         export async function down(knex: Knex): Promise<void> {
           await knex.schema.alterTable("users", (table) => {
+            table.dropIndex(["bio"], "users_bio_index");
             table.dropIndex(["birth_date"], "users_birth_date_index");
             table.dropIndex(["email"], "users_email_index");
-            table.dropIndex(["username"], "users_username_index");
             table.dropIndex(["role"], "users_role_index");
-            table.dropIndex(["bio"], "users_bio_index");
+            table.dropIndex(["username"], "users_username_index");
           });
         }
         "
