@@ -77,7 +77,6 @@ export async function loadModels(): Promise<LoadedModels> {
   const modelPaths = await globAsync(modelPathsPattern);
 
   const models: LoadedModels = {};
-  let _count = 0;
   for (const filePath of modelPaths) {
     const importedMembers = await importMembers<BaseModelClass | BaseFrameClass>(filePath);
 
@@ -86,13 +85,7 @@ export async function loadModels(): Promise<LoadedModels> {
         models[name] = value;
       }
     }
-    _count++;
   }
-  // console.log(
-  //   chalk.gray(
-  //     `[Loading] Loaded model/frame instances from ${runtimePath("*.{model,frame}.ts")} files: ${count} files.`
-  //   )
-  // );
 
   return models;
 }
@@ -108,7 +101,6 @@ export async function loadTypes(): Promise<LoadedTypes> {
   const typePaths = (await Promise.all(typePathsPatterns.map(globAsync))).flat();
 
   const types: LoadedTypes = {};
-  let _count = 0;
   for (const filePath of typePaths) {
     // biome-ignore lint/suspicious/noExplicitAny: zod 스키마를 로드할 때 사용하는 타입
     const importedMembers = await importMembers<z.ZodObject<any>>(filePath);
@@ -117,13 +109,7 @@ export async function loadTypes(): Promise<LoadedTypes> {
         types[name] = value;
       }
     }
-    _count++;
   }
-  // console.log(
-  //   chalk.gray(
-  //     `[Loading] Loaded zod types from ${runtimePath("*.types.ts")} and ${runtimePath("*.generated.ts")} files: ${count} files.`
-  //   )
-  // );
 
   return types;
 }
