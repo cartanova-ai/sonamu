@@ -1,6 +1,6 @@
 import {
-  CodeGenerator,
   EntityManager,
+  getAlterIndexesTo,
   getMigrationSetFromEntity,
   type MigrationIndex,
   type PgColumn,
@@ -552,7 +552,7 @@ describe("migration-set.ts", () => {
       ];
 
       // when
-      const result = CodeGenerator.getAlterIndexesTo(entityIndexes, dbIndexes);
+      const result = getAlterIndexesTo(entityIndexes, dbIndexes);
 
       // then: 정상적으로 매칭되어 add/drop 없음
       expect(result.add).toEqual([]);
@@ -587,7 +587,7 @@ describe("migration-set.ts", () => {
       ];
 
       // when
-      const result = CodeGenerator.getAlterIndexesTo(entityIndexes, dbIndexes);
+      const result = getAlterIndexesTo(entityIndexes, dbIndexes);
 
       // then: answer_tsv 인덱스가 추가로 감지됨
       expect(result.add).toHaveLength(1);

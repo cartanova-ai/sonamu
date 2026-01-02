@@ -11,7 +11,6 @@ export * from "./compress/compress";
 export type * from "./compress/types";
 export * from "./database/base-model";
 export * from "./database/base-model.types";
-export * from "./database/code-generator";
 export * from "./database/db";
 export * from "./database/puri";
 export * from "./database/puri.types";

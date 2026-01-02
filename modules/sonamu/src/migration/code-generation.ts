@@ -719,7 +719,7 @@ function getAlterColumnLinesTo(
 /**
  * 인덱스의 add, drop 여부 확인
  */
-function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
+export function getAlterIndexesTo(entityIndexes: MigrationIndex[], dbIndexes: MigrationIndex[]) {
   // 인덱스 비교
   const indexesTo = {
     add: [] as MigrationIndex[],
