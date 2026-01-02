@@ -61,6 +61,7 @@ class EmployeeModelClass extends BaseModelClass<
     httpMethod: "GET",
     clients: ["axios", "tanstack-query"],
     resourceName: "Employees",
+    compress: true,
   })
   async findMany<T extends EmployeeSubsetKey, LP extends EmployeeListParams>(
     subset: T,

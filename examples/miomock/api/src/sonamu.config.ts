@@ -73,6 +73,7 @@ export default defineConfig({
     listen: { port, host },
     plugins: {
       compress: {
+        global: false,
         threshold: 1024,
         encodings: ["gzip"],
       },
