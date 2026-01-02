@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ViteDevServer } from "vite";
-import { buildCacheControl } from "../cache-control/cache-control";
+import { applyCacheHeaders } from "../cache-control/cache-control";
 import type { CacheControlRequest } from "../cache-control/types";
 import type { SonamuFastifyConfig } from "../types/types";
 import type { PreloadedData, SSRRoute } from "./types";
@@ -97,7 +97,7 @@ export async function renderSSR(
   // 7. Cache-Control 헤더 설정
   const ssrCacheConfig = getSSRCacheControl(url, route, request, config);
   if (ssrCacheConfig) {
-    reply.header("Cache-Control", buildCacheControl(ssrCacheConfig));
+    applyCacheHeaders(reply, ssrCacheConfig);
   }
 
   return finalHtml;

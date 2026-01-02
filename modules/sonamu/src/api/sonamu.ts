@@ -10,7 +10,7 @@ import path from "path";
 import type { ZodObject } from "zod";
 import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
-import { buildCacheControl, CachePresets } from "../cache-control/cache-control";
+import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
 import type { SonamuDBConfig } from "../database/db";
 import { Naite } from "../naite/naite";
@@ -572,7 +572,7 @@ class SonamuClass {
           const filePath = path.join(assetsDir, currentFile);
           const content = await fs.readFile(filePath);
           reply.type(ext === "js" ? "application/javascript" : "text/css");
-          reply.header("Cache-Control", buildCacheControl(getCacheControlForAsset()));
+          applyCacheHeaders(reply, getCacheControlForAsset());
           return reply.send(content);
         }
       }
@@ -584,7 +584,7 @@ class SonamuClass {
         const ext = requestedFile.split(".").pop();
         reply.type(ext === "js" ? "application/javascript" : ext === "css" ? "text/css" : "");
         if (requestedFile.includes("-")) {
-          reply.header("Cache-Control", buildCacheControl(getCacheControlForAsset()));
+          applyCacheHeaders(reply, getCacheControlForAsset());
         }
         return reply.send(content);
       }
@@ -642,7 +642,7 @@ class SonamuClass {
         const csrCacheConfig = config.cacheControlHandler(csrCacheReq);
 
         if (csrCacheConfig) {
-          reply.header("Cache-Control", buildCacheControl(csrCacheConfig));
+          applyCacheHeaders(reply, csrCacheConfig);
         }
       }
       reply.type("text/html").send(html);
@@ -692,7 +692,7 @@ class SonamuClass {
       // Cache-Control 헤더 설정
       const apiCacheConfig = this.getApiCacheControl(api, request, config);
       if (apiCacheConfig) {
-        reply.header("Cache-Control", buildCacheControl(apiCacheConfig));
+        applyCacheHeaders(reply, apiCacheConfig);
       }
 
       // Context 생성
