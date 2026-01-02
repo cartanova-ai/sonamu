@@ -54,6 +54,9 @@ export type CacheControlConfig = {
 
   /** 오류 발생 시 stale 응답 허용 시간 (초). CloudFront 지원. */
   staleIfError?: number;
+
+  /** Vary 헤더에 포함할 요청 헤더 목록. 같은 URL이라도 이 헤더들의 값에 따라 캐시를 분리합니다. */
+  vary?: string[];
 };
 
 /**

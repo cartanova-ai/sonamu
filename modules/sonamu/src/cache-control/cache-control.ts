@@ -1,3 +1,4 @@
+import type { FastifyReply } from "fastify";
 import type { CacheControlConfig } from "./types.js";
 
 /**
@@ -134,4 +135,26 @@ export function buildCacheControl(config: CacheControlConfig): string {
   }
 
   return parts.join(", ");
+}
+
+/**
+ * Cache-Control 헤더와 관련 헤더(Vary)를 FastifyReply에 설정합니다.
+ *
+ * @example
+ * ```typescript
+ * applyCacheHeaders(reply, {
+ *   visibility: "public",
+ *   maxAge: 300,
+ *   vary: ["Accept-Language"],
+ * });
+ * // => Cache-Control: public, max-age=300
+ * // => Vary: Accept-Language
+ * ```
+ */
+export function applyCacheHeaders(reply: FastifyReply, config: CacheControlConfig): void {
+  reply.header("Cache-Control", buildCacheControl(config));
+
+  if (config.vary && config.vary.length > 0) {
+    reply.header("Vary", config.vary.join(", "));
+  }
 }
