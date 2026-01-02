@@ -91,11 +91,6 @@ export class FixtureManagerClass {
     this.fdb = createKnexInstance(Sonamu.dbConfig.fixture);
   }
 
-  async getChecksum(db: Knex, tableName: string) {
-    const [[checksumRow]] = await db.raw(`CHECKSUM TABLE ${tableName}`);
-    return checksumRow.Checksum;
-  }
-
   /**
     원격 fixture DB를 로컬 test DB로 복사합니다.
     pg_dump로 원격 DB를 덤프하고, pg_restore로 로컬에 복원합니다.
