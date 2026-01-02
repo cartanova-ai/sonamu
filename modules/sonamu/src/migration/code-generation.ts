@@ -981,9 +981,12 @@ export async function generateAlterCode(
         console.debug({ entityColumn, dbColumn });
          */
 
-  // ?
-  const entityIndexes = alphabetical(entitySet.indexes, (a) => [a.type, ...a.columns].join("-"));
-  const dbIndexes = alphabetical(dbSet.indexes, (a) => [a.type, ...a.columns].join("-"));
+  const entityIndexes = alphabetical(entitySet.indexes, (a) =>
+    [a.type, ...a.columns.map((c) => c.name)].join("-"),
+  );
+  const dbIndexes = alphabetical(dbSet.indexes, (a) =>
+    [a.type, ...a.columns.map((c) => c.name)].join("-"),
+  );
 
   const replaceNoActionOnMySQL = (f: MigrationForeign) => {
     // MySQL에서 RESTRICT와 NO ACTION은 동일함
