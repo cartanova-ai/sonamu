@@ -81,6 +81,7 @@
     "@aws-sdk/s3-request-presigner": "catalog:",
     "@biomejs/js-api": "catalog:",
     "@biomejs/wasm-nodejs": "catalog:",
+    "@fastify/compress": "catalog:",
     "@fastify/cors": "catalog:",
     "@fastify/formbody": "catalog:",
     "@fastify/middie": "catalog:",

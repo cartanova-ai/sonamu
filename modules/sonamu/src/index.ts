@@ -7,6 +7,8 @@ export { cache } from "./cache/decorator";
 export type { CacheDecoratorOptions } from "./cache/types";
 export * from "./cache-control/cache-control";
 export type * from "./cache-control/types";
+export * from "./compress/compress";
+export type * from "./compress/types";
 export * from "./database/base-model";
 export * from "./database/base-model.types";
 export * from "./database/code-generator";

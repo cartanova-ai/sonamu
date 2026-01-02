@@ -1,3 +1,4 @@
+import type { FastifyCompressOptions } from "@fastify/compress";
 import type { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyFormbodyOptions } from "@fastify/formbody";
 import type { FastifyMultipartOptions } from "@fastify/multipart";
@@ -68,6 +69,8 @@ export type SonamuServerOptions = {
   };
 
   plugins?: {
+    /** 응답 압축 플러그인 (@fastify/compress) */
+    compress?: boolean | FastifyCompressOptions;
     cors?: boolean | FastifyCorsOptions;
     formbody?: boolean | FastifyFormbodyOptions;
     multipart?: boolean | FastifyMultipartOptions;

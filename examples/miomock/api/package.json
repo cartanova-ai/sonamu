@@ -39,6 +39,7 @@
     "@logtape/redaction": "catalog:"
   },
   "devDependencies": {
+    "@fastify/compress": "catalog:",
     "fastify": "catalog:",
     "@biomejs/biome": "catalog:",
     "@iconify-json/lucide": "catalog:",

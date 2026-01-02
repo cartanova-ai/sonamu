@@ -12,6 +12,7 @@ import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
+import { toFastifyCompressOption } from "../compress/compress";
 import type { SonamuDBConfig } from "../database/db";
 import { Naite } from "../naite/naite";
 import type { StorageManager } from "../storage/storage-manager";
@@ -388,6 +389,7 @@ class SonamuClass {
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
           handler: this.createApiHandler(api, config),
+          compress: toFastifyCompressOption(api.options.compress),
         });
       }
 
@@ -441,6 +443,7 @@ class SonamuClass {
         method: api.options.httpMethod ?? "GET",
         url: this.config.api.route.prefix + api.path,
         handler: this.createApiHandler(api, config),
+        compress: toFastifyCompressOption(api.options.compress),
       });
     }
 
@@ -884,6 +887,24 @@ class SonamuClass {
   private async registerPlugins(server: FastifyInstance, plugins: SonamuServerOptions["plugins"]) {
     if (!plugins) {
       return;
+    }
+
+    // compress 플러그인은 다른 플러그인보다 먼저 등록되어야 합니다.
+    if (plugins.compress) {
+      const compressPlugin = (await import("@fastify/compress")).default;
+      const defaultOptions = {
+        threshold: 1024,
+        encodings: ["br", "gzip", "deflate"] as ("br" | "gzip" | "deflate")[],
+      };
+
+      if (plugins.compress === true) {
+        server.register(compressPlugin, defaultOptions);
+      } else {
+        server.register(compressPlugin, {
+          ...defaultOptions,
+          ...plugins.compress,
+        });
+      }
     }
 
     const pluginsModules = {

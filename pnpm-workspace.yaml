@@ -27,6 +27,7 @@ catalog:
   "@dnd-kit/sortable": ^5.1.0
   "@dnd-kit/utilities": ^3.0.2
   "@expressive-code/plugin-collapsible-sections": ^0.41.3
+  "@fastify/compress": ^7.0.3
   "@fastify/cors": ^8.1.0
   "@fastify/formbody": ^7.1.0
   "@fastify/middie": ^8.3.0
