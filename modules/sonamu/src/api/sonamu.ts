@@ -13,6 +13,7 @@ import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
 import { toFastifyCompressOption } from "../compress/compress";
+import type { CompressOptions } from "../compress/types";
 import type { SonamuDBConfig } from "../database/db";
 import { Naite } from "../naite/naite";
 import type { StorageManager } from "../storage/storage-manager";
@@ -373,10 +374,22 @@ class SonamuClass {
     const webPath = path.join(this.appRootPath, "web");
     const hasWeb = await exists(webPath);
 
+    // 전역 compress 옵션 계산 (route.compress: true일 때 사용)
+    const pluginCompress = this.config.server.plugins?.compress;
+    const globalCompressOptions: CompressOptions | undefined = pluginCompress
+      ? pluginCompress === true
+        ? { threshold: 1024, encodings: ["br", "gzip", "deflate"] }
+        : {
+            threshold: pluginCompress.threshold,
+            encodings: pluginCompress.encodings,
+            customTypes: pluginCompress.customTypes,
+          }
+      : undefined;
+
     if (isLocal()) {
       // 로컬 개발 환경: Vite Dev Server + 통합 핸들러
       if (hasWeb) {
-        await this.setupViteDevServer(server, webPath, config);
+        await this.setupViteDevServer(server, webPath, config, globalCompressOptions);
       }
     } else {
       // 프로덕션 환경: 개별 API 라우트 + 정적 파일 서빙
@@ -389,7 +402,7 @@ class SonamuClass {
           method: api.options.httpMethod ?? "GET",
           url: this.config.api.route.prefix + api.path,
           handler: this.createApiHandler(api, config),
-          compress: toFastifyCompressOption(api.options.compress),
+          compress: toFastifyCompressOption(api.options.compress, globalCompressOptions),
         });
       }
 
@@ -406,6 +419,7 @@ class SonamuClass {
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     webPath: string,
     config: SonamuFastifyConfig,
+    globalCompressOptions?: CompressOptions,
   ): Promise<void> {
     // @fastify/middie 등록 (Connect-style middleware 지원)
     await server.register((await import("@fastify/middie")).default);
@@ -443,7 +457,7 @@ class SonamuClass {
         method: api.options.httpMethod ?? "GET",
         url: this.config.api.route.prefix + api.path,
         handler: this.createApiHandler(api, config),
-        compress: toFastifyCompressOption(api.options.compress),
+        compress: toFastifyCompressOption(api.options.compress, globalCompressOptions),
       });
     }
 

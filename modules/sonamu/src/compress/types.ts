@@ -1,9 +1,10 @@
 /**
  * API 응답의 압축 설정입니다.
+ * - `true`: 압축 활성화 (global: false일 때 해당 API만 압축)
  * - `false`: 압축 비활성화
  * - `CompressOptions`: 세부 옵션 설정
  */
-export type CompressConfig = false | CompressOptions;
+export type CompressConfig = boolean | CompressOptions;
 
 /**
  * 압축 세부 옵션입니다.

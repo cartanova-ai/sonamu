@@ -39,17 +39,23 @@ export function isCompressDisabled(config: CompressConfig | undefined): config i
 /**
  * CompressConfig를 Fastify route compress 옵션으로 변환합니다.
  * - undefined: 전역 설정 따름
+ * - true: 압축 활성화 (global: false일 때 해당 라우트만 압축) → 전역 설정 사용
  * - false: 비활성화
  * - CompressOptions: 세부 옵션
+ *
+ * @param config 라우트별 compress 설정
+ * @param defaultOptions 전역 compress 설정 (true일 때 사용)
  */
 export function toFastifyCompressOption(
   config: CompressConfig | undefined,
+  defaultOptions?: CompressOptions,
 ): false | CompressOptions | undefined {
   if (config === undefined) {
     return undefined;
   }
-  if (config === false) {
-    return false;
+  if (config === true) {
+    // true는 전역 설정으로 압축 활성화 (global: false일 때 해당 라우트만 압축)
+    return defaultOptions ?? {};
   }
   return config;
 }
