@@ -444,13 +444,8 @@ async function generateAlterCode_ColumnAndIndexes(
     alterIndexesTo.add.length > 0 ||
     indexNeedsToDrop.length > 0;
   if (!hasUpChanges) {
-    Naite.t("migrator:generateAlterCode_ColumnAndIndexes:emptyCodeGenerationError", {
-      entityColumns,
-      dbColumns,
-      entityIndexes,
-      dbIndexes,
-    });
-    // throw new Error("컬럼/인덱스 변경 코드 생성 오류");
+    // 변경사항이 없으면 빈 배열 반환
+    return [];
   }
   Naite.t("migrator:generateAlterCode_ColumnAndIndexes:debug", {
     "alterColumnsTo.add.length": alterColumnsTo.add.length,
