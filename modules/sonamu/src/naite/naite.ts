@@ -270,7 +270,7 @@ export class NaiteClass {
       // 항상 배열로 관리
       const existing = store.get(name) ?? [];
       getLogger(["naite", ...convertNaiteKeyToCategory(name)]).debug(
-        `naite: {name} ${existing.length === 0 ? "is empty state" : `already existing with ${existing.length === 0} entries`}, appending new entry`,
+        `naite: {name} ${existing.length === 0 ? "is empty state" : `already existing with ${existing.length} entries`}, appending new entry`,
         {
           name,
           value,
