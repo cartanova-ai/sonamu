@@ -361,12 +361,14 @@ class SonamuClass {
       },
     );
 
-    // Sonamu UI API
-    const { sonamuUIApiPlugin } = await import("../ui/api");
-    server.register(sonamuUIApiPlugin);
+    // Sonamu UI API (로컬 환경에서만)
+    const { isLocal } = await import("../utils/controller");
+    if (isLocal()) {
+      const { sonamuUIApiPlugin } = await import("../ui/api");
+      server.register(sonamuUIApiPlugin);
+    }
 
     // 로컬/프로덕션 환경 분기
-    const { isLocal } = await import("../utils/controller");
     const webPath = path.join(this.appRootPath, "web");
     const hasWeb = await exists(webPath);
 
