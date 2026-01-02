@@ -1,5 +1,6 @@
 import fastify from "fastify";
 import {
+  applyCacheHeaders,
   buildCacheControl,
   type CacheControlHandler,
   CachePresets,
@@ -268,6 +269,80 @@ describe("API 응답 Cache-Control 헤더", () => {
     });
 
     expect(response.headers["cache-control"]).toBe("public, max-age=60");
+
+    await server.close();
+  });
+});
+
+describe("applyCacheHeaders", () => {
+  test("Cache-Control 헤더만 설정 (vary 없음)", async () => {
+    const server = fastify();
+    server.get("/test", (_req, reply) => {
+      applyCacheHeaders(reply, { visibility: "public", maxAge: 60 });
+      return { ok: true };
+    });
+
+    const response = await server.inject({ method: "GET", url: "/test" });
+
+    expect(response.headers["cache-control"]).toBe("public, max-age=60");
+    expect(response.headers.vary).toBeUndefined();
+
+    await server.close();
+  });
+
+  test("Cache-Control과 Vary 헤더 모두 설정", async () => {
+    const server = fastify();
+    server.get("/test", (_req, reply) => {
+      applyCacheHeaders(reply, {
+        visibility: "public",
+        maxAge: 300,
+        vary: ["Accept-Language"],
+      });
+      return { ok: true };
+    });
+
+    const response = await server.inject({ method: "GET", url: "/test" });
+
+    expect(response.headers["cache-control"]).toBe("public, max-age=300");
+    expect(response.headers.vary).toBe("Accept-Language");
+
+    await server.close();
+  });
+
+  test("여러 Vary 헤더 값", async () => {
+    const server = fastify();
+    server.get("/test", (_req, reply) => {
+      applyCacheHeaders(reply, {
+        visibility: "public",
+        maxAge: 300,
+        vary: ["Accept-Language", "Accept-Encoding"],
+      });
+      return { ok: true };
+    });
+
+    const response = await server.inject({ method: "GET", url: "/test" });
+
+    expect(response.headers["cache-control"]).toBe("public, max-age=300");
+    expect(response.headers.vary).toBe("Accept-Language, Accept-Encoding");
+
+    await server.close();
+  });
+
+  test("빈 vary 배열은 Vary 헤더를 설정하지 않음", async () => {
+    const server = fastify();
+    server.get("/test", (_req, reply) => {
+      applyCacheHeaders(reply, {
+        visibility: "public",
+        maxAge: 60,
+        vary: [],
+      });
+      return { ok: true };
+    });
+
+    const response = await server.inject({ method: "GET", url: "/test" });
+
+    expect(response.headers["cache-control"]).toBe("public, max-age=60");
+    expect(response.headers.vary).toBeUndefined();
 
     await server.close();
   });
