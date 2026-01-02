@@ -72,6 +72,10 @@ export default defineConfig({
     baseUrl: `http://${host}:${port}`,
     listen: { port, host },
     plugins: {
+      compress: {
+        threshold: 1024,
+        encodings: ["gzip"],
+      },
       formbody: true,
       qs: true,
       multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
