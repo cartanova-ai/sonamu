@@ -1,7 +1,6 @@
 packages:
   - examples/**/*
   - modules/**/*
-  - "!modules/dump-viewer"
   - "!modules/create-sonamu/template/**/*"
 
 catalog:
