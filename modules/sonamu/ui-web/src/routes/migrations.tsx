@@ -1,15 +1,20 @@
+import { createFileRoute } from "@tanstack/react-router";
 import classNames from "classnames";
 import { diff, unique } from "radashi";
 import { useState } from "react";
 import { Button, Checkbox, Divider, Label, Segment, Table } from "semantic-ui-react";
 import type { SonamuDBConfig } from "sonamu";
-import { useCommonModal } from "../../components/core/CommonModal";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { MigrationActionForm } from "../entities/_action_form";
+import { useCommonModal } from "../components/core/CommonModal";
+import { defaultCatch } from "../services/sonamu.shared";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { MigrationActionForm } from "./entities/_action_form";
+
+export const Route = createFileRoute("/migrations")({
+  component: MigrationsIndex,
+});
 
 type MigrationsIndexProps = {};
-export default function MigrationsIndex(_props: MigrationsIndexProps) {
+function MigrationsIndex(_props: MigrationsIndexProps) {
   const { data, error, refetch } = SonamuUIService.useMigrationStatus();
   const { status } = data ?? {};
   const { preparedCodes, conns, codes } = status ?? {};
@@ -337,7 +342,7 @@ type CodeViewerProps = {
   code: string;
   open: boolean;
 };
-export function CodeViewer({ code, open }: CodeViewerProps) {
+function CodeViewer({ code, open }: CodeViewerProps) {
   return (
     <div className="code-viewer">{open ? <code>{code}</code> : <div>Code is collapsed</div>}</div>
   );

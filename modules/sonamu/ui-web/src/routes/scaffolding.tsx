@@ -1,10 +1,15 @@
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button, Checkbox, Form, Icon, Modal, Table } from "semantic-ui-react";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { type ScaffoldingStatus, SonamuUIService } from "../../services/sonamu-ui.service";
+import { defaultCatch } from "../services/sonamu.shared";
+import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
+
+export const Route = createFileRoute("/scaffolding")({
+  component: ScaffoldingIndex,
+});
 
 type ScaffoldingIndexProps = {};
-export function ScaffoldingIndex({}: ScaffoldingIndexProps) {
+function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const { data: entitiesData } = SonamuUIService.useEntities();
   const { entities: allEntities } = entitiesData ?? {};
 

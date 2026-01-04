@@ -777,14 +777,16 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       // ui-web 빌드 파일 서빙
       const uiDistPath = path.resolve(import.meta.dirname, "../ui-web");
+
+      // 정적 파일 서빙: 루트 폴더 전체 (assets, setting.svg 등)
       server.register(await import("@fastify/static"), {
-        root: path.join(uiDistPath, "assets"),
-        prefix: "/assets",
+        root: uiDistPath,
+        prefix: "/",
         decorateReply: false,
       });
 
-      // SPA fallback - /sonamu-ui/* 경로는 전부 index.html로
-      server.get("*", async (_request, reply) => {
+      // SPA fallback - 정적 파일이 없는 경로만 index.html로
+      server.setNotFoundHandler(async (_request, reply) => {
         reply.headers({ "Content-type": "text/html" }).send(
           fs
             .readFileSync(path.resolve(import.meta.dirname, "../ui-web/index.html"))

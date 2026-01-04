@@ -1,20 +1,24 @@
+import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import classnames from "classnames";
 import { useState } from "react";
-import { Link, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Icon } from "semantic-ui-react";
-import { useCommonModal } from "../../components/core/CommonModal";
-import EntityChatComponent from "../../components/EntityChatComponent";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { EntityCreateForm } from "./_create_form";
+import { useCommonModal } from "../components/core/CommonModal";
+import EntityChatComponent from "../components/EntityChatComponent";
+import { SonamuUIService } from "../services/sonamu-ui.service";
+import { EntityCreateForm } from "./entities/_create_form";
+
+export const Route = createFileRoute("/entities")({
+  component: EntitiesLayout,
+});
 
 type EntitiesLayoutProps = {};
-export default function EntitiesLayout(_props: EntitiesLayoutProps) {
-  const context = useOutletContext<{ showSearch: boolean }>();
-
+function EntitiesLayout(_props: EntitiesLayoutProps) {
   const { data, error, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 
-  const params = useParams<{ entityId: string }>();
+  const matches = useMatches();
+  const entityMatch = matches.find((match) => match.routeId === "/entities/$entityId");
+  const entityId = entityMatch?.params.entityId;
 
   const navigate = useNavigate();
 
@@ -37,7 +41,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
       onCompleted: (newEntityId) => {
         refetch();
         setTimeout(() => {
-          navigate(`/entities/${newEntityId}`);
+          navigate({ to: "/entities/$entityId", params: { entityId: newEntityId as string } });
         }, 200);
       },
     });
@@ -46,7 +50,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
   const handleEntityCreated = (entityId: string) => {
     refetch();
     setTimeout(() => {
-      navigate(`/entities/${entityId}`);
+      navigate({ to: "/entities/$entityId", params: { entityId } });
     }, 200);
   };
 
@@ -64,9 +68,10 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
             <Link
               key={entity.id}
               className={classnames("entity-list-item", {
-                selected: entity.id === params.entityId,
+                selected: entity.id === entityId,
               })}
-              to={`/entities/${entity.id}`}
+              to="/entities/$entityId"
+              params={{ entityId: entity.id }}
             >
               {entity.parentId && <span className="parent-prefix">{entity.parentId}</span>}
               <span className="entity-name">{entity.id}</span>
@@ -108,7 +113,7 @@ export default function EntitiesLayout(_props: EntitiesLayoutProps) {
           )}
         </div>
       </div>
-      <Outlet context={context} />
+      <Outlet />
       <Button
         icon="arrow up"
         circular

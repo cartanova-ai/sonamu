@@ -140,8 +140,8 @@ function checkInstalled(tool: Tool): boolean {
 
       // Hack Nerd Font 체크
       const fontExists =
-        fs.readdirSync(fontDir).some(f => f.includes("HackNerd")) ||
-        fs.readdirSync(systemFontDir).some(f => f.includes("HackNerd"));
+        fs.readdirSync(fontDir).some((f) => f.includes("HackNerd")) ||
+        fs.readdirSync(systemFontDir).some((f) => f.includes("HackNerd"));
       return fontExists;
     }
 
@@ -188,7 +188,10 @@ function installTools(tools: Tool[]): void {
   // Homebrew 설치 확인
   if (!commandExists("brew")) {
     log("Homebrew가 설치되어 있지 않습니다. 먼저 Homebrew를 설치해주세요.", "error");
-    log("설치 명령: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"", "info");
+    log(
+      '설치 명령: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+      "info",
+    );
     process.exit(1);
   }
 
@@ -444,10 +447,7 @@ async function main(): Promise<void> {
 
   // 2. zsh 설정 상태 확인
   const setupDone = checkSetupDone();
-  log(
-    `zsh 설정 상태: ${setupDone ? "설정 완료" : "설정 필요"}`,
-    setupDone ? "success" : "warn"
-  );
+  log(`zsh 설정 상태: ${setupDone ? "설정 완료" : "설정 필요"}`, setupDone ? "success" : "warn");
   console.log("");
 
   // 3. 미설치 도구 설치

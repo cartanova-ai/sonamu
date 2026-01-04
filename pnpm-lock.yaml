@@ -1591,9 +1591,6 @@ importers:
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@19.2.7)(react@18.3.1)
-      react-router-dom:
-        specifier: ^6.30.2
-        version: 6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-syntax-highlighter:
         specifier: 'catalog:'
         version: 15.6.6(react@18.3.1)

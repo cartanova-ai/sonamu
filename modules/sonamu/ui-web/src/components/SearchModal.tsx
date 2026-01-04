@@ -1,6 +1,6 @@
+import { useNavigate } from "@tanstack/react-router";
 import { group } from "radashi";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Input, List, Modal } from "semantic-ui-react";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { type SearchResult, useEntitySearch } from "./useEntitySearch";
@@ -35,7 +35,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     setResults([]);
     resetIndex();
     onClose();
-    navigate(url);
+    navigate({ to: url });
+
     if (id) {
       scrollToElement(id);
     }

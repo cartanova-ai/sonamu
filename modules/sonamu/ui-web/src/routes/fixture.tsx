@@ -1,14 +1,19 @@
 import { useTypeForm } from "@sonamu-kit/react-sui";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
 import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
-import ChatComponent from "../../components/ChatComponent";
-import FixtureGraph from "../../components/fixture/ErdGraph";
-import { defaultCatch } from "../../services/sonamu.shared";
-import { type ExtendedEntity, SonamuUIService } from "../../services/sonamu-ui.service";
-import FixtureCodeViewer from "./_fixture_code_viewer";
-import FixtureRecordViewer from "./_fixture_record_viewer";
+import ChatComponent from "../components/ChatComponent";
+import FixtureGraph from "../components/fixture/ErdGraph";
+import { defaultCatch } from "../services/sonamu.shared";
+import { type ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
+import FixtureCodeViewer from "./fixture/_fixture_code_viewer";
+import FixtureRecordViewer from "./fixture/_fixture_record_viewer";
+
+export const Route = createFileRoute("/fixture")({
+  component: FixtureIndex,
+});
 
 const DB_NAMES = ["development_master", "production_master", "fixture_remote", "test"];
 
@@ -19,7 +24,7 @@ type DuplicateCheckColumns = {
   [entityId: string]: string[];
 };
 
-export default function FixtureIndex() {
+function FixtureIndex() {
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
   const [targetDB, setTargetDB] = useState("test");

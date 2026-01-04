@@ -1,13 +1,18 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, useLocation } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import "./styles/App.scss";
 import "semantic-ui-css/semantic.min.css";
 import classNames from "classnames";
-import { useEffect, useState } from "react";
 import { CommonModal } from "./components/core/CommonModal";
 import SearchModal from "./components/SearchModal";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
-function App() {
+interface AppProps {
+  children?: ReactNode;
+}
+
+function App({ children }: AppProps) {
   const menus = [
     {
       name: "Entities",
@@ -51,6 +56,7 @@ function App() {
     SonamuUIService.getSonamuConfig().then((res) => {
       if (res.projectName) {
         setProjectName(res.projectName);
+        document.title = `${res.projectName}: Sonamu UI`;
       }
     });
   }, []);
@@ -85,9 +91,7 @@ function App() {
             <kbd className="keycap">K</kbd>
           </button>
         </div>
-        <div className="content">
-          <Outlet context={{ showSearch }} />
-        </div>
+        <div className="content">{children}</div>
       </div>
       <SearchModal open={showSearch} onClose={() => setShowSearch(false)} />
       <CommonModal />

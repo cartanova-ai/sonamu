@@ -1,9 +1,9 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: 너무 많이 사용하고 있어서 일단 허용 */
 
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
 import { unique } from "radashi";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { Button, Checkbox, Form, Icon, Label, Table } from "semantic-ui-react";
 import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import { useCommonModal } from "../../components/core/CommonModal";
@@ -12,32 +12,33 @@ import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { EntitySelector } from "./_entity_selector";
-import { EntityIndexForm } from "./_index_form";
-import { EntityPropForm } from "./_prop_form";
+import { EntitySelector } from "../entities/_entity_selector";
+import { EntityIndexForm } from "../entities/_index_form";
+import { EntityPropForm } from "../entities/_prop_form";
+
+export const Route = createFileRoute("/entities/$entityId")({
+  component: EntitiesShowPage,
+});
 
 type EntitiesShowPageProps = {};
-export default function EntitiesShowPage({}: EntitiesShowPageProps) {
-  const { showSearch } = useOutletContext<{ showSearch: boolean }>();
-
+function EntitiesShowPage({}: EntitiesShowPageProps) {
   const { data, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 
   // naviagte
   const navigate = useNavigate();
 
-  // params & entity
-  const params = useParams<{ entityId: string }>();
+  const { entityId } = Route.useParams();
 
-  const entity = entities?.find((entity) => entity.id === params.entityId) ?? null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: params.entityId 변경시에만 감지
+  const entity = entities?.find((entity) => entity.id === entityId) ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entityId 변경시에만 감지
   useEffect(() => {
     setCursor({
       sheet: "props",
       y: 0,
       x: 0,
     });
-  }, [params.entityId]);
+  }, [entityId]);
   const delEntity = () => {
     if (!entity) {
       return;
@@ -50,7 +51,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
     SonamuUIService.delEntity(entity.id)
       .then(() => {
         refetch();
-        navigate("/entities");
+        navigate({ to: "/entities" });
       })
       .catch(defaultCatch);
   };
@@ -171,7 +172,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
                   turnKeyHandler(true);
                 },
                 onCompleted: (entityId) => {
-                  navigate(`/entities/${entityId}`);
+                  navigate({ to: "/entities/$entityId", params: { entityId: entityId as string } });
                 },
               });
             }
@@ -179,7 +180,7 @@ export default function EntitiesShowPage({}: EntitiesShowPageProps) {
         }
         return true;
       },
-      disable: showSearch || open,
+      disable: open,
     });
 
   // subsets
