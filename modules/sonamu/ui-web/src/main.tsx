@@ -37,3 +37,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     </BrowserRouter>
   </QueryClientProvider>,
 );
+
+// Chrome Extension용 Devtools
+declare global {
+  interface Window {
+    __TANSTACK_QUERY_CLIENT__: typeof queryClient;
+  }
+}
+window.__TANSTACK_QUERY_CLIENT__ = queryClient;
