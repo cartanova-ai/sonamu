@@ -12,6 +12,7 @@ import {
   transactional,
   UnauthorizedException,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
 import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 import type {
@@ -43,7 +44,7 @@ class UserModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 User ID ${id}`);
+      throw new NotFoundException(SD("user.notFound")(id));
     }
     return rows[0];
   }
@@ -185,13 +186,13 @@ class UserModelClass extends BaseModelClass<
     const user = await rdb("users").select("*").where("email", params.email).first();
 
     if (!user) {
-      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
+      throw new UnauthorizedException(SD("user.login.failed"));
     }
 
     // 비밀번호 확인
     const isPasswordValid = await bcrypt.compare(params.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
+      throw new UnauthorizedException(SD("user.login.failed"));
     }
 
     // 세션에 사용자 ID 저장
@@ -220,7 +221,7 @@ class UserModelClass extends BaseModelClass<
     const existingUser = await rdb("users").where("email", params.email).first();
 
     if (existingUser) {
-      throw new BadRequestException("이미 사용중인 이메일입니다");
+      throw new BadRequestException(SD("user.email.duplicate"));
     }
 
     // 비밀번호 해싱

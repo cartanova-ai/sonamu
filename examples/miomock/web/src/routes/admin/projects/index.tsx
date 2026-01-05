@@ -27,6 +27,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
 import { ProjectSearchFieldSelect } from "@/components/project/ProjectSearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
 import { ProjectListParams } from "@/services/project/project.types";
 import { ProjectService } from "@/services/services.generated";
 import {
@@ -73,7 +74,7 @@ function ProjectList({}: ProjectListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/projects",
-    title: "PROJECT",
+    title: SD("entity.Project.list"),
   };
 
   // 컬럼 정의
@@ -86,28 +87,28 @@ function ProjectList({}: ProjectListProps) {
       align: "center",
     },
     {
-      label: "등록일시",
+      label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "PROJECT명",
+      label: SD("entity.Project.name"),
       tc: (row) => <>{row.name}</>,
     },
     {
-      label: "상태",
+      label: SD("entity.Project.status"),
       tc: (row) => <>{ProjectStatusLabel[row.status]}</>,
     },
     {
-      label: "설명",
+      label: SD("entity.Project.description"),
       tc: (row) => <>{row.description}</>,
     },
     {
-      label: "예산",
+      label: SD("entity.Project.budget"),
       tc: (row) => <>{row.budget}</>,
     },
     {
-      label: "마감일시",
+      label: SD("entity.Project.deadline"),
       tc: (row) => <span>{row.deadline ? datetimeF(row.deadline) : "-"}</span>,
       fit: true,
     },
@@ -138,15 +139,15 @@ function ProjectList({}: ProjectListProps) {
       tc: (row) => <>{row.virtual_query_test}</>,
     },
     {
-      label: "직원",
+      label: SD("entity.Employee.list"),
       tc: (_row) => <>{/* array row.employee */}</>,
     },
     {
-      label: "TAG리스트",
+      label: SD("entity.Tag.list"),
       tc: (_row) => <>{/* array row.tags */}</>,
     },
     {
-      label: "Manage",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -224,14 +225,14 @@ function ProjectList({}: ProjectListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <ProjectSearchFieldSelect
                     {...register("search")}
-                    placeholder="Search Type"
+                    placeholder={SD("common.searchType")}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -247,7 +248,7 @@ function ProjectList({}: ProjectListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>
@@ -255,11 +256,13 @@ function ProjectList({}: ProjectListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <ProjectOrderBySelect
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
+                    placeholder={SD("common.sort")}
+                    textPrefix={`${SD("common.sort")}: `}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {SD("common.results")(total ?? 0)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -317,14 +320,14 @@ function ProjectList({}: ProjectListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

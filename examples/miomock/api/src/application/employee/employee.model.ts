@@ -6,6 +6,7 @@ import {
   type ListResult,
   NotFoundException,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { EmployeeSubsetKey, EmployeeSubsetMapping } from "../sonamu.generated";
 import { employeeLoaderQueries, employeeSubsetQueries } from "../sonamu.generated.sso";
 import type { EmployeeListParams, EmployeeSaveParams } from "./employee.types";
@@ -38,7 +39,7 @@ class EmployeeModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Employee ID ${id}`);
+      throw new NotFoundException(SD("employee.notFound")(id));
     }
 
     return rows[0];
@@ -91,7 +92,7 @@ class EmployeeModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("employees.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 

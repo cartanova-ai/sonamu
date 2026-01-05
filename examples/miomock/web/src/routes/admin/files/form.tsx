@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { SD } from "@/i18n/sd.generated";
 import { FileSaveParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
 import type { FileSubsetA } from "@/services/sonamu.generated";
@@ -84,7 +85,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
   };
 
   const PAGE = {
-    title: `FILE${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.File.edit")(id) : SD("entity.File.create"),
   };
 
   return (
@@ -103,7 +104,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
                 onClick={() => router.navigate({ to: "/admin/files" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -117,40 +118,50 @@ export function FilesForm({ id, mode }: FilesFormProps) {
               <div className="space-y-6">
                 {/* MIME타입 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">MIME타입</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.File.mime_type")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="MIME타입"
+                    placeholder={SD("entity.File.mime_type")}
                     {...register("mime_type")}
                   />
                 </div>
 
                 {/* FILE명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">FILE명</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.File.name")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="FILE명"
+                    placeholder={SD("entity.File.name")}
                     {...register("name")}
                   />
                 </div>
 
                 {/* URL */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">URL</label>
-                  <Input className="h-8 text-xs bg-white" placeholder="URL" {...register("url")} />
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.File.url")}
+                  </label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder={SD("entity.File.url")}
+                    {...register("url")}
+                  />
                 </div>
 
                 {/* Save Button */}
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>

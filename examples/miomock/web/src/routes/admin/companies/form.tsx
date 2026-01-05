@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
+import { SD } from "@/i18n/sd.generated";
 import { CompanySaveParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
@@ -77,7 +78,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   };
 
   const PAGE = {
-    title: `COMPANY${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.Company.edit")(id) : SD("entity.Company.create"),
   };
 
   return (
@@ -96,7 +97,7 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
                 onClick={() => router.navigate({ to: "/admin/companies" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -110,10 +111,12 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
               <div className="space-y-6">
                 {/* 회사명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">회사명</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Company.name")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="회사명"
+                    placeholder={SD("entity.Company.name")}
                     {...register("name")}
                   />
                 </div>
@@ -122,12 +125,12 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>

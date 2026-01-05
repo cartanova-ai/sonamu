@@ -28,6 +28,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { UserOrderBySelect } from "@/components/user/UserOrderBySelect";
 import { UserSearchFieldSelect } from "@/components/user/UserSearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
 import { UserOrderBy, UserRoleLabel, UserSearchField } from "@/services/sonamu.generated";
 import { UserListParams } from "@/services/user/user.types";
@@ -70,7 +71,7 @@ function UserList({}: UserListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/users",
-    title: "USER",
+    title: SD("entity.User.list"),
   };
 
   // 컬럼 정의
@@ -83,38 +84,38 @@ function UserList({}: UserListProps) {
       align: "center",
     },
     {
-      label: "등록일시",
+      label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "이메일",
+      label: SD("entity.User.email"),
       tc: (row) => <>{row.email}</>,
     },
     {
-      label: "이름",
+      label: SD("entity.User.username"),
       tc: (row) => <>{row.username}</>,
     },
     {
-      label: "생일",
+      label: SD("entity.User.birth_date"),
       tc: (row) => <span>{row.birth_date ? datetimeF(row.birth_date) : "-"}</span>,
       fit: true,
     },
     {
-      label: "ROLE",
+      label: SD("entity.User.role"),
       tc: (row) => <>{UserRoleLabel[row.role]}</>,
     },
     {
-      label: "LASTLOGIN일시",
+      label: SD("entity.User.last_login_at"),
       tc: (row) => <span>{row.last_login_at ? datetimeF(row.last_login_at) : "-"}</span>,
       fit: true,
     },
     {
-      label: "BIO",
+      label: SD("entity.User.bio"),
       tc: (row) => <>{row.bio}</>,
     },
     {
-      label: "ISVERIFIED",
+      label: SD("entity.User.is_verified"),
       tc: (row) => (
         <>
           {row.is_verified ? (
@@ -126,12 +127,12 @@ function UserList({}: UserListProps) {
       ),
     },
     {
-      label: "삭제일시",
+      label: SD("entity.User.deleted_at"),
       tc: (row) => <span>{row.deleted_at ? datetimeF(row.deleted_at) : "-"}</span>,
       fit: true,
     },
     {
-      label: "Manage",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -209,14 +210,14 @@ function UserList({}: UserListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <UserSearchFieldSelect
                     {...register("search")}
-                    placeholder="Search Type"
+                    placeholder={SD("common.searchType")}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -232,7 +233,7 @@ function UserList({}: UserListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>
@@ -240,11 +241,13 @@ function UserList({}: UserListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <UserOrderBySelect
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
+                    placeholder={SD("common.sort")}
+                    textPrefix={`${SD("common.sort")}: `}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {SD("common.results")(total ?? 0)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -302,14 +305,14 @@ function UserList({}: UserListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

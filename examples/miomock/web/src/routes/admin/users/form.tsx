@@ -14,6 +14,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
 import { UserRoleSelect } from "@/components/user/UserRoleSelect";
+import { SD } from "@/i18n/sd.generated";
 import { UserService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 import { UserSaveParams } from "@/services/user/user.types";
@@ -84,7 +85,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
   };
 
   const PAGE = {
-    title: `USER${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.User.edit")(id) : SD("entity.User.create"),
   };
 
   return (
@@ -103,7 +104,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                 onClick={() => router.navigate({ to: "/admin/users" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -117,67 +118,89 @@ export function UsersForm({ id, mode }: UsersFormProps) {
               <div className="space-y-6">
                 {/* 이메일 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">이메일</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.email")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="이메일"
+                    placeholder={SD("entity.User.email")}
                     {...register("email")}
                   />
                 </div>
 
                 {/* 이름 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">이름</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.username")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="이름"
+                    placeholder={SD("entity.User.username")}
                     {...register("username")}
                   />
                 </div>
 
                 {/* 비밀번호 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">비밀번호</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.password")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="비밀번호"
+                    placeholder={SD("entity.User.password")}
                     {...register("password")}
                   />
                 </div>
 
                 {/* 생일 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">생일</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.birth_date")}
+                  </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("birth_date")} />
                 </div>
 
                 {/* ROLE */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">ROLE</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.role")}
+                  </label>
                   <UserRoleSelect {...register("role")} />
                 </div>
 
                 {/* LASTLOGIN일시 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">LASTLOGIN일시</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.last_login_at")}
+                  </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("last_login_at")} />
                 </div>
 
                 {/* BIO */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">BIO</label>
-                  <Input className="h-8 text-xs bg-white" placeholder="BIO" {...register("bio")} />
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.bio")}
+                  </label>
+                  <Input
+                    className="h-8 text-xs bg-white"
+                    placeholder={SD("entity.User.bio")}
+                    {...register("bio")}
+                  />
                 </div>
 
                 {/* ISVERIFIED */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">ISVERIFIED</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.is_verified")}
+                  </label>
                   <Switch {...register("is_verified")} />
                 </div>
 
                 {/* 삭제일시 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">삭제일시</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.User.deleted_at")}
+                  </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("deleted_at")} />
                 </div>
 
@@ -185,12 +208,12 @@ export function UsersForm({ id, mode }: UsersFormProps) {
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
   type VectorColumns,
 } from "sonamu";
 import { Embedding } from "sonamu/vector";
+import { SD } from "../../i18n/sd.generated";
 import type { DocumentSubsetKey, DocumentSubsetMapping } from "../sonamu.generated";
 import { documentLoaderQueries, documentSubsetQueries } from "../sonamu.generated.sso";
 import type {
@@ -42,7 +43,7 @@ class DocumentModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Document ID ${id}`);
+      throw new NotFoundException(SD("document.notFound")(id));
     }
 
     return rows[0];
@@ -91,7 +92,7 @@ class DocumentModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("documents.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 

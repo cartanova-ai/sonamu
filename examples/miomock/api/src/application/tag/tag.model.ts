@@ -10,6 +10,7 @@ import {
   NotFoundException,
   Sonamu,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { TagSubsetKey, TagSubsetMapping } from "../sonamu.generated";
 import { tagLoaderQueries, tagSubsetQueries } from "../sonamu.generated.sso";
 import type { TagListParams, TagSaveParams } from "./tag.types";
@@ -35,7 +36,7 @@ class TagModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Tag ID ${id}`);
+      throw new NotFoundException(SD("tag.notFound")(id));
     }
 
     return rows[0];
@@ -83,7 +84,7 @@ class TagModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("tags.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 

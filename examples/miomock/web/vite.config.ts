@@ -10,6 +10,7 @@ dotenv.config({ path: ".sonamu.env" });
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, isSsrBuild }) => ({
+  clearScreen: false,
   plugins: [
     react(),
     Icons({

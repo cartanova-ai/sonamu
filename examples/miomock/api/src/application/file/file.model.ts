@@ -9,6 +9,7 @@ import {
   Sonamu,
   upload,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
 import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
 import type { FileListParams, FileSaveParams } from "./file.types";
@@ -34,7 +35,7 @@ class FileModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 File ID ${id}`);
+      throw new NotFoundException(SD("file.notFound")(id));
     }
 
     return rows[0];
@@ -82,7 +83,7 @@ class FileModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("files.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 
@@ -142,7 +143,7 @@ class FileModelClass extends BaseModelClass<
 
     console.log("file", file);
     if (file === undefined) {
-      throw new BadRequestException("파일 업로드되지 않음");
+      throw new BadRequestException(SD("file.uploadFailed"));
     }
 
     const md5 = await file.md5();
@@ -167,7 +168,7 @@ class FileModelClass extends BaseModelClass<
 
     console.log("files", _files);
     if (_files.length === 0) {
-      throw new BadRequestException("파일 업로드되지 않음");
+      throw new BadRequestException(SD("file.uploadFailed"));
     }
 
     const files = await Promise.all(

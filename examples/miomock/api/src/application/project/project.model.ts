@@ -11,6 +11,7 @@ import {
   Sonamu,
   stream,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { ProjectSubsetKey, ProjectSubsetMapping } from "../sonamu.generated";
 import { projectLoaderQueries, projectSubsetQueries } from "../sonamu.generated.sso";
 import { ProjectAgent } from "./project.agent";
@@ -48,7 +49,7 @@ class ProjectModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Project ID ${id}`);
+      throw new NotFoundException(SD("project.notFound")(id));
     }
 
     return rows[0];

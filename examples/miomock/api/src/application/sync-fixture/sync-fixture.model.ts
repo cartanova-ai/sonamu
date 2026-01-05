@@ -7,6 +7,7 @@ import {
   type ListResult,
   NotFoundException,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { SyncFixtureSubsetKey, SyncFixtureSubsetMapping } from "../sonamu.generated";
 import { syncFixtureLoaderQueries, syncFixtureSubsetQueries } from "../sonamu.generated.sso";
 import type { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture.types";
@@ -35,7 +36,7 @@ class SyncFixtureModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 SyncFixture ID ${id}`);
+      throw new NotFoundException(SD("syncFixture.notFound")(id));
     }
 
     return rows[0];
@@ -83,7 +84,7 @@ class SyncFixtureModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("sync_fixtures.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 

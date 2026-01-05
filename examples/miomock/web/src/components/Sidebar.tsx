@@ -1,6 +1,7 @@
 import { Button } from "@sonamu-kit/react-components/components";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type React from "react";
+import { SD } from "@/i18n/sd.generated";
 import ArchiveIcon from "~icons/lucide/archive";
 import BuildingIcon from "~icons/lucide/building";
 import FolderIcon from "~icons/lucide/folder";
@@ -16,21 +17,31 @@ interface SidebarProps {
   className?: string;
 }
 
+type MenuKey =
+  | "menu.home"
+  | "menu.company"
+  | "menu.user"
+  | "menu.department"
+  | "menu.employee"
+  | "menu.project"
+  | "menu.tag"
+  | "menu.file";
+
 interface MenuItemProps {
-  title: string;
+  titleKey: MenuKey;
   path: string;
   icon?: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
 const menuItems: MenuItemProps[] = [
-  { title: "홈", path: "/admin", icon: HomeIcon },
-  { title: "회사 관리", path: "/admin/companies", icon: BuildingIcon },
-  { title: "사용자 관리", path: "/admin/users", icon: UsersIcon },
-  { title: "부서 관리", path: "/admin/departments", icon: ArchiveIcon },
-  { title: "직원 관리", path: "/admin/employees", icon: HandshakeIcon },
-  { title: "프로젝트 관리", path: "/admin/projects", icon: FolderIcon },
-  { title: "태그 관리", path: "/admin/tags", icon: TagIcon },
-  { title: "파일 업로드", path: "/admin/files", icon: UploadIcon },
+  { titleKey: "menu.home", path: "/admin", icon: HomeIcon },
+  { titleKey: "menu.company", path: "/admin/companies", icon: BuildingIcon },
+  { titleKey: "menu.user", path: "/admin/users", icon: UsersIcon },
+  { titleKey: "menu.department", path: "/admin/departments", icon: ArchiveIcon },
+  { titleKey: "menu.employee", path: "/admin/employees", icon: HandshakeIcon },
+  { titleKey: "menu.project", path: "/admin/projects", icon: FolderIcon },
+  { titleKey: "menu.tag", path: "/admin/tags", icon: TagIcon },
+  { titleKey: "menu.file", path: "/admin/files", icon: UploadIcon },
 ];
 
 export default function Sidebar({ className }: SidebarProps) {
@@ -79,7 +90,7 @@ export default function Sidebar({ className }: SidebarProps) {
               <div className="size-4 shrink-0">
                 {item.icon && <item.icon className="size-4 shrink-0" />}
               </div>
-              <span className="truncate">{item.title}</span>
+              <span className="truncate">{SD(item.titleKey)}</span>
             </Link>
           ))}
         </nav>
@@ -89,7 +100,7 @@ export default function Sidebar({ className }: SidebarProps) {
       {user && (
         <div className="flex shrink-0 flex-col gap-2 p-2 border-t border-sidebar-border">
           <Button variant="destructive" onClick={logout} icon={<LogOutIcon />}>
-            로그아웃
+            {SD("common.logout")}
           </Button>
         </div>
       )}

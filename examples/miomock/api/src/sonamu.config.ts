@@ -17,6 +17,10 @@ export default defineConfig({
       prefix: "/api",
     },
   },
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
   sync: {
     targets: ["web"],
   },

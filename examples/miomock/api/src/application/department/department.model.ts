@@ -6,6 +6,7 @@ import {
   type ListResult,
   NotFoundException,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { DepartmentSubsetKey, DepartmentSubsetMapping } from "../sonamu.generated";
 import { departmentLoaderQueries, departmentSubsetQueries } from "../sonamu.generated.sso";
 import type { DepartmentListParams, DepartmentSaveParams } from "./department.types";
@@ -38,7 +39,7 @@ class DepartmentModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Department ID ${id}`);
+      throw new NotFoundException(SD("department.notFound")(id));
     }
 
     return rows[0];

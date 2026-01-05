@@ -1,14 +1,23 @@
 import { useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense, useEffect } from "react";
 import { useAuth } from "./admin-common/auth";
 import Sidebar from "./components/Sidebar";
+import { setLocale } from "./i18n/sd.generated";
 
 interface AppProps {
   children?: ReactNode;
 }
 
 function App({ children }: AppProps) {
+  useEffect(() => {
+    // 브라우저 locale 감지
+    const browserLocale = navigator.language.split("-")[0];
+    if (["ko", "en"].includes(browserLocale)) {
+      setLocale(browserLocale);
+    }
+  }, []);
+
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user: _ } = useAuth();
 

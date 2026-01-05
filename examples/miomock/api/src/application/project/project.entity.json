@@ -4,7 +4,7 @@
   "title": "PROJECT",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
-    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "created_at", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP", "type": "date" },
     {
       "type": "relation",
       "name": "employee",

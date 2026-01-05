@@ -7,6 +7,7 @@ import {
   type ListResult,
   NotFoundException,
 } from "sonamu";
+import { SD } from "../../i18n/sd.generated";
 import type { CompanySubsetKey, CompanySubsetMapping } from "../sonamu.generated";
 import { companyLoaderQueries, companySubsetQueries } from "../sonamu.generated.sso";
 import type { CompanyListParams, CompanySaveParams } from "./company.types";
@@ -39,7 +40,7 @@ class CompanyModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(`존재하지 않는 Company ID ${id}`);
+      throw new NotFoundException(SD("company.notFound")(id));
     }
 
     return rows[0];
@@ -92,7 +93,7 @@ class CompanyModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("companies.field", "like", `%${params.keyword}%`);
       } else {
-        throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+        throw new BadRequestException(SD("search.invalidField")(params.search));
       }
     }
 

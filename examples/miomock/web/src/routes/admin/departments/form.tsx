@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { CompanyIdAsyncSelect } from "@/components/company/CompanyIdAsyncSelect";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
+import { SD } from "@/i18n/sd.generated";
 import { DepartmentSaveParams } from "@/services/department/department.types";
 import { DepartmentService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
@@ -85,7 +86,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   };
 
   const PAGE = {
-    title: `부서${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.Department.edit")(id) : SD("entity.Department.create"),
   };
 
   return (
@@ -104,7 +105,7 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
                 onClick={() => router.navigate({ to: "/admin/departments" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -118,17 +119,21 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
               <div className="space-y-6">
                 {/* 부서명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">부서명</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Department.name")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="부서명"
+                    placeholder={SD("entity.Department.name")}
                     {...register("name")}
                   />
                 </div>
 
                 {/* COMPANY */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">COMPANY</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Department.company")}
+                  </label>
                   <CompanyIdAsyncSelect
                     subset="A"
                     {...register("company_id")}
@@ -138,7 +143,9 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
 
                 {/* ParentId */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">ParentId</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Department.parent")}
+                  </label>
                   <DepartmentIdAsyncSelect
                     subset="A"
                     {...register("parent_id")}
@@ -151,12 +158,12 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>

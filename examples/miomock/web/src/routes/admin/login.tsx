@@ -9,6 +9,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/admin-common/auth";
+import { SD } from "@/i18n/sd.generated";
 import LockIcon from "~icons/lucide/lock";
 import LogInIcon from "~icons/lucide/log-in";
 import MailIcon from "~icons/lucide/mail";
@@ -45,9 +46,9 @@ function LoginPage() {
       <Card className="shadow-xl p-8 border-0 bg-white" style={{ width: "600px" }}>
         <CardHeader className="text-center pb-4 pt-8">
           <CardTitle className="text-2xl font-bold mb-1" style={{ color: "#059669" }}>
-            Welcome Back
+            {SD("login.title")}
           </CardTitle>
-          <p className="text-sm text-gray-500">Sign in to your account</p>
+          <p className="text-sm text-gray-500">{SD("login.subtitle")}</p>
         </CardHeader>
         <CardContent className="space-y-5 px-8 pb-8">
           <div className="relative mb-4">
@@ -58,7 +59,7 @@ function LoginPage() {
             <Input
               className="h-11 border-gray-200"
               style={{ paddingLeft: "40px", paddingRight: "16px" }}
-              placeholder="Email"
+              placeholder={SD("login.email")}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -74,7 +75,7 @@ function LoginPage() {
               className="h-11 border-gray-200"
               style={{ paddingLeft: "40px", paddingRight: "16px" }}
               type="password"
-              placeholder="Password"
+              placeholder={SD("login.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -87,7 +88,7 @@ function LoginPage() {
             onClick={handleSubmit}
           >
             <LogInIcon className="h-4 w-4" />
-            Login
+            {SD("login.submit")}
           </Button>
 
           {user !== null && (
@@ -101,7 +102,7 @@ function LoginPage() {
                 window.location.href = "/admin";
               }}
             >
-              {user.username}으로 로그인
+              {SD("login.continueAs")(user.username)}
             </Button>
           )}
         </CardContent>
