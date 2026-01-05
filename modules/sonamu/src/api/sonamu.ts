@@ -462,53 +462,59 @@ class SonamuClass {
     }
 
     // Catch-all 핸들러: SSR + CSR fallback
-    server.setNotFoundHandler(async (request, reply) => {
-      const url = request.url;
 
-      // SSR 라우트 체크
-      const { matchSSRRoute } = await import("../ssr");
-      const match = matchSSRRoute(url);
+    server.route({
+      method: ["GET", "HEAD"],
+      url: "/*",
+      handler: async (request, reply) => {
+        const url = request.url;
 
-      if (match) {
-        console.log(`[SSR] Matched route: ${match.route.path}`);
-        // SSR 렌더링
-        try {
-          const { renderSSR } = await import("../ssr");
-          const html = await renderSSR(
-            url,
-            match.route,
-            match.params,
-            request,
-            reply,
-            config,
-            this.viteServer,
-          );
-          reply.type("text/html").send(html);
-          return;
-        } catch (e) {
-          console.error("SSR Error:", e);
-          console.log("Falling back to CSR...");
-          // fallback to CSR (아래 로직 실행)
+        // SSR 라우트 체크
+        const { matchSSRRoute } = await import("../ssr");
+        const match = matchSSRRoute(url);
+
+        if (match) {
+          console.log(`[SSR] Matched route: ${match.route.path}`);
+          // SSR 렌더링
+          try {
+            const { renderSSR } = await import("../ssr");
+            const html = await renderSSR(
+              url,
+              match.route,
+              match.params,
+              request,
+              reply,
+              config,
+              this.viteServer,
+            );
+
+            reply.type("text/html");
+            return html;
+          } catch (e) {
+            console.error("SSR Error:", e);
+            console.log("Falling back to CSR...");
+            // fallback to CSR (아래 로직 실행)
+          }
         }
-      }
 
-      // CSR fallback
-      try {
-        const fs = await import("node:fs/promises");
-        let template = await fs.readFile(
-          path.join(this.viteServer.config.root, "index.html"),
-          "utf-8",
-        );
-        template = await this.viteServer.transformIndexHtml(url, template);
+        // CSR fallback
+        try {
+          const fs = await import("node:fs/promises");
+          let template = await fs.readFile(
+            path.join(this.viteServer.config.root, "index.html"),
+            "utf-8",
+          );
+          template = await this.viteServer.transformIndexHtml(url, template);
 
-        reply.type("text/html").send(template);
-        return;
-      } catch (e) {
-        this.viteServer.ssrFixStacktrace(e as Error);
-        console.error(e);
-        reply.status(500).send((e as Error).message);
-        return;
-      }
+          reply.type("text/html");
+          return template;
+        } catch (e) {
+          this.viteServer.ssrFixStacktrace(e as Error);
+          console.error(e);
+          reply.status(500);
+          return (e as Error).message;
+        }
+      },
     });
 
     // 서버 종료 시 Vite도 종료
@@ -612,59 +618,65 @@ class SonamuClass {
     });
 
     // SPA/SSR 라우팅
-    server.setNotFoundHandler(async (request, reply) => {
-      // /api, /sonamu-ui는 404 그대로
-      if (request.url.startsWith("/api") || request.url.startsWith("/sonamu-ui")) {
-        reply.code(404).send({ error: "Not Found" });
-        return;
-      }
+    server.route({
+      method: ["GET", "HEAD"],
+      url: "*",
+      handler: async (request, reply) => {
+        // /api, /sonamu-ui는 404 그대로
+        if (request.url.startsWith("/api") || request.url.startsWith("/sonamu-ui")) {
+          reply.code(404).send({ error: "Not Found" });
+          return;
+        }
 
-      const url = request.url;
+        const url = request.url;
 
-      // SSR 라우트 체크
-      if (ssrAvailable) {
-        const { matchSSRRoute } = await import("../ssr");
-        const match = matchSSRRoute(url);
+        // SSR 라우트 체크
+        if (ssrAvailable) {
+          const { matchSSRRoute } = await import("../ssr");
+          const match = matchSSRRoute(url);
 
-        if (match) {
-          try {
-            // renderSSR 재사용 (vite 없이 호출 = production 모드)
-            const { renderSSR } = await import("../ssr/renderer");
-            const html = await renderSSR(url, match.route, match.params, request, reply, config);
-            reply.type("text/html").send(html);
-            console.log(`[SSR] Matched route: ${match.route.path}`);
-            return;
-          } catch (e) {
-            console.error("[SSR Error]", {
-              url: request.url,
-              route: match.route.path,
-              error: e instanceof Error ? e.message : String(e),
-              timestamp: new Date().toISOString(),
-            });
-            // CSR로 fallback
+          if (match) {
+            try {
+              // renderSSR 재사용 (vite 없이 호출 = production 모드)
+              const { renderSSR } = await import("../ssr/renderer");
+              const html = await renderSSR(url, match.route, match.params, request, reply, config);
+              console.log(`[SSR] Matched route: ${match.route.path}`);
+
+              reply.type("text/html");
+              return html;
+            } catch (e) {
+              console.error("[SSR Error]", {
+                url: request.url,
+                route: match.route.path,
+                error: e instanceof Error ? e.message : String(e),
+                timestamp: new Date().toISOString(),
+              });
+              // CSR로 fallback
+            }
           }
         }
-      }
 
-      // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
-      const indexPath = path.join(webDistPath, "index.html");
-      const html = await fs.readFile(indexPath, "utf-8");
+        // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
+        const indexPath = path.join(webDistPath, "index.html");
+        const html = await fs.readFile(indexPath, "utf-8");
 
-      // CSR용 Cache-Control 헤더 설정
-      if (config.cacheControlHandler) {
-        const csrCacheReq: CacheControlRequest = {
-          type: "csr",
-          url: request.url,
-          path: request.url.split("?")[0],
-          method: request.method,
-        };
-        const csrCacheConfig = config.cacheControlHandler(csrCacheReq);
+        // CSR용 Cache-Control 헤더 설정
+        if (config.cacheControlHandler) {
+          const csrCacheReq: CacheControlRequest = {
+            type: "csr",
+            url: request.url,
+            path: request.url.split("?")[0],
+            method: request.method,
+          };
+          const csrCacheConfig = config.cacheControlHandler(csrCacheReq);
 
-        if (csrCacheConfig) {
-          applyCacheHeaders(reply, csrCacheConfig);
+          if (csrCacheConfig) {
+            applyCacheHeaders(reply, csrCacheConfig);
+          }
         }
-      }
-      reply.type("text/html").send(html);
+        reply.type("text/html");
+        return html;
+      },
     });
 
     console.log(`✓ Static web server configured with ${ssrAvailable ? "SSR" : "CSR only"} support`);
