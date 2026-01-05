@@ -40,5 +40,6 @@
   "files.readonlyInclude": {
     "examples/**/web/src/services/**/*": true
   },
-  "typescript.experimental.useTsgo": false
+  "typescript.experimental.useTsgo": false,
+  "terminal.integrated.fontFamily": "'Hack Nerd Font Mono'"
 }
