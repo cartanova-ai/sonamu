@@ -1,18 +1,30 @@
+import { MultiSelect, type MultiSelectOption } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import { Dropdown, type DropdownItemProps, type DropdownProps } from "semantic-ui-react";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type TableColumnAsyncSelectProps = {
   entityId: string;
   allowedTypes?: string[];
-} & DropdownProps;
+  value?: string[];
+  onChange?: (event: React.FormEvent, data: { value: string[] }) => void;
+  onValueChange?: (value: string[]) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+};
+
 export function TableColumnAsyncSelect({
   entityId,
   allowedTypes,
-  ...dropdownProps
+  value = [],
+  onChange,
+  onValueChange,
+  placeholder = "Columns",
+  disabled,
+  className,
 }: TableColumnAsyncSelectProps) {
-  const [options, setOptions] = useState<DropdownItemProps[]>([]);
+  const [options, setOptions] = useState<MultiSelectOption[]>([]);
 
   useEffect(() => {
     SonamuUIService.getTableColumns(entityId)
@@ -23,23 +35,31 @@ export function TableColumnAsyncSelect({
 
         setOptions(
           filteredColumns.map((c) => ({
-            key: c.name,
+            label: c.name,
             value: c.name,
-            text: c.name,
           })),
         );
       })
       .catch(defaultCatch);
   }, [entityId, allowedTypes]);
 
+  const handleValueChange = (newValue: string[]) => {
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
+    if (onChange) {
+      onChange({} as React.FormEvent, { value: newValue });
+    }
+  };
+
   return (
-    <Dropdown
-      placeholder="Columns"
-      multiple
-      search
-      selection
+    <MultiSelect
       options={options}
-      {...dropdownProps}
+      value={value}
+      onValueChange={handleValueChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
     />
   );
 }

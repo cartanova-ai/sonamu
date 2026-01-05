@@ -1,9 +1,10 @@
-import { useTypeForm } from "@sonamu-kit/react-components";
+import { Button, useTypeForm } from "@sonamu-kit/react-components";
 import classNames from "classnames";
 import { useState } from "react";
-import { Button, Header, Icon, Segment } from "semantic-ui-react";
 import type { MigrationStatus, SonamuDBConfig } from "sonamu";
 import { z } from "zod";
+import CheckIcon from "~icons/lucide/check";
+import PlayIcon from "~icons/lucide/play";
 import { BooleanToggle } from "../../components/BooleanToggle";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { defaultCatch } from "../../services/sonamu.shared";
@@ -47,12 +48,12 @@ export function MigrationActionForm({ action, targets, conns }: MigrationActionF
 
   return (
     <div className="form migration-commit-form">
-      <Segment padded basic loading={loading}>
-        <Segment padded color="green">
+      <div className={`ui padded basic segment ${loading ? "loading" : ""}`}>
+        <div className="ui padded green segment">
           <div className="header-row">
-            <Header>Migrations Action Form</Header>
+            <h2 className="ui header">Migrations Action Form</h2>
           </div>
-          <Segment basic>
+          <div className="ui basic segment">
             <div>
               <h4>Action: {action.toUpperCase()}</h4>
               <p>&nbsp;</p>
@@ -67,7 +68,9 @@ export function MigrationActionForm({ action, targets, conns }: MigrationActionF
                       "is-targeted": targets.includes(conn.connKey),
                     })}
                   >
-                    {targets.includes(conn.connKey) && <Icon name="check" />}
+                    {targets.includes(conn.connKey) && (
+                      <CheckIcon className="h-4 w-4 inline-block mr-1" />
+                    )}
                     {conn.name}
                   </div>
                 ))}
@@ -80,11 +83,13 @@ export function MigrationActionForm({ action, targets, conns }: MigrationActionF
               </div>
             )}
             <div className="text-center" style={{ marginTop: "2em" }}>
-              <Button color="green" onClick={() => handleSubmit()} icon="play" content="Commit" />
+              <Button variant="default" onClick={() => handleSubmit()} icon={<PlayIcon />}>
+                Commit
+              </Button>
             </div>
-          </Segment>
-        </Segment>
-      </Segment>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

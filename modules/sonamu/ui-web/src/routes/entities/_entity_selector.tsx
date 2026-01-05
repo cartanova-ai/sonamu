@@ -1,52 +1,37 @@
 import { useRef } from "react";
-import { Dropdown, Form, Header, Segment } from "semantic-ui-react";
 import { useCommonModal } from "../../components/core/CommonModal";
-import { SonamuUIService } from "../../services/sonamu-ui.service";
+import { EntityIdSelect } from "../../components/EntityIdSelect";
 
 type EntitySelectorProps = {};
 export function EntitySelector({}: EntitySelectorProps) {
-  const { data } = SonamuUIService.useEntities();
-  const { entities } = data ?? {};
-
   const { doneModal } = useCommonModal();
 
   const valueRef = useRef<string | null>(null);
 
   return (
     <div className="form entity-selector">
-      <Segment padded basic>
-        <Segment padded color="green">
+      <div className="ui padded basic segment">
+        <div className="ui padded green segment">
           <div className="header-row">
-            <Header>Select an entity</Header>
+            <h2 className="ui header">Select an entity</h2>
           </div>
-          <Segment basic>
-            {entities && (
-              <Form>
-                <Form.Group widths="equal">
-                  <Form.Field>
-                    <Dropdown
-                      search
-                      selection
-                      open
-                      options={entities.map((entity) => ({
-                        key: entity.id,
-                        text: entity.id,
-                        value: entity.id,
-                      }))}
-                      onChange={(_e, { value }) => {
-                        valueRef.current = String(value);
-                      }}
-                      onClose={() => {
-                        doneModal(valueRef.current);
-                      }}
-                    />
-                  </Form.Field>
-                </Form.Group>
-              </Form>
-            )}
-          </Segment>
-        </Segment>
-      </Segment>
+          <div className="ui basic segment">
+            <form className="ui form">
+              <div className="equal width fields">
+                <div className="field">
+                  <EntityIdSelect
+                    onValueChange={(value) => {
+                      valueRef.current = value;
+                      doneModal(value);
+                    }}
+                    search
+                  />
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,8 +2,11 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import { Button, Form, Icon, TextArea } from "semantic-ui-react";
+import { Button, Textarea } from "@sonamu-kit/react-components";
 import type { FixtureRecord } from "sonamu";
+import AlertCircleIcon from "~icons/lucide/alert-circle";
+import CheckIcon from "~icons/lucide/check";
+import Loader2Icon from "~icons/lucide/loader-2";
 
 type ToolState = "idle" | "running" | "success" | "error";
 
@@ -135,9 +138,9 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
     const displayName = toolName ?? "tool";
 
     const statusConfig = {
-      running: { icon: "spinner", color: "#f59e0b", bg: "#fef3c7", text: "처리 중" },
-      success: { icon: "check", color: "#10b981", bg: "#d1fae5", text: "완료" },
-      error: { icon: "warning", color: "#ef4444", bg: "#fee2e2", text: "오류" },
+      running: { color: "#f59e0b", bg: "#fef3c7", text: "처리 중" },
+      success: { color: "#10b981", bg: "#d1fae5", text: "완료" },
+      error: { color: "#ef4444", bg: "#fee2e2", text: "오류" },
     } as const;
 
     const config = statusConfig[toolState];
@@ -152,7 +155,9 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
             ...(toolState === "running" && { alignItems: "center" }),
           }}
         >
-          <Icon name={config.icon} loading={toolState === "running"} />
+          {toolState === "running" && <Loader2Icon className="animate-spin" />}
+          {toolState === "success" && <CheckIcon />}
+          {toolState === "error" && <AlertCircleIcon />}
           <span className="chat-status-tool">{displayName}</span>
           <span className="chat-status-text">{config.text}</span>
         </div>
@@ -165,11 +170,11 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
 
   return (
     <div className="chat-compact">
-      <Form onSubmit={handleSubmit} className="chat-input-form">
-        <TextArea
+      <form onSubmit={handleSubmit} className="ui form chat-input-form">
+        <Textarea
           placeholder="픽스쳐 수정 요청을 입력하세요..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onValueChange={setInput}
           disabled={isLoading}
           onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
             if (e.key === "Enter" && e.metaKey) {
@@ -179,24 +184,24 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
           }}
         />
         {isLoading ? (
-          <Button type="button" color="red" onClick={stop}>
+          <Button type="button" variant="destructive" onClick={stop}>
             Stop
           </Button>
         ) : (
-          <Button type="submit" primary disabled={!input.trim()}>
+          <Button type="submit" variant="default" disabled={!input.trim()}>
             Send
           </Button>
         )}
-        <Button type="button" basic onClick={handleClear}>
+        <Button type="button" variant="outline" onClick={handleClear}>
           Clear
         </Button>
-      </Form>
+      </form>
 
       {renderStatus()}
 
       {errorMessage && (
         <div className="chat-error-message">
-          <Icon name="warning circle" color="red" />
+          <AlertCircleIcon className="text-red-500" />
           {errorMessage}
         </div>
       )}

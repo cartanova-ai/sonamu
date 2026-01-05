@@ -1,6 +1,9 @@
+import { Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@sonamu-kit/react-components";
 import type { SetStateAction } from "react";
-import { Checkbox, Icon, Popup, Table } from "semantic-ui-react";
 import type { FixtureRecord } from "sonamu";
+import InfoIcon from "~icons/lucide/info";
+import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import TriangleAlertIcon from "~icons/lucide/triangle-alert";
 
 type EntityTableProps = {
   fixtures: FixtureRecord[];
@@ -71,32 +74,30 @@ export default function EntityTable({
   const firstRecord = fixtures[0];
 
   return (
-    <Table celled structured className="entity-table" key={entityId}>
+    <table className="ui celled structured table entity-table" key={entityId}>
       {isGraphNode && <strong className="table-node-header">{entityId}</strong>}
-      <Table.Header>
+      <thead>
         {!isGraphNode && (
-          <Table.Row>
-            <Table.HeaderCell colSpan={Object.keys(firstRecord.columns).length + 2}>
-              {entityId}
-            </Table.HeaderCell>
-          </Table.Row>
+          <tr>
+            <th colSpan={Object.keys(firstRecord.columns).length + 2}>{entityId}</th>
+          </tr>
         )}
-        <Table.Row>
-          <Table.HeaderCell collapsing content="ID" />
-          <Table.HeaderCell collapsing content="DB" />
+        <tr>
+          <th className="collapsing">ID</th>
+          <th className="collapsing">DB</th>
           {refineColumns(firstRecord.columns).map(([key]) => (
-            <Table.HeaderCell key={key} collapsing>
+            <th key={key} className="collapsing">
               {key}
-            </Table.HeaderCell>
+            </th>
           ))}
-        </Table.Row>
-      </Table.Header>
-      <Table.Body>
+        </tr>
+      </thead>
+      <tbody>
         {fixtures.map((record) => (
           <>
             {/* Source Row */}
-            <Table.Row key={record.id} className={record.unique ? "unique-violated" : ""}>
-              <Table.Cell collapsing rowSpan={getRowSpan(record)}>
+            <tr key={record.id} className={record.unique ? "unique-violated" : ""}>
+              <td className="collapsing" rowSpan={getRowSpan(record)}>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <span>{record.id}</span>
 
@@ -104,10 +105,8 @@ export default function EntityTable({
                   {hasDuplicate(record) && (
                     <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
                       {/* Override 버튼 */}
-                      <Popup
-                        content="덮어쓰기 (기존 레코드 업데이트)"
-                        position="top center"
-                        trigger={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <button
                             type="button"
                             className={isGraphNode ? "nodrag nopan" : ""}
@@ -119,49 +118,58 @@ export default function EntityTable({
                             }}
                             onClick={() => handleOverrideToggle(record.fixtureId)}
                           >
-                            <Icon name="sync" color={record.override ? "green" : "grey"} />
+                            <RefreshCwIcon
+                              style={{
+                                color: record.override ? "#10b981" : "#9ca3af",
+                                width: "16px",
+                                height: "16px",
+                              }}
+                            />
                           </button>
-                        }
-                      />
+                        </TooltipTrigger>
+                        <TooltipContent>덮어쓰기 (기존 레코드 업데이트)</TooltipContent>
+                      </Tooltip>
                     </div>
                   )}
 
                   {/* Unique index 위반 표시 */}
                   {record.unique && (
-                    <Popup
-                      content={`Unique Index 위반 (ID: ${record.unique.id})`}
-                      position="top center"
-                      trigger={
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <span style={{ cursor: "help" }}>
-                          <Icon name="warning sign" color="yellow" />
+                          <TriangleAlertIcon
+                            style={{ color: "#eab308", width: "16px", height: "16px" }}
+                          />
                         </span>
-                      }
-                    />
+                      </TooltipTrigger>
+                      <TooltipContent>Unique Index 위반 (ID: {record.unique.id})</TooltipContent>
+                    </Tooltip>
                   )}
 
                   {/* 사용자 지정 컬럼 중복 표시 */}
                   {record.target && (
-                    <Popup
-                      content={`사용자 지정 컬럼 기준 중복 (ID: ${record.target.id})`}
-                      position="top center"
-                      trigger={
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <span style={{ cursor: "help" }}>
-                          <Icon name="info circle" color="blue" />
+                          <InfoIcon style={{ color: "#3b82f6", width: "16px", height: "16px" }} />
                         </span>
-                      }
-                    />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        사용자 지정 컬럼 기준 중복 (ID: {record.target.id})
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
-              </Table.Cell>
+              </td>
 
-              <Table.Cell collapsing>source</Table.Cell>
+              <td className="collapsing">source</td>
               {refineColumns(record.columns).map(([key, columnData]) => {
                 const { prop, value } = columnData as {
                   prop: { type: string; relationType?: string; with?: string };
                   value: unknown;
                 };
                 return (
-                  <Table.Cell key={key} collapsing>
+                  <td key={key} className="collapsing">
                     <div className="scrollable-cell-content">
                       {(Array.isArray(value) ? value : [value]).map((v, index) =>
                         prop.type === "relation" && prop.relationType !== "BelongsToOne" ? (
@@ -171,12 +179,12 @@ export default function EntityTable({
                               <Checkbox
                                 className={isGraphNode ? "nodrag nopan" : ""}
                                 checked={selectedIds.has(`${prop.with}#${v}`)}
-                                onChange={(_, data) => {
+                                onCheckedChange={(checked) => {
                                   onRelationToggle(
                                     record.fixtureId,
                                     prop.with as string,
                                     v as number,
-                                    data.checked as boolean,
+                                    checked as boolean,
                                   );
                                 }}
                               />
@@ -187,55 +195,57 @@ export default function EntityTable({
                         ),
                       )}
                     </div>
-                  </Table.Cell>
+                  </td>
                 );
               })}
-            </Table.Row>
+            </tr>
 
             {/* Target Row (사용자 지정 컬럼 기준 중복) */}
             {record.target && (
-              <Table.Row key={`${record.id}-target`} warning>
-                <Table.Cell collapsing>
-                  <Popup
-                    content="사용자 지정 컬럼 기준 중복"
-                    position="left center"
-                    trigger={<span>target</span>}
-                  />
-                </Table.Cell>
+              <tr key={`${record.id}-target`} className="warning">
+                <td className="collapsing">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>target</span>
+                    </TooltipTrigger>
+                    <TooltipContent>사용자 지정 컬럼 기준 중복</TooltipContent>
+                  </Tooltip>
+                </td>
                 {refineColumns(record.target.columns).map(([key, columnData]) => {
                   const { value } = columnData as { value: unknown };
                   return (
-                    <Table.Cell key={key} collapsing>
+                    <td key={key} className="collapsing">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
-                    </Table.Cell>
+                    </td>
                   );
                 })}
-              </Table.Row>
+              </tr>
             )}
 
             {/* Unique Row (unique index 기준 중복) */}
             {record.unique && (
-              <Table.Row key={`${record.id}-unique`} negative>
-                <Table.Cell collapsing>
-                  <Popup
-                    content="Unique Index 기준 중복"
-                    position="left center"
-                    trigger={<span>unique</span>}
-                  />
-                </Table.Cell>
+              <tr key={`${record.id}-unique`} className="negative">
+                <td className="collapsing">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>unique</span>
+                    </TooltipTrigger>
+                    <TooltipContent>Unique Index 기준 중복</TooltipContent>
+                  </Tooltip>
+                </td>
                 {refineColumns(record.unique.columns).map(([key, columnData]) => {
                   const { value } = columnData as { value: unknown };
                   return (
-                    <Table.Cell key={key} collapsing>
+                    <td key={key} className="collapsing">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
-                    </Table.Cell>
+                    </td>
                   );
                 })}
-              </Table.Row>
+              </tr>
             )}
           </>
         ))}
-      </Table.Body>
-    </Table>
+      </tbody>
+    </table>
   );
 }

@@ -60,12 +60,14 @@ export function CommonModal({ className }: CommonModalProps) {
       }}
     >
       <DialogContent className={cn("max-w-4xl", modalClassName, className)}>
-        {(title || description) && (
-          <DialogHeader>
-            {title && <DialogTitle>{title}</DialogTitle>}
-            {description && <DialogDescription>{description}</DialogDescription>}
-          </DialogHeader>
-        )}
+        <DialogHeader>
+          <DialogTitle className={!title ? "sr-only" : undefined}>
+            {title || "Modal"}
+          </DialogTitle>
+          <DialogDescription className={!description ? "sr-only" : undefined}>
+            {description || "Modal content"}
+          </DialogDescription>
+        </DialogHeader>
         {reactNode}
       </DialogContent>
     </Dialog>

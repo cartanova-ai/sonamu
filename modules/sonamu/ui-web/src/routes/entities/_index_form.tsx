@@ -1,17 +1,18 @@
-import { useTypeForm } from "@sonamu-kit/react-components";
-import { type SyntheticEvent, useEffect } from "react";
 import {
   Button,
   Checkbox,
-  Dropdown,
-  type DropdownProps,
-  Form,
-  Header,
-  Label,
-  Segment,
-} from "semantic-ui-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  useTypeForm,
+} from "@sonamu-kit/react-components";
+import { useEffect } from "react";
 import type { EntityIndex } from "sonamu";
 import z from "zod";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+import ChevronUpIcon from "~icons/lucide/chevron-up";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
@@ -132,10 +133,9 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     }
   };
 
-  const handleColumnChange = (_: SyntheticEvent<HTMLElement, Event>, { value }: DropdownProps) => {
+  const handleColumnChange = (_: React.FormEvent, { value }: { value: string[] }) => {
     console.log("handleColumnChange", value);
-    const valueArray = (Array.isArray(value) ? value : [value]) as string[];
-    const newColumns = valueArray.map((name) => {
+    const newColumns = value.map((name) => {
       const existing = form.columns.find((c) => c.name === name);
       return existing ?? { name };
     });
@@ -167,49 +167,43 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     setForm({ ...form, columns: newColumns });
   };
 
-  const typeOptions = ["index", "unique", "hnsw", "ivfflat"].map((k) => ({
-    key: k,
-    value: k,
-    text: k.toUpperCase(),
-  }));
-
+  const typeOptions = ["index", "unique", "hnsw", "ivfflat"];
   const usingOptions = [
     { key: "btree", text: "B-Tree" },
     { key: "hash", text: "Hash" },
     { key: "gin", text: "GIN" },
     { key: "gist", text: "GiST" },
     { key: "pgroonga", text: "PGroonga" },
-  ].map((k) => ({ key: k.key, value: k.key, text: k.text }));
+  ];
 
   return (
     <div className="entity-form-container">
       <div className="form-header">
-        <Header
-          size="medium"
+        <h2
+          className="ui medium header"
           style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}
         >
           {oldOne ? "Edit Entity Index" : "New Entity Index"}
-          <Header.Subheader style={{ marginTop: "4px" }}>
+          <div className="sub header" style={{ marginTop: "4px" }}>
             <span style={{ fontWeight: 600, color: "#4183c4" }}>{table}</span> 테이블의 인덱스
             설정을 구성합니다.
-          </Header.Subheader>
-        </Header>
+          </div>
+        </h2>
       </div>
 
       <div className="form-body">
-        <Form>
-          <Segment basic style={{ padding: 0 }}>
+        <form className="ui form">
+          <div className="ui basic segment" style={{ padding: 0 }}>
             {/* Index Name */}
-            <Form.Field required>
+            <div className="required field">
               <label>
                 Index Name
-                <Label
-                  basic
-                  size="tiny"
+                <span
+                  className="ui basic tiny label"
                   style={{ fontWeight: "normal", color: "#888", marginLeft: "8px" }}
                 >
                   자동 생성됨
-                </Label>
+                </span>
               </label>
               <div className="ui fluid input">
                 <input
@@ -219,7 +213,7 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                   placeholder="인덱스 이름이 여기에 표시됩니다"
                 />
               </div>
-            </Form.Field>
+            </div>
 
             {/* Type & Option Row */}
             <div
@@ -230,62 +224,77 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                 marginBottom: "24px",
               }}
             >
-              <Form.Field required>
+              <div className="required field">
                 <label>Type</label>
-                <Dropdown
-                  {...register("type")}
-                  search
-                  selection
-                  fluid
-                  options={typeOptions}
-                  className="focus-0"
-                />
-              </Form.Field>
+                <Select
+                  value={form.type}
+                  onValueChange={(value) =>
+                    value && setForm({ ...form, type: value as typeof form.type })
+                  }
+                >
+                  <SelectTrigger className="focus-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.toUpperCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               {form.type === "unique" ? (
-                <Form.Field>
+                <div className="field">
                   <label>Nulls Not Distinct</label>
                   <Checkbox
-                    toggle
                     checked={form.nullsNotDistinct ?? false}
-                    onChange={(_, { checked }) =>
+                    onCheckedChange={(checked) =>
                       setForm({ ...form, nullsNotDistinct: checked ? true : undefined })
                     }
                     style={{ marginTop: "7px" }}
                   />
-                </Form.Field>
+                </div>
               ) : (
-                <Form.Field>
+                <div className="field">
                   <label>Using</label>
-                  <Dropdown
-                    {...register("using")}
-                    search
-                    selection
-                    fluid
-                    options={usingOptions}
-                    className="focus-0"
+                  <Select
+                    value={form.using}
+                    onValueChange={(value) => {
+                      setForm({
+                        ...form,
+                        using: value as NonNullable<EntityIndex["using"]> | undefined,
+                      });
+                    }}
                     clearable
-                  />
-                </Form.Field>
+                  >
+                    <SelectTrigger className="focus-0">
+                      <SelectValue placeholder="Select using..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {usingOptions.map((opt) => (
+                        <SelectItem key={opt.key} value={opt.key}>
+                          {opt.text}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
 
             {/* Target Columns Area */}
-            <Form.Field className="columns-field">
-              <Header size="small">Target Columns</Header>
+            <div className="field columns-field">
+              <h5 className="ui small header">Target Columns</h5>
 
               <div className="column-select-wrapper">
                 <TableColumnAsyncSelect
-                  value={
-                    form.using !== "hash"
-                      ? form.columns.map((col) => col.name) // 다중: 배열 전달
-                      : form.columns[0]?.name || "" // 단일: 문자열 전달
-                  }
+                  value={form.columns.map((col) => col.name)}
                   onChange={handleColumnChange}
                   entityId={entityId}
                   className="focus-2"
                   placeholder="Select Columns..."
-                  multiple={form.using !== "hash"}
                 />
               </div>
 
@@ -303,78 +312,82 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                         {/* B-Tree 정렬 옵션 */}
                         {(form.using === "btree" || !form.using) && (
                           <div className="sort-controls">
-                            <Dropdown
-                              clearable
-                              selection
-                              compact
-                              className="tiny"
-                              placeholder="Sort"
-                              value={col.sortOrder ?? ""}
-                              options={[
-                                { key: "asc", value: "ASC", text: "ASC" },
-                                { key: "desc", value: "DESC", text: "DESC" },
-                              ]}
-                              onChange={(_, { value }) =>
+                            <Select
+                              value={col.sortOrder}
+                              onValueChange={(value) =>
                                 updateColumn(idx, {
-                                  sortOrder: value ? (value as "ASC" | "DESC") : undefined,
+                                  sortOrder: value as "ASC" | "DESC" | undefined,
                                 })
                               }
-                            />
-                            <Dropdown
                               clearable
-                              selection
-                              compact
-                              className="tiny"
-                              placeholder="Nulls"
-                              value={col.nullsFirst ?? ""}
-                              options={[
-                                { key: "first", value: true, text: "NULLS FIRST" },
-                                { key: "last", value: false, text: "NULLS LAST" },
-                              ]}
-                              onChange={(_, { value }) =>
+                            >
+                              <SelectTrigger className="tiny">
+                                <SelectValue placeholder="Sort" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ASC">ASC</SelectItem>
+                                <SelectItem value="DESC">DESC</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={col.nullsFirst === undefined ? undefined : String(col.nullsFirst)}
+                              onValueChange={(value) =>
                                 updateColumn(idx, {
-                                  nullsFirst: value === "" ? undefined : (value as boolean),
+                                  nullsFirst: value === undefined ? undefined : value === "true",
                                 })
                               }
-                            />
+                              clearable
+                            >
+                              <SelectTrigger className="tiny">
+                                <SelectValue placeholder="Nulls" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="true">NULLS FIRST</SelectItem>
+                                <SelectItem value="false">NULLS LAST</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                         )}
 
                         {/* 순서 변경 버튼 */}
                         {form.columns.length > 1 && (
-                          <Button.Group size="tiny" basic>
+                          <div className="ui tiny basic buttons">
                             <Button
-                              icon="angle up"
+                              variant="outline"
+                              size="xs"
                               disabled={idx === 0}
                               onClick={() => moveColumn(idx, -1)}
+                              icon={<ChevronUpIcon />}
                             />
                             <Button
-                              icon="angle down"
+                              variant="outline"
+                              size="xs"
                               disabled={idx === form.columns.length - 1}
                               onClick={() => moveColumn(idx, 1)}
+                              icon={<ChevronDownIcon />}
                             />
-                          </Button.Group>
+                          </div>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </Form.Field>
-          </Segment>
-        </Form>
+            </div>
+          </div>
+        </form>
 
-        <Header size="small">Debug: Form State</Header>
-        <Segment secondary className="debug-form-state">
+        <h5 className="ui small header">Debug: Form State</h5>
+        <div className="ui secondary segment debug-form-state">
           <pre>{JSON.stringify(form, null, 2)}</pre>
-        </Segment>
+        </div>
       </div>
 
       <div className="form-footer">
-        <Button onClick={() => doneModal(null)} className="cancel-btn">
+        <Button variant="outline" onClick={() => doneModal(null)} className="cancel-btn">
           Cancel
         </Button>
-        <Button primary onClick={handleSubmit} className="save-btn">
+        <Button variant="default" onClick={handleSubmit} className="save-btn">
           Save Index
         </Button>
       </div>

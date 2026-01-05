@@ -710,7 +710,7 @@ code {
   }
 
   .button-set {
-    padding: 0.3em;
+    padding: 0.7em;
     text-align: center;
 
     .ui.button {
@@ -1503,7 +1503,6 @@ code {
   .form-body {
     padding: 24px;
     flex: 1;
-    overflow-y: auto;
 
     .ui.form .field > label {
       display: block;

@@ -1,7 +1,14 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import { Button, Icon, TextArea } from "semantic-ui-react";
+import { Button, Textarea } from "@sonamu-kit/react-components";
+import AlertCircleIcon from "~icons/lucide/alert-circle";
+import CheckCircleIcon from "~icons/lucide/check-circle";
+import CircleIcon from "~icons/lucide/circle";
+import Loader2Icon from "~icons/lucide/loader-2";
+import MessageCircleIcon from "~icons/lucide/message-circle";
+import SendIcon from "~icons/lucide/send";
+import StopCircleIcon from "~icons/lucide/stop-circle";
 
 type ToolState = "idle" | "running" | "success" | "error";
 
@@ -122,10 +129,10 @@ export default function EntityChatComponent({
     const displayName = toolName ?? "AI Assistant";
 
     const statusConfig = {
-      idle: { icon: "comment alternate outline", color: "#9ca3af", loading: false },
-      running: { icon: "circle notch", color: "#fbbf24", loading: true },
-      success: { icon: "check circle outline", color: "#34d399", loading: false },
-      error: { icon: "exclamation circle", color: "#f87171", loading: false },
+      idle: { color: "#9ca3af" },
+      running: { color: "#fbbf24" },
+      success: { color: "#34d399" },
+      error: { color: "#f87171" },
     } as const;
 
     const config = statusConfig[toolState];
@@ -134,11 +141,10 @@ export default function EntityChatComponent({
       <div className="chat-response-area">
         <div className={`status-header ${toolState}`}>
           <div className="status-icon">
-            <Icon
-              name={config.icon}
-              loading={config.loading}
-              style={{ color: config.color, margin: 0 }}
-            />
+            {toolState === "idle" && <MessageCircleIcon style={{ color: config.color, margin: 0 }} />}
+            {toolState === "running" && <Loader2Icon className="animate-spin" style={{ color: config.color, margin: 0 }} />}
+            {toolState === "success" && <CheckCircleIcon style={{ color: config.color, margin: 0 }} />}
+            {toolState === "error" && <AlertCircleIcon style={{ color: config.color, margin: 0 }} />}
           </div>
           <span className="tool-name">{displayName}</span>
           {toolState === "running" && <span className="status-text">처리 중...</span>}
@@ -146,7 +152,7 @@ export default function EntityChatComponent({
 
         {errorMessage && (
           <div className="error-message animate-fade-in">
-            <Icon name="warning sign" /> {errorMessage}
+            <CircleIcon className="inline-block mr-1" /> {errorMessage}
           </div>
         )}
       </div>
@@ -158,10 +164,10 @@ export default function EntityChatComponent({
       {renderStatus()}
 
       <div className="chat-input-wrapper">
-        <TextArea
+        <Textarea
           placeholder="Entity 또는 Enum 생성 요청..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onValueChange={setInput}
           disabled={isLoading}
           rows={1}
           style={{ height: "auto", minHeight: "38px" }}
@@ -180,24 +186,20 @@ export default function EntityChatComponent({
         <div className="action-buttons">
           {isLoading ? (
             <Button
-              icon="stop"
+              icon={<StopCircleIcon />}
               className="stop-btn"
-              size="mini"
+              size="xs"
               onClick={stop}
-              circular
-              basic
-              inverted
+              variant="ghost"
             />
           ) : (
             <Button
-              icon="paper plane"
+              icon={<SendIcon />}
               className={`send-btn ${input.trim() ? "active" : ""}`}
-              size="mini"
+              size="xs"
               onClick={handleSubmit}
               disabled={!input.trim()}
-              circular
-              basic
-              inverted
+              variant="ghost"
             />
           )}
         </div>

@@ -1,22 +1,54 @@
+import {
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
-import type { SyntheticEvent } from "react";
-import { Button, FormDropdown, type FormDropdownProps } from "semantic-ui-react";
+import PlusIcon from "~icons/lucide/plus";
+import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
-export function FormTypeIdAsyncSelect({
-  filter,
-  withAddEnumButton,
-  ...props
-}: FormDropdownProps & {
+type FormTypeIdAsyncSelectProps = {
   filter?: "enums" | "types";
   withAddEnumButton?: {
     entityId: string;
     propName: string;
   };
-}) {
+  value?: string;
+  onChange?: (event: React.FormEvent, data: { value: string }) => void;
+  onValueChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  search?: boolean;
+  className?: string;
+};
+
+export function FormTypeIdAsyncSelect({
+  filter,
+  withAddEnumButton,
+  value,
+  onChange,
+  onValueChange,
+  placeholder = "TypeId",
+  disabled,
+  className,
+}: FormTypeIdAsyncSelectProps) {
   const { data, isLoading, refetch } = SonamuUIService.useTypeIds(filter);
   const { typeIds } = data ?? {};
+
+  const handleValueChange = (newValue: string | null | undefined) => {
+    if (!newValue) return;
+    if (onValueChange) {
+      onValueChange(newValue);
+    }
+    if (onChange) {
+      onChange({} as React.FormEvent, { value: newValue });
+    }
+  };
 
   const promptAddEnum = () => {
     if (!withAddEnumButton) {
@@ -37,33 +69,35 @@ export function FormTypeIdAsyncSelect({
       .then(() => {
         refetch();
         setTimeout(() => {
-          if (props.onChange) {
-            props.onChange({} as SyntheticEvent<HTMLElement, Event>, {
-              value: newEnumId,
-            });
-          }
+          handleValueChange(newEnumId);
         }, 100);
       })
       .catch(defaultCatch);
   };
 
   return (
-    <>
-      <FormDropdown
-        placeholder="TypeId"
-        selection
-        options={(typeIds ?? []).map((typeId) => ({
-          key: typeId,
-          value: typeId,
-          text: typeId,
-        }))}
-        disabled={!typeIds}
-        loading={isLoading}
-        selectOnBlur={false}
-        {...props}
-      />
-      <Button icon="refresh" size="mini" onClick={() => refetch()} />
-      {withAddEnumButton && <Button icon="plus" size="mini" onClick={() => promptAddEnum()} />}
-    </>
+    <div className="flex gap-1">
+      <Select
+        value={value}
+        onValueChange={handleValueChange}
+        disabled={disabled || !typeIds || isLoading}
+      >
+        <SelectTrigger className={className}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {(typeIds ?? []).map((typeId) => (
+            <SelectItem key={typeId} value={typeId}>
+              {typeId}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button variant="outline" onClick={() => refetch()} icon={<RefreshCwIcon />} />
+
+      {withAddEnumButton && (
+        <Button variant="outline" onClick={() => promptAddEnum()} icon={<PlusIcon />} />
+      )}
+    </div>
   );
 }

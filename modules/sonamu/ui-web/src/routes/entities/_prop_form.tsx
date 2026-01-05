@@ -1,8 +1,17 @@
-import { useTypeForm } from "@sonamu-kit/react-components";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  useTypeForm,
+} from "@sonamu-kit/react-components";
 import { useEffect } from "react";
-import { Button, Divider, Form, Header, Input, Label, Segment } from "semantic-ui-react";
 import type { EntityProp } from "sonamu";
 import { z } from "zod";
+import CodeIcon from "~icons/lucide/code";
 import { BooleanToggle } from "../../components/BooleanToggle";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
@@ -12,6 +21,8 @@ import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
+
+type RelationOn = z.infer<typeof EntityPropZodSchema.RelationOn>;
 
 type EntityPropFormProps = {
   entityId: string;
@@ -78,17 +89,12 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     "uuid",
     "uuid[]",
     "json",
-    "uuid",
     "vector",
     "vector[]",
     "virtual",
     "relation",
     "tsvector",
-  ].map((type) => ({
-    key: type,
-    value: type,
-    text: type,
-  }));
+  ];
 
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
@@ -117,21 +123,11 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     const result = EntityPropZodSchema.safeParse(form);
     if (!result.success) {
       console.error(result.error);
-      result.error.issues.forEach((issue: z.core.$ZodIssue) => {
+      result.error.issues.forEach((issue) => {
         if (issue.path.length) {
           addError(issue.path[0].toString(), {
             content: issue.message,
             pointing: "above",
-          });
-        }
-        if (issue.code === "invalid_union") {
-          issue.errors.flat().forEach((error: z.core.$ZodIssue) => {
-            if (error.path.length) {
-              addError(error.path[0].toString(), {
-                content: error.message,
-                pointing: "above",
-              });
-            }
           });
         }
       });
@@ -151,27 +147,35 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
   return (
     <div className="form entity-prop-form entity-form-container">
       <div className="form-header">
-        <Header>EntityProp Form</Header>
+        <h2 className="ui header">EntityProp Form</h2>
       </div>
 
       <div className="form-body">
-        <Form>
-          <Form.Group widths="equal">
-            <Form.Field required>
+        <form className="ui form">
+          <div className="equal width fields">
+            <div className="required field">
               <label>Type</label>
-              <Form.Dropdown
-                {...register("type")}
-                search
-                selection
-                options={typeOptions}
-                className="focus-2"
-              />
-            </Form.Field>
-            <Form.Field required>
+              <Select
+                value={form.type}
+                onValueChange={(value) => value && setForm({ ...form, type: value })}
+              >
+                <SelectTrigger className="focus-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeOptions.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="required field">
               <label>Name</label>
-              <Form.Input {...register("name")} className="focus-0" />
-            </Form.Field>
-            <Form.Field>
+              <Input {...register("name")} className="focus-0" />
+            </div>
+            <div className="field">
               <label>Description</label>
               <InputWithSuggestion
                 {...register("desc")}
@@ -179,18 +183,18 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                 origin={form.name}
                 entityId={entityId}
               />
-            </Form.Field>
-          </Form.Group>
-          <Form.Group widths="equal">
-            <Form.Field>
+            </div>
+          </div>
+          <div className="equal width fields">
+            <div className="field">
               <label>Nullable</label>
               <BooleanToggle {...register("nullable")} />
-            </Form.Field>
-            <Form.Field>
+            </div>
+            <div className="field">
               <label>To Filter</label>
               <BooleanToggle {...register("toFilter")} />
-            </Form.Field>
-            <Form.Field>
+            </div>
+            <div className="field">
               <label>Generated</label>
               <BooleanToggle
                 value={form.generated !== undefined}
@@ -206,57 +210,70 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                   }
                 }}
               />
-            </Form.Field>
-            <Form.Field>
+            </div>
+            <div className="field">
               <label>DB Default</label>
-              <Input
-                {...register("dbDefault")}
-                className="focus-5"
-                labelPosition="left"
-                disabled={form.generated !== undefined}
-                label={
-                  <Label>
-                    {(() => {
-                      if (form.dbDefault === undefined) {
-                        return "undefined";
-                      } else if (Number.isNaN(Number(form.dbDefault)) === false) {
-                        return "number";
-                      } else if (form.dbDefault.startsWith('"') && form.dbDefault.endsWith('"')) {
-                        return "string";
-                      } else {
-                        return "raw";
-                      }
-                    })()}
-                  </Label>
-                }
-              />
-            </Form.Field>
-          </Form.Group>
+              <div className="flex items-center gap-0">
+                <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-700">
+                  {(() => {
+                    if (form.dbDefault === undefined || form.dbDefault === "") {
+                      return "undefined";
+                    } else if (Number.isNaN(Number(form.dbDefault)) === false) {
+                      return "number";
+                    } else if (form.dbDefault.startsWith('"') && form.dbDefault.endsWith('"')) {
+                      return "string";
+                    } else {
+                      return "raw";
+                    }
+                  })()}
+                </span>
+                <Input
+                  {...register("dbDefault")}
+                  className="focus-5 rounded-l-none rounded-r-none flex-1"
+                  disabled={form.generated !== undefined}
+                />
+                {form.dbDefault !== undefined && form.dbDefault !== "" && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 w-10 p-0 rounded-l-none border border-l-0"
+                    onClick={() => setForm({ ...form, dbDefault: undefined })}
+                    disabled={form.generated !== undefined}
+                  >
+                    ×
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
           {form.generated && (
-            <Form.Group widths="equal">
-              <Form.Field required style={{ flex: 2 }}>
+            <div className="equal width fields">
+              <div className="required field" style={{ flex: 2 }}>
                 <label>Storage Type</label>
-                <Form.Dropdown
+                <Select
                   value={form.generated?.type ?? "STORED"}
-                  onChange={(_, { value }) => {
+                  onValueChange={(value) => {
                     const newGenerated = {
                       type: value as "STORED" | "VIRTUAL",
                       expression: form.generated?.expression ?? "",
                     };
                     setForm({ ...form, generated: newGenerated });
                   }}
-                  selection
-                  options={[
-                    { key: "STORED", value: "STORED", text: "STORED" },
-                    { key: "VIRTUAL", value: "VIRTUAL", text: "VIRTUAL" },
-                  ]}
-                />
-              </Form.Field>
-              <Form.Field required>
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STORED">STORED</SelectItem>
+                    <SelectItem value="VIRTUAL">VIRTUAL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="required field">
                 <label>Generation Expression</label>
                 <Input
                   value={form.generated?.expression ?? ""}
-                  onChange={(_, { value }) => {
+                  onValueChange={(value) => {
                     const newGenerated = {
                       type: form.generated?.type ?? "STORED",
                       expression: value,
@@ -265,23 +282,23 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                   }}
                   placeholder="예: price * 1.1"
                 />
-              </Form.Field>
-            </Form.Group>
+              </div>
+            </div>
           )}
-          <Divider />
+          <div className="ui divider" />
           {(form.type === "string" ||
             form.type === "string[]" ||
             form.type === "enum" ||
             form.type === "enum[]") && (
-            <Form.Group widths="equal">
+            <div className="equal width fields">
               {form.type === "string" && (
-                <Form.Field>
+                <div className="field">
                   <label>Length</label>
                   <FormNumberInput {...register("length", "nullable")} />
-                </Form.Field>
+                </div>
               )}
               {form.type === "enum" ? (
-                <Form.Field required>
+                <div className="required field">
                   <label>Enum ID</label>
                   <div className="flex">
                     <FormTypeIdAsyncSelect
@@ -291,11 +308,11 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
                       withAddEnumButton={{ entityId, propName: form.name }}
                     />
                   </div>
-                </Form.Field>
+                </div>
               ) : (
-                <Form.Field>&nbsp;</Form.Field>
+                <div className="field">&nbsp;</div>
               )}
-            </Form.Group>
+            </div>
           )}
           {(form.type === "integer" ||
             form.type === "integer[]" ||
@@ -305,171 +322,229 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
             form.type === "number[]" ||
             form.type === "numeric" ||
             form.type === "numeric[]") && (
-            <Form.Group widths="equal">
+            <div className="equal width fields">
               {form.type === "number" && (
-                <Form.Field>
+                <div className="field">
                   <label>Number Type</label>
-                  <Form.Dropdown
-                    {...register("numberType")}
-                    search
-                    selection
-                    options={["real", "double precision", "numeric"].map((k) => ({
-                      key: k,
-                      value: k,
-                      text: k,
-                    }))}
-                  />
-                </Form.Field>
+                  <Select
+                    value={form.numberType}
+                    onValueChange={(value) =>
+                      setForm({
+                        ...form,
+                        numberType: value as "real" | "double precision" | "numeric" | undefined,
+                      })
+                    }
+                    clearable
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="real">real</SelectItem>
+                      <SelectItem value="double precision">double precision</SelectItem>
+                      <SelectItem value="numeric">numeric</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
               {(form.type === "numeric" ||
                 (form.type === "number" && form.numberType === "numeric")) && (
                 <>
-                  <Form.Field required>
+                  <div className="required field">
                     <label>Precision</label>
                     <FormNumberInput {...register("precision")} />
-                  </Form.Field>
-                  <Form.Field required>
+                  </div>
+                  <div className="required field">
                     <label>Scale</label>
                     <FormNumberInput {...register("scale")} />
-                  </Form.Field>
+                  </div>
                 </>
               )}
-            </Form.Group>
+            </div>
           )}
           {(form.type === "json" || form.type === "virtual") && (
-            <Form.Group widths="equal">
-              <Form.Field required>
+            <div className="equal width fields">
+              <div className="required field">
                 <label>CustomType ID</label>
                 <div className="flex">
                   <FormTypeIdAsyncSelect {...register("id")} search />
-                  <Button icon="code" size="mini" onClick={() => openVscodePreset("types")} />
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => openVscodePreset("types")}
+                    icon={<CodeIcon />}
+                  />
                 </div>
-              </Form.Field>
-            </Form.Group>
+              </div>
+            </div>
           )}
           {form.type === "virtual" && (
-            <Form.Group widths="equal" style={{ width: "50%" }}>
-              <Form.Field>
+            <div className="equal width fields" style={{ width: "50%" }}>
+              <div className="field">
                 <label>Virtual Type</label>
-                <Form.Dropdown
-                  {...register("virtualType")}
-                  selection
-                  options={[
-                    { key: "code", value: "code", text: "code" },
-                    { key: "query", value: "query", text: "query" },
-                  ]}
-                  placeholder="code (default)"
-                />
-              </Form.Field>
-            </Form.Group>
+                <Select
+                  value={form.virtualType}
+                  onValueChange={(value) =>
+                    setForm({
+                      ...form,
+                      virtualType: value as "code" | "query" | undefined,
+                    })
+                  }
+                  clearable
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="code (default)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="code">code</SelectItem>
+                    <SelectItem value="query">query</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           )}
           {(form.type === "vector" || form.type === "vector[]") && (
-            <Form.Group widths="equal">
-              <Form.Field required>
+            <div className="equal width fields">
+              <div className="required field">
                 <label>Dimensions</label>
                 <FormNumberInput {...register("dimensions")} placeholder="예: 1024 (Voyage-3)" />
-              </Form.Field>
-            </Form.Group>
+              </div>
+            </div>
           )}
           {form.type === "relation" && (
             <>
-              <Form.Group widths="equal">
-                <Form.Field required>
+              <div className="equal width fields">
+                <div className="required field">
                   <label>Relation Type</label>
-                  <Form.Dropdown
-                    {...register("relationType")}
-                    search
-                    selection
-                    options={["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"].map((k) => ({
-                      key: k,
-                      value: k,
-                      text: k,
-                    }))}
-                  />
-                </Form.Field>
-                <Form.Field required>
+                  <Select
+                    value={form.relationType ?? ""}
+                    onValueChange={(value) =>
+                      setForm({
+                        ...form,
+                        relationType: value as
+                          | "OneToOne"
+                          | "BelongsToOne"
+                          | "HasMany"
+                          | "ManyToMany"
+                          | undefined,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["OneToOne", "BelongsToOne", "HasMany", "ManyToMany"].map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {k}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="required field">
                   <label>With</label>
                   <EntityIdSelect {...register("with")} search clearable />
-                </Form.Field>
-              </Form.Group>
-              <Form.Group widths="equal">
+                </div>
+              </div>
+              <div className="equal width fields">
                 {form.relationType === "OneToOne" && (
-                  <Form.Field>
+                  <div className="field">
                     <label>HasJoinColumn</label>
                     <BooleanToggle {...register("hasJoinColumn")} />
-                  </Form.Field>
+                  </div>
                 )}
                 {(form.hasJoinColumn ||
                   form.relationType === "BelongsToOne" ||
                   form.relationType === "ManyToMany") && (
                   <>
-                    <Form.Field required>
+                    <div className="required field">
                       <label>ON UPDATE</label>
-                      <Form.Dropdown
-                        {...register("onUpdate")}
-                        search
-                        selection
-                        options={EntityPropZodSchema.RelationOn.options.map((k) => ({
-                          key: k,
-                          value: k,
-                          text: k,
-                        }))}
-                      />
-                    </Form.Field>
-                    <Form.Field required>
+                      <Select
+                        value={form.onUpdate ?? ""}
+                        onValueChange={(value) =>
+                          setForm({
+                            ...form,
+                            onUpdate: value as RelationOn | undefined,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EntityPropZodSchema.RelationOn.options.map((k) => (
+                            <SelectItem key={k} value={k}>
+                              {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="required field">
                       <label>ON DELETE</label>
-                      <Form.Dropdown
-                        {...register("onDelete")}
-                        search
-                        selection
-                        options={EntityPropZodSchema.RelationOn.options.map((k) => ({
-                          key: k,
-                          value: k,
-                          text: k,
-                        }))}
-                      />
-                    </Form.Field>
+                      <Select
+                        value={form.onDelete ?? ""}
+                        onValueChange={(value) =>
+                          setForm({
+                            ...form,
+                            onDelete: value as RelationOn | undefined,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EntityPropZodSchema.RelationOn.options.map((k) => (
+                            <SelectItem key={k} value={k}>
+                              {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </>
                 )}
                 {form.relationType === "HasMany" && (
                   <>
-                    <Form.Field required>
+                    <div className="required field">
                       <label>JoinColumn</label>
-                      <Form.Input {...register("joinColumn")} />
-                    </Form.Field>
-                    <Form.Field>
+                      <Input {...register("joinColumn")} />
+                    </div>
+                    <div className="field">
                       <label>FromColumn</label>
                       <Input {...register("fromColumn")} />
-                    </Form.Field>
+                    </div>
                   </>
                 )}
                 {form.relationType === "ManyToMany" && (
-                  <Form.Field required>
+                  <div className="required field">
                     <label>JoinTable</label>
-                    <Form.Input {...register("joinTable")} />
-                  </Form.Field>
+                    <Input {...register("joinTable")} />
+                  </div>
                 )}
-              </Form.Group>
+              </div>
               {form.relationType === "BelongsToOne" && (
-                <Form.Group widths="equal">
-                  <Form.Field>
+                <div className="equal width fields">
+                  <div className="field">
                     <label>Custom JoinClause</label>
                     <Input {...register("customJoinClause")} />
-                  </Form.Field>
-                </Form.Group>
+                  </div>
+                </div>
               )}
             </>
           )}
-        </Form>
+        </form>
 
-        <Header size="small">Debug: Form State</Header>
-        <Segment secondary className="debug-form-state">
+        <h5 className="ui small header">Debug: Form State</h5>
+        <div className="ui secondary segment debug-form-state">
           <pre>{JSON.stringify(form, null, 2)}</pre>
-        </Segment>
+        </div>
       </div>
 
       <div className="form-footer">
-        <Button type="submit" primary onClick={handleSubmit}>
+        <Button variant="default" type="submit" onClick={handleSubmit}>
           Save
         </Button>
       </div>

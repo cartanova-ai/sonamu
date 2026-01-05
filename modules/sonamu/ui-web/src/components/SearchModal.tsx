@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, Input } from "@sonamu-kit/react-components";
+import { Dialog, DialogContent, DialogDescription, Input } from "@sonamu-kit/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { group } from "radashi";
 import { useCallback, useEffect, useState } from "react";
@@ -196,7 +196,10 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
         }
       }}
     >
-      <DialogContent className="search-modal">
+      <DialogContent className="search-modal max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogDescription className="sr-only">
+          Search through entities, props, subsets, and enums
+        </DialogDescription>
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -210,7 +213,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           />
         </div>
         {results.length > 0 && (
-          <div className="list-container">
+          <div className="list-container overflow-y-auto flex-1 mt-4">
             {results.map(({ item: result, fields }, index) => (
               <div
                 key={`${result.id}-${index}`}

@@ -1,7 +1,10 @@
+import { Button } from "@sonamu-kit/react-components";
 import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import classnames from "classnames";
 import { useState } from "react";
-import { Button, Icon } from "semantic-ui-react";
+import ArrowUpIcon from "~icons/lucide/arrow-up";
+import MessageSquareIcon from "~icons/lucide/message-square";
+import PlusIcon from "~icons/lucide/plus";
 import { useCommonModal } from "../components/core/CommonModal";
 import EntityChatComponent from "../components/EntityChatComponent";
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -82,25 +85,20 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
         <div className="sidebar-footer">
           <div className="action-buttons-row">
             <Button
-              fluid
-              basic
-              inverted
-              size="small"
-              className="footer-btn"
+              size="sm"
+              variant="green"
+              className="footer-btn w-full"
               onClick={() => createEntity()}
             >
-              <Icon name="plus" /> New Entity
+              <PlusIcon className="mr-2 h-4 w-4" /> New Entity
             </Button>
             <Button
-              icon
-              basic
-              inverted
-              size="small"
+              variant="outline"
+              size="sm"
               className={`ai-toggle-btn ${showAIChat ? "active" : ""}`}
               onClick={() => setShowAIChat(!showAIChat)}
-            >
-              <Icon name="comment alternate outline" />
-            </Button>
+              icon={<MessageSquareIcon />}
+            />
           </div>
 
           {showAIChat && (
@@ -115,10 +113,10 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
       </div>
       <Outlet />
       <Button
-        icon="arrow up"
-        circular
-        className="move-to-top"
+        variant="outline"
+        className="move-to-top rounded-full"
         onClick={() => document.getElementById("scroller")?.scrollIntoView({ behavior: "smooth" })}
+        icon={<ArrowUpIcon />}
       />
     </div>
   );

@@ -1,9 +1,29 @@
-import { useTypeForm } from "@sonamu-kit/react-components";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  useTypeForm,
+} from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";
 import type { FixtureImportResult, FixtureRecord } from "sonamu";
 import { z } from "zod";
+import ChevronDownIcon from "~icons/lucide/chevron-down";
+import ChevronRightIcon from "~icons/lucide/chevron-right";
+import DatabaseIcon from "~icons/lucide/database";
+import GridIcon from "~icons/lucide/grid";
+import PlusIcon from "~icons/lucide/plus";
+import SearchIcon from "~icons/lucide/search";
+import TableIcon from "~icons/lucide/table";
+import TrashIcon from "~icons/lucide/trash";
 import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
 import { defaultCatch } from "../services/sonamu.shared";
@@ -245,131 +265,98 @@ function FixtureIndex() {
     setDupCheckSelectedColumns([]);
   }, []);
 
-  const panes = [
-    {
-      menuItem: "Fixture Record Viewer",
-      render: () => (
-        <Tab.Pane>
-          {view === "table" ? (
-            <FixtureRecordViewer
-              fixtureRecords={fixtureRecords}
-              onRelationToggle={fetchRelatedRecord}
-              selectedIds={selectedIds}
-              setFixtureRecords={setFixtureRecords}
-            />
-          ) : (
-            <FixtureGraph
-              fixtures={fixtureRecords}
-              selectedIds={selectedIds}
-              onRelationToggle={fetchRelatedRecord}
-              setFixtureRecords={setFixtureRecords}
-            />
-          )}
-        </Tab.Pane>
-      ),
-    },
-    {
-      menuItem: "Fixture Code Viewer",
-      render: () => (
-        <Tab.Pane>
-          {entitiesData?.entities && importResults.length > 0 && (
-            <FixtureCodeViewer
-              entities={entitiesData.entities}
-              fixtureResults={importResults}
-              targetDB={targetDB}
-            />
-          )}
-        </Tab.Pane>
-      ),
-    },
-  ];
+  // Tabs는 activeTab state를 "0", "1" 문자열로 관리
+  const tabValue = String(activeTab);
 
   return (
     <div className="fixture-index">
       {/* 좌측: 설정 패널 */}
       <div className="fixture-sidebar">
-        <Segment className="fixture-header">
+        <div className="ui segment fixture-header">
           {/* 1. Search Section */}
           <div className="search-section">
             <div className="search-title">
-              <Icon name="search" style={{ marginRight: "5px" }} />
+              <SearchIcon style={{ marginRight: "5px", width: "16px", height: "16px" }} />
               검색 대상 설정
             </div>
 
             <div className="db-dropdown-wrapper">
-              <Dropdown
-                fluid
-                placeholder="검색할 DB 선택"
-                selection
-                options={DB_NAMES.map((db) => ({
-                  key: db,
-                  value: db,
-                  text: db.replace("_master", ""),
-                }))}
+              <Select
                 value={sourceDB}
-                onChange={(_, { value }) => setSourceDB(value as string)}
-              />
+                onValueChange={(value) => setSourceDB(value || "development_master")}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="검색할 DB 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DB_NAMES.map((db) => (
+                    <SelectItem key={db} value={db}>
+                      {db.replace("_master", "")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div style={{ flexGrow: 1, minWidth: "200px" }}>
-              <Dropdown
-                fluid
-                placeholder="엔티티 선택"
-                search
-                selection
-                loading={entitiesLoading}
-                options={
-                  entitiesData?.entities?.map((entity) => ({
-                    key: entity.id,
-                    value: entity.id,
-                    text: entity.id,
-                  })) || []
-                }
-                {...register("entityId")}
-              />
+              <Select {...register("entityId")}>
+                <SelectTrigger disabled={entitiesLoading}>
+                  <SelectValue placeholder="엔티티 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {entitiesData?.entities?.map((entity) => (
+                    <SelectItem key={entity.id} value={entity.id}>
+                      {entity.id}
+                    </SelectItem>
+                  )) || []}
+                </SelectContent>
+              </Select>
             </div>
 
             {searchEntity && (
               <>
-                <Dropdown
-                  placeholder="컬럼 선택"
-                  selection
-                  options={searchEntity.props
-                    .filter((p) => {
-                      if (p.type === "virtual") return false;
-                      if (p.type === "relation") {
-                        if (p.relationType === "BelongsToOne") return true;
-                        if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
-                        return false;
-                      }
-                      return true;
-                    })
-                    .map((prop) => ({
-                      key: prop.name,
-                      value: prop.name,
-                      text: prop.name,
-                    }))}
-                  {...register("field")}
-                />
+                <Select {...register("field")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="컬럼 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {searchEntity.props
+                      .filter((p) => {
+                        if (p.type === "virtual") return false;
+                        if (p.type === "relation") {
+                          if (p.relationType === "BelongsToOne") return true;
+                          if (p.relationType === "OneToOne" && p.hasJoinColumn) return true;
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((prop) => (
+                        <SelectItem key={prop.name} value={prop.name}>
+                          {prop.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
                 <Input placeholder="검색 값 입력" {...register("value")} style={{ flexGrow: 1 }} />
-                <Dropdown
-                  selection
-                  options={[
-                    { key: "equals", text: "Equals", value: "equals" },
-                    { key: "like", text: "Like", value: "like" },
-                  ]}
-                  {...register("searchType")}
-                />
+                <Select {...register("searchType")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="equals">Equals</SelectItem>
+                    <SelectItem value="like">Like</SelectItem>
+                  </SelectContent>
+                </Select>
               </>
             )}
 
             <Button
               onClick={search}
               disabled={!form.entityId || !form.field || !form.value || entitiesLoading}
-              loading={entitiesLoading}
-              primary
-              content="검색"
-            />
+              variant="default"
+            >
+              검색
+            </Button>
           </div>
 
           {/* 2. Save Section */}
@@ -389,8 +376,12 @@ function FixtureIndex() {
               }}
               onClick={() => setShowSaveTargets(!showSaveTargets)}
             >
-              <Icon name={showSaveTargets ? "chevron down" : "chevron right"} />
-              <Icon name="database" style={{ marginRight: "5px" }} />
+              {showSaveTargets ? (
+                <ChevronDownIcon style={{ width: "16px", height: "16px" }} />
+              ) : (
+                <ChevronRightIcon style={{ width: "16px", height: "16px" }} />
+              )}
+              <DatabaseIcon style={{ marginRight: "5px", width: "16px", height: "16px" }} />
               저장 DB 설정
               {fixtureRecords.length > 0 &&
                 (() => {
@@ -408,35 +399,31 @@ function FixtureIndex() {
                   });
 
                   return (
-                    <Label color="green" size="small" style={{ marginLeft: "auto" }}>
+                    <span className="ui green small label" style={{ marginLeft: "auto" }}>
                       {saveTargets.length}개 저장 예정
-                    </Label>
+                    </span>
                   );
                 })()}
             </button>
 
             <div className="db-dropdown-wrapper">
-              <Dropdown
-                fluid
-                placeholder="저장할 대상 DB 선택"
-                header="Fixture Target DB"
-                selection
-                options={DB_NAMES.map((db) => ({
-                  key: db,
-                  value: db,
-                  text: db,
-                }))}
-                value={targetDB}
-                onChange={(_, { value }) => setTargetDB(value as string)}
-              />
+              <Select value={targetDB} onValueChange={(value) => setTargetDB(value || "test")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="저장할 대상 DB 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DB_NAMES.map((db) => (
+                    <SelectItem key={db} value={db}>
+                      {db}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <Button
-              onClick={saveFixture}
-              color="blue"
-              content="저장"
-              disabled={fixtureRecords.length === 0}
-            />
+            <Button onClick={saveFixture} variant="default" disabled={fixtureRecords.length === 0}>
+              저장
+            </Button>
 
             {showSaveTargets &&
               fixtureRecords.length > 0 &&
@@ -490,10 +477,14 @@ function FixtureIndex() {
                               }
 
                               return (
-                                <Label key={f.fixtureId} size="tiny" style={{ margin: "2px" }}>
+                                <span
+                                  key={f.fixtureId}
+                                  className="ui tiny label"
+                                  style={{ margin: "2px" }}
+                                >
                                   #{f.id}
-                                  <Label.Detail>{reason}</Label.Detail>
-                                </Label>
+                                  <span className="detail">{reason}</span>
+                                </span>
                               );
                             })}
                           </div>
@@ -544,32 +535,35 @@ function FixtureIndex() {
               </p>
 
               {/* 엔티티 선택 → 컬럼 선택 → 추가 버튼 */}
-              <Dropdown
-                placeholder="엔티티 선택"
-                search
-                selection
-                clearable
-                loading={entitiesLoading}
-                options={
-                  entitiesData?.entities
-                    ?.filter((e) => !duplicateCheckColumns[e.id]) // 이미 설정된 엔티티 제외
-                    .map((entity) => ({
-                      key: entity.id,
-                      value: entity.id,
-                      text: entity.id,
-                    })) || []
-                }
+              <Select
                 value={dupCheckEntityId}
-                onChange={(_, { value }) => setDupCheckEntityId(value as string)}
-              />
+                onValueChange={(value) => setDupCheckEntityId(value || "")}
+              >
+                <SelectTrigger disabled={entitiesLoading}>
+                  <SelectValue placeholder="엔티티 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {entitiesData?.entities
+                    ?.filter((e) => !duplicateCheckColumns[e.id])
+                    .map((entity) => (
+                      <SelectItem key={entity.id} value={entity.id}>
+                        {entity.id}
+                      </SelectItem>
+                    )) || []}
+                </SelectContent>
+              </Select>
 
-              <Dropdown
-                placeholder="중복 확인 컬럼 선택"
-                multiple
-                selection
+              {/* TODO: react-components에 multiple select가 없어서 단일 선택으로만 구현 */}
+              <Select
+                value={dupCheckSelectedColumns[0] || ""}
+                onValueChange={(value) => setDupCheckSelectedColumns(value ? [value] : [])}
                 disabled={!dupCheckEntity}
-                options={
-                  dupCheckEntity?.props
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="중복 확인 컬럼 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dupCheckEntity?.props
                     .filter((p) => {
                       if (p.type === "virtual") return false;
                       if (p.type === "relation") {
@@ -579,20 +573,18 @@ function FixtureIndex() {
                       }
                       return true;
                     })
-                    .map((prop) => ({
-                      key: prop.name,
-                      value: prop.name,
-                      text: prop.name,
-                    })) || []
-                }
-                value={dupCheckSelectedColumns}
-                onChange={(_, { value }) => setDupCheckSelectedColumns(value as string[])}
-              />
+                    .map((prop) => (
+                      <SelectItem key={prop.name} value={prop.name}>
+                        {prop.name}
+                      </SelectItem>
+                    )) || []}
+                </SelectContent>
+              </Select>
 
               <Button
-                icon="plus"
-                color="blue"
-                size="small"
+                icon={<PlusIcon />}
+                variant="default"
+                size="sm"
                 disabled={!dupCheckEntityId || dupCheckSelectedColumns.length === 0}
                 onClick={addDuplicateCheckSetting}
               />
@@ -607,9 +599,9 @@ function FixtureIndex() {
                   }}
                 >
                   {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
-                    <Label
+                    <span
                       key={entityId}
-                      size="medium"
+                      className="ui medium label"
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -619,18 +611,22 @@ function FixtureIndex() {
                     >
                       <span style={{ fontWeight: "bold" }}>{entityId}</span>
                       <span style={{ color: "#666" }}>({columns.join(", ")})</span>
-                      <Icon
-                        name="delete"
-                        style={{ cursor: "pointer", marginLeft: "4px" }}
+                      <TrashIcon
+                        style={{
+                          cursor: "pointer",
+                          marginLeft: "4px",
+                          width: "16px",
+                          height: "16px",
+                        }}
                         onClick={() => removeDuplicateCheckSetting(entityId)}
                       />
-                    </Label>
+                    </span>
                   ))}
                 </div>
               )}
             </div>
           )}
-        </Segment>
+        </div>
       </div>
       <div className="fixture-main">
         <div className="fixture-viewer">
@@ -643,26 +639,52 @@ function FixtureIndex() {
           >
             <Button
               onClick={() => setView(view === "table" ? "graph" : "table")}
-              content={view === "table" ? "그래프 보기" : "테이블 보기"}
-              icon={view === "table" ? "sitemap" : "table"}
-              basic
-              color="grey"
-            />
+              variant="outline"
+              icon={view === "table" ? <GridIcon /> : <TableIcon />}
+            >
+              {view === "table" ? "그래프 보기" : "테이블 보기"}
+            </Button>
           </div>
-          <Tab
-            panes={panes}
-            activeIndex={activeTab}
-            onTabChange={(_, { activeIndex }) => {
-              if (typeof activeIndex === "number") {
-                setActiveTab(activeIndex);
-              }
-            }}
+          <Tabs
+            value={tabValue}
+            onValueChange={(value) => setActiveTab(Number(value))}
             style={{
               boxShadow: "0 5px 15px rgba(0, 0, 0, 0.08)",
               borderRadius: "12px",
               overflow: "hidden",
             }}
-          />
+          >
+            <TabsList>
+              <TabsTrigger value="0">Fixture Record Viewer</TabsTrigger>
+              <TabsTrigger value="1">Fixture Code Viewer</TabsTrigger>
+            </TabsList>
+            <TabsContent value="0">
+              {view === "table" ? (
+                <FixtureRecordViewer
+                  fixtureRecords={fixtureRecords}
+                  onRelationToggle={fetchRelatedRecord}
+                  selectedIds={selectedIds}
+                  setFixtureRecords={setFixtureRecords}
+                />
+              ) : (
+                <FixtureGraph
+                  fixtures={fixtureRecords}
+                  selectedIds={selectedIds}
+                  onRelationToggle={fetchRelatedRecord}
+                  setFixtureRecords={setFixtureRecords}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="1">
+              {entitiesData?.entities && importResults.length > 0 && (
+                <FixtureCodeViewer
+                  entities={entitiesData.entities}
+                  fixtureResults={importResults}
+                  targetDB={targetDB}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

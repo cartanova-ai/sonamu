@@ -1,10 +1,10 @@
-import { useTypeForm } from "@sonamu-kit/react-components";
+import { Button, Input, useTypeForm } from "@sonamu-kit/react-components";
 import { camelize, pluralize, underscore } from "inflection";
-import { Button, Form, Header, Segment } from "semantic-ui-react";
 import { z } from "zod";
+import PlusIcon from "~icons/lucide/plus";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
-import { FormInputWithSuggestion } from "../../components/FormInputWithSuggestion";
+import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 
@@ -45,74 +45,73 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
 
   return (
     <div className="form entity-create-form">
-      <Segment padded basic>
-        <Segment padded color="green">
-          <div className="header-row">
-            <Header>Entity Create Form</Header>
-          </div>
-          <Segment basic>
-            <br />
-            <Form>
-              <Form.Group widths="equal">
-                <Form.Field required>
-                  <label>ID</label>
-                  <Form.Input {...register("id")} className="focus-0" />
-                </Form.Field>
-                <Form.Field>
-                  <label>ParentID</label>
-                  <EntityIdSelect {...register("parentId")} search clearable />
-                </Form.Field>
-              </Form.Group>
-              <Form.Group widths="equal">
-                <Form.Field required>
-                  <label>Table</label>
-                  <Form.Input
-                    {...register("table")}
-                    onFocus={() => {
-                      if (form.table === "" && form.id !== "") {
-                        setForm({
-                          ...form,
-                          table: pluralize(underscore(form.id)),
-                        });
-                      }
-                    }}
-                  />
-                </Form.Field>
-                <Form.Field required>
-                  <label>Title</label>
-                  <FormInputWithSuggestion {...register("title")} origin={underscore(form.id)} />
-                </Form.Field>
-              </Form.Group>
-              <div className="text-center">
-                <Button
-                  color="blue"
-                  onClick={() => {
-                    const ifError = ["id", "table", "title"]
-                      .map((key) => {
-                        if (!form[key as keyof typeof form]) {
-                          addError(key, {
-                            content: `${camelize(key)} is required.`,
-                            pointing: "above",
-                          });
-                          return true;
-                        }
-                        return false;
-                      })
-                      .some((e) => e === true);
-                    if (ifError) {
-                      return;
+      <div className="ui padded segment">
+        <div className="header-row">
+          <h2 className="ui header">Entity Create Form</h2>
+        </div>
+        <div className="ui basic segment">
+          <br />
+          <form className="ui form">
+            <div className="equal width fields">
+              <div className="required field">
+                <label>ID</label>
+                <Input {...register("id")} className="focus-0" />
+              </div>
+              <div className="field">
+                <label>ParentID</label>
+                <EntityIdSelect {...register("parentId")} search clearable />
+              </div>
+            </div>
+            <div className="equal width fields">
+              <div className="required field">
+                <label>Table</label>
+                <Input
+                  {...register("table")}
+                  onFocus={() => {
+                    if (form.table === "" && form.id !== "") {
+                      setForm({
+                        ...form,
+                        table: pluralize(underscore(form.id)),
+                      });
                     }
-
-                    handleSubmit();
                   }}
-                  icon="plus"
-                  content="Create"
                 />
               </div>
-            </Form>
-          </Segment>
-        </Segment>
-      </Segment>
+              <div className="required field">
+                <label>Title</label>
+                <InputWithSuggestion {...register("title")} origin={underscore(form.id)} />
+              </div>
+            </div>
+            <div className="text-center">
+              <Button
+                variant="blue"
+                onClick={() => {
+                  const ifError = ["id", "table", "title"]
+                    .map((key) => {
+                      if (!form[key as keyof typeof form]) {
+                        addError(key, {
+                          content: `${camelize(key)} is required.`,
+                          pointing: "above",
+                        });
+                        return true;
+                      }
+                      return false;
+                    })
+                    .some((e) => e === true);
+                  if (ifError) {
+                    return;
+                  }
+
+                  handleSubmit();
+                }}
+                icon={<PlusIcon />}
+              >
+                Create
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,25 @@
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  type TableCol,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Button, Checkbox, Form, Icon, Modal, Table } from "semantic-ui-react";
+import { Fragment, useState } from "react";
+import CheckIcon from "~icons/lucide/check";
+import CodeIcon from "~icons/lucide/code";
+import PlayIcon from "~icons/lucide/play";
+import XIcon from "~icons/lucide/x";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -99,6 +118,104 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   const getScaffoldingKey = (status: ScaffoldingStatus) =>
     [status.entityId, status.templateKey, status.enumId].join("///");
 
+  const columns: TableCol<ScaffoldingStatus>[] = [
+    {
+      label: "Entity",
+      tc: (row) => <>{row.entityId}</>,
+      fit: true,
+    },
+    {
+      label: "TemplateKey",
+      tc: (row) => <>{row.templateKey}</>,
+      fit: true,
+    },
+    ...(selected.templateGroupName === "Enums"
+      ? [
+          {
+            label: "EnumId",
+            tc: (row: ScaffoldingStatus) => <>{row.enumId}</>,
+            fit: true,
+          } as TableCol<ScaffoldingStatus>,
+        ]
+      : []),
+    {
+      label: "Path",
+      tc: (row) => <>{row.subPath}</>,
+    },
+    {
+      label: "IsExists",
+      tc: (row) => (
+        <>
+          {row.isExists ? (
+            <Button
+              icon={<CodeIcon />}
+              size="xs"
+              variant="yellow"
+              onClick={(e) => {
+                e.stopPropagation();
+                SonamuUIService.openVscode({
+                  absPath: row.fullPath,
+                });
+              }}
+            />
+          ) : (
+            <XIcon />
+          )}
+        </>
+      ),
+      fit: true,
+    },
+    {
+      label: (
+        <Button
+          size="xs"
+          variant="destructive"
+          icon={<CheckIcon />}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleOverwrite();
+          }}
+        >
+          Overwrite
+        </Button>
+      ),
+      tc: (row) => (
+        <>
+          {row.isExists && (
+            <Checkbox
+              checked={generateOptions[getScaffoldingKey(row)]?.overwrite ?? false}
+              onCheckedChange={(checked) => {
+                setGenerateOptions({
+                  ...generateOptions,
+                  [getScaffoldingKey(row)]: {
+                    overwrite: (checked as boolean) ?? false,
+                  },
+                });
+              }}
+            />
+          )}
+        </>
+      ),
+      fit: true,
+    },
+    {
+      label: "Preview",
+      tc: (row) => (
+        <Button
+          size="xs"
+          variant="green"
+          onClick={(e) => {
+            e.stopPropagation();
+            openPreviewModal(row);
+          }}
+        >
+          Preview
+        </Button>
+      ),
+      fit: true,
+    },
+  ];
+
   const toggleOverwrite = () => {
     if (!statuses) {
       return;
@@ -160,28 +277,21 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         <h3>Entities</h3>
         <div className="button-set">
           {selected.entityIds.length !== entities.length ? (
-            <Button
-              size="mini"
-              icon="check"
-              content="Check all entities"
-              onClick={() => setEntityIds(entities.map((e) => e.id))}
-            />
+            <Button icon={<CheckIcon />} onClick={() => setEntityIds(entities.map((e) => e.id))}>
+              Check all entities
+            </Button>
           ) : (
-            <Button
-              size="mini"
-              icon="check"
-              content="Uncheck all entities"
-              onClick={() => setEntityIds([])}
-            />
+            <Button icon={<CheckIcon />} onClick={() => setEntityIds([])}>
+              Uncheck all entities
+            </Button>
           )}
         </div>
 
         {entities.map((entity) => (
-          <div className="entity" key={entity.id} id={entity.id}>
+          <div className="flex items-center pb-2" key={entity.id} id={entity.id}>
             <Checkbox
-              label={entity.id}
               checked={selected.entityIds.includes(entity.id)}
-              onChange={(_e, { checked }) => {
+              onCheckedChange={(checked) => {
                 if (checked) {
                   setEntityIds([...selected.entityIds, entity.id]);
                 } else {
@@ -189,6 +299,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                 }
               }}
             />
+            <span className="ml-2">{entity.id}</span>
           </div>
         ))}
       </div>
@@ -200,29 +311,25 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
               {selected.templateGroupName !== group.name ||
               selected.templateKeys.length !== group.templateKeys.length ? (
                 <Button
-                  size="mini"
-                  icon="check"
-                  content={`Check all`}
+                  icon={<CheckIcon />}
                   onClick={() => setTemplateKeys(group.name, group.templateKeys)}
-                />
+                >
+                  Check all
+                </Button>
               ) : (
-                <Button
-                  size="mini"
-                  icon="check"
-                  content={`Uncheck all`}
-                  onClick={() => setTemplateKeys(group.name, [])}
-                />
+                <Button icon={<CheckIcon />} onClick={() => setTemplateKeys(group.name, [])}>
+                  Uncheck all
+                </Button>
               )}
             </div>
             {group.templateKeys.map((templateKey) => (
-              <div className="template-key" key={templateKey}>
+              <div className="flex items-center pb-2" key={templateKey}>
                 <Checkbox
-                  label={templateKey}
                   checked={
                     selected.templateGroupName === group.name &&
                     selected.templateKeys.includes(templateKey)
                   }
-                  onChange={(_e, { checked }) => {
+                  onCheckedChange={(checked) => {
                     if (checked) {
                       setTemplateKeys(group.name, [...selected.templateKeys, templateKey]);
                     } else {
@@ -233,6 +340,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                     }
                   }}
                 />
+                <span className="ml-2">{templateKey}</span>
               </div>
             ))}
           </div>
@@ -243,27 +351,20 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           <h4>Enums</h4>
           <div className="button-set">
             {selected.enumIds.length !== filteredEnumIds.length ? (
-              <Button
-                size="mini"
-                icon="check"
-                content="Check all enums"
-                onClick={() => setEnumIds(filteredEnumIds)}
-              />
+              <Button icon={<CheckIcon />} onClick={() => setEnumIds(filteredEnumIds)}>
+                Check all enums
+              </Button>
             ) : (
-              <Button
-                size="mini"
-                icon="check"
-                content="Uncheck all enums"
-                onClick={() => setEnumIds([])}
-              />
+              <Button icon={<CheckIcon />} onClick={() => setEnumIds([])}>
+                Uncheck all enums
+              </Button>
             )}
           </div>
           {filteredEnumIds.map((enumId) => (
-            <div className="enums" key={enumId}>
+            <div className="flex items-center pb-2" key={enumId}>
               <Checkbox
-                label={enumId}
                 checked={selected.enumIds.includes(enumId)}
-                onChange={(_e, { checked }) => {
+                onCheckedChange={(checked) => {
                   if (checked) {
                     setEnumIds([...selected.enumIds, enumId]);
                   } else {
@@ -271,12 +372,13 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   }
                 }}
               />
+              <span className="ml-2">{enumId}</span>
             </div>
           ))}
         </div>
       )}
       <div className="content">
-        <Form>
+        <div className="ui form">
           {!statuses && !scaffoldingIsLoading && (
             <div className="message-box warning">
               Please select EntityIDs / TemplateKeys
@@ -286,121 +388,62 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           {statuses && (
             <div className="statuses">
               {statuses.length > 0 && (
-                <Button
-                  size="small"
-                  color="green"
-                  icon="play"
-                  content={`Generate ${statuses.length} template(s) — ${
-                    Object.keys(generateOptions).length
-                  } overwrite`}
-                  onClick={() => generate()}
-                />
+                <Button size="sm" variant="default" icon={<PlayIcon />} onClick={() => generate()}>
+                  Generate {statuses.length} template(s) — {Object.keys(generateOptions).length}{" "}
+                  overwrite
+                </Button>
               )}
-              <Table celled selectable>
-                <Table.Header>
-                  <Table.Row>
-                    <Table.HeaderCell>Entity</Table.HeaderCell>
-                    <Table.HeaderCell>TemplateKey</Table.HeaderCell>
-                    {selected.templateGroupName === "Enums" && (
-                      <Table.HeaderCell>EnumId</Table.HeaderCell>
-                    )}
-                    <Table.HeaderCell>Path</Table.HeaderCell>
-                    <Table.HeaderCell>IsExists</Table.HeaderCell>
-                    <Table.HeaderCell collapsing>
-                      <Button
-                        size="mini"
-                        icon="check"
-                        content="Overwrite"
-                        onClick={() => toggleOverwrite()}
-                      />
-                    </Table.HeaderCell>
-                    <Table.HeaderCell>Preview</Table.HeaderCell>
-                  </Table.Row>
-                </Table.Header>
-                <Table.Body>
+              <Table className="mt-4">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent bg-gray-100">
+                    {columns.map((col, idx) => (
+                      <TableHead key={idx} fit={col.fit}>
+                        {col.label}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {statuses.map((status, statusIndex) => (
-                    <Table.Row
-                      key={statusIndex}
-                      positive={!status.isExists}
-                      negative={status.isExists}
-                    >
-                      <Table.Cell collapsing>{status.entityId}</Table.Cell>
-                      <Table.Cell collapsing>{status.templateKey}</Table.Cell>
-                      {selected.templateGroupName === "Enums" && (
-                        <Table.Cell collapsing>{status.enumId}</Table.Cell>
-                      )}
-                      <Table.Cell>{status.subPath}</Table.Cell>
-                      <Table.Cell>
-                        {status.isExists ? (
-                          <Button
-                            icon="code"
-                            size="mini"
-                            color="blue"
-                            onClick={() => {
-                              SonamuUIService.openVscode({
-                                absPath: status.fullPath,
-                              });
-                            }}
-                          />
-                        ) : (
-                          <Icon name="x" />
-                        )}
-                      </Table.Cell>
-                      <Table.Cell>
-                        {status.isExists && (
-                          <Form.Group>
-                            <Form.Field>
-                              <Checkbox
-                                checked={
-                                  generateOptions[getScaffoldingKey(status)]?.overwrite ?? false
-                                }
-                                onChange={(_e, { checked }) => {
-                                  setGenerateOptions({
-                                    ...generateOptions,
-                                    [getScaffoldingKey(status)]: {
-                                      overwrite: checked ?? false,
-                                    },
-                                  });
-                                }}
-                              />
-                            </Form.Field>
-                          </Form.Group>
-                        )}
-                      </Table.Cell>
-                      <Table.Cell collapsing>
-                        <Button
-                          size="mini"
-                          content="Preview"
-                          color="purple"
-                          onClick={() => openPreviewModal(status)}
-                        />
-                      </Table.Cell>
-                    </Table.Row>
+                    <Fragment key={statusIndex}>
+                      <TableRow className={status.isExists ? "bg-red-50" : "bg-green-50"}>
+                        {columns.map((col, idx) => (
+                          <TableCell key={idx} fit={col.fit} className="py-3">
+                            {col.tc(status)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </Fragment>
                   ))}
-                </Table.Body>
+                </TableBody>
               </Table>
             </div>
           )}
-        </Form>
+        </div>
       </div>
-      <Modal
+      <Dialog
         open={previewModalState.open}
-        onClose={() => {
-          setPreviewModalState({ open: false, pathAndCodes: null });
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setPreviewModalState({ open: false, pathAndCodes: null });
+          }
         }}
       >
-        <Modal.Header>Preview</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Preview</DialogTitle>
+            <DialogDescription>Preview of generated code files</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             {previewModalState.pathAndCodes?.map((pnc) => (
-              <div className="preview-item" key={pnc.path}>
+              <div className="preview-item p-2" key={pnc.path}>
                 <h4>{pnc.path}</h4>
-                <code>{pnc.code}</code>
+                <code className="text-sm rounded">{pnc.code}</code>
               </div>
-            ))}
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
+            )) ?? <p>No preview data available</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

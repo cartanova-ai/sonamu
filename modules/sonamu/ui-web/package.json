@@ -30,7 +30,6 @@
     "react-syntax-highlighter": "catalog:",
     "sass": "catalog:",
     "semantic-ui-css": "catalog:",
-    "semantic-ui-react": "catalog:",
     "sonamu": "workspace:^",
     "vite": "catalog:",
     "zod": "catalog:"
