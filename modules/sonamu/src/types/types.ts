@@ -1367,7 +1367,10 @@ export type Executable<T> = T | Promise<T> | (() => T) | (() => Promise<T>);
 
 export type SonamuFastifyConfig = {
   contextProvider: (
-    defaultContext: Pick<Context, "request" | "reply" | "headers" | "createSSE" | "naiteStore"> &
+    defaultContext: Pick<
+      Context,
+      "request" | "reply" | "headers" | "createSSE" | "naiteStore" | "locale"
+    > &
       AuthContext,
     request: FastifyRequest,
     reply: FastifyReply,

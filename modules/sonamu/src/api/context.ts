@@ -14,6 +14,8 @@ export type Context = {
   headers: IncomingHttpHeaders;
   createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
   naiteStore: NaiteStore;
+  /** 현재 요청의 locale (i18n 설정이 있을 때만 존재) */
+  locale?: string;
 } & AuthContext &
   ContextExtend;
 

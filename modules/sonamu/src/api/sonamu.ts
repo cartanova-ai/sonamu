@@ -837,6 +837,12 @@ class SonamuClass {
       _events: T,
     ) => createSSEFactory(_request.socket, _reply, _events)).bind(null, request, reply);
 
+    // i18n 설정이 있을 때만 locale 감지
+    const locale = this.config.i18n
+      ? (this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
+        this.config.i18n.defaultLocale)
+      : undefined;
+
     const context: Context = {
       ...(await Promise.resolve(
         config.contextProvider(
@@ -846,6 +852,7 @@ class SonamuClass {
             headers: request.headers,
             createSSE,
             naiteStore: Naite.createStore(),
+            locale,
             // auth
             user: request.user ?? null,
             passport: {
@@ -859,6 +866,25 @@ class SonamuClass {
       )),
     };
     return context;
+  }
+
+  /**
+   * Accept-Language 헤더에서 지원하는 locale을 찾습니다.
+   * @example "ko-KR,ko;q=0.9,en;q=0.8" → "ko"
+   */
+  private detectLocale(
+    acceptLanguage: string | undefined,
+    supported: string[],
+  ): string | undefined {
+    if (!acceptLanguage) return undefined;
+
+    // Accept-Language: ko-KR,ko;q=0.9,en;q=0.8
+    const langs = acceptLanguage.split(",").map((lang) => {
+      const [code] = lang.split(";");
+      return code.trim().split("-")[0]; // ko-KR → ko
+    });
+
+    return langs.find((lang) => supported.includes(lang));
   }
 
   async startWatcher(): Promise<void> {
