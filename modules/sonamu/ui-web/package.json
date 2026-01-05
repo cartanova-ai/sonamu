@@ -13,6 +13,7 @@
   "dependencies": {
     "@ai-sdk/react": "catalog:",
     "@dagrejs/dagre": "catalog:",
+    "@sonamu-kit/react-components": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@vitejs/plugin-react": "catalog:",
@@ -23,8 +24,8 @@
     "jotai": "catalog:",
     "qs": "catalog:",
     "radashi": "catalog:",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "react-markdown": "catalog:",
     "react-syntax-highlighter": "catalog:",
     "sass": "catalog:",
@@ -35,14 +36,17 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@tailwindcss/vite": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",
     "@tanstack/router-plugin": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/react-syntax-highlighter": "catalog:",
-    "typescript": "catalog:"
-  },
-  "peerDependencies": {
-    "@sonamu-kit/react-sui": "0.1.17"
+    "autoprefixer": "catalog:",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:"
   }
 }

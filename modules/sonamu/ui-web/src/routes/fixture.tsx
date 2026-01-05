@@ -1,4 +1,4 @@
-import { useTypeForm } from "@sonamu-kit/react-sui";
+import { useTypeForm } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button, Dropdown, Icon, Input, Label, Segment, Tab } from "semantic-ui-react";

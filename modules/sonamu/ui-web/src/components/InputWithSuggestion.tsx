@@ -1,5 +1,6 @@
-import { type ChangeEvent, useState } from "react";
-import { Button, Input, type InputProps } from "semantic-ui-react";
+import { Button, Input, type InputProps } from "@sonamu-kit/react-components";
+import { useState } from "react";
+import LanguagesIcon from "~icons/lucide/languages";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
 type InputWithSuggestionProps = {
@@ -10,10 +11,8 @@ export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWi
   const [loading, setLoading] = useState(false);
 
   const triggerChange = (value: string) => {
-    if (inputProps.onChange) {
-      inputProps.onChange({} as ChangeEvent<HTMLInputElement>, {
-        value,
-      });
+    if (inputProps.onValueChange) {
+      inputProps.onValueChange(value);
     }
   };
   const triggerChangeToSuggestion = () => {
@@ -32,21 +31,23 @@ export function InputWithSuggestion({ origin, entityId, ...inputProps }: InputWi
   };
 
   return (
-    <Input
-      {...inputProps}
-      action={
-        <Button
-          color="pink"
-          icon="translate"
-          onClick={() => triggerChangeToSuggestion()}
-          loading={loading}
-        />
-      }
-      onFocus={() => {
-        if (inputProps.onChange && (inputProps.value ?? "") === "") {
-          triggerChangeToSuggestion();
-        }
-      }}
-    />
+    <div className="flex gap-2">
+      <Input
+        {...inputProps}
+        onFocus={() => {
+          if (inputProps.onValueChange && (inputProps.value ?? "") === "") {
+            triggerChangeToSuggestion();
+          }
+        }}
+      />
+      <Button
+        variant="default"
+        onClick={() => triggerChangeToSuggestion()}
+        disabled={loading}
+        className="shrink-0"
+      >
+        <LanguagesIcon />
+      </Button>
+    </div>
   );
 }

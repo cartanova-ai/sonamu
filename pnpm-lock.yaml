@@ -1545,25 +1545,25 @@ importers:
     dependencies:
       '@ai-sdk/react':
         specifier: 'catalog:'
-        version: 2.0.118(react@18.3.1)(zod@4.2.1)
+        version: 2.0.118(react@19.2.3)(zod@4.2.1)
       '@dagrejs/dagre':
         specifier: 'catalog:'
         version: 1.1.8
-      '@sonamu-kit/react-sui':
-        specifier: 0.1.17
-        version: 0.1.17(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-semantic-ui-datepickers@2.17.2(prop-types@15.8.1)(react@18.3.1))(react@18.3.1)(zod@4.2.1)
+      '@sonamu-kit/react-components':
+        specifier: workspace:^
+        version: link:../../react-components
       '@tanstack/react-query':
         specifier: 'catalog:'
-        version: 5.90.12(react@18.3.1)
+        version: 5.90.12(react@19.2.3)
       '@tanstack/react-router':
         specifier: 'catalog:'
-        version: 1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 4.7.0(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
       '@xyflow/react':
         specifier: 'catalog:'
-        version: 12.10.0(@types/react@19.2.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       axios:
         specifier: 'catalog:'
         version: 1.13.2(debug@4.4.3(supports-color@10.2.2))
@@ -1575,7 +1575,7 @@ importers:
         version: 3.0.2
       jotai:
         specifier: 'catalog:'
-        version: 2.16.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@18.3.1)
+        version: 2.16.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@19.2.3)
       qs:
         specifier: 'catalog:'
         version: 6.14.0
@@ -1583,17 +1583,17 @@ importers:
         specifier: 'catalog:'
         version: 12.7.1
       react:
-        specifier: ^18.2.0
-        version: 18.3.1
+        specifier: 'catalog:'
+        version: 19.2.3
       react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
+        specifier: 'catalog:'
+        version: 19.2.3(react@19.2.3)
       react-markdown:
         specifier: 'catalog:'
-        version: 9.1.0(@types/react@19.2.7)(react@18.3.1)
+        version: 9.1.0(@types/react@19.2.7)(react@19.2.3)
       react-syntax-highlighter:
         specifier: 'catalog:'
-        version: 15.6.6(react@18.3.1)
+        version: 15.6.6(react@19.2.3)
       sass:
         specifier: 'catalog:'
         version: 1.97.1
@@ -1602,7 +1602,7 @@ importers:
         version: 2.5.0
       semantic-ui-react:
         specifier: 'catalog:'
-        version: 2.1.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 2.1.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       sonamu:
         specifier: workspace:^
         version: link:..
@@ -1613,12 +1613,18 @@ importers:
         specifier: 'catalog:'
         version: 4.2.1
     devDependencies:
+      '@iconify/json':
+        specifier: 'catalog:'
+        version: 2.2.421
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.1.18(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
       '@tanstack/react-router-devtools':
         specifier: 'catalog:'
-        version: 1.143.11(@tanstack/react-router@1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@tanstack/router-core@1.143.6)(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(solid-js@1.9.10)
+        version: 1.143.11(@tanstack/react-router@1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@tanstack/router-core@1.143.6)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)
       '@tanstack/router-plugin':
         specifier: 'catalog:'
-        version: 1.143.11(@tanstack/react-router@1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 1.143.11(@tanstack/react-router@1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.7
@@ -1628,9 +1634,21 @@ importers:
       '@types/react-syntax-highlighter':
         specifier: 'catalog:'
         version: 15.5.13
+      autoprefixer:
+        specifier: 'catalog:'
+        version: 10.4.23(postcss@8.5.6)
+      postcss:
+        specifier: 'catalog:'
+        version: 8.5.6
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.1.18
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      unplugin-icons:
+        specifier: 'catalog:'
+        version: 0.20.2(@svgr/core@8.1.0(typescript@5.9.3))
 
   modules/tasks:
     dependencies:
@@ -4174,15 +4192,6 @@ packages:
   '@smithy/uuid@1.1.0':
     resolution: {integrity: sha512-4aUIteuyxtBUhVdiQqcDhKFitwfd9hqoSDYY2KRXiWtgoWJ9Bmise+KfEPDiVHWeJepvF8xJO9/9+WDIciMFFw==}
     engines: {node: '>=18.0.0'}
-
-  '@sonamu-kit/react-sui@0.1.17':
-    resolution: {integrity: sha512-xZ3Rq3YBo4RSoqfsvN4Cmbp0wNzORbEGIqKRIAYnm7yIQ3/xQj2cozdTMeeAY7uCCbuiY1JUiMGsdxyGxdROrA==}
-    peerDependencies:
-      react: ^18.2.0
-      react-dom: ^18.2.0
-      react-router-dom: ^6.3.0
-      react-semantic-ui-datepickers: ^2.17.1
-      zod: ^4.1.12
 
   '@speed-highlight/core@1.2.12':
     resolution: {integrity: sha512-uilwrK0Ygyri5dToHYdZSjcvpS2ZwX0w5aSt3GCEN9hrjxWCoeV4Z2DTXuxjwbntaLQIEEAlCeNQss5SoHvAEA==}
@@ -6839,10 +6848,6 @@ packages:
     resolution: {integrity: sha512-Yg7+ztRkqslMAS2iFaU+Oa4KTSidr63OsFGlOrJoW981kIYO3CGCS3wA95P1mUi/IVSJkn0D479KTJpVpvFNuw==}
     engines: {node: '>=18'}
 
-  inflection@1.13.4:
-    resolution: {integrity: sha512-6I/HUDeYFfuNCVS3td055BaXBwKYuzw7K3ExVMStBowKo9oOAMJIXIHvdyR3iboTCp1b+1i5DSkIZTcwIktuDw==}
-    engines: {'0': node >= 0.4.0}
-
   inflection@3.0.2:
     resolution: {integrity: sha512-+Bg3+kg+J6JUWn8J6bzFmOWkTQ6L/NHfDRSYU+EVvuKHDxUDHAXgqixHfVlzuBQaPOTac8hn43aPhMNk6rMe3g==}
     engines: {node: '>=18.0.0'}
@@ -8259,11 +8264,6 @@ packages:
       date-fns: ^2.28.0 || ^3.0.0
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
 
-  react-dom@18.3.1:
-    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
-    peerDependencies:
-      react: ^18.3.1
-
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
     peerDependencies:
@@ -8361,10 +8361,6 @@ packages:
     resolution: {integrity: sha512-DgXrc+AZF47+HvAPEmn7Ua/1p10jNoVZVI/LoPiYdtY+OM+/nG5yefLHKJwdKqY1adMuHFbeyBaG9j64ML7vTw==}
     peerDependencies:
       react: '>= 0.14.0'
-
-  react@18.3.1:
-    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.3:
     resolution: {integrity: sha512-Ku/hhYbVjOQnXDZFv2+RibmLFGwFdeeKHFcOTlrt7xplBnya5OGn/hIRDsqDiSUcfORsDC7MPxwork8jBwsIWA==}
@@ -8581,8 +8577,8 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  scheduler@0.23.2:
-    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
+  sax@1.4.3:
+    resolution: {integrity: sha512-yqYn1JhPczigF94DMS+shiDMjDowYO6y9+wB/4WgO0Y19jWYk0lQ4tuG5KI7kj4FTp1wxPj5IFfcrz/s1c3jjQ==}
 
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
@@ -8994,10 +8990,10 @@ packages:
     engines: {node: '>=14.0.0'}
     hasBin: true
 
-  swr@1.3.0:
-    resolution: {integrity: sha512-dkghQrOl2ORX9HYrMDtPa7LTVHJjCTeZoB1dqTbnnEDlSvN8JEKpYIYurDfvbQFUUS8Cg8PceFVZNkW0KNNYPw==}
-    peerDependencies:
-      react: ^16.11.0 || ^17.0.0 || ^18.0.0
+  svgo@4.0.0:
+    resolution: {integrity: sha512-VvrHQ+9uniE+Mvx3+C9IEe/lWasXCU0nXMY2kZeLrHNICuRiC8uMPyM14UEaMOFA5mhyQqEkB02VoQ16n3DLaw==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   swr@2.3.8:
     resolution: {integrity: sha512-gaCPRVoMq8WGDcWj9p4YWzCMPHzE0WNl6W8ADIx9c3JBEIdMkJGMzW+uzXvxHMltwcYACr9jP+32H8/hgwMR7w==}
@@ -9749,12 +9745,12 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@2.0.118(react@18.3.1)(zod@4.2.1)':
+  '@ai-sdk/react@2.0.118(react@19.2.3)(zod@4.2.1)':
     dependencies:
       '@ai-sdk/provider-utils': 3.0.19(zod@4.2.1)
       ai: 5.0.116(zod@4.2.1)
-      react: 18.3.1
-      swr: 2.3.8(react@18.3.1)
+      react: 19.2.3
+      swr: 2.3.8(react@19.2.3)
       throttleit: 2.1.0
     optionalDependencies:
       zod: 4.2.1
@@ -10886,22 +10882,9 @@ snapshots:
     dependencies:
       date-fns: 2.29.3
 
-  '@dnd-kit/accessibility@3.1.1(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
-      tslib: 2.8.1
-
   '@dnd-kit/accessibility@3.1.1(react@19.2.3)':
     dependencies:
       react: 19.2.3
-      tslib: 2.8.1
-
-  '@dnd-kit/core@4.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@dnd-kit/accessibility': 3.1.1(react@18.3.1)
-      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
       tslib: 2.8.1
 
   '@dnd-kit/core@4.0.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
@@ -10912,23 +10895,11 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       tslib: 2.8.1
 
-  '@dnd-kit/sortable@5.1.0(@dnd-kit/core@4.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@dnd-kit/core': 4.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
-      react: 18.3.1
-      tslib: 2.8.1
-
   '@dnd-kit/sortable@5.1.0(@dnd-kit/core@4.0.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@dnd-kit/core': 4.0.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@dnd-kit/utilities': 3.2.2(react@19.2.3)
       react: 19.2.3
-      tslib: 2.8.1
-
-  '@dnd-kit/utilities@3.2.2(react@18.3.1)':
-    dependencies:
-      react: 18.3.1
       tslib: 2.8.1
 
   '@dnd-kit/utilities@3.2.2(react@19.2.3)':
@@ -11209,24 +11180,11 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fluentui/react-component-event-listener@0.63.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@babel/runtime': 7.28.4
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   '@fluentui/react-component-event-listener@0.63.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@babel/runtime': 7.28.4
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-
-  '@fluentui/react-component-ref@0.63.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@babel/runtime': 7.28.4
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      react-is: 16.13.1
 
   '@fluentui/react-component-ref@0.63.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
@@ -12625,13 +12583,6 @@ snapshots:
     transitivePeerDependencies:
       - '@types/node'
 
-  '@semantic-ui-react/event-stack@3.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      exenv: 1.2.2
-      prop-types: 15.8.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
   '@semantic-ui-react/event-stack@3.1.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       exenv: 1.2.2
@@ -12985,30 +12936,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@sonamu-kit/react-sui@0.1.17(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-semantic-ui-datepickers@2.17.2(prop-types@15.8.1)(react@18.3.1))(react@18.3.1)(zod@4.2.1)':
-    dependencies:
-      '@dnd-kit/core': 4.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@dnd-kit/sortable': 5.1.0(@dnd-kit/core@4.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
-      '@dnd-kit/utilities': 3.2.2(react@18.3.1)
-      axios: 1.13.2(debug@4.4.3(supports-color@10.2.2))
-      classnames: 2.5.1
-      date-fns: 4.1.0
-      fast-deep-equal: 3.1.3
-      inflection: 1.13.4
-      lodash-es: 4.17.22
-      luxon: 3.7.2
-      prop-types: 15.8.1
-      qs: 6.14.0
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      react-router-dom: 6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-semantic-ui-datepickers: 2.17.2(prop-types@15.8.1)(react@18.3.1)
-      semantic-ui-react: 2.1.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      swr: 1.3.0(react@18.3.1)
-      zod: 4.2.1
-    transitivePeerDependencies:
-      - debug
-
   '@speed-highlight/core@1.2.12': {}
 
   '@standard-schema/spec@1.1.0': {}
@@ -13267,27 +13194,10 @@ snapshots:
 
   '@tanstack/query-core@5.90.12': {}
 
-  '@tanstack/react-query@5.90.12(react@18.3.1)':
-    dependencies:
-      '@tanstack/query-core': 5.90.12
-      react: 18.3.1
-
   '@tanstack/react-query@5.90.12(react@19.2.3)':
     dependencies:
       '@tanstack/query-core': 5.90.12
       react: 19.2.3
-
-  '@tanstack/react-router-devtools@1.143.11(@tanstack/react-router@1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@tanstack/router-core@1.143.6)(csstype@3.2.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(solid-js@1.9.10)':
-    dependencies:
-      '@tanstack/react-router': 1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/router-devtools-core': 1.143.6(@tanstack/router-core@1.143.6)(csstype@3.2.3)(solid-js@1.9.10)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-    optionalDependencies:
-      '@tanstack/router-core': 1.143.6
-    transitivePeerDependencies:
-      - csstype
-      - solid-js
 
   '@tanstack/react-router-devtools@1.143.11(@tanstack/react-router@1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(@tanstack/router-core@1.143.6)(csstype@3.2.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.10)':
     dependencies:
@@ -13301,17 +13211,6 @@ snapshots:
       - csstype
       - solid-js
 
-  '@tanstack/react-router@1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@tanstack/history': 1.141.0
-      '@tanstack/react-store': 0.8.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/router-core': 1.143.6
-      isbot: 5.1.32
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      tiny-invariant: 1.3.3
-      tiny-warning: 1.0.3
-
   '@tanstack/react-router@1.143.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tanstack/history': 1.141.0
@@ -13322,13 +13221,6 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       tiny-invariant: 1.3.3
       tiny-warning: 1.0.3
-
-  '@tanstack/react-store@0.8.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@tanstack/store': 0.8.0
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      use-sync-external-store: 1.6.0(react@18.3.1)
 
   '@tanstack/react-store@0.8.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
@@ -13367,28 +13259,6 @@ snapshots:
       source-map: 0.7.6
       tsx: 4.21.0
       zod: 3.25.76
-    transitivePeerDependencies:
-      - supports-color
-
-  '@tanstack/router-plugin@1.143.11(@tanstack/react-router@1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2))':
-    dependencies:
-      '@babel/core': 7.28.5
-      '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.28.5)
-      '@babel/plugin-syntax-typescript': 7.27.1(@babel/core@7.28.5)
-      '@babel/template': 7.27.2
-      '@babel/traverse': 7.28.5
-      '@babel/types': 7.28.5
-      '@tanstack/router-core': 1.143.6
-      '@tanstack/router-generator': 1.143.11
-      '@tanstack/router-utils': 1.143.11
-      '@tanstack/virtual-file-routes': 1.141.0
-      babel-dead-code-elimination: 1.0.11
-      chokidar: 3.6.0
-      unplugin: 2.3.11
-      zod: 3.25.76
-    optionalDependencies:
-      '@tanstack/react-router': 1.143.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      vite: 7.3.0(@types/node@25.0.3)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.1)(tsx@4.21.0)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -14079,13 +13949,13 @@ snapshots:
     dependencies:
       arch: 3.0.0
 
-  '@xyflow/react@12.10.0(@types/react@19.2.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@xyflow/react@12.10.0(@types/react@19.2.7)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@xyflow/system': 0.0.74
       classcat: 5.0.5
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      zustand: 4.5.7(@types/react@19.2.7)(react@18.3.1)
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+      zustand: 4.5.7(@types/react@19.2.7)(react@19.2.3)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -14916,13 +14786,6 @@ snapshots:
   date-fns@2.29.3: {}
 
   date-fns@4.1.0: {}
-
-  dayzed@3.2.3(prop-types@15.8.1)(react@18.3.1):
-    dependencies:
-      '@babel/runtime': 7.28.4
-      date-fns: 2.29.3
-      prop-types: 15.8.1
-      react: 18.3.1
 
   dayzed@3.2.3(prop-types@15.8.1)(react@19.2.3):
     dependencies:
@@ -16067,8 +15930,6 @@ snapshots:
 
   index-to-position@1.2.0: {}
 
-  inflection@1.13.4: {}
-
   inflection@3.0.2: {}
 
   inherits@2.0.4: {}
@@ -16352,13 +16213,6 @@ snapshots:
   jiti@2.6.1: {}
 
   jju@1.4.0: {}
-
-  jotai@2.16.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@18.3.1):
-    optionalDependencies:
-      '@babel/core': 7.28.5
-      '@babel/template': 7.27.2
-      '@types/react': 19.2.7
-      react: 18.3.1
 
   jotai@2.16.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.7)(react@19.2.3):
     optionalDependencies:
@@ -17512,12 +17366,6 @@ snapshots:
       date-fns: 4.1.0
       react: 19.2.3
 
-  react-dom@18.3.1(react@18.3.1):
-    dependencies:
-      loose-envify: 1.4.0
-      react: 18.3.1
-      scheduler: 0.23.2
-
   react-dom@19.2.3(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -17535,7 +17383,7 @@ snapshots:
 
   react-is@18.3.1: {}
 
-  react-markdown@9.1.0(@types/react@19.2.7)(react@18.3.1):
+  react-markdown@9.1.0(@types/react@19.2.7)(react@19.2.3):
     dependencies:
       '@types/hast': 3.0.4
       '@types/mdast': 4.0.4
@@ -17544,7 +17392,7 @@ snapshots:
       hast-util-to-jsx-runtime: 2.3.6
       html-url-attributes: 3.0.1
       mdast-util-to-hast: 13.2.1
-      react: 18.3.1
+      react: 19.2.3
       remark-parse: 11.0.0
       remark-rehype: 11.1.2
       unified: 11.0.5
@@ -17552,14 +17400,6 @@ snapshots:
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
-
-  react-popper@2.3.0(@popperjs/core@2.11.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@popperjs/core': 2.11.8
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      react-fast-compare: 3.2.2
-      warning: 4.0.3
 
   react-popper@2.3.0(@popperjs/core@2.11.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
@@ -17595,13 +17435,6 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  react-router-dom@6.30.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@remix-run/router': 1.23.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      react-router: 6.30.2(react@18.3.1)
-
   react-router-dom@6.30.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
       '@remix-run/router': 1.23.1
@@ -17609,27 +17442,10 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       react-router: 6.30.2(react@19.2.3)
 
-  react-router@6.30.2(react@18.3.1):
-    dependencies:
-      '@remix-run/router': 1.23.1
-      react: 18.3.1
-
   react-router@6.30.2(react@19.2.3):
     dependencies:
       '@remix-run/router': 1.23.1
       react: 19.2.3
-
-  react-semantic-ui-datepickers@2.17.2(prop-types@15.8.1)(react@18.3.1):
-    dependencies:
-      '@date-fns/upgrade': 1.0.3
-      classnames: 2.3.2
-      date-fns: 2.29.3
-      dayzed: 3.2.3(prop-types@15.8.1)(react@18.3.1)
-      format-string-by-pattern: 1.2.2
-      react-fast-compare: 3.2.0
-    transitivePeerDependencies:
-      - prop-types
-      - react
 
   react-semantic-ui-datepickers@2.17.2(prop-types@15.8.1)(react@19.2.3):
     dependencies:
@@ -17651,19 +17467,15 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.7
 
-  react-syntax-highlighter@15.6.6(react@18.3.1):
+  react-syntax-highlighter@15.6.6(react@19.2.3):
     dependencies:
       '@babel/runtime': 7.28.4
       highlight.js: 10.7.3
       highlightjs-vue: 1.0.0
       lowlight: 1.20.0
       prismjs: 1.30.0
-      react: 18.3.1
+      react: 19.2.3
       refractor: 3.6.0
-
-  react@18.3.1:
-    dependencies:
-      loose-envify: 1.4.0
 
   react@19.2.3: {}
 
@@ -17960,9 +17772,7 @@ snapshots:
     optionalDependencies:
       '@parcel/watcher': 2.5.1
 
-  scheduler@0.23.2:
-    dependencies:
-      loose-envify: 1.4.0
+  sax@1.4.3: {}
 
   scheduler@0.27.0: {}
 
@@ -17981,24 +17791,6 @@ snapshots:
   semantic-ui-css@2.5.0:
     dependencies:
       jquery: 3.7.1
-
-  semantic-ui-react@2.1.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@babel/runtime': 7.28.4
-      '@fluentui/react-component-event-listener': 0.63.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@fluentui/react-component-ref': 0.63.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@popperjs/core': 2.11.8
-      '@semantic-ui-react/event-stack': 3.1.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      clsx: 1.2.1
-      keyboard-key: 1.1.0
-      lodash: 4.17.21
-      lodash-es: 4.17.22
-      prop-types: 15.8.1
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      react-is: 18.3.1
-      react-popper: 2.3.0(@popperjs/core@2.11.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      shallowequal: 1.1.0
 
   semantic-ui-react@2.1.5(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
@@ -18423,15 +18215,15 @@ snapshots:
       csso: 5.0.5
       picocolors: 1.1.1
 
-  swr@1.3.0(react@18.3.1):
+  svgo@4.0.0:
     dependencies:
-      react: 18.3.1
-
-  swr@2.3.8(react@18.3.1):
-    dependencies:
-      dequal: 2.0.3
-      react: 18.3.1
-      use-sync-external-store: 1.6.0(react@18.3.1)
+      commander: 11.1.0
+      css-select: 5.2.2
+      css-tree: 3.1.0
+      css-what: 6.2.2
+      csso: 5.0.5
+      picocolors: 1.1.1
+      sax: 1.4.3
 
   swr@2.3.8(react@19.2.3):
     dependencies:
@@ -18856,10 +18648,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.7
 
-  use-sync-external-store@1.6.0(react@18.3.1):
-    dependencies:
-      react: 18.3.1
-
   use-sync-external-store@1.6.0(react@19.2.3):
     dependencies:
       react: 19.2.3
@@ -19227,12 +19015,12 @@ snapshots:
 
   zod@4.2.1: {}
 
-  zustand@4.5.7(@types/react@19.2.7)(react@18.3.1):
+  zustand@4.5.7(@types/react@19.2.7)(react@19.2.3):
     dependencies:
-      use-sync-external-store: 1.6.0(react@18.3.1)
+      use-sync-external-store: 1.6.0(react@19.2.3)
     optionalDependencies:
       '@types/react': 19.2.7
-      react: 18.3.1
+      react: 19.2.3
 
   zwitch@2.0.4: {}
 

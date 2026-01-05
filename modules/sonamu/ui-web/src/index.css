@@ -1,3 +1,16 @@
+/* Sonamu UI-Web Tailwind CSS 설정 */
+/* react-components 스타일 import */
+@import "../../../react-components/src/styles/globals.css";
+
+/* Tailwind v4: 소스 경로 지정 */
+/* ui-web 패키지의 소스 파일들 */
+@source "../src/**/*.tsx";
+@source "../src/**/*.ts";
+
+/* react-components 패키지 */
+@source "../../../react-components/src/**/*.tsx";
+@source "../../../react-components/src/**/*.ts";
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

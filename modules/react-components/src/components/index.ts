@@ -160,7 +160,7 @@ export {
 export { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 export type { ImageUploaderProps } from "./ui/image-uploader";
 export { ImageUploader } from "./ui/image-uploader";
-export { Input } from "./ui/input";
+export { Input, type InputProps } from "./ui/input";
 export {
   InputOTP,
   InputOTPGroup,

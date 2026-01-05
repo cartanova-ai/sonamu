@@ -1,5 +1,5 @@
+import { Input } from "@sonamu-kit/react-components";
 import { useEffect, useState } from "react";
-import { Input } from "semantic-ui-react";
 
 type SheetCellInputProps = {
   editable: boolean;

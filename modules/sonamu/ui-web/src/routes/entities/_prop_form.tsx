@@ -1,10 +1,12 @@
-import { BooleanToggle, FormNumberInput, useTypeForm } from "@sonamu-kit/react-sui";
+import { useTypeForm } from "@sonamu-kit/react-components";
 import { useEffect } from "react";
 import { Button, Divider, Form, Header, Input, Label, Segment } from "semantic-ui-react";
 import type { EntityProp } from "sonamu";
 import { z } from "zod";
+import { BooleanToggle } from "../../components/BooleanToggle";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
+import { FormNumberInput } from "../../components/FormNumberInput";
 import { FormTypeIdAsyncSelect } from "../../components/FormTypeIdAsyncSelect";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { EntityPropZodSchema } from "../../services/entity-prop-zod-schema";
@@ -88,7 +90,6 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     text: type,
   }));
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: form 변경시에만 keydown 갱신
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -105,7 +106,6 @@ export function EntityPropForm({ entityId, oldOne }: EntityPropFormProps) {
     };
   }, [form]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 타입이 변경되었을 때 Validation 처리
   useEffect(() => {
     const result = EntityPropZodSchema.safeParse(form);
     if (result.success) {

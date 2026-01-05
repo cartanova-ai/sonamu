@@ -1,6 +1,6 @@
+import { Input, type InputProps } from "@sonamu-kit/react-components";
 import classNames from "classnames";
 import { useEffect, useState } from "react";
-import { Input, type InputProps } from "semantic-ui-react";
 
 type EditableInputProps = Omit<InputProps, "onChange"> & {
   value: string;
@@ -8,7 +8,7 @@ type EditableInputProps = Omit<InputProps, "onChange"> & {
 };
 export function EditableInput({ onChange, value: originValue, ...inputProps }: EditableInputProps) {
   const [loading, setLoading] = useState(false);
-  const [value, setValue] = useState<string>(inputProps.originValue);
+  const [value, setValue] = useState<string>(originValue);
 
   useEffect(() => {
     if (value !== originValue) {
@@ -34,12 +34,12 @@ export function EditableInput({ onChange, value: originValue, ...inputProps }: E
   return (
     <Input
       {...inputProps}
-      loading={loading}
       onKeyDown={handleKeyDown}
       value={value ?? ""}
-      onChange={(_e, data) => setValue(data.value)}
+      onValueChange={setValue}
       className={classNames("editable-input", {
         "is-dirty": !!originValue && originValue !== value,
+        "opacity-50": loading,
       })}
     />
   );

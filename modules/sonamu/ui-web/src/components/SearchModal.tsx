@@ -1,7 +1,8 @@
+import { Dialog, DialogContent, Input } from "@sonamu-kit/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { group } from "radashi";
 import { useCallback, useEffect, useState } from "react";
-import { Input, List, Modal } from "semantic-ui-react";
+import SearchIcon from "~icons/lucide/search";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { type SearchResult, useEntitySearch } from "./useEntitySearch";
 
@@ -66,7 +67,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     return target.replace(regex, (match) => `<span style="color: green;">${match}</span>`);
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: query 변경시에만
   useEffect(() => {
     if (documents) {
       const entity = window.location.pathname.split("/entities/")[1];
@@ -76,7 +76,6 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     }
   }, [query]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleResultClick 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!open) return;
@@ -154,17 +153,16 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       if (!items) return null;
       return (
         <div key={key} className="sub-item">
-          <List.Description>
+          <div className="list-description">
             <strong>{`Subset${key} >`}</strong>
-          </List.Description>
+          </div>
           {items.map((field) => (
-            <List.Description
+            <div
               key={field.desc}
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
               dangerouslySetInnerHTML={{
                 __html: highlightText(field.desc, query),
               }}
-              className={`click-item sub-item ${
+              className={`click-item sub-item list-description ${
                 index === selectedIndex &&
                 selectedIndex2 !== -1 &&
                 selectedIndex2 === fields.indexOf(field)
@@ -187,33 +185,36 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   }, [handleKeyDown]);
 
   return (
-    <Modal
-      className="search-modal"
+    <Dialog
       open={open}
-      onClose={() => {
-        setQuery("");
-        setResults([]);
-        resetIndex();
-        onClose();
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setQuery("");
+          setResults([]);
+          resetIndex();
+          onClose();
+        }
       }}
     >
-      <Modal.Content>
-        <Input
-          icon="search"
-          placeholder="Search docs"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value.toLowerCase());
-          }}
-          fluid
-          autoFocus
-        />
+      <DialogContent className="search-modal">
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search docs"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value.toLowerCase());
+            }}
+            className="pl-10 w-full"
+            autoFocus
+          />
+        </div>
         {results.length > 0 && (
-          <List selection>
+          <div className="list-container">
             {results.map(({ item: result, fields }, index) => (
-              <List.Item
+              <div
                 key={`${result.id}-${index}`}
-                className={`search-result ${
+                className={`search-result list-item ${
                   index === selectedIndex && selectedIndex2 === -1 ? "selected" : ""
                 }`}
               >
@@ -222,14 +223,14 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                   className="click-item"
                   onClick={() => handleResultClick(`/entities/${result.id}`)}
                 >
-                  <List.Header
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
+                  <div
+                    className="list-header"
                     dangerouslySetInnerHTML={{
                       __html: highlightText(result.id, query),
                     }}
                   />
-                  <List.Description
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
+                  <div
+                    className="list-description"
                     dangerouslySetInnerHTML={{
                       __html: highlightText(result.title, query),
                     }}
@@ -237,8 +238,8 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                 </button>
 
                 {!!fields?.filter((f) => f.type === "scaffolding")?.length && (
-                  <List.Description
-                    className={`click-item sub-item ${
+                  <div
+                    className={`click-item sub-item list-description ${
                       index === selectedIndex && selectedIndex2 !== -1 && selectedIndex2 === 0
                         ? "selected"
                         : ""
@@ -246,31 +247,29 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                     onClick={() => handleResultClick("/scaffolding", result.id)}
                   >
                     <strong
-                      // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                       dangerouslySetInnerHTML={{
                         __html: highlightText(`Scaffolding > ${result.id}(${result.title})`, query),
                       }}
                     />
-                  </List.Description>
+                  </div>
                 )}
 
                 <div>
                   {!!fields?.filter((f) => f.type === "props")?.length && (
                     <div className="sub-item">
-                      <List.Description>
+                      <div className="list-description">
                         <strong>{"props >"}</strong>
-                      </List.Description>
+                      </div>
                       {fields?.map((field, fieldIndex) => {
-                        if (field.type !== "props") return <>&nbsp;</>;
+                        if (field.type !== "props") return <span key={field.key}>&nbsp;</span>;
 
                         return (
-                          <List.Description
+                          <div
                             key={field.key}
-                            // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                             dangerouslySetInnerHTML={{
                               __html: highlightText(`${field.key}(${field.desc})`, query),
                             }}
-                            className={`click-item sub-item ${
+                            className={`click-item sub-item list-description ${
                               index === selectedIndex &&
                               selectedIndex2 !== -1 &&
                               selectedIndex2 === fieldIndex
@@ -291,20 +290,19 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
                   {!!fields?.filter((f) => f.type === "enums")?.length && (
                     <div className="sub-item">
-                      <List.Description>
+                      <div className="list-description">
                         <strong>{"enums >"}</strong>
-                      </List.Description>
+                      </div>
                       {fields?.map((field) => {
-                        if (field.type !== "enums") return <>&nbsp;</>;
+                        if (field.type !== "enums") return <span key={field.key}>&nbsp;</span>;
 
                         return (
-                          <List.Description
+                          <div
                             key={field.key}
-                            // biome-ignore lint/security/noDangerouslySetInnerHtml: 허용
                             dangerouslySetInnerHTML={{
                               __html: highlightText(field.key, query),
                             }}
-                            className={`click-item sub-item ${
+                            className={`click-item sub-item list-description ${
                               index === selectedIndex &&
                               selectedIndex2 !== -1 &&
                               selectedIndex2 === fields.indexOf(field)
@@ -320,11 +318,11 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                     </div>
                   )}
                 </div>
-              </List.Item>
+              </div>
             ))}
-          </List>
+          </div>
         )}
-      </Modal.Content>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,4 +1,4 @@
-import { useTypeForm } from "@sonamu-kit/react-sui";
+import { useTypeForm } from "@sonamu-kit/react-components";
 import { camelize, pluralize, underscore } from "inflection";
 import { Button, Form, Header, Segment } from "semantic-ui-react";
 import { z } from "zod";

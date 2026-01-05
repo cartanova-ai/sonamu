@@ -2,6 +2,7 @@
 
 import { atom, useAtom } from "jotai";
 import type * as React from "react";
+import { useEffect } from "react";
 import { cn } from "../../lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./dialog";
 
@@ -10,6 +11,8 @@ type ExtendedModalProps = {
   description?: string;
   className?: string;
   onCompleted?: (data?: unknown) => void;
+  onControlledOpen?: () => void;
+  onControlledClose?: () => void;
 };
 
 export const commonModalAtom = atom<
@@ -28,14 +31,24 @@ type CommonModalProps = {
 
 export function CommonModal({ className }: CommonModalProps) {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
-  const { open, reactNode, title, description, className: modalClassName } = atomValue;
+  const { open, reactNode, title, description, className: modalClassName, onControlledOpen, onControlledClose } = atomValue;
 
   const closeAndClear = () => {
+    if (onControlledClose) {
+      onControlledClose();
+    }
     setAtomValue({
       open: false,
       reactNode: null,
     });
   };
+
+  useEffect(() => {
+    if (open && onControlledOpen) {
+      onControlledOpen();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <Dialog

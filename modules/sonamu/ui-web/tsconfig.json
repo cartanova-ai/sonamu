@@ -13,6 +13,11 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "react-dom/package": ["./node_modules/react-dom/index.d.ts"],
+      "react-dom/index.js": ["./node_modules/react-dom/index.d.ts"],
+      "react-dom-real": ["./node_modules/react-dom/index.d.ts"]
+    },
 
     /* Linting */
     "strict": true,

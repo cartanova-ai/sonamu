@@ -1,9 +1,10 @@
-import { BooleanToggle, useTypeForm } from "@sonamu-kit/react-sui";
+import { useTypeForm } from "@sonamu-kit/react-components";
 import classNames from "classnames";
 import { useState } from "react";
 import { Button, Header, Icon, Segment } from "semantic-ui-react";
 import type { MigrationStatus, SonamuDBConfig } from "sonamu";
 import { z } from "zod";
+import { BooleanToggle } from "../../components/BooleanToggle";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";

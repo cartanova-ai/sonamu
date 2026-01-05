@@ -1,4 +1,4 @@
-import { useTypeForm } from "@sonamu-kit/react-sui";
+import { useTypeForm } from "@sonamu-kit/react-components";
 import { type SyntheticEvent, useEffect } from "react";
 import {
   Button,
@@ -44,7 +44,6 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
     },
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: onKeyDown 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   useEffect(() => {
     const onKeydown = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -60,7 +59,6 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
   }, [form]);
 
   // 타입 및 Using 변경에 따른 상태 동기화 및 제약조건 적용
-  // biome-ignore lint/correctness/useExhaustiveDependencies: form 변경 시에만 실행
   useEffect(() => {
     const newForm = { ...form };
     let needsUpdate = false;
