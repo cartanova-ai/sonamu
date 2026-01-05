@@ -407,7 +407,7 @@ class SonamuClass {
       }
 
       if (hasWeb) {
-        await this.setupStaticWebServer(server, webPath, config);
+        await this.setupStaticWebServer(server, webPath, config, globalCompressOptions);
       }
     }
   }
@@ -461,27 +461,25 @@ class SonamuClass {
       });
     }
 
-    // Catch-all 핸들러: SSR + CSR fallback
+    // SSR 라우트 개별 등록 (compress 옵션이 라우트별로 적용되도록)
+    const { getSSRRoutes, renderSSR } = await import("../ssr");
+    const ssrRoutes = getSSRRoutes();
 
-    server.route({
-      method: ["GET", "HEAD"],
-      url: "/*",
-      handler: async (request, reply) => {
-        const url = request.url;
+    for (const route of ssrRoutes) {
+      server.route({
+        method: ["GET", "HEAD"],
+        url: route.path,
+        compress: toFastifyCompressOption(route.compress ?? true, globalCompressOptions),
+        handler: async (request, reply) => {
+          const url = request.url;
+          console.log(`[SSR] Matched route: ${route.path}`);
 
-        // SSR 라우트 체크
-        const { matchSSRRoute } = await import("../ssr");
-        const match = matchSSRRoute(url);
-
-        if (match) {
-          console.log(`[SSR] Matched route: ${match.route.path}`);
-          // SSR 렌더링
           try {
-            const { renderSSR } = await import("../ssr");
+            const params = this.extractPathParams(route.path, url);
             const html = await renderSSR(
               url,
-              match.route,
-              match.params,
+              route,
+              params,
               request,
               reply,
               config,
@@ -493,11 +491,28 @@ class SonamuClass {
           } catch (e) {
             console.error("SSR Error:", e);
             console.log("Falling back to CSR...");
-            // fallback to CSR (아래 로직 실행)
-          }
-        }
 
-        // CSR fallback
+            // CSR fallback
+            const fs = await import("node:fs/promises");
+            let template = await fs.readFile(
+              path.join(this.viteServer.config.root, "index.html"),
+              "utf-8",
+            );
+            template = await this.viteServer.transformIndexHtml(url, template);
+            reply.type("text/html");
+            return template;
+          }
+        },
+      });
+    }
+
+    // CSR fallback (SSR 라우트에 매칭되지 않는 모든 요청)
+    server.route({
+      method: ["GET", "HEAD"],
+      url: "/*",
+      handler: async (request, reply) => {
+        const url = request.url;
+
         try {
           const fs = await import("node:fs/promises");
           let template = await fs.readFile(
@@ -529,6 +544,7 @@ class SonamuClass {
     server: FastifyInstance<Server, IncomingMessage, ServerResponse>,
     _webPath: string,
     config: SonamuFastifyConfig,
+    globalCompressOptions: CompressOptions | undefined,
   ): Promise<void> {
     // 경로 명확화: api/public/web, api/dist/ssr
     const webDistPath = path.join(this.apiRootPath, "public", "web");
@@ -617,7 +633,47 @@ class SonamuClass {
       reply.code(404).send("Not found");
     });
 
-    // SPA/SSR 라우팅
+    // SSR 라우트 개별 등록 (compress 옵션이 라우트별로 적용되도록)
+    if (ssrAvailable) {
+      const { getSSRRoutes } = await import("../ssr");
+      const { renderSSR } = await import("../ssr/renderer");
+      const ssrRoutes = getSSRRoutes();
+
+      for (const route of ssrRoutes) {
+        server.route({
+          method: ["GET", "HEAD"],
+          url: route.path,
+          compress: toFastifyCompressOption(route.compress ?? true, globalCompressOptions),
+          handler: async (request, reply) => {
+            const url = request.url;
+            console.log(`[SSR] Matched route: ${route.path}`);
+
+            try {
+              const params = this.extractPathParams(route.path, url);
+              const html = await renderSSR(url, route, params, request, reply, config);
+
+              reply.type("text/html");
+              return html;
+            } catch (e) {
+              console.error("[SSR Error]", {
+                url: request.url,
+                route: route.path,
+                error: e instanceof Error ? e.message : String(e),
+                timestamp: new Date().toISOString(),
+              });
+
+              // CSR fallback
+              const indexPath = path.join(webDistPath, "index.html");
+              const html = await fs.readFile(indexPath, "utf-8");
+              reply.type("text/html");
+              return html;
+            }
+          },
+        });
+      }
+    }
+
+    // CSR fallback (SSR 라우트에 매칭되지 않는 모든 요청)
     server.route({
       method: ["GET", "HEAD"],
       url: "*",
@@ -628,35 +684,6 @@ class SonamuClass {
           return;
         }
 
-        const url = request.url;
-
-        // SSR 라우트 체크
-        if (ssrAvailable) {
-          const { matchSSRRoute } = await import("../ssr");
-          const match = matchSSRRoute(url);
-
-          if (match) {
-            try {
-              // renderSSR 재사용 (vite 없이 호출 = production 모드)
-              const { renderSSR } = await import("../ssr/renderer");
-              const html = await renderSSR(url, match.route, match.params, request, reply, config);
-              console.log(`[SSR] Matched route: ${match.route.path}`);
-
-              reply.type("text/html");
-              return html;
-            } catch (e) {
-              console.error("[SSR Error]", {
-                url: request.url,
-                route: match.route.path,
-                error: e instanceof Error ? e.message : String(e),
-                timestamp: new Date().toISOString(),
-              });
-              // CSR로 fallback
-            }
-          }
-        }
-
-        // CSR fallback (SSR 실패 시 또는 SSR 라우트가 아닌 경우)
         const indexPath = path.join(webDistPath, "index.html");
         const html = await fs.readFile(indexPath, "utf-8");
 
@@ -741,6 +768,23 @@ class SonamuClass {
       });
       return this.invokeModelMethod(api, args, context, reply);
     };
+  }
+
+  /**
+   * URL에서 path params를 추출합니다.
+   * 예: pattern="/admin/companies/:companyId", url="/admin/companies/123" → { companyId: "123" }
+   */
+  private extractPathParams(pattern: string, url: string): Record<string, string> {
+    const patternParts = pattern.split("/").filter(Boolean);
+    const urlParts = url.split("?")[0].split("/").filter(Boolean);
+    const params: Record<string, string> = {};
+
+    for (let i = 0; i < patternParts.length; i++) {
+      if (patternParts[i].startsWith(":")) {
+        params[patternParts[i].slice(1)] = urlParts[i];
+      }
+    }
+    return params;
   }
 
   /**
