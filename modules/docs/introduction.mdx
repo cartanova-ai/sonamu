@@ -1,0 +1,95 @@
+---
+title: Sonamu
+description: Node.js/TypeScript 기반의 풀스택 프레임워크
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Sonamu Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Sonamu Hero Dark"
+/>
+
+## Sonamu에 오신 것을 환영합니다
+
+**Sonamu**는 **Node.js**/**TypeScript** 기반의 **풀스택 프레임워크**입니다.
+
+Fastify 기반의 고성능 백엔드 서버와 엔티티 중심 개발 방식을 통해, 프론트엔드와 백엔드가 타입스크립트라는 동일한 언어를 사용하는 장점을 극대화합니다.
+
+<CardGroup cols={2}>
+  <Card
+    title="빠른 시작"
+    icon="rocket"
+    href="/tutorial/getting-started"
+  >
+    Sonamu 프레임워크를 시작하는 방법을 알아보세요
+  </Card>
+  <Card
+    title="주요 기능"
+    icon="stars"
+    href="/introduction"
+  >
+    E2E Type-safety, 자동 마이그레이션, 코드 자동 생성
+  </Card>
+  <Card
+    title="엔티티 중심 개발"
+    icon="database"
+    href="/guide/entity"
+  >
+    Sonamu UI를 통한 시각적 엔티티 관리
+  </Card>
+  <Card
+    title="API 레퍼런스"
+    icon="book"
+    href="/reference/api-decorator"
+  >
+    @api 데코레이터와 백엔드 API 레퍼런스
+  </Card>
+</CardGroup>
+
+## 핵심 특징
+
+<AccordionGroup>
+  <Accordion title="런타임 타입 검증">
+    엔티티 정의를 기반으로 Zod 스키마를 자동 생성하며, `@api` 데코레이터가 적용된 메서드의 파라미터를 자동으로 검증합니다.
+  </Accordion>
+  
+  <Accordion title="E2E Type-safety">
+    단일 소스(엔티티 정의)에서 출발하여 백엔드와 프론트엔드의 타입을 동기화합니다. API 인터페이스가 변경되면 프론트엔드에서 즉시 타입 오류를 확인할 수 있습니다.
+  </Accordion>
+  
+  <Accordion title="타입 안전 쿼리 빌더 (Puri)">
+    완전한 타입 추론을 지원하는 쿼리 빌더입니다. 테이블 스키마를 기반으로 SELECT, WHERE, JOIN 등 모든 쿼리 작성 중 타입을 추론합니다.
+  </Accordion>
+  
+  <Accordion title="자동 마이그레이션">
+    엔티티 정의와 실제 DB 스키마를 비교하여 마이그레이션 코드를 자동 생성합니다. 안전한 스키마 변경 관리를 제공합니다.
+  </Accordion>
+</AccordionGroup>
+
+## 기술 스택
+
+<CardGroup cols={3}>
+  <Card title="Fastify" icon="bolt">
+    고성능 웹 서버
+  </Card>
+  <Card title="Knex.js" icon="database">
+    SQL 쿼리 빌더
+  </Card>
+  <Card title="Zod" icon="shield-check">
+    런타임 검증
+  </Card>
+  <Card title="MySQL" icon="server">
+    데이터베이스
+  </Card>
+  <Card title="TypeScript" icon="code">
+    정적 타입 검사
+  </Card>
+  <Card title="SWC" icon="gauge">
+    고속 트랜스파일러
+  </Card>
+</CardGroup>

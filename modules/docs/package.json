@@ -1,23 +1,17 @@
 {
   "name": "sonamu-docs",
-  "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "Sonamu Framework Documentation",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build__deprecated": "astro check && astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "mint dev",
+    "migrate": "node migrate-docs.js"
   },
-  "dependencies": {
-    "@astrojs/check": "catalog:",
-    "@astrojs/starlight": "catalog:",
-    "@expressive-code/plugin-collapsible-sections": "catalog:",
-    "astro": "catalog:",
-    "sharp": "catalog:",
-    "typescript": "catalog:"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "catalog:"
-  }
+  "keywords": [
+    "sonamu",
+    "documentation",
+    "typescript",
+    "fullstack"
+  ],
+  "author": "CartaNova",
+  "license": "MIT"
 }

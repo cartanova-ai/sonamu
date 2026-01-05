@@ -1,0 +1,58 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Sonamu",
+  "colors": {
+    "primary": "#10b981",
+    "light": "#34d399",
+    "dark": "#059669"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Introduction",
+        "pages": [
+          "introduction",
+          "introduction/dependency"
+        ]
+      },
+      {
+        "group": "Tutorial",
+        "pages": [
+          "tutorial/getting-started",
+          "tutorial/entity",
+          "tutorial/scaffolding",
+          "tutorial/api",
+          "tutorial/relation",
+          "tutorial/front-end"
+        ]
+      },
+      {
+        "group": "Guide",
+        "pages": [
+          "guide/auth",
+          "guide/entity",
+          "guide/upsert-builder",
+          "guide/subset",
+          "guide/test",
+          "guide/tsconfig"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/file-sync",
+          "reference/entity",
+          "reference/migration",
+          "reference/api-decorator",
+          "reference/scaffolding",
+          "reference/model",
+          "reference/fixture",
+          "reference/cli",
+          "reference/sonamu-kit",
+          "reference/error"
+        ]
+      }
+    ]
+  }
+}
