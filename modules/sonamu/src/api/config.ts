@@ -20,6 +20,16 @@ export type DatabaseConfig = Omit<Knex.Config, "connection"> & {
   connection?: Knex.PgConnectionConfig;
 };
 
+/**
+ * i18n 설정
+ */
+export type SonamuI18nOptions = {
+  /** 기본 locale (키 정의 기준 + 런타임 기본값) */
+  defaultLocale: string;
+  /** 지원하는 locale 목록 */
+  supportedLocales: string[];
+};
+
 export type SonamuConfig<TSinkId extends string = string, TFilterId extends string = string> = {
   projectName?: string;
 
@@ -30,6 +40,20 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
     };
     timezone?: string;
   };
+
+  /**
+   * i18n 설정
+   *
+   * @example
+   * ```typescript
+   * i18n: {
+   *   defaultLocale: 'ko',
+   *   supportedLocales: ['ko', 'en', 'ja'],
+   * }
+   * ```
+   */
+  i18n?: SonamuI18nOptions;
+
   sync: {
     targets: string[]; // "web", "app" 등
   };
