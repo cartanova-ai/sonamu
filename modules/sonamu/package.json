@@ -46,6 +46,10 @@
     },
     "./hmr-hook-register": {
       "default": "./dist/bin/hmr-hook-register.js"
+    },
+    "./dict": {
+      "import": "./dist/dict/index.js",
+      "types": "./dist/dict/index.d.ts"
     }
   },
   "scripts": {
