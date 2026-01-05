@@ -1,0 +1,240 @@
+import { Sonamu } from "../../api/sonamu";
+import { sonamuDictEn, sonamuDictKo } from "../../dict";
+import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
+import type { TemplateOptions } from "../../types/types";
+import { Template } from "../template";
+
+/**
+ * Sonamu Dictionary (SD) 템플릿
+ * i18n을 위한 sd.generated.ts 파일을 생성합니다.
+ */
+export class Template__sd extends Template {
+  constructor() {
+    super("sd");
+  }
+
+  getTargetAndPath(_names?: EntityNamesRecord, sdTarget?: "api" | "web" | "app") {
+    const target = sdTarget ?? "api";
+    // api.dir은 상대 경로("api")이므로, web/app도 상대 경로로 맞춤
+    const dir = target === "api" ? Sonamu.config.api.dir : target;
+
+    return {
+      target: `${dir}/src/i18n`,
+      path: "sd.generated.ts",
+    };
+  }
+
+  render(options: TemplateOptions["sd"]) {
+    const { target } = options;
+    const i18nConfig = Sonamu.config.i18n ?? {
+      defaultLocale: "ko",
+      supportedLocales: ["ko"],
+    };
+
+    const { defaultLocale, supportedLocales } = i18nConfig;
+
+    // entity.json에서 entity labels 추출
+    const entityLabels = this.extractEntityLabels();
+
+    // 플랫폼별 locale 관리 코드
+    const localeManagementCode =
+      target === "api"
+        ? `
+import { Sonamu } from "sonamu";
+
+const DEFAULT_LOCALE = "${defaultLocale}";
+
+function getCurrentLocale(): string {
+  const ctx = Sonamu.getContext();
+  return ctx?.locale ?? DEFAULT_LOCALE;
+}
+`.trim()
+        : `
+const DEFAULT_LOCALE = "${defaultLocale}";
+let _currentLocale = DEFAULT_LOCALE;
+
+export function setLocale(locale: string) {
+  _currentLocale = locale;
+}
+
+export function getCurrentLocale(): string {
+  return _currentLocale;
+}
+`.trim();
+
+    // locale import
+    const localeImports = supportedLocales
+      .map((locale) => `import ${locale} from "./${locale}";`)
+      .join("\n");
+
+    // sonamu 내장 dict import (모든 지원 locale)
+    const sonamuDictImports = supportedLocales
+      .map((locale) => `sonamuDict${this.capitalize(locale)}`)
+      .join(", ");
+    const sonamuDictImport = `import { ${sonamuDictImports} } from "sonamu/dict";`;
+
+    // entityLabels를 코드로 변환
+    const entityLabelsCode = this.generateEntityLabelsCode(entityLabels);
+
+    const body = `
+${localeManagementCode}
+
+${sonamuDictImport}
+${localeImports}
+
+// entity.json에서 추출한 entity labels (defaultLocale 전용)
+${entityLabelsCode}    
+
+const sonamuDictKo = ${JSON.stringify(sonamuDictKo, null, 2)};
+const sonamuDictEn = ${JSON.stringify(sonamuDictEn, null, 2)};
+
+// defaultLocale의 dictionary를 기준으로 키 추출
+type ProjectDictionary = typeof ${defaultLocale};
+type SonamuDictionary = typeof sonamuDict${this.capitalize(defaultLocale)};
+type EntityLabels = typeof entityLabels;
+type RawMergedDictionary = EntityLabels & SonamuDictionary & ProjectDictionary;
+
+// 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
+type MergedDictionary = {
+  [K in keyof RawMergedDictionary]: RawMergedDictionary[K] extends (...args: infer P) => string
+    ? (...args: P) => string
+    : string;
+};
+type DictKey = keyof MergedDictionary;
+
+export function defineLocale(dict: Partial<MergedDictionary>) {
+  return dict;
+}
+
+// 각 locale별로 entity labels + Sonamu 내장 dict + 프로젝트 dict 합침
+const dictionaries: Record<string, Partial<MergedDictionary>> = {
+  ${defaultLocale}: { ...sonamuDict${this.capitalize(defaultLocale)}, ...entityLabels, ...${defaultLocale} },
+  ${supportedLocales
+    .filter((locale) => locale !== defaultLocale)
+    .map((locale) => `  ${locale}: { ...sonamuDict${this.capitalize(locale)}, ...${locale} },`)
+    .join("\n")}
+};
+
+function getDictValue<K extends DictKey>(key: K, locale: string): MergedDictionary[K] {
+  const dict = dictionaries[locale];
+  return (dict?.[key] ?? dictionaries[DEFAULT_LOCALE]?.[key] ?? key) as MergedDictionary[K];
+}
+
+/**
+ * Sonamu Dictionary 함수
+ * locale에 맞는 번역 텍스트를 반환합니다.
+ *
+ * @example
+ * SD("common.save")  // → "저장"
+ * SD("validation.required")("이름")  // → "이름은(는) 필수입니다"
+ */
+export function SD<K extends DictKey>(key: K): MergedDictionary[K] {
+  const locale = getCurrentLocale();
+  return getDictValue(key, locale);
+}
+
+/**
+ * 특정 locale의 번역 텍스트를 반환하는 함수를 생성합니다.
+ *
+ * @example
+ * const EN = SD.locale("en");
+ * EN("common.save")  // → "Save"
+ */
+SD.locale = (locale: string) => <K extends DictKey>(key: K): MergedDictionary[K] => {
+  return getDictValue(key, locale);
+};
+`.trim();
+
+    return {
+      ...this.getTargetAndPath(undefined, target),
+      body,
+      importKeys: [],
+      customHeaders: [],
+    };
+  }
+
+  private capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  /**
+   * 모든 entity.json에서 entity labels 추출
+   * - entity.{entityId}: entity title
+   * - entity.{entityId}.{propName}: prop desc
+   * - entity.{entityId}.list: 목록
+   * - entity.{entityId}.create: 생성
+   * - entity.{entityId}.edit: 수정 (함수)
+   * - enum.{EnumId}.{value}: enum label
+   */
+  private extractEntityLabels(): { key: string; value: string; isFunction?: boolean }[] {
+    const labels: { key: string; value: string; isFunction?: boolean }[] = [];
+
+    if (!EntityManager.isAutoloaded) {
+      return labels;
+    }
+
+    const entityIds = EntityManager.getAllIds();
+
+    for (const entityId of entityIds) {
+      const entity = EntityManager.get(entityId);
+
+      // entity title
+      labels.push({ key: `entity.${entityId}`, value: entity.title });
+
+      // entity CRUD labels
+      labels.push({ key: `entity.${entityId}.list`, value: `${entity.title} 목록` });
+      labels.push({ key: `entity.${entityId}.create`, value: `${entity.title} 생성` });
+      labels.push({
+        key: `entity.${entityId}.edit`,
+        value: `${entity.title} 수정 (#\${id})`,
+        isFunction: true,
+      });
+
+      // prop labels (prop name을 camelCase로 변환)
+      for (const prop of entity.props) {
+        if (prop.desc) {
+          labels.push({ key: `entity.${entityId}.${prop.name}`, value: prop.desc });
+        }
+      }
+
+      // enum labels
+      for (const [enumId, enumLabelsMap] of Object.entries(entity.enumLabels)) {
+        for (const [value, label] of Object.entries(enumLabelsMap)) {
+          labels.push({ key: `enum.${enumId}.${value}`, value: label });
+        }
+      }
+    }
+
+    return labels;
+  }
+
+  /**
+   * entityLabels를 TypeScript 코드로 변환
+   */
+  private generateEntityLabelsCode(
+    labels: { key: string; value: string; isFunction?: boolean }[],
+  ): string {
+    if (labels.length === 0) {
+      return "const entityLabels = {} as const;";
+    }
+
+    const entries: string[] = [];
+
+    for (const { key, value, isFunction } of labels) {
+      if (isFunction) {
+        // 함수로 생성 (id 파라미터)
+        entries.push(`  "${key}": (id: number) => \`${value}\`,`);
+      } else {
+        entries.push(`  "${key}": "${this.escapeString(value)}",`);
+      }
+    }
+
+    return `const entityLabels = {
+${entries.join("\n")}
+} as const;`;
+  }
+
+  private escapeString(str: string): string {
+    return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+  }
+}
