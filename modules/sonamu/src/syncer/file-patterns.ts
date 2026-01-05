@@ -10,7 +10,8 @@ export type FileType =
   | "generated"
   | "model"
   | "types"
-  | "workflow";
+  | "workflow"
+  | "i18n";
 
 export type GlobPattern<T extends ApiRelativePath | AbsolutePath> = {
   [key in FileType]: T;
@@ -33,6 +34,7 @@ export const checksumPatternGroup: GlobPattern<ApiRelativePath> = {
   model: "src/application/**/*.model.ts",
   types: "src/application/**/*.types.ts",
   workflow: "src/application/**/*.workflow.ts",
+  i18n: "src/i18n/**/*.ts",
 };
 
 /**

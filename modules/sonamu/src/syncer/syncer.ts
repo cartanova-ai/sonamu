@@ -2,7 +2,7 @@ import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
 import chalk from "chalk";
 import { EventEmitter } from "events";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { access, mkdir, readFile, writeFile } from "fs/promises";
 import inflection from "inflection";
 import { minimatch } from "minimatch";
 import path, { dirname } from "path";
@@ -325,13 +325,21 @@ export class Syncer {
       await this.autoloadWorkflows();
     }
 
+    if (diffTypes.includes("i18n") || diffTypes.includes("entity")) {
+      await this.syncSD();
+    }
+
     return {
       diffTypes,
     };
   }
 
+  // FIXME minimatch 사용
   calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
     return group(diffFiles, (r) => {
+      if (r.includes("/i18n/")) {
+        return "i18n";
+      }
       const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
       return matched?.[1] ?? "unknown";
     }) as unknown as DiffGroups;
@@ -671,5 +679,77 @@ export class Syncer {
    */
   async renewChecksums(): Promise<void> {
     return await renewChecksums();
+  }
+
+  /**
+   * SD(Sonamu Dictionary) 템플릿을 생성합니다.
+   * i18n 설정이 있을 때만 호출됩니다.
+   */
+  async syncSD(): Promise<void> {
+    const { targets } = Sonamu.config.sync;
+    const i18nConfig = Sonamu.config.i18n;
+    if (!i18nConfig) return;
+
+    const targetList = ["api", ...targets] as ("api" | "web" | "app")[];
+
+    const apiI18nDir = path.join(Sonamu.appRootPath, Sonamu.config.api.dir, "src/i18n");
+
+    for (const target of targetList) {
+      try {
+        // web/app의 경우 locale 파일들을 api에서 복사
+        if (target !== "api") {
+          await this.syncLocaleFiles(target, apiI18nDir, i18nConfig.supportedLocales);
+        }
+
+        await generateTemplate("sd", { target }, { overwrite: true });
+      } catch (e) {
+        console.error(`Failed to generate SD template for ${target}:`, e);
+      }
+    }
+  }
+
+  /**
+   * api의 locale 파일을 web/app으로 복사합니다.
+   */
+  private async syncLocaleFiles(
+    target: string,
+    apiI18nDir: string,
+    locales: string[],
+  ): Promise<void> {
+    const targetI18nDir = path.join(Sonamu.appRootPath, target, "src/i18n");
+
+    // 디렉토리가 없으면 생성
+    await mkdir(targetI18nDir, { recursive: true });
+
+    for (const locale of locales) {
+      const sourceFile = path.join(apiI18nDir, `${locale}.ts`);
+      const targetFile = path.join(targetI18nDir, `${locale}.ts`);
+
+      // 소스 파일이 존재하는지 확인
+      try {
+        await access(sourceFile);
+      } catch {
+        // 소스 파일이 없으면 스킵
+        continue;
+      }
+
+      // 소스 파일 읽기
+      const sourceContent = await readFile(sourceFile, "utf-8");
+
+      // 타겟 파일이 존재하면 내용 비교
+      try {
+        const targetContent = await readFile(targetFile, "utf-8");
+        if (sourceContent === targetContent) {
+          continue; // 내용이 같으면 스킵
+        }
+      } catch {
+        // 파일이 없음 - 복사 진행
+      }
+
+      // 파일 복사
+      await writeFile(targetFile, sourceContent);
+      !isTest() &&
+        console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
+    }
   }
 }
