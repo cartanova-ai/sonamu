@@ -1275,6 +1275,9 @@ export const TemplateOptions = z.object({
   }),
   queries: z.object({}),
   entry_server: z.object({}),
+  sd: z.object({
+    target: z.enum(["api", "web", "app"]),
+  }),
 });
 export type TemplateOptions = z.infer<typeof TemplateOptions>;
 
@@ -1298,6 +1301,7 @@ export const TemplateKey = z.enum([
   "view_enums_buttonset",
   "queries",
   "entry_server",
+  "sd",
 ]);
 export type TemplateKey = z.infer<typeof TemplateKey>;
 
