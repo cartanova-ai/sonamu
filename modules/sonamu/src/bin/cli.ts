@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { execSync, spawn } from "child_process";
-import { mkdir, readdir, rm, writeFile } from "fs/promises";
+import { cp, mkdir, readdir, rm, writeFile } from "fs/promises";
 import knex, { type Knex } from "knex";
 import { createRequire } from "module";
 import path from "path";
@@ -15,9 +15,18 @@ import type { SonamuDBConfig } from "../database/db";
 import { EntityManager } from "../entity/entity-manager";
 import { Migrator } from "../migration/migrator";
 import { FixtureManager } from "../testing/fixture-manager";
+import {
+  execWithLinePrefix,
+  printBuildSummary,
+  printTaskFailed,
+  printTaskHeader,
+  printTaskSkipped,
+  printTaskStart,
+  printTaskSuccess,
+} from "../utils/console-util";
 import { exists } from "../utils/fs-utils";
-import { findApiRootPath } from "../utils/utils";
-import { BUILD_DIR, SWC_BUILD_COMMAND, TSC_TYPE_CHECK_COMMAND } from "./build-config";
+import { findApiRootPath, findAppRootPath } from "../utils/utils";
+import { API_ARTIFACTS, WEB_ARTIFACTS } from "./build-config";
 
 let migrator: Migrator;
 
@@ -174,22 +183,38 @@ async function dev() {
  * 프로젝트를 빌드합니다.
  *
  * 빌드에 필요한 .swcrc는 프로젝트 루트에서 찾고, 없으면 sonamu가 관리하는 .swcrc.project-default를 사용합니다.
- * sonamu.config.ts는 src에 들어있지 않기 때문에 SWC_BUILD_COMMAND로 빌드되지 않습니다.
- * 따라서 따로 빌드해줍니다.
+ *
+ * 실제 빌드 타겟(아티팩트)과 동작은 build-config.ts에 정의되어 있습니다.
+ * 이 함수는 build-config.ts에 정의된 동작들을 실행해주는 역할만 합니다.
  *
  * Sonamu.init 없이 호출될 것을 상정하여 구현되었습니다.
  */
 async function build() {
-  const apiRoot = findApiRootPath();
+  const appRoot = findAppRootPath();
 
   // 출력 디렉토리를 제거합니다.
   try {
-    console.log(chalk.blue("Removing build directory..."));
-    if (await exists(BUILD_DIR)) {
-      await rm(BUILD_DIR, { recursive: true, force: true });
+    for (const artifact of API_ARTIFACTS) {
+      if (await exists(path.join(appRoot, artifact.outputDir))) {
+        // API 프로젝트 자체의 빌드 결과물
+        await rm(path.join(appRoot, artifact.outputDir), { recursive: true, force: true });
+      }
     }
+
+    for (const artifact of WEB_ARTIFACTS) {
+      if (await exists(path.join(appRoot, artifact.outputDir))) {
+        // Web 프로젝트 자체의 빌드 결과물
+        await rm(path.join(appRoot, artifact.outputDir), { recursive: true, force: true });
+      }
+      if (await exists(path.join(appRoot, artifact.destDir))) {
+        // API 프로젝트로 복사되어 온 Web 빌드 결과물
+        await rm(path.join(appRoot, artifact.destDir), { recursive: true, force: true });
+      }
+    }
+
+    console.log(chalk.green("\nBuild artifacts removed successfully."));
   } catch (error) {
-    console.error(chalk.red("Remove build directory failed."), error);
+    console.error(chalk.red("Remove build directories failed."), error);
     process.exit(1);
   }
 
@@ -198,10 +223,10 @@ async function build() {
   try {
     if (await exists(swcFilePath)) {
       // 사용자 프로젝트에 .swcrc가 있으면 우선으로 사용합니다.
-      console.log(chalk.blue("Using .swcrc from project root..."));
+      console.log(chalk.dim("Using .swcrc from project root..."));
     } else {
       // 아니라면 sonamu가 관리하는 .swcrc.project-default를 가져다 씁니다.
-      console.log(chalk.blue("Using default .swcrc from sonamu package..."));
+      console.log(chalk.dim("Using default .swcrc from sonamu package..."));
       swcFilePath = path.join(import.meta.dirname, "..", "..", ".swcrc.project-default");
     }
   } catch (error) {
@@ -209,24 +234,73 @@ async function build() {
     process.exit(1);
   }
 
-  // 소스 디렉토리를 빌드합니다.
+  // API 프로젝트를 빌드합니다.
+  const apiStartedAt = Date.now();
   try {
-    console.log(chalk.blue("Building with swc..."));
-    execSync(SWC_BUILD_COMMAND(swcFilePath), { cwd: apiRoot, stdio: "inherit" });
-  } catch (error) {
-    console.error(chalk.red("Build failed."), error);
+    for (const artifact of API_ARTIFACTS) {
+      const cwd = path.join(appRoot, artifact.projectPath);
+      const cmd = artifact.buildCommand(swcFilePath);
+
+      printTaskHeader(artifact.name, artifact.description, cwd);
+
+      // build
+      try {
+        printTaskStart("build", cmd, true);
+        // cmd를 spawn해서 build를 수행하는데, 이때 명령의 출력(stdout, stderr) 라인 앞에 들여쓰기를 붙여서 출력합니다.
+        await execWithLinePrefix(cmd, { cwd });
+        printTaskSuccess("build", true);
+      } catch {
+        printTaskFailed("build", true);
+        throw new Error("build failed");
+      }
+    }
+    printBuildSummary("API", true, Date.now() - apiStartedAt);
+  } catch {
+    printBuildSummary("API", false, Date.now() - apiStartedAt);
     process.exit(1);
   }
 
-  // 마지막에는 타입 체크를 해요.
+  // Web 프로젝트를 빌드합니다.
+  const webStartedAt = Date.now();
   try {
-    console.log(chalk.blue("Checking types with tsc..."));
-    execSync(TSC_TYPE_CHECK_COMMAND, {
-      cwd: apiRoot,
-      stdio: "inherit",
-    });
-  } catch (error) {
-    console.error(chalk.red("Type check failed."), error);
+    for (const artifact of WEB_ARTIFACTS) {
+      const cwd = path.join(appRoot, artifact.projectPath);
+      const cmd = artifact.buildCommand();
+      const outputDirFull = path.join(appRoot, artifact.outputDir);
+      const destDirFull = path.join(appRoot, artifact.destDir);
+
+      printTaskHeader(artifact.name, artifact.description, cwd);
+
+      // build
+      try {
+        printTaskStart("build", cmd);
+        // cmd를 spawn해서 build를 수행하는데, 이때 명령의 출력(stdout, stderr) 라인 앞에 들여쓰기를 붙여서 출력합니다.
+        await execWithLinePrefix(cmd, { cwd });
+        printTaskSuccess("build");
+      } catch {
+        printTaskFailed("build");
+        printTaskSkipped("copy", true);
+        throw new Error("build failed");
+      }
+
+      // copy
+      try {
+        printTaskStart("copy", `${artifact.outputDir} → ${artifact.destDir}`, true);
+        // Web 아티팩트는 빌드 결과물(outputDir)을 다른 위치(destDir)로 복사하는 작업이 추가로 필요합니다.
+        if (await exists(destDirFull)) {
+          await rm(destDirFull, { recursive: true, force: true });
+        }
+        await mkdir(destDirFull, { recursive: true });
+        await cp(outputDirFull, destDirFull, { recursive: true });
+        printTaskSuccess("copy", true);
+      } catch {
+        printTaskFailed("copy", true);
+        throw new Error("copy failed");
+      }
+    }
+    printBuildSummary("Web", true, Date.now() - webStartedAt);
+  } catch {
+    printBuildSummary("Web", false, Date.now() - webStartedAt);
     process.exit(1);
   }
 }

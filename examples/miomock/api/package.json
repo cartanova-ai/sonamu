@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "sonamu dev",
-    "build": "cd ../web && pnpm build:all && cd ../api && mkdir -p public/web && cp -r ../web/dist/client/* public/web/ && sonamu build && mkdir -p dist/ssr && cp -r ../web/dist/server/* dist/ssr/",
+    "build": "sonamu build",
     "start": "sonamu start",
     "start:all": "./start.sh",
     "test": "vitest run",

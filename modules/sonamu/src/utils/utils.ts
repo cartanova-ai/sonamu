@@ -3,9 +3,9 @@ import path from "path";
 import { cluster } from "radashi";
 import type { AbsolutePath } from "./path-utils";
 
-export async function findAppRootPath(): Promise<AbsolutePath> {
+export function findAppRootPath(): AbsolutePath {
   const apiRootPath = findApiRootPath();
-  return apiRootPath.split(path.sep).slice(0, -1).join(path.sep) as AbsolutePath;
+  return path.dirname(apiRootPath) as AbsolutePath;
 }
 
 export function findApiRootPath(): AbsolutePath {
