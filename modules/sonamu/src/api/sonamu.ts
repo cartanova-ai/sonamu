@@ -474,34 +474,11 @@ class SonamuClass {
           const url = request.url;
           console.log(`[SSR] Matched route: ${route.path}`);
 
-          try {
-            const params = this.extractPathParams(route.path, url);
-            const html = await renderSSR(
-              url,
-              route,
-              params,
-              request,
-              reply,
-              config,
-              this.viteServer,
-            );
+          const params = this.extractPathParams(route.path, url);
+          const html = await renderSSR(url, route, params, request, reply, config, this.viteServer);
 
-            reply.type("text/html");
-            return html;
-          } catch (e) {
-            console.error("SSR Error:", e);
-            console.log("Falling back to CSR...");
-
-            // CSR fallback
-            const fs = await import("node:fs/promises");
-            let template = await fs.readFile(
-              path.join(this.viteServer.config.root, "index.html"),
-              "utf-8",
-            );
-            template = await this.viteServer.transformIndexHtml(url, template);
-            reply.type("text/html");
-            return template;
-          }
+          reply.type("text/html");
+          return html;
         },
       });
     }
@@ -648,26 +625,11 @@ class SonamuClass {
             const url = request.url;
             console.log(`[SSR] Matched route: ${route.path}`);
 
-            try {
-              const params = this.extractPathParams(route.path, url);
-              const html = await renderSSR(url, route, params, request, reply, config);
+            const params = this.extractPathParams(route.path, url);
+            const html = await renderSSR(url, route, params, request, reply, config);
 
-              reply.type("text/html");
-              return html;
-            } catch (e) {
-              console.error("[SSR Error]", {
-                url: request.url,
-                route: route.path,
-                error: e instanceof Error ? e.message : String(e),
-                timestamp: new Date().toISOString(),
-              });
-
-              // CSR fallback
-              const indexPath = path.join(webDistPath, "index.html");
-              const html = await fs.readFile(indexPath, "utf-8");
-              reply.type("text/html");
-              return html;
-            }
+            reply.type("text/html");
+            return html;
           },
         });
       }
