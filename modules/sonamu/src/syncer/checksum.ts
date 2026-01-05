@@ -136,7 +136,6 @@ async function saveChecksums(checksums: PathAndChecksum[]): Promise<void> {
     ),
     "utf-8",
   );
-  console.log("checksum saved", checksumFilePath);
 }
 
 function getChecksumOfData(data: string): string {
