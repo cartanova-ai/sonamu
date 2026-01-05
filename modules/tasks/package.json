@@ -56,7 +56,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "knex": "catalog:"
+    "knex": "catalog:",
+    "@logtape/logtape": "catalog:"
   },
   "optionalDependencies": {
     "pg-native": "catalog:"

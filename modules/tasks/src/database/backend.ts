@@ -1,3 +1,4 @@
+import { getLogger } from "@logtape/logtape";
 import { camelize } from "inflection";
 import knex, { type Knex } from "knex";
 import {
@@ -35,6 +36,8 @@ interface BackendPostgresOptions {
   // default: true
   usePubSub?: boolean;
 }
+
+const logger = getLogger(["sonamu", "internal", "tasks"]);
 
 /**
  * Manages a connection to a Postgres database for workflow operations.
@@ -175,6 +178,7 @@ export class BackendPostgres implements Backend {
 
     const workflowRun = await qb;
     if (!workflowRun[0]) {
+      logger.error("Failed to create workflow run: {params}", { params });
       throw new Error("Failed to create workflow run");
     }
 
@@ -345,6 +349,7 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!updated) {
+      logger.error("Failed to extend lease for workflow run: {params}", { params });
       throw new Error("Failed to extend lease for workflow run");
     }
 
@@ -373,6 +378,7 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!updated) {
+      logger.error("Failed to sleep workflow run: {params}", { params });
       throw new Error("Failed to sleep workflow run");
     }
 
@@ -403,6 +409,7 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!updated) {
+      logger.error("Failed to complete workflow run: {params}", { params });
       throw new Error("Failed to complete workflow run");
     }
 
@@ -451,6 +458,7 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!updated) {
+      logger.error("Failed to mark workflow run failed: {params}", { params });
       throw new Error("Failed to mark workflow run failed");
     }
 
@@ -494,11 +502,16 @@ export class BackendPostgres implements Backend {
       // throw error for completed/failed workflows
       // 'succeeded' status is deprecated
       if (["succeeded", "completed", "failed"].includes(existing.status)) {
+        logger.error("Cannot cancel workflow run: {params} with status {status}", {
+          params,
+          status: existing.status,
+        });
         throw new Error(
           `Cannot cancel workflow run ${params.workflowRunId} with status ${existing.status}`,
         );
       }
 
+      logger.error("Failed to cancel workflow run: {params}", { params });
       throw new Error("Failed to cancel workflow run");
     }
 
@@ -529,6 +542,7 @@ export class BackendPostgres implements Backend {
       .returning("*");
 
     if (!stepAttempt) {
+      logger.error("Failed to create step attempt: {params}", { params });
       throw new Error("Failed to create step attempt");
     }
 
@@ -666,6 +680,7 @@ export class BackendPostgres implements Backend {
       .returning("sa.*");
 
     if (!updated) {
+      logger.error("Failed to mark step attempt completed: {params}", { params });
       throw new Error("Failed to mark step attempt completed");
     }
 
@@ -699,6 +714,7 @@ export class BackendPostgres implements Backend {
       .returning("sa.*");
 
     if (!updated) {
+      logger.error("Failed to mark step attempt failed: {params}", { params });
       throw new Error("Failed to mark step attempt failed");
     }
 

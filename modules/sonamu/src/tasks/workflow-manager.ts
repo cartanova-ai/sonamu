@@ -299,12 +299,8 @@ export class WorkflowManager {
     this.#worker = this.#ow.newWorker(options);
   }
 
-  // Worker를 초기화
+  // Worker가 있으면 Worker까지 초기화, 아니면 백엔드만 초기화
   async startWorker() {
-    if (!this.#worker) {
-      return;
-    }
-
     await this.#backend.initialize();
     await this.#worker?.start();
   }
