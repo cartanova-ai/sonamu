@@ -27,6 +27,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
 import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import { TagOrderBy, TagSearchField } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
@@ -69,7 +70,7 @@ function TagList({}: TagListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/tags",
-    title: "TAG",
+    title: SD("entity.Tag.list"),
   };
 
   // 컬럼 정의
@@ -82,16 +83,16 @@ function TagList({}: TagListProps) {
       align: "center",
     },
     {
-      label: "등록일시",
+      label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "태그명",
+      label: SD("entity.Tag.name"),
       tc: (row) => <>{row.name}</>,
     },
     {
-      label: "Manage",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -169,14 +170,14 @@ function TagList({}: TagListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <TagSearchFieldSelect
                     {...register("search")}
-                    placeholder="Search Type"
+                    placeholder={SD("common.searchType")}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -192,7 +193,7 @@ function TagList({}: TagListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>
@@ -200,11 +201,13 @@ function TagList({}: TagListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <TagOrderBySelect
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
+                    placeholder={SD("common.sort")}
+                    textPrefix={`${SD("common.sort")}: `}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {SD("common.results")(total ?? 0)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -262,14 +265,14 @@ function TagList({}: TagListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

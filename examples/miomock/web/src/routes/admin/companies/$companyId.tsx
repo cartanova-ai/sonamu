@@ -1,6 +1,7 @@
 import { datetimeF } from "@sonamu-kit/react-components";
 import { createFileRoute } from "@tanstack/react-router";
 import z from "zod";
+import { SD } from "@/i18n/sd.generated";
 import { CompanyService } from "@/services/services.generated";
 
 export const Route = createFileRoute("/admin/companies/$companyId")({
@@ -32,12 +33,16 @@ function CompanyDetail() {
 
   return (
     <div>
-      <h1>Company Detail</h1>
-      <p>Company ID: {companyId}</p>
+      <h1>{SD("entity.Company")}</h1>
+      <p>ID: {companyId}</p>
       {row && (
         <>
-          <p>Company Name: {row.name}</p>
-          <p>Company Created At: {datetimeF(row.created_at)}</p>
+          <p>
+            {SD("entity.Company.name")}: {row.name}
+          </p>
+          <p>
+            {SD("common.createdAt")}: {datetimeF(row.created_at)}
+          </p>
         </>
       )}
     </div>

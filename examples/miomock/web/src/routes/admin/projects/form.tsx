@@ -14,6 +14,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
+import { SD } from "@/i18n/sd.generated";
 import { ProjectSaveParams } from "@/services/project/project.types";
 import { FileService, ProjectService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
@@ -89,7 +90,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   };
 
   const PAGE = {
-    title: `PROJECT${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.Project.edit")(id) : SD("entity.Project.create"),
   };
 
   return (
@@ -108,7 +109,7 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 onClick={() => router.navigate({ to: "/admin/projects" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -122,43 +123,53 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
               <div className="space-y-6">
                 {/* PROJECT명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">PROJECT명</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.name")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="PROJECT명"
+                    placeholder={SD("entity.Project.name")}
                     {...register("name")}
                   />
                 </div>
 
                 {/* 상태 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">상태</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.status")}
+                  </label>
                   <ProjectStatusSelect {...register("status")} />
                 </div>
 
                 {/* 설명 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">설명</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.description")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="설명"
+                    placeholder={SD("entity.Project.description")}
                     {...register("description")}
                   />
                 </div>
 
                 {/* 예산 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">예산</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.budget")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="예산"
+                    placeholder={SD("entity.Project.budget")}
                     {...register("budget")}
                   />
                 </div>
 
                 {/* 마감일시 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">마감일시</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Project.deadline")}
+                  </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("deadline")} />
                 </div>
 
@@ -201,12 +212,12 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>

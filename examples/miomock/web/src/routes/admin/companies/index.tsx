@@ -27,6 +27,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { CompanyOrderBySelect } from "@/components/company/CompanyOrderBySelect";
 import { CompanySearchFieldSelect } from "@/components/company/CompanySearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
 import { CompanyListParams } from "@/services/company/company.types";
 import { CompanyService } from "@/services/services.generated";
 import { CompanyOrderBy, CompanySearchField } from "@/services/sonamu.generated";
@@ -69,7 +70,7 @@ function CompanyList({}: CompanyListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/companies",
-    title: "회사 리스트",
+    title: SD("entity.Company.list"),
   };
 
   // 컬럼 정의
@@ -82,16 +83,16 @@ function CompanyList({}: CompanyListProps) {
       align: "center",
     },
     {
-      label: "회사명",
+      label: SD("entity.Company.name"),
       tc: (row) => <>{row.name}</>,
     },
     {
-      label: "등록일시",
+      label: SD("common.createdAt"),
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: "관리",
+      label: SD("common.manage"),
       fit: true,
       align: "center",
       tc: (row) => (
@@ -169,14 +170,14 @@ function CompanyList({}: CompanyListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <CompanySearchFieldSelect
                     {...register("search")}
-                    placeholder="Search Type"
+                    placeholder={SD("common.searchType")}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder="Search..."
+                      placeholder={SD("common.search")}
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -192,7 +193,7 @@ function CompanyList({}: CompanyListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">Create</span>
+                      <span className="text-xs">{SD("common.create")}</span>
                     </Button>
                   </div>
                 </div>
@@ -200,11 +201,13 @@ function CompanyList({}: CompanyListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <CompanyOrderBySelect
                     {...register("orderBy")}
-                    placeholder="Sort"
-                    textPrefix="Sort: "
+                    placeholder={SD("common.sort")}
+                    textPrefix={`${SD("common.sort")}: `}
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
+                  <span className="text-xs text-muted-foreground">
+                    {SD("common.results")(total ?? 0)}
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -262,14 +265,14 @@ function CompanyList({}: CompanyListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this item.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>
+              {SD("common.delete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

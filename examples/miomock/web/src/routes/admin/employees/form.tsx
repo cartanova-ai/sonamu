@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { DepartmentIdAsyncSelect } from "@/components/department/DepartmentIdAsyncSelect";
 import { UserIdAsyncSelect } from "@/components/user/UserIdAsyncSelect";
+import { SD } from "@/i18n/sd.generated";
 import { EmployeeSaveParams } from "@/services/employee/employee.types";
 import { EmployeeService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
@@ -89,7 +90,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   };
 
   const PAGE = {
-    title: `직원${id ? ` #${id} Edit` : " Create"}`,
+    title: id ? SD("entity.Employee.edit")(id) : SD("entity.Employee.create"),
   };
 
   return (
@@ -108,7 +109,7 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 onClick={() => router.navigate({ to: "/admin/employees" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -122,13 +123,17 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
               <div className="space-y-6">
                 {/* USER */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">USER</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.user")}
+                  </label>
                   <UserIdAsyncSelect subset="A" {...register("user_id")} className="h-8 text-xs" />
                 </div>
 
                 {/* 부서 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">부서</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.department")}
+                  </label>
                   <DepartmentIdAsyncSelect
                     subset="A"
                     {...register("department_id")}
@@ -139,36 +144,44 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
 
                 {/* 사번 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">사번</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.employee_number")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="사번"
+                    placeholder={SD("entity.Employee.employee_number")}
                     {...register("employee_number")}
                   />
                 </div>
 
                 {/* SALARY */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">SALARY</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.salary")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="SALARY"
+                    placeholder={SD("entity.Employee.salary")}
                     {...register("salary")}
                   />
                 </div>
 
                 {/* 입사일 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">입사일</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.hire_date")}
+                  </label>
                   <DateInput className="h-8 text-xs bg-white" {...register("hire_date")} />
                 </div>
 
                 {/* 비고 */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">비고</label>
+                  <label className="block text-xs mb-1 text-gray-600">
+                    {SD("entity.Employee.notes")}
+                  </label>
                   <Input
                     className="h-8 text-xs bg-white"
-                    placeholder="비고"
+                    placeholder={SD("entity.Employee.notes")}
                     {...register("notes")}
                   />
                 </div>
@@ -177,12 +190,12 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">{String(form.created_at)}</span>
                     </div>
                   )}
                   <Button onClick={handleSubmit} icon={<SaveIcon />}>
-                    Save
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>
