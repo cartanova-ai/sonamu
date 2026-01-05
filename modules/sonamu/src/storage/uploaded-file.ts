@@ -10,6 +10,7 @@ export class UploadedFile {
   private _file: MultipartFile;
   private _buffer?: Buffer;
   private _url?: string;
+  private _signedUrl?: string;
 
   constructor(file: MultipartFile) {
     this._file = file;
@@ -35,9 +36,14 @@ export class UploadedFile {
     return mime.extension(this._file.mimetype);
   }
 
-  /** saveToDisk 후 저장된 URL */
+  /** saveToDisk 후 저장된 URL (Unsigned) */
   get url(): string | undefined {
     return this._url;
+  }
+
+  /** saveToDisk 후 저장된 URL (Signed) */
+  get signedUrl(): string | undefined {
+    return this._signedUrl;
   }
 
   /** Buffer로 변환 (캐싱됨) */
@@ -70,7 +76,10 @@ export class UploadedFile {
       contentType: this.mimetype,
     });
 
-    this._url = await disk.getSignedUrl(key);
+    this._url = await disk.getUrl(key);
+    this._signedUrl = await disk.getSignedUrl(key);
+
+    // signed url은 만료 시간이 있기 때문에, unsigned url을 반환합니다.
     return this._url;
   }
 
