@@ -31,7 +31,15 @@ type CommonModalProps = {
 
 export function CommonModal({ className }: CommonModalProps) {
   const [atomValue, setAtomValue] = useAtom(commonModalAtom);
-  const { open, reactNode, title, description, className: modalClassName, onControlledOpen, onControlledClose } = atomValue;
+  const {
+    open,
+    reactNode,
+    title,
+    description,
+    className: modalClassName,
+    onControlledOpen,
+    onControlledClose,
+  } = atomValue;
 
   const closeAndClear = () => {
     if (onControlledClose) {
@@ -61,9 +69,7 @@ export function CommonModal({ className }: CommonModalProps) {
     >
       <DialogContent className={cn("max-w-4xl", modalClassName, className)}>
         <DialogHeader>
-          <DialogTitle className={!title ? "sr-only" : undefined}>
-            {title || "Modal"}
-          </DialogTitle>
+          <DialogTitle className={!title ? "sr-only" : undefined}>{title || "Modal"}</DialogTitle>
           <DialogDescription className={!description ? "sr-only" : undefined}>
             {description || "Modal content"}
           </DialogDescription>

@@ -1,6 +1,15 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: 너무 많이 사용하고 있어서 일단 허용 */
 
-import { Button, Checkbox } from "@sonamu-kit/react-components";
+import {
+  Button,
+  Checkbox,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@sonamu-kit/react-components";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import classNames from "classnames";
 import { unique } from "radashi";
@@ -34,7 +43,6 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   const { entityId } = Route.useParams();
 
   const entity = entities?.find((entity) => entity.id === entityId) ?? null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: entityId 변경시에만 감지
   useEffect(() => {
     setCursor({
       sheet: "props",
@@ -686,7 +694,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           <div className="entity-base">
             <h3>
               <span>
-                Entity: <strong style={{ color: "green" }}>{entity.id}</strong>
+                Entity: <strong className="text-green-600">{entity.id}</strong>
               </span>
               <Button
                 size="xs"
@@ -726,21 +734,21 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           <div className="props-and-indexes">
             <div className="props">
               <h3>Props</h3>
-              <table className="ui table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Desc</th>
-                    <th>Type</th>
-                    <th>Nullable</th>
-                    <th>With/As</th>
-                    <th>Default</th>
-                    <th>Filter</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="border rounded-lg bg-white">
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Desc</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Nullable</TableHead>
+                    <TableHead>With/As</TableHead>
+                    <TableHead>Default</TableHead>
+                    <TableHead>Filter</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entity.props.map((prop, propIndex) => (
-                    <tr
+                    <TableRow
                       id={`prop-${prop.name}`}
                       key={propIndex}
                       {...regRow(
@@ -773,9 +781,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         });
                       }}
                     >
-                      <td {...regCell("props", propIndex, 0)}>{prop.name}</td>
-                      <td {...regCell("props", propIndex, 1)}>{prop.desc}</td>
-                      <td {...regCell("props", propIndex, 2)}>
+                      <TableCell {...regCell("props", propIndex, 0)}>{prop.name}</TableCell>
+                      <TableCell {...regCell("props", propIndex, 1)}>{prop.desc}</TableCell>
+                      <TableCell {...regCell("props", propIndex, 2)}>
                         {prop.type} {prop.type === "string" && prop.length && <>({prop.length}) </>}
                         {(prop.type === "numeric" ||
                           (prop.type === "number" && prop.numberType === "numeric")) && (
@@ -783,33 +791,52 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             ({prop.precision},{prop.scale}){" "}
                           </>
                         )}
-                      </td>
-                      <td {...regCell("props", propIndex, 3)}>
+                      </TableCell>
+                      <TableCell {...regCell("props", propIndex, 3)}>
                         {prop.nullable && <span className="ui label">NULL</span>}
-                      </td>
-                      <td {...regCell("props", propIndex, 4)}>
-                        {prop.type === "enum" && <span className="ui label">{prop.id}</span>}
+                      </TableCell>
+                      <TableCell {...regCell("props", propIndex, 4)}>
+                        {prop.type === "enum" && (
+                          <span
+                            className="ui label"
+                            style={{ backgroundColor: "#6b7280", color: "white" }}
+                          >
+                            {prop.id}
+                          </span>
+                        )}
                         {(prop.type === "json" || prop.type === "virtual") && (
-                          <span className="ui label">{prop.id}</span>
+                          <span
+                            className="ui label"
+                            style={{ backgroundColor: "#ca8a04", color: "white" }}
+                          >
+                            {prop.id}
+                          </span>
                         )}
                         {prop.type === "relation" && (
                           <span
                             className="ui label"
-                            color={prop.relationType.endsWith("ToOne") ? "orange" : "purple"}
+                            style={{
+                              backgroundColor: prop.relationType.endsWith("ToOne")
+                                ? "#f97316"
+                                : "#a855f7",
+                              color: "white",
+                            }}
                           >
                             {prop.relationType}: {prop.with}
                           </span>
                         )}
-                      </td>
+                      </TableCell>
 
-                      <td {...regCell("props", propIndex, 5)}>
+                      <TableCell {...regCell("props", propIndex, 5)}>
                         {prop.type !== "relation" && <>{prop.dbDefault}</>}
-                      </td>
-                      <td {...regCell("props", propIndex, 6)}>{prop.toFilter && <CheckIcon />}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell {...regCell("props", propIndex, 6)}>
+                        {prop.toFilter && <CheckIcon />}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  <tr>
-                    <td colSpan={7} className="footer-buttons">
+                  <TableRow>
+                    <TableCell colSpan={7} className="footer-buttons text-center">
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
@@ -817,37 +844,37 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       >
                         Add a prop
                       </Button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
             <div className="indexes">
               <h3>Indexes</h3>
-              <table className="ui table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Columns</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="border rounded-lg bg-white">
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Columns</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entity.indexes.map((index, indexIndex) => (
-                    <tr key={indexIndex} {...regRow("indexes", indexIndex)}>
-                      <td {...regCell("indexes", indexIndex, 0)}>
+                    <TableRow key={indexIndex} {...regRow("indexes", indexIndex)}>
+                      <TableCell {...regCell("indexes", indexIndex, 0)}>
                         <strong>{index.type}</strong>
-                      </td>
-                      <td {...regCell("indexes", indexIndex, 1)}>
+                      </TableCell>
+                      <TableCell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
                           <span className="ui label" key={colIndex}>
                             {col.name}
                           </span>
                         ))}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  <tr>
-                    <td colSpan={2} className="footer-buttons">
+                  <TableRow>
+                    <TableCell colSpan={2} className="footer-buttons text-center">
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
@@ -855,10 +882,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       >
                         Add a index
                       </Button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
           </div>
           <div className="enums-and-subsets">
@@ -870,10 +897,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 <div className="enums-list">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
                     <div className="enums-table" key={enumsIndex}>
-                      <table className="ui table" id={`enum-${enumId}`}>
-                        <thead>
-                          <tr>
-                            <th
+                      <Table id={`enum-${enumId}`} className="border rounded-lg bg-white">
+                        <TableHeader className="bg-gray-50">
+                          <TableRow>
+                            <TableHead
                               colSpan={2}
                               onDoubleClick={() => {
                                 const newEnumId = prompt("You want to change the EnumID?", enumId);
@@ -883,25 +910,27 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                 editEnumId(enumId, newEnumId);
                               }}
                             >
-                              {enumId}
-                              <Button
-                                size="xs"
-                                icon={<Trash2Icon />}
-                                variant="destructive"
-                                className="btn-del-enum"
-                                onClick={() => confirmDelEnum(enumId)}
-                              />
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                              <div className="flex items-center gap-2">
+                                {enumId}
+                                <Button
+                                  size="xs"
+                                  icon={<Trash2Icon />}
+                                  variant="destructive"
+                                  className="btn-del-enum"
+                                  onClick={() => confirmDelEnum(enumId)}
+                                />
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {enumLabelsArray[enumId].map(({ key, label }, enumLabelIndex) => (
-                            <tr
+                            <TableRow
                               id={`enum-${enumId}-${key}`}
                               key={enumLabelIndex}
                               {...regRow(`enumLabels-${enumId}`, enumLabelIndex)}
                             >
-                              <td {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 0)}>
+                              <TableCell {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 0)}>
                                 <SheetCellInput
                                   editable={isFocused(`enumLabels-${enumId}`, enumLabelIndex, 0)}
                                   initialValue={key}
@@ -918,8 +947,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                     }
                                   }}
                                 />
-                              </td>
-                              <td {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 1)}>
+                              </TableCell>
+                              <TableCell {...regCell(`enumLabels-${enumId}`, enumLabelIndex, 1)}>
                                 <SheetCellInput
                                   editable={isFocused(`enumLabels-${enumId}`, enumLabelIndex, 1)}
                                   initialValue={label}
@@ -930,11 +959,11 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                     }
                                   }}
                                 />
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           ))}
-                          <tr>
-                            <td colSpan={2}>
+                          <TableRow>
+                            <TableCell colSpan={2}>
                               <Button
                                 size="xs"
                                 variant="default"
@@ -942,10 +971,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                 className="btn-add-enum-label"
                                 onClick={() => addEnumLabelRow(enumId)}
                               />
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
                     </div>
                   ))}
                 </div>
@@ -963,12 +992,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                   />
                 </h3>
                 {entity && entity.flattenSubsetRows.length > 0 && (
-                  <table className="ui table">
-                    <thead>
-                      <tr>
-                        <th>Field</th>
+                  <Table className="border rounded-lg bg-white">
+                    <TableHeader className="bg-gray-50">
+                      <TableRow>
+                        <TableHead>Field</TableHead>
                         {Object.keys(entity.subsets).map((subsetKey) => (
-                          <th key={subsetKey}>
+                          <TableHead key={subsetKey}>
                             Subset{subsetKey}{" "}
                             {subsetKey !== "A" && (
                               <Button
@@ -979,38 +1008,41 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                 onClick={() => delSubset(subsetKey)}
                               />
                             )}
-                          </th>
+                          </TableHead>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td></td>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell></TableCell>
                         {Object.keys(entity.subsets).map((subsetKey) => (
-                          <td key={subsetKey}>
+                          <TableCell key={subsetKey}>
                             <Button
                               size="xs"
-                              style={{ fontSize: ".5em" }}
+                              variant="ghost"
+                              className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full w-5 h-5 p-0 flex items-center justify-center"
                               onClick={() => toggleAllFieldsOnSubset(subsetKey)}
-                            />
-                          </td>
+                            >
+                              <span className="text-[11px] font-bold leading-none">!</span>
+                            </Button>
+                          </TableCell>
                         ))}
-                      </tr>
+                      </TableRow>
                       {entity.flattenSubsetRows.map((subsetRow, subsetRowIndex) => (
-                        <tr
+                        <TableRow
                           id={[...subsetRow.prefixes, subsetRow.field].join(".")}
                           key={subsetRowIndex}
                           {...regRow("subsets", subsetRowIndex)}
                         >
-                          <td {...regCell("subsets", subsetRowIndex, 0)}>
-                            <span style={{ color: "silver" }}>
+                          <TableCell {...regCell("subsets", subsetRowIndex, 0)}>
+                            <span className="text-gray-400">
                               {subsetRow.prefixes.join(" > ")}
                               {subsetRow.prefixes.length > 0 && " > "}
                             </span>
                             {subsetRow.field}
                             {subsetRow.relationEntity && (
                               <Button
-                                variant="default"
+                                variant="green"
                                 size="xs"
                                 className="btn-relation-entity"
                                 onClick={expandRelationEntity(subsetRowIndex)}
@@ -1019,22 +1051,25 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                 {subsetRow.relationEntity}
                               </Button>
                             )}
-                          </td>
+                          </TableCell>
                           {Object.keys(entity.subsets).map((subsetKey) => (
-                            <td key={subsetKey}>
+                            <TableCell key={subsetKey}>
                               {subsetRow.relationEntity ? (
                                 // biome-ignore lint/complexity/noUselessFragments: 필요한데?
                                 <>
                                   {subsetRow.isOpen && (
                                     <Button
                                       size="xs"
-                                      style={{ fontSize: ".5em" }}
+                                      variant="ghost"
+                                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full w-5 h-5 p-0 flex items-center justify-center"
                                       onClick={() => toggleAllFieldsOnSubset(subsetKey, subsetRow)}
-                                    />
+                                    >
+                                      <span className="text-[11px] font-bold leading-none">!</span>
+                                    </Button>
                                   )}
                                 </>
                               ) : (
-                                <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <div className="flex items-center gap-1">
                                   <Checkbox
                                     checked={subsetRow.has[subsetKey]}
                                     onCheckedChange={(checked) => {
@@ -1055,19 +1090,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                   />
                                   <Button
                                     size="xs"
-                                    variant={
-                                      subsetRow.isInternal?.[subsetKey] ? "default" : "ghost"
+                                    variant="ghost"
+                                    className={
+                                      subsetRow.isInternal?.[subsetKey]
+                                        ? "bg-orange-500 hover:bg-orange-600 text-white rounded-full w-4 h-4 p-0 flex items-center justify-center"
+                                        : "bg-white hover:bg-gray-100 border border-gray-300 rounded-full w-4 h-4 p-0 flex items-center justify-center"
                                     }
-                                    style={{
-                                      fontSize: ".5em",
-                                      padding: "4px 6px",
-                                      backgroundColor: subsetRow.isInternal?.[subsetKey]
-                                        ? "#f97316"
-                                        : undefined,
-                                      color: subsetRow.isInternal?.[subsetKey]
-                                        ? "white"
-                                        : undefined,
-                                    }}
                                     title="Internal: 쿼리만 수행하고 결과 타입에서 제외"
                                     onClick={() => {
                                       const field = [...subsetRow.prefixes, subsetRow.field].join(
@@ -1085,16 +1113,24 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                                       }
                                     }}
                                   >
-                                    I
+                                    <span
+                                      className={`text-[9px] font-bold leading-none ${
+                                        subsetRow.isInternal?.[subsetKey]
+                                          ? "text-white"
+                                          : "text-gray-400"
+                                      }`}
+                                    >
+                                      !
+                                    </span>
                                   </Button>
                                 </div>
                               )}
-                            </td>
+                            </TableCell>
                           ))}
-                        </tr>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 )}
               </div>
             )}

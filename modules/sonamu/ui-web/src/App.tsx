@@ -44,7 +44,6 @@ function App({ children }: AppProps) {
     }
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleKeyDown 함수는 컴포넌트가 마운트될 때만 등록되어야 함
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => {

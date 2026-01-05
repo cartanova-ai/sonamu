@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react";
+import { Button, Textarea } from "@sonamu-kit/react-components";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import { Button, Textarea } from "@sonamu-kit/react-components";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckCircleIcon from "~icons/lucide/check-circle";
 import CircleIcon from "~icons/lucide/circle";
@@ -141,10 +141,18 @@ export default function EntityChatComponent({
       <div className="chat-response-area">
         <div className={`status-header ${toolState}`}>
           <div className="status-icon">
-            {toolState === "idle" && <MessageCircleIcon style={{ color: config.color, margin: 0 }} />}
-            {toolState === "running" && <Loader2Icon className="animate-spin" style={{ color: config.color, margin: 0 }} />}
-            {toolState === "success" && <CheckCircleIcon style={{ color: config.color, margin: 0 }} />}
-            {toolState === "error" && <AlertCircleIcon style={{ color: config.color, margin: 0 }} />}
+            {toolState === "idle" && (
+              <MessageCircleIcon style={{ color: config.color, margin: 0 }} />
+            )}
+            {toolState === "running" && (
+              <Loader2Icon className="animate-spin" style={{ color: config.color, margin: 0 }} />
+            )}
+            {toolState === "success" && (
+              <CheckCircleIcon style={{ color: config.color, margin: 0 }} />
+            )}
+            {toolState === "error" && (
+              <AlertCircleIcon style={{ color: config.color, margin: 0 }} />
+            )}
           </div>
           <span className="tool-name">{displayName}</span>
           {toolState === "running" && <span className="status-text">처리 중...</span>}

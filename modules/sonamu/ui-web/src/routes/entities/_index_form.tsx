@@ -1,6 +1,5 @@
 import {
   Button,
-  Checkbox,
   Select,
   SelectContent,
   SelectItem,
@@ -13,6 +12,7 @@ import type { EntityIndex } from "sonamu";
 import z from "zod";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
+import { BooleanToggle } from "../../components/BooleanToggle";
 import { useCommonModal } from "../../components/core/CommonModal";
 import { TableColumnAsyncSelect } from "../../components/TableColumnAsyncSelect";
 
@@ -248,12 +248,11 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
               {form.type === "unique" ? (
                 <div className="field">
                   <label>Nulls Not Distinct</label>
-                  <Checkbox
-                    checked={form.nullsNotDistinct ?? false}
-                    onCheckedChange={(checked) =>
-                      setForm({ ...form, nullsNotDistinct: checked ? true : undefined })
+                  <BooleanToggle
+                    value={form.nullsNotDistinct ?? false}
+                    onValueChange={(value) =>
+                      setForm({ ...form, nullsNotDistinct: value ? true : undefined })
                     }
-                    style={{ marginTop: "7px" }}
                   />
                 </div>
               ) : (
@@ -330,7 +329,9 @@ export function EntityIndexForm({ entityId, table, oldOne }: EntityIndexFormProp
                               </SelectContent>
                             </Select>
                             <Select
-                              value={col.nullsFirst === undefined ? undefined : String(col.nullsFirst)}
+                              value={
+                                col.nullsFirst === undefined ? undefined : String(col.nullsFirst)
+                              }
                               onValueChange={(value) =>
                                 updateColumn(idx, {
                                   nullsFirst: value === undefined ? undefined : value === "true",

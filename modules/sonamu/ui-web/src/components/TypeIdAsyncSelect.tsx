@@ -1,4 +1,11 @@
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@sonamu-kit/react-components";
+import {
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@sonamu-kit/react-components";
 import { camelize } from "inflection";
 import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
@@ -90,7 +97,12 @@ export function TypeIdAsyncSelect({
         <RefreshCwIcon className="h-4 w-4" />
       </Button>
       {withAddEnumButton && (
-        <Button variant="outline" size="sm" onClick={() => promptAddEnum()} className="shrink-0 px-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => promptAddEnum()}
+          className="shrink-0 px-2"
+        >
           <PlusIcon className="h-4 w-4" />
         </Button>
       )}

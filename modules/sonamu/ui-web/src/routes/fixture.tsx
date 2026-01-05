@@ -275,9 +275,9 @@ function FixtureIndex() {
         <div className="ui segment fixture-header">
           {/* 1. Search Section */}
           <div className="search-section">
-            <div className="search-title">
-              <SearchIcon style={{ marginRight: "5px", width: "16px", height: "16px" }} />
-              검색 대상 설정
+            <div className="flex gap-2 items-center mb-2">
+              <SearchIcon />
+              <span className="text-lg font-bold">검색 대상 설정</span>
             </div>
 
             <div className="db-dropdown-wrapper">
@@ -645,15 +645,7 @@ function FixtureIndex() {
               {view === "table" ? "그래프 보기" : "테이블 보기"}
             </Button>
           </div>
-          <Tabs
-            value={tabValue}
-            onValueChange={(value) => setActiveTab(Number(value))}
-            style={{
-              boxShadow: "0 5px 15px rgba(0, 0, 0, 0.08)",
-              borderRadius: "12px",
-              overflow: "hidden",
-            }}
-          >
+          <Tabs value={tabValue} onValueChange={(value) => setActiveTab(Number(value))}>
             <TabsList>
               <TabsTrigger value="0">Fixture Record Viewer</TabsTrigger>
               <TabsTrigger value="1">Fixture Code Viewer</TabsTrigger>

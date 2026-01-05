@@ -1,8 +1,8 @@
 // components/ChatComponent.tsx
 import { useChat } from "@ai-sdk/react";
+import { Button, Textarea } from "@sonamu-kit/react-components";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useState } from "react";
-import { Button, Textarea } from "@sonamu-kit/react-components";
 import type { FixtureRecord } from "sonamu";
 import AlertCircleIcon from "~icons/lucide/alert-circle";
 import CheckIcon from "~icons/lucide/check";
