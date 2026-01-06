@@ -451,23 +451,6 @@ code {
   text-align: left;
 }
 
-.ui.common-modal {
-  .actions {
-    padding: 0;
-    position: relative;
-
-    .floating-close {
-      position: absolute;
-      right: -30px;
-      bottom: -20px;
-    }
-  }
-  .content {
-    padding: 0;
-    color: #000;
-  }
-}
-
 .ui .string-array-input {
   margin: 0;
   outline: 0;
@@ -843,110 +826,6 @@ code {
 .search-modal {
   .selected {
     background-color: #d0dbb0 !important;
-  }
-}
-
-.create-ai-form {
-  display: flex;
-  flex-direction: column;
-  height: 88vh;
-  overflow: hidden;
-  border-radius: 0.5em;
-  padding: 0.5em;
-  background-color: white;
-
-  .ui.segment {
-    border: none;
-    margin: 0;
-    padding-top: 0;
-    box-shadow: none;
-  }
-
-  .header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    font-weight: bold;
-    padding: 1em 0;
-
-    .ui.buttons {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      margin-left: 5px;
-    }
-  }
-
-  .scrollable-content {
-    flex: 100;
-    overflow-y: auto;
-
-    .entity-base {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-
-    .entities-detail {
-      font-size: 0.9em;
-
-      & > * {
-        margin-bottom: 1.2em;
-      }
-
-      .enums-list {
-        display: flex;
-        gap: 1em;
-      }
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-  }
-
-  .chat-form {
-    flex: 1;
-    margin-top: 0.5rem;
-    background-color: #f5f5f5;
-    box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px,
-      rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
-    border-radius: 0.5em;
-    height: fit-content;
-    display: flex;
-    width: 100%;
-
-    form {
-      display: flex;
-      align-items: flex-end;
-      padding: 1em;
-      width: 100%;
-      padding: 0.5em;
-
-      textarea {
-        padding: 0;
-        padding-left: 0.5em;
-        border: none;
-        background: none;
-        resize: none;
-        overflow-y: auto;
-        align-self: center;
-        line-height: 1.5em;
-
-        &:focus {
-          outline: none;
-          background: none;
-        }
-
-        &::-webkit-scrollbar-track {
-          background: transparent;
-        }
-      }
-    }
-
-    .ui.button {
-      margin: 0 0 0 0.3em;
-    }
   }
 }
 
@@ -1575,9 +1454,90 @@ code {
       color: #555;
     }
   }
+  .column-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
   .sort-controls {
     display: flex;
     gap: 4px;
+    flex-shrink: 0;
+
+    > div {
+      width: 100px;
+      flex-shrink: 0;
+    }
+
+    .ui.dropdown {
+      min-width: 120px;
+    }
+  }
+}
+
+// entity-index-form 전용 스타일
+.entity-index-form {
+  .column-config-area {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .column-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: box-shadow 0.2s;
+  }
+  .column-card:hover {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-color: #d0d0d0;
+  }
+  .column-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .column-badge {
+    background: #e0e1e2;
+    color: #555;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  .column-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #333;
+  }
+  .column-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sort-controls {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+
+    > div {
+      width: 100px;
+      flex-shrink: 0;
+    }
+
     .ui.dropdown {
       min-width: 120px;
     }

@@ -1,5 +1,9 @@
-import { MultiSelect, type MultiSelectOption } from "@sonamu-kit/react-components";
-import { useEffect, useState } from "react";
+import {
+  MultiSelect,
+  type MultiSelectOption,
+  type MultiSelectRef,
+} from "@sonamu-kit/react-components";
+import { useEffect, useRef, useState } from "react";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -25,6 +29,7 @@ export function TableColumnAsyncSelect({
   className,
 }: TableColumnAsyncSelectProps) {
   const [options, setOptions] = useState<MultiSelectOption[]>([]);
+  const multiSelectRef = useRef<MultiSelectRef>(null);
 
   useEffect(() => {
     SonamuUIService.getTableColumns(entityId)
@@ -43,6 +48,19 @@ export function TableColumnAsyncSelect({
       .catch(defaultCatch);
   }, [entityId, allowedTypes]);
 
+  // value prop이 변경되면 MultiSelect의 내부 상태를 업데이트
+  useEffect(() => {
+    if (multiSelectRef.current && options.length > 0) {
+      const currentValues = multiSelectRef.current.getSelectedValues();
+      const valuesChanged =
+        currentValues.length !== value.length || currentValues.some((v, idx) => v !== value[idx]);
+
+      if (valuesChanged) {
+        multiSelectRef.current.setSelectedValues(value);
+      }
+    }
+  }, [value, options]);
+
   const handleValueChange = (newValue: string[]) => {
     if (onValueChange) {
       onValueChange(newValue);
@@ -54,8 +72,9 @@ export function TableColumnAsyncSelect({
 
   return (
     <MultiSelect
+      ref={multiSelectRef}
       options={options}
-      value={value}
+      defaultValue={value}
       onValueChange={handleValueChange}
       placeholder={placeholder}
       disabled={disabled}

@@ -85,13 +85,13 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="entity-create-form max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="entity-create-form max-w-4xl max-h-[90vh] flex flex-col bg-gray-50">
+        <DialogHeader className="text-left">
           <DialogTitle>Entity Create Form</DialogTitle>
           <DialogDescription>Create a new entity with table definition</DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="overflow-y-auto flex-1 p-2">
           <form className="ui form">
             <div className="equal width fields">
               <div className="required field">

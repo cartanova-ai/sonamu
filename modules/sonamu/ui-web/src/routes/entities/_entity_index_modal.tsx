@@ -197,28 +197,23 @@ export function EntityIndexModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="entity-index-form max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="entity-index-form max-w-4xl max-h-[90vh] flex flex-col bg-gray-50">
+        <DialogHeader className="text-left">
           <DialogTitle>{oldOne ? "Edit Entity Index" : "New Entity Index"}</DialogTitle>
           <DialogDescription>
-            <span style={{ fontWeight: 600, color: "#4183c4" }}>{table}</span> 테이블의 인덱스
-            설정을 구성합니다.
+            <span className="font-semibold text-[#4183c4]">{table}</span> 테이블의 인덱스 설정을
+            구성합니다.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="overflow-y-auto flex-1 pl-2 pt-4">
           <form className="ui form">
-            <div className="ui basic segment" style={{ padding: 0 }}>
+            <div className="ui basic pt-6">
               {/* Index Name */}
               <div className="required field">
                 <label>
                   Index Name
-                  <span
-                    className="ui basic tiny label"
-                    style={{ fontWeight: "normal", color: "#888", marginLeft: "8px" }}
-                  >
-                    자동 생성됨
-                  </span>
+                  <span className="ui tiny label font-normal text-gray-500 ml-2">자동 생성됨</span>
                 </label>
                 <div className="ui fluid input">
                   <input
@@ -231,14 +226,7 @@ export function EntityIndexModal({
               </div>
 
               {/* Type & Option Row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "24px",
-                  marginBottom: "24px",
-                }}
-              >
+              <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="required field">
                   <label>Type</label>
                   <Select
@@ -316,7 +304,7 @@ export function EntityIndexModal({
                 {form.columns.length > 0 && (
                   <div className="column-config-area">
                     {form.columns.map((col, idx) => (
-                      <div className="column-card" key={col.name}>
+                      <div className="column-card flex-row" key={col.name}>
                         <div className="column-info">
                           <span className="column-badge">{idx + 1}</span>
                           <span className="column-name">{col.name}</span>
@@ -327,15 +315,15 @@ export function EntityIndexModal({
                           {(form.using === "btree" || !form.using) && (
                             <div className="sort-controls">
                               <Select
-                                value={col.sortOrder}
+                                value={col.sortOrder ?? ""}
                                 onValueChange={(value) =>
                                   updateColumn(idx, {
-                                    sortOrder: value as "ASC" | "DESC" | undefined,
+                                    sortOrder: value ? (value as "ASC" | "DESC") : undefined,
                                   })
                                 }
                                 clearable
                               >
-                                <SelectTrigger className="tiny">
+                                <SelectTrigger className="tiny w-[100px]">
                                   <SelectValue placeholder="Sort" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -344,17 +332,15 @@ export function EntityIndexModal({
                                 </SelectContent>
                               </Select>
                               <Select
-                                value={
-                                  col.nullsFirst === undefined ? undefined : String(col.nullsFirst)
-                                }
+                                value={col.nullsFirst === undefined ? "" : String(col.nullsFirst)}
                                 onValueChange={(value) =>
                                   updateColumn(idx, {
-                                    nullsFirst: value === undefined ? undefined : value === "true",
+                                    nullsFirst: value ? value === "true" : undefined,
                                   })
                                 }
                                 clearable
                               >
-                                <SelectTrigger className="tiny">
+                                <SelectTrigger className="tiny w-[100px]">
                                   <SelectValue placeholder="Nulls" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -367,8 +353,9 @@ export function EntityIndexModal({
 
                           {/* 순서 변경 버튼 */}
                           {form.columns.length > 1 && (
-                            <div className="ui tiny basic buttons">
+                            <div className="ui tiny buttons">
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="xs"
                                 disabled={idx === 0}
@@ -376,6 +363,7 @@ export function EntityIndexModal({
                                 icon={<ChevronUpIcon />}
                               />
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="xs"
                                 disabled={idx === form.columns.length - 1}
@@ -393,7 +381,7 @@ export function EntityIndexModal({
             </div>
           </form>
 
-          <h5 className="ui small header">Debug: Form State</h5>
+          <h5>Debug: Form State</h5>
           <div className="ui secondary segment debug-form-state">
             <pre>{JSON.stringify(form, null, 2)}</pre>
           </div>

@@ -174,13 +174,13 @@ export function EntityPropModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="entity-prop-form max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="entity-prop-form max-w-4xl max-h-[90vh] flex flex-col bg-gray-50">
+        <DialogHeader className="text-left">
           <DialogTitle>EntityProp Form</DialogTitle>
           <DialogDescription className="sr-only">Add or modify entity property</DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="overflow-y-auto flex-1 pt-4 pl-2">
           <form className="ui form">
             <div className="equal width fields">
               <div className="required field">
@@ -254,7 +254,7 @@ export function EntityPropModal({
               <div className="field">
                 <label>DB Default</label>
                 <div className="flex items-center gap-0">
-                  <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-700">
+                  <span className="h-[31px] px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-700">
                     {(() => {
                       if (form.dbDefault === undefined || form.dbDefault === "") {
                         return "undefined";

@@ -159,7 +159,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 >
                   Toggle codes
                 </Button>
-                <div className="ui vertical divider" />
                 <Button size="xs" icon={<PlayIcon />} onClick={() => generatePreparedCodes()}>
                   Generate
                 </Button>
@@ -182,7 +181,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 )}
                 {!migrationStatusError && preparedCodes.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>No prepared migration codes.</TableCell>
+                    <TableCell colSpan={6} className="text-center">
+                      No prepared migration codes.
+                    </TableCell>
                   </TableRow>
                 )}
                 {preparedCodes.map((pcode, pcodeIndex) => (
@@ -197,7 +198,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 ))}
               </TableBody>
             </Table>
-            <div className="ui divider" />
+            <div className="ui border-b" />
           </div>
         )}
         <div className="codes">
