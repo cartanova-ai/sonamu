@@ -272,7 +272,7 @@ function FixtureIndex() {
     <div className="p-5 min-h-screen bg-[#f7f7f7] flex gap-5">
       {/* 좌측: 설정 패널 */}
       <div className="w-[300px] shrink-0">
-        <div className="ui segment flex flex-col gap-[15px] shadow-[0_5px_15px_rgba(0,0,0,0.1)] rounded-xl mb-[25px] p-5 border-none">
+        <div className="flex flex-col gap-[15px] shadow-[0_5px_15px_rgba(0,0,0,0.1)] rounded-xl mb-[25px] p-5 bg-white border border-gray-200">
           {/* 1. Search Section */}
           <div className="flex flex-wrap flex-col gap-[5px] p-[15px] bg-[#fcfcfc] border border-[#e0e0e0] rounded-lg">
             <div className="flex gap-2 items-center mb-2">
@@ -389,7 +389,10 @@ function FixtureIndex() {
                   });
 
                   return (
-                    <span className="ui green small label" style={{ marginLeft: "auto" }}>
+                    <span
+                      className="inline-block leading-none bg-green-500 text-white font-bold rounded px-2 py-1 text-xs"
+                      style={{ marginLeft: "auto" }}
+                    >
                       {saveTargets.length}개 저장 예정
                     </span>
                   );
@@ -469,11 +472,13 @@ function FixtureIndex() {
                               return (
                                 <span
                                   key={f.fixtureId}
-                                  className="ui tiny label"
+                                  className="inline-block leading-none bg-gray-200 text-gray-600 font-bold rounded px-2 py-1 text-[10px]"
                                   style={{ margin: "2px" }}
                                 >
                                   #{f.id}
-                                  <span className="detail">{reason}</span>
+                                  <span className="inline-block align-top ml-4 opacity-80">
+                                    {reason}
+                                  </span>
                                 </span>
                               );
                             })}
@@ -591,10 +596,8 @@ function FixtureIndex() {
                   {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
                     <span
                       key={entityId}
-                      className="ui medium label"
+                      className="inline-flex items-center leading-none bg-gray-200 text-gray-600 font-bold rounded text-sm"
                       style={{
-                        display: "flex",
-                        alignItems: "center",
                         gap: "6px",
                         padding: "8px 12px",
                       }}

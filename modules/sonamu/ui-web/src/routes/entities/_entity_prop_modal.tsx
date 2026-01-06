@@ -180,11 +180,13 @@ export function EntityPropModal({
           <DialogDescription className="sr-only">Add or modify entity property</DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 pt-4 pl-2">
-          <form className="ui form">
-            <div className="equal width fields">
-              <div className="required field">
-                <label>Type</label>
+        <div className="overflow-y-scroll flex-1 pt-4 pl-2">
+          <form className="block">
+            <div className="flex gap-[14px] mb-[14px]">
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">
+                  Type <span className="text-red-500">*</span>
+                </label>
                 <Select
                   value={form.type}
                   onValueChange={(value) => value && setForm({ ...form, type: value })}
@@ -201,12 +203,14 @@ export function EntityPropModal({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="required field">
-                <label>Name</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">
+                  Name <span className="text-red-500">*</span>
+                </label>
                 <Input {...register("name")} className="focus-0" />
               </div>
-              <div className="field">
-                <label>Description</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">Description</label>
                 <InputWithSuggestion
                   {...register("desc")}
                   className="focus-1"
@@ -215,9 +219,9 @@ export function EntityPropModal({
                 />
               </div>
             </div>
-            <div className="equal width fields">
-              <div className="field">
-                <label>Nullable</label>
+            <div className="flex gap-[14px] mb-[14px]">
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">Nullable</label>
                 <Switch
                   checked={form.nullable ?? false}
                   onCheckedChange={(checked) =>
@@ -225,8 +229,8 @@ export function EntityPropModal({
                   }
                 />
               </div>
-              <div className="field">
-                <label>To Filter</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">To Filter</label>
                 <Switch
                   checked={form.toFilter ?? false}
                   onCheckedChange={(checked) =>
@@ -234,8 +238,8 @@ export function EntityPropModal({
                   }
                 />
               </div>
-              <div className="field">
-                <label>Generated</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">Generated</label>
                 <Switch
                   checked={form.generated !== undefined}
                   onCheckedChange={(checked) => {
@@ -251,8 +255,8 @@ export function EntityPropModal({
                   }}
                 />
               </div>
-              <div className="field">
-                <label>DB Default</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">DB Default</label>
                 <div className="flex items-center gap-0">
                   <span className="h-[31px] px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-700">
                     {(() => {
@@ -287,9 +291,11 @@ export function EntityPropModal({
               </div>
             </div>
             {form.generated && (
-              <div className="equal width fields">
-                <div className="required field" style={{ flex: 2 }}>
-                  <label>Storage Type</label>
+              <div className="flex gap-[14px] mb-[14px]">
+                <div className="flex-[2_1_0%]">
+                  <label className="block mb-1 font-bold">
+                    Storage Type <span className="text-red-500">*</span>
+                  </label>
                   <Select
                     value={form.generated?.type ?? "STORED"}
                     onValueChange={(value) => {
@@ -309,8 +315,10 @@ export function EntityPropModal({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="required field">
-                  <label>Generation Expression</label>
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">
+                    Generation Expression <span className="text-red-500">*</span>
+                  </label>
                   <Input
                     value={form.generated?.expression ?? ""}
                     onValueChange={(value) => {
@@ -325,15 +333,15 @@ export function EntityPropModal({
                 </div>
               </div>
             )}
-            <div className="ui divider" />
+            <div className="my-[14px] border-t border-[rgba(34,36,38,0.15)] h-0" />
             {(form.type === "string" ||
               form.type === "string[]" ||
               form.type === "enum" ||
               form.type === "enum[]") && (
-              <div className="equal width fields">
+              <div className="flex gap-[14px] mb-[14px]">
                 {form.type === "string" && (
-                  <div className="field">
-                    <label>Length</label>
+                  <div className="flex-1">
+                    <label className="block mb-1 font-bold">Length</label>
                     <FormNumberInput
                       value={form.length}
                       onChange={(_, { value }) =>
@@ -343,8 +351,10 @@ export function EntityPropModal({
                   </div>
                 )}
                 {form.type === "enum" ? (
-                  <div className="required field">
-                    <label>Enum ID</label>
+                  <div className="flex-1">
+                    <label className="block mb-1 font-bold">
+                      Enum ID <span className="text-red-500">*</span>
+                    </label>
                     <div className="flex">
                       <FormTypeIdAsyncSelect
                         {...register("id")}
@@ -355,7 +365,7 @@ export function EntityPropModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="field">&nbsp;</div>
+                  <div className="flex-1">&nbsp;</div>
                 )}
               </div>
             )}
@@ -367,10 +377,10 @@ export function EntityPropModal({
               form.type === "number[]" ||
               form.type === "numeric" ||
               form.type === "numeric[]") && (
-              <div className="equal width fields">
+              <div className="flex gap-[14px] mb-[14px]">
                 {form.type === "number" && (
-                  <div className="field">
-                    <label>Number Type</label>
+                  <div className="flex-1">
+                    <label className="block mb-1 font-bold">Number Type</label>
                     <Select
                       value={form.numberType}
                       onValueChange={(value) =>
@@ -395,8 +405,10 @@ export function EntityPropModal({
                 {(form.type === "numeric" ||
                   (form.type === "number" && form.numberType === "numeric")) && (
                   <>
-                    <div className="required field">
-                      <label>Precision</label>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">
+                        Precision <span className="text-red-500">*</span>
+                      </label>
                       <FormNumberInput
                         value={form.precision}
                         onChange={(_, { value }) =>
@@ -404,8 +416,10 @@ export function EntityPropModal({
                         }
                       />
                     </div>
-                    <div className="required field">
-                      <label>Scale</label>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">
+                        Scale <span className="text-red-500">*</span>
+                      </label>
                       <FormNumberInput
                         value={form.scale}
                         onChange={(_, { value }) =>
@@ -418,9 +432,11 @@ export function EntityPropModal({
               </div>
             )}
             {(form.type === "json" || form.type === "virtual") && (
-              <div className="equal width fields">
-                <div className="required field">
-                  <label>CustomType ID</label>
+              <div className="flex gap-[14px] mb-[14px]">
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">
+                    CustomType ID <span className="text-red-500">*</span>
+                  </label>
                   <div className="flex">
                     <FormTypeIdAsyncSelect {...register("id")} search />
                     <Button
@@ -434,9 +450,9 @@ export function EntityPropModal({
               </div>
             )}
             {form.type === "virtual" && (
-              <div className="equal width fields" style={{ width: "50%" }}>
-                <div className="field">
-                  <label>Virtual Type</label>
+              <div className="flex gap-[14px] mb-[14px]">
+                <div className="flex-1 max-w-[50%]">
+                  <label className="block mb-1 font-bold">Virtual Type</label>
                   <Select
                     value={form.virtualType}
                     onValueChange={(value) =>
@@ -459,9 +475,11 @@ export function EntityPropModal({
               </div>
             )}
             {(form.type === "vector" || form.type === "vector[]") && (
-              <div className="equal width fields">
-                <div className="required field">
-                  <label>Dimensions</label>
+              <div className="flex gap-[14px] mb-[14px]">
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">
+                    Dimensions <span className="text-red-500">*</span>
+                  </label>
                   <FormNumberInput
                     value={form.dimensions}
                     onChange={(_, { value }) =>
@@ -474,9 +492,11 @@ export function EntityPropModal({
             )}
             {form.type === "relation" && (
               <>
-                <div className="equal width fields">
-                  <div className="required field">
-                    <label>Relation Type</label>
+                <div className="flex gap-[14px] mb-[14px]">
+                  <div className="flex-1">
+                    <label className="block mb-1 font-bold">
+                      Relation Type <span className="text-red-500">*</span>
+                    </label>
                     <Select
                       value={form.relationType ?? ""}
                       onValueChange={(value) =>
@@ -503,15 +523,17 @@ export function EntityPropModal({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="required field">
-                    <label>With</label>
+                  <div className="flex-1">
+                    <label className="block mb-1 font-bold">
+                      With <span className="text-red-500">*</span>
+                    </label>
                     <EntityIdSelect {...register("with")} search clearable />
                   </div>
                 </div>
-                <div className="equal width fields">
+                <div className="flex gap-[14px] mb-[14px]">
                   {form.relationType === "OneToOne" && (
-                    <div className="field">
-                      <label>HasJoinColumn</label>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">HasJoinColumn</label>
                       <Switch
                         checked={form.hasJoinColumn ?? false}
                         onCheckedChange={(checked) =>
@@ -524,8 +546,10 @@ export function EntityPropModal({
                     form.relationType === "BelongsToOne" ||
                     form.relationType === "ManyToMany") && (
                     <>
-                      <div className="required field">
-                        <label>ON UPDATE</label>
+                      <div className="flex-1">
+                        <label className="block mb-1 font-bold">
+                          ON UPDATE <span className="text-red-500">*</span>
+                        </label>
                         <Select
                           value={form.onUpdate ?? ""}
                           onValueChange={(value) =>
@@ -547,8 +571,10 @@ export function EntityPropModal({
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="required field">
-                        <label>ON DELETE</label>
+                      <div className="flex-1">
+                        <label className="block mb-1 font-bold">
+                          ON DELETE <span className="text-red-500">*</span>
+                        </label>
                         <Select
                           value={form.onDelete ?? ""}
                           onValueChange={(value) =>
@@ -574,27 +600,31 @@ export function EntityPropModal({
                   )}
                   {form.relationType === "HasMany" && (
                     <>
-                      <div className="required field">
-                        <label>JoinColumn</label>
+                      <div className="flex-1">
+                        <label className="block mb-1 font-bold">
+                          JoinColumn <span className="text-red-500">*</span>
+                        </label>
                         <Input {...register("joinColumn")} />
                       </div>
-                      <div className="field">
-                        <label>FromColumn</label>
+                      <div className="flex-1">
+                        <label className="block mb-1 font-bold">FromColumn</label>
                         <Input {...register("fromColumn")} />
                       </div>
                     </>
                   )}
                   {form.relationType === "ManyToMany" && (
-                    <div className="required field">
-                      <label>JoinTable</label>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">
+                        JoinTable <span className="text-red-500">*</span>
+                      </label>
                       <Input {...register("joinTable")} />
                     </div>
                   )}
                 </div>
                 {form.relationType === "BelongsToOne" && (
-                  <div className="equal width fields">
-                    <div className="field">
-                      <label>Custom JoinClause</label>
+                  <div className="flex gap-[14px] mb-[14px]">
+                    <div className="flex-1">
+                      <label className="block mb-1 font-bold">Custom JoinClause</label>
                       <Input {...register("customJoinClause")} />
                     </div>
                   </div>
@@ -603,8 +633,10 @@ export function EntityPropModal({
             )}
           </form>
 
-          <h5 className="ui small header">Debug: Form State</h5>
-          <div className="ui secondary segment debug-form-state">
+          <h5 className="text-[1.07142857rem] font-bold my-[calc(2rem-0.14285714em)] mb-4">
+            Debug: Form State
+          </h5>
+          <div className="bg-[#f3f4f5] p-4 rounded-[0.28571429rem] debug-form-state">
             <pre>{JSON.stringify(form, null, 2)}</pre>
           </div>
         </div>

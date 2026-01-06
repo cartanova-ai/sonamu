@@ -92,20 +92,24 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 p-2">
-          <form className="ui form">
-            <div className="equal width fields">
-              <div className="required field">
-                <label>ID</label>
+          <form className="block">
+            <div className="flex gap-[14px]">
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">
+                  ID <span className="text-red-500">*</span>
+                </label>
                 <Input {...register("id")} className="focus-0" />
               </div>
-              <div className="field">
-                <label>ParentID</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">ParentID</label>
                 <EntityIdSelect {...register("parentId")} search clearable />
               </div>
             </div>
-            <div className="equal width fields">
-              <div className="required field">
-                <label>Table</label>
+            <div className="flex gap-[14px] mt-4">
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">
+                  Table <span className="text-red-500">*</span>
+                </label>
                 <Input
                   {...register("table")}
                   onFocus={() => {
@@ -118,8 +122,10 @@ export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCre
                   }}
                 />
               </div>
-              <div className="required field">
-                <label>Title</label>
+              <div className="flex-1">
+                <label className="block mb-1 font-bold">
+                  Title <span className="text-red-500">*</span>
+                </label>
                 <InputWithSuggestion {...register("title")} origin={underscore(form.id)} />
               </div>
             </div>

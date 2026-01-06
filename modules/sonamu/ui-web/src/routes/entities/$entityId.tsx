@@ -729,24 +729,24 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 onClick={() => delEntity()}
               />
             </h3>
-            <form className="ui form">
-              <div className="equal width fields">
-                <div className="field">
-                  <label>ParentID</label>
+            <form className="block">
+              <div className="flex gap-[14px]">
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">ParentID</label>
                   <EditableInput
                     value={entity.parentId ?? ""}
                     onChange={handleEntityBaseOnEnter("parentId")}
                   />
                 </div>
-                <div className="field">
-                  <label>Title</label>
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">Title</label>
                   <EditableInput value={entity.title} onChange={handleEntityBaseOnEnter("title")} />
                 </div>
-                <div className="field">
-                  <label>TableName</label>
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">TableName</label>
                   <EditableInput value={entity.table} onChange={handleEntityBaseOnEnter("table")} />
                 </div>
-                <div className="field">
+                <div className="flex-1">
                   {/* <EditableInput
                     originValue={entity.table}
                     onEnter={handleEntityBaseOnEnter}
@@ -818,35 +818,27 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 3)}>
                         {prop.nullable && (
-                          <span className="ui label text-[9px]! py-1px px-[4px]">NULL</span>
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#e8e8e8] text-[rgba(0,0,0,0.6)]">
+                            NULL
+                          </span>
                         )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 4)}>
                         {prop.type === "enum" && (
-                          <span
-                            className="ui label text-[9px]! py-1px px-[4px]"
-                            style={{ backgroundColor: "#6b7280", color: "white" }}
-                          >
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#6b7280] text-white">
                             {prop.id}
                           </span>
                         )}
                         {(prop.type === "json" || prop.type === "virtual") && (
-                          <span
-                            className="ui label text-[8px]! py-1px px-[4px]"
-                            style={{ backgroundColor: "#ca8a04", color: "white" }}
-                          >
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#ca8a04] text-white">
                             {prop.id}
                           </span>
                         )}
                         {prop.type === "relation" && (
                           <span
-                            className="ui label text-[9px]! py-1px px-[4px]"
-                            style={{
-                              backgroundColor: prop.relationType.endsWith("ToOne")
-                                ? "#f97316"
-                                : "#a855f7",
-                              color: "white",
-                            }}
+                            className={`inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] text-white ${
+                              prop.relationType.endsWith("ToOne") ? "bg-[#f97316]" : "bg-[#a855f7]"
+                            }`}
                           >
                             {prop.relationType}: {prop.with}
                           </span>
@@ -892,7 +884,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </TableCell>
                       <TableCell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
-                          <span className="ui label text-[10px]! py-1px px-[4px]" key={colIndex}>
+                          <span
+                            className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#e8e8e8] text-[rgba(0,0,0,0.6)] mr-1"
+                            key={colIndex}
+                          >
                             {col.name}
                           </span>
                         ))}
@@ -1070,7 +1065,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                               <Button
                                 variant="green"
                                 size="xs"
-                                className="btn-relation-entity"
+                                className="ml-2"
                                 onClick={expandRelationEntity(subsetRowIndex)}
                                 disabled={subsetRow.isOpen}
                               >

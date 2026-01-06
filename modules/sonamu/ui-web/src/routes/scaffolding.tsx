@@ -273,8 +273,8 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
 
   return (
     <div className="flex justify-start min-h-[calc(100vh-50px)]">
-      <div className="bg-sidebar-bg text-white p-4 pr-0 h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb w-[250px] overflow-y-auto">
-        <h3 className="mb-1">Entities</h3>
+      <div className="bg-sidebar-bg text-white pl-4 pr-0 h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb w-[250px] overflow-y-auto">
+        <h3>Entities</h3>
         <div className="py-3 text-center">
           {selected.entityIds.length !== entities.length ? (
             <Button icon={<CheckIcon />} onClick={() => setEntityIds(entities.map((e) => e.id))}>
@@ -303,9 +303,9 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           </div>
         ))}
       </div>
-      <div className="bg-sidebar-bg p-1 pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
+      <div className="bg-sidebar-bg pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
         {templateGroups.map((group) => (
-          <div className="py-4" key={group.name}>
+          <div className="pb-4" key={group.name}>
             <h4 className="mb-1">Template: {group.name}</h4>
             <div className="py-3 text-center">
               {selected.templateGroupName !== group.name ||
@@ -436,9 +436,11 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
           </DialogHeader>
           <div className="space-y-4">
             {previewModalState.pathAndCodes?.map((pnc) => (
-              <div className="preview-item p-2" key={pnc.path}>
-                <h4>{pnc.path}</h4>
-                <code className="text-sm rounded">{pnc.code}</code>
+              <div key={pnc.path}>
+                <div className="mb-2 text-lg font-bold text-gray-700">{pnc.path}</div>
+                <pre className="bg-green-50 text-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed">
+                  <code>{pnc.code}</code>
+                </pre>
               </div>
             )) ?? <p>No preview data available</p>}
           </div>

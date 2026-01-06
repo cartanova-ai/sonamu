@@ -1,9 +1,8 @@
+import { CommonModal } from "@sonamu-kit/react-components";
 import { Link, useLocation } from "@tanstack/react-router";
+import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import "semantic-ui-css/semantic.min.css";
-import { CommonModal } from "@sonamu-kit/react-components";
-import classNames from "classnames";
 import SearchModal from "./components/SearchModal";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
@@ -97,8 +96,8 @@ function App({ children }: AppProps) {
           >
             <span>🔍</span>
             <span>Search</span>
-            <kbd className="mr-[0.3em] relative top-[-1.3px]">⌘</kbd>
-            <kbd className="relative top-[-1.3px]">K</kbd>
+            <kbd className="keycap">⌘</kbd>
+            <kbd className="keycap">K</kbd>
           </button>
         </div>
         <div className="content">{children}</div>

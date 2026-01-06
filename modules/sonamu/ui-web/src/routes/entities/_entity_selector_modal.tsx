@@ -30,7 +30,7 @@ export function EntitySelectorModal({ open, onOpenChange, onCompleted }: EntityS
         </DialogHeader>
 
         <div className="py-4">
-          <form className="ui form">
+          <form className="block">
             <div className="field">
               <EntityIdSelect
                 onValueChange={(value) => {

@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -206,29 +207,31 @@ export function EntityIndexModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 pl-2 pt-4">
-          <form className="ui form">
-            <div className="ui basic pt-6">
+        <div className="overflow-y-scroll flex-1 p-4">
+          <form className="block">
+            <div className="pt-2">
               {/* Index Name */}
-              <div className="required field">
-                <label>
-                  Index Name
-                  <span className="ui tiny label font-normal text-gray-500 ml-2">자동 생성됨</span>
+              <div className="mb-[14px]">
+                <label className="block mb-1 font-bold">
+                  Index Name <span className="text-red-500">*</span>
+                  <span className="inline-block px-[0.833em] py-[0.5833em] text-[0.64285714rem] font-bold leading-none rounded-[0.28571429rem] bg-gray-200 text-gray-500 ml-2">
+                    자동 생성됨
+                  </span>
                 </label>
-                <div className="ui fluid input">
-                  <input
-                    {...register("name")}
-                    className="focus-3"
-                    disabled={!!oldOne?.name}
-                    placeholder="인덱스 이름이 여기에 표시됩니다"
-                  />
-                </div>
+                <Input
+                  {...register("name")}
+                  className="focus-3"
+                  disabled={!!oldOne?.name}
+                  placeholder="인덱스 이름이 여기에 표시됩니다"
+                />
               </div>
 
               {/* Type & Option Row */}
               <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="required field">
-                  <label>Type</label>
+                <div className="mb-[14px]">
+                  <label className="block mb-1 font-bold">
+                    Type <span className="text-red-500">*</span>
+                  </label>
                   <Select
                     value={form.type}
                     onValueChange={(value) =>
@@ -249,8 +252,8 @@ export function EntityIndexModal({
                 </div>
 
                 {form.type === "unique" ? (
-                  <div className="field">
-                    <label>Nulls Not Distinct</label>
+                  <div className="mb-[14px]">
+                    <label className="block mb-1 font-bold">Nulls Not Distinct</label>
                     <Switch
                       checked={form.nullsNotDistinct ?? false}
                       onCheckedChange={(value) =>
@@ -259,8 +262,8 @@ export function EntityIndexModal({
                     />
                   </div>
                 ) : (
-                  <div className="field">
-                    <label>Using</label>
+                  <div className="mb-[14px]">
+                    <label className="block mb-1 font-bold">Using</label>
                     <Select
                       value={form.using}
                       onValueChange={(value) => {
@@ -287,8 +290,10 @@ export function EntityIndexModal({
               </div>
 
               {/* Target Columns Area */}
-              <div className="field columns-field">
-                <h5 className="ui small header">Target Columns</h5>
+              <div className="mb-[14px] columns-field">
+                <h5 className="text-[1.07142857rem] font-bold my-[calc(2rem-0.14285714em)] mb-4">
+                  Target Columns
+                </h5>
 
                 <div className="column-select-wrapper">
                   <TableColumnAsyncSelect
@@ -358,7 +363,7 @@ export function EntityIndexModal({
 
                           {/* 순서 변경 버튼 */}
                           {form.columns.length > 1 && (
-                            <div className="ui tiny buttons">
+                            <div className="inline-flex gap-0">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -386,8 +391,10 @@ export function EntityIndexModal({
             </div>
           </form>
 
-          <h5>Debug: Form State</h5>
-          <div className="ui secondary segment m-0">
+          <h5 className="text-[1.07142857rem] font-bold my-[calc(2rem-0.14285714em)] mb-4">
+            Debug: Form State
+          </h5>
+          <div className="bg-[#f3f4f5] p-4 rounded-[0.28571429rem] m-0">
             <pre className="overflow-x-auto text-[11px] leading-[1.4] m-0 text-gray-600">
               {JSON.stringify(form, null, 2)}
             </pre>

@@ -148,10 +148,12 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
   }
   return (
     <div className="p-8">
-      <div className={`ui segment ${loading || isLoading ? "loading" : ""}`}>
+      <div
+        className={`block p-4 bg-white border border-gray-200 rounded-md shadow-sm ${loading || isLoading ? "opacity-50 pointer-events-none" : ""}`}
+      >
         {preparedCodes && (
           <div className="p-4">
-            <h3 className="relative">
+            <h3 className="relative ">
               Prepared Migration Codes{" "}
               <div className="absolute right-0 top-0 flex gap-2">
                 <Button
@@ -200,7 +202,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 ))}
               </TableBody>
             </Table>
-            <div className="ui border-b" />
+            <div className="border-b border-gray-200" />
           </div>
         )}
         <div className="p-4">
@@ -334,18 +336,15 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                           })}
                         >
                           {conn.pending.includes(code.name) ? (
-                            <span className="ui mini yellow label">
-                              <i className="minus icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-yellow-500 text-white">
                               PENDING
                             </span>
                           ) : conn.status === "error" || !!migrationStatusError ? (
-                            <span className="ui mini red label">
-                              <i className="times icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-red-500 text-white">
                               ERROR
                             </span>
                           ) : (
-                            <span className="ui mini green label">
-                              <i className="check icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-green-500 text-white">
                               APPLIED
                             </span>
                           )}
@@ -381,7 +380,9 @@ function CodeViewer({ code, open }: CodeViewerProps) {
   return (
     <div className="flex items-start">
       {open ? (
-        <code className="flex-1 m-[0.2em]">{code}</code>
+        <pre className="bg-green-50 text-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed text-left">
+          <code>{code}</code>
+        </pre>
       ) : (
         <div className="m-auto">Code is collapsed</div>
       )}
