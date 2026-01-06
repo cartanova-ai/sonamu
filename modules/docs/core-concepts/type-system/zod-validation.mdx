@@ -1,6 +1,741 @@
 ---
-title: "Zod 검증"
-description: "런타임 타입 검증"
+title: "Zod Validation"
+description: "Zod를 활용한 런타임 데이터 검증 가이드"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 Zod를 사용하여 TypeScript 타입을 런타임에서도 검증합니다. 이 문서는 Zod validation의 모든 기능과 패턴을 설명합니다.
+
+## Zod란?
+
+<CardGroup cols={2}>
+  <Card title="타입 안전 스키마" icon="shield">
+    TypeScript 타입 자동 추론 별도 타입 정의 불필요
+  </Card>
+  <Card title="런타임 검증" icon="play">
+    실행 시 데이터 검증 잘못된 데이터 차단
+  </Card>
+  <Card title="상세한 에러" icon="triangle-exclamation">
+    필드별 에러 메시지 디버깅 용이
+  </Card>
+  <Card title="변환 & 기본값" icon="wand-magic-sparkles">
+    데이터 변환 및 기본값 유연한 처리
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+Zod 스키마는 Entity에서 자동 생성되지만, 직접 정의할 수도 있습니다.
+
+### 스키마 정의
+
+<CodeGroup>
+```typescript title="자동 생성 (user.types.ts)"
+import { z } from "zod";
+
+// Entity로부터 자동 생성
+export const User = z.object({
+id: z.number().int(),
+email: z.string().max(100),
+age: z.number().int(),
+role: z.enum(["admin", "normal"]),
+});
+
+export type User = z.infer<typeof User>;
+```
+
+```typescript title="수동 정의 (custom.types.ts)"
+import { z } from "zod";
+
+// 커스텀 스키마
+export const LoginParams = z.object({
+  email: z.string().email("유효한 이메일을 입력하세요"),
+  password: z.string().min(8, "비밀번호는 최소 8자 이상"),
+  rememberMe: z.boolean().optional(),
+});
+
+export type LoginParams = z.infer<typeof LoginParams>;
+```
+
+</CodeGroup>
+
+### 데이터 검증
+
+<CodeGroup>
+```typescript title="parse (에러 던짐)"
+import { User } from "./user.types";
+
+try {
+const user = User.parse({
+id: 1,
+email: "john@test.com",
+age: 30,
+role: "admin",
+});
+// ✅ 검증 성공, user는 User 타입
+console.log(user.email);
+} catch (error) {
+// ❌ 검증 실패 시 ZodError
+console.error(error);
+}
+
+````
+
+```typescript title="safeParse (에러 안전)"
+import { User } from "./user.types";
+
+const result = User.safeParse({
+  id: 1,
+  email: "invalid-email",
+  age: "30",
+  role: "guest",
+});
+
+if (result.success) {
+  // ✅ 검증 성공
+  console.log(result.data.email);
+} else {
+  // ❌ 검증 실패
+  console.error(result.error.issues);
+  // [
+  //   { path: ["email"], message: "Invalid email" },
+  //   { path: ["age"], message: "Expected number, received string" },
+  //   { path: ["role"], message: "Invalid enum value" }
+  // ]
+}
+````
+
+</CodeGroup>
+
+<Info>
+**parse vs safeParse**:
+- `parse()`: 에러를 던집니다. try-catch로 처리
+- `safeParse()`: 에러를 반환합니다. result.success로 체크
+
+API 핸들러에서는 `parse()`를 사용하여 자동으로 400 에러를 반환하고, UI에서는 `safeParse()`로 안전하게 처리합니다.
+
+</Info>
+
+## 기본 타입 검증
+
+Entity의 각 타입별 Zod 검증입니다.
+
+### 문자열 검증
+
+<CodeGroup>
+```typescript title="기본 문자열"
+const email = z.string();
+email.parse("john@test.com");  // ✅
+
+const withLength = z.string().max(100);
+withLength.parse("a".repeat(100)); // ✅
+withLength.parse("a".repeat(101)); // ❌
+
+````
+
+```typescript title="이메일 검증"
+const email = z.string().email();
+email.parse("john@test.com");  // ✅
+email.parse("invalid-email");  // ❌
+````
+
+```typescript title="URL 검증"
+const url = z.string().url();
+url.parse("https://example.com"); // ✅
+url.parse("not-a-url"); // ❌
+```
+
+```typescript title="UUID 검증"
+const uuid = z.string().uuid();
+uuid.parse("550e8400-e29b-41d4-a716-446655440000"); // ✅
+uuid.parse("invalid-uuid"); // ❌
+```
+
+```typescript title="패턴 검증"
+const username = z.string().regex(/^[a-zA-Z0-9_]+$/);
+username.parse("john_doe"); // ✅
+username.parse("john@doe"); // ❌
+```
+
+</CodeGroup>
+
+### 숫자 검증
+
+<CodeGroup>
+```typescript title="정수"
+const age = z.number().int();
+age.parse(30);  // ✅
+age.parse(30.5);  // ❌ Must be integer
+```
+
+```typescript title="범위 검증"
+const age = z.number().int().min(0).max(120);
+age.parse(30); // ✅
+age.parse(-1); // ❌ Number must be greater than or equal to 0
+age.parse(150); // ❌ Number must be less than or equal to 120
+```
+
+```typescript title="양수 검증"
+const price = z.number().positive();
+price.parse(100); // ✅
+price.parse(0); // ❌
+price.parse(-10); // ❌
+```
+
+```typescript title="음이 아닌 수"
+const count = z.number().nonnegative();
+count.parse(0); // ✅
+count.parse(10); // ✅
+count.parse(-1); // ❌
+```
+
+</CodeGroup>
+
+### 날짜 검증
+
+<CodeGroup>
+```typescript title="기본 날짜"
+const birthDate = z.date();
+birthDate.parse(new Date());  // ✅
+birthDate.parse("2024-01-01");  // ❌ Expected Date, received string
+```
+
+```typescript title="날짜 범위"
+const birthDate = z.date().min(new Date("1900-01-01")).max(new Date());
+
+birthDate.parse(new Date("2000-01-01")); // ✅
+birthDate.parse(new Date("1800-01-01")); // ❌
+```
+
+```typescript title="문자열 → 날짜 변환"
+// API에서 자주 사용
+const dateSchema = z
+  .string()
+  .datetime()
+  .transform((val) => new Date(val));
+
+dateSchema.parse("2024-01-01T00:00:00.000Z"); // ✅ Date 객체 반환
+```
+
+</CodeGroup>
+
+### 불린 검증
+
+```typescript
+const isActive = z.boolean();
+isActive.parse(true); // ✅
+isActive.parse(false); // ✅
+isActive.parse("true"); // ❌ Expected boolean, received string
+
+// 변환: 문자열 → 불린
+const coerced = z.coerce.boolean();
+coerced.parse("true"); // ✅ true
+coerced.parse("false"); // ✅ false
+coerced.parse(1); // ✅ true
+coerced.parse(0); // ✅ false
+```
+
+## 복합 타입 검증
+
+### 배열
+
+<CodeGroup>
+```typescript title="기본 배열"
+const tags = z.string().array();
+tags.parse(["typescript", "nodejs"]);  // ✅
+tags.parse(["typescript", 123]);  // ❌
+```
+
+```typescript title="배열 길이 검증"
+const tags = z.string().array().min(1).max(5);
+tags.parse(["tag1"]); // ✅
+tags.parse([]); // ❌ Array must contain at least 1 element(s)
+tags.parse(["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"]); // ❌
+```
+
+```typescript title="Non-empty 배열"
+const tags = z.string().array().nonempty();
+tags.parse(["tag1"]); // ✅
+tags.parse([]); // ❌ Array must contain at least 1 element(s)
+```
+
+</CodeGroup>
+
+### 객체
+
+<CodeGroup>
+```typescript title="중첩 객체"
+const user = z.object({
+  name: z.string(),
+  profile: z.object({
+    bio: z.string(),
+    website: z.string().url().optional(),
+  }),
+});
+
+user.parse({
+name: "John",
+profile: {
+bio: "Hello",
+website: "https://john.com",
+},
+}); // ✅
+
+````
+
+```typescript title="선택적 필드"
+const user = z.object({
+  name: z.string(),
+  nickname: z.string().optional(),  // undefined 허용
+  bio: z.string().nullable(),       // null 허용
+});
+
+user.parse({ name: "John" });  // ✅ (nickname은 undefined)
+user.parse({ name: "John", nickname: "JD" });  // ✅
+user.parse({ name: "John", bio: null });  // ✅
+````
+
+</CodeGroup>
+
+### Enum
+
+<CodeGroup>
+```typescript title="Enum 검증"
+const role = z.enum(["admin", "moderator", "normal"]);
+
+role.parse("admin"); // ✅
+role.parse("guest"); // ❌ Invalid enum value
+
+````
+
+```typescript title="Enum 배열"
+const roles = z.enum(["admin", "moderator", "normal"]).array();
+
+roles.parse(["admin", "normal"]);  // ✅
+roles.parse(["admin", "guest"]);  // ❌
+````
+
+</CodeGroup>
+
+### Union (여러 타입 중 하나)
+
+```typescript
+const idOrEmail = z.union([z.number().int(), z.string().email()]);
+
+idOrEmail.parse(123); // ✅
+idOrEmail.parse("john@test.com"); // ✅
+idOrEmail.parse("not-an-email"); // ❌
+```
+
+## 고급 검증 패턴
+
+### 조건부 검증
+
+<CodeGroup>
+```typescript title="refine (커스텀 검증)"
+const password = z.string()
+  .min(8)
+  .refine(
+    (val) => /[A-Z]/.test(val),
+    { message: "대문자를 포함해야 합니다" }
+  )
+  .refine(
+    (val) => /[0-9]/.test(val),
+    { message: "숫자를 포함해야 합니다" }
+  )
+  .refine(
+    (val) => /[!@#$%^&*]/.test(val),
+    { message: "특수문자를 포함해야 합니다" }
+  );
+
+password.parse("Abc12345!"); // ✅
+password.parse("abc12345"); // ❌ 대문자 없음
+
+````
+
+```typescript title="superRefine (여러 에러)"
+const user = z.object({
+  password: z.string(),
+  passwordConfirm: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.passwordConfirm) {
+    ctx.addIssue({
+      code: "custom",
+      message: "비밀번호가 일치하지 않습니다",
+      path: ["passwordConfirm"],
+    });
+  }
+
+  if (data.password.length < 8) {
+    ctx.addIssue({
+      code: "custom",
+      message: "비밀번호는 8자 이상이어야 합니다",
+      path: ["password"],
+    });
+  }
+});
+````
+
+</CodeGroup>
+
+### 데이터 변환
+
+<CodeGroup>
+```typescript title="transform (값 변환)"
+const age = z.string().transform(val => parseInt(val, 10));
+
+age.parse("30"); // ✅ 30 (number)
+
+````
+
+```typescript title="preprocess (전처리)"
+const email = z.preprocess(
+  (val) => String(val).toLowerCase().trim(),
+  z.string().email()
+);
+
+email.parse("  JOHN@TEST.COM  ");  // ✅ "john@test.com"
+````
+
+```typescript title="coerce (타입 강제)"
+const age = z.coerce.number();
+
+age.parse("30"); // ✅ 30 (number로 변환)
+age.parse("abc"); // ❌ NaN은 number로 통과하지만 검증 실패
+```
+
+</CodeGroup>
+
+### 기본값 설정
+
+<CodeGroup>
+```typescript title="default (기본값)"
+const settings = z.object({
+  theme: z.enum(["light", "dark"]).default("light"),
+  notifications: z.boolean().default(true),
+});
+
+settings.parse({}); // ✅ { theme: "light", notifications: true }
+settings.parse({ theme: "dark" }); // ✅ { theme: "dark", notifications: true }
+
+````
+
+```typescript title="catch (에러 시 기본값)"
+const count = z.number().catch(0);
+
+count.parse(10);  // ✅ 10
+count.parse("invalid");  // ✅ 0 (에러 대신 기본값)
+````
+
+</CodeGroup>
+
+## 실전 검증 패턴
+
+### API 파라미터 검증
+
+<CodeGroup>
+```typescript title="ListParams 검증"
+export const UserListParams = z.object({
+  num: z.number().int().min(1).max(100).default(24),
+  page: z.number().int().min(1).default(1),
+  search: z.enum(["id", "email", "username"]).optional(),
+  keyword: z.string().trim().optional(),
+  orderBy: z.enum(["id-desc", "id-asc", "created_at-desc"]).optional(),
+}).refine(
+  (data) => {
+    // keyword가 있으면 search도 필수
+    if (data.keyword && !data.search) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "keyword와 search는 함께 사용해야 합니다",
+    path: ["search"],
+  }
+);
+```
+
+```typescript title="SaveParams 검증"
+export const UserSaveParams = z
+  .object({
+    id: z.number().int().optional(),
+    email: z.string().email().max(100),
+    username: z
+      .string()
+      .min(2)
+      .max(50)
+      .regex(/^[a-zA-Z0-9_]+$/),
+    password: z.string().min(8).optional(),
+    role: z.enum(["admin", "normal"]).default("normal"),
+  })
+  .refine(
+    (data) => {
+      // 새 사용자면 password 필수
+      if (!data.id && !data.password) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "새 사용자는 비밀번호가 필요합니다",
+      path: ["password"],
+    }
+  );
+```
+
+</CodeGroup>
+
+### 비즈니스 로직 검증
+
+<CodeGroup>
+```typescript title="날짜 범위 검증"
+const dateRange = z.object({
+  startDate: z.date(),
+  endDate: z.date(),
+}).refine(
+  (data) => data.endDate > data.startDate,
+  {
+    message: "종료일은 시작일보다 이후여야 합니다",
+    path: ["endDate"],
+  }
+).refine(
+  (data) => {
+    const diff = data.endDate.getTime() - data.startDate.getTime();
+    const days = diff / (1000 * 60 * 60 * 24);
+    return days <= 365;
+  },
+  {
+    message: "기간은 최대 1년까지만 가능합니다",
+    path: ["endDate"],
+  }
+);
+```
+
+```typescript title="금액 검증"
+const payment = z
+  .object({
+    amount: z.number().positive(),
+    discount: z.number().nonnegative().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.discount && data.discount > data.amount) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "할인 금액은 결제 금액보다 클 수 없습니다",
+      path: ["discount"],
+    }
+  );
+```
+
+</CodeGroup>
+
+### Form 검증
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UserSaveParams } from "@/services/user/user.types";
+
+function UserForm() {
+  const form = useForm({
+    resolver: zodResolver(UserSaveParams),
+    defaultValues: {
+      email: "",
+      username: "",
+      role: "normal",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    // data는 자동으로 UserSaveParams 타입
+    console.log(data);
+  });
+
+  return (
+    <form onSubmit={onSubmit}>
+      <input {...form.register("email")} />
+      {form.formState.errors.email && (
+        <span>{form.formState.errors.email.message}</span>
+      )}
+
+      <input {...form.register("username")} />
+      {form.formState.errors.username && (
+        <span>{form.formState.errors.username.message}</span>
+      )}
+
+      <button type="submit">저장</button>
+    </form>
+  );
+}
+```
+
+## 에러 처리
+
+### ZodError 구조
+
+```typescript
+try {
+  User.parse(invalidData);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    console.log(error.issues);
+    // [
+    //   {
+    //     code: "invalid_type",
+    //     expected: "string",
+    //     received: "number",
+    //     path: ["email"],
+    //     message: "Expected string, received number"
+    //   },
+    //   {
+    //     code: "too_small",
+    //     minimum: 8,
+    //     type: "string",
+    //     inclusive: true,
+    //     path: ["password"],
+    //     message: "String must contain at least 8 character(s)"
+    //   }
+    // ]
+  }
+}
+```
+
+### 에러 메시지 커스터마이징
+
+<CodeGroup>
+```typescript title="필드별 커스텀 메시지"
+const user = z.object({
+  email: z.string().email("유효한 이메일 주소를 입력하세요"),
+  age: z.number()
+    .int("나이는 정수여야 합니다")
+    .min(0, "나이는 0 이상이어야 합니다")
+    .max(120, "나이는 120 이하여야 합니다"),
+});
+```
+
+```typescript title="전역 에러 메시지 설정"
+import { z } from "zod";
+
+// 한국어 에러 메시지
+const customErrorMap: z.ZodErrorMap = (issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    if (issue.expected === "string") {
+      return { message: "문자열을 입력해주세요" };
+    }
+    if (issue.expected === "number") {
+      return { message: "숫자를 입력해주세요" };
+    }
+  }
+  if (issue.code === z.ZodIssueCode.too_small) {
+    return { message: `최소 ${issue.minimum}자 이상 입력해주세요` };
+  }
+  return { message: ctx.defaultError };
+};
+
+z.setErrorMap(customErrorMap);
+```
+
+</CodeGroup>
+
+### 에러 포맷팅
+
+```typescript
+const result = User.safeParse(invalidData);
+
+if (!result.success) {
+  // Flat 에러 (필드별)
+  const flatErrors = result.error.flatten();
+  console.log(flatErrors.fieldErrors);
+  // {
+  //   email: ["Invalid email"],
+  //   age: ["Number must be greater than 0"]
+  // }
+
+  // Form 에러 (React Hook Form 형식)
+  const formErrors = result.error.format();
+  console.log(formErrors.email?._errors); // ["Invalid email"]
+}
+```
+
+## 성능 최적화
+
+### 스키마 재사용
+
+```typescript
+// ❌ 매번 새로 생성 (느림)
+function validate(data: unknown) {
+  const schema = z.object({
+    name: z.string(),
+    age: z.number(),
+  });
+  return schema.parse(data);
+}
+
+// ✅ 스키마 재사용 (빠름)
+const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+function validate(data: unknown) {
+  return schema.parse(data);
+}
+```
+
+### 부분 검증
+
+```typescript
+// 전체 검증 불필요 시 부분 검증
+const user = z.object({
+  id: z.number(),
+  email: z.string().email(),
+  profile: z.object({
+    bio: z.string(),
+    website: z.string().url(),
+  }),
+});
+
+// 이메일만 검증
+const emailOnly = user.pick({ email: true });
+emailOnly.parse({ email: "john@test.com" }); // ✅ 빠름
+
+// profile만 검증
+const profileOnly = user.pick({ profile: true });
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/core-concepts/type-system/e2e-type-safety"
+  >
+    엔드투엔드 타입 안전성
+  </Card>
+  <Card
+    title="Entity Types"
+    icon="database"
+    href="/core-concepts/type-system/entity-types"
+  >
+    Entity 타입 변환
+  </Card>
+  <Card
+    title="Generated Types"
+    icon="file-lines"
+    href="/core-concepts/type-system/generated-types"
+  >
+    생성 타입 활용
+  </Card>
+  <Card
+    title="Model Testing"
+    icon="flask"
+    href="/testing/model-testing/unit-tests"
+  >
+    Zod 검증 테스트하기
+  </Card>
+</CardGroup>

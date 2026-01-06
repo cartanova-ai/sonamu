@@ -1,6 +1,685 @@
 ---
-title: "{entity}.types.ts"
-description: "커스텀 타입 정의하기"
+title: "Entity Types"
+description: "Entity 정의로부터 자동 생성되는 TypeScript 타입 시스템"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 Entity 정의를 기반으로 완전한 타입 안전성을 제공하는 TypeScript 타입을 자동 생성합니다. 이 문서는 Entity의 각 필드 타입이 어떻게 TypeScript 타입으로 변환되는지 설명합니다.
+
+## 타입 변환 개요
+
+<CardGroup cols={2}>
+  <Card title="필드 타입" icon="arrows-left-right">
+    Entity Prop → TypeScript Type 자동 변환 및 타입 안전성
+  </Card>
+  <Card title="Nullable 지원" icon="circle-question">
+    nullable: true → T | null 선택적 null 처리
+  </Card>
+  <Card title="Array 타입" icon="list">
+    type[] → T[] 배열 타입 자동 생성
+  </Card>
+  <Card title="Relation 타입" icon="link">
+    BelongsToOne → number (FK) 관계 필드 타입 변환
+  </Card>
+</CardGroup>
+
+## 기본 타입 변환
+
+Entity의 각 필드 타입이 TypeScript 타입으로 어떻게 변환되는지 보여줍니다.
+
+### 숫자 타입
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "view_count", "type": "integer", "nullable": true },
+    { "name": "user_id", "type": "bigInteger" }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type Post = {
+  id: number; // integer → number
+  view_count: number | null; // integer + nullable → number | null
+  user_id: bigint; // bigInteger → bigint
+};
+```
+
+</CodeGroup>
+
+| Entity Type    | TypeScript Type | 설명                 |
+| -------------- | --------------- | -------------------- |
+| `integer`      | `number`        | 32bit 정수           |
+| `integer[]`    | `number[]`      | 정수 배열            |
+| `bigInteger`   | `bigint`        | 64bit 정수 (큰 숫자) |
+| `bigInteger[]` | `bigint[]`      | 큰 정수 배열         |
+
+<Info>
+  **bigInteger vs integer**: ID나 카운트는 `integer`로 충분하지만,
+  타임스탬프(milliseconds)나 매우 큰 숫자는 `bigInteger`를 사용하세요.
+</Info>
+
+### 문자열 타입
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "email", "type": "string", "length": 100 },
+    { "name": "bio", "type": "string" },
+    { "name": "tags", "type": "string[]" }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type User = {
+  email: string; // string + length → string (validation은 Zod에서)
+  bio: string; // string → string
+  tags: string[]; // string[] → string[]
+};
+```
+
+</CodeGroup>
+
+| Entity Type | TypeScript Type | 설명        |
+| ----------- | --------------- | ----------- |
+| `string`    | `string`        | 문자열      |
+| `string[]`  | `string[]`      | 문자열 배열 |
+
+<Tip>
+  `length` 속성은 TypeScript 타입에 영향을 주지 않지만, Zod validation에서
+  `.max(length)` 검증으로 변환됩니다.
+</Tip>
+
+### 불린 타입
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "is_active", "type": "boolean" },
+    { "name": "permissions", "type": "boolean[]" }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type User = {
+  is_active: boolean; // boolean → boolean
+  permissions: boolean[]; // boolean[] → boolean[]
+};
+```
+
+</CodeGroup>
+
+### 날짜 타입
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "created_at", "type": "date" },
+    { "name": "login_history", "type": "date[]", "nullable": true }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type User = {
+  created_at: Date; // date → Date
+  login_history: Date[] | null; // date[] + nullable → Date[] | null
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**JSON 직렬화**: API 응답에서 `Date`는 ISO 문자열(`string`)로 전송됩니다. Zod의 `z.date()`는 자동으로 문자열을 Date 객체로 변환합니다.
+
+```typescript
+// API 응답 (JSON)
+{ "created_at": "2024-01-01T00:00:00.000Z" }
+
+// Zod 파싱 후
+{ created_at: Date }  // Date 객체로 자동 변환
+```
+
+</Warning>
+
+### UUID 타입
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "uuid", "type": "uuid" },
+    { "name": "related_ids", "type": "uuid[]" }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type Document = {
+  uuid: string; // uuid → string
+  related_ids: string[]; // uuid[] → string[]
+};
+```
+
+</CodeGroup>
+
+<Info>
+  TypeScript에는 UUID 전용 타입이 없으므로 `string`으로 표현됩니다. Zod
+  validation에서 `.uuid()`로 형식을 검증합니다.
+</Info>
+
+## 숫자 정밀도 타입
+
+PostgreSQL의 고정밀 숫자를 다루는 두 가지 타입입니다.
+
+### number vs numeric
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { 
+      "name": "price", 
+      "type": "number",
+      "precision": 10,
+      "scale": 2
+    },
+    { 
+      "name": "balance", 
+      "type": "numeric",
+      "precision": 20,
+      "scale": 8
+    }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type Product = {
+  price: number; // number → number (부동소수점)
+  balance: string; // numeric → string (정밀도 보존)
+};
+```
+
+</CodeGroup>
+
+| Entity Type | TypeScript Type | PostgreSQL Type                       | 용도                   |
+| ----------- | --------------- | ------------------------------------- | ---------------------- |
+| `number`    | `number`        | `real`, `double precision`, `numeric` | 일반 계산 (부동소수점) |
+| `numeric`   | `string`        | `numeric`                             | 금융 계산 (고정소수점) |
+
+<Warning>
+**number vs numeric 선택**:
+
+✅ **number 사용 시기**:
+
+- 일반적인 수치 계산
+- 소수점 정밀도가 중요하지 않은 경우
+- 과학 계산, 통계
+
+❌ **numeric 사용 시기**:
+
+- 금융 계산 (돈, 가격, 잔액)
+- 정확한 소수점이 필요한 경우
+- 암호화폐 금액
+
+```typescript
+// number - 부동소수점 오차 발생 가능
+0.1 + 0.2 === 0.3; // false (0.30000000000000004)
+
+// numeric - 문자열로 정확한 값 보존
+import Decimal from "decimal.js";
+new Decimal("0.1").plus("0.2").equals("0.3"); // true
+```
+
+</Warning>
+
+## Enum 타입
+
+Entity의 Enum이 TypeScript Union 타입으로 변환됩니다.
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "enums": {
+    "UserRole": {
+      "admin": "관리자",
+      "moderator": "운영자",
+      "normal": "일반 사용자"
+    }
+  },
+  "props": [
+    { "name": "role", "type": "enum", "id": "UserRole" },
+    { "name": "badges", "type": "enum[]", "id": "UserBadge" }
+  ]
+}
+```
+
+```typescript title="생성된 타입 (sonamu.generated.ts)"
+// Enum 타입 생성
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+// type UserRole = "admin" | "moderator" | "normal"
+
+// Entity 타입에 포함
+type User = {
+  role: UserRole; // enum → UserRole
+  badges: UserBadge[]; // enum[] → UserBadge[]
+};
+```
+
+</CodeGroup>
+
+**장점**:
+
+- 자동완성 지원
+- 타입 안전성 보장
+- 잘못된 값 컴파일 에러
+
+```typescript
+// ✅ 올바른 사용
+const user: User = {
+  role: "admin", // 자동완성됨
+};
+
+// ❌ 컴파일 에러
+const user: User = {
+  role: "guest", // Error: Type '"guest"' is not assignable
+};
+```
+
+## JSON 타입
+
+복잡한 객체 구조를 JSON으로 저장할 때 사용합니다.
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "metadata", "type": "json", "id": "PostMetadata" }
+  ]
+}
+```
+
+```typescript title="types 파일에서 정의"
+// user.types.ts
+export const PostMetadata = z.object({
+  author: z.string(),
+  tags: z.string().array(),
+  view_count: z.number(),
+});
+export type PostMetadata = z.infer<typeof PostMetadata>;
+
+// 생성된 타입
+type Post = {
+  metadata: PostMetadata; // json → PostMetadata (커스텀 타입)
+};
+```
+
+</CodeGroup>
+
+<Info>
+  `json` 타입은 `id`로 지정한 Zod 스키마를 참조합니다. 이 스키마는 `{entity}
+  .types.ts`에서 직접 정의해야 합니다.
+</Info>
+
+## Virtual 타입
+
+데이터베이스에 저장되지 않는 계산 필드입니다.
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "full_name", "type": "virtual", "id": "UserFullName" }
+  ]
+}
+```
+
+```typescript title="types 파일에서 정의"
+// user.types.ts
+export const UserFullName = z.string();
+export type UserFullName = z.infer<typeof UserFullName>;
+
+// 생성된 타입
+type User = {
+  full_name: UserFullName; // virtual → UserFullName
+};
+```
+
+</CodeGroup>
+
+Virtual 필드는 Model의 Enhancer에서 계산됩니다:
+
+```typescript
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    full_name: `${row.first_name} ${row.last_name}`,
+  }),
+});
+```
+
+## Vector 타입
+
+벡터 검색 (pgvector)을 위한 타입입니다.
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "embedding", "type": "vector", "dimensions": 1536 },
+    { "name": "embeddings_history", "type": "vector[]", "dimensions": 1536 }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type Document = {
+  embedding: number[]; // vector → number[]
+  embeddings_history: number[][]; // vector[] → number[][]
+};
+```
+
+</CodeGroup>
+
+<Info>
+`dimensions`는 TypeScript 타입에 영향을 주지 않지만, PostgreSQL 스키마와 Zod validation에서 사용됩니다.
+
+```typescript
+// Zod validation
+z.array(z.number()).length(1536); // dimensions 검증
+```
+
+</Info>
+
+## Relation 타입
+
+Entity 간 관계를 나타내는 필드입니다.
+
+### BelongsToOne (다대일)
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    {
+      "name": "user",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "User"
+    }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type Post = {
+  user_id: number; // BelongsToOne → {name}_id: number
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**필드명 변환**: `user` → `user_id`
+
+Entity에서는 `user`로 정의하지만, 실제 TypeScript 타입은 `user_id`가 됩니다.
+
+</Warning>
+
+### OneToOne (일대일)
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    {
+      "name": "profile",
+      "type": "relation",
+      "relationType": "OneToOne",
+      "with": "Profile",
+      "hasJoinColumn": true
+    }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type User = {
+  profile_id: number; // OneToOne + hasJoinColumn → {name}_id: number
+};
+```
+
+</CodeGroup>
+
+### HasMany / ManyToMany
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    {
+      "name": "posts",
+      "type": "relation",
+      "relationType": "HasMany",
+      "with": "Post",
+      "joinColumn": "user_id"
+    }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+// HasMany와 ManyToMany는 base 타입에 포함되지 않음
+// Subset에서만 사용됨
+```
+
+</CodeGroup>
+
+<Info>
+  `HasMany`와 `ManyToMany`는 base 타입에 포함되지 않습니다. Subset을 정의하면
+  해당 타입이 Subset 타입에 포함됩니다.
+</Info>
+
+## Nullable 처리
+
+`nullable: true`는 TypeScript Union 타입으로 변환됩니다.
+
+<CodeGroup>
+```json title="Entity 정의"
+{
+  "props": [
+    { "name": "nickname", "type": "string", "nullable": true },
+    { "name": "tags", "type": "string[]", "nullable": true },
+    {
+      "name": "manager",
+      "type": "relation",
+      "relationType": "BelongsToOne",
+      "with": "User",
+      "nullable": true
+    }
+  ]
+}
+```
+
+```typescript title="생성된 타입"
+type User = {
+  nickname: string | null; // nullable → T | null
+  tags: string[] | null; // nullable array → T[] | null
+  manager_id: number | null; // nullable relation → number | null
+};
+```
+
+</CodeGroup>
+
+<Warning>
+**배열의 nullable**: `string[]`의 `nullable: true`는 **배열 자체**가 null 가능함을 의미합니다.
+
+```typescript
+// nullable: true
+tags: string[] | null
+
+// ✅ 가능
+const user = { tags: null };
+const user = { tags: [] };
+const user = { tags: ["a", "b"] };
+
+// ❌ 불가능
+const user = { tags: undefined };
+
+// 배열 요소가 nullable하려면 별도 타입 정의 필요
+tags: (string | null)[]  // 이건 커스텀 타입으로 정의
+```
+
+</Warning>
+
+## 타입 변환 전체 매핑
+
+모든 Entity Prop 타입과 TypeScript 타입의 매핑표입니다.
+
+| Entity Type                | TypeScript Type | 비고                              |
+| -------------------------- | --------------- | --------------------------------- |
+| `integer`                  | `number`        | 32bit 정수                        |
+| `integer[]`                | `number[]`      | 정수 배열                         |
+| `bigInteger`               | `bigint`        | 64bit 정수                        |
+| `bigInteger[]`             | `bigint[]`      | 큰 정수 배열                      |
+| `string`                   | `string`        | 문자열                            |
+| `string[]`                 | `string[]`      | 문자열 배열                       |
+| `number`                   | `number`        | 부동소수점                        |
+| `number[]`                 | `number[]`      | 부동소수점 배열                   |
+| `numeric`                  | `string`        | 고정소수점 (문자열로 정밀도 보존) |
+| `numeric[]`                | `string[]`      | 고정소수점 배열                   |
+| `boolean`                  | `boolean`       | 불린                              |
+| `boolean[]`                | `boolean[]`     | 불린 배열                         |
+| `date`                     | `Date`          | 날짜 (JSON에서는 string)          |
+| `date[]`                   | `Date[]`        | 날짜 배열                         |
+| `uuid`                     | `string`        | UUID 문자열                       |
+| `uuid[]`                   | `string[]`      | UUID 배열                         |
+| `enum`                     | `EnumType`      | Union 타입                        |
+| `enum[]`                   | `EnumType[]`    | Union 타입 배열                   |
+| `json`                     | `CustomType`    | 커스텀 객체 타입                  |
+| `virtual`                  | `CustomType`    | 계산 필드                         |
+| `vector`                   | `number[]`      | 벡터 (pgvector)                   |
+| `vector[]`                 | `number[][]`    | 벡터 배열                         |
+| `tsvector`                 | `string`        | 전문 검색 (PostgreSQL)            |
+| `BelongsToOne`             | `number`        | 외래 키 (FK)                      |
+| `OneToOne` (hasJoinColumn) | `number`        | 외래 키 (FK)                      |
+| `HasMany`                  | -               | Base 타입 미포함                  |
+| `ManyToMany`               | -               | Base 타입 미포함                  |
+
+## 실전 예시
+
+실제 User Entity의 타입 변환 예시입니다.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 100 },
+    { "name": "username", "type": "string", "length": 50 },
+    { "name": "role", "type": "enum", "id": "UserRole" },
+    { "name": "is_active", "type": "boolean" },
+    { "name": "bio", "type": "string", "nullable": true },
+    { "name": "follower_count", "type": "integer" },
+    { "name": "created_at", "type": "date" },
+    { "name": "updated_at", "type": "date" },
+    {
+      "name": "profile",
+      "type": "relation",
+      "relationType": "OneToOne",
+      "with": "Profile",
+      "hasJoinColumn": true,
+      "nullable": true
+    }
+  ],
+  "enums": {
+    "UserRole": {
+      "admin": "관리자",
+      "moderator": "운영자",
+      "normal": "일반 사용자"
+    }
+  }
+}
+```
+
+```typescript title="생성된 타입 (user.types.ts)"
+import { z } from "zod";
+
+// Enum 타입 (sonamu.generated.ts에서 import)
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+// Base 타입
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  is_active: boolean;
+  bio: string | null;
+  follower_count: number;
+  created_at: Date;
+  updated_at: Date;
+  profile_id: number | null;
+};
+
+// Zod 스키마
+export const User = z.object({
+  id: z.number().int(),
+  email: z.string().max(100),
+  username: z.string().max(50),
+  role: UserRole,
+  is_active: z.boolean(),
+  bio: z.string().nullable(),
+  follower_count: z.number().int(),
+  created_at: z.date(),
+  updated_at: z.date(),
+  profile_id: z.number().int().nullable(),
+});
+```
+
+</CodeGroup>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card
+    title="Generated Types"
+    icon="file-lines"
+    href="/core-concepts/type-system/generated-types"
+  >
+    생성되는 타입들의 종류와 용도
+  </Card>
+  <Card
+    title="Zod Validation"
+    icon="shield-check"
+    href="/core-concepts/type-system/zod-validation"
+  >
+    Zod로 런타임 검증하기
+  </Card>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/core-concepts/type-system/e2e-type-safety"
+  >
+    엔드투엔드 타입 안전성
+  </Card>
+  <Card
+    title="Field Types"
+    icon="list"
+    href="/core-concepts/entity/field-types"
+  >
+    Entity 필드 타입 전체 레퍼런스
+  </Card>
+</CardGroup>

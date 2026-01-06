@@ -1,6 +1,684 @@
 ---
-title: "sonamu.generated.ts"
-description: "자동 생성된 타입"
+title: "Generated Types"
+description: "Sonamu가 자동 생성하는 타입들의 종류와 활용법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 Entity 정의로부터 다양한 타입을 자동 생성합니다. Base 타입뿐만 아니라 API 파라미터, Subset 타입, Enum 등이 자동으로 생성되어 완벽한 타입 안전성을 제공합니다.
+
+## 생성 타입 개요
+
+<CardGroup cols={2}>
+  <Card title="Base 타입" icon="database">
+    Entity의 기본 타입 User, Post, Comment
+  </Card>
+  <Card title="Subset 타입" icon="layer-group">
+    부분 조회 타입 UserA, UserP, UserSS
+  </Card>
+  <Card title="Params 타입" icon="sliders">
+    API 파라미터 타입 ListParams, SaveParams
+  </Card>
+  <Card title="Enum 타입" icon="list-check">
+    Enum과 헬퍼 함수 UserRole, userRoleLabel
+  </Card>
+</CardGroup>
+
+## Base 타입
+
+Entity의 모든 필드를 포함하는 기본 타입입니다.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "id": "User",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" },
+    { "name": "username", "type": "string" },
+    { "name": "created_at", "type": "date" }
+  ]
+}
+```
+
+```typescript title="user.types.ts (자동 생성)"
+// Base 타입
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+};
+
+// Zod 스키마
+export const User = z.object({
+  id: z.number().int(),
+  email: z.string(),
+  username: z.string(),
+  created_at: z.date(),
+});
+```
+
+</CodeGroup>
+
+**특징**:
+
+- Relation의 HasMany, ManyToMany는 제외
+- BelongsToOne, OneToOne(hasJoinColumn)은 `{name}_id` 형태로 포함
+- Virtual 필드는 타입만 정의, 값은 Enhancer에서 계산
+
+## Subset 타입
+
+Entity의 부분 필드만 포함하는 타입입니다.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "subsets": {
+    "A": ["id", "email", "username", "created_at"],
+    "P": ["id", "email", "employee.id", "employee.department.name"],
+    "SS": ["id", "email"]
+  }
+}
+```
+
+```typescript title="sonamu.generated.ts (자동 생성)"
+// Subset 키 Union
+export type UserSubsetKey = "A" | "P" | "SS";
+
+// Subset 타입 매핑
+export type UserSubsetMapping = {
+  A: UserA;
+  P: UserP;
+  SS: UserSS;
+};
+
+// 각 Subset 타입
+export type UserA = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+};
+
+export type UserP = {
+  id: number;
+  email: string;
+  employee: {
+    id: number;
+    department: {
+      name: string;
+    };
+  };
+};
+
+export type UserSS = {
+  id: number;
+  email: string;
+};
+```
+
+</CodeGroup>
+
+**사용 예시**:
+
+```typescript
+import type { UserSubsetKey, UserSubsetMapping } from "./sonamu.generated";
+
+// 제네릭으로 Subset 타입 선택
+async function findMany<T extends UserSubsetKey>(
+  subset: T
+): Promise<UserSubsetMapping[T][]> {
+  // ...
+}
+
+const users = await findMany("A"); // UserA[] 타입
+const profiles = await findMany("P"); // UserP[] 타입
+```
+
+## ListParams 타입
+
+목록 조회 API의 파라미터 타입입니다.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "props": [
+    { "name": "email", "type": "string", "toFilter": true },
+    { "name": "username", "type": "string", "toFilter": true }
+  ]
+}
+```
+
+```typescript title="user.types.ts (자동 생성)"
+// Search 필드 Enum
+export const UserSearchField = z.enum(["id", "email", "username"]);
+export type UserSearchField = z.infer<typeof UserSearchField>;
+
+// OrderBy Enum
+export const UserOrderBy = z.enum([
+  "id-desc",
+  "id-asc",
+  "created_at-desc",
+  "created_at-asc",
+]);
+export type UserOrderBy = z.infer<typeof UserOrderBy>;
+
+// ListParams
+export const UserListParams = z.object({
+  num: z.number().int().optional(),
+  page: z.number().int().optional(),
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+  orderBy: UserOrderBy.optional(),
+
+  // toFilter: true인 필드 자동 추가
+  email: zArrayable(z.string()).optional(),
+  username: zArrayable(z.string()).optional(),
+});
+export type UserListParams = z.infer<typeof UserListParams>;
+```
+
+</CodeGroup>
+
+**사용 예시**:
+
+```typescript
+// API 호출
+const result = await findManyUsers({
+  num: 20,
+  page: 1,
+  search: "email",
+  keyword: "john",
+  orderBy: "created_at-desc",
+  email: ["john@test.com", "jane@test.com"], // 배열도 가능
+});
+```
+
+<Info>
+**zArrayable**: 단일 값과 배열을 모두 허용하는 헬퍼입니다.
+
+```typescript
+// 둘 다 가능
+{
+  email: "john@test.com";
+}
+{
+  email: ["john@test.com", "jane@test.com"];
+}
+```
+
+</Info>
+
+## SaveParams 타입
+
+저장 API의 파라미터 타입입니다.
+
+<CodeGroup>
+```typescript title="user.types.ts (자동 생성)"
+// SaveParams = Base 타입의 id를 optional로
+export const UserSaveParams = User.partial({ id: true });
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+
+// 동일:
+// type UserSaveParams = {
+// id?: number;
+// email: string;
+// username: string;
+// created_at: Date;
+// }
+
+````
+
+```typescript title="사용 예시"
+// 신규 생성 (id 없음)
+await saveUser([
+  {
+    email: "new@test.com",
+    username: "newuser",
+    created_at: new Date(),
+  }
+]);
+
+// 수정 (id 포함)
+await saveUser([
+  {
+    id: 1,
+    email: "updated@test.com",
+    username: "updateduser",
+    created_at: new Date(),
+  }
+]);
+````
+
+</CodeGroup>
+
+**특징**:
+
+- `id`만 optional, 나머지 필드는 필수
+- `id`가 있으면 UPDATE, 없으면 INSERT
+- 배열로 여러 레코드 동시 저장 가능
+
+## Enum 타입
+
+Entity의 Enum이 자동으로 생성됩니다.
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "enums": {
+    "UserRole": {
+      "admin": "관리자",
+      "moderator": "운영자",
+      "normal": "일반 사용자"
+    }
+  }
+}
+```
+
+```typescript title="sonamu.generated.ts (자동 생성)"
+// Zod Enum
+export const UserRole = z.enum(["admin", "moderator", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+// 라벨 헬퍼 함수
+export function userRoleLabel(role: UserRole): string {
+  return {
+    admin: "관리자",
+    moderator: "운영자",
+    normal: "일반 사용자",
+  }[role];
+}
+
+// 역방향 매핑 (라벨 → 키)
+export function userRoleLabelToKey(label: string): UserRole | undefined {
+  const map: Record<string, UserRole> = {
+    관리자: "admin",
+    운영자: "moderator",
+    "일반 사용자": "normal",
+  };
+  return map[label];
+}
+```
+
+</CodeGroup>
+
+**사용 예시**:
+
+```typescript
+import { UserRole, userRoleLabel } from "./sonamu.generated";
+
+// 타입 안전한 Enum 사용
+const role: UserRole = "admin";
+
+// 라벨 표시
+console.log(userRoleLabel(role)); // "관리자"
+
+// UI에서 선택 옵션 생성
+const options = UserRole.options.map((value) => ({
+  value,
+  label: userRoleLabel(value),
+}));
+// [
+//   { value: "admin", label: "관리자" },
+//   { value: "moderator", label: "운영자" },
+//   { value: "normal", label: "일반 사용자" }
+// ]
+```
+
+## 커스텀 Params 타입
+
+Model에서 추가 API를 만들 때 커스텀 파라미터 타입을 정의합니다.
+
+<CodeGroup>
+```typescript title="user.types.ts"
+// 커스텀 파라미터 추가
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  rememberMe: z.boolean().optional(),
+});
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+
+export const UserRegisterParams = User.pick({
+  email: true,
+  username: true,
+}).extend({
+  password: z.string().min(8),
+  passwordConfirm: z.string().min(8),
+}).refine(
+  (data) => data.password === data.passwordConfirm,
+  { message: "비밀번호가 일치하지 않습니다", path: ["passwordConfirm"] }
+);
+export type UserRegisterParams = z.infer<typeof UserRegisterParams>;
+```
+
+```typescript title="user.model.ts"
+@api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+  // ...
+}
+
+@api({ httpMethod: "POST" })
+async register(params: UserRegisterParams): Promise<{ userId: number; token: string }> {
+  // ...
+}
+```
+
+</CodeGroup>
+
+**자동 생성**:
+
+```typescript
+// services.generated.ts
+export async function loginUser(
+  params: UserLoginParams
+): Promise<{ user: User; token: string }> {
+  const { data } = await axios.post("/user/login", { params });
+  return data;
+}
+
+export function useLoginUser() {
+  return useMutation({
+    mutationFn: (params: UserLoginParams) => loginUser(params),
+  });
+}
+```
+
+## Action Params 타입
+
+특정 액션을 위한 파라미터 타입입니다.
+
+<CodeGroup>
+```typescript title="user.types.ts"
+// ID 배열 파라미터
+export const UserBulkDeleteParams = z.object({
+  ids: z.number().int().array().min(1),
+});
+export type UserBulkDeleteParams = z.infer<typeof UserBulkDeleteParams>;
+
+// 상태 변경 파라미터
+export const UserStatusUpdateParams = z.object({
+ids: z.number().int().array().min(1),
+status: z.enum(["active", "suspended", "deleted"]),
+reason: z.string().optional(),
+});
+export type UserStatusUpdateParams = z.infer<typeof UserStatusUpdateParams>;
+
+````
+
+```typescript title="user.model.ts"
+@api({ httpMethod: "DELETE" })
+async bulkDelete(params: UserBulkDeleteParams): Promise<number> {
+  const { ids } = params;
+  return this.getPuri("w")
+    .table("users")
+    .whereIn("id", ids)
+    .delete();
+}
+
+@api({ httpMethod: "POST" })
+async updateStatus(params: UserStatusUpdateParams): Promise<void> {
+  const { ids, status, reason } = params;
+  await this.getPuri("w")
+    .table("users")
+    .whereIn("id", ids)
+    .update({ status, status_reason: reason });
+}
+````
+
+</CodeGroup>
+
+## ListResult 타입
+
+목록 조회 결과의 타입입니다.
+
+```typescript title="sonamu.shared.ts"
+export type ListResult<
+  LP extends { num?: number; page?: number; queryMode?: string },
+  T
+> = LP["queryMode"] extends "list"
+  ? { rows: T[] }
+  : LP["queryMode"] extends "count"
+  ? { total: number }
+  : { rows: T[]; total: number };
+```
+
+**사용 예시**:
+
+```typescript
+// queryMode에 따라 타입이 자동으로 결정됨
+
+// queryMode: "both" (기본값)
+const result = await findManyUsers({ num: 10, page: 1 });
+// ListResult<UserListParams, User> = { rows: User[]; total: number }
+
+// queryMode: "list"
+const result = await findManyUsers({ num: 10, page: 1, queryMode: "list" });
+// ListResult<UserListParams, User> = { rows: User[] }
+
+// queryMode: "count"
+const result = await findManyUsers({ queryMode: "count" });
+// ListResult<UserListParams, User> = { total: number }
+```
+
+<Info>
+  **조건부 타입**: `ListResult`는 TypeScript의 조건부 타입을 활용하여
+  `queryMode`에 따라 다른 타입을 반환합니다.
+</Info>
+
+## 타입 내보내기
+
+생성된 타입은 자동으로 export됩니다.
+
+```typescript title="sonamu.generated.ts"
+// Entity별 타입 전부 re-export
+export * from "./user/user.model";
+export * from "./post/post.model";
+export * from "./comment/comment.model";
+
+// Model 인스턴스도 export
+export { UserModel } from "./user/user.model";
+export { PostModel } from "./post/post.model";
+```
+
+**사용**:
+
+```typescript
+// 한 곳에서 import
+import {
+  User,
+  UserListParams,
+  UserSaveParams,
+  UserRole,
+} from "./sonamu.generated";
+
+// 또는 개별 import
+import type { User } from "./user/user.types";
+import { UserModel } from "./user/user.model";
+```
+
+## 타입 유틸리티
+
+Sonamu가 제공하는 유용한 타입 유틸리티입니다.
+
+### zArrayable
+
+단일 값과 배열을 모두 허용하는 타입입니다.
+
+```typescript
+import { zArrayable } from "sonamu";
+
+const UserListParams = z.object({
+  id: zArrayable(z.number().int()).optional(),
+  email: zArrayable(z.string()).optional(),
+});
+
+// 둘 다 가능
+{
+  id: 1;
+}
+{
+  id: [1, 2, 3];
+}
+```
+
+### DistributiveOmit
+
+일반 `Omit`보다 Union 타입에서 안전합니다.
+
+```typescript
+import type { DistributiveOmit } from "sonamu";
+
+type UserOrAdmin =
+  | { type: "user"; userId: number }
+  | { type: "admin"; adminId: number };
+
+// DistributiveOmit은 각 타입에 개별 적용
+type WithoutId = DistributiveOmit<UserOrAdmin, "userId" | "adminId">;
+// = { type: "user" } | { type: "admin" }
+```
+
+## 타입 생성 커스터마이징
+
+자동 생성된 타입을 확장하거나 수정할 수 있습니다.
+
+### Params 확장
+
+```typescript title="user.types.ts"
+// 기본 ListParams 확장
+export const ExtendedUserListParams = UserListParams.extend({
+  includeDeleted: z.boolean().optional(),
+  dateRange: z
+    .object({
+      from: z.date(),
+      to: z.date(),
+    })
+    .optional(),
+});
+export type ExtendedUserListParams = z.infer<typeof ExtendedUserListParams>;
+```
+
+### Subset 타입 확장
+
+```typescript title="user.types.ts"
+// Subset 타입에 계산 필드 추가
+export type UserAWithStats = UserA & {
+  post_count: number;
+  follower_count: number;
+};
+```
+
+### 조건부 타입 생성
+
+```typescript title="user.types.ts"
+// 역할에 따라 다른 타입
+export type UserByRole<T extends UserRole> = T extends "admin"
+  ? UserA & { permissions: string[] }
+  : T extends "normal"
+  ? UserSS
+  : User;
+```
+
+## 실전 예시
+
+실제 프로젝트에서 생성 타입을 활용하는 예시입니다.
+
+<CodeGroup>
+```typescript title="user.model.ts"
+import type {
+  UserSubsetKey,
+  UserSubsetMapping,
+  UserListParams,
+  UserSaveParams,
+  UserLoginParams,
+} from "./user.types";
+
+class UserModelClass extends BaseModelClass<
+UserSubsetKey,
+UserSubsetMapping,
+typeof userSubsetQueries,
+typeof userLoaderQueries
+
+> {
+> @api({ httpMethod: "GET" })
+> async findMany<T extends UserSubsetKey>(
+
+    subset: T,
+    params?: UserListParams
+
+): Promise<ListResult<UserListParams, UserSubsetMapping[T]>> {
+// 타입 안전한 구현
+}
+
+@api({ httpMethod: "POST" })
+async save(params: UserSaveParams[]): Promise<number[]> {
+// 타입 안전한 구현
+}
+
+@api({ httpMethod: "POST" })
+async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+// 타입 안전한 구현
+}
+}
+
+````
+
+```tsx title="UserList.tsx"
+import { useUsers } from "@/services/services.generated";
+import type { UserListParams, UserA } from "@/services/user/user.types";
+
+export function UserList() {
+  const [params, setParams] = useState<UserListParams>({
+    num: 20,
+    page: 1,
+    orderBy: "created_at-desc",
+  });
+
+  // 타입이 자동으로 추론됨
+  const { data, isLoading } = useUsers(params);
+  // data: { rows: UserA[]; total: number } | undefined
+
+  return (
+    <table>
+      <tbody>
+        {data?.rows.map((user) => (
+          <tr key={user.id}>
+            <td>{user.email}</td>
+            <td>{user.username}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+````
+
+</CodeGroup>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card
+    title="E2E Type Safety"
+    icon="link"
+    href="/core-concepts/type-system/e2e-type-safety"
+  >
+    엔드투엔드 타입 안전성 이해하기
+  </Card>
+  <Card
+    title="Zod Validation"
+    icon="shield-check"
+    href="/core-concepts/type-system/zod-validation"
+  >
+    Zod로 런타임 검증하기
+  </Card>
+  <Card
+    title="Entity Types"
+    icon="database"
+    href="/core-concepts/type-system/entity-types"
+  >
+    Entity 타입 변환 자세히 보기
+  </Card>
+  <Card title="Model" icon="cube" href="/core-concepts/model/what-is-model">
+    Model에서 타입 사용하기
+  </Card>
+</CardGroup>
