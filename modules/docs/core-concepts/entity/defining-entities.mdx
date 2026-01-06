@@ -1,6 +1,432 @@
 ---
 title: "Entity 정의하기"
-description: "entity.json 구조 이해하기"
+description: "entity.json 구조와 Entity 정의 방법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Entity는 Sonamu 프로젝트의 핵심 구성 요소로, 데이터베이스 테이블과 TypeScript 타입을 함께 정의합니다.
+
+## Entity란?
+
+Entity는 다음을 포함하는 데이터 모델 정의입니다:
+
+- **데이터베이스 스키마** - 테이블 구조, 컬럼, 인덱스
+- **TypeScript 타입** - 타입 안전성을 위한 타입 정의
+- **관계(Relations)** - 다른 Entity와의 연결
+- **Subset** - API 응답을 위한 필드 조합
+- **Enum** - 열거형 타입과 레이블
+
+## Entity 정의 방법
+
+<Note>
+Entity는 **Sonamu UI**(`http://localhost:1028/sonamu-ui`)에서 시각적으로 정의하는 것을 권장합니다. Sonamu UI는 자동 완성, 유효성 검사, 실시간 미리보기 기능을 제공합니다.
+</Note>
+
+### entity.json 파일 구조
+
+Entity는 `entity.json` 파일로 저장되며, 다음과 같은 구조를 가집니다:
+
+```json
+{
+  "id": "User",
+  "table": "users", 
+  "title": "사용자",
+  "props": [...],
+  "indexes": [...],
+  "subsets": {...},
+  "enums": {...}
+}
+```
+
+**파일 위치**: `api/src/application/{entity}/{entity}.entity.json`
+
+## 필수 필드
+
+### id
+
+Entity의 고유 식별자입니다. **PascalCase**로 작성합니다.
+
+```json
+{
+  "id": "User"
+}
+```
+
+<Info>
+- Entity 클래스명, 타입명에 사용됩니다
+- 예: `UserModel`, `User`, `UserBaseSchema`
+</Info>
+
+### table
+
+데이터베이스 테이블 이름입니다. **snake_case**로 작성합니다.
+
+```json
+{
+  "table": "users"
+}
+```
+
+<Tip>
+테이블명을 생략하면 Entity ID를 기반으로 자동 생성됩니다:
+- `User` → `users`
+- `BlogPost` → `blog_posts`
+</Tip>
+
+### title
+
+Entity의 한글 또는 표시용 이름입니다.
+
+```json
+{
+  "title": "사용자"
+}
+```
+
+### props
+
+Entity의 속성(컬럼) 배열입니다. 각 속성은 타입과 옵션을 정의합니다.
+
+```json
+{
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "email", "type": "string", "length": 255, "desc": "이메일" },
+    { "name": "created_at", "type": "date", "dbDefault": "CURRENT_TIMESTAMP" }
+  ]
+}
+```
+
+**기본 속성 옵션**:
+
+| 옵션 | 타입 | 설명 | 기본값 |
+|------|------|------|--------|
+| `name` | string | 속성명 (snake_case) | *필수* |
+| `type` | string | 데이터 타입 | *필수* |
+| `desc` | string | 설명 | - |
+| `nullable` | boolean | NULL 허용 여부 | `false` |
+| `dbDefault` | string | DB 기본값 | - |
+
+<Info>
+**더 알아보기**
+- [Field Types](/core-concepts/entity/field-types) - 사용 가능한 모든 데이터 타입
+- [Relations](/core-concepts/entity/relations) - Entity 간 관계 정의
+</Info>
+
+## 선택 필드
+
+### parentId
+
+다른 Entity를 상속할 때 사용합니다.
+
+```json
+{
+  "id": "Admin",
+  "parentId": "User",
+  "title": "관리자"
+}
+```
+
+<Warning>
+parentId를 사용하면 부모 Entity의 모든 props를 상속받습니다. 신중하게 사용하세요.
+</Warning>
+
+### indexes
+
+데이터베이스 인덱스를 정의합니다.
+
+```json
+{
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "users_email_unique",
+      "columns": [{ "name": "email" }]
+    },
+    {
+      "type": "index", 
+      "name": "users_created_at_idx",
+      "columns": [{ "name": "created_at" }]
+    }
+  ]
+}
+```
+
+**인덱스 타입**:
+- `index` - 일반 인덱스 (검색 성능 향상)
+- `unique` - 유니크 인덱스 (중복 방지)
+- `hnsw` - Vector 검색용 HNSW 인덱스
+- `ivfflat` - Vector 검색용 IVFFlat 인덱스
+
+### subsets
+
+API 응답에서 사용할 필드 조합을 정의합니다.
+
+```json
+{
+  "subsets": {
+    "A": ["id", "email", "username", "created_at"],
+    "P": ["id", "email", "username", "role"],
+    "SS": ["id", "email"]
+  }
+}
+```
+
+**Subset 활용**:
+
+<CodeGroup>
+```typescript title="Model에서 사용"
+async findAll(): Promise<UserSubsetA[]> {
+  return this.puri()
+    .select<UserSubsetA>("A")
+    .many();
+}
+```
+
+```typescript title="타입 추론"
+// UserSubsetA 타입이 자동으로 생성됨
+type UserSubsetA = {
+  id: number;
+  email: string;
+  username: string;
+  created_at: Date;
+}
+```
+</CodeGroup>
+
+**Relation 필드 포함**:
+
+```json
+{
+  "subsets": {
+    "P": [
+      "id",
+      "username",
+      "employee.id",
+      "employee.department.name"
+    ]
+  }
+}
+```
+
+<Info>
+Subset의 ``.`` 표기법으로 연관 Entity의 필드를 포함할 수 있습니다. Sonamu가 자동으로 JOIN을 생성합니다.
+</Info>
+
+### enums
+
+열거형 타입과 레이블을 정의합니다.
+
+```json
+{
+  "enums": {
+    "UserRole": {
+      "normal": "일반",
+      "admin": "관리자"
+    },
+    "UserOrderBy": {
+      "id-desc": "ID 최신순",
+      "created_at-desc": "등록일 최신순"
+    },
+    "UserSearchField": {
+      "email": "이메일",
+      "username": "이름"
+    }
+  }
+}
+```
+
+**Enum 활용**:
+
+```typescript
+// 자동 생성된 Zod 스키마와 TypeScript 타입
+import { UserRole } from "./user.types";
+
+// "normal" | "admin"
+type Role = z.infer<typeof UserRole>;
+
+// API에서 사용
+async updateRole(userId: number, role: Role) {
+  // ...
+}
+```
+
+## 실제 예제
+
+### 기본 Entity 예제
+
+```json title="user.entity.json"
+{
+  "id": "User",
+  "table": "users",
+  "title": "사용자",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "email", "type": "string", "length": 255, "desc": "이메일" },
+    { "name": "username", "type": "string", "length": 255, "desc": "이름" },
+    { "name": "password", "type": "string", "length": 255, "desc": "비밀번호" },
+    { "name": "birth_date", "type": "date", "nullable": true, "desc": "생일" },
+    { "name": "role", "type": "enum", "id": "UserRole", "desc": "역할" },
+    { "name": "is_verified", "type": "boolean", "desc": "인증 여부", "dbDefault": "false" },
+    { "name": "deleted_at", "type": "date", "nullable": true, "desc": "삭제일시" }
+  ],
+  "indexes": [
+    { "type": "unique", "name": "users_email_unique", "columns": [{ "name": "email" }] }
+  ],
+  "subsets": {
+    "A": ["id", "email", "username", "role", "created_at"],
+    "P": ["id", "email", "username", "role"]
+  },
+  "enums": {
+    "UserRole": { "normal": "일반", "admin": "관리자" },
+    "UserOrderBy": { "id-desc": "ID 최신순" }
+  }
+}
+```
+
+### Relation 포함 예제
+
+```json title="employee.entity.json"
+{
+  "id": "Employee",
+  "table": "employees",
+  "title": "직원",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    {
+      "type": "relation",
+      "name": "user",
+      "with": "User",
+      "desc": "사용자",
+      "relationType": "OneToOne",
+      "hasJoinColumn": true,
+      "onDelete": "CASCADE"
+    },
+    {
+      "type": "relation",
+      "name": "department",
+      "with": "Department",
+      "nullable": true,
+      "desc": "부서",
+      "relationType": "BelongsToOne",
+      "onDelete": "SET NULL"
+    },
+    { "name": "employee_number", "type": "string", "length": 32, "desc": "사번" },
+    { "name": "salary", "type": "numeric", "precision": 10, "scale": 2, "nullable": true, "desc": "급여" },
+    { "name": "hire_date", "type": "date", "nullable": true, "desc": "입사일" }
+  ],
+  "indexes": [
+    {
+      "type": "unique",
+      "name": "employees_user_id_unique",
+      "columns": [{ "name": "user_id" }]
+    }
+  ],
+  "subsets": {
+    "A": [
+      "id",
+      "created_at",
+      "user.username",
+      "department.name",
+      "employee_number",
+      "salary",
+      "hire_date"
+    ]
+  },
+  "enums": {
+    "EmployeeOrderBy": { "id-desc": "ID 최신순" }
+  }
+}
+```
+
+## Sonamu UI에서 Entity 정의하기
+
+1. **Sonamu UI 접속**
+   ```bash
+   # API 서버 실행 후
+   http://localhost:1028/sonamu-ui
+   ```
+
+2. **Entity 생성**
+   - "Entities" 탭 클릭
+   - "Create Entity" 버튼 클릭
+   - Entity ID, 테이블명, Title 입력
+
+3. **속성(Props) 추가**
+   - "Add Property" 버튼으로 새 속성 추가
+   - 타입 선택 및 옵션 설정
+   - 드래그 앤 드롭으로 순서 변경
+
+4. **Subset 정의**
+   - "Subsets" 탭에서 subset 키 추가
+   - 체크박스로 포함할 필드 선택
+   - Relation 필드는 트리 형태로 펼쳐서 선택
+
+5. **저장 및 생성**
+   - "Save" 버튼 클릭
+   - Entity 파일 자동 생성
+   - Migration 자동 생성
+
+<Frame caption="📸 필요: Sonamu UI에서 Entity 생성하는 전체 과정 (스크린샷 또는 GIF)">
+</Frame>
+
+<Info>
+**더 알아보기**
+- [Sonamu UI 사용하기](/core-concepts/entity/using-sonamu-ui) - UI 상세 가이드
+</Info>
+
+## Entity 정의 후 자동 생성되는 것들
+
+Entity를 정의하고 저장하면 Sonamu가 자동으로 다음을 생성합니다:
+
+<CardGroup cols={2}>
+  <Card title="TypeScript 타입" icon="code">
+    `{entity}.types.ts` 파일에 타입과 Zod 스키마 생성
+  </Card>
+  <Card title="데이터베이스 마이그레이션" icon="database">
+    테이블 생성 SQL이 포함된 마이그레이션 파일 생성
+  </Card>
+  <Card title="Base 스키마" icon="layer-group">
+    `sonamu.generated.ts`에 Base 스키마와 Enum 추가
+  </Card>
+  <Card title="Model Scaffold" icon="file-code">
+    `{entity}.model.ts` 템플릿 생성 (선택 시)
+  </Card>
+</CardGroup>
+
+## 주의사항
+
+<Warning>
+**Entity 정의 수정 시 주의**
+- 이미 배포된 테이블의 컬럼을 삭제하거나 타입을 변경할 때는 신중하게 진행하세요
+- 마이그레이션을 통해 단계적으로 변경하는 것을 권장합니다
+- Relation을 변경할 때는 참조 무결성을 고려하세요
+</Warning>
+
+<Tip>
+**Entity 설계 팁**
+- ID는 항상 `integer` 타입으로 시작하세요
+- `created_at`, `updated_at` 필드를 포함하세요
+- Unique 제약이 필요한 필드는 인덱스로 명시하세요
+- 자주 검색되는 필드에는 인덱스를 추가하세요
+</Tip>
+
+## 다음 단계
+
+Entity 정의를 마쳤다면, 다음 주제를 학습하세요:
+
+<CardGroup cols={2}>
+  <Card title="Sonamu UI 사용하기" icon="browser" href="/core-concepts/entity/using-sonamu-ui">
+    Sonamu UI의 모든 기능과 단축키 익히기
+  </Card>
+  <Card title="Field Types" icon="list" href="/core-concepts/entity/field-types">
+    사용 가능한 모든 필드 타입과 옵션 알아보기
+  </Card>
+  <Card title="Relations" icon="arrows-split-up-and-left" href="/core-concepts/entity/relations">
+    Entity 간 관계 정의하는 방법 학습하기
+  </Card>
+  <Card title="Enums" icon="hashtag" href="/core-concepts/entity/enums">
+    Enum 타입 정의하고 활용하는 방법 배우기
+  </Card>
+</CardGroup>

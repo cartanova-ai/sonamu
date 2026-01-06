@@ -1,6 +1,817 @@
 ---
-title: "필드 타입"
-description: "string, int, enum, relation 등 필드 타입"
+title: "Field Types"
+description: "Entity에서 사용 가능한 모든 필드 타입과 옵션"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 다양한 데이터 타입을 지원하며, 각 타입은 PostgreSQL, TypeScript, JSON에서 적절하게 매핑됩니다.
+
+## 공통 옵션
+
+모든 필드 타입에 공통으로 적용되는 옵션입니다.
+
+| 옵션 | 타입 | 설명 | 기본값 |
+|------|------|------|--------|
+| `name` | string | 필드명 (snake_case) | *필수* |
+| `type` | string | 데이터 타입 | *필수* |
+| `desc` | string | 필드 설명 | - |
+| `nullable` | boolean | NULL 허용 여부 | `false` |
+| `toFilter` | boolean | 검색 필터링 가능 여부 | `false` |
+| `dbDefault` | string | 데이터베이스 기본값 | - |
+| `generated` | GeneratedColumn | 계산 컬럼 설정 | - |
+
+### Generated Column
+
+계산된 값을 자동으로 생성하는 컬럼입니다.
+
+```json
+{
+  "name": "full_name",
+  "type": "string",
+  "generated": {
+    "type": "STORED",
+    "expression": "first_name || ' ' || last_name"
+  }
+}
+```
+
+**옵션**:
+- `type`: `STORED` | `VIRTUAL`
+  - `STORED`: 물리적으로 저장됨 (인덱스 생성 가능)
+  - `VIRTUAL`: 조회 시에만 계산됨 (메모리 절약)
+- `expression`: SQL 표현식
+
+<Warning>
+- `VIRTUAL` 타입은 배열 타입, json, vector에서 사용할 수 없습니다
+- `generated`와 `dbDefault`를 동시에 사용할 수 없습니다
+</Warning>
+
+## 숫자 타입
+
+### integer / integer[]
+
+32비트 정수 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "age",
+      "type": "integer",
+      "desc": "나이"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `integer`
+    - TypeScript: `number`
+    - JSON: `number`
+    
+    **범위**: -2,147,483,648 ~ 2,147,483,647
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "years",
+      "type": "integer[]",
+      "desc": "연도 목록"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `integer[]`
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**사용 예시**: ID, 개수, 나이, 순서, 년도
+</Tip>
+
+### bigInteger / bigInteger[]
+
+64비트 정수 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "transaction_id",
+      "type": "bigInteger",
+      "desc": "거래 ID"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `bigint`
+    - TypeScript: `bigint`
+    - JSON: `bigint` (문자열로 직렬화)
+    
+    **범위**: -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "large_ids",
+      "type": "bigInteger[]"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `bigint[]`
+    - TypeScript: `bigint[]`
+    - JSON: `bigint[]`
+  </Tab>
+</Tabs>
+
+<Warning>
+JavaScript의 `Number.MAX_SAFE_INTEGER` (2^53 - 1)를 초과하는 값은 `bigint`를 사용해야 정확도가 유지됩니다.
+</Warning>
+
+### number / number[]
+
+부동소수점 또는 고정소수점 숫자 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "price",
+      "type": "number",
+      "precision": 10,
+      "scale": 2,
+      "desc": "가격"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `numeric(10, 2)` (기본값)
+    - TypeScript: `number`
+    - JSON: `number`
+    
+    **추가 옵션**:
+    - `precision`: 전체 자릿수 (기본값: 없음 = 무제한)
+    - `scale`: 소수점 자릿수 (기본값: 0)
+    - `numberType`: `numeric` | `real` | `double precision` (기본값: `numeric`)
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "prices",
+      "type": "number[]",
+      "precision": 10,
+      "scale": 2
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `numeric(10, 2)[]`
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+  </Tab>
+</Tabs>
+
+**numberType 선택 가이드**:
+
+| 타입 | 정밀도 | 메모리 | 사용 예시 |
+|------|--------|--------|-----------|
+| `numeric` | 정확함 (권장) | 많음 | 금액, 통화 |
+| `real` | 근사값 (6자리) | 4 bytes | 과학적 데이터 |
+| `double precision` | 근사값 (15자리) | 8 bytes | 좌표, 측정값 |
+
+<Tip>
+**금액 처리**: `precision: 10, scale: 2`로 설정하면 최대 99,999,999.99까지 저장 가능
+</Tip>
+
+### numeric / numeric[]
+
+고정밀도 숫자 타입입니다. TypeScript에서 **문자열**로 처리됩니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "precise_amount",
+      "type": "numeric",
+      "precision": 20,
+      "scale": 10,
+      "desc": "초정밀 금액"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `numeric(20, 10)`
+    - TypeScript: `string` ⚠️
+    - JSON: `string`
+    
+    **추가 옵션**:
+    - `precision`: 전체 자릿수
+    - `scale`: 소수점 자릿수
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "precise_values",
+      "type": "numeric[]",
+      "precision": 20,
+      "scale": 10
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `numeric(20, 10)[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Warning>
+**number vs numeric 차이점**:
+- `number`: TypeScript에서 `number` 타입 (정밀도 손실 가능)
+- `numeric`: TypeScript에서 `string` 타입 (정밀도 유지)
+
+큰 숫자나 매우 정확한 소수점 계산이 필요한 경우 `numeric`을 사용하세요.
+</Warning>
+
+## 문자열 타입
+
+### string / string[]
+
+가변 길이 문자열 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "email",
+      "type": "string",
+      "length": 255,
+      "desc": "이메일"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `varchar(255)` (length 지정 시) 또는 `text`
+    - TypeScript: `string`
+    - JSON: `string`
+    
+    **추가 옵션**:
+    - `length`: 최대 길이 (생략 시 `text` 타입 사용)
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "tags",
+      "type": "string[]",
+      "desc": "태그 목록"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `text[]` 또는 `varchar(n)[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**length 설정 가이드**:
+- 짧은 텍스트 (이름, 이메일): `255`
+- 긴 텍스트 (설명, 내용): 생략 (text 타입)
+- 고정 길이 (우편번호, 전화번호): 정확한 길이 지정
+</Tip>
+
+### enum / enum[]
+
+열거형 타입입니다. Entity의 `enums`에 정의된 값만 허용됩니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "role",
+      "type": "enum",
+      "id": "UserRole",
+      "desc": "사용자 역할"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `text`
+    - TypeScript: `"admin" | "normal"` (Enum 키의 Union)
+    - JSON: `string`
+    
+    **추가 옵션**:
+    - `id`: Enum 타입 ID (Entity의 `enums`에 정의 필요)
+    - `length`: 문자열 최대 길이 (선택 사항)
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "roles",
+      "type": "enum[]",
+      "id": "UserRole",
+      "desc": "사용자 역할 목록"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `text[]`
+    - TypeScript: `("admin" | "normal")[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+**Enum 정의 예시**:
+
+<CodeGroup>
+```json title="entity.json"
+{
+  "props": [
+    {
+      "name": "role",
+      "type": "enum",
+      "id": "UserRole"
+    }
+  ],
+  "enums": {
+    "UserRole": {
+      "admin": "관리자",
+      "normal": "일반 사용자"
+    }
+  }
+}
+```
+
+```typescript title="생성된 타입"
+import { UserRole } from "./user.types";
+
+// Zod 스키마
+const UserRole = z.enum(["admin", "normal"]);
+
+// TypeScript 타입
+type UserRole = z.infer<typeof UserRole>; // "admin" | "normal"
+```
+</CodeGroup>
+
+<Info>
+**더 알아보기**
+- [Enums](/core-concepts/entity/enums) - Enum 상세 가이드
+</Info>
+
+## 논리 타입
+
+### boolean / boolean[]
+
+참/거짓 값을 저장하는 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "is_active",
+      "type": "boolean",
+      "dbDefault": "true",
+      "desc": "활성화 여부"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `boolean`
+    - TypeScript: `boolean`
+    - JSON: `boolean`
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "flags",
+      "type": "boolean[]"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `boolean[]`
+    - TypeScript: `boolean[]`
+    - JSON: `boolean[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**기본값 설정**: `dbDefault: "true"` 또는 `dbDefault: "false"`
+</Tip>
+
+## 날짜/시간 타입
+
+### date / date[]
+
+날짜와 시간을 저장하는 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "created_at",
+      "type": "date",
+      "dbDefault": "CURRENT_TIMESTAMP",
+      "desc": "생성일시"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `timestamptz` (타임존 포함)
+    - TypeScript: `Date`
+    - JSON: `string` (ISO 8601 형식)
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "event_dates",
+      "type": "date[]"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `timestamptz[]`
+    - TypeScript: `Date[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Tip>
+**자주 사용되는 기본값**:
+- `CURRENT_TIMESTAMP`: 현재 시각
+- `CURRENT_DATE`: 현재 날짜 (시간 00:00:00)
+</Tip>
+
+## UUID 타입
+
+### uuid / uuid[]
+
+범용 고유 식별자(UUID) 타입입니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "session_id",
+      "type": "uuid",
+      "dbDefault": "gen_random_uuid()",
+      "desc": "세션 ID"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `uuid`
+    - TypeScript: `string`
+    - JSON: `string`
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "related_ids",
+      "type": "uuid[]"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `uuid[]`
+    - TypeScript: `string[]`
+    - JSON: `string[]`
+  </Tab>
+</Tabs>
+
+<Info>
+**UUID 생성**: PostgreSQL의 `gen_random_uuid()` 함수를 `dbDefault`로 사용하면 자동 생성됩니다.
+</Info>
+
+## 구조화된 데이터 타입
+
+### json
+
+JSON 형식의 구조화된 데이터를 저장하는 타입입니다.
+
+```json
+{
+  "name": "metadata",
+  "type": "json",
+  "id": "ProductMetadata",
+  "nullable": true,
+  "desc": "상품 메타데이터"
+}
+```
+
+**매핑**:
+- PostgreSQL: `json`
+- TypeScript: 사용자 정의 타입 (`ProductMetadata`)
+- JSON: `any`
+
+**추가 옵션**:
+- `id`: TypeScript 타입 ID (`.types.ts`에서 정의)
+
+**타입 정의 예시**:
+
+<CodeGroup>
+```json title="entity.json"
+{
+  "name": "metadata",
+  "type": "json",
+  "id": "ProductMetadata"
+}
+```
+
+```typescript title="{entity}.types.ts"
+export type ProductMetadata = {
+  weight: number;
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+  };
+  tags: string[];
+};
+```
+</CodeGroup>
+
+<Warning>
+JSON 타입은 인덱싱이 어렵고 성능이 낮을 수 있습니다. 자주 검색되는 필드는 별도 컬럼으로 분리하는 것을 권장합니다.
+</Warning>
+
+### virtual
+
+데이터베이스에 저장되지 않는 가상 필드입니다.
+
+```json
+{
+  "name": "full_name",
+  "type": "virtual",
+  "id": "string",
+  "virtualType": "code",
+  "desc": "전체 이름"
+}
+```
+
+**매핑**:
+- PostgreSQL: 저장되지 않음
+- TypeScript: 사용자 정의 타입 (또는 `string`, `number` 등)
+- JSON: 포함됨 (계산 후)
+
+**추가 옵션**:
+- `id`: TypeScript 타입 ID
+- `virtualType`: `code` | `query` (기본값: `code`)
+  - `code`: TypeScript 코드로 계산
+  - `query`: SQL appendSelect로 계산
+
+**virtualType 비교**:
+
+<Tabs>
+  <Tab title="code">
+    Model에서 TypeScript 코드로 계산합니다.
+    
+    ```typescript
+    // {entity}.model.ts
+    enhanceRow(row: User): User {
+      return {
+        ...row,
+        full_name: `${row.first_name} ${row.last_name}`
+      };
+    }
+    ```
+    
+    **장점**: 복잡한 로직 구현 가능, 외부 API 호출 가능
+    **단점**: 데이터베이스 레벨 필터링/정렬 불가
+  </Tab>
+  
+  <Tab title="query">
+    Puri 쿼리의 appendSelect로 SQL 계산합니다.
+    
+    ```typescript
+    // {entity}.model.ts
+    async findAll() {
+      return this.puri()
+        .appendSelect({
+          full_name: this.puri().knex.raw("first_name || ' ' || last_name")
+        })
+        .many();
+    }
+    ```
+    
+    **장점**: 데이터베이스 레벨 계산, 필터링/정렬 가능
+    **단점**: SQL로만 표현 가능한 로직으로 제한
+  </Tab>
+</Tabs>
+
+<Tip>
+**virtualType 선택 가이드**:
+- 단순 문자열 조합, 수식 계산 → `query`
+- 복잡한 비즈니스 로직, 외부 API 호출 → `code`
+</Tip>
+
+## Vector 타입
+
+### vector / vector[]
+
+벡터 임베딩을 저장하는 타입입니다. pgvector 확장이 필요합니다.
+
+<Tabs>
+  <Tab title="단일 값">
+    ```json
+    {
+      "name": "embedding",
+      "type": "vector",
+      "dimensions": 1536,
+      "desc": "텍스트 임베딩"
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `vector(1536)` (pgvector 확장)
+    - TypeScript: `number[]`
+    - JSON: `number[]`
+    
+    **추가 옵션**:
+    - `dimensions`: 벡터 차원 (필수, 예: 1536)
+  </Tab>
+  
+  <Tab title="배열">
+    ```json
+    {
+      "name": "embeddings",
+      "type": "vector[]",
+      "dimensions": 1536
+    }
+    ```
+    
+    **매핑**:
+    - PostgreSQL: `vector(1536)[]`
+    - TypeScript: `number[][]`
+    - JSON: `number[][]`
+  </Tab>
+</Tabs>
+
+**Vector 검색 예시**:
+
+```typescript
+// 코사인 유사도로 검색
+async searchSimilar(queryEmbedding: number[]) {
+  return this.puri()
+    .whereRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
+    .orderByRaw("embedding <=> ?", [JSON.stringify(queryEmbedding)])
+    .limit(10)
+    .many();
+}
+```
+
+**Vector 인덱스**:
+
+```json
+{
+  "indexes": [
+    {
+      "type": "hnsw",
+      "name": "posts_embedding_idx",
+      "columns": [
+        {
+          "name": "embedding",
+          "vectorOps": "vector_cosine_ops"
+        }
+      ],
+      "m": 16,
+      "efConstruction": 64
+    }
+  ]
+}
+```
+
+<Info>
+**더 알아보기**
+- [Vector Search](/advanced-features/vector-search/setup) - Vector 검색 상세 가이드
+- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL vector 확장
+</Info>
+
+### tsvector
+
+PostgreSQL 전문 검색(Full-Text Search)을 위한 타입입니다.
+
+```json
+{
+  "name": "search_vector",
+  "type": "tsvector",
+  "generated": {
+    "type": "STORED",
+    "expression": "to_tsvector('english', title || ' ' || content)"
+  }
+}
+```
+
+**매핑**:
+- PostgreSQL: `tsvector`
+- TypeScript: `string`
+- JSON: `string`
+
+**전문 검색 인덱스**:
+
+```json
+{
+  "indexes": [
+    {
+      "type": "index",
+      "name": "posts_search_vector_idx",
+      "columns": [{ "name": "search_vector" }],
+      "using": "gin"
+    }
+  ]
+}
+```
+
+<Info>
+**전문 검색**: 자연어 텍스트의 키워드 검색에 최적화된 타입입니다. 형태소 분석, 어간 추출 등을 지원합니다.
+</Info>
+
+## Relation 타입
+
+다른 Entity와의 관계를 정의하는 타입입니다.
+
+```json
+{
+  "type": "relation",
+  "name": "user",
+  "with": "User",
+  "relationType": "BelongsToOne",
+  "desc": "작성자"
+}
+```
+
+**Relation 타입**:
+- `BelongsToOne`: N:1 관계
+- `OneToOne`: 1:1 관계
+- `HasMany`: 1:N 관계
+- `ManyToMany`: N:M 관계
+
+<Info>
+**더 알아보기**
+- [Relations](/core-concepts/entity/relations) - Relation 상세 가이드
+</Info>
+
+## 타입 선택 가이드
+
+### 숫자 저장
+
+| 데이터 | 타입 | 이유 |
+|--------|------|------|
+| ID, 나이, 개수 | `integer` | 일반적인 정수 |
+| 큰 ID, 타임스탬프 | `bigInteger` | 큰 범위 필요 |
+| 금액, 가격 | `number` (precision, scale) | 정확한 소수점 |
+| 과학적 측정값 | `number` (numberType: real) | 근사값 허용 |
+| 초정밀 계산 | `numeric` | 정밀도 손실 방지 |
+
+### 문자열 저장
+
+| 데이터 | 타입 | 이유 |
+|--------|------|------|
+| 이름, 이메일 | `string` (length: 255) | 일반적인 텍스트 |
+| 설명, 본문 | `string` (length 생략) | 긴 텍스트 |
+| 상태, 역할 | `enum` | 제한된 값 목록 |
+| UUID, 토큰 | `uuid` | 고유 식별자 |
+
+### 날짜/시간 저장
+
+| 데이터 | 타입 | 설정 |
+|--------|------|------|
+| 생성일시 | `date` | `dbDefault: "CURRENT_TIMESTAMP"` |
+| 수정일시 | `date` | 업데이트 트리거 필요 |
+| 날짜만 | `date` | 시간은 00:00:00 |
+
+### 복잡한 데이터
+
+| 데이터 | 타입 | 이유 |
+|--------|------|------|
+| 설정, 메타데이터 | `json` | 구조화된 데이터 |
+| 계산 필드 | `virtual` | 저장 불필요 |
+| 텍스트 임베딩 | `vector` | AI 검색 |
+| 전문 검색 | `tsvector` | 키워드 검색 |
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Relations" icon="arrows-split-up-and-left" href="/core-concepts/entity/relations">
+    Entity 간 관계 정의하기
+  </Card>
+  <Card title="Enums" icon="hashtag" href="/core-concepts/entity/enums">
+    Enum 타입 사용하기
+  </Card>
+  <Card title="Indexes" icon="magnifying-glass" href="/database/migrations/indexes">
+    인덱스로 검색 성능 향상하기
+  </Card>
+  <Card title="Vector Search" icon="brain" href="/advanced-features/vector-search/setup">
+    Vector 검색 설정하기
+  </Card>
+</CardGroup>
