@@ -14,10 +14,8 @@ description: "첫 프로젝트 만들기 - pnpm create sonamu"
 Sonamu 개발 환경은 다음 세 가지 서버로 구성됩니다:
 
 - **PostgreSQL** - 데이터베이스
-- **API 서버** - 백엔드 REST API
+- **API 서버** - 백엔드 REST API (Sonamu UI 포함)
 - **Web 서버** - 프론트엔드 애플리케이션
-
-추가로 **Sonamu UI**를 실행하여 엔티티를 관리할 수 있습니다.
 
 <Steps>
 <Step title="데이터베이스 시작">
@@ -29,12 +27,18 @@ cd my_app/api
 pnpm docker:up
 ```
 
+<Frame caption="📸 필요: docker:up 실행 후 성공 메시지 및 컨테이너 시작 로그">
+</Frame>
+
 이 명령어는 Docker Compose를 사용하여 PostgreSQL 데이터베이스를 백그라운드에서 실행합니다.
 
 <Tip>
   데이터베이스가 정상적으로 실행되었는지 확인하려면 `docker ps` 명령어로
   컨테이너 상태를 확인할 수 있습니다.
 </Tip>
+
+<Frame caption="📸 필요: docker ps 실행 결과 (PostgreSQL 컨테이너가 Up 상태인 화면)">
+</Frame>
 
 </Step>
 
@@ -46,13 +50,25 @@ pnpm docker:up
 pnpm dev
 ```
 
+<Frame caption="📸 필요: pnpm dev 실행 후 서버 시작 로그 (🌲 Server listening on http://localhost:1028 메시지 포함)">
+</Frame>
+
 서버가 성공적으로 시작되면 다음과 같은 메시지가 표시됩니다:
 
 ```
 🌲 Server listening on http://localhost:1028
 ```
 
+이 명령어 하나로 다음이 모두 실행됩니다:
+- **Web 앱**: http://localhost:1028
+- **API 엔드포인트**: http://localhost:1028/api
+- **Sonamu UI**: http://localhost:1028/sonamu-ui
+
 API 서버는 Hot Module Replacement(HMR)을 지원하므로 코드 변경 시 자동으로 재시작됩니다.
+
+<Note>
+로컬 개발 환경에서는 API 서버가 Web 앱까지 통합하여 제공합니다. Web 디렉토리의 Vite Dev Server를 API 서버에 middleware로 연결하여 하나의 포트로 모든 것을 실행할 수 있습니다.
+</Note>
 
 <Warning>
   이 터미널 창은 계속 열어두어야 합니다. API 서버가 실행 중인 상태를 유지합니다.
@@ -60,38 +76,17 @@ API 서버는 Hot Module Replacement(HMR)을 지원하므로 코드 변경 시 �
 
 </Step>
 
-<Step title="Sonamu UI 실행 (선택사항)">
+<Step title="Web 서버 실행 (선택사항)">
 
-**새 터미널 창**을 열고 `api` 디렉토리에서 Sonamu UI를 실행합니다:
-
-```bash
-cd my_app/api
-pnpm sonamu ui
-```
-
-Sonamu UI가 시작되면 브라우저에서 http://localhost:2028 로 접속할 수 있습니다.
-
-Sonamu UI에서는 다음 작업을 수행할 수 있습니다:
-
-- 엔티티 생성 및 편집
-- 데이터베이스 마이그레이션 관리
-- API 엔드포인트 확인
-- 데이터베이스 스키마 시각화
-
-<Note>
-  Sonamu UI는 개발 중에만 필요합니다. 엔티티를 생성하거나 관리할 때 사용하세요.
-</Note>
-
-</Step>
-
-<Step title="Web 서버 실행">
-
-**새 터미널 창**을 열고 `web` 디렉토리로 이동하여 프론트엔드 개발 서버를 시작합니다:
+Web 개발에 집중하거나 Vite의 전체 기능을 활용하고 싶다면, **새 터미널 창**을 열고 `web` 디렉토리에서 별도로 개발 서버를 시작할 수 있습니다:
 
 ```bash
 cd my_app/web
 pnpm dev
 ```
+
+<Frame caption="📸 필요: web 디렉토리에서 pnpm dev 실행 후 Vite 시작 로그 (Local: http://localhost:3028 메시지 포함)">
+</Frame>
 
 Vite 개발 서버가 시작되면 다음과 같은 메시지가 표시됩니다:
 
@@ -102,35 +97,71 @@ Vite 개발 서버가 시작되면 다음과 같은 메시지가 표시됩니다
   ➜  Network: http://192.168.x.x:3028/
 ```
 
-Web 서버는 API 서버로의 프록시를 자동으로 설정하므로 `/api/*` 경로로 요청하면 API 서버로 전달됩니다.
+Web 서버를 별도로 실행하면 http://localhost:3028 로 접속하여 프론트엔드를 확인할 수 있습니다. Web 서버는 `/api/*` 경로 요청을 자동으로 API 서버(localhost:1028)로 프록시합니다.
+
+<Info>
+**두 가지 개발 방식**
+- **통합 모드** (권장): API 서버만 실행 → `localhost:1028`로 모든 것에 접근
+- **분리 모드**: API + Web 별도 실행 → API는 `localhost:1028`, Web은 `localhost:3028`
+
+대부분의 경우 통합 모드로 충분하며, Web 개발에 집중할 때만 분리 모드를 사용하세요.
+</Info>
 
 </Step>
 </Steps>
 
 ## 접속 확인
 
-이제 모든 서버가 실행 중입니다. 브라우저에서 다음 URL로 접속할 수 있습니다:
+### 통합 모드 (API 서버만 실행한 경우)
 
-| 서비스    | URL                       | 설명                    |
-| --------- | ------------------------- | ----------------------- |
-| Web 앱    | http://localhost:3028     | 프론트엔드 애플리케이션 |
-| API 서버  | http://localhost:1028/api | REST API 엔드포인트     |
-| Sonamu UI | http://localhost:2028     | 엔티티 관리 인터페이스  |
+브라우저에서 다음 URL로 접속할 수 있습니다:
+
+| 서비스    | URL                              | 설명                    |
+| --------- | -------------------------------- | ----------------------- |
+| Web 앱    | http://localhost:1028            | 프론트엔드 애플리케이션 |
+| API 서버  | http://localhost:1028/api        | REST API 엔드포인트     |
+| Sonamu UI | http://localhost:1028/sonamu-ui  | 엔티티 관리 인터페이스  |
+
+<Frame caption="📸 필요: 브라우저에서 localhost:1028 접속한 화면 (기본 Web 앱 홈페이지)">
+</Frame>
+
+<Frame caption="📸 필요: 브라우저에서 localhost:1028/api 접속한 화면 (404 또는 API 응답)">
+</Frame>
+
+<Frame caption="📸 필요: 브라우저에서 localhost:1028/sonamu-ui 접속한 화면 (Sonamu UI 대시보드)">
+</Frame>
+
+### 분리 모드 (API + Web 서버 모두 실행한 경우)
+
+| 서비스    | URL                              | 설명                    |
+| --------- | -------------------------------- | ----------------------- |
+| Web 앱    | http://localhost:3028            | 프론트엔드 애플리케이션 |
+| API 서버  | http://localhost:1028/api        | REST API 엔드포인트     |
+| Sonamu UI | http://localhost:1028/sonamu-ui  | 엔티티 관리 인터페이스  |
 
 <Check>
-  Web 앱(http://localhost:3028)에 접속하여 Sonamu 애플리케이션이 정상적으로
-  실행되는지 확인하세요.
+  Web 앱에 접속하여 Sonamu 애플리케이션이 정상적으로 실행되는지 확인하세요.
 </Check>
+
+### Sonamu UI 기능
+
+브라우저에서 http://localhost:1028/sonamu-ui 로 접속하면 다음 작업을 수행할 수 있습니다:
+
+- 엔티티 생성 및 편집
+- 데이터베이스 마이그레이션 관리
+- API 엔드포인트 확인
+- 데이터베이스 스키마 시각화
+
+<Frame caption="📸 필요: Sonamu UI 메인 화면 (Entity 탭, Migration 탭 등이 보이는 전체 UI)">
+</Frame>
 
 ## 서버 중지
 
 개발을 마치고 서버를 중지하려면:
 
-1. **API 서버와 Web 서버**: 각 터미널에서 `Ctrl + C` 키를 눌러 중지합니다.
+1. **API 서버** (그리고 Web 서버가 실행 중이라면): 각 터미널에서 `Ctrl + C` 키를 눌러 중지합니다.
 
-2. **Sonamu UI**: 터미널에서 `Ctrl + C` 키를 눌러 중지합니다.
-
-3. **데이터베이스**: `api` 디렉토리에서 다음 명령어를 실행합니다:
+2. **데이터베이스**: `api` 디렉토리에서 다음 명령어를 실행합니다:
 
 ```bash
 pnpm docker:down

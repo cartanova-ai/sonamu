@@ -17,6 +17,9 @@ Sonamu를 사용하기 위해서는 다음 환경이 필요합니다:
 pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.
 </Tip>
 
+<Frame caption="📸 필요: 터미널에서 node --version, pnpm --version, docker --version 실행 결과 화면">
+</Frame>
+
 ## 프로젝트 생성
 
 터미널에서 다음 명령어를 실행하여 새 Sonamu 프로젝트를 생성합니다:
@@ -24,6 +27,9 @@ pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 �
 ```bash
 pnpm create sonamu
 ```
+
+<Frame caption="🎬 필요: pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정 (영상 또는 연속 스크린샷)">
+</Frame>
 
 대화형 프롬프트가 나타나면 프로젝트 정보를 입력합니다:
 
@@ -63,9 +69,15 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 </Step>
 </Steps>
 
+<Frame caption="📸 필요: 프로젝트 생성 완료 메시지 및 생성된 디렉토리 구조 화면">
+</Frame>
+
 ## 생성된 프로젝트 구조
 
 `create-sonamu`는 다음과 같은 모노레포 구조를 생성합니다:
+
+<Frame caption="📸 필요: VS Code에서 열린 프로젝트의 실제 디렉토리 트리 구조 (Explorer 사이드바)">
+</Frame>
 
 ```
 my_app/
@@ -104,6 +116,9 @@ my_app/
 ### API 서버 엔트리포인트
 
 생성된 API 서버의 진입점은 다음과 같습니다:
+
+<Frame caption="📸 필요: VS Code에서 열린 api/src/index.ts 파일 전체 화면">
+</Frame>
 
 ```typescript title="api/src/index.ts"
 import { Sonamu } from "sonamu";
