@@ -7,37 +7,37 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 
 ## 전체 구조
 
-<Frame caption="📸 필요: VS Code에서 열린 Sonamu 프로젝트 전체 디렉토리 구조 (Explorer 사이드바)"></Frame>
+import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
 
-<Tree>
-  <Tree.Folder name="my_app" defaultOpen>
-    <Tree.Folder name="api  (백엔드 API 서버)" />
-    <Tree.Folder name="web  (프론트엔드 웹 앱)" />
-    <Tree.File name="README.md  (프로젝트 문서)" />
-  </Tree.Folder>
-</Tree>
+<FileTree>
+  <FileItem name="my_app/" description="Sonamu 모노레포 루트">
+    <FileItem name="api/" description="백엔드 API 서버" />
+    <FileItem name="web/" description="프론트엔드 웹 애플리케이션" />
+    <FileItem name="README.md" description="프로젝트 문서" />
+  </FileItem>
+</FileTree>
+
+<Frame caption="📸 필요: VS Code에서 열린 Sonamu 프로젝트 전체 디렉토리 구조 (Explorer 사이드바)"></Frame>
 
 ## API 디렉토리 (백엔드)
 
 ### 루트 파일
 
-<Frame caption="📸 필요: api 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
+<FileTree>
+  <FileItem name="api/">
+    <FileItem name="src/" description="소스 코드" />
+    <FileItem name="database/" description="데이터베이스 관련 파일" />
+    <FileItem name="package.json" description="의존성 및 스크립트" />
+    <FileItem name="tsconfig.json" description="TypeScript 설정" />
+    <FileItem name="tsconfig.schemas.json" description="스키마 생성용 설정" />
+    <FileItem name="tsconfig.types.json" description="타입 생성용 설정" />
+    <FileItem name="vite.config.ts" description="Sonamu UI 빌드 설정" />
+    <FileItem name=".swcrc" description="SWC 컴파일러 설정" />
+    <FileItem name=".env" description="환경 변수 (자동 생성)" />
+  </FileItem>
+</FileTree>
 
-<div style={{ margin: '1.5rem' }}>
-  <Tree>
-    <Tree.Folder name="api" defaultOpen>
-      <Tree.Folder name="src  (소스 코드)" />
-      <Tree.Folder name="database  (데이터베이스 관련 파일)" />
-      <Tree.File name="package.json  (의존성 및 스크립트)" />
-      <Tree.File name="tsconfig.json  (TypeScript 설정)" />
-      <Tree.File name="tsconfig.schemas.json  (스키마 생성용 설정)" />
-      <Tree.File name="tsconfig.types.json  (타입 생성용 설정)" />
-      <Tree.File name="vite.config.ts  (Sonamu UI 빌드 설정)" />
-      <Tree.File name=".swcrc  (SWC 컴파일러 설정)" />
-      <Tree.File name=".env  (환경 변수, 자동 생성)" />
-    </Tree.Folder>
-  </Tree>
-</div>
+<Frame caption="📸 필요: api 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
 
 <Accordion title="주요 파일 설명">
 
@@ -67,36 +67,37 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 
 ### src/ 디렉토리
 
-<Frame caption="📸 필요: api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)"></Frame>
+<FileTree>
+  <FileItem name="api/src/">
+    <FileItem name="index.ts" description="서버 진입점" />
+    <FileItem name="sonamu.config.ts" description="Sonamu 설정 파일" />
+    <FileItem name="application/" description="엔티티별 폴더 (자동 생성)">
+      <FileItem name="{entity}/">
+        <FileItem name="{entity}.entity.json" description="엔티티 정의" />
+        <FileItem name="{entity}.model.ts" description="비즈니스 로직" />
+        <FileItem name="{entity}.types.ts" description="타입 + Zod 스키마" />
+        <FileItem name="{entity}.model.test.ts" description="테스트 (선택)" />
+      </FileItem>
+      <FileItem
+        name="sonamu.generated.ts"
+        description="Base 스키마 (자동 생성)"
+      />
+    </FileItem>
+    <FileItem name="testing/" description="테스트 설정">
+      <FileItem name="global.ts" description="전역 테스트 설정" />
+      <FileItem name="fixture.ts" description="Fixture 관리" />
+    </FileItem>
+    <FileItem name="typings/" description="타입 정의">
+      <FileItem name="sonamu.d.ts" description="Sonamu 전역 타입" />
+      <FileItem name="fastify.d.ts" description="Fastify 확장 타입" />
+    </FileItem>
+    <FileItem name="utils/" description="유틸리티 함수">
+      <FileItem name="subset-loaders.ts" description="Subset 로더" />
+    </FileItem>
+  </FileItem>
+</FileTree>
 
-<div style={{ margin: '1.5rem' }}>
-  <Tree>
-    <Tree.Folder name="api/src" defaultOpen>
-      <Tree.File name="index.ts  (서버 진입점)" />
-      <Tree.File name="sonamu.config.ts  (Sonamu 설정 파일)" />
-      <Tree.Folder name="application  (엔티티별 폴더, 자동 생성)" defaultOpen>
-        <Tree.Folder name="{entity}">
-          <Tree.File name="{entity}.entity.json  (엔티티 정의)" />
-          <Tree.File name="{entity}.model.ts  (비즈니스 로직)" />
-          <Tree.File name="{entity}.types.ts  (타입 + Zod 스키마)" />
-          <Tree.File name="{entity}.model.test.ts  (테스트, 선택)" />
-        </Tree.Folder>
-        <Tree.File name="sonamu.generated.ts  (Base 스키마, 자동 생성)" />
-      </Tree.Folder>
-      <Tree.Folder name="testing  (테스트 설정)">
-        <Tree.File name="global.ts  (전역 테스트 설정)" />
-        <Tree.File name="fixture.ts  (Fixture 관리)" />
-      </Tree.Folder>
-      <Tree.Folder name="typings  (타입 정의)">
-        <Tree.File name="sonamu.d.ts  (Sonamu 전역 타입)" />
-        <Tree.File name="fastify.d.ts  (Fastify 확장 타입)" />
-      </Tree.Folder>
-      <Tree.Folder name="utils  (유틸리티 함수)">
-        <Tree.File name="subset-loaders.ts  (Subset 로더)" />
-      </Tree.Folder>
-    </Tree.Folder>
-  </Tree>
-</div>
+<Frame caption="📸 필요: api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)"></Frame>
 
 <Accordion title="주요 디렉토리 설명">
 
@@ -140,31 +141,33 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 </Accordion>
 
 <Info>
-**더 알아보기 - 엔티티 파일**
-- [엔티티 정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법
-- [Model 만들기](/core-concepts/model/creating-models) - model.ts 작성 가이드
-- [타입 시스템](/core-concepts/type-system/entity-types) - types.ts 이해하기
-- [자동 생성되는 것들](/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이 자동 생성되는지
-- [테스트 작성하기](/testing/writing-tests/test-structure) - 테스트 파일 구조
+  **더 알아보기 - 엔티티 파일** - [엔티티
+  정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법 -
+  [Model 만들기](/core-concepts/model/creating-models) - model.ts 작성 가이드 -
+  [타입 시스템](/core-concepts/type-system/entity-types) - types.ts 이해하기 -
+  [자동 생성되는 것들](/core-concepts/auto-generation/what-gets-generated) -
+  어떤 파일이 자동 생성되는지 - [테스트
+  작성하기](/testing/writing-tests/test-structure) - 테스트 파일 구조
 </Info>
 
 ### database/ 디렉토리
 
-<div style={{ margin: '1.5rem' }}>
-  <Tree>
-    <Tree.Folder name="api/database" defaultOpen>
-      <Tree.File name="docker-compose.yml  (PostgreSQL 컨테이너 설정)" />
-      <Tree.Folder name="fixtures  (DB 초기화 파일)">
-        <Tree.File name="init.sql  (데이터베이스 초기화 SQL)" />
-      </Tree.Folder>
-      <Tree.Folder name="dumps  (데이터 덤프 파일)" />
-      <Tree.Folder name="scripts  (데이터 관리 스크립트)">
-        <Tree.File name="dump.sh  (데이터 백업 스크립트)" />
-        <Tree.File name="seed.sh  (데이터 복원 스크립트)" />
-      </Tree.Folder>
-    </Tree.Folder>
-  </Tree>
-</div>
+<FileTree>
+  <FileItem name="api/database/">
+    <FileItem
+      name="docker-compose.yml"
+      description="PostgreSQL 컨테이너 설정"
+    />
+    <FileItem name="fixtures/">
+      <FileItem name="init.sql" description="데이터베이스 초기화 SQL" />
+    </FileItem>
+    <FileItem name="dumps/" description="데이터 덤프 파일" />
+    <FileItem name="scripts/">
+      <FileItem name="dump.sh" description="데이터 백업 스크립트" />
+      <FileItem name="seed.sh" description="데이터 복원 스크립트" />
+    </FileItem>
+  </FileItem>
+</FileTree>
 
 <Accordion title="주요 파일 설명">
 
@@ -193,33 +196,31 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 </Accordion>
 
 <Info>
-**더 알아보기 - 설정 파일**
-- [sonamu.config.ts 설정](/configuration/sonamu-config/project-settings) - 프로젝트 전체 설정
-- [데이터베이스 설정](/configuration/sonamu-config/database) - DB 연결 및 설정
-- [서버 설정](/configuration/sonamu-config/server) - Fastify 서버 설정
-- [TypeScript 설정](/configuration/typescript/tsconfig) - 컴파일러 옵션
-- [환경 변수](/configuration/environment-variables/env-setup) - .env 파일 관리
+  **더 알아보기 - 설정 파일** - [sonamu.config.ts
+  설정](/configuration/sonamu-config/project-settings) - 프로젝트 전체 설정 -
+  [데이터베이스 설정](/configuration/sonamu-config/database) - DB 연결 및 설정 -
+  [서버 설정](/configuration/sonamu-config/server) - Fastify 서버 설정 -
+  [TypeScript 설정](/configuration/typescript/tsconfig) - 컴파일러 옵션 - [환경
+  변수](/configuration/environment-variables/env-setup) - .env 파일 관리
 </Info>
 
 ## Web 디렉토리 (프론트엔드)
 
 ### 루트 파일
 
-<Frame caption="📸 필요: web 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
+<FileTree>
+  <FileItem name="web/">
+    <FileItem name="src/" description="소스 코드" />
+    <FileItem name="index.html" description="HTML 엔트리포인트" />
+    <FileItem name="package.json" description="의존성 및 스크립트" />
+    <FileItem name="vite.config.ts" description="Vite 설정" />
+    <FileItem name="tsconfig.json" description="TypeScript 설정" />
+    <FileItem name="tsconfig.node.json" description="Node 환경 설정" />
+    <FileItem name=".sonamu.env" description="환경 변수" />
+  </FileItem>
+</FileTree>
 
-<div style={{ margin: '1.5rem' }}>
-  <Tree>
-    <Tree.Folder name="web" defaultOpen>
-      <Tree.Folder name="src  (소스 코드)" />
-      <Tree.File name="index.html  (HTML 엔트리포인트)" />
-      <Tree.File name="package.json  (의존성 및 스크립트)" />
-      <Tree.File name="vite.config.ts  (Vite 설정)" />
-      <Tree.File name="tsconfig.json  (TypeScript 설정)" />
-      <Tree.File name="tsconfig.node.json  (Node 환경 설정)" />
-      <Tree.File name=".sonamu.env  (환경 변수)" />
-    </Tree.Folder>
-  </Tree>
-</div>
+<Frame caption="📸 필요: web 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
 
 <Accordion title="주요 파일 설명">
 
@@ -238,28 +239,26 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 
 ### src/ 디렉토리
 
-<div style={{ margin: '1.5rem' }}>
-  <Tree>
-    <Tree.Folder name="web/src" defaultOpen>
-      <Tree.File name="main.tsx  (React 진입점)" />
-      <Tree.File name="App.tsx  (루트 컴포넌트)" />
-      <Tree.File name="App.css  (글로벌 스타일)" />
-      <Tree.File name="index.css  (기본 스타일)" />
-      <Tree.Folder name="pages  (페이지 컴포넌트)">
-        <Tree.File name="index.tsx  (홈 페이지)" />
-      </Tree.Folder>
-      <Tree.Folder name="services  (API 서비스, 자동 생성)">
-        <Tree.File name="{Entity}Service.ts" />
-      </Tree.Folder>
-      <Tree.Folder name="admin-common  (공통 컴포넌트)">
-        <Tree.File name="ApiLogViewer.tsx" />
-        <Tree.File name="CommonModal.tsx" />
-      </Tree.Folder>
-      <Tree.Folder name="assets  (정적 리소스)" />
-      <Tree.File name="vite-env.d.ts  (Vite 타입 정의)" />
-    </Tree.Folder>
-  </Tree>
-</div>
+<FileTree>
+  <FileItem name="web/src/">
+    <FileItem name="main.tsx" description="React 진입점" />
+    <FileItem name="App.tsx" description="루트 컴포넌트" />
+    <FileItem name="App.css" description="글로벌 스타일" />
+    <FileItem name="index.css" description="기본 스타일" />
+    <FileItem name="pages/" description="페이지 컴포넌트">
+      <FileItem name="index.tsx" description="홈 페이지" />
+    </FileItem>
+    <FileItem name="services/" description="API 서비스 (자동 생성)">
+      <FileItem name="{Entity}Service.ts" />
+    </FileItem>
+    <FileItem name="admin-common/" description="공통 컴포넌트">
+      <FileItem name="ApiLogViewer.tsx" />
+      <FileItem name="CommonModal.tsx" />
+    </FileItem>
+    <FileItem name="assets/" description="정적 리소스" />
+    <FileItem name="vite-env.d.ts" description="Vite 타입 정의" />
+  </FileItem>
+</FileTree>
 
 <Accordion title="주요 디렉토리 설명">
 
@@ -282,35 +281,37 @@ Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(
 </Accordion>
 
 <Info>
-**더 알아보기 - 프론트엔드**
-- [Service 작동 원리](/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘
-- [Service 사용하기](/frontend-integration/generated-services/using-services) - API 호출 방법
-- [공유 타입](/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
+  **더 알아보기 - 프론트엔드** - [Service 작동
+  원리](/frontend-integration/generated-services/how-services-work) - 자동 생성
+  메커니즘 - [Service
+  사용하기](/frontend-integration/generated-services/using-services) - API 호출
+  방법 - [공유 타입](/frontend-integration/type-safety/shared-types) -
+  백엔드-프론트엔드 타입 동기화
 </Info>
 
 ## 엔티티 생성 시 파일 구조 예시
 
 User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
 
-<Frame caption="📸 필요: User 엔티티 생성 후 api/src/application/user 폴더의 실제 파일 구조"></Frame>
+<FileTree>
+  <FileItem name="api/src/application/">
+    <FileItem name="user/">
+      <FileItem name="user.entity.json" description="Sonamu UI에서 생성" />
+      <FileItem name="user.model.ts" description="직접 작성" />
+      <FileItem name="user.types.ts" description="자동 생성 (확장 가능)" />
+      <FileItem name="user.model.test.ts" description="직접 작성 (선택)" />
+    </FileItem>
+    <FileItem name="sonamu.generated.ts" description="자동 업데이트" />
+  </FileItem>
+  <FileItem name="database/migrations/">
+    <FileItem name="20250106120000_create_user.sql" description="자동 생성" />
+  </FileItem>
+  <FileItem name="web/src/services/">
+    <FileItem name="UserService.ts" description="자동 생성" />
+  </FileItem>
+</FileTree>
 
-<Tree>
-  <Tree.Folder name="api/src/application" defaultOpen>
-    <Tree.Folder name="user" defaultOpen>
-      <Tree.File name="user.entity.json  (Sonamu UI에서 생성)" />
-      <Tree.File name="user.model.ts  (직접 작성)" />
-      <Tree.File name="user.types.ts  (자동 생성, 확장 가능)" />
-      <Tree.File name="user.model.test.ts  (직접 작성, 선택)" />
-    </Tree.Folder>
-    <Tree.File name="sonamu.generated.ts  (자동 업데이트)" />
-  </Tree.Folder>
-  <Tree.Folder name="database/migrations">
-    <Tree.File name="20250106120000_create_user.sql  (자동 생성)" />
-  </Tree.Folder>
-  <Tree.Folder name="web/src/services">
-    <Tree.File name="UserService.ts  (자동 생성)" />
-  </Tree.Folder>
-</Tree>
+<Frame caption="📸 필요: User 엔티티 생성 후 api/src/application/user 폴더의 실제 파일 구조"></Frame>
 
 ### 각 파일의 역할
 
@@ -397,11 +398,12 @@ export class UserService {
 </Note>
 
 <Info>
-**더 알아보기 - 파일별 가이드**
-- [엔티티 정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법
-- [@api 데코레이터](/core-concepts/model/api-decorator) - model.ts에서 API 정의
-- [Entity Types](/core-concepts/type-system/entity-types) - types.ts 활용하기
-- [Generated Types](/core-concepts/type-system/generated-types) - sonamu.generated.ts 이해
+  **더 알아보기 - 파일별 가이드** - [엔티티
+  정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법 -
+  [@api 데코레이터](/core-concepts/model/api-decorator) - model.ts에서 API 정의
+  - [Entity Types](/core-concepts/type-system/entity-types) - types.ts 활용하기
+  - [Generated Types](/core-concepts/type-system/generated-types) -
+  sonamu.generated.ts 이해
 </Info>
 
 ## 개발 시 주요 작업 위치
