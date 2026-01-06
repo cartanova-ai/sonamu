@@ -711,7 +711,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
 
   return (
-    <div className="flex-1 p-8 overflow-x-hidden flex flex-col gap-8 min-h-[calc(100vh-50px)]">
+    <div className="flex-1 p-8 overflow-x-hidden flex flex-col gap-8 min-h-[calc(100vh-50px)] bg-gray-50">
       {isLoading && <div>Loading</div>}
       {entity && (
         <>

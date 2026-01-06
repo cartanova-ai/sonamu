@@ -139,7 +139,9 @@ export default function EntityChatComponent({
 
     return (
       <div className="max-h-[300px] overflow-y-auto text-[0.9em] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10">
-        <div className={`flex items-center gap-2 mb-2 text-text-muted text-[0.85em] ${toolState === "running" ? "text-[#fbbf24]" : ""} ${toolState === "success" ? "text-[#34d399]" : ""}`}>
+        <div
+          className={`flex items-center gap-2 mb-2 text-text-muted text-[0.85em] ${toolState === "running" ? "text-[#fbbf24]" : ""} ${toolState === "success" ? "text-[#34d399]" : ""}`}
+        >
           <div>
             {toolState === "idle" && (
               <MessageCircleIcon style={{ color: config.color, margin: 0 }} />

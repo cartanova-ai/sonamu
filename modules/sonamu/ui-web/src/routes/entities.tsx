@@ -40,7 +40,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
   };
 
   return (
-    <div className="entities-layout" id="scroller">
+    <div className="flex min-h-[calc(100vh-50px)]" id="scroller">
       <div className="w-sidemenu bg-sidebar-bg text-[0.95em] sticky left-0 top-gnb h-[calc(100vh-var(--spacing-gnb))] flex flex-col border-r border-white/5">
         <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
           {isLoading && <div className="loading-state">Loading...</div>}
@@ -82,12 +82,9 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
             <Button
               variant="outline"
               size="sm"
-              className={classnames(
-                "w-[36px] p-0 flex items-center justify-center shadow-none!",
-                {
-                  "bg-accent! text-white! border-accent!": showAIChat,
-                },
-              )}
+              className={classnames("w-[36px] p-0 flex items-center justify-center shadow-none!", {
+                "bg-accent! text-white! border-accent!": showAIChat,
+              })}
               onClick={() => setShowAIChat(!showAIChat)}
               icon={<MessageSquareIcon />}
             />
@@ -106,7 +103,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
       <Outlet />
       <Button
         variant="outline"
-        className="move-to-top rounded-full"
+        className="fixed right-[2em] bottom-[2em] z-1000 bg-sidebar-bg text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-transform duration-200 hover:-translate-y-[2px] hover:bg-sidebar-hover rounded-full"
         onClick={() => document.getElementById("scroller")?.scrollIntoView({ behavior: "smooth" })}
         icon={<ArrowUpIcon />}
       />

@@ -1,7 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import "./styles/App.scss";
 import "semantic-ui-css/semantic.min.css";
 import { CommonModal } from "@sonamu-kit/react-components";
 import classNames from "classnames";

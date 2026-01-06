@@ -304,9 +304,14 @@ export function EntityIndexModal({
                 {form.columns.length > 0 && (
                   <div className="mt-2 flex flex-col gap-2">
                     {form.columns.map((col, idx) => (
-                      <div className="bg-white border border-gray-300 rounded-md px-3 py-2 flex flex-row items-center justify-between transition-shadow hover:shadow-md hover:border-gray-400" key={col.name}>
+                      <div
+                        className="bg-white border border-gray-300 rounded-md px-3 py-2 flex flex-row items-center justify-between transition-shadow hover:shadow-md hover:border-gray-400"
+                        key={col.name}
+                      >
                         <div className="flex items-center gap-3">
-                          <span className="bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                          <span className="bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+                            {idx + 1}
+                          </span>
                           <span className="font-semibold text-base text-gray-800">{col.name}</span>
                         </div>
 
@@ -383,7 +388,9 @@ export function EntityIndexModal({
 
           <h5>Debug: Form State</h5>
           <div className="ui secondary segment m-0">
-            <pre className="overflow-x-auto text-[11px] leading-[1.4] m-0 text-gray-600">{JSON.stringify(form, null, 2)}</pre>
+            <pre className="overflow-x-auto text-[11px] leading-[1.4] m-0 text-gray-600">
+              {JSON.stringify(form, null, 2)}
+            </pre>
           </div>
         </div>
 

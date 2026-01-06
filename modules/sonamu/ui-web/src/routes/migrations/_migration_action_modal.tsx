@@ -85,9 +85,14 @@ export function MigrationActionModal({
                   {conns.map((conn) => (
                     <div
                       key={conn.name}
-                      className={classNames("flex-1 text-center p-4 bg-[#f1fff5] border border-[#b1f3c4] rounded-[0.3em] opacity-30", {
-                        "bg-[#b1f3c4] text-green-600 font-bold opacity-100": targets.includes(conn.connKey),
-                      })}
+                      className={classNames(
+                        "flex-1 text-center p-4 bg-[#f1fff5] border border-[#b1f3c4] rounded-[0.3em] opacity-30",
+                        {
+                          "bg-[#b1f3c4] text-green-600 font-bold opacity-100": targets.includes(
+                            conn.connKey,
+                          ),
+                        },
+                      )}
                     >
                       {targets.includes(conn.connKey) && (
                         <CheckIcon className="h-4 w-4 inline-block mr-1" />

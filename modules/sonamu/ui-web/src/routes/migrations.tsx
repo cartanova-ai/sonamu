@@ -140,7 +140,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
   if (error) {
     return (
       <div className="p-8">
-        <div className="message-box error">{error.message}</div>
+        <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-red-500">
+          {error.message}
+        </div>
       </div>
     );
   }
@@ -377,6 +379,12 @@ type CodeViewerProps = {
 };
 function CodeViewer({ code, open }: CodeViewerProps) {
   return (
-    <div className="flex items-start">{open ? <code className="flex-1 m-[0.2em]">{code}</code> : <div className="m-auto">Code is collapsed</div>}</div>
+    <div className="flex items-start">
+      {open ? (
+        <code className="flex-1 m-[0.2em]">{code}</code>
+      ) : (
+        <div className="m-auto">Code is collapsed</div>
+      )}
+    </div>
   );
 }

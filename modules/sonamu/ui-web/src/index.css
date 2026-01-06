@@ -26,7 +26,7 @@
   --spacing-gnb: 50px;
 }
 
-/* 글로벌 리셋 (App.scss에서 이전) */
+/* 글로벌 리셋 */
 * {
   box-sizing: border-box;
 }
@@ -36,4 +36,29 @@
   height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* 애니메이션 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }

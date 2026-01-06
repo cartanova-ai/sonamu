@@ -380,7 +380,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       <div className="flex-1 p-4">
         <div>
           {!statuses && !scaffoldingIsLoading && (
-            <div className="message-box warning">
+            <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-orange-500">
               Please select EntityIDs / TemplateKeys
               {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to generate
             </div>

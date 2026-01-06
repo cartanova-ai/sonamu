@@ -38,7 +38,7 @@ export function SheetCellInput({ editable, initialValue, onChange }: SheetCellIn
           value={value}
           onChange={handleOnChange}
           onKeyDown={handleOnKeyDown}
-          className="sheet-cell-input"
+          className="sheet-cell-input [&>input]:p-[0.2em_0.4em]"
         />
       ) : (
         <>{initialValue}&nbsp;</>

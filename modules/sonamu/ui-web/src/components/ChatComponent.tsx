@@ -158,10 +158,14 @@ export default function ChatComponent({ fixtureRecords, onUpdateFixtures }: Chat
           {toolState === "success" && <CheckIcon />}
           {toolState === "error" && <AlertCircleIcon />}
           <span className="font-mono text-[0.9em] opacity-80">{displayName}</span>
-          <span className="before:content-['·'] before:mx-[0.2em] before:opacity-50">{config.text}</span>
+          <span className="before:content-['·'] before:mx-[0.2em] before:opacity-50">
+            {config.text}
+          </span>
         </div>
         {summaryMessage && toolState === "success" && (
-          <div className="mt-[0.6em] p-[0.6em_0.8em] bg-[#f8fafc] border-l-[3px] border-l-accent rounded-r-[4px] text-[0.9em] text-[#334155] leading-normal">{summaryMessage}</div>
+          <div className="mt-[0.6em] p-[0.6em_0.8em] bg-[#f8fafc] border-l-[3px] border-l-accent rounded-r-[4px] text-[0.9em] text-[#334155] leading-normal">
+            {summaryMessage}
+          </div>
         )}
       </div>
     );
