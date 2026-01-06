@@ -41,31 +41,40 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
 
   return (
     <div className="entities-layout" id="scroller">
-      <div className="sidemenu">
-        <div className="entity-list-container">
+      <div className="w-sidemenu bg-sidebar-bg text-[0.95em] sticky left-0 top-gnb h-[calc(100vh-var(--spacing-gnb))] flex flex-col border-r border-white/5">
+        <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
           {isLoading && <div className="loading-state">Loading...</div>}
           {error && <div className="error-state">Error: {error.message}</div>}
           {entities?.map((entity) => (
             <Link
               key={entity.id}
-              className={classnames("entity-list-item", {
-                selected: entity.id === entityId,
-              })}
+              className={classnames(
+                "py-[0.6em] px-[1.2em] cursor-pointer font-normal flex items-center text-text-muted no-underline transition-all duration-200 border-l-[3px] border-transparent",
+                "hover:bg-sidebar-hover hover:text-white hover:pl-[1.5em] hover:[&_.parent-prefix]:opacity-80",
+                {
+                  "bg-sidebar-selected! text-white! border-l-accent font-medium [&_.entity-name]:text-white!":
+                    entity.id === entityId,
+                },
+              )}
               to="/entities/$entityId"
               params={{ entityId: entity.id }}
             >
-              {entity.parentId && <span className="parent-prefix">{entity.parentId}</span>}
-              <span className="entity-name">{entity.id}</span>
+              {entity.parentId && (
+                <span className="parent-prefix text-[0.85em] opacity-60 mr-[0.5em] text-text-muted after:content-['>'] after:ml-[0.3em]">
+                  {entity.parentId}
+                </span>
+              )}
+              <span className="entity-name text-text-light">{entity.id}</span>
             </Link>
           ))}
         </div>
 
-        <div className="sidebar-footer">
-          <div className="action-buttons-row">
+        <div className="shrink-0 p-4 bg-black/20 border-t border-white/10 flex flex-col gap-[0.8em]">
+          <div className="flex gap-[0.5em]">
             <Button
               size="sm"
               variant="green"
-              className="footer-btn w-full"
+              className="flex-1 shadow-none! hover:bg-white/10!"
               onClick={() => setCreateModalOpen(true)}
             >
               <PlusIcon className="mr-2 h-4 w-4" /> New Entity
@@ -73,14 +82,19 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
             <Button
               variant="outline"
               size="sm"
-              className={`ai-toggle-btn ${showAIChat ? "active" : ""}`}
+              className={classnames(
+                "w-[36px] p-0 flex items-center justify-center shadow-none!",
+                {
+                  "bg-accent! text-white! border-accent!": showAIChat,
+                },
+              )}
               onClick={() => setShowAIChat(!showAIChat)}
               icon={<MessageSquareIcon />}
             />
           </div>
 
           {showAIChat && (
-            <div className="ai-chat-container">
+            <div className="mt-[0.5em] animate-[slideUp_0.3s_ease-out]">
               <EntityChatComponent
                 onEntityCreated={handleEntityCreated}
                 onEntityUpdated={handleEntityUpdated}

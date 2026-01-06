@@ -711,12 +711,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
 
   return (
-    <div className="entities-detail">
+    <div className="flex-1 p-8 overflow-x-hidden flex flex-col gap-8 min-h-[calc(100vh-50px)]">
       {isLoading && <div>Loading</div>}
       {entity && (
         <>
-          <div className="entity-base">
-            <h3>
+          <div className="relative pb-4 border-b border-gray-200">
+            <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
               <span>
                 Entity: <strong className="text-green-600">{entity.id}</strong>
               </span>
@@ -725,7 +725,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 variant="destructive"
                 icon={<Trash2Icon />}
                 content="Delete"
-                className="btn-del-entity"
+                className="absolute text-[0.4em] right-0 top-0 opacity-70 hover:opacity-100"
                 onClick={() => delEntity()}
               />
             </h3>
@@ -755,8 +755,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </div>
             </form>
           </div>
-          <div className="props-and-indexes">
-            <div className="props">
+          <div className="flex gap-4">
+            <div className="flex-1">
               <h3>Props</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
@@ -817,12 +817,14 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 3)}>
-                        {prop.nullable && <span className="ui label">NULL</span>}
+                        {prop.nullable && (
+                          <span className="ui label text-[9px]! py-1px px-[4px]">NULL</span>
+                        )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 4)}>
                         {prop.type === "enum" && (
                           <span
-                            className="ui label"
+                            className="ui label text-[9px]! py-1px px-[4px]"
                             style={{ backgroundColor: "#6b7280", color: "white" }}
                           >
                             {prop.id}
@@ -830,7 +832,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                         {(prop.type === "json" || prop.type === "virtual") && (
                           <span
-                            className="ui label"
+                            className="ui label text-[8px]! py-1px px-[4px]"
                             style={{ backgroundColor: "#ca8a04", color: "white" }}
                           >
                             {prop.id}
@@ -838,7 +840,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                         {prop.type === "relation" && (
                           <span
-                            className="ui label"
+                            className="ui label text-[9px]! py-1px px-[4px]"
                             style={{
                               backgroundColor: prop.relationType.endsWith("ToOne")
                                 ? "#f97316"
@@ -873,7 +875,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 </TableBody>
               </Table>
             </div>
-            <div className="indexes">
+            <div className="flex-[0.5]">
               <h3>Indexes</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
@@ -890,7 +892,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </TableCell>
                       <TableCell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
-                          <span className="ui label" key={colIndex}>
+                          <span className="ui label text-[10px]! py-1px px-[4px]" key={colIndex}>
                             {col.name}
                           </span>
                         ))}
@@ -912,15 +914,15 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </Table>
             </div>
           </div>
-          <div className="enums-and-subsets">
+          <div className="flex gap-8">
             {entity && Object.keys(enumLabelsArray).length > 0 && (
-              <div className="enums">
+              <div className="flex-1">
                 <h3>
                   Enums <Button size="xs" icon={<PlusIcon />} onClick={() => openCreateNewEnum()} />
                 </h3>
-                <div className="enums-list">
+                <div className="flex flex-wrap gap-8">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
-                    <div className="enums-table" key={enumsIndex}>
+                    <div className="w-80" key={enumsIndex}>
                       <Table id={`enum-${enumId}`} className="border rounded-lg bg-white">
                         <TableHeader className="bg-gray-50">
                           <TableRow>
@@ -987,12 +989,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             </TableRow>
                           ))}
                           <TableRow>
-                            <TableCell colSpan={2}>
+                            <TableCell colSpan={2} className="text-center">
                               <Button
                                 size="xs"
                                 variant="default"
                                 icon={<PlusIcon />}
-                                className="btn-add-enum-label"
+                                className="mx-auto py-[0.3em] px-4"
                                 onClick={() => addEnumLabelRow(enumId)}
                               />
                             </TableCell>
@@ -1005,7 +1007,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </div>
             )}
             {entity && Object.keys(entity.subsets).length > 0 && (
-              <div className="subsets">
+              <div className="flex-[0.5]">
                 <h3>
                   Subsets{" "}
                   <Button

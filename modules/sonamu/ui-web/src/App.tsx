@@ -79,7 +79,9 @@ function App({ children }: AppProps) {
                     "self-center px-6 py-[0.8em] cursor-pointer text-center text-text-light! no-underline rounded-md transition-all duration-200",
                     "hover:bg-white/10 hover:text-white!",
                     {
-                      "bg-white/15! font-semibold text-white!": location.pathname.includes(menu.path),
+                      "bg-white/15! font-semibold text-white!": location.pathname.includes(
+                        menu.path,
+                      ),
                     },
                   )}
                   to={menu.path}

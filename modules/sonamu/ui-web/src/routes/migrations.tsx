@@ -4,7 +4,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  type TableCol,
   TableHead,
   TableHeader,
   TableRow,
@@ -138,116 +137,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
     }
   };
 
-  // Prepared Migration Codes 테이블 컬럼 정의
-  type PreparedCode = NonNullable<typeof preparedCodes>[number];
-  const preparedCodesColumns: TableCol<PreparedCode>[] = [
-    {
-      label: "Type",
-      tc: (pcode) => <>{pcode.type}</>,
-      fit: true,
-    },
-    {
-      label: "Table",
-      tc: (pcode) => <>{pcode.table}</>,
-      fit: true,
-    },
-    {
-      label: "Name",
-      tc: (pcode) => <>{pcode.title}</>,
-      fit: true,
-    },
-    {
-      label: "Code",
-      tc: (pcode) => <CodeViewer code={pcode.formatted ?? ""} open={isAllCodeViewerOpen} />,
-    },
-  ];
-
-  // Migration Code Files 테이블 컬럼 정의 (동적 생성)
-  type MigrationCode = NonNullable<typeof codes>[number];
-  const getMigrationCodeColumns = (): TableCol<MigrationCode>[] => {
-    if (!conns) return [];
-
-    return [
-      {
-        label: (
-          <div className="flex items-center gap-1">
-            Name{" "}
-            <Button
-              icon={<CheckIcon />}
-              size="xs"
-              variant="blue"
-              onClick={() => toggleAllFiles()}
-            />
-          </div>
-        ),
-        tc: (code) => (
-          <div className="flex items-center gap-1">
-            <Checkbox
-              checked={selectedCodeNames.includes(code.name)}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setSelectedCodeNames(unique([...selectedCodeNames, code.name]));
-                } else {
-                  setSelectedCodeNames(selectedCodeNames.filter((name) => name !== code.name));
-                }
-              }}
-            />
-            <span className="ml-2">{code.name}</span>
-            &nbsp;{" "}
-            <Button
-              size="xs"
-              variant="secondary"
-              icon={<CodeIcon />}
-              onClick={() => {
-                SonamuUIService.openVscode({
-                  absPath: code.path,
-                });
-              }}
-            />
-          </div>
-        ),
-      },
-      ...conns.map((conn) => ({
-        label: (
-          <Checkbox
-            disabled={conn.status === "error" || !!migrationStatusError}
-            checked={selectedConnKeys.includes(conn.connKey)}
-            onCheckedChange={(checked: boolean) => {
-              if (checked) {
-                setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));
-              } else {
-                setSelectedConnKeys(selectedConnKeys.filter((key) => key !== conn.connKey));
-              }
-            }}
-          >
-            <span className="ml-2">{`${conn.name} / ${conn.status}`}</span>
-          </Checkbox>
-        ),
-        tc: (code: MigrationCode) => (
-          <>
-            {conn.pending.includes(code.name) ? (
-              <span className="ui mini yellow label">
-                <i className="minus icon" />
-                PENDING
-              </span>
-            ) : conn.status === "error" || !!migrationStatusError ? (
-              <span className="ui mini red label">
-                <i className="times icon" />
-                ERROR
-              </span>
-            ) : (
-              <span className="ui mini green label">
-                <i className="check icon" />
-                APPLIED
-              </span>
-            )}
-          </>
-        ),
-        fit: true,
-      })),
-    ];
-  };
-
   if (error) {
     return (
       <div className="migrations-index">
@@ -278,43 +167,33 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-gray-100">
-                  {preparedCodesColumns.map((col, idx) => (
-                    <TableHead key={idx} fit={col.fit}>
-                      {col.label}
-                    </TableHead>
-                  ))}
+                  <TableHead>Type</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Code</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {migrationStatusError && (
                   <TableRow>
-                    <TableCell colSpan={preparedCodesColumns.length}>
-                      {migrationStatusError}
-                    </TableCell>
+                    <TableCell colSpan={6}>{migrationStatusError}</TableCell>
                   </TableRow>
                 )}
                 {!migrationStatusError && preparedCodes.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={preparedCodesColumns.length} className="text-center">
+                    <TableCell colSpan={6} className="text-center">
                       No prepared migration codes.
                     </TableCell>
                   </TableRow>
                 )}
                 {preparedCodes.map((pcode, pcodeIndex) => (
                   <TableRow key={pcodeIndex}>
-                    {preparedCodesColumns.map((col, idx) => (
-                      <TableCell
-                        key={idx}
-                        fit={col.fit}
-                        style={
-                          idx === preparedCodesColumns.length - 1
-                            ? { padding: 0, width: 700, textAlign: "center" }
-                            : undefined
-                        }
-                      >
-                        {col.tc(pcode, pcodeIndex)}
-                      </TableCell>
-                    ))}
+                    <TableCell>{pcode.type}</TableCell>
+                    <TableCell>{pcode.table}</TableCell>
+                    <TableCell>{pcode.title}</TableCell>
+                    <TableCell style={{ padding: 0, width: 700, textAlign: "center" }}>
+                      <CodeViewer code={pcode.formatted ?? ""} open={isAllCodeViewerOpen} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -361,81 +240,121 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
               </Button>
             </div>
           </div>
-          {conns &&
-            codes &&
-            (() => {
-              const migrationCodeColumns = getMigrationCodeColumns();
-              return (
-                <Table className="mt-4">
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent bg-gray-100">
-                      {migrationCodeColumns.map((col, idx) => (
-                        <TableHead
-                          key={idx}
-                          fit={col.fit}
-                          style={idx > 0 ? { width: "150px" } : undefined}
-                          className={
-                            idx > 0 && conns[idx - 1]
-                              ? classNames({
-                                  "conn-selected": selectedConnKeys.includes(
-                                    conns[idx - 1].connKey,
-                                  ),
-                                })
-                              : undefined
+          {conns && codes && (
+            <Table className="mt-4">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent bg-gray-100">
+                  <TableHead className="flex items-center gap-1">
+                    Name{" "}
+                    <Button
+                      icon={<CheckIcon />}
+                      size="xs"
+                      variant="blue"
+                      onClick={() => toggleAllFiles()}
+                    />
+                  </TableHead>
+                  {conns.map((conn, connIndex) => (
+                    <TableHead
+                      key={connIndex}
+                      style={{ width: "150px" }}
+                      className={classNames({
+                        "conn-selected": selectedConnKeys.includes(conn.connKey),
+                      })}
+                    >
+                      <Checkbox
+                        disabled={conn.status === "error" || !!migrationStatusError}
+                        checked={selectedConnKeys.includes(conn.connKey)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedConnKeys(unique([...selectedConnKeys, conn.connKey]));
+                          } else {
+                            setSelectedConnKeys(
+                              selectedConnKeys.filter((key) => key !== conn.connKey),
+                            );
                           }
+                        }}
+                      />
+                      <span className="ml-2">{`${conn.name} / ${conn.status}`}</span>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {conns.some((conn) => conn.status === "error" || !!migrationStatusError) && (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <b>
+                        Some connections are in error state. Please check the connection settings
+                        and try again.
+                      </b>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {codes.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6}>No migration code files</TableCell>
+                  </TableRow>
+                )}
+                {codes.map((code, codeIndex) => (
+                  <Fragment key={codeIndex}>
+                    <TableRow>
+                      <TableCell className="flex items-center gap-1">
+                        <Checkbox
+                          checked={selectedCodeNames.includes(code.name)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCodeNames(unique([...selectedCodeNames, code.name]));
+                            } else {
+                              setSelectedCodeNames(
+                                selectedCodeNames.filter((name) => name !== code.name),
+                              );
+                            }
+                          }}
+                        />
+                        <span className="ml-2">{code.name}</span>
+                        &nbsp;{" "}
+                        <Button
+                          size="xs"
+                          variant="secondary"
+                          icon={<CodeIcon />}
+                          onClick={() => {
+                            SonamuUIService.openVscode({
+                              absPath: code.path,
+                            });
+                          }}
+                        />
+                      </TableCell>
+                      {conns.map((conn, connIndex) => (
+                        <TableCell
+                          key={connIndex}
+                          className={classNames("conn-status", {
+                            "conn-selected": selectedConnKeys.includes(conn.connKey),
+                          })}
                         >
-                          {col.label}
-                        </TableHead>
+                          {conn.pending.includes(code.name) ? (
+                            <span className="ui mini yellow label">
+                              <i className="minus icon" />
+                              PENDING
+                            </span>
+                          ) : conn.status === "error" || !!migrationStatusError ? (
+                            <span className="ui mini red label">
+                              <i className="times icon" />
+                              ERROR
+                            </span>
+                          ) : (
+                            <span className="ui mini green label">
+                              <i className="check icon" />
+                              APPLIED
+                            </span>
+                          )}
+                        </TableCell>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {conns.some((conn) => conn.status === "error" || !!migrationStatusError) && (
-                      <TableRow>
-                        <TableCell colSpan={migrationCodeColumns.length}>
-                          <b>
-                            Some connections are in error state. Please check the connection
-                            settings and try again.
-                          </b>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {codes.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={migrationCodeColumns.length}>
-                          No migration code files
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {codes.map((code, codeIndex) => (
-                      <Fragment key={codeIndex}>
-                        <TableRow>
-                          {migrationCodeColumns.map((col, idx) => (
-                            <TableCell
-                              key={idx}
-                              fit={col.fit}
-                              className={
-                                idx === 0
-                                  ? "flex items-center gap-1"
-                                  : idx > 0 && conns[idx - 1]
-                                    ? classNames("conn-status", {
-                                        "conn-selected": selectedConnKeys.includes(
-                                          conns[idx - 1].connKey,
-                                        ),
-                                      })
-                                    : undefined
-                              }
-                            >
-                              {col.tc(code, codeIndex)}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      </Fragment>
-                    ))}
-                  </TableBody>
-                </Table>
-              );
-            })()}
+                  </Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
       {conns && actionModalData && (
