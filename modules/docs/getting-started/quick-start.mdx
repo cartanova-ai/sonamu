@@ -32,7 +32,8 @@ pnpm docker:up
 이 명령어는 Docker Compose를 사용하여 PostgreSQL 데이터베이스를 백그라운드에서 실행합니다.
 
 <Tip>
-데이터베이스가 정상적으로 실행되었는지 확인하려면 `docker ps` 명령어로 컨테이너 상태를 확인할 수 있습니다.
+  데이터베이스가 정상적으로 실행되었는지 확인하려면 `docker ps` 명령어로
+  컨테이너 상태를 확인할 수 있습니다.
 </Tip>
 
 </Step>
@@ -54,7 +55,7 @@ pnpm dev
 API 서버는 Hot Module Replacement(HMR)을 지원하므로 코드 변경 시 자동으로 재시작됩니다.
 
 <Warning>
-이 터미널 창은 계속 열어두어야 합니다. API 서버가 실행 중인 상태를 유지합니다.
+  이 터미널 창은 계속 열어두어야 합니다. API 서버가 실행 중인 상태를 유지합니다.
 </Warning>
 
 </Step>
@@ -71,13 +72,14 @@ pnpm sonamu ui
 Sonamu UI가 시작되면 브라우저에서 http://localhost:2028 로 접속할 수 있습니다.
 
 Sonamu UI에서는 다음 작업을 수행할 수 있습니다:
+
 - 엔티티 생성 및 편집
 - 데이터베이스 마이그레이션 관리
 - API 엔드포인트 확인
 - 데이터베이스 스키마 시각화
 
 <Note>
-Sonamu UI는 개발 중에만 필요합니다. 엔티티를 생성하거나 관리할 때 사용하세요.
+  Sonamu UI는 개발 중에만 필요합니다. 엔티티를 생성하거나 관리할 때 사용하세요.
 </Note>
 
 </Step>
@@ -109,14 +111,15 @@ Web 서버는 API 서버로의 프록시를 자동으로 설정하므로 `/api/*
 
 이제 모든 서버가 실행 중입니다. 브라우저에서 다음 URL로 접속할 수 있습니다:
 
-| 서비스    | URL                          | 설명                      |
-| --------- | ---------------------------- | ------------------------- |
-| Web 앱    | http://localhost:3028        | 프론트엔드 애플리케이션   |
-| API 서버  | http://localhost:1028/api    | REST API 엔드포인트       |
-| Sonamu UI | http://localhost:2028        | 엔티티 관리 인터페이스    |
+| 서비스    | URL                       | 설명                    |
+| --------- | ------------------------- | ----------------------- |
+| Web 앱    | http://localhost:3028     | 프론트엔드 애플리케이션 |
+| API 서버  | http://localhost:1028/api | REST API 엔드포인트     |
+| Sonamu UI | http://localhost:2028     | 엔티티 관리 인터페이스  |
 
 <Check>
-Web 앱(http://localhost:3028)에 접속하여 Sonamu 애플리케이션이 정상적으로 실행되는지 확인하세요.
+  Web 앱(http://localhost:3028)에 접속하여 Sonamu 애플리케이션이 정상적으로
+  실행되는지 확인하세요.
 </Check>
 
 ## 서버 중지
@@ -134,7 +137,9 @@ pnpm docker:down
 ```
 
 <Warning>
-`docker:down` 명령어는 컨테이너를 중지만 하며, 데이터는 보존됩니다. 데이터베이스를 완전히 초기화하려면 [데이터베이스 관리](/database/management) 문서를 참고하세요.
+  `docker:down` 명령어는 컨테이너를 중지만 하며, 데이터는 보존됩니다.
+  데이터베이스를 완전히 초기화하려면 [데이터베이스 관리](/database/management)
+  문서를 참고하세요.
 </Warning>
 
 ## 다음 단계
@@ -142,16 +147,29 @@ pnpm docker:down
 개발 환경이 준비되었습니다! 이제 다음 가이드를 통해 Sonamu의 핵심 기능을 배워보세요:
 
 <CardGroup cols={2}>
-  <Card title="첫 엔티티 만들기" icon="database" href="/core-concepts/entities">
-    Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를 정의하세요.
+  <Card
+    title="첫 엔티티 만들기"
+    icon="database"
+    href="/getting-started/first-entity"
+  >
+    Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를
+    정의하세요.
   </Card>
   <Card title="API 개발하기" icon="code" href="/api-development/creating-apis">
     엔티티 기반으로 REST API를 생성하고 비즈니스 로직을 구현하세요.
   </Card>
-  <Card title="프론트엔드 통합" icon="browser" href="/frontend-integration/service-layer">
+  <Card
+    title="프론트엔드 통합"
+    icon="browser"
+    href="/frontend-integration/generated-services/how-services-work"
+  >
     자동 생성된 서비스 레이어를 사용하여 프론트엔드에서 API를 호출하세요.
   </Card>
-  <Card title="프로젝트 구조" icon="folder" href="/core-concepts/project-structure">
+  <Card
+    title="프로젝트 구조"
+    icon="folder"
+    href="/getting-started/project-structure"
+  >
     Sonamu 프로젝트의 디렉토리 구조와 주요 파일들을 이해하세요.
   </Card>
 </CardGroup>
