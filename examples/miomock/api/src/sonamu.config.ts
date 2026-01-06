@@ -50,7 +50,7 @@ export default defineConfig({
         lowestLevel: "debug",
       },
       {
-        category: ["sonamu", "internal", "syncer"],
+        category: ["sonamu", "internal", "tasks"],
         sinks: ["console"],
         lowestLevel: "error",
       },
