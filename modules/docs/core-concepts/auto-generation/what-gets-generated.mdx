@@ -1,6 +1,561 @@
 ---
-title: "무엇이 생성되나?"
-description: "types, service, generated 파일"
+title: "자동 생성되는 파일"
+description: "Sonamu가 Entity 정의로부터 자동 생성하는 모든 파일 목록"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 Entity 정의를 기반으로 TypeScript 타입, Zod 스키마, API 클라이언트, React 컴포넌트 등을 자동으로 생성합니다. 이 문서는 생성되는 모든 파일의 종류와 용도를 설명합니다.
+
+## 생성 파일 개요
+
+<CardGroup cols={2}>
+  <Card title="타입 & 스키마" icon="brackets-curly">
+    TypeScript 타입과 Zod 스키마
+    
+    *.types.ts, sonamu.generated.ts
+  </Card>
+  <Card title="API 클라이언트" icon="code">
+    HTTP 클라이언트 함수
+    
+    services.generated.ts
+  </Card>
+  <Card title="쿼리 헬퍼" icon="database">
+    Subset 쿼리 함수들
+    
+    sonamu.generated.sso.ts
+  </Card>
+  <Card title="React 컴포넌트" icon="react">
+    Form, List, Select 컴포넌트
+    
+    view_*.tsx
+  </Card>
+</CardGroup>
+
+## 핵심 생성 파일
+
+### 1. Entity Types (`{entity}.types.ts`)
+
+Entity별 TypeScript 타입과 Zod 스키마가 생성됩니다.
+
+```typescript title="api/src/application/user/user.types.ts (자동 생성)"
+import { z } from "zod";
+
+// Base 타입
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+  role: "admin" | "normal";
+  created_at: Date;
+};
+
+// Zod 스키마
+export const User = z.object({
+  id: z.number(),
+  email: z.string(),
+  username: z.string(),
+  role: z.enum(["admin", "normal"]),
+  created_at: z.date(),
+});
+
+// List 파라미터
+export const UserListParams = z.object({
+  num: z.number().optional(),
+  page: z.number().optional(),
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+  orderBy: UserOrderBy.optional(),
+});
+
+// Save 파라미터
+export const UserSaveParams = User.partial({ id: true });
+```
+
+**생성 시점**: Entity 저장 또는 `pnpm sonamu sync`
+
+**수정 가능 여부**: ❌ 자동 재생성됨 (커스텀 타입은 별도 파일에)
+
+### 2. Generated Base (`sonamu.generated.ts`)
+
+프로젝트 전체의 기본 타입과 Enum이 생성됩니다.
+
+```typescript title="api/src/application/sonamu.generated.ts (자동 생성)"
+import { z } from "zod";
+
+// 모든 Entity의 Enum
+export const UserRole = z.enum(["admin", "normal"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+export const UserSearchField = z.enum(["id", "email", "username"]);
+export const UserOrderBy = z.enum(["id-desc", "id-asc", "created_at-desc"]);
+
+// Subset 타입
+export type UserSubsetKey = "A" | "P" | "SS";
+export type UserSubsetMapping = {
+  A: UserA;
+  P: UserP;
+  SS: UserSS;
+};
+
+// Enum 라벨 헬퍼
+export function userRoleLabel(role: UserRole): string {
+  return {
+    admin: "관리자",
+    normal: "일반 사용자",
+  }[role];
+}
+
+// Export all models
+export * from "./user/user.model";
+export * from "./post/post.model";
+```
+
+**생성 시점**: Entity 저장 또는 `pnpm sonamu sync`
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+### 3. Subset Queries (`sonamu.generated.sso.ts`)
+
+Subset별 쿼리 함수가 생성됩니다.
+
+```typescript title="api/src/application/sonamu.generated.sso.ts (자동 생성)"
+import type { PuriWrapper } from "sonamu";
+
+// Subset 쿼리 함수들
+export const userSubsetQueries = {
+  A: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select([
+        "users.id",
+        "users.email",
+        "users.username",
+        "users.role",
+        "users.created_at",
+      ]),
+      
+  P: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select([
+        "users.id",
+        "users.email",
+        "users.username",
+      ])
+      .leftJoin("employees", "employees.user_id", "users.id")
+      .select([
+        "employees.id as employee__id",
+        "employees.department_id as employee__department_id",
+      ]),
+      
+  SS: (puri: PuriWrapper) =>
+    puri
+      .table("users")
+      .select(["users.id", "users.email"]),
+};
+
+// Loader 쿼리 함수들 (HasMany, ManyToMany)
+export const userLoaderQueries = {
+  P: [
+    {
+      as: "posts",
+      refId: "id",
+      qb: (puri: PuriWrapper, ids: number[]) =>
+        puri
+          .table("posts")
+          .whereIn("posts.user_id", ids)
+          .select([
+            "posts.id",
+            "posts.user_id as refId",
+            "posts.title",
+          ]),
+    },
+  ],
+};
+```
+
+**생성 시점**: Entity의 Subset 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+### 4. API Services (`services.generated.ts`)
+
+API 클라이언트 함수가 생성됩니다.
+
+```typescript title="web/src/services/services.generated.ts (자동 생성)"
+import axios from "axios";
+import type { ListResult } from "./sonamu.shared";
+import type { User, UserListParams, UserSaveParams } from "./user/user.types";
+
+// Axios 클라이언트
+export async function findUserById(id: number): Promise<User> {
+  const { data } = await axios.get("/user/findById", { params: { id } });
+  return data;
+}
+
+export async function findManyUsers(
+  params?: UserListParams
+): Promise<ListResult<UserListParams, User>> {
+  const { data } = await axios.get("/user/findMany", { params });
+  return data;
+}
+
+export async function saveUser(params: UserSaveParams[]): Promise<number[]> {
+  const { data } = await axios.post("/user/save", { params });
+  return data;
+}
+
+// TanStack Query Hooks
+export function useUserById(id: number) {
+  return useQuery({
+    queryKey: ["User", "findById", id],
+    queryFn: () => findUserById(id),
+  });
+}
+
+export function useUsers(params?: UserListParams) {
+  return useQuery({
+    queryKey: ["Users", "findMany", params],
+    queryFn: () => findManyUsers(params),
+  });
+}
+
+// TanStack Mutation Hooks
+export function useSaveUser() {
+  return useMutation({
+    mutationFn: (params: UserSaveParams[]) => saveUser(params),
+  });
+}
+```
+
+**생성 시점**: Model의 `@api` 데코레이터 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+<Info>
+**타겟별 생성**: `sonamu.config.ts`의 `sync.targets`에 지정된 각 타겟(`web`, `app` 등)에 복사됩니다.
+</Info>
+
+### 5. HTTP Test File (`sonamu.generated.http`)
+
+REST Client용 HTTP 테스트 파일이 생성됩니다.
+
+```http title="api/sonamu.generated.http (자동 생성)"
+@baseUrl = http://localhost:3000
+
+### User.findById
+GET {{baseUrl}}/user/findById?id=1
+
+### User.findMany
+GET {{baseUrl}}/user/findMany?num=10&page=1
+
+### User.save
+POST {{baseUrl}}/user/save
+Content-Type: application/json
+
+{
+  "params": [
+    {
+      "email": "test@test.com",
+      "username": "Test User"
+    }
+  ]
+}
+
+### User.del
+DELETE {{baseUrl}}/user/del
+Content-Type: application/json
+
+{
+  "ids": [1, 2, 3]
+}
+```
+
+**생성 시점**: Model 파일 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+**사용법**: VS Code의 REST Client 확장 설치 후 요청 실행
+
+## React 컴포넌트
+
+Scaffold로 React UI 컴포넌트를 생성할 수 있습니다.
+
+### 6. List Component
+
+<CodeGroup>
+```tsx title="web/src/pages/user/UserList.tsx"
+import { useUsers } from "@/services/services.generated";
+
+export function UserList() {
+  const [params, setParams] = useState({ num: 20, page: 1 });
+  const { data, isLoading } = useUsers(params);
+
+  return (
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Username</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.rows.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.email}</td>
+              <td>{user.username}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      <Pagination
+        total={data?.total ?? 0}
+        page={params.page}
+        onChange={(page) => setParams({ ...params, page })}
+      />
+    </div>
+  );
+}
+```
+
+```tsx title="web/src/pages/user/UserSearchInput.tsx"
+export function UserSearchInput({
+  value,
+  onChange,
+}: {
+  value: UserSearchField;
+  onChange: (value: UserSearchField) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="id">ID</option>
+      <option value="email">Email</option>
+      <option value="username">Username</option>
+    </select>
+  );
+}
+```
+</CodeGroup>
+
+**생성 시점**: `pnpm sonamu generate view_list --entity User`
+
+**수정 가능 여부**: ✅ 한번 생성 후 수정 가능
+
+### 7. Form Component
+
+```tsx title="web/src/pages/user/UserForm.tsx"
+import { useSaveUser } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
+
+export function UserForm({ userId }: { userId?: number }) {
+  const { data: user } = useUserById(userId);
+  const { mutate: save } = useSaveUser();
+  
+  const handleSubmit = (values: UserSaveParams) => {
+    save([values], {
+      onSuccess: () => {
+        alert("저장되었습니다");
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        name="email"
+        type="email"
+        defaultValue={user?.email}
+        required
+      />
+      <input
+        name="username"
+        defaultValue={user?.username}
+        required
+      />
+      <select name="role" defaultValue={user?.role ?? "normal"}>
+        <option value="admin">관리자</option>
+        <option value="normal">일반 사용자</option>
+      </select>
+      <button type="submit">저장</button>
+    </form>
+  );
+}
+```
+
+**생성 시점**: `pnpm sonamu generate view_form --entity User`
+
+**수정 가능 여부**: ✅ 한번 생성 후 수정 가능
+
+### 8. Select Components
+
+<CodeGroup>
+```tsx title="web/src/components/user/UserIdAsyncSelect.tsx"
+// Async Select (검색 가능)
+export function UserIdAsyncSelect({
+  value,
+  onChange,
+}: {
+  value?: number;
+  onChange: (value: number) => void;
+}) {
+  const [keyword, setKeyword] = useState("");
+  const { data } = useUsers({ keyword, num: 10 });
+
+  return (
+    <AsyncSelect
+      value={value}
+      onChange={onChange}
+      onSearch={setKeyword}
+      options={data?.rows.map((u) => ({
+        value: u.id,
+        label: u.email,
+      }))}
+    />
+  );
+}
+```
+
+```tsx title="web/src/components/user/UserRoleSelect.tsx"
+// Enum Select
+export function UserRoleSelect({
+  value,
+  onChange,
+}: {
+  value?: UserRole;
+  onChange: (value: UserRole) => void;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="admin">관리자</option>
+      <option value="normal">일반 사용자</option>
+    </select>
+  );
+}
+```
+</CodeGroup>
+
+## SSR 관련 파일
+
+Server-Side Rendering을 위한 파일들이 자동 생성됩니다.
+
+### 9. Queries (`queries.generated.ts`)
+
+```typescript title="web/src/queries.generated.ts (자동 생성)"
+import { queryOptions } from "@tanstack/react-query";
+import { findUserById, findManyUsers } from "./services/services.generated";
+
+export const userQueries = {
+  findById: (id: number) =>
+    queryOptions({
+      queryKey: ["User", "findById", id],
+      queryFn: () => findUserById(id),
+    }),
+    
+  findMany: (params?: UserListParams) =>
+    queryOptions({
+      queryKey: ["Users", "findMany", params],
+      queryFn: () => findManyUsers(params),
+    }),
+};
+```
+
+**생성 시점**: Model 파일 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+### 10. Entry Server (`entry-server.generated.tsx`)
+
+```tsx title="web/src/entry-server.generated.tsx (자동 생성)"
+import { dehydrate, QueryClient } from "@tanstack/react-query";
+import { userQueries } from "./queries.generated";
+
+export async function loader({ params }) {
+  const queryClient = new QueryClient();
+
+  // SSR 데이터 프리페칭
+  if (params.userId) {
+    await queryClient.prefetchQuery(
+      userQueries.findById(Number(params.userId))
+    );
+  }
+
+  return {
+    dehydratedState: dehydrate(queryClient),
+  };
+}
+```
+
+**생성 시점**: Model 파일 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+## 다국어 지원 파일
+
+i18n 설정이 있을 때 생성됩니다.
+
+### 11. Sonamu Dictionary (`sd.generated.ts`)
+
+```typescript title="api/src/sd.generated.ts (자동 생성)"
+export const SD = {
+  User: "사용자",
+  user: {
+    id: "ID",
+    email: "이메일",
+    username: "사용자명",
+    role: "역할",
+    created_at: "생성일시",
+  },
+  UserRole: {
+    admin: "관리자",
+    normal: "일반 사용자",
+  },
+} as const;
+```
+
+**생성 시점**: Entity 또는 i18n 파일 변경 시
+
+**수정 가능 여부**: ❌ 자동 재생성됨
+
+**타겟**: `api`, `web`, `app` 각각 생성
+
+## 생성 파일 요약표
+
+| 파일 | 위치 | 생성 시점 | 수정 가능 |
+|------|------|-----------|-----------|
+| `{entity}.types.ts` | `api/src/application/{entity}/` | Entity 저장 | ❌ |
+| `sonamu.generated.ts` | `api/src/application/` | Entity 저장 | ❌ |
+| `sonamu.generated.sso.ts` | `api/src/application/` | Entity 저장 | ❌ |
+| `services.generated.ts` | `web/src/services/` | Model 변경 | ❌ |
+| `sonamu.generated.http` | `api/` | Model 변경 | ❌ |
+| `queries.generated.ts` | `web/src/` | Model 변경 | ❌ |
+| `entry-server.generated.tsx` | `web/src/` | Model 변경 | ❌ |
+| `sd.generated.ts` | `api/src/`, `web/src/`, `app/src/` | Entity/i18n 변경 | ❌ |
+| `{Entity}List.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}Form.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}SearchInput.tsx` | `web/src/pages/{entity}/` | Scaffold | ✅ |
+| `{Entity}IdAsyncSelect.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+| `{EnumId}Select.tsx` | `web/src/components/{entity}/` | Scaffold | ✅ |
+
+<Warning>
+**자동 재생성 파일**: `*.generated.*` 파일은 절대 수정하지 마세요. 변경 사항이 자동으로 덮어씌워집니다.
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Syncer" icon="rotate" href="/core-concepts/auto-generation/syncer">
+    자동 생성의 핵심 Syncer 이해하기
+  </Card>
+  <Card title="When Files Regenerate" icon="clock" href="/core-concepts/auto-generation/when-files-regenerate">
+    파일이 언제 재생성되는지 알아보기
+  </Card>
+  <Card title="Customizing Generated Code" icon="pen-to-square" href="/core-concepts/auto-generation/customizing-generated-code">
+    생성된 코드 커스터마이징 방법
+  </Card>
+  <Card title="Creating Entities" icon="plus" href="/core-concepts/entity/defining-entities">
+    Entity 정의하고 파일 생성하기
+  </Card>
+</CardGroup>

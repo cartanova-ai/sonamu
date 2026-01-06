@@ -1,6 +1,659 @@
 ---
 title: "생성된 코드 커스터마이징"
-description: "수정 가능 vs 불가능 파일"
+description: "자동 생성된 파일을 수정하지 않고 안전하게 커스터마이징하는 방법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu가 자동 생성한 코드를 직접 수정하면 다음 재생성 시 덮어씌워집니다. 이 문서는 생성된 코드를 안전하게 커스터마이징하는 방법을 설명합니다.
+
+## 기본 원칙
+
+<CardGroup cols={2}>
+  <Card title="생성 파일은 읽기 전용" icon="lock">
+    `*.generated.*` 파일 절대 수정 금지
+    
+    자동 재생성으로 변경 손실
+  </Card>
+  <Card title="확장으로 커스터마이징" icon="puzzle-piece">
+    별도 파일에서 래핑 또는 확장
+    
+    안전하고 유지보수 쉬움
+  </Card>
+  <Card title="소스에서 제어" icon="sliders">
+    Entity, Model, Types에서 조정
+    
+    재생성 시에도 유지됨
+  </Card>
+  <Card title="Template 활용" icon="file-code">
+    커스텀 템플릿으로 생성 제어
+    
+    프로젝트 요구사항 반영
+  </Card>
+</CardGroup>
+
+## 수정 가능 vs 불가능 파일
+
+### ❌ 수정 불가 파일
+
+이 파일들은 **절대 수정하지 마세요**. 재생성 시 덮어씌워집니다.
+
+| 파일 패턴 | 재생성 조건 | 예시 |
+|-----------|-------------|------|
+| `*.generated.ts` | Entity/Model 변경 | `sonamu.generated.ts` |
+| `*.generated.sso.ts` | Entity 변경 | `sonamu.generated.sso.ts` |
+| `*.generated.tsx` | Model 변경 | `entry-server.generated.tsx` |
+| `*.generated.http` | Model 변경 | `sonamu.generated.http` |
+| `services.generated.ts` | Model 변경 | `services.generated.ts` |
+| `queries.generated.ts` | Model 변경 | `queries.generated.ts` |
+| `sd.generated.ts` | Entity/i18n 변경 | `sd.generated.ts` |
+
+### ✅ 수정 가능 파일
+
+이 파일들은 한 번 생성 후 **수정 가능**합니다.
+
+| 파일 패턴 | 재생성 여부 | 예시 |
+|-----------|-------------|------|
+| `{entity}.types.ts` | 첫 생성 후 안됨 | `user.types.ts` |
+| `{entity}.model.ts` | Scaffold 후 안됨 | `user.model.ts` |
+| `{Entity}List.tsx` | Scaffold 후 안됨 | `UserList.tsx` |
+| `{Entity}Form.tsx` | Scaffold 후 안됨 | `UserForm.tsx` |
+| 커스텀 파일 | 재생성 안됨 | `user.custom.ts` |
+
+## API 클라이언트 커스터마이징
+
+`services.generated.ts`를 직접 수정하지 말고 래핑합니다.
+
+### ❌ 잘못된 방법
+
+```typescript title="services.generated.ts"
+// ❌ 직접 수정 금지!
+export async function findUserById(id: number): Promise<User> {
+  // 커스텀 로직 추가
+  console.log("Finding user:", id);
+  
+  const { data } = await axios.get("/user/findById", { params: { id } });
+  return data;
+}
+// 다음 Model 변경 시 덮어씌워짐 💥
+```
+
+### ✅ 올바른 방법 1: 래퍼 함수
+
+<CodeGroup>
+```typescript title="services/user/user.service.ts (신규 생성)"
+import { findUserById as _findUserById } from "../services.generated";
+
+// 래퍼 함수로 확장
+export async function findUserById(id: number) {
+  console.log("Finding user:", id);
+  
+  // 원본 호출
+  const user = await _findUserById(id);
+  
+  // 추가 처리
+  if (!user.email_verified) {
+    throw new Error("Email not verified");
+  }
+  
+  return user;
+}
+
+// 다른 함수들도 원본 그대로 export
+export {
+  findManyUsers,
+  saveUser,
+  deleteUser,
+} from "../services.generated";
+```
+
+```tsx title="사용"
+// 커스텀 서비스 사용
+import { findUserById, findManyUsers } from "@/services/user/user.service";
+
+function UserProfile({ userId }) {
+  const { data } = useQuery({
+    queryKey: ["user", userId],
+    queryFn: () => findUserById(userId),  // 커스텀 로직 포함
+  });
+}
+```
+</CodeGroup>
+
+**장점**:
+- 생성 파일 건드리지 않음
+- 원본 함수 재사용
+- 타입 안전성 유지
+
+### ✅ 올바른 방법 2: Axios Interceptor
+
+```typescript title="services/axios-config.ts (신규 생성)"
+import axios from "axios";
+
+// Request Interceptor
+axios.interceptors.request.use((config) => {
+  // 공통 로깅
+  console.log(`API Request: ${config.method} ${config.url}`);
+  
+  // 인증 토큰 추가
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  return config;
+});
+
+// Response Interceptor
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // 공통 에러 처리
+    if (error.response?.status === 401) {
+      // 로그아웃
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+**장점**:
+- 모든 API에 자동 적용
+- 중복 코드 제거
+- 중앙화된 설정
+
+### ✅ 올바른 방법 3: TanStack Query 커스터마이징
+
+```typescript title="hooks/useUserQuery.ts (신규 생성)"
+import { useQuery } from "@tanstack/react-query";
+import { findUserById } from "@/services/services.generated";
+
+// 커스텀 Hook
+export function useUserById(id: number, options?: UseQueryOptions) {
+  return useQuery({
+    queryKey: ["user", id],
+    queryFn: () => findUserById(id),
+    // 추가 옵션
+    staleTime: 5 * 60 * 1000,  // 5분
+    cacheTime: 10 * 60 * 1000, // 10분
+    retry: 3,
+    // 커스텀 옵션 병합
+    ...options,
+  });
+}
+
+// 사용
+function UserProfile({ userId }) {
+  const { data, isLoading } = useUserById(userId, {
+    // 컴포넌트별 추가 옵션
+    enabled: userId > 0,
+  });
+}
+```
+
+**장점**:
+- 공통 옵션 중앙 관리
+- 컴포넌트별 커스터마이징 가능
+- TanStack Query 기능 활용
+
+## Types 커스터마이징
+
+`{entity}.types.ts`는 재생성되지 않으므로 자유롭게 수정 가능합니다.
+
+### 커스텀 타입 추가
+
+```typescript title="api/src/application/user/user.types.ts"
+import { z } from "zod";
+
+// 자동 생성된 타입 (수정 가능)
+export type User = {
+  id: number;
+  email: string;
+  username: string;
+};
+
+export const User = z.object({
+  id: z.number(),
+  email: z.string(),
+  username: z.string(),
+});
+
+// ✅ 커스텀 타입 추가 (안전)
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  rememberMe: z.boolean().optional(),
+});
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+
+export const UserProfileUpdateParams = User.pick({
+  username: true,
+}).extend({
+  bio: z.string().optional(),
+  avatar_url: z.string().url().optional(),
+});
+export type UserProfileUpdateParams = z.infer<typeof UserProfileUpdateParams>;
+
+// 도메인별 타입
+export type UserWithStats = User & {
+  post_count: number;
+  follower_count: number;
+};
+
+// Enum 확장
+export const ExtendedUserRole = z.enum([
+  ...User.shape.role.options,  // 기존 role
+  "moderator",                 // 추가
+]);
+```
+
+**주의**: `{entity}.types.ts`는 타겟에 복사되므로 변경 시 자동 동기화됩니다.
+
+### Validation 강화
+
+```typescript title="user.types.ts"
+// 복잡한 Validation
+export const UserSaveParams = z.object({
+  email: z.string()
+    .email("유효한 이메일을 입력하세요")
+    .refine(
+      (email) => !email.endsWith("@temp.com"),
+      "임시 이메일은 사용할 수 없습니다"
+    ),
+    
+  username: z.string()
+    .min(2, "최소 2자 이상")
+    .max(20, "최대 20자")
+    .regex(/^[a-zA-Z0-9_]+$/, "영문, 숫자, 밑줄만 가능"),
+    
+  password: z.string()
+    .min(8)
+    .regex(/[A-Z]/, "대문자 포함")
+    .regex(/[0-9]/, "숫자 포함")
+    .regex(/[!@#$%^&*]/, "특수문자 포함"),
+    
+  age: z.number()
+    .int()
+    .min(18, "18세 이상만 가입 가능")
+    .max(100),
+}).refine(
+  (data) => data.password !== data.username,
+  {
+    message: "비밀번호는 사용자명과 달라야 합니다",
+    path: ["password"],
+  }
+);
+```
+
+## Model 커스터마이징
+
+Model 파일은 Scaffold 후 자유롭게 수정 가능합니다.
+
+### 메서드 추가
+
+```typescript title="api/src/application/user/user.model.ts"
+class UserModelClass extends BaseModelClass {
+  // Scaffold 생성 메서드 (수정 가능)
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    // ...
+  }
+
+  // ✅ 커스텀 메서드 추가 (안전)
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async login(params: UserLoginParams): Promise<{ user: User; token: string }> {
+    const user = await this.puri()
+      .where("email", params.email)
+      .first();
+      
+    if (!user) {
+      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
+    }
+    
+    const isValid = await bcrypt.compare(params.password, user.password);
+    if (!isValid) {
+      throw new UnauthorizedException("이메일 또는 비밀번호가 일치하지 않습니다");
+    }
+    
+    const token = jwt.sign({ userId: user.id }, SECRET_KEY);
+    return { user, token };
+  }
+
+  @api({ httpMethod: "GET", guards: ["user"] })
+  async me(): Promise<User | null> {
+    const context = Sonamu.getContext();
+    if (!context.user) return null;
+    
+    return this.findById("A", context.user.id);
+  }
+  
+  // 내부 헬퍼 메서드 (@api 없음)
+  async findByEmail(email: string): Promise<User | null> {
+    return this.puri()
+      .where("email", email)
+      .first();
+  }
+}
+```
+
+**추가된 API가 자동 생성됨**:
+- `services.generated.ts`에 `login()`, `me()` 함수 추가
+- `sonamu.generated.http`에 테스트 케이스 추가
+
+### Helper 메서드 분리
+
+```typescript title="api/src/application/user/user.helpers.ts (신규 생성)"
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+// 비밀번호 관련
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
+}
+
+export async function verifyPassword(
+  password: string,
+  hash: string
+): Promise<boolean> {
+  return bcrypt.compare(password, hash);
+}
+
+// 토큰 관련
+export function generateToken(userId: number): string {
+  return jwt.sign({ userId }, process.env.JWT_SECRET!, {
+    expiresIn: "7d",
+  });
+}
+
+export function verifyToken(token: string): { userId: number } {
+  return jwt.verify(token, process.env.JWT_SECRET!) as { userId: number };
+}
+```
+
+```typescript title="user.model.ts에서 사용"
+import { hashPassword, verifyPassword, generateToken } from "./user.helpers";
+
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async register(params: UserRegisterParams) {
+    // Helper 사용
+    const hashedPassword = await hashPassword(params.password);
+    
+    const [userId] = await this.save([{
+      ...params,
+      password: hashedPassword,
+    }]);
+    
+    const token = generateToken(userId);
+    return { userId, token };
+  }
+}
+```
+
+## React 컴포넌트 커스터마이징
+
+Scaffold로 생성한 컴포넌트는 자유롭게 수정 가능합니다.
+
+### Form 컴포넌트 커스터마이징
+
+```tsx title="web/src/pages/user/UserForm.tsx"
+// Scaffold 생성 후 커스터마이징
+import { useSaveUser } from "@/services/services.generated";
+import { UserSaveParams } from "@/services/user/user.types";
+
+export function UserForm({ userId }: { userId?: number }) {
+  const { data: user } = useUserById(userId);
+  const { mutate: save, isPending } = useSaveUser();
+  
+  // ✅ 커스텀 Validation
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    // ✅ 클라이언트 검증
+    const email = formData.get("email") as string;
+    if (!email.includes("@")) {
+      setErrors({ email: "유효한 이메일을 입력하세요" });
+      return;
+    }
+    
+    // Zod로 파싱
+    const result = UserSaveParams.safeParse({
+      email,
+      username: formData.get("username"),
+    });
+    
+    if (!result.success) {
+      // Zod 에러 표시
+      setErrors(result.error.flatten().fieldErrors);
+      return;
+    }
+    
+    save([result.data], {
+      onSuccess: () => {
+        alert("저장되었습니다");
+        setErrors({});
+      },
+      onError: (error) => {
+        alert(error.message);
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <input
+          name="email"
+          type="email"
+          defaultValue={user?.email}
+          required
+        />
+        {errors.email && <span className="error">{errors.email}</span>}
+      </div>
+      
+      <div>
+        <input
+          name="username"
+          defaultValue={user?.username}
+          required
+        />
+        {errors.username && <span className="error">{errors.username}</span>}
+      </div>
+      
+      <button type="submit" disabled={isPending}>
+        {isPending ? "저장 중..." : "저장"}
+      </button>
+    </form>
+  );
+}
+```
+
+### List 컴포넌트 커스터마이징
+
+```tsx title="web/src/pages/user/UserList.tsx"
+import { useUsers } from "@/services/services.generated";
+import { UserSearchInput } from "./UserSearchInput";
+
+export function UserList() {
+  const [params, setParams] = useState({
+    num: 20,
+    page: 1,
+    search: "email" as const,
+    keyword: "",
+  });
+  
+  const { data, isLoading } = useUsers(params);
+
+  // ✅ 커스텀 기능 추가
+  const handleExport = () => {
+    if (!data?.rows) return;
+    
+    const csv = [
+      ["ID", "Email", "Username"],
+      ...data.rows.map(u => [u.id, u.email, u.username]),
+    ].map(row => row.join(",")).join("\n");
+    
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "users.csv";
+    a.click();
+  };
+
+  return (
+    <div>
+      <div className="toolbar">
+        <UserSearchInput
+          value={params.search}
+          onChange={(search) => setParams({ ...params, search })}
+        />
+        <input
+          type="text"
+          value={params.keyword}
+          onChange={(e) => setParams({ ...params, keyword: e.target.value })}
+        />
+        <button onClick={handleExport}>내보내기</button>
+      </div>
+      
+      <table>
+        {/* ... */}
+      </table>
+    </div>
+  );
+}
+```
+
+## Enum 커스터마이징
+
+Enum을 추가하거나 수정하려면 Entity에서 조정합니다.
+
+### Entity에서 Enum 수정
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "enums": {
+    "UserRole": {
+      "admin": "관리자",
+      "moderator": "운영자",      // ✅ 추가
+      "normal": "일반 사용자",
+      "guest": "게스트"           // ✅ 추가
+    }
+  }
+}
+```
+
+```typescript title="sonamu.generated.ts (자동 재생성)"
+// Enum 자동 생성
+export const UserRole = z.enum(["admin", "moderator", "normal", "guest"]);
+export type UserRole = z.infer<typeof UserRole>;
+
+// 라벨 헬퍼 자동 생성
+export function userRoleLabel(role: UserRole): string {
+  return {
+    admin: "관리자",
+    moderator: "운영자",
+    normal: "일반 사용자",
+    guest: "게스트",
+  }[role];
+}
+```
+</CodeGroup>
+
+### Enum 확장 (별도 파일)
+
+```typescript title="user.types.ts"
+import { UserRole as _UserRole } from "../sonamu.generated";
+
+// ✅ Enum 확장
+export const ExtendedUserRole = z.enum([
+  ..._UserRole.options,
+  "suspended",  // 정지
+  "deleted",    // 탈퇴
+]);
+export type ExtendedUserRole = z.infer<typeof ExtendedUserRole>;
+
+// 커스텀 라벨
+export function extendedUserRoleLabel(role: ExtendedUserRole): string {
+  if (role === "suspended") return "정지됨";
+  if (role === "deleted") return "탈퇴";
+  
+  // 기존 라벨 사용
+  return userRoleLabel(role as UserRole);
+}
+```
+
+## Subset 커스터마이징
+
+Subset을 수정하려면 Entity에서 조정합니다.
+
+### Subset 필드 추가/제거
+
+<CodeGroup>
+```json title="user.entity.json"
+{
+  "subsets": {
+    "A": [
+      "id",
+      "email",
+      "username",
+      "role",
+      "created_at"    // ✅ 추가
+    ],
+    "P": [
+      "id",
+      "email",
+      "employee.id",
+      "employee.department.name"
+    ],
+    "SS": [
+      "id",
+      "email"
+    ],
+    "Public": [      // ✅ 새 Subset 추가
+      "id",
+      "username"
+    ]
+  }
+}
+```
+
+```typescript title="sonamu.generated.sso.ts (자동 재생성)"
+// Subset 쿼리 자동 생성
+export const userSubsetQueries = {
+  A: (puri) => puri.table("users").select([
+    "users.id",
+    "users.email",
+    "users.username",
+    "users.role",
+    "users.created_at",  // 자동 추가
+  ]),
+  
+  Public: (puri) => puri.table("users").select([
+    "users.id",
+    "users.username",
+  ]),
+};
+```
+</CodeGroup>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="When Files Regenerate" icon="clock" href="/core-concepts/auto-generation/when-files-regenerate">
+    파일 재생성 시점 이해하기
+  </Card>
+  <Card title="Syncer" icon="rotate" href="/core-concepts/auto-generation/syncer">
+    Syncer 시스템 깊이 이해하기
+  </Card>
+  <Card title="Templates" icon="file-code" href="/advanced/templates/creating-templates">
+    커스텀 템플릿 만들기
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/model-testing/unit-tests">
+    커스터마이징한 코드 테스트하기
+  </Card>
+</CardGroup>
