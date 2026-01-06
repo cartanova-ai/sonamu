@@ -139,19 +139,19 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
 
   if (error) {
     return (
-      <div className="migrations-index">
+      <div className="p-8">
         <div className="message-box error">{error.message}</div>
       </div>
     );
   }
   return (
-    <div className="migrations-index">
-      <div className={`ui segment migrations-index ${loading || isLoading ? "loading" : ""}`}>
+    <div className="p-8">
+      <div className={`ui segment ${loading || isLoading ? "loading" : ""}`}>
         {preparedCodes && (
-          <div className="prepared">
-            <h3>
+          <div className="p-4">
+            <h3 className="relative">
               Prepared Migration Codes{" "}
-              <div className="flex gap-2 justify-end">
+              <div className="absolute right-0 top-0 flex gap-2">
                 <Button
                   icon={isAllCodeViewerOpen ? <ToggleRightIcon /> : <ToggleLeftIcon />}
                   size="xs"
@@ -201,9 +201,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
             <div className="ui border-b" />
           </div>
         )}
-        <div className="codes">
+        <div className="p-4">
           <h3>Migration Code Files</h3>
-          <div className="tools">
+          <div className="flex gap-8">
             <div className="flex-1">
               <Button
                 variant="destructive"
@@ -241,7 +241,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
             </div>
           </div>
           {conns && codes && (
-            <Table className="mt-4">
+            <Table className="mt-4 text-[0.9em]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-gray-100">
                   <TableHead className="flex items-center gap-1">
@@ -257,8 +257,8 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                     <TableHead
                       key={connIndex}
                       style={{ width: "150px" }}
-                      className={classNames({
-                        "conn-selected": selectedConnKeys.includes(conn.connKey),
+                      className={classNames("py-2 px-3", {
+                        "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
                       })}
                     >
                       <Checkbox
@@ -327,8 +327,8 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                       {conns.map((conn, connIndex) => (
                         <TableCell
                           key={connIndex}
-                          className={classNames("conn-status", {
-                            "conn-selected": selectedConnKeys.includes(conn.connKey),
+                          className={classNames("text-center py-2 px-3", {
+                            "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
                           })}
                         >
                           {conn.pending.includes(code.name) ? (
@@ -377,6 +377,6 @@ type CodeViewerProps = {
 };
 function CodeViewer({ code, open }: CodeViewerProps) {
   return (
-    <div className="code-viewer">{open ? <code>{code}</code> : <div>Code is collapsed</div>}</div>
+    <div className="flex items-start">{open ? <code className="flex-1 m-[0.2em]">{code}</code> : <div className="m-auto">Code is collapsed</div>}</div>
   );
 }

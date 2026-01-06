@@ -779,7 +779,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         "props",
                         propIndex,
                         classNames({
-                          "drag-enter": dragEnterPropIndex === propIndex,
+                          "[&>td]:!border-t-red-500": dragEnterPropIndex === propIndex,
                         }),
                       )}
                       draggable={true}

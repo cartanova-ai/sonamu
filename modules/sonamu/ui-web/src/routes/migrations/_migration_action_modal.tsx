@@ -73,7 +73,7 @@ export function MigrationActionModal({
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 p-4">
-          <div className={`form migration-commit-form ${loading ? "loading" : ""}`}>
+          <div className={`form ${loading ? "loading" : ""}`}>
             <div className="ui basic segment">
               <div>
                 <h4>Action: {action.toUpperCase()}</h4>
@@ -81,12 +81,12 @@ export function MigrationActionModal({
               </div>
               <div className="targets">
                 <h4>Targets</h4>
-                <div className="conns">
+                <div className="flex w-full gap-2 my-4">
                   {conns.map((conn) => (
                     <div
                       key={conn.name}
-                      className={classNames("conn", {
-                        "is-targeted": targets.includes(conn.connKey),
+                      className={classNames("flex-1 text-center p-4 bg-[#f1fff5] border border-[#b1f3c4] rounded-[0.3em] opacity-30", {
+                        "bg-[#b1f3c4] text-green-600 font-bold opacity-100": targets.includes(conn.connKey),
                       })}
                     >
                       {targets.includes(conn.connKey) && (

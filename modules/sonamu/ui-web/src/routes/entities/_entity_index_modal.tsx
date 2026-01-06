@@ -197,7 +197,7 @@ export function EntityIndexModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="entity-index-form max-w-4xl max-h-[90vh] flex flex-col bg-gray-50">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col bg-gray-50">
         <DialogHeader className="text-left">
           <DialogTitle>{oldOne ? "Edit Entity Index" : "New Entity Index"}</DialogTitle>
           <DialogDescription>
@@ -302,18 +302,18 @@ export function EntityIndexModal({
 
                 {/* 컬럼 상세 설정 리스트 */}
                 {form.columns.length > 0 && (
-                  <div className="column-config-area">
+                  <div className="mt-2 flex flex-col gap-2">
                     {form.columns.map((col, idx) => (
-                      <div className="column-card flex-row" key={col.name}>
-                        <div className="column-info">
-                          <span className="column-badge">{idx + 1}</span>
-                          <span className="column-name">{col.name}</span>
+                      <div className="bg-white border border-gray-300 rounded-md px-3 py-2 flex flex-row items-center justify-between transition-shadow hover:shadow-md hover:border-gray-400" key={col.name}>
+                        <div className="flex items-center gap-3">
+                          <span className="bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
+                          <span className="font-semibold text-base text-gray-800">{col.name}</span>
                         </div>
 
-                        <div className="column-controls">
+                        <div className="flex items-center justify-between gap-3">
                           {/* B-Tree 정렬 옵션 */}
                           {(form.using === "btree" || !form.using) && (
-                            <div className="sort-controls">
+                            <div className="flex gap-1 shrink-0">
                               <Select
                                 value={col.sortOrder ?? ""}
                                 onValueChange={(value) =>
@@ -382,8 +382,8 @@ export function EntityIndexModal({
           </form>
 
           <h5>Debug: Form State</h5>
-          <div className="ui secondary segment debug-form-state">
-            <pre>{JSON.stringify(form, null, 2)}</pre>
+          <div className="ui secondary segment m-0">
+            <pre className="overflow-x-auto text-[11px] leading-[1.4] m-0 text-gray-600">{JSON.stringify(form, null, 2)}</pre>
           </div>
         </div>
 
