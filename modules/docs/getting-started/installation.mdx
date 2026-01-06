@@ -79,37 +79,41 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 <Frame caption="📸 필요: VS Code에서 열린 프로젝트의 실제 디렉토리 트리 구조 (Explorer 사이드바)">
 </Frame>
 
-```
-my_app/
-├── api/                          # 백엔드 API 서버
-│   ├── src/
-│   │   ├── index.ts              # 서버 엔트리포인트
-│   │   ├── sonamu.config.ts      # Sonamu 설정 파일
-│   │   ├── testing/              # 테스트 유틸리티
-│   │   ├── typings/              # 타입 정의
-│   │   └── utils/                # 유틸리티 함수
-│   ├── database/
-│   │   ├── docker-compose.yml    # PostgreSQL 컨테이너 설정
-│   │   ├── fixtures/             # DB 초기화 스크립트
-│   │   ├── dumps/                # 데이터 덤프 파일
-│   │   └── scripts/              # dump, seed 스크립트
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── .env                      # 환경변수 (자동 생성)
-│
-├── web/                          # 프론트엔드 웹 애플리케이션
-│   ├── src/
-│   │   ├── main.tsx              # React 엔트리포인트
-│   │   ├── App.tsx               # 루트 컴포넌트
-│   │   ├── pages/                # 페이지 컴포넌트
-│   │   ├── services/             # API 서비스 (자동 생성)
-│   │   └── admin-common/         # 공통 컴포넌트
-│   ├── package.json
-│   ├── vite.config.ts            # Vite 설정
-│   └── .sonamu.env               # 환경변수
-│
-└── README.md
-```
+<Tree>
+  <Tree.Folder name="my_app" defaultOpen>
+    <Tree.Folder name="api  (백엔드 API 서버)">
+      <Tree.Folder name="src">
+        <Tree.File name="index.ts  (서버 엔트리포인트)" />
+        <Tree.File name="sonamu.config.ts  (Sonamu 설정)" />
+        <Tree.Folder name="testing  (테스트 유틸리티)" />
+        <Tree.Folder name="typings  (타입 정의)" />
+        <Tree.Folder name="utils  (유틸리티 함수)" />
+      </Tree.Folder>
+      <Tree.Folder name="database">
+        <Tree.File name="docker-compose.yml  (PostgreSQL 컨테이너)" />
+        <Tree.Folder name="fixtures  (DB 초기화 스크립트)" />
+        <Tree.Folder name="dumps  (데이터 덤프 파일)" />
+        <Tree.Folder name="scripts  (dump, seed 스크립트)" />
+      </Tree.Folder>
+      <Tree.File name="package.json" />
+      <Tree.File name="tsconfig.json" />
+      <Tree.File name=".env  (환경변수, 자동 생성)" />
+    </Tree.Folder>
+    <Tree.Folder name="web  (프론트엔드 웹 앱)">
+      <Tree.Folder name="src">
+        <Tree.File name="main.tsx  (React 엔트리포인트)" />
+        <Tree.File name="App.tsx  (루트 컴포넌트)" />
+        <Tree.Folder name="pages  (페이지 컴포넌트)" />
+        <Tree.Folder name="services  (API 서비스, 자동 생성)" />
+        <Tree.Folder name="admin-common  (공통 컴포넌트)" />
+      </Tree.Folder>
+      <Tree.File name="package.json" />
+      <Tree.File name="vite.config.ts  (Vite 설정)" />
+      <Tree.File name=".sonamu.env  (환경변수)" />
+    </Tree.Folder>
+    <Tree.File name="README.md" />
+  </Tree.Folder>
+</Tree>
 
 ## 주요 설정 파일
 
