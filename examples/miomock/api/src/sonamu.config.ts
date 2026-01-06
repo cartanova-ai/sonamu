@@ -49,6 +49,11 @@ export default defineConfig({
         sinks: ["console"],
         lowestLevel: "debug",
       },
+      {
+        category: ["sonamu", "internal", "syncer"],
+        sinks: ["console"],
+        lowestLevel: "error",
+      },
     ],
   },
 
