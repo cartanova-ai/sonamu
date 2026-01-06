@@ -10,3 +10,30 @@
 /* react-components 패키지 */
 @source "../../../react-components/src/**/*.tsx";
 @source "../../../react-components/src/**/*.ts";
+
+/* 커스텀 테마 변수 (App.scss에서 이전) */
+@theme {
+  /* 색상 */
+  --color-sidebar-bg: #112c15;
+  --color-sidebar-hover: #1e4d2b;
+  --color-sidebar-selected: #205428;
+  --color-text-light: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-accent: #10b981;
+
+  /* 간격 */
+  --spacing-sidemenu: 280px;
+  --spacing-gnb: 50px;
+}
+
+/* 글로벌 리셋 (App.scss에서 이전) */
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}

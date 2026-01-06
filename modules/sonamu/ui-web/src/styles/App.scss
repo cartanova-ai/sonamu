@@ -21,97 +21,6 @@ $accent-color: #10b981;
 .app {
   width: 100%;
 
-  .gnb {
-    width: 100%;
-    height: $gnb-height;
-    background-color: $sidebar-bg;
-    color: white;
-    position: sticky;
-    top: 0;
-    left: 0;
-    display: flex;
-    align-items: center;
-    z-index: 100;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-    justify-content: space-between;
-
-    .menu {
-      display: flex;
-    }
-
-    .title {
-      padding: 1em;
-      font-weight: bold;
-      width: $sidemenu-width;
-      letter-spacing: -0.5px;
-    }
-    .project-name {
-      font-weight: normal;
-      color: $text-muted;
-      font-size: 0.9em;
-      margin-left: 0.5em;
-    }
-    .menus {
-      display: flex;
-      gap: 0.3em;
-      font-size: 0.9em;
-
-      .menu {
-        align-self: center;
-        padding: 0.8em 1.5em;
-        cursor: pointer;
-        text-align: center;
-        color: $text-light;
-        border-radius: 6px;
-        transition: all 0.2s;
-
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-          color: white;
-        }
-        &.selected {
-          background-color: rgba(255, 255, 255, 0.15);
-          font-weight: 600;
-          color: white;
-        }
-      }
-    }
-
-    .search {
-      margin-right: 1em;
-      padding: 0.4em 1em;
-      border-radius: 20px;
-      box-sizing: border-box;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background-color: rgba(0, 0, 0, 0.2);
-      cursor: pointer;
-      color: $text-muted;
-      font-size: 0.9em;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: $accent-color;
-        color: white;
-      }
-
-      & > * {
-        margin-right: 0.5em;
-      }
-
-      .keycap {
-        margin-right: 0.3em;
-        position: relative;
-        top: -1.3px;
-        // font-size: 0.8em;
-        // padding: 0.1em 0.5em;
-        // background: rgba(255, 255, 255, 0.1);
-        // border: 1px solid rgba(255, 255, 255, 0.2);
-        // border-radius: 4px;
-        // color: white;
-      }
-    }
-  }
   .content {
     width: 100%;
     min-height: calc(100vh - $gnb-height);
@@ -431,12 +340,7 @@ $accent-color: #10b981;
   }
 }
 
-.flex {
-  display: flex;
-}
-.text-center {
-  text-align: center;
-}
+// .flex와 .text-center는 Tailwind 기본 클래스로 대체됨
 
 code {
   width: 100%;
