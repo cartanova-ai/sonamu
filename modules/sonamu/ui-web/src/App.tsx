@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import "./styles/App.scss";
 import "semantic-ui-css/semantic.min.css";
+import { CommonModal } from "@sonamu-kit/react-components";
 import classNames from "classnames";
-import { CommonModal } from "./components/core/CommonModal";
 import SearchModal from "./components/SearchModal";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 

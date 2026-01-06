@@ -18,15 +18,14 @@ import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import PlusIcon from "~icons/lucide/plus";
 import Trash2Icon from "~icons/lucide/trash-2";
-import { useCommonModal } from "../../components/core/CommonModal";
 import { EditableInput } from "../../components/EditableInput";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { EntitySelector } from "../entities/_entity_selector";
-import { EntityIndexForm } from "../entities/_index_form";
-import { EntityPropForm } from "../entities/_prop_form";
+import { EntityIndexModal } from "../entities/_entity_index_modal";
+import { EntityPropModal } from "../entities/_entity_prop_modal";
+import { EntitySelectorModal } from "../entities/_entity_selector_modal";
 
 export const Route = createFileRoute("/entities/$entityId")({
   component: EntitiesShowPage,
@@ -67,8 +66,26 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
-  // commonModal
-  const { openModal, open } = useCommonModal();
+  // EntityPropModal 상태
+  const [propModalOpen, setPropModalOpen] = useState(false);
+  const [propModalData, setPropModalData] = useState<{
+    mode: "add" | "modify";
+    at?: number;
+    oldOne?: EntityProp;
+    focusIndex?: number;
+  } | null>(null);
+
+  // EntitySelectorModal 상태
+  const [selectorModalOpen, setSelectorModalOpen] = useState(false);
+
+  // EntityIndexModal 상태
+  const [indexModalOpen, setIndexModalOpen] = useState(false);
+  const [indexModalData, setIndexModalData] = useState<{
+    mode: "add" | "modify";
+    at?: number;
+    oldOne?: EntityIndex;
+    focusIndex?: number;
+  } | null>(null);
 
   // useSheetTable
   const { regRow, regCell, cursor, setCursor, setFocusedCursor, turnKeyHandler, isFocused } =
@@ -93,9 +110,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       ],
       onExecute: (sheet, y, x) => {
         if (sheet === "props") {
-          openPropForm("modify", y, x);
+          openPropModal("modify", y, x);
         } else if (sheet === "indexes") {
-          openIndexForm("modify", y, x);
+          openIndexModal("modify", y, x);
         }
       },
       onKeywordChanged: (sheet, keyword) => {
@@ -135,9 +152,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           case "N":
             if (e.ctrlKey && e.metaKey && e.shiftKey) {
               if (cursor.sheet === "props") {
-                openPropForm("add", undefined, 2);
+                openPropModal("add", undefined, 2);
               } else if (cursor.sheet === "indexes") {
-                openIndexForm("add", cursor.y);
+                openIndexModal("add", cursor.y);
               } else if (cursor.sheet.includes("enumLabels")) {
                 addEnumLabelRow(cursor.sheet.split("-")[1], cursor.y);
               }
@@ -175,23 +192,14 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           case "p":
           case "P":
             if (e.ctrlKey && e.shiftKey && e.metaKey) {
-              openModal(<EntitySelector />, {
-                onControlledOpen: () => {
-                  turnKeyHandler(false);
-                },
-                onControlledClose: () => {
-                  turnKeyHandler(true);
-                },
-                onCompleted: (entityId) => {
-                  navigate({ to: "/entities/$entityId", params: { entityId: entityId as string } });
-                },
-              });
+              setSelectorModalOpen(true);
+              turnKeyHandler(false);
             }
             break;
         }
         return true;
       },
-      disable: open,
+      disable: propModalOpen,
     });
 
   // subsets
@@ -427,46 +435,59 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   };
 
   // props
-  const openPropForm = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
+  const openPropModal = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
     if (!entity) {
       return;
     }
 
     const oldOne = mode === "add" ? undefined : entity.props[at!];
 
-    openModal(<EntityPropForm entityId={entity.id} oldOne={oldOne} />, {
-      onControlledOpen: () => {
-        // keySwitch off
-        turnKeyHandler(false);
-
-        // focus
-        const focusInput = document.querySelector(`.entity-prop-form .focus-${focusIndex} input`);
-        if (focusInput) {
-          (focusInput as HTMLInputElement).focus();
-        }
-      },
-      onControlledClose: () => {
-        // keySwitch on
-        turnKeyHandler(true);
-      },
-      onCompleted: async (data: unknown) => {
-        if (oldOne) {
-          await SonamuUIService.modifyProp(entity.id, data as EntityProp, at!);
-        } else {
-          await SonamuUIService.createProp(entity.id, data as EntityProp, at);
-        }
-
-        refetch();
-        setTimeout(() => {
-          setCursor({
-            ...cursor,
-            sheet: "props",
-            y: at! + 1,
-          });
-        }, 100);
-      },
-    });
+    setPropModalData({ mode, at, oldOne, focusIndex });
+    setPropModalOpen(true);
+    turnKeyHandler(false);
   };
+
+  const handlePropModalCompleted = async (data: EntityProp) => {
+    if (!entity || !propModalData) return;
+
+    const { mode, at } = propModalData;
+
+    if (mode === "modify") {
+      await SonamuUIService.modifyProp(entity.id, data, at!);
+    } else {
+      await SonamuUIService.createProp(entity.id, data, at);
+    }
+
+    refetch();
+    setTimeout(() => {
+      setCursor({
+        ...cursor,
+        sheet: "props",
+        y: at! + 1,
+      });
+    }, 100);
+  };
+
+  const handlePropModalOpenChange = (open: boolean) => {
+    setPropModalOpen(open);
+    if (!open) {
+      setPropModalData(null);
+      turnKeyHandler(true);
+    }
+  };
+
+  // EntitySelectorModal 핸들러
+  const handleSelectorModalOpenChange = (open: boolean) => {
+    setSelectorModalOpen(open);
+    if (!open) {
+      turnKeyHandler(true);
+    }
+  };
+
+  const handleSelectorModalCompleted = (entityId: string) => {
+    navigate({ to: "/entities/$entityId", params: { entityId } });
+  };
+
   const confirmDelProp = async (at: number) => {
     if (!entity) {
       return;
@@ -488,57 +509,60 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   };
 
   // indexes
-  const openIndexForm = (mode: "add" | "modify", at?: number, focusIndex: number = 0) => {
+  const openIndexModal = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
     if (!entity) {
       return;
     }
 
     const oldOne = mode === "add" ? undefined : entity.indexes[at!];
 
-    openModal(<EntityIndexForm entityId={entity.id} table={entity.table} oldOne={oldOne} />, {
-      onControlledOpen: () => {
-        // keySwitch off
-        turnKeyHandler(false);
+    setIndexModalData({ mode, at, oldOne, focusIndex });
+    setIndexModalOpen(true);
+    turnKeyHandler(false);
+  };
 
-        // focus
-        const focusInput = document.querySelector(`.entity-index-form .focus-${focusIndex} input`);
-        if (focusInput) {
-          (focusInput as HTMLInputElement).focus();
-        }
-      },
-      onControlledClose: () => {
-        // keySwitch on
-        turnKeyHandler(true);
-      },
-      onCompleted: (data: unknown) => {
-        const newIndexes = (() => {
-          const newIndexes = [...entity.indexes];
-          if (mode === "add") {
-            at ??= newIndexes.length - 1;
-            newIndexes.splice(at + 1, 0, data as EntityIndex);
-            return newIndexes;
-          } else {
-            return newIndexes.map((index, __index) =>
-              __index === at ? (data as EntityIndex) : index,
-            );
-          }
-        })();
+  const handleIndexModalCompleted = async (data: EntityIndex | null) => {
+    if (!entity || !indexModalData) return;
 
-        SonamuUIService.modifyIndexes(entity.id, newIndexes)
-          .then(({ updated }) => {
-            entity.indexes = updated;
-            refetch();
-            setTimeout(() => {
-              setCursor({
-                ...cursor,
-                sheet: "indexes",
-                y: at! + 1,
-              });
-            }, 100);
-          })
-          .catch(defaultCatch);
-      },
-    });
+    if (data === null) {
+      // Cancel 처리
+      setIndexModalOpen(false);
+      setIndexModalData(null);
+      turnKeyHandler(true);
+      return;
+    }
+
+    const { mode, at } = indexModalData;
+    const newIndexes = [...entity.indexes];
+
+    if (mode === "modify") {
+      newIndexes[at!] = data;
+    } else {
+      if (at === undefined) {
+        newIndexes.push(data);
+      } else {
+        newIndexes.splice(at, 0, data);
+      }
+    }
+
+    await SonamuUIService.modifyIndexes(entity.id, newIndexes);
+    refetch();
+
+    setTimeout(() => {
+      setCursor({
+        ...cursor,
+        sheet: "indexes",
+        y: mode === "modify" ? at! : newIndexes.length - 1,
+      });
+    }, 100);
+  };
+
+  const handleIndexModalOpenChange = (open: boolean) => {
+    setIndexModalOpen(open);
+    if (!open) {
+      setIndexModalData(null);
+      turnKeyHandler(true);
+    }
   };
   const confirmDelIndex = (at: number) => {
     if (!entity) {
@@ -840,7 +864,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
-                        onClick={() => openPropForm("add", undefined, 2)}
+                        onClick={() => openPropModal("add", undefined, 2)}
                       >
                         Add a prop
                       </Button>
@@ -878,7 +902,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
-                        onClick={() => openIndexForm("add", undefined, 0)}
+                        onClick={() => openIndexModal("add", undefined, 0)}
                       >
                         Add a index
                       </Button>
@@ -1136,6 +1160,30 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             )}
           </div>
         </>
+      )}
+      {entity && propModalData && (
+        <EntityPropModal
+          entityId={entity.id}
+          oldOne={propModalData.oldOne}
+          open={propModalOpen}
+          onOpenChange={handlePropModalOpenChange}
+          onCompleted={handlePropModalCompleted}
+        />
+      )}
+      <EntitySelectorModal
+        open={selectorModalOpen}
+        onOpenChange={handleSelectorModalOpenChange}
+        onCompleted={handleSelectorModalCompleted}
+      />
+      {entity && indexModalData && (
+        <EntityIndexModal
+          entityId={entity.id}
+          table={entity.table}
+          oldOne={indexModalData.oldOne}
+          open={indexModalOpen}
+          onOpenChange={handleIndexModalOpenChange}
+          onCompleted={handleIndexModalCompleted}
+        />
       )}
     </div>
   );

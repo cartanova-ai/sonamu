@@ -20,10 +20,9 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
-import { useCommonModal } from "../components/core/CommonModal";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import { MigrationActionForm } from "./entities/_action_form";
+import { MigrationActionModal } from "./migrations/_migration_action_modal";
 
 export const Route = createFileRoute("/migrations")({
   component: MigrationsIndex,
@@ -36,14 +35,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
   const { preparedCodes, conns, codes } = status ?? {};
   const migrationStatusError = status?.error;
 
-  // useCommonModal
-  const { openModal } = useCommonModal();
-
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
 
   const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
   const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [actionModalData, setActionModalData] = useState<{
+    action: "apply" | "rollback" | "shadow";
+    targets: (keyof SonamuDBConfig)[];
+  } | null>(null);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
   const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
@@ -116,11 +117,12 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
       return;
     }
     const targets = _targets ?? selectedConnKeys;
-    openModal(<MigrationActionForm action={action} targets={targets} conns={conns} />, {
-      onCompleted: () => {
-        refetch();
-      },
-    });
+    setActionModalData({ action, targets });
+    setActionModalOpen(true);
+  };
+
+  const handleActionModalCompleted = () => {
+    refetch();
   };
 
   const toggleAllFiles = () => {
@@ -354,6 +356,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
           )}
         </div>
       </div>
+      {conns && actionModalData && (
+        <MigrationActionModal
+          action={actionModalData.action}
+          targets={actionModalData.targets}
+          conns={conns}
+          open={actionModalOpen}
+          onOpenChange={setActionModalOpen}
+          onCompleted={handleActionModalCompleted}
+        />
+      )}
     </div>
   );
 }

@@ -5,10 +5,9 @@ import { useState } from "react";
 import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
-import { useCommonModal } from "../components/core/CommonModal";
 import EntityChatComponent from "../components/EntityChatComponent";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import { EntityCreateForm } from "./entities/_create_form";
+import { EntityCreateModal } from "./entities/_entity_create_modal";
 
 export const Route = createFileRoute("/entities")({
   component: EntitiesLayout,
@@ -27,28 +26,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
 
   // AI Chat 토글 상태
   const [showAIChat, setShowAIChat] = useState(false);
-
-  // useCommonModal
-  const { openModal } = useCommonModal();
-
-  const createEntity = () => {
-    openModal(<EntityCreateForm />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(
-          ".entity-create-form .focus-0 input",
-        ) as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: (newEntityId) => {
-        refetch();
-        setTimeout(() => {
-          navigate({ to: "/entities/$entityId", params: { entityId: newEntityId as string } });
-        }, 200);
-      },
-    });
-  };
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const handleEntityCreated = (entityId: string) => {
     refetch();
@@ -88,7 +66,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
               size="sm"
               variant="green"
               className="footer-btn w-full"
-              onClick={() => createEntity()}
+              onClick={() => setCreateModalOpen(true)}
             >
               <PlusIcon className="mr-2 h-4 w-4" /> New Entity
             </Button>
@@ -117,6 +95,11 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
         className="move-to-top rounded-full"
         onClick={() => document.getElementById("scroller")?.scrollIntoView({ behavior: "smooth" })}
         icon={<ArrowUpIcon />}
+      />
+      <EntityCreateModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCompleted={handleEntityCreated}
       />
     </div>
   );

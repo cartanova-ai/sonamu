@@ -1,18 +1,29 @@
-import { Button, Input, useTypeForm } from "@sonamu-kit/react-components";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  useTypeForm,
+} from "@sonamu-kit/react-components";
 import { camelize, pluralize, underscore } from "inflection";
+import { useEffect } from "react";
 import { z } from "zod";
-import PlusIcon from "~icons/lucide/plus";
-import { useCommonModal } from "../../components/core/CommonModal";
 import { EntityIdSelect } from "../../components/EntityIdSelect";
 import { InputWithSuggestion } from "../../components/InputWithSuggestion";
 import { defaultCatch, isSonamuError } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 
-type EntityCreateFormProps = {};
-export function EntityCreateForm({}: EntityCreateFormProps) {
-  // useCommonModal
-  const { doneModal } = useCommonModal();
+type EntityCreateModalProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCompleted?: (entityId: string) => void;
+};
 
+export function EntityCreateModal({ open, onOpenChange, onCompleted }: EntityCreateModalProps) {
   const { form, setForm, register, addError } = useTypeForm(
     z.object({
       id: z.string(),
@@ -27,10 +38,39 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
     },
   );
 
+  useEffect(() => {
+    if (open) {
+      setForm({
+        id: "",
+        title: "",
+        table: "",
+      });
+    }
+  }, [open, setForm]);
+
   const handleSubmit = () => {
+    const ifError = ["id", "table", "title"]
+      .map((key) => {
+        if (!form[key as keyof typeof form]) {
+          addError(key, {
+            content: `${camelize(key)} is required.`,
+            pointing: "above",
+          });
+          return true;
+        }
+        return false;
+      })
+      .some((e) => e === true);
+    if (ifError) {
+      return;
+    }
+
     SonamuUIService.createEntity(form)
       .then(() => {
-        doneModal(form.id);
+        onOpenChange(false);
+        if (onCompleted) {
+          onCompleted(form.id);
+        }
       })
       .catch((e) => {
         if (isSonamuError(e) && e.code === 541) {
@@ -44,13 +84,14 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
   };
 
   return (
-    <div className="form entity-create-form">
-      <div className="ui padded segment">
-        <div className="header-row">
-          <h2 className="ui header">Entity Create Form</h2>
-        </div>
-        <div className="ui basic segment">
-          <br />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="entity-create-form max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Entity Create Form</DialogTitle>
+          <DialogDescription>Create a new entity with table definition</DialogDescription>
+        </DialogHeader>
+
+        <div className="overflow-y-auto flex-1 p-4">
           <form className="ui form">
             <div className="equal width fields">
               <div className="required field">
@@ -82,36 +123,15 @@ export function EntityCreateForm({}: EntityCreateFormProps) {
                 <InputWithSuggestion {...register("title")} origin={underscore(form.id)} />
               </div>
             </div>
-            <div className="text-center">
-              <Button
-                variant="blue"
-                onClick={() => {
-                  const ifError = ["id", "table", "title"]
-                    .map((key) => {
-                      if (!form[key as keyof typeof form]) {
-                        addError(key, {
-                          content: `${camelize(key)} is required.`,
-                          pointing: "above",
-                        });
-                        return true;
-                      }
-                      return false;
-                    })
-                    .some((e) => e === true);
-                  if (ifError) {
-                    return;
-                  }
-
-                  handleSubmit();
-                }}
-                icon={<PlusIcon />}
-              >
-                Create
-              </Button>
-            </div>
           </form>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button type="submit" onClick={handleSubmit}>
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
