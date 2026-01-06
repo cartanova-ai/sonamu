@@ -713,6 +713,7 @@ describe("Syncer", () => {
         frame: [],
         config: [],
         workflow: [],
+        i18n: [],
       };
       const diffTypes: string[] = ["entity"]; // 초기에는 "entity"만 포함
 
@@ -746,6 +747,7 @@ describe("Syncer", () => {
         entity: [],
         config: [],
         workflow: [],
+        i18n: [],
       };
 
       // handleModelOrFrameChange 실행: 여러 model 처리
@@ -772,6 +774,7 @@ describe("Syncer", () => {
         entity: [],
         config: [],
         workflow: [],
+        i18n: [],
       });
 
       // autoload가 정상적으로 완료되었는지 확인
@@ -794,6 +797,7 @@ describe("Syncer", () => {
         entity: [],
         config: [],
         workflow: [],
+        i18n: [],
       });
 
       const writeFile = Naite.get("fs/promises:writeFile")
@@ -816,6 +820,7 @@ describe("Syncer", () => {
         entity: [],
         config: [],
         workflow: [],
+        i18n: [],
       });
 
       // 검증: actionGenerateServices에 전달된 파라미터가 올바른 namesRecord를 포함하는지 확인
@@ -1481,6 +1486,7 @@ describe("Syncer", () => {
             frame: [],
             config: [],
             workflow: [],
+            i18n: [],
           };
           const diffTypes: string[] = ["entity"];
 
@@ -1539,6 +1545,7 @@ describe("Syncer", () => {
             entity: [],
             config: [],
             workflow: [],
+            i18n: [],
           });
 
           const writeFiles = Naite.get("fs/promises:writeFile").result();
