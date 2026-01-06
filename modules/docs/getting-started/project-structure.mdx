@@ -36,7 +36,7 @@ api/
 **package.json**
 
 - 백엔드 의존성 관리
-- npm 스크립트: `dev`, `build`, `test`, `docker:up/down` 등
+- npm 스크립트: `dev`, `build`, `test`, `docker:up/down`, `dump`, `seed` 등
 
 **tsconfig.json**
 
@@ -61,22 +61,23 @@ api/
 
 ```
 api/src/
-├── index.ts               # 서버 진입점
-├── sonamu.config.ts       # Sonamu 설정 파일
-├── application/           # 엔티티별 폴더 (자동 생성)
-│    └── {entity}/
-│         ├── entities/    # 엔티티 정의 (.entity.json)
-│         ├── models/      # 비즈니스 로직 (.model.ts)
-│         ├── types/       # 타입 정의 (자동 생성)
-│         └── schemas/     # Zod 스키마 (자동 생성)
-├── testing/               # 테스트 설정
-│    ├── global.ts         # 전역 테스트 설정
-│    └── fixture.ts        # Fixture 관리
-├── typings/               # 타입 정의
-│    ├── sonamu.d.ts       # Sonamu 전역 타입
-│    └── fastify.d.ts      # Fastify 확장 타입
-└── utils/                 # 유틸리티 함수
-     └── subset-loaders.ts # Subset 로더
+├── index.ts              # 서버 진입점
+├── sonamu.config.ts      # Sonamu 설정 파일
+├── application/          # 엔티티별 폴더 (자동 생성)
+│    ├── {entity}/
+│    │    ├── {entity}.entity.json   # 엔티티 정의
+│    │    ├── {entity}.model.ts      # 비즈니스 로직
+│    │    ├── {entity}.types.ts      # 타입 + Zod 스키마
+│    │    └── {entity}.model.test.ts # 테스트 (선택)
+│    └── sonamu.generated.ts         # Base 스키마 (자동 생성)
+├── testing/              # 테스트 설정
+│   ├── global.ts         # 전역 테스트 설정
+│   └── fixture.ts        # Fixture 관리
+├── typings/              # 타입 정의
+│   ├── sonamu.d.ts       # Sonamu 전역 타입
+│   └── fastify.d.ts      # Fastify 확장 타입
+└── utils/                # 유틸리티 함수
+    └── subset-loaders.ts # Subset 로더
 ```
 
 <Accordion title="주요 디렉토리 설명">
@@ -87,29 +88,30 @@ api/src/
 - 각 엔티티마다 별도 디렉토리 생성
 - 예: `User` 엔티티 → `application/user/` 디렉토리
 
-**application/{entity}/entities/**
+**application/{entity}/{entity}.entity.json**
 
-- `.entity.json` 파일 저장
-- Sonamu UI에서 엔티티 정의 작성
+- 엔티티 정의 파일
+- Sonamu UI에서 작성
 - 데이터베이스 스키마의 소스
 
-**application/{entity}/models/**
+**application/{entity}/{entity}.model.ts**
 
-- `.model.ts` 파일 작성
 - 비즈니스 로직 구현
 - API 엔드포인트 정의 (`@api` 데코레이터)
+- 직접 작성하는 파일
 
-**application/{entity}/types/**
+**application/{entity}/{entity}.types.ts**
 
-- 자동 생성 디렉토리
 - TypeScript 타입 정의
+- Zod validation 스키마
+- 자동 생성되지만 확장 가능
 - 프론트엔드와 공유
 
-**application/{entity}/schemas/**
+**application/sonamu.generated.ts**
 
-- 자동 생성 디렉토리
-- Zod validation 스키마
-- 런타임 타입 검증
+- 모든 엔티티의 Base 스키마 자동 생성
+- Enum 타입 및 레이블 정의
+- 직접 수정하지 말 것
 
 **testing/**
 
@@ -123,13 +125,13 @@ api/src/
 
 ```
 api/database/
-├── docker-compose.yml    # PostgreSQL 컨테이너 설정
+├── docker-compose.yml     # PostgreSQL 컨테이너 설정
 ├── fixtures/
-│    └── init.sql         # 데이터베이스 초기화 SQL
-├── dumps/                # 데이터 덤프 파일
+│    └── init.sql          # 데이터베이스 초기화 SQL
+├── dumps/                 # 데이터 덤프 파일
 └── scripts/
-     ├── dump.sh          # 데이터 백업 스크립트
-     └── seed.sh          # 데이터 복원 스크립트
+     ├── dump.sh           # 데이터 백업 스크립트
+     └── seed.sh           # 데이터 복원 스크립트
 ```
 
 <Accordion title="주요 파일 설명">
@@ -164,13 +166,13 @@ api/database/
 
 ```
 web/
-├── src/                # 소스 코드
-├── index.html          # HTML 엔트리포인트
-├── package.json        # 의존성 및 스크립트
-├── vite.config.ts      # Vite 설정
-├── tsconfig.json       # TypeScript 설정
+├── src/              # 소스 코드
+├── index.html        # HTML 엔트리포인트
+├── package.json      # 의존성 및 스크립트
+├── vite.config.ts    # Vite 설정
+├── tsconfig.json     # TypeScript 설정
 ├── tsconfig.node.json  # Node 환경 설정
-└── .sonamu.env         # 환경 변수
+└── .sonamu.env       # 환경 변수
 ```
 
 <Accordion title="주요 파일 설명">
@@ -227,83 +229,126 @@ web/src/
 
 </Accordion>
 
-## 자동 생성되는 파일들
+## 엔티티 생성 시 파일 구조 예시
 
-Sonamu는 엔티티를 생성하면 다음 파일들을 자동으로 생성합니다:
+User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
 
-### API (백엔드)
+```
+api/src/application/
+├── user/
+│    ├── user.entity.json       # Sonamu UI에서 생성
+│    ├── user.model.ts          # 직접 작성
+│    ├── user.types.ts          # 자동 생성 (확장 가능)
+│    └── user.model.test.ts     # 직접 작성 (선택)
+└── sonamu.generated.ts         # 자동 업데이트
+
+database/migrations/
+└── 20250106120000_create_user.sql  # 자동 생성
+
+web/src/services/
+└── UserService.ts             # 자동 생성
+```
+
+### 각 파일의 역할
 
 <CodeGroup>
-```typescript title="application/{entity}/types/{entity}.types.ts"
-// TypeScript 타입 정의
-export type User = {
-  id: number;
-  name: string;
-  email: string;
-  created_at: Date;
-};
-
-export type UserSaveParams = Omit<User, 'id' | 'created_at'>;
+```json title="user.entity.json"
+{
+  "properties": [
+    {
+      "name": "id",
+      "type": "int",
+      "isPrimary": true
+    },
+    {
+      "name": "email",
+      "type": "varchar"
+    },
+    {
+      "name": "name",
+      "type": "varchar"
+    }
+  ]
+}
 ```
 
-```typescript title="application/{entity}/schemas/{entity}.schemas.ts"
-// Zod validation 스키마
-export const UserSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  created_at: z.date(),
-});
-```
+```typescript title="user.model.ts"
+// 직접 작성하는 파일
+import { BaseModel } from "sonamu";
 
-```sql title="database/migrations/{timestamp}_create_{entity}.sql"
--- 마이그레이션 파일
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-</CodeGroup>
-
-### Web (프론트엔드)
-
-```typescript title="src/services/UserService.ts"
-// 자동 생성된 API 클라이언트
-export class UserService {
-  static async findById(id: number): Promise<User> {
-    // 타입 안전한 API 호출
-  }
-
-  static async save(params: UserSaveParams): Promise<User> {
-    // 타입 안전한 API 호출
+export class UserModel extends BaseModel {
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    // 비즈니스 로직
   }
 }
 ```
 
+```typescript title="user.types.ts"
+// 자동 생성 + 확장 가능
+import { z } from "zod";
+import { UserBaseSchema } from "../sonamu.generated";
+
+// Base 타입 (자동 생성됨)
+export type User = z.infer<typeof UserBaseSchema>;
+
+// 확장 가능한 커스텀 타입
+export const UserSaveParams = UserBaseSchema.partial({
+  id: true,
+  created_at: true,
+});
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+```
+
+```typescript title="sonamu.generated.ts"
+// 자동 생성 - 직접 수정 금지
+export const UserBaseSchema = z.object({
+  id: z.number(),
+  email: z.string(),
+  name: z.string(),
+  created_at: z.date(),
+});
+
+export const UserOrderBy = z.enum(["id-desc", "name-asc"]);
+export type UserOrderBy = z.infer<typeof UserOrderBy>;
+```
+
+```typescript title="UserService.ts (web)"
+// 자동 생성
+export class UserService {
+  static async findById(id: number): Promise<User> {
+    const res = await axios.get(`/api/users/${id}`);
+    return res.data;
+  }
+}
+```
+
+</CodeGroup>
+
 <Note>
-  자동 생성된 파일들은 **직접 수정하지 마세요**. 엔티티 정의가 변경되면 다시
-  생성됩니다.
+  **자동 생성 vs 직접 작성** - `.entity.json`: Sonamu UI에서 작성 - `.model.ts`:
+  직접 작성 - `.types.ts`: 자동 생성되지만 확장 가능 - `sonamu.generated.ts`:
+  자동 생성 - 수정 금지 - `{Entity}Service.ts`: 자동 생성 - 수정 금지
 </Note>
 
 ## 개발 시 주요 작업 위치
 
-| 작업 내용         | 위치                                     | 방법      |
-| ----------------- | ---------------------------------------- | --------- |
-| 엔티티 정의       | `api/src/application/{entity}/entities/` | Sonamu UI |
-| 비즈니스 로직     | `api/src/application/{entity}/models/`   | 직접 작성 |
-| API 엔드포인트    | Model 파일에 `@api` 데코레이터           | 직접 작성 |
-| 데이터베이스 설정 | `api/src/sonamu.config.ts`               | 직접 작성 |
-| 서버 설정         | `api/src/sonamu.config.ts`               | 직접 작성 |
-| 테스트 작성       | `api/src/application/{entity}/`          | 직접 작성 |
-| 페이지 컴포넌트   | `web/src/pages/`                         | 직접 작성 |
-| 공통 컴포넌트     | `web/src/admin-common/`                  | 직접 작성 |
+| 작업 내용         | 위치                                                  | 방법      |
+| ----------------- | ----------------------------------------------------- | --------- |
+| 엔티티 정의       | `api/src/application/{entity}/{entity}.entity.json`   | Sonamu UI |
+| 비즈니스 로직     | `api/src/application/{entity}/{entity}.model.ts`      | 직접 작성 |
+| 커스텀 타입       | `api/src/application/{entity}/{entity}.types.ts`      | 직접 확장 |
+| API 엔드포인트    | Model 파일에 `@api` 데코레이터                        | 직접 작성 |
+| 데이터베이스 설정 | `api/src/sonamu.config.ts`                            | 직접 작성 |
+| 서버 설정         | `api/src/sonamu.config.ts`                            | 직접 작성 |
+| 테스트 작성       | `api/src/application/{entity}/{entity}.model.test.ts` | 직접 작성 |
+| 페이지 컴포넌트   | `web/src/pages/`                                      | 직접 작성 |
+| 공통 컴포넌트     | `web/src/admin-common/`                               | 직접 작성 |
 
 <Warning>
-  `application/` 디렉토리 내의 `types/`, `schemas/` 디렉토리는 자동 생성되므로
-  직접 수정하지 마세요. 엔티티 정의를 변경하면 자동으로 재생성됩니다.
+  **자동 생성 파일 주의사항** - `sonamu.generated.ts`: 절대 수정하지 마세요 - `
+  {Entity}Service.ts`: 절대 수정하지 마세요 - `{entity}.types.ts`: 확장은
+  가능하지만 자동 생성 부분은 수정하지 마세요
 </Warning>
 
 ## 다음 단계
