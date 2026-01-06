@@ -6,55 +6,535 @@
     "dark": "/logo/pinetree.png",
     "light": "/logo/pinetree.png"
   },
+  "favicon": "/logo/pinetree.png",
   "colors": {
     "primary": "#10b981",
     "light": "#34d399",
     "dark": "#059669"
   },
+  "appearance": {
+    "toggle": true,
+    "default": "light"
+  },
   "navigation": {
-    "groups": [
+    "languages": [
       {
-        "group": "Introduction",
-        "pages": [
-          "introduction",
-          "introduction/dependency"
-        ]
-      },
-      {
-        "group": "Tutorial",
-        "pages": [
-          "tutorial/getting-started",
-          "tutorial/entity",
-          "tutorial/scaffolding",
-          "tutorial/api",
-          "tutorial/relation",
-          "tutorial/front-end"
-        ]
-      },
-      {
-        "group": "Guide",
-        "pages": [
-          "guide/auth",
-          "guide/entity",
-          "guide/upsert-builder",
-          "guide/subset",
-          "guide/test",
-          "guide/tsconfig"
-        ]
-      },
-      {
-        "group": "Reference",
-        "pages": [
-          "reference/file-sync",
-          "reference/entity",
-          "reference/migration",
-          "reference/api-decorator",
-          "reference/scaffolding",
-          "reference/model",
-          "reference/fixture",
-          "reference/cli",
-          "reference/sonamu-kit",
-          "reference/error"
+        "language": "ko",
+        "label": "한국어",
+        "default": true,
+        "groups": [
+          {
+            "group": "시작하기",
+            "icon": "rocket",
+            "pages": [
+              "getting-started/introduction",
+              "getting-started/installation",
+              "getting-started/quick-start",
+              "getting-started/project-structure",
+              "getting-started/first-entity",
+              "getting-started/development-workflow"
+            ]
+          },
+          {
+            "group": "핵심 개념",
+            "icon": "lightbulb",
+            "pages": [
+              "core-concepts/how-sonamu-works",
+              {
+                "group": "Entity",
+                "pages": [
+                  "core-concepts/entity/defining-entities",
+                  "core-concepts/entity/using-sonamu-ui",
+                  "core-concepts/entity/field-types",
+                  "core-concepts/entity/relations",
+                  "core-concepts/entity/enums"
+                ]
+              },
+              {
+                "group": "Model",
+                "pages": [
+                  "core-concepts/model/what-is-model",
+                  "core-concepts/model/creating-models",
+                  "core-concepts/model/api-decorator",
+                  "core-concepts/model/business-logic",
+                  "core-concepts/model/basemodel-methods"
+                ]
+              },
+              {
+                "group": "자동 생성",
+                "pages": [
+                  "core-concepts/auto-generation/what-gets-generated",
+                  "core-concepts/auto-generation/syncer",
+                  "core-concepts/auto-generation/when-files-regenerate",
+                  "core-concepts/auto-generation/customizing-generated-code"
+                ]
+              },
+              {
+                "group": "타입 시스템",
+                "pages": [
+                  "core-concepts/type-system/entity-types",
+                  "core-concepts/type-system/generated-types",
+                  "core-concepts/type-system/e2e-type-safety",
+                  "core-concepts/type-system/zod-validation"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "데이터베이스",
+            "icon": "database",
+            "pages": [
+              {
+                "group": "Puri 쿼리 빌더",
+                "pages": [
+                  "database/puri/basic-queries",
+                  "database/puri/joins",
+                  "database/puri/aggregations",
+                  "database/puri/raw-queries",
+                  "database/puri/type-safety",
+                  "database/puri/advanced-patterns"
+                ]
+              },
+              {
+                "group": "Subset",
+                "pages": [
+                  "database/subsets/what-are-subsets",
+                  "database/subsets/defining-subsets",
+                  "database/subsets/using-subsets",
+                  "database/subsets/nested-relations"
+                ]
+              },
+              {
+                "group": "UpsertBuilder",
+                "pages": [
+                  "database/upsert-builder/basic-usage",
+                  "database/upsert-builder/relations",
+                  "database/upsert-builder/batch-operations",
+                  "database/upsert-builder/advanced-patterns"
+                ]
+              },
+              {
+                "group": "마이그레이션",
+                "pages": [
+                  "database/migrations/how-migrations-work",
+                  "database/migrations/creating-migrations",
+                  "database/migrations/running-migrations",
+                  "database/migrations/rolling-back",
+                  "database/migrations/migration-strategies"
+                ]
+              },
+              {
+                "group": "트랜잭션",
+                "pages": [
+                  "database/transactions/transactional-decorator",
+                  "database/transactions/manual-transactions",
+                  "database/transactions/best-practices"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "API 개발",
+            "icon": "code",
+            "pages": [
+              {
+                "group": "API 만들기",
+                "pages": [
+                  "api-development/creating-apis/api-decorator",
+                  "api-development/creating-apis/http-methods",
+                  "api-development/creating-apis/parameters",
+                  "api-development/creating-apis/return-types"
+                ]
+              },
+              {
+                "group": "Frame",
+                "pages": [
+                  "api-development/frames/what-are-frames",
+                  "api-development/frames/creating-frames",
+                  "api-development/frames/use-cases"
+                ]
+              },
+              {
+                "group": "Context",
+                "pages": [
+                  "api-development/context/sonamu-context",
+                  "api-development/context/getting-context",
+                  "api-development/context/custom-context"
+                ]
+              },
+              {
+                "group": "검증",
+                "pages": [
+                  "api-development/validation/automatic-validation",
+                  "api-development/validation/custom-validation",
+                  "api-development/validation/error-handling"
+                ]
+              },
+              {
+                "group": "파일 업로드",
+                "pages": [
+                  "api-development/file-upload/setup",
+                  "api-development/file-upload/uploaded-file-class",
+                  "api-development/file-upload/saving-files",
+                  "api-development/file-upload/url-generation"
+                ]
+              },
+              {
+                "group": "인증",
+                "pages": [
+                  "api-development/authentication/setup",
+                  "api-development/authentication/session-management",
+                  "api-development/authentication/protected-routes"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "프론트엔드 통합",
+            "icon": "browser",
+            "pages": [
+              {
+                "group": "자동 생성 Service",
+                "pages": [
+                  "frontend-integration/generated-services/how-services-work",
+                  "frontend-integration/generated-services/using-services",
+                  "frontend-integration/generated-services/swr-hooks"
+                ]
+              },
+              {
+                "group": "React 컴포넌트",
+                "pages": [
+                  "frontend-integration/react-components/scaffolding-views",
+                  "frontend-integration/react-components/id-async-select",
+                  "frontend-integration/react-components/search-input",
+                  "frontend-integration/react-components/custom-components"
+                ]
+              },
+              {
+                "group": "타입 안전성",
+                "pages": [
+                  "frontend-integration/type-safety/shared-types",
+                  "frontend-integration/type-safety/api-type-inference",
+                  "frontend-integration/type-safety/compile-time-errors"
+                ]
+              },
+              {
+                "group": "SSR",
+                "pages": [
+                  "frontend-integration/ssr/ssr-setup",
+                  "frontend-integration/ssr/preloading-data",
+                  "frontend-integration/ssr/hydration-strategies",
+                  "frontend-integration/ssr/cache-control"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "테스팅",
+            "icon": "flask",
+            "pages": [
+              {
+                "group": "테스트 작성하기",
+                "pages": [
+                  "testing/writing-tests/test-structure",
+                  "testing/writing-tests/scaffolding-tests",
+                  "testing/writing-tests/test-helpers"
+                ]
+              },
+              {
+                "group": "Fixture",
+                "pages": [
+                  "testing/fixtures/creating-fixtures",
+                  "testing/fixtures/loading-fixtures",
+                  "testing/fixtures/syncing-fixtures",
+                  "testing/fixtures/test-database"
+                ]
+              },
+              {
+                "group": "Naite",
+                "pages": [
+                  "testing/naite/what-is-naite",
+                  "testing/naite/recording-logs",
+                  "testing/naite/querying-logs",
+                  "testing/naite/debugging-tests",
+                  "testing/naite/naite-viewer"
+                ]
+              },
+              {
+                "group": "Mocking",
+                "pages": [
+                  "testing/mocking/api-mocking",
+                  "testing/mocking/database-mocking",
+                  "testing/mocking/run-with-mock-context"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "고급 기능",
+            "icon": "sparkles",
+            "pages": [
+              {
+                "group": "캐싱 (BentoCache)",
+                "pages": [
+                  "advanced-features/caching/cache-configuration",
+                  "advanced-features/caching/cache-decorator",
+                  "advanced-features/caching/cache-strategies",
+                  "advanced-features/caching/cache-invalidation"
+                ]
+              },
+              {
+                "group": "Cache-Control",
+                "pages": [
+                  "advanced-features/cache-control/what-is-cache-control",
+                  "advanced-features/cache-control/cache-presets",
+                  "advanced-features/cache-control/using-in-apis",
+                  "advanced-features/cache-control/using-in-ssr"
+                ]
+              },
+              {
+                "group": "응답 압축",
+                "pages": [
+                  "advanced-features/compress/compress-configuration",
+                  "advanced-features/compress/compress-presets",
+                  "advanced-features/compress/per-api-control",
+                  "advanced-features/compress/performance-optimization"
+                ]
+              },
+              {
+                "group": "파일 스토리지",
+                "pages": [
+                  "advanced-features/storage/storage-drivers",
+                  "advanced-features/storage/storage-manager",
+                  "advanced-features/storage/file-operations",
+                  "advanced-features/storage/url-builder"
+                ]
+              },
+              {
+                "group": "Server-Sent Events",
+                "pages": [
+                  "advanced-features/sse/sse-setup",
+                  "advanced-features/sse/creating-sse-endpoints",
+                  "advanced-features/sse/client-integration"
+                ]
+              },
+              {
+                "group": "AI 에이전트",
+                "pages": [
+                  "advanced-features/ai-agents/agent-configuration",
+                  "advanced-features/ai-agents/creating-agents",
+                  "advanced-features/ai-agents/using-ai-sdk"
+                ]
+              },
+              {
+                "group": "벡터 검색",
+                "pages": [
+                  "advanced-features/vector-search/pgvector-setup",
+                  "advanced-features/vector-search/embeddings",
+                  "advanced-features/vector-search/chunking",
+                  "advanced-features/vector-search/vector-search",
+                  "advanced-features/vector-search/hybrid-search"
+                ]
+              },
+              {
+                "group": "Workflow",
+                "pages": [
+                  "advanced-features/workflows/workflow-decorator",
+                  "advanced-features/workflows/steps",
+                  "advanced-features/workflows/worker-setup",
+                  "advanced-features/workflows/error-handling"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "도구 & CLI",
+            "icon": "wrench",
+            "pages": [
+              {
+                "group": "Sonamu CLI",
+                "pages": [
+                  "tools-and-cli/sonamu-cli/dev",
+                  "tools-and-cli/sonamu-cli/build",
+                  "tools-and-cli/sonamu-cli/migrate",
+                  "tools-and-cli/sonamu-cli/fixture",
+                  "tools-and-cli/sonamu-cli/stub",
+                  "tools-and-cli/sonamu-cli/scaffold"
+                ]
+              },
+              {
+                "group": "Sonamu UI",
+                "pages": [
+                  "tools-and-cli/sonamu-ui/getting-started",
+                  "tools-and-cli/sonamu-ui/entity-management",
+                  "tools-and-cli/sonamu-ui/migration-tab",
+                  "tools-and-cli/sonamu-ui/scaffolding-tab",
+                  "tools-and-cli/sonamu-ui/subset-management",
+                  "tools-and-cli/sonamu-ui/tips-and-tricks"
+                ]
+              },
+              {
+                "group": "VSCode Extension",
+                "pages": [
+                  "tools-and-cli/vscode-extension/installation",
+                  "tools-and-cli/vscode-extension/features",
+                  "tools-and-cli/vscode-extension/shortcuts"
+                ]
+              },
+              {
+                "group": "Hot Module Replacement",
+                "pages": [
+                  "tools-and-cli/hmr/how-hmr-works",
+                  "tools-and-cli/hmr/boundaries",
+                  "tools-and-cli/hmr/troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "설정",
+            "icon": "gear",
+            "pages": [
+              {
+                "group": "sonamu.config.ts",
+                "pages": [
+                  "configuration/sonamu-config/project-settings",
+                  "configuration/sonamu-config/database",
+                  "configuration/sonamu-config/server",
+                  "configuration/sonamu-config/sync-targets",
+                  "configuration/sonamu-config/storage",
+                  "configuration/sonamu-config/cache",
+                  "configuration/sonamu-config/cache-control",
+                  "configuration/sonamu-config/compress",
+                  "configuration/sonamu-config/tasks",
+                  "configuration/sonamu-config/auth"
+                ]
+              },
+              {
+                "group": "로깅",
+                "pages": [
+                  "configuration/logging/logtape-setup",
+                  "configuration/logging/sinks-and-filters",
+                  "configuration/logging/category-logging",
+                  "configuration/logging/fastify-logging"
+                ]
+              },
+              {
+                "group": "환경 변수",
+                "pages": [
+                  "configuration/environment-variables/env-setup",
+                  "configuration/environment-variables/database-credentials",
+                  "configuration/environment-variables/api-keys"
+                ]
+              },
+              {
+                "group": "TypeScript 설정",
+                "pages": [
+                  "configuration/typescript/tsconfig",
+                  "configuration/typescript/path-mappings",
+                  "configuration/typescript/type-checking"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "API 레퍼런스",
+            "icon": "book",
+            "pages": [
+              {
+                "group": "데코레이터",
+                "pages": [
+                  "api-reference/decorators/api",
+                  "api-reference/decorators/transactional",
+                  "api-reference/decorators/cache",
+                  "api-reference/decorators/workflow"
+                ]
+              },
+              {
+                "group": "BaseModel",
+                "pages": [
+                  "api-reference/base-model/find-by-id",
+                  "api-reference/base-model/find-many",
+                  "api-reference/base-model/save",
+                  "api-reference/base-model/del",
+                  "api-reference/base-model/get-puri"
+                ]
+              },
+              {
+                "group": "Puri 메서드",
+                "pages": [
+                  "api-reference/puri-methods/select",
+                  "api-reference/puri-methods/where",
+                  "api-reference/puri-methods/join",
+                  "api-reference/puri-methods/order-by",
+                  "api-reference/puri-methods/limit",
+                  "api-reference/puri-methods/advanced-methods"
+                ]
+              },
+              {
+                "group": "Context",
+                "pages": [
+                  "api-reference/context/sonamu-context",
+                  "api-reference/context/auth-context",
+                  "api-reference/context/methods"
+                ]
+              },
+              {
+                "group": "예외 처리",
+                "pages": [
+                  "api-reference/exceptions/sonamu-error",
+                  "api-reference/exceptions/bad-request-error",
+                  "api-reference/exceptions/unauthorized-error",
+                  "api-reference/exceptions/custom-errors"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "문제 해결",
+            "icon": "life-ring",
+            "pages": [
+              {
+                "group": "자주 발생하는 오류",
+                "pages": [
+                  "troubleshooting/common-errors/port-in-use",
+                  "troubleshooting/common-errors/migration-errors",
+                  "troubleshooting/common-errors/type-errors",
+                  "troubleshooting/common-errors/hmr-issues",
+                  "troubleshooting/common-errors/database-connection"
+                ]
+              },
+              {
+                "group": "디버깅",
+                "pages": [
+                  "troubleshooting/debugging/using-naite",
+                  "troubleshooting/debugging/console-logging",
+                  "troubleshooting/debugging/source-maps",
+                  "troubleshooting/debugging/vitest-debug"
+                ]
+              },
+              {
+                "group": "성능",
+                "pages": [
+                  "troubleshooting/performance/query-optimization",
+                  "troubleshooting/performance/n-plus-one-problems",
+                  "troubleshooting/performance/caching-strategies"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "자주 묻는 질문",
+            "icon": "message-question",
+            "pages": [
+              "faq/general",
+              "faq/entity-and-model",
+              "faq/database",
+              "faq/api",
+              "faq/testing",
+              "faq/deployment"
+            ]
+          }
         ]
       }
     ]

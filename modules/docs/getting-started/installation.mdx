@@ -1,0 +1,231 @@
+---
+title: "설치하기"
+description: "Sonamu 설치 및 개발 환경 설정"
+---
+
+Sonamu는 `create-sonamu` 패키지를 통해 프로젝트를 손쉽게 시작할 수 있습니다.
+
+## 시스템 요구사항
+
+Sonamu를 사용하기 위해서는 다음 환경이 필요합니다:
+
+- **Node.js** v22 이상
+- **pnpm** v10.23 이상
+- **Docker** (데이터베이스 실행용)
+
+<Tip>
+pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.
+</Tip>
+
+## 프로젝트 생성
+
+터미널에서 다음 명령어를 실행하여 새 Sonamu 프로젝트를 생성합니다:
+
+```bash
+pnpm create sonamu
+```
+
+대화형 프롬프트가 나타나면 프로젝트 정보를 입력합니다:
+
+```bash
+? Project name: my_app
+? Would you like to set up pnpm? Yes
+? Would you like to set up a database using Docker? Yes
+? Enter the Docker project name: my-app-container
+? Enter the database user: postgres
+? Enter the container name: my-app-pg
+? Enter the database name: my_app
+? Enter the database password: ****
+```
+
+<Steps>
+<Step title="프로젝트명 입력">
+생성할 프로젝트의 이름을 입력합니다. 이 이름으로 디렉토리가 생성됩니다.
+
+<Warning>
+프로젝트명에는 **공백**과 **하이픈(`-`)**을 사용할 수 없습니다. 언더스코어(`_`)를 사용하세요.
+</Warning>
+</Step>
+
+<Step title="pnpm 설정">
+pnpm을 자동으로 설정할지 선택합니다. 권장 옵션입니다.
+</Step>
+
+<Step title="데이터베이스 설정">
+Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니다. Yes를 선택하면:
+- Docker Compose 프로젝트명
+- 데이터베이스 사용자명
+- 컨테이너 이름
+- 데이터베이스 이름
+- 데이터베이스 비밀번호
+
+를 입력받고, 이 정보로 `api/.env` 파일이 자동 생성됩니다.
+</Step>
+</Steps>
+
+## 생성된 프로젝트 구조
+
+`create-sonamu`는 다음과 같은 모노레포 구조를 생성합니다:
+
+```
+my_app/
+├── api/                          # 백엔드 API 서버
+│   ├── src/
+│   │   ├── index.ts              # 서버 엔트리포인트
+│   │   ├── sonamu.config.ts      # Sonamu 설정 파일
+│   │   ├── testing/              # 테스트 유틸리티
+│   │   ├── typings/              # 타입 정의
+│   │   └── utils/                # 유틸리티 함수
+│   ├── database/
+│   │   ├── docker-compose.yml    # PostgreSQL 컨테이너 설정
+│   │   ├── fixtures/             # DB 초기화 스크립트
+│   │   ├── dumps/                # 데이터 덤프 파일
+│   │   └── scripts/              # dump, seed 스크립트
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env                      # 환경변수 (자동 생성)
+│
+├── web/                          # 프론트엔드 웹 애플리케이션
+│   ├── src/
+│   │   ├── main.tsx              # React 엔트리포인트
+│   │   ├── App.tsx               # 루트 컴포넌트
+│   │   ├── pages/                # 페이지 컴포넌트
+│   │   ├── services/             # API 서비스 (자동 생성)
+│   │   └── admin-common/         # 공통 컴포넌트
+│   ├── package.json
+│   ├── vite.config.ts            # Vite 설정
+│   └── .sonamu.env               # 환경변수
+│
+└── README.md
+```
+
+## 주요 설정 파일
+
+### API 서버 엔트리포인트
+
+생성된 API 서버의 진입점은 다음과 같습니다:
+
+```typescript title="api/src/index.ts"
+import { Sonamu } from "sonamu";
+
+async function bootstrap() {
+  await Sonamu.createServer();
+}
+bootstrap();
+```
+
+### Sonamu 설정
+
+`sonamu.config.ts`에서 프로젝트의 주요 설정을 관리합니다:
+
+```typescript title="api/src/sonamu.config.ts"
+import path from "node:path";
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "SonamuProject",
+  api: {
+    dir: "api",
+    timezone: "Asia/Seoul",
+    route: {
+      prefix: "/api",
+    },
+  },
+  sync: {
+    targets: ["web"],
+  },
+  database: {
+    database: "pg",
+    name: process.env.DATABASE_NAME ?? "database_name",
+    defaultOptions: {
+      connection: {
+        host: process.env.DB_HOST || "0.0.0.0",
+        port: Number(process.env.DB_PORT) || 5432,
+        user: process.env.DB_USER || "postgres",
+        password: process.env.DB_PASSWORD,
+      },
+    },
+  },
+  server: {
+    listen: { port, host },
+    // ... 추가 서버 설정
+  },
+});
+```
+
+### Docker Compose 설정
+
+PostgreSQL 데이터베이스는 Docker로 관리됩니다:
+
+```yaml title="api/database/docker-compose.yml"
+version: "3.8"
+name: ${CONTAINER_NAME}
+services:
+  pg:
+    platform: linux/arm64
+    image: pgvector/pgvector:pg18
+    container_name: ${CONTAINER_NAME}
+    volumes:
+      - ./fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_DB: template1
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "${DB_PORT}:5432"
+```
+
+### 프론트엔드 설정
+
+Vite 기반 React 애플리케이션이 생성됩니다:
+
+```typescript title="web/vite.config.ts"
+import react from "@vitejs/plugin-react-swc";
+import dotenv from "dotenv";
+import path from "path";
+import { defineConfig } from "vite";
+
+dotenv.config({ path: ".sonamu.env" });
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 3028,
+    proxy: {
+      "/api": `http://${process.env.API_HOST}:${process.env.API_PORT}`,
+    },
+  },
+});
+```
+
+## 포트 구성
+
+기본 포트는 다음과 같이 설정됩니다:
+
+| 서비스     | 포트 | 설명                   |
+| ---------- | ---- | ---------------------- |
+| API 서버   | 1028 | Fastify 기반 REST API  |
+| Sonamu UI  | 2028 | 엔티티 관리 인터페이스 |
+| Web 앱     | 3028 | Vite 개발 서버         |
+| PostgreSQL | 5432 | 데이터베이스           |
+
+<Note>
+- API 서버 포트: `api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `web/.sonamu.env`의 `API_PORT`도 함께 수정 필요)
+- Web 앱 포트: `web/vite.config.ts`에서 `server.port` 수정
+- 데이터베이스 포트: `api/.env`에서 `DB_PORT` 수정
+</Note>
+
+## 다음 단계
+
+설치가 완료되었다면, [빠른 시작](/getting-started/quick-start) 가이드를 통해 첫 번째 엔티티를 생성하고 API를 만들어보세요.
