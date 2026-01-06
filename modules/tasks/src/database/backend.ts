@@ -38,6 +38,7 @@ interface BackendPostgresOptions {
 }
 
 const logger = getLogger(["sonamu", "internal", "tasks"]);
+const queryLogger = getLogger(["sonamu", "internal", "tasks", "query"]);
 
 /**
  * Manages a connection to a Postgres database for workflow operations.
@@ -54,6 +55,12 @@ export class BackendPostgres implements Backend {
   private get knex(): Knex {
     if (!this._knex) {
       this._knex = knex(this.config);
+      this._knex.on("query", (query) => {
+        queryLogger.debug("SQL: {query}, Values: {bindings}", {
+          query: query.sql,
+          bindings: query.bindings,
+        });
+      });
     }
 
     return this._knex;
@@ -155,6 +162,11 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Creating workflow run: {workflowName}:{version}", {
+      workflowName: params.workflowName,
+      version: params.version,
+    });
+
     const qb = this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -190,6 +202,7 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Getting workflow run: {workflowRunId}", { workflowRunId: params.workflowRunId });
     const workflowRun = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -228,6 +241,10 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Listing workflow runs: {after}, {before}", {
+      after: params.after,
+      before: params.before,
+    });
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
 
@@ -275,6 +292,10 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Claiming workflow run: {workerId}, {leaseDurationMs}", {
+      workerId: params.workerId,
+      leaseDurationMs: params.leaseDurationMs,
+    });
     const claimed = await this.knex
       .with("expired", (qb) =>
         qb
@@ -335,6 +356,11 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Extending workflow run lease: {workflowRunId}, {workerId}, {leaseDurationMs}", {
+      workflowRunId: params.workflowRunId,
+      workerId: params.workerId,
+      leaseDurationMs: params.leaseDurationMs,
+    });
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -360,6 +386,12 @@ export class BackendPostgres implements Backend {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Sleeping workflow run: {workflowRunId}, {workerId}, {availableAt}", {
+      workflowRunId: params.workflowRunId,
+      workerId: params.workerId,
+      availableAt: params.availableAt,
+    });
 
     // 'succeeded' status is deprecated
     const [updated] = await this.knex
@@ -389,6 +421,12 @@ export class BackendPostgres implements Backend {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Completing workflow run: {workflowRunId}, {workerId}, {output}", {
+      workflowRunId: params.workflowRunId,
+      workerId: params.workerId,
+      output: params.output,
+    });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -433,6 +471,12 @@ export class BackendPostgres implements Backend {
     const retryIntervalExpr = `LEAST(${initialIntervalMs} * POWER(${backoffCoefficient}, "attempts" - 1), ${maximumIntervalMs}) * INTERVAL '1 millisecond'`;
     const deadlineExceededCondition = `"deadline_at" IS NOT NULL AND NOW() + (${retryIntervalExpr}) >= "deadline_at"`;
 
+    logger.info("Failing workflow run: {workflowRunId}, {workerId}, {error}", {
+      workflowRunId: params.workflowRunId,
+      workerId: params.workerId,
+      error: params.error,
+    });
+
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("workflow_runs")
@@ -469,6 +513,8 @@ export class BackendPostgres implements Backend {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Canceling workflow run: {workflowRunId}", { workflowRunId: params.workflowRunId });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -523,6 +569,12 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Creating step attempt: {workflowRunId}, {stepName}, {kind}", {
+      workflowRunId: params.workflowRunId,
+      stepName: params.stepName,
+      kind: params.kind,
+    });
+
     const [stepAttempt] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts")
@@ -554,6 +606,8 @@ export class BackendPostgres implements Backend {
       throw new Error("Backend not initialized");
     }
 
+    logger.info("Getting step attempt: {stepAttemptId}", { stepAttemptId: params.stepAttemptId });
+
     const stepAttempt = await this.knex
       .withSchema(DEFAULT_SCHEMA)
       .table("step_attempts")
@@ -568,6 +622,12 @@ export class BackendPostgres implements Backend {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Listing step attempts: {workflowRunId}, {after}, {before}", {
+      workflowRunId: params.workflowRunId,
+      after: params.after,
+      before: params.before,
+    });
 
     const limit = params.limit ?? DEFAULT_PAGINATION_PAGE_SIZE;
     const { after, before } = params;
@@ -653,10 +713,17 @@ export class BackendPostgres implements Backend {
     };
   }
 
+  // NOTE: 실제 서비스에서 이게 안 되는 것 같은데, 쿼리 등을 체크할 필요가 있음.
   async completeStepAttempt(params: CompleteStepAttemptParams): Promise<StepAttempt> {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Marking step attempt as completed: {workflowRunId}, {stepAttemptId}, {workerId}", {
+      workflowRunId: params.workflowRunId,
+      stepAttemptId: params.stepAttemptId,
+      workerId: params.workerId,
+    });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
@@ -691,6 +758,13 @@ export class BackendPostgres implements Backend {
     if (!this.initialized) {
       throw new Error("Backend not initialized");
     }
+
+    logger.info("Marking step attempt as failed: {workflowRunId}, {stepAttemptId}, {workerId}", {
+      workflowRunId: params.workflowRunId,
+      stepAttemptId: params.stepAttemptId,
+      workerId: params.workerId,
+    });
+    logger.info("Error: {error.message}", { error: params.error.message });
 
     const [updated] = await this.knex
       .withSchema(DEFAULT_SCHEMA)
