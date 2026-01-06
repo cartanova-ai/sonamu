@@ -29,7 +29,7 @@
     "editor.formatOnSave": true
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.defaultFormatter": "biomejs.biome",
     "editor.formatOnSave": true
   },
   "rest-client.environmentVariables": {
@@ -40,6 +40,5 @@
   "files.readonlyInclude": {
     "examples/**/web/src/services/**/*": true
   },
-  "typescript.experimental.useTsgo": false,
-  "terminal.integrated.fontFamily": "'Hack Nerd Font Mono'"
+  "typescript.experimental.useTsgo": false
 }
