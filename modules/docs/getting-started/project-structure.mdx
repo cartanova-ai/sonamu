@@ -130,6 +130,15 @@ api/src/
 
 </Accordion>
 
+<Info>
+**더 알아보기 - 엔티티 파일**
+- [엔티티 정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법
+- [Model 만들기](/core-concepts/model/creating-models) - model.ts 작성 가이드
+- [타입 시스템](/core-concepts/type-system/entity-types) - types.ts 이해하기
+- [자동 생성되는 것들](/core-concepts/auto-generation/what-gets-generated) - 어떤 파일이 자동 생성되는지
+- [테스트 작성하기](/testing/writing-tests/test-structure) - 테스트 파일 구조
+</Info>
+
 ### database/ 디렉토리
 
 ```
@@ -168,6 +177,15 @@ api/database/
 - `seed.sh`: dumps/의 데이터를 DB에 복원
 
 </Accordion>
+
+<Info>
+**더 알아보기 - 설정 파일**
+- [sonamu.config.ts 설정](/configuration/sonamu-config/project-settings) - 프로젝트 전체 설정
+- [데이터베이스 설정](/configuration/sonamu-config/database) - DB 연결 및 설정
+- [서버 설정](/configuration/sonamu-config/server) - Fastify 서버 설정
+- [TypeScript 설정](/configuration/typescript/tsconfig) - 컴파일러 옵션
+- [환경 변수](/configuration/environment-variables/env-setup) - .env 파일 관리
+</Info>
 
 ## Web 디렉토리 (프론트엔드)
 
@@ -240,6 +258,13 @@ web/src/
 - Sonamu UI 관련 컴포넌트
 
 </Accordion>
+
+<Info>
+**더 알아보기 - 프론트엔드**
+- [Service 작동 원리](/frontend-integration/generated-services/how-services-work) - 자동 생성 메커니즘
+- [Service 사용하기](/frontend-integration/generated-services/using-services) - API 호출 방법
+- [공유 타입](/frontend-integration/type-safety/shared-types) - 백엔드-프론트엔드 타입 동기화
+</Info>
 
 ## 엔티티 생성 시 파일 구조 예시
 
@@ -352,6 +377,14 @@ export class UserService {
   - `{Entity}Service.ts`: 자동 생성 - 수정 금지
 </Note>
 
+<Info>
+**더 알아보기 - 파일별 가이드**
+- [엔티티 정의하기](/core-concepts/entity/defining-entities) - entity.json 작성법
+- [@api 데코레이터](/core-concepts/model/api-decorator) - model.ts에서 API 정의
+- [Entity Types](/core-concepts/type-system/entity-types) - types.ts 활용하기
+- [Generated Types](/core-concepts/type-system/generated-types) - sonamu.generated.ts 이해
+</Info>
+
 ## 개발 시 주요 작업 위치
 
 | 작업 내용         | 위치                                                  | 방법      |
@@ -377,11 +410,19 @@ export class UserService {
 
 프로젝트 구조를 이해했다면, 이제 첫 번째 엔티티를 만들어보세요:
 
-<Card
-  title="첫 엔티티 만들기"
-  icon="database"
-  href="/getting-started/first-entity"
->
-  Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를 정의하는
-  방법을 알아보세요.
-</Card>
+<CardGroup cols={2}>
+  <Card
+    title="첫 엔티티 만들기"
+    icon="database"
+    href="/getting-started/first-entity"
+  >
+    Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를 정의하세요.
+  </Card>
+  <Card
+    title="개발 워크플로우"
+    icon="diagram-project"
+    href="/getting-started/development-workflow"
+  >
+    Sonamu의 전체 개발 사이클을 이해하고 효율적으로 작업하는 방법을 배워보세요.
+  </Card>
+</CardGroup>
