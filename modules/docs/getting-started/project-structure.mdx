@@ -1,6 +1,320 @@
 ---
 title: "프로젝트 구조"
-description: "디렉토리 구조 이해하기"
+description: "Sonamu 프로젝트의 디렉토리 구조와 주요 파일"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu 프로젝트는 모노레포 구조로 백엔드(api)와 프론트엔드(web)를 함께 관리합니다.
+
+## 전체 구조
+
+```
+my_app/
+├── api/              # 백엔드 API 서버
+├── web/              # 프론트엔드 웹 애플리케이션
+└── README.md         # 프로젝트 문서
+```
+
+## API 디렉토리 (백엔드)
+
+### 루트 파일
+
+```
+api/
+├── src/              # 소스 코드
+├── database/         # 데이터베이스 관련 파일
+├── package.json      # 의존성 및 스크립트
+├── tsconfig.json     # TypeScript 설정
+├── tsconfig.schemas.json   # 스키마 생성용 설정
+├── tsconfig.types.json     # 타입 생성용 설정
+├── vite.config.ts    # Sonamu UI 빌드 설정
+├── .swcrc            # SWC 컴파일러 설정
+└── .env              # 환경 변수 (자동 생성)
+```
+
+<Accordion title="주요 파일 설명">
+
+**package.json**
+
+- 백엔드 의존성 관리
+- npm 스크립트: `dev`, `build`, `test`, `docker:up/down` 등
+
+**tsconfig.json**
+
+- 메인 TypeScript 컴파일러 설정
+- `tsconfig.schemas.json`: Zod 스키마 생성 전용
+- `tsconfig.types.json`: 타입 정의 생성 전용
+
+**vite.config.ts**
+
+- Sonamu UI 개발 서버 설정 (`pnpm sonamu ui`)
+- HMR(Hot Module Replacement) 설정
+
+**.env**
+
+- 데이터베이스 연결 정보
+- 프로젝트 설정 변수
+- `pnpm create sonamu` 실행 시 자동 생성
+
+</Accordion>
+
+### src/ 디렉토리
+
+```
+api/src/
+├── index.ts               # 서버 진입점
+├── sonamu.config.ts       # Sonamu 설정 파일
+├── application/           # 엔티티별 폴더 (자동 생성)
+│    └── {entity}/
+│         ├── entities/    # 엔티티 정의 (.entity.json)
+│         ├── models/      # 비즈니스 로직 (.model.ts)
+│         ├── types/       # 타입 정의 (자동 생성)
+│         └── schemas/     # Zod 스키마 (자동 생성)
+├── testing/               # 테스트 설정
+│    ├── global.ts         # 전역 테스트 설정
+│    └── fixture.ts        # Fixture 관리
+├── typings/               # 타입 정의
+│    ├── sonamu.d.ts       # Sonamu 전역 타입
+│    └── fastify.d.ts      # Fastify 확장 타입
+└── utils/                 # 유틸리티 함수
+     └── subset-loaders.ts # Subset 로더
+```
+
+<Accordion title="주요 디렉토리 설명">
+
+**application/**
+
+- 첫 엔티티 생성 시 자동으로 생성됨
+- 각 엔티티마다 별도 디렉토리 생성
+- 예: `User` 엔티티 → `application/user/` 디렉토리
+
+**application/{entity}/entities/**
+
+- `.entity.json` 파일 저장
+- Sonamu UI에서 엔티티 정의 작성
+- 데이터베이스 스키마의 소스
+
+**application/{entity}/models/**
+
+- `.model.ts` 파일 작성
+- 비즈니스 로직 구현
+- API 엔드포인트 정의 (`@api` 데코레이터)
+
+**application/{entity}/types/**
+
+- 자동 생성 디렉토리
+- TypeScript 타입 정의
+- 프론트엔드와 공유
+
+**application/{entity}/schemas/**
+
+- 자동 생성 디렉토리
+- Zod validation 스키마
+- 런타임 타입 검증
+
+**testing/**
+
+- Vitest 테스트 환경 설정
+- Fixture 데이터 관리
+- 테스트 유틸리티
+
+</Accordion>
+
+### database/ 디렉토리
+
+```
+api/database/
+├── docker-compose.yml    # PostgreSQL 컨테이너 설정
+├── fixtures/
+│    └── init.sql         # 데이터베이스 초기화 SQL
+├── dumps/                # 데이터 덤프 파일
+└── scripts/
+     ├── dump.sh          # 데이터 백업 스크립트
+     └── seed.sh          # 데이터 복원 스크립트
+```
+
+<Accordion title="주요 파일 설명">
+
+**docker-compose.yml**
+
+- PostgreSQL + pgvector 이미지
+- 컨테이너 이름, 포트, 환경 변수 설정
+- `pnpm docker:up`으로 실행
+
+**fixtures/init.sql**
+
+- 데이터베이스 초기 설정
+- 확장 프로그램 설치 (pgvector 등)
+- `pnpm create sonamu` 실행 시 자동 생성
+
+**dumps/**
+
+- `pnpm dump` 명령으로 생성된 SQL 파일
+- 데이터 백업 저장소
+
+**scripts/**
+
+- `dump.sh`: 현재 DB 데이터를 dumps/에 백업
+- `seed.sh`: dumps/의 데이터를 DB에 복원
+
+</Accordion>
+
+## Web 디렉토리 (프론트엔드)
+
+### 루트 파일
+
+```
+web/
+├── src/                # 소스 코드
+├── index.html          # HTML 엔트리포인트
+├── package.json        # 의존성 및 스크립트
+├── vite.config.ts      # Vite 설정
+├── tsconfig.json       # TypeScript 설정
+├── tsconfig.node.json  # Node 환경 설정
+└── .sonamu.env         # 환경 변수
+```
+
+<Accordion title="주요 파일 설명">
+
+**vite.config.ts**
+
+- Vite 개발 서버 설정
+- API 프록시 설정 (`/api` → `http://localhost:1028`)
+- 경로 별칭 (`@` → `./src`)
+
+**.sonamu.env**
+
+- API 서버 연결 정보
+- `API_HOST`, `API_PORT` 설정
+
+</Accordion>
+
+### src/ 디렉토리
+
+```
+web/src/
+├── main.tsx          # React 진입점
+├── App.tsx           # 루트 컴포넌트
+├── App.css           # 글로벌 스타일
+├── index.css         # 기본 스타일
+├── pages/            # 페이지 컴포넌트
+│    └── index.tsx    # 홈 페이지
+├── services/         # API 서비스 (자동 생성)
+│    └── {Entity}Service.ts
+├── admin-common/     # 공통 컴포넌트
+│    ├── ApiLogViewer.tsx
+│    └── CommonModal.tsx
+├── assets/           # 정적 리소스
+└── vite-env.d.ts     # Vite 타입 정의
+```
+
+<Accordion title="주요 디렉토리 설명">
+
+**pages/**
+
+- 라우팅 기반 페이지 컴포넌트
+- React Router 사용
+
+**services/**
+
+- API 서버와 통신하는 서비스 레이어
+- 엔티티마다 자동 생성
+- 타입 안전한 API 클라이언트
+
+**admin-common/**
+
+- 재사용 가능한 공통 컴포넌트
+- Sonamu UI 관련 컴포넌트
+
+</Accordion>
+
+## 자동 생성되는 파일들
+
+Sonamu는 엔티티를 생성하면 다음 파일들을 자동으로 생성합니다:
+
+### API (백엔드)
+
+<CodeGroup>
+```typescript title="application/{entity}/types/{entity}.types.ts"
+// TypeScript 타입 정의
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  created_at: Date;
+};
+
+export type UserSaveParams = Omit<User, 'id' | 'created_at'>;
+```
+
+```typescript title="application/{entity}/schemas/{entity}.schemas.ts"
+// Zod validation 스키마
+export const UserSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string().email(),
+  created_at: z.date(),
+});
+```
+
+```sql title="database/migrations/{timestamp}_create_{entity}.sql"
+-- 마이그레이션 파일
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+</CodeGroup>
+
+### Web (프론트엔드)
+
+```typescript title="src/services/UserService.ts"
+// 자동 생성된 API 클라이언트
+export class UserService {
+  static async findById(id: number): Promise<User> {
+    // 타입 안전한 API 호출
+  }
+
+  static async save(params: UserSaveParams): Promise<User> {
+    // 타입 안전한 API 호출
+  }
+}
+```
+
+<Note>
+  자동 생성된 파일들은 **직접 수정하지 마세요**. 엔티티 정의가 변경되면 다시
+  생성됩니다.
+</Note>
+
+## 개발 시 주요 작업 위치
+
+| 작업 내용         | 위치                                     | 방법      |
+| ----------------- | ---------------------------------------- | --------- |
+| 엔티티 정의       | `api/src/application/{entity}/entities/` | Sonamu UI |
+| 비즈니스 로직     | `api/src/application/{entity}/models/`   | 직접 작성 |
+| API 엔드포인트    | Model 파일에 `@api` 데코레이터           | 직접 작성 |
+| 데이터베이스 설정 | `api/src/sonamu.config.ts`               | 직접 작성 |
+| 서버 설정         | `api/src/sonamu.config.ts`               | 직접 작성 |
+| 테스트 작성       | `api/src/application/{entity}/`          | 직접 작성 |
+| 페이지 컴포넌트   | `web/src/pages/`                         | 직접 작성 |
+| 공통 컴포넌트     | `web/src/admin-common/`                  | 직접 작성 |
+
+<Warning>
+  `application/` 디렉토리 내의 `types/`, `schemas/` 디렉토리는 자동 생성되므로
+  직접 수정하지 마세요. 엔티티 정의를 변경하면 자동으로 재생성됩니다.
+</Warning>
+
+## 다음 단계
+
+프로젝트 구조를 이해했다면, 이제 첫 번째 엔티티를 만들어보세요:
+
+<Card
+  title="첫 엔티티 만들기"
+  icon="database"
+  href="/getting-started/first-entity"
+>
+  Sonamu UI를 사용하여 첫 번째 엔티티를 생성하고 데이터베이스 스키마를 정의하는
+  방법을 알아보세요.
+</Card>
