@@ -1,6 +1,770 @@
 ---
-title: "BaseModel 메서드"
-description: "findById, findMany, save, del"
+title: "BaseModel Methods"
+description: "BaseModelClass가 제공하는 모든 메서드와 사용법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+`BaseModelClass`는 모든 Model이 상속받는 기본 클래스로, 데이터베이스 접근, 쿼리 실행, 트랜잭션 관리 등의 핵심 기능을 제공합니다.
+
+## 데이터베이스 접근 메서드
+
+### getDB(preset)
+
+Knex 데이터베이스 연결을 반환합니다.
+
+```typescript
+getDB(preset: DBPreset): Knex
+```
+
+**파라미터**:
+- `preset`: `"r"` (읽기) 또는 `"w"` (쓰기)
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="읽기 전용 연결"
+async findCustomQuery(): Promise<User[]> {
+  const rdb = this.getDB("r");
+  
+  return rdb("users")
+    .select("*")
+    .where("is_active", true);
+}
+```
+
+```typescript title="쓰기 연결"
+async deleteOldRecords(): Promise<number> {
+  const wdb = this.getDB("w");
+  
+  return wdb("users")
+    .where("created_at", "<", new Date("2020-01-01"))
+    .delete();
+}
+```
+
+```typescript title="Raw 쿼리"
+async customQuery(): Promise<any[]> {
+  const rdb = this.getDB("r");
+  
+  const [rows] = await rdb.raw(`
+    SELECT u.*, COUNT(p.id) as post_count
+    FROM users u
+    LEFT JOIN posts p ON p.user_id = u.id
+    GROUP BY u.id
+    HAVING post_count > 10
+  `);
+  
+  return rows;
+}
+```
+</CodeGroup>
+
+<Info>
+**DBPreset 종류**:
+- `"r"`: Read - 읽기 전용 (SELECT)
+- `"w"`: Write - 쓰기 가능 (INSERT, UPDATE, DELETE)
+
+읽기/쓰기를 분리하면 데이터베이스 리플리케이션에서 읽기 부하를 분산할 수 있습니다.
+</Info>
+
+### getPuri(preset)
+
+Puri 쿼리 빌더를 반환합니다. 트랜잭션이 활성화된 경우 트랜잭션 연결을 자동으로 사용합니다.
+
+```typescript
+getPuri(preset: DBPreset): PuriWrapper
+```
+
+**파라미터**:
+- `preset`: `"r"` (읽기) 또는 `"w"` (쓰기)
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="기본 쿼리"
+async findActive(): Promise<User[]> {
+  const rdb = this.getPuri("r");
+  
+  return rdb
+    .table("users")
+    .where("is_active", true)
+    .orderBy("created_at", "desc")
+    .many();
+}
+```
+
+```typescript title="트랜잭션 자동 사용"
+@transactional()
+async updateWithTransaction(id: number, data: any): Promise<void> {
+  // 트랜잭션이 활성화되면 자동으로 트랜잭션 연결 사용
+  const wdb = this.getPuri("w");
+  
+  await wdb
+    .table("users")
+    .where("id", id)
+    .update(data);
+}
+```
+
+```typescript title="Upsert Builder"
+async save(params: UserSaveParams[]): Promise<number[]> {
+  const wdb = this.getPuri("w");
+  
+  params.forEach(p => wdb.ubRegister("users", p));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("users");
+  });
+}
+```
+</CodeGroup>
+
+<Tip>
+`getPuri()`는 트랜잭션 컨텍스트를 자동으로 감지합니다. `@transactional()` 데코레이터 내에서 호출하면 트랜잭션 연결을 반환합니다.
+</Tip>
+
+## Subset 쿼리 메서드
+
+### getSubsetQueries(subset)
+
+특정 Subset에 대한 쿼리 빌더를 반환합니다.
+
+```typescript
+getSubsetQueries<T extends TSubsetKey>(
+  subset: T
+): {
+  qb: Puri;
+  onSubset: <S>(subset: S) => Puri;
+}
+```
+
+**반환값**:
+- `qb`: 쿼리 빌더 (조건 추가용)
+- `onSubset`: Subset별 타입 캐스팅 함수
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="기본 사용"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  // 조건 추가
+  if (params.keyword) {
+    qb.whereLike("users.email", `%${params.keyword}%`);
+  }
+  
+  // 실행
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+```typescript title="onSubset으로 타입 안전한 조건"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+  
+  // subset "P"에만 있는 필드 접근
+  if (params.departmentName) {
+    // TypeScript가 employee__department.name 타입 체크
+    onSubset("P").where("employee__department.name", params.departmentName);
+  }
+  
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+```typescript title="여러 subset 교집합"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+  
+  // A와 P 둘 다 있는 필드만 접근 가능
+  if (params.id) {
+    onSubset(["A", "P"]).whereIn("users.id", asArray(params.id));
+  }
+  
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+</CodeGroup>
+
+<Warning>
+`onSubset()`은 타입 체크용입니다. 실제로는 같은 `qb` 객체를 반환하므로, 성능에 영향을 주지 않습니다.
+
+```typescript
+// 이 두 코드는 동일합니다
+qb.where("users.id", 1);
+onSubset("A").where("users.id", 1);
+```
+</Warning>
+
+### executeSubsetQuery(params)
+
+Subset 쿼리를 실행하고 결과를 반환합니다. 페이지네이션, Loader, Hydration, Enhancer를 자동으로 처리합니다.
+
+```typescript
+executeSubsetQuery<T extends TSubsetKey>(
+  params: {
+    subset: T;
+    qb: Puri;
+    params: {
+      num: number;
+      page: number;
+      queryMode?: "list" | "count" | "both";
+    };
+    enhancers?: EnhancerMap;
+    debug?: boolean;
+    optimizeCountQuery?: boolean;
+  }
+): Promise<ListResult<TSubsetMapping[T]>>
+```
+
+**파라미터**:
+
+| 파라미터 | 타입 | 설명 | 기본값 |
+|----------|------|------|--------|
+| `subset` | string | Subset 키 | *필수* |
+| `qb` | Puri | 쿼리 빌더 | *필수* |
+| `params.num` | number | 페이지 크기 | *필수* |
+| `params.page` | number | 페이지 번호 (1부터 시작) | *필수* |
+| `params.queryMode` | string | 쿼리 모드 | `"both"` |
+| `enhancers` | object | Virtual 필드 계산 함수 | - |
+| `debug` | boolean | 쿼리 디버깅 출력 | `false` |
+| `optimizeCountQuery` | boolean | COUNT 쿼리 최적화 | `false` |
+
+**queryMode 옵션**:
+
+| 모드 | 반환값 | 사용 예시 |
+|------|--------|-----------|
+| `"both"` | `{ rows, total }` | 일반 목록 조회 (기본값) |
+| `"list"` | `{ rows }` | total 불필요한 경우 |
+| `"count"` | `{ total }` | 개수만 필요한 경우 |
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="기본 사용"
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  if (params.keyword) {
+    qb.whereLike("users.email", `%${params.keyword}%`);
+  }
+  
+  const enhancers = this.createEnhancers({
+    A: (row) => row,
+    SS: (row) => row,
+  });
+  
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params: {
+      num: params.num ?? 24,
+      page: params.page ?? 1,
+    },
+    enhancers,
+  });
+}
+```
+
+```typescript title="queryMode 사용"
+// 목록만 필요 (total 계산 안함)
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1, queryMode: "list" },
+});
+// result = { rows: [...] }
+
+// 개수만 필요
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 0, page: 1, queryMode: "count" },
+});
+// result = { total: 100 }
+```
+
+```typescript title="디버깅"
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1 },
+  debug: true,  // 쿼리를 콘솔에 출력
+});
+```
+
+```typescript title="COUNT 쿼리 최적화"
+const result = await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params: { num: 10, page: 1 },
+  optimizeCountQuery: true,  // WHERE에 없는 LEFT JOIN 제거
+});
+```
+</CodeGroup>
+
+<Info>
+**실행 순서**:
+1. COUNT 쿼리 실행 (total 계산)
+2. LIST 쿼리 실행 (페이지네이션 적용)
+3. Loader 실행 (HasMany, ManyToMany 데이터 로딩)
+4. Hydrate (flat 객체 → 중첩 객체 변환)
+5. Enhancer 적용 (virtual 필드 계산)
+6. Internal 필드 제거
+</Info>
+
+### createEnhancers(enhancers)
+
+Enhancer 객체를 생성하는 헬퍼 함수입니다. 타입 검증과 추론을 제공합니다.
+
+```typescript
+createEnhancers<T extends TSubsetKey>(
+  enhancers: EnhancerMap<T>
+): EnhancerMap<T>
+```
+
+**Enhancer란?**
+
+Enhancer는 쿼리 결과에 가상 필드를 추가하거나 데이터를 변환하는 함수입니다.
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="기본 Enhancer"
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    full_name: `${row.first_name} ${row.last_name}`,
+    age: calculateAge(row.birth_date),
+  }),
+  SS: (row) => row,  // 변환 없음
+});
+
+await this.executeSubsetQuery({
+  subset: "A",
+  qb,
+  params,
+  enhancers,
+});
+```
+
+```typescript title="비동기 Enhancer"
+const enhancers = this.createEnhancers({
+  A: async (row) => {
+    // 외부 API 호출
+    const additionalData = await fetchFromExternalAPI(row.id);
+    
+    return {
+      ...row,
+      external_data: additionalData,
+    };
+  },
+  SS: (row) => row,
+});
+```
+
+```typescript title="조건부 변환"
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    status_label: row.is_active ? "활성" : "비활성",
+    is_premium: row.subscription_level === "premium",
+    days_since_created: Math.floor(
+      (Date.now() - row.created_at.getTime()) / (1000 * 60 * 60 * 24)
+    ),
+  }),
+  SS: (row) => row,
+});
+```
+</CodeGroup>
+
+<Tip>
+Enhancer는 각 row마다 호출되므로, 무거운 작업은 피하는 것이 좋습니다. 필요하다면 Loader를 사용하거나 별도 API로 분리하세요.
+</Tip>
+
+## 유틸리티 메서드
+
+### getInsertedIds(wdb, rows, tableName, unqKeyFields, chunkSize)
+
+삽입된 레코드의 ID를 조회합니다. Unique 키 기반으로 조회하므로 upsert 후에 유용합니다.
+
+```typescript
+getInsertedIds(
+  wdb: Knex,
+  rows: Record<string, unknown>[],
+  tableName: string,
+  unqKeyFields: string[],
+  chunkSize?: number
+): Promise<number[]>
+```
+
+**파라미터**:
+
+| 파라미터 | 타입 | 설명 | 기본값 |
+|----------|------|------|--------|
+| `wdb` | Knex | 데이터베이스 연결 | - |
+| `rows` | object[] | 삽입된 레코드 | - |
+| `tableName` | string | 테이블명 | - |
+| `unqKeyFields` | string[] | Unique 키 필드명 | - |
+| `chunkSize` | number | 한번에 조회할 개수 | `500` |
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="단일 Unique 키"
+async saveUsers(users: User[]): Promise<number[]> {
+  const wdb = this.getDB("w");
+  
+  // 이메일로 upsert
+  await wdb("users")
+    .insert(users)
+    .onConflict("email")
+    .merge();
+  
+  // 이메일로 ID 조회
+  const ids = await this.getInsertedIds(
+    wdb,
+    users,
+    "users",
+    ["email"]
+  );
+  
+  return ids;
+}
+```
+
+```typescript title="복합 Unique 키"
+async saveOrderItems(items: OrderItem[]): Promise<number[]> {
+  const wdb = this.getDB("w");
+  
+  await wdb("order_items")
+    .insert(items)
+    .onConflict(["order_id", "product_id"])
+    .merge();
+  
+  // order_id + product_id 조합으로 ID 조회
+  const ids = await this.getInsertedIds(
+    wdb,
+    items,
+    "order_items",
+    ["order_id", "product_id"]
+  );
+  
+  return ids;
+}
+```
+</CodeGroup>
+
+### hydrate(rows)
+
+Flat 레코드를 중첩 객체로 변환합니다. JOIN 결과의 `table__field` 형식을 객체로 변환합니다.
+
+```typescript
+hydrate<T>(rows: T[]): T[]
+```
+
+**변환 규칙**:
+- `user__name` → `{ user: { name } }`
+- `user__profile__bio` → `{ user: { profile: { bio } } }`
+- nullable relation의 id가 null이면 객체 전체를 null로
+
+**사용 예시**:
+
+<CodeGroup>
+```typescript title="기본 사용"
+// Flat 데이터
+const flatRows = [
+  {
+    id: 1,
+    name: "John",
+    user__id: 10,
+    user__email: "john@test.com",
+    user__profile__bio: "Hello",
+  }
+];
+
+// 중첩 객체로 변환
+const nested = this.hydrate(flatRows);
+// [
+//   {
+//     id: 1,
+//     name: "John",
+//     user: {
+//       id: 10,
+//       email: "john@test.com",
+//       profile: {
+//         bio: "Hello"
+//       }
+//     }
+//   }
+// ]
+```
+
+```typescript title="nullable relation"
+const flatRows = [
+  {
+    id: 1,
+    name: "John",
+    parent__id: null,
+    parent__name: null,
+  }
+];
+
+const nested = this.hydrate(flatRows);
+// [
+//   {
+//     id: 1,
+//     name: "John",
+//     parent: null  // 객체 전체가 null
+//   }
+// ]
+```
+</CodeGroup>
+
+<Info>
+`hydrate()`는 `executeSubsetQuery()` 내부에서 자동으로 호출되므로, 직접 호출할 일은 거의 없습니다.
+</Info>
+
+### omitInternalFields(row, fields)
+
+Internal 필드를 객체에서 제거합니다. 중첩 필드와 배열도 처리합니다.
+
+```typescript
+omitInternalFields<T extends object>(
+  row: T,
+  fields: string[]
+): T
+```
+
+**사용 예시**:
+
+```typescript
+const row = {
+  id: 1,
+  email: "test@test.com",
+  password: "hashed_password",
+  employee: {
+    id: 10,
+    salary: 50000,
+    department: { name: "IT" }
+  }
+};
+
+// Internal 필드 제거
+const cleaned = this.omitInternalFields(row, [
+  "password",
+  "employee.salary"
+]);
+
+// {
+//   id: 1,
+//   email: "test@test.com",
+//   employee: {
+//     id: 10,
+//     department: { name: "IT" }
+//   }
+// }
+```
+
+<Info>
+Subset의 `internal` 옵션으로 지정된 필드는 `executeSubsetQuery()`에서 자동으로 제거됩니다.
+
+```json
+{
+  "subsets": {
+    "A": [
+      "id",
+      "email",
+      { "field": "password", "internal": true },
+      { "field": "employee.salary", "internal": true }
+    ]
+  }
+}
+```
+</Info>
+
+### destroy()
+
+데이터베이스 연결을 종료합니다. 일반적으로 애플리케이션 종료 시 호출합니다.
+
+```typescript
+async destroy(): Promise<void>
+```
+
+**사용 예시**:
+
+```typescript
+// 애플리케이션 종료 시
+process.on("SIGTERM", async () => {
+  await UserModel.destroy();
+  process.exit(0);
+});
+```
+
+<Warning>
+`destroy()`를 호출하면 모든 Model의 DB 연결이 종료됩니다. 테스트 환경에서만 사용하세요.
+</Warning>
+
+## 실전 사용 패턴
+
+### 표준 findMany 패턴
+
+```typescript
+async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+  subset: T,
+  rawParams?: LP
+): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+  // 1. 기본값 설정
+  const params = {
+    num: 24,
+    page: 1,
+    search: "id" as const,
+    orderBy: "id-desc" as const,
+    ...rawParams,
+  };
+
+  // 2. Subset 쿼리 획득
+  const { qb, onSubset } = this.getSubsetQueries(subset);
+
+  // 3. 필터링 조건 추가
+  if (params.id) {
+    qb.whereIn("users.id", asArray(params.id));
+  }
+
+  if (params.keyword && params.search) {
+    if (params.search === "email") {
+      qb.whereLike("users.email", `%${params.keyword}%`);
+    } else if (params.search === "username") {
+      qb.whereLike("users.username", `%${params.keyword}%`);
+    }
+  }
+
+  // 4. 정렬
+  if (params.orderBy === "id-desc") {
+    qb.orderBy("users.id", "desc");
+  } else if (params.orderBy === "created_at-desc") {
+    qb.orderBy("users.created_at", "desc");
+  }
+
+  // 5. Enhancer 정의
+  const enhancers = this.createEnhancers({
+    A: (row) => ({
+      ...row,
+      full_name: `${row.first_name} ${row.last_name}`,
+    }),
+    SS: (row) => row,
+  });
+
+  // 6. 쿼리 실행
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params,
+    enhancers,
+  });
+}
+```
+
+### 복잡한 필터링 패턴
+
+```typescript
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+
+  // 날짜 범위 필터
+  if (params.created_after || params.created_before) {
+    if (params.created_after) {
+      qb.where("users.created_at", ">=", params.created_after);
+    }
+    if (params.created_before) {
+      qb.where("users.created_at", "<=", params.created_before);
+    }
+  }
+
+  // 다중 값 필터
+  if (params.roles && params.roles.length > 0) {
+    qb.whereIn("users.role", params.roles);
+  }
+
+  // OR 조건
+  if (params.keyword) {
+    qb.where((builder) => {
+      builder
+        .whereLike("users.email", `%${params.keyword}%`)
+        .orWhereLike("users.username", `%${params.keyword}%`)
+        .orWhereLike("users.phone", `%${params.keyword}%`);
+    });
+  }
+
+  // 복잡한 조건
+  if (params.is_premium_or_admin) {
+    qb.where((builder) => {
+      builder
+        .where("users.role", "admin")
+        .orWhere("users.subscription_level", "premium");
+    });
+  }
+
+  return this.executeSubsetQuery({
+    subset,
+    qb,
+    params: { num: params.num ?? 24, page: params.page ?? 1 },
+  });
+}
+```
+
+### 커스텀 집계 쿼리
+
+```typescript
+async getStatistics(): Promise<UserStatistics> {
+  const rdb = this.getDB("r");
+
+  const [stats] = await rdb("users")
+    .select([
+      rdb.raw("COUNT(*) as total_users"),
+      rdb.raw("COUNT(CASE WHEN is_active THEN 1 END) as active_users"),
+      rdb.raw("COUNT(CASE WHEN role = 'admin' THEN 1 END) as admin_count"),
+      rdb.raw("AVG(age) as average_age"),
+    ])
+    .first();
+
+  return {
+    total_users: Number(stats.total_users),
+    active_users: Number(stats.active_users),
+    admin_count: Number(stats.admin_count),
+    average_age: Number(stats.average_age),
+  };
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Puri Query Builder" icon="database" href="/database/puri/basic-queries">
+    타입 안전한 쿼리 빌더 사용법
+  </Card>
+  <Card title="Subset" icon="layer-group" href="/core-concepts/model/using-subsets">
+    Subset 활용한 데이터 조회
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/database/transactions/using-transactions">
+    트랜잭션 관리 상세 가이드
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/model-testing/unit-tests">
+    Model 테스트 작성하기
+  </Card>
+</CardGroup>

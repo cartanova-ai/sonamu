@@ -1,6 +1,596 @@
 ---
-title: "비즈니스 로직"
-description: "커스텀 메서드 작성하기"
+title: "Business Logic"
+description: "Model에서 비즈니스 로직을 작성하는 패턴과 예제"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Model은 비즈니스 로직의 중심입니다. 데이터 검증, 복잡한 쿼리, 트랜잭션, 도메인 규칙 등 모든 비즈니스 로직은 Model에서 처리합니다.
+
+## 비즈니스 로직이란?
+
+비즈니스 로직은 애플리케이션의 핵심 규칙과 프로세스입니다:
+
+<CardGroup cols={2}>
+  <Card title="데이터 검증" icon="circle-check">
+    입력값 유효성 검사
+    
+    중복 체크, 형식 검증
+  </Card>
+  <Card title="데이터 변환" icon="arrows-rotate">
+    데이터 가공 및 계산
+    
+    암호화, 포맷 변환
+  </Card>
+  <Card title="도메인 규칙" icon="scale-balanced">
+    비즈니스 제약 조건
+    
+    권한, 상태 전이 규칙
+  </Card>
+  <Card title="워크플로우" icon="diagram-project">
+    복잡한 프로세스
+    
+    여러 단계의 작업 조율
+  </Card>
+</CardGroup>
+
+## 비즈니스 로직 작성 원칙
+
+### 1. Model에 집중
+
+**비즈니스 로직은 Model에만** 작성합니다.
+
+<CodeGroup>
+```typescript title="✅ 올바른 위치 - Model"
+class UserModelClass extends BaseModelClass {
+  async save(params: UserSaveParams[]): Promise<number[]> {
+    // ✅ 비즈니스 로직: Model에 작성
+    for (const param of params) {
+      if (param.age < 18) {
+        throw new BadRequestException("18세 미만은 가입할 수 없습니다");
+      }
+      
+      const existing = await this.puri()
+        .where("email", param.email)
+        .first();
+        
+      if (existing) {
+        throw new BadRequestException("이미 사용중인 이메일입니다");
+      }
+    }
+    
+    // 저장...
+  }
+}
+```
+
+```typescript title="❌ 잘못된 위치 - Controller/Route"
+// ❌ 비즈니스 로직을 API 레이어에 작성하지 말 것
+app.post("/user/save", async (req, res) => {
+  const params = req.body;
+  
+  // ❌ 검증 로직이 여기 있으면 재사용 불가
+  if (params.age < 18) {
+    return res.status(400).json({ error: "..." });
+  }
+  
+  // ❌ 다른 API에서도 같은 로직을 반복해야 함
+  await UserModel.save(params);
+});
+```
+</CodeGroup>
+
+### 2. 타입 안전성
+
+Zod 스키마로 타입을 검증합니다.
+
+```typescript title="types.ts"
+export const UserSaveParams = z.object({
+  id: z.number().optional(),
+  email: z.string().email("올바른 이메일 형식이 아닙니다"),
+  username: z.string()
+    .min(2, "이름은 최소 2자 이상이어야 합니다")
+    .max(50, "이름은 최대 50자까지 가능합니다"),
+  age: z.number()
+    .int("나이는 정수여야 합니다")
+    .min(0, "나이는 0 이상이어야 합니다")
+    .max(150, "유효하지 않은 나이입니다"),
+  password: z.string()
+    .min(8, "비밀번호는 최소 8자 이상이어야 합니다")
+    .regex(/[A-Z]/, "대문자를 포함해야 합니다")
+    .regex(/[0-9]/, "숫자를 포함해야 합니다"),
+});
+```
+
+```typescript title="model.ts"
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // Zod가 자동으로 검증
+  // 타입도 자동으로 추론됨
+}
+```
+
+### 3. 트랜잭션 사용
+
+관련된 여러 작업은 트랜잭션으로 묶습니다.
+
+```typescript
+@transactional()
+async createUserWithProfile(
+  userData: UserData,
+  profileData: ProfileData
+): Promise<{ userId: number; profileId: number }> {
+  // 모든 작업이 하나의 트랜잭션
+  const [userId] = await this.save([userData]);
+  const [profileId] = await ProfileModel.save([
+    { ...profileData, user_id: userId }
+  ]);
+  
+  // 성공 시 자동 커밋
+  // 실패 시 자동 롤백
+  return { userId, profileId };
+}
+```
+
+## 데이터 검증 패턴
+
+### 중복 체크
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // 이메일 중복 체크
+  for (const param of params) {
+    const existing = await this.puri()
+      .where("email", param.email)
+      .whereNot("id", param.id ?? 0)  // 수정 시 자신 제외
+      .first();
+      
+    if (existing) {
+      throw new BadRequestException(
+        `이미 사용중인 이메일입니다: ${param.email}`
+      );
+    }
+  }
+  
+  // 저장...
+}
+```
+
+### 조건부 검증
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  for (const param of params) {
+    // 신규 사용자만 이메일 인증 필요
+    if (!param.id && !param.is_verified) {
+      throw new BadRequestException(
+        "이메일 인증이 필요합니다"
+      );
+    }
+    
+    // 관리자만 다른 사용자의 역할 변경 가능
+    if (param.role && param.role !== "normal") {
+      const context = Sonamu.getContext();
+      if (context.user?.role !== "admin") {
+        throw new ForbiddenException(
+          "관리자만 역할을 변경할 수 있습니다"
+        );
+      }
+    }
+  }
+  
+  // 저장...
+}
+```
+
+### 범위 검증
+
+```typescript
+async save(params: ProductSaveParams[]): Promise<number[]> {
+  for (const param of params) {
+    // 가격 범위 검증
+    if (param.price < 0) {
+      throw new BadRequestException("가격은 0 이상이어야 합니다");
+    }
+    
+    if (param.price > 1000000) {
+      throw new BadRequestException("가격은 100만원 이하여야 합니다");
+    }
+    
+    // 할인율 검증
+    if (param.discount_rate && (param.discount_rate < 0 || param.discount_rate > 100)) {
+      throw new BadRequestException("할인율은 0~100 사이여야 합니다");
+    }
+  }
+  
+  // 저장...
+}
+```
+
+## 데이터 변환 패턴
+
+### 암호화
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // 비밀번호 해싱
+  const hashedParams = params.map(p => ({
+    ...p,
+    password: bcrypt.hashSync(p.password, 10),
+  }));
+  
+  const wdb = this.getPuri("w");
+  hashedParams.forEach(p => wdb.ubRegister("users", p));
+  
+  return wdb.transaction(async (trx) => {
+    return trx.ubUpsert("users");
+  });
+}
+```
+
+### 정규화
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // 데이터 정규화
+  const normalizedParams = params.map(p => ({
+    ...p,
+    email: p.email.toLowerCase().trim(),  // 이메일 소문자 변환
+    username: p.username.trim(),           // 공백 제거
+    phone: p.phone?.replace(/[^0-9]/g, ""), // 전화번호 숫자만
+  }));
+  
+  // 저장...
+}
+```
+
+### 계산 필드
+
+```typescript
+async save(params: ProductSaveParams[]): Promise<number[]> {
+  // 할인가 자동 계산
+  const calculatedParams = params.map(p => ({
+    ...p,
+    discounted_price: p.price * (1 - (p.discount_rate ?? 0) / 100),
+    final_price: Math.floor(p.price * (1 - (p.discount_rate ?? 0) / 100)),
+  }));
+  
+  // 저장...
+}
+```
+
+## 상태 전이 패턴
+
+### 상태 기계
+
+```typescript
+const OrderStatusTransitions = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["shipping", "cancelled"],
+  shipping: ["delivered", "cancelled"],
+  delivered: ["returned"],
+  cancelled: [],
+  returned: [],
+};
+
+async updateStatus(
+  orderId: number,
+  newStatus: OrderStatus
+): Promise<void> {
+  const order = await this.findById("A", orderId);
+  
+  // 상태 전이 검증
+  const allowedTransitions = OrderStatusTransitions[order.status];
+  if (!allowedTransitions.includes(newStatus)) {
+    throw new BadRequestException(
+      `${order.status}에서 ${newStatus}로 변경할 수 없습니다`
+    );
+  }
+  
+  // 상태 변경
+  await this.getPuri("w")
+    .table("orders")
+    .where("id", orderId)
+    .update({ status: newStatus });
+}
+```
+
+### 권한 기반 상태 변경
+
+```typescript
+async updateStatus(
+  orderId: number,
+  newStatus: OrderStatus
+): Promise<void> {
+  const context = Sonamu.getContext();
+  const order = await this.findById("A", orderId);
+  
+  // 권한 검증
+  if (newStatus === "cancelled") {
+    // 사용자는 pending만 취소 가능
+    if (order.status !== "pending" && context.user?.role !== "admin") {
+      throw new ForbiddenException(
+        "관리자만 확정된 주문을 취소할 수 있습니다"
+      );
+    }
+  }
+  
+  if (newStatus === "delivered") {
+    // 배송 완료는 배송 담당자만 가능
+    if (context.user?.role !== "delivery") {
+      throw new ForbiddenException(
+        "배송 담당자만 배송 완료 처리할 수 있습니다"
+      );
+    }
+  }
+  
+  // 상태 변경...
+}
+```
+
+## 복잡한 쿼리 패턴
+
+### 조건부 쿼리 빌딩
+
+```typescript
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  // 조건부 필터링
+  if (params.role) {
+    qb.whereIn("users.role", asArray(params.role));
+  }
+  
+  if (params.is_active !== undefined) {
+    qb.where("users.is_active", params.is_active);
+  }
+  
+  if (params.created_after) {
+    qb.where("users.created_at", ">=", params.created_after);
+  }
+  
+  if (params.keyword) {
+    qb.where((builder) => {
+      builder
+        .whereLike("users.email", `%${params.keyword}%`)
+        .orWhereLike("users.username", `%${params.keyword}%`);
+    });
+  }
+  
+  // 실행...
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+### 복잡한 JOIN
+
+```typescript
+async findUsersWithStats(): Promise<UserWithStats[]> {
+  const rdb = this.getDB("r");
+  
+  return rdb("users")
+    .select([
+      "users.*",
+      rdb.raw("COUNT(DISTINCT posts.id) as post_count"),
+      rdb.raw("COUNT(DISTINCT comments.id) as comment_count"),
+      rdb.raw("AVG(posts.views) as avg_post_views"),
+    ])
+    .leftJoin("posts", "posts.user_id", "users.id")
+    .leftJoin("comments", "comments.user_id", "users.id")
+    .groupBy("users.id");
+}
+```
+
+### 서브쿼리 활용
+
+```typescript
+async findTopUsers(limit: number): Promise<User[]> {
+  const rdb = this.getDB("r");
+  
+  const subquery = rdb("orders")
+    .select("user_id")
+    .sum("total_price as total_spent")
+    .groupBy("user_id")
+    .orderBy("total_spent", "desc")
+    .limit(limit)
+    .as("top_users");
+  
+  return rdb("users")
+    .select("users.*", "top_users.total_spent")
+    .joinRaw("JOIN ? ON users.id = top_users.user_id", [subquery]);
+}
+```
+
+## 트랜잭션 패턴
+
+### 기본 트랜잭션
+
+```typescript
+@transactional()
+async transferPoints(
+  fromUserId: number,
+  toUserId: number,
+  points: number
+): Promise<void> {
+  // 포인트 차감
+  const fromUser = await this.findById("A", fromUserId);
+  if (fromUser.points < points) {
+    throw new BadRequestException("포인트가 부족합니다");
+  }
+  
+  await this.getPuri("w")
+    .table("users")
+    .where("id", fromUserId)
+    .decrement("points", points);
+  
+  // 포인트 증가
+  await this.getPuri("w")
+    .table("users")
+    .where("id", toUserId)
+    .increment("points", points);
+  
+  // 둘 다 성공하거나 둘 다 롤백됨
+}
+```
+
+### 수동 트랜잭션
+
+```typescript
+async complexOperation(): Promise<void> {
+  const wdb = this.getPuri("w");
+  
+  await wdb.transaction(async (trx) => {
+    // 1단계
+    const [userId] = await trx
+      .table("users")
+      .insert({ email: "test@test.com" });
+    
+    // 2단계
+    await trx
+      .table("profiles")
+      .insert({ user_id: userId, bio: "Hello" });
+    
+    // 3단계
+    await trx
+      .table("settings")
+      .insert({ user_id: userId, theme: "dark" });
+    
+    // 모두 성공하면 커밋
+    // 하나라도 실패하면 전체 롤백
+  });
+}
+```
+
+### 중첩 트랜잭션
+
+```typescript
+@transactional()
+async outerTransaction(): Promise<void> {
+  // 외부 트랜잭션
+  await this.save([{ email: "user1@test.com" }]);
+  
+  // 내부 트랜잭션 (같은 트랜잭션 재사용)
+  await this.innerTransaction();
+}
+
+@transactional()
+async innerTransaction(): Promise<void> {
+  // 이미 트랜잭션이 있으면 재사용
+  await this.save([{ email: "user2@test.com" }]);
+}
+```
+
+## 에러 처리 패턴
+
+### 명확한 에러 메시지
+
+```typescript
+async login(params: LoginParams): Promise<{ user: User }> {
+  const user = await this.puri()
+    .where("email", params.email)
+    .first();
+  
+  if (!user) {
+    throw new UnauthorizedException(
+      "이메일 또는 비밀번호가 일치하지 않습니다"
+    );
+  }
+  
+  const isValid = await bcrypt.compare(params.password, user.password);
+  if (!isValid) {
+    throw new UnauthorizedException(
+      "이메일 또는 비밀번호가 일치하지 않습니다"
+    );
+  }
+  
+  if (!user.is_verified) {
+    throw new ForbiddenException(
+      "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해주세요."
+    );
+  }
+  
+  return { user };
+}
+```
+
+### 커스텀 예외
+
+```typescript
+class InsufficientPointsException extends BadRequestException {
+  constructor(required: number, current: number) {
+    super(`포인트가 부족합니다. 필요: ${required}, 현재: ${current}`);
+  }
+}
+
+async purchaseItem(userId: number, itemId: number): Promise<void> {
+  const user = await this.findById("A", userId);
+  const item = await ItemModel.findById("A", itemId);
+  
+  if (user.points < item.price) {
+    throw new InsufficientPointsException(item.price, user.points);
+  }
+  
+  // 구매 처리...
+}
+```
+
+## 비동기 처리 패턴
+
+### 병렬 처리
+
+```typescript
+async getUserDashboard(userId: number): Promise<Dashboard> {
+  // 병렬로 실행
+  const [user, posts, comments, followers] = await Promise.all([
+    this.findById("A", userId),
+    PostModel.findMany("SS", { user_id: userId, num: 10 }),
+    CommentModel.findMany("SS", { user_id: userId, num: 10 }),
+    FollowerModel.countFollowers(userId),
+  ]);
+  
+  return {
+    user,
+    posts: posts.rows,
+    comments: comments.rows,
+    follower_count: followers,
+  };
+}
+```
+
+### 순차 처리
+
+```typescript
+async processOrder(orderId: number): Promise<void> {
+  // 순차적으로 실행
+  const order = await this.findById("A", orderId);
+  
+  // 재고 확인
+  await InventoryModel.checkStock(order.product_id, order.quantity);
+  
+  // 결제 처리
+  await PaymentModel.charge(order.user_id, order.total_price);
+  
+  // 주문 확정
+  await this.updateStatus(orderId, "confirmed");
+  
+  // 배송 시작
+  await DeliveryModel.startShipping(orderId);
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="BaseModel Methods" icon="book" href="/core-concepts/model/basemodel-methods">
+    BaseModel이 제공하는 메서드 알아보기
+  </Card>
+  <Card title="Puri Query Builder" icon="database" href="/database/puri/basic-queries">
+    타입 안전한 쿼리 작성하기
+  </Card>
+  <Card title="Transactions" icon="arrows-rotate" href="/database/transactions/using-transactions">
+    트랜잭션 상세 가이드
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/model-testing/unit-tests">
+    비즈니스 로직 테스트하기
+  </Card>
+</CardGroup>

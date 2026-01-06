@@ -1,6 +1,399 @@
 ---
 title: "Model이란?"
-description: "Model 클래스의 역할"
+description: "Sonamu Model의 역할과 구조 이해하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Model은 Sonamu의 핵심 레이어로, 비즈니스 로직과 데이터 액세스를 담당합니다. Entity 정의를 기반으로 데이터베이스 쿼리, API 엔드포인트, 타입 안전한 데이터 처리를 제공합니다.
+
+## Model의 역할
+
+<CardGroup cols={2}>
+  <Card title="데이터 액세스" icon="database">
+    데이터베이스 CRUD 작업
+    
+    Puri 쿼리 빌더를 통한 타입 안전한 쿼리
+  </Card>
+  <Card title="비즈니스 로직" icon="code">
+    도메인 규칙 구현
+    
+    데이터 검증, 변환, 계산
+  </Card>
+  <Card title="API 엔드포인트" icon="globe">
+    HTTP API 자동 생성
+    
+    @api 데코레이터로 REST API 제공
+  </Card>
+  <Card title="타입 안전성" icon="shield-check">
+    컴파일 타임 타입 체크
+    
+    Entity 기반 자동 타입 생성
+  </Card>
+</CardGroup>
+
+## Sonamu 아키텍처에서의 위치
+
+```mermaid
+flowchart TD
+    Client[Client/Frontend]
+    API[API Layer]
+    Model[Model Layer]
+    DB[(Database)]
+    
+    Client -->|HTTP Request| API
+    API -->|@api decorator| Model
+    Model -->|Puri Query| DB
+    DB -->|Data| Model
+    Model -->|Type-safe Response| API
+    API -->|JSON| Client
+    
+    style Model fill:#4f46e5,color:#fff
+```
+
+**레이어 구조**:
+1. **Client** - 프론트엔드 (React, Vue 등)
+2. **API Layer** - HTTP 엔드포인트 (@api 데코레이터)
+3. **Model Layer** - 비즈니스 로직 ⭐
+4. **Database** - PostgreSQL
+
+<Info>
+Model은 API Layer와 Database 사이의 **비즈니스 로직 레이어**입니다. 모든 데이터 접근과 비즈니스 규칙은 Model에서 처리됩니다.
+</Info>
+
+## Model 클래스 구조
+
+### 기본 구조
+
+```typescript title="user.model.ts"
+import { BaseModelClass, api } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,              // "A" | "P" | "SS"
+  UserSubsetMapping,          // 각 subset의 타입
+  typeof userSubsetQueries,   // subset 쿼리 함수들
+  typeof userLoaderQueries    // loader 쿼리 함수들
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<UserSubsetMapping["A"]> {
+    // 비즈니스 로직 구현
+  }
+}
+
+export const UserModel = new UserModelClass();
+```
+
+### 제네릭 타입 파라미터
+
+| 파라미터 | 설명 | 예시 |
+|----------|------|------|
+| `TSubsetKey` | Subset 키의 Union 타입 | `"A" \| "P" \| "SS"` |
+| `TSubsetMapping` | Subset별 결과 타입 매핑 | `{ A: UserA, P: UserP }` |
+| `TSubsetQueries` | Subset 쿼리 함수 타입 | 자동 생성 |
+| `TLoaderQueries` | Loader 쿼리 타입 | 자동 생성 |
+
+<Tip>
+이 제네릭 타입들은 `sonamu.generated.ts`와 `sonamu.generated.sso.ts`에서 자동으로 생성되므로 직접 작성할 필요가 없습니다.
+</Tip>
+
+## Model vs Entity vs Types
+
+Sonamu에서 자주 혼동되는 개념들을 정리해봅시다:
+
+| 구분 | Entity | Types | Model |
+|------|--------|-------|-------|
+| **파일** | `{entity}.entity.json` | `{entity}.types.ts` | `{entity}.model.ts` |
+| **역할** | 데이터 구조 정의 | 타입 정의 | 비즈니스 로직 |
+| **생성** | 수동 (Sonamu UI) | 자동 생성 | 수동 (Scaffold) |
+| **내용** | 테이블, 컬럼, 관계 | TypeScript 타입, Zod | 메서드, API, 쿼리 |
+| **변경 빈도** | 낮음 | 자동 재생성 | 높음 |
+
+**예시**:
+
+<CodeGroup>
+```json title="user.entity.json (Entity)"
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" }
+  ]
+}
+```
+
+```typescript title="user.types.ts (Types - 자동 생성)"
+export type User = {
+  id: number;
+  email: string;
+};
+
+export type UserSubsetA = User;
+```
+
+```typescript title="user.model.ts (Model)"
+class UserModelClass extends BaseModelClass {
+  async findById(id: number): Promise<User> {
+    // 비즈니스 로직
+    const user = await this.puri()
+      .where("id", id)
+      .first();
+    return user;
+  }
+}
+```
+</CodeGroup>
+
+## Model이 제공하는 기능
+
+### 1. 타입 안전한 데이터 액세스
+
+```typescript
+// ✅ 타입 안전: subset 기반 타입 추론
+const user = await UserModel.findById("A", 1);
+// user의 타입: UserSubsetMapping["A"]
+
+// ✅ 컴파일 에러: 잘못된 subset
+const user = await UserModel.findById("INVALID", 1);
+//                                      ^^^^^^^^^ 
+// Error: Argument of type '"INVALID"' is not assignable
+```
+
+### 2. Subset 기반 쿼리
+
+```typescript
+async findMany<T extends UserSubsetKey>(
+  subset: T,
+  params: UserListParams
+): Promise<ListResult<UserSubsetMapping[T]>> {
+  const { qb } = this.getSubsetQueries(subset);
+  
+  // subset에 맞는 필드만 자동 SELECT
+  qb.where("id", params.id);
+  
+  return this.executeSubsetQuery({ subset, qb, params });
+}
+```
+
+<Info>
+Subset은 API 응답에 필요한 필드만 선택하여 네트워크 트래픽을 줄이고 성능을 향상시킵니다.
+</Info>
+
+### 3. 자동 API 생성
+
+```typescript
+@api({ httpMethod: "GET", clients: ["axios", "tanstack-query"] })
+async findById(id: number): Promise<User> {
+  // 메서드 구현
+}
+```
+
+**자동 생성되는 것들**:
+- HTTP 엔드포인트: `GET /user/findById?id=1`
+- TypeScript 클라이언트 코드
+- TanStack Query hooks
+- API 문서
+
+### 4. 트랜잭션 관리
+
+```typescript
+@transactional()
+async updateUserAndProfile(
+  userId: number,
+  userData: UserData,
+  profileData: ProfileData
+): Promise<void> {
+  // 모든 작업이 하나의 트랜잭션으로 실행됨
+  await this.save([userData]);
+  await ProfileModel.save([profileData]);
+  // 자동 커밋 또는 롤백
+}
+```
+
+### 5. 데이터 검증과 변환
+
+```typescript
+async save(params: UserSaveParams[]): Promise<number[]> {
+  // 비즈니스 규칙 검증
+  for (const param of params) {
+    if (param.age && param.age < 18) {
+      throw new BadRequestException("18세 미만은 가입할 수 없습니다");
+    }
+  }
+  
+  // 데이터 변환
+  const hashedParams = params.map(p => ({
+    ...p,
+    password: bcrypt.hashSync(p.password, 10)
+  }));
+  
+  // 저장
+  return this.getPuri("w").ubUpsert("users", hashedParams);
+}
+```
+
+## Model 작성 패턴
+
+### CRUD 메서드
+
+일반적인 Model은 다음 CRUD 메서드를 제공합니다:
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  // Create
+  @api({ httpMethod: "POST" })
+  async save(params: UserSaveParams[]): Promise<number[]> {
+    // ...
+  }
+  
+  // Read
+  @api({ httpMethod: "GET" })
+  async findById(id: number): Promise<User> {
+    // ...
+  }
+  
+  @api({ httpMethod: "GET" })
+  async findMany(params: UserListParams): Promise<ListResult<User>> {
+    // ...
+  }
+  
+  // Update
+  @api({ httpMethod: "PUT" })
+  async update(id: number, params: UserUpdateParams): Promise<User> {
+    // ...
+  }
+  
+  // Delete
+  @api({ httpMethod: "DELETE" })
+  async del(ids: number[]): Promise<number> {
+    // ...
+  }
+}
+```
+
+### 도메인별 메서드
+
+비즈니스 도메인에 특화된 메서드도 추가할 수 있습니다:
+
+```typescript
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async login(params: LoginParams): Promise<{ user: User }> {
+    // 로그인 로직
+  }
+  
+  @api({ httpMethod: "POST" })
+  async logout(): Promise<{ message: string }> {
+    // 로그아웃 로직
+  }
+  
+  @api({ httpMethod: "GET" })
+  async me(): Promise<User | null> {
+    // 현재 사용자 정보
+  }
+  
+  @api({ httpMethod: "POST" })
+  async changePassword(params: ChangePasswordParams): Promise<void> {
+    // 비밀번호 변경
+  }
+}
+```
+
+## BaseModel 메서드
+
+`BaseModelClass`는 다음 유틸리티 메서드를 제공합니다:
+
+| 메서드 | 설명 | 반환 타입 |
+|--------|------|-----------|
+| `getDB(preset)` | 데이터베이스 연결 획득 | `Knex` |
+| `getPuri(preset)` | Puri 쿼리 빌더 획득 | `PuriWrapper` |
+| `getSubsetQueries(subset)` | Subset 쿼리 빌더 획득 | `{ qb, onSubset }` |
+| `executeSubsetQuery(params)` | Subset 쿼리 실행 | `ListResult` |
+| `createEnhancers(enhancers)` | Enhancer 생성 헬퍼 | `EnhancerMap` |
+
+<Info>
+**더 알아보기**
+- [BaseModel Methods](/core-concepts/model/basemodel-methods) - 메서드 상세 가이드
+</Info>
+
+## Model의 장점
+
+<AccordionGroup>
+  <Accordion title="타입 안전성">
+    Entity 정의를 기반으로 TypeScript 타입이 자동 생성되어, 컴파일 타임에 오류를 잡을 수 있습니다.
+    
+    ```typescript
+    // ✅ 타입 체크
+    const user: UserSubsetMapping["A"] = await UserModel.findById("A", 1);
+    
+    // ❌ 컴파일 에러
+    user.nonExistentField;
+    ```
+  </Accordion>
+  
+  <Accordion title="코드 재사용">
+    공통 로직을 Model 메서드로 작성하여 여러 API에서 재사용할 수 있습니다.
+    
+    ```typescript
+    // Model 메서드
+    async findActiveUsers(): Promise<User[]> {
+      return this.puri().where("is_active", true).many();
+    }
+    
+    // 여러 API에서 재사용
+    @api()
+    async api1() {
+      return this.findActiveUsers();
+    }
+    
+    @api()
+    async api2() {
+      const users = await this.findActiveUsers();
+      // 추가 로직...
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="테스트 용이성">
+    Model은 독립적으로 테스트할 수 있습니다.
+    
+    ```typescript
+    describe("UserModel", () => {
+      it("should find user by id", async () => {
+        const user = await UserModel.findById("A", 1);
+        expect(user.id).toBe(1);
+      });
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="관심사 분리">
+    비즈니스 로직(Model)과 HTTP 처리(Controller/API)를 명확히 분리합니다.
+    
+    - Model: 데이터 처리, 비즈니스 규칙
+    - API: HTTP 요청/응답, 인증, 권한
+  </Accordion>
+</AccordionGroup>
+
+## 다음 단계
+
+Model의 기본 개념을 이해했다면, 다음 주제를 학습하세요:
+
+<CardGroup cols={2}>
+  <Card title="Creating Models" icon="plus" href="/core-concepts/model/creating-models">
+    Model 생성하고 Scaffold 사용하기
+  </Card>
+  <Card title="API Decorator" icon="at" href="/core-concepts/model/api-decorator">
+    @api 데코레이터로 API 엔드포인트 만들기
+  </Card>
+  <Card title="Business Logic" icon="lightbulb" href="/core-concepts/model/business-logic">
+    비즈니스 로직 작성 패턴과 예제
+  </Card>
+  <Card title="BaseModel Methods" icon="book" href="/core-concepts/model/basemodel-methods">
+    BaseModel이 제공하는 모든 메서드 알아보기
+  </Card>
+</CardGroup>

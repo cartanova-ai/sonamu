@@ -1,6 +1,499 @@
 ---
 title: "Model 생성하기"
-description: "Scaffolding으로 Model 생성하기"
+description: "Sonamu Model 파일 생성과 Scaffold 사용 방법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Model은 Entity 정의 후 Scaffold를 통해 자동 생성하거나 수동으로 작성할 수 있습니다. Scaffold를 사용하면 기본 구조와 CRUD 메서드가 포함된 Model 템플릿이 생성됩니다.
+
+## Model 생성 과정
+
+<Steps>
+<Step title="Entity 정의">
+먼저 Entity를 정의해야 합니다.
+
+```json title="user.entity.json"
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 255 },
+    { "name": "username", "type": "string", "length": 255 }
+  ],
+  "subsets": {
+    "A": ["id", "email", "username"],
+    "SS": ["id", "email"]
+  }
+}
+```
+</Step>
+
+<Step title="자동 타입 생성">
+Entity 저장 시 자동으로 타입 파일이 생성됩니다.
+
+생성되는 파일:
+- `user.types.ts` - TypeScript 타입과 Zod 스키마
+- `sonamu.generated.ts` - Base 스키마와 Enum
+- `sonamu.generated.sso.ts` - Subset 쿼리 함수
+</Step>
+
+<Step title="Model Scaffold 생성">
+Sonamu CLI를 사용하여 Model 템플릿을 생성합니다.
+
+```bash
+pnpm sonamu generate model --entity User
+```
+
+또는 Sonamu UI의 **Scaffolding** 탭에서 생성할 수 있습니다.
+</Step>
+
+<Step title="Model 커스터마이징">
+생성된 Model에 비즈니스 로직을 추가합니다.
+
+```typescript
+// 생성된 템플릿에 메서드 추가
+@api({ httpMethod: "POST" })
+async login(params: LoginParams) {
+  // 로그인 로직 구현
+}
+```
+</Step>
+</Steps>
+
+## Scaffold로 Model 생성하기
+
+### CLI 사용
+
+<CodeGroup>
+```bash title="기본 사용법"
+# Entity 이름 지정
+pnpm sonamu generate model --entity User
+
+# 여러 Entity 한번에 생성
+pnpm sonamu generate model --entity User,Post,Comment
+```
+
+```bash title="옵션"
+# 기존 파일 덮어쓰기
+pnpm sonamu generate model --entity User --overwrite
+
+# 특정 디렉토리에 생성
+pnpm sonamu generate model --entity User --output ./custom/path
+```
+</CodeGroup>
+
+### Sonamu UI 사용
+
+<Steps>
+<Step title="Scaffolding 탭 열기">
+Sonamu UI(`http://localhost:1028/sonamu-ui`)에서 **Scaffolding** 탭을 클릭합니다.
+</Step>
+
+<Step title="Model 템플릿 선택">
+**"Model"** 템플릿을 선택하고 Entity를 지정합니다.
+</Step>
+
+<Step title="옵션 설정">
+- **Default Search Field**: 기본 검색 필드 (예: `email`)
+- **Default Order By**: 기본 정렬 (예: `id-desc`)
+- **Overwrite**: 기존 파일 덮어쓰기 여부
+</Step>
+
+<Step title="생성 실행">
+**"Generate"** 버튼을 클릭하면 Model 파일이 생성됩니다.
+</Step>
+</Steps>
+
+<Frame caption="📸 필요: Sonamu UI의 Scaffolding 탭 - Model 생성 화면">
+</Frame>
+
+## 생성되는 Model 구조
+
+Scaffold로 생성된 Model의 기본 구조입니다:
+
+```typescript title="user.model.ts"
+import {
+  api,
+  asArray,
+  BadRequestException,
+  BaseModelClass,
+  exhaustive,
+  type ListResult,
+  NotFoundException,
+} from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+import type { UserListParams, UserSaveParams } from "./user.types";
+
+/*
+  User Model
+*/
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
+  async findById<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    const { rows } = await this.findMany(subset, {
+      id,
+      num: 1,
+      page: 1,
+    });
+    if (!rows[0]) {
+      throw new NotFoundException(`존재하지 않는 User ID ${id}`);
+    }
+    return rows[0];
+  }
+
+  async findOne<T extends UserSubsetKey>(
+    subset: T,
+    listParams: UserListParams
+  ): Promise<UserSubsetMapping[T] | null> {
+    const { rows } = await this.findMany(subset, {
+      ...listParams,
+      num: 1,
+      page: 1,
+    });
+
+    return rows[0] ?? null;
+  }
+
+  @api({
+    httpMethod: "GET",
+    clients: ["axios", "tanstack-query"],
+    resourceName: "Users",
+  })
+  async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+    // params with defaults
+    const params = {
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
+    };
+
+    const { qb, onSubset } = this.getSubsetQueries(subset);
+
+    // id
+    if (params.id) {
+      qb.whereIn("users.id", asArray(params.id));
+    }
+
+    // search-keyword
+    if (params.search && params.keyword && params.keyword.length > 0) {
+      if (params.search === "id") {
+        qb.where("users.id", Number(params.keyword));
+      } else {
+        exhaustive(params.search);
+      }
+    }
+
+    // orderBy
+    if (params.orderBy) {
+      if (params.orderBy === "id-desc") {
+        qb.orderBy("users.id", "desc");
+      } else {
+        exhaustive(params.orderBy);
+      }
+    }
+
+    const enhancers = this.createEnhancers({
+      A: (row) => row,
+      SS: (row) => row,
+    });
+
+    return this.executeSubsetQuery({
+      subset,
+      qb,
+      params,
+      enhancers,
+    });
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+  async save(spa: UserSaveParams[]): Promise<number[]> {
+    const wdb = this.getPuri("w");
+
+    // register
+    spa.forEach((sp) => {
+      wdb.ubRegister("users", sp);
+    });
+
+    // transaction
+    return wdb.transaction(async (trx) => {
+      const ids = await trx.ubUpsert("users");
+      return ids;
+    });
+  }
+
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
+  async del(ids: number[]): Promise<number> {
+    const wdb = this.getPuri("w");
+
+    await wdb.transaction(async (trx) => {
+      return trx.table("users").whereIn("users.id", ids).delete();
+    });
+
+    return ids.length;
+  }
+}
+
+export const UserModel = new UserModelClass();
+```
+
+## 생성된 메서드 설명
+
+Scaffold가 생성하는 기본 메서드들입니다:
+
+### 1. findById
+
+단일 레코드를 ID로 조회합니다.
+
+```typescript
+async findById<T extends UserSubsetKey>(
+  subset: T,
+  id: number
+): Promise<UserSubsetMapping[T]>
+```
+
+**특징**:
+- Subset을 파라미터로 받아 필요한 필드만 조회
+- 레코드가 없으면 `NotFoundException` 발생
+- `@api` 데코레이터로 HTTP 엔드포인트 생성
+
+### 2. findOne
+
+조건에 맞는 첫 번째 레코드를 조회합니다.
+
+```typescript
+async findOne<T extends UserSubsetKey>(
+  subset: T,
+  listParams: UserListParams
+): Promise<UserSubsetMapping[T] | null>
+```
+
+**특징**:
+- 레코드가 없으면 `null` 반환 (예외 발생 안함)
+- 내부적으로 `findMany`를 호출하여 `num: 1, page: 1` 사용
+
+### 3. findMany
+
+여러 레코드를 조건에 따라 조회합니다.
+
+```typescript
+async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+  subset: T,
+  rawParams?: LP
+): Promise<ListResult<LP, UserSubsetMapping[T]>>
+```
+
+**특징**:
+- 페이지네이션 지원 (`num`, `page`)
+- 검색/필터링 (`search`, `keyword`)
+- 정렬 (`orderBy`)
+- `ListResult` 타입으로 `{ rows, total }` 반환
+
+### 4. save
+
+레코드를 생성하거나 수정합니다.
+
+```typescript
+async save(spa: UserSaveParams[]): Promise<number[]>
+```
+
+**특징**:
+- Upsert Builder 사용 (Insert or Update)
+- 배열로 여러 레코드 한번에 처리
+- 트랜잭션으로 묶어서 실행
+- 생성/수정된 ID 배열 반환
+
+### 5. del
+
+레코드를 삭제합니다.
+
+```typescript
+async del(ids: number[]): Promise<number>
+```
+
+**특징**:
+- 여러 ID를 배열로 받음
+- 트랜잭션으로 실행
+- `guards: ["admin"]`으로 관리자만 삭제 가능
+- 삭제된 레코드 수 반환
+
+## 수동으로 Model 생성하기
+
+Scaffold를 사용하지 않고 직접 작성할 수도 있습니다.
+
+### 최소 구조
+
+<CodeGroup>
+```typescript title="user.model.ts"
+import { BaseModelClass } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
+
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
+  // 메서드 추가...
+}
+
+export const UserModel = new UserModelClass();
+```
+
+```typescript title="필수 import"
+// BaseModelClass: Model의 기본 클래스
+import { BaseModelClass } from "sonamu";
+
+// 자동 생성된 타입들
+import type { 
+  UserSubsetKey,      // "A" | "P" | "SS"
+  UserSubsetMapping   // 각 subset의 타입
+} from "../sonamu.generated";
+
+// 자동 생성된 쿼리 함수들
+import { 
+  userLoaderQueries,  // Loader 쿼리
+  userSubsetQueries   // Subset 쿼리
+} from "../sonamu.generated.sso";
+```
+</CodeGroup>
+
+### 네이밍 규칙
+
+| 구분 | 패턴 | 예시 |
+|------|------|------|
+| 클래스명 | `{Entity}ModelClass` | `UserModelClass` |
+| Export명 | `{Entity}Model` | `UserModel` |
+| 파일명 | `{entity}.model.ts` | `user.model.ts` |
+
+<Warning>
+클래스명은 반드시 `ModelClass`로 끝나야 합니다. Export는 `Model`로 끝나야 합니다.
+
+```typescript
+// ✅ 올바른 네이밍
+class UserModelClass extends BaseModelClass { }
+export const UserModel = new UserModelClass();
+
+// ❌ 잘못된 네이밍
+class UserModel extends BaseModelClass { }  // X
+export const User = new UserModelClass();   // X
+```
+</Warning>
+
+## Model 파일 위치
+
+Model 파일은 Entity와 같은 디렉토리에 위치합니다:
+
+<FileTree>
+  <FileTree.Folder name="api" defaultOpen>
+    <FileTree.Folder name="src" defaultOpen>
+      <FileTree.Folder name="application" defaultOpen>
+        <FileTree.Folder name="user" defaultOpen>
+          <FileTree.File name="user.entity.json" />
+          <FileTree.File name="user.model.ts" highlight />
+          <FileTree.File name="user.types.ts" />
+        </FileTree.Folder>
+        <FileTree.File name="sonamu.generated.ts" />
+        <FileTree.File name="sonamu.generated.sso.ts" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+## Types 파일 작성
+
+Model과 함께 사용할 파라미터 타입을 정의합니다:
+
+```typescript title="user.types.ts"
+import { z } from "zod";
+import { UserOrderBy, UserSearchField } from "../sonamu.generated";
+
+// List 파라미터
+export const UserListParams = z.object({
+  num: z.number().optional(),
+  page: z.number().optional(),
+  search: UserSearchField.optional(),
+  keyword: z.string().optional(),
+  orderBy: UserOrderBy.optional(),
+  id: z.union([z.number(), z.array(z.number())]).optional(),
+});
+export type UserListParams = z.infer<typeof UserListParams>;
+
+// Save 파라미터
+export const UserSaveParams = z.object({
+  id: z.number().optional(),
+  email: z.string().email(),
+  username: z.string().min(2).max(50),
+  password: z.string().min(8),
+});
+export type UserSaveParams = z.infer<typeof UserSaveParams>;
+
+// Login 파라미터
+export const UserLoginParams = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+export type UserLoginParams = z.infer<typeof UserLoginParams>;
+```
+
+**Types 파일 패턴**:
+- `{Entity}ListParams`: 목록 조회용
+- `{Entity}SaveParams`: 생성/수정용
+- `{Entity}{Action}Params`: 특정 액션용 (예: `LoginParams`)
+
+## Model 등록 확인
+
+생성된 Model이 제대로 로드되는지 확인합니다:
+
+```typescript title="api/src/application/sonamu.generated.ts"
+// Model imports (자동 생성)
+export * from "./user/user.model";
+
+// 모든 Model이 여기에 export됨
+```
+
+<Tip>
+`sonamu.generated.ts`는 Entity 저장 시 자동으로 갱신됩니다. Model을 추가하면 이 파일에도 자동으로 추가됩니다.
+</Tip>
+
+## 다음 단계
+
+Model을 생성했다면, 다음 주제를 학습하세요:
+
+<CardGroup cols={2}>
+  <Card title="API Decorator" icon="at" href="/core-concepts/model/api-decorator">
+    @api 데코레이터로 HTTP API 만들기
+  </Card>
+  <Card title="Business Logic" icon="lightbulb" href="/core-concepts/model/business-logic">
+    비즈니스 로직 작성 패턴 배우기
+  </Card>
+  <Card title="Puri Query Builder" icon="database" href="/database/puri/basic-queries">
+    타입 안전한 쿼리 작성하기
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/model-testing/unit-tests">
+    Model 테스트 작성하기
+  </Card>
+</CardGroup>
