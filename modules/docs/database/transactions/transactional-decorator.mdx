@@ -1,6 +1,558 @@
 ---
 title: "@transactional 데코레이터"
-description: "@transactional 사용하기"
+description: "메서드를 자동으로 트랜잭션으로 감싸기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+`@transactional` 데코레이터는 메서드를 자동으로 트랜잭션으로 감싸주어 보일러플레이트 코드를 줄여줍니다.
+
+## 데코레이터 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 트랜잭션" icon="wand-magic-sparkles">
+    메서드 실행을 자동으로 트랜잭션으로 감쌈
+    
+    성공 시 커밋, 실패 시 롤백
+  </Card>
+  <Card title="코드 간결화" icon="broom">
+    transaction() 호출 불필요
+    
+    가독성 향상
+  </Card>
+  <Card title="Isolation Level" icon="shield">
+    트랜잭션 격리 수준 설정
+    
+    동시성 제어
+  </Card>
+  <Card title="중첩 트랜잭션" icon="layer-group">
+    자동 컨텍스트 공유
+    
+    Savepoint 지원
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+### Before: 수동 트랜잭션
+
+```typescript
+class UserModel extends BaseModelClass {
+  async createUser(data: UserSaveParams): Promise<number> {
+    const wdb = this.getPuri("w");
+    
+    // ❌ 매번 transaction() 호출 필요
+    return wdb.transaction(async (trx) => {
+      trx.ubRegister("users", data);
+      const [userId] = await trx.ubUpsert("users");
+      return userId;
+    });
+  }
+}
+```
+
+### After: @transactional 데코레이터
+
+```typescript
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createUser(data: UserSaveParams): Promise<number> {
+    const wdb = this.getPuri("w");
+    
+    // ✅ transaction() 호출 없이 바로 작업
+    wdb.ubRegister("users", data);
+    const [userId] = await wdb.ubUpsert("users");
+    return userId;
+  }
+}
+```
+
+<Info>
+`@transactional()` 데코레이터가 적용된 메서드는 자동으로 트랜잭션 내에서 실행됩니다.
+</Info>
+
+## 작동 원리
+
+```mermaid
+flowchart TD
+    A[메서드 호출] --> B[@transactional 데코레이터]
+    B --> C[트랜잭션 시작]
+    C --> D[메서드 실행]
+    D --> E{에러 발생?}
+    E -->|Yes| F[자동 ROLLBACK]
+    E -->|No| G[자동 COMMIT]
+    F --> H[에러 throw]
+    G --> I[결과 반환]
+    
+    style A fill:#e3f2fd
+    style B fill:#fff9c4
+    style C fill:#e8f5e9
+    style D fill:#e1f5ff
+    style F fill:#ffebee
+    style G fill:#c8e6c9
+```
+
+## 데코레이터 옵션
+
+### dbPreset 설정
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 기본값: dbPreset = "w" (write DB)
+  @transactional()
+  async method1() {
+    const wdb = this.getPuri("w"); // write DB
+    // ...
+  }
+  
+  // 명시적 지정
+  @transactional({ dbPreset: "w" })
+  async method2() {
+    const wdb = this.getPuri("w");
+    // ...
+  }
+}
+```
+
+### Isolation Level 설정
+
+```typescript
+class UserModel extends BaseModelClass {
+  // READ UNCOMMITTED
+  @transactional({ isolation: "read uncommitted" })
+  async readUncommitted() {
+    const wdb = this.getPuri("w");
+    // 커밋되지 않은 데이터 읽기 가능 (Dirty Read)
+  }
+  
+  // READ COMMITTED
+  @transactional({ isolation: "read committed" })
+  async readCommitted() {
+    const wdb = this.getPuri("w");
+    // 커밋된 데이터만 읽기 (Non-repeatable Read 가능)
+  }
+  
+  // REPEATABLE READ (기본값)
+  @transactional({ isolation: "repeatable read" })
+  async repeatableRead() {
+    const wdb = this.getPuri("w");
+    // 같은 트랜잭션 내에서 동일한 결과 보장
+  }
+  
+  // SERIALIZABLE
+  @transactional({ isolation: "serializable" })
+  async serializable() {
+    const wdb = this.getPuri("w");
+    // 가장 엄격한 격리 수준 (Phantom Read 방지)
+  }
+}
+```
+
+<Warning>
+**Isolation Level 주의사항**:
+- 높은 격리 수준은 동시성 감소
+- SERIALIZABLE은 성능 영향 큼
+- 대부분의 경우 REPEATABLE READ가 적절
+</Warning>
+
+## 실전 예제
+
+### 예제 1: 단순 트랜잭션
+
+```typescript
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createMultipleUsers(
+    users: UserSaveParams[]
+  ): Promise<number[]> {
+    const wdb = this.getPuri("w");
+    
+    // 여러 User 등록
+    users.forEach((user) => {
+      wdb.ubRegister("users", user);
+    });
+    
+    // 일괄 저장
+    const ids = await wdb.ubUpsert("users");
+    return ids;
+  }
+}
+
+// 사용
+const ids = await UserModel.createMultipleUsers([
+  { email: "user1@test.com", username: "user1", ... },
+  { email: "user2@test.com", username: "user2", ... },
+]);
+```
+
+### 예제 2: 자동 롤백
+
+```typescript
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createUserWithValidation(
+    data: UserSaveParams
+  ): Promise<number> {
+    const wdb = this.getPuri("w");
+    
+    // 중복 체크
+    const existing = await wdb
+      .table("users")
+      .where("email", data.email)
+      .first();
+    
+    if (existing) {
+      // 에러 발생 → 자동 롤백
+      throw new Error("Email already exists");
+    }
+    
+    // User 생성
+    wdb.ubRegister("users", data);
+    const [userId] = await wdb.ubUpsert("users");
+    
+    return userId;
+  }
+}
+```
+
+### 예제 3: 복잡한 트랜잭션 (Company → Dept → Employee)
+
+```typescript
+class CompanyModel extends BaseModelClass {
+  @transactional({ isolation: "serializable" })
+  async createOrganization(data: {
+    companyName: string;
+    departmentName: string;
+    employees: Array<{
+      email: string;
+      username: string;
+      salary: string;
+    }>;
+  }): Promise<{
+    companyId: number;
+    departmentId: number;
+    employeeIds: number[];
+  }> {
+    const wdb = this.getPuri("w");
+    
+    // 1. Company
+    const companyRef = wdb.ubRegister("companies", {
+      name: data.companyName,
+    });
+    
+    // 2. Department
+    const deptRef = wdb.ubRegister("departments", {
+      name: data.departmentName,
+      company_id: companyRef,
+    });
+    
+    // 3. Users & Employees
+    data.employees.forEach((emp) => {
+      const userRef = wdb.ubRegister("users", {
+        email: emp.email,
+        username: emp.username,
+        password: "hashed",
+        role: "normal",
+      });
+      
+      wdb.ubRegister("employees", {
+        user_id: userRef,
+        department_id: deptRef,
+        employee_number: `E${Date.now()}`,
+        salary: emp.salary,
+      });
+    });
+    
+    // 4. 순서대로 저장
+    const [companyId] = await wdb.ubUpsert("companies");
+    const [departmentId] = await wdb.ubUpsert("departments");
+    await wdb.ubUpsert("users");
+    const employeeIds = await wdb.ubUpsert("employees");
+    
+    return { companyId, departmentId, employeeIds };
+  }
+}
+```
+
+### 예제 4: 동시성 제어
+
+```typescript
+class UserModel extends BaseModelClass {
+  @transactional({ isolation: "repeatable read" })
+  async updateLastLogin(userId: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    // 1. 현재 로그인 시간 조회
+    const user = await wdb
+      .table("users")
+      .select({ last_login: "last_login_at" })
+      .where("id", userId)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 2. 로그인 시간 업데이트
+    await wdb
+      .table("users")
+      .where("id", userId)
+      .update({
+        last_login_at: new Date(),
+      });
+    
+    // Repeatable Read: 다른 트랜잭션의 변경 영향 없음
+  }
+}
+```
+
+## 중첩 트랜잭션
+
+### 자동 컨텍스트 공유
+
+```typescript
+class UserModel extends BaseModelClass {
+  @transactional()
+  async createUserWithProfile(
+    userData: UserSaveParams,
+    bio: string
+  ): Promise<number> {
+    const wdb = this.getPuri("w");
+    
+    // User 생성
+    const [userId] = await wdb
+      .table("users")
+      .insert(userData)
+      .returning("id");
+    
+    // 다른 @transactional 메서드 호출
+    // 같은 트랜잭션 컨텍스트 공유
+    await this.updateBio(userId, bio);
+    
+    return userId;
+  }
+  
+  @transactional()
+  async updateBio(userId: number, bio: string): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", userId)
+      .update({ bio });
+  }
+}
+```
+
+```mermaid
+flowchart TD
+    A[createUserWithProfile] --> B[@transactional 1]
+    B --> C[트랜잭션 시작]
+    C --> D[User INSERT]
+    D --> E[updateBio 호출]
+    E --> F[@transactional 2]
+    F --> G{기존 트랜잭션?}
+    G -->|Yes| H[같은 트랜잭션 재사용]
+    G -->|No| I[새 트랜잭션 생성]
+    H --> J[Bio UPDATE]
+    J --> K[메서드 종료]
+    K --> L[COMMIT]
+    
+    style C fill:#e8f5e9
+    style H fill:#c8e6c9
+    style L fill:#66bb6a
+```
+
+<Info>
+**중첩 트랜잭션의 이점**:
+- 코드 재사용성 향상
+- 메서드 조합 자유로움
+- 트랜잭션 경계 자동 관리
+</Info>
+
+## @api와 함께 사용
+
+### 데코레이터 조합
+
+```typescript
+class UserController extends BaseModelClass {
+  // 두 데코레이터를 함께 사용 가능
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async createUser(
+    params: UserSaveParams
+  ): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    wdb.ubRegister("users", params);
+    const [userId] = await wdb.ubUpsert("users");
+    
+    return { userId };
+  }
+  
+  // 순서는 상관없음
+  @transactional()
+  @api({ httpMethod: "PUT" })
+  async updateUser(
+    id: number,
+    params: Partial<UserSaveParams>
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", id)
+      .update(params);
+  }
+}
+```
+
+## 장단점
+
+### 장점
+
+<CardGroup cols={2}>
+  <Card title="코드 간결화" icon="broom">
+    transaction() 호출 불필요
+    
+    보일러플레이트 제거
+  </Card>
+  <Card title="가독성" icon="eye">
+    트랜잭션 경계 명확
+    
+    비즈니스 로직에 집중
+  </Card>
+  <Card title="자동 관리" icon="robot">
+    커밋/롤백 자동 처리
+    
+    실수 방지
+  </Card>
+  <Card title="재사용성" icon="recycle">
+    메서드 조합 용이
+    
+    중첩 트랜잭션 지원
+  </Card>
+</CardGroup>
+
+### 단점
+
+<CardGroup cols={2}>
+  <Card title="제약사항" icon="lock">
+    메서드 레벨에서만 사용
+    
+    부분 트랜잭션 불가
+  </Card>
+  <Card title="디버깅" icon="bug">
+    트랜잭션 경계가 숨겨짐
+    
+    문제 추적 어려울 수 있음
+  </Card>
+</CardGroup>
+
+## 사용 가이드
+
+### 언제 사용하나?
+
+✅ **사용 권장**:
+- 메서드 전체가 하나의 트랜잭션
+- 여러 DB 작업이 원자성 필요
+- 코드 재사용이 중요한 경우
+- API 핸들러 메서드
+
+❌ **사용 비권장**:
+- 메서드 내 부분적 트랜잭션
+- 복잡한 트랜잭션 제어 필요
+- 트랜잭션 경계가 명확해야 하는 경우
+
+### 패턴 비교
+
+```typescript
+// Pattern 1: @transactional (권장)
+@transactional()
+async createUser(data: UserSaveParams): Promise<number> {
+  const wdb = this.getPuri("w");
+  wdb.ubRegister("users", data);
+  const [id] = await wdb.ubUpsert("users");
+  return id;
+}
+
+// Pattern 2: 수동 transaction (복잡한 경우)
+async createUserComplex(data: UserSaveParams): Promise<number> {
+  const wdb = this.getPuri("w");
+  
+  return wdb.transaction(async (trx) => {
+    // 복잡한 트랜잭션 로직
+    const [id] = await trx.table("users").insert(data).returning("id");
+    
+    // 조건부 롤백
+    if (someCondition) {
+      await trx.rollback();
+    }
+    
+    return id;
+  });
+}
+```
+
+## 주의사항
+
+<Warning>
+**반드시 지켜야 할 사항**:
+1. 메서드는 `async` 함수여야 함
+2. `this.getPuri()`로 DB 접근
+3. 에러는 throw로 전파 (자동 롤백)
+4. 중첩 트랜잭션은 같은 컨텍스트 공유
+</Warning>
+
+### 흔한 실수
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ❌ 잘못된 사용
+  @transactional()
+  async wrongUsage1(data: UserSaveParams): Promise<number> {
+    // getPuri를 다른 변수에 저장하지 말 것
+    const db = this.getPuri("w");
+    
+    // 에러를 catch로 숨기면 롤백 안 됨
+    try {
+      db.ubRegister("users", data);
+      const [id] = await db.ubUpsert("users");
+      return id;
+    } catch (error) {
+      console.error(error);
+      return 0; // ❌ 에러를 숨김 → 롤백 안 됨
+    }
+  }
+  
+  // ✅ 올바른 사용
+  @transactional()
+  async correctUsage(data: UserSaveParams): Promise<number> {
+    const wdb = this.getPuri("w");
+    
+    // 에러는 throw로 전파
+    if (!data.email) {
+      throw new Error("Email is required");
+    }
+    
+    wdb.ubRegister("users", data);
+    const [id] = await wdb.ubUpsert("users");
+    return id;
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="수동 트랜잭션" icon="hand" href="/database/transactions/manual-transactions">
+    transaction() 직접 사용하기
+  </Card>
+  <Card title="모범 사례" icon="star" href="/database/transactions/best-practices">
+    트랜잭션 사용 가이드
+  </Card>
+  <Card title="UpsertBuilder" icon="database" href="/database/upsert-builder/basic-usage">
+    트랜잭션 내 데이터 저장
+  </Card>
+  <Card title="데코레이터" icon="at" href="/api-development/decorators">
+    Sonamu 데코레이터 이해하기
+  </Card>
+</CardGroup>
