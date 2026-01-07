@@ -88,9 +88,13 @@ export type BooleanArrayProp = CommonProp & {
 }; // PG: boolean[] / TS: boolean[] / JSON: boolean[]
 export type DateProp = CommonProp & {
   type: "date";
+  // 기본값은 3, microseconds를 쓰려면 6을 써야함 (0 ~ 6)
+  precision?: number;
 }; // PG: timestampz / TS: Date / JSON: string(ISOString)
 export type DateArrayProp = CommonProp & {
   type: "date[]";
+  // 기본값은 3, microseconds를 쓰려면 6을 써야함 (0 ~ 6)
+  precision?: number;
 }; // PG: timestamptz[] / TS: Date[] / JSON: string[]
 export type JsonProp = CommonProp & {
   type: "json";

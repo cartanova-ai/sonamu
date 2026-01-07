@@ -29,7 +29,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1",
+    "title": "alter_users_add1_alter4",
     "type": "normal",
   },
   {
@@ -78,7 +78,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1",
+    "title": "alter_users_add1_alter4",
     "type": "normal",
   },
   {
@@ -123,7 +123,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1",
+    "title": "alter_users_add1_alter4",
     "type": "normal",
   },
   {
@@ -235,7 +235,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1",
+    "title": "alter_users_add1_alter4",
     "type": "normal",
   },
   {
@@ -269,7 +269,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_entities", (table) => {
     table.increments().primary();
     table
-      .timestamp("created_at", { useTz: true })
+      .timestamp("created_at", { useTz: true, precision: 3 })
       .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();
@@ -306,7 +306,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users",
+    "title": "alter_users_alter4",
     "type": "normal",
   },
 ]
@@ -327,12 +327,12 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // rollback - drop columns
-    table.timestamp("deleted_at", { useTz: true }).nullable();
+    table.timestamp("deleted_at", { useTz: true, precision: 3 }).nullable();
   });
 }
 ",
     "table": "users",
-    "title": "alter_users_drop1",
+    "title": "alter_users_drop1_alter3",
     "type": "normal",
   },
 ]
@@ -346,19 +346,19 @@ exports[`Migrator test > preparedCodes 생성 > 컬럼 속성 변경 감지 1`] 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // alter column
-    table.timestamp("deleted_at", { useTz: true }).notNullable().alter();
+    table.timestamp("deleted_at", { useTz: true, precision: 3 }).notNullable().alter();
   });
 }
 
 export async function down(knex: Knex): Promise<void> {
   await knex.schema.alterTable("users", (table) => {
     // rollback - alter column
-    table.timestamp("deleted_at", { useTz: true }).nullable().alter();
+    table.timestamp("deleted_at", { useTz: true, precision: 3 }).nullable().alter();
   });
 }
 ",
     "table": "users",
-    "title": "alter_users_alter1",
+    "title": "alter_users_alter4",
     "type": "normal",
   },
 ]
@@ -388,7 +388,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add1_drop1",
+    "title": "alter_users_add1_drop1_alter4",
     "type": "normal",
   },
 ]
@@ -415,7 +415,7 @@ export async function down(knex: Knex): Promise<void> {
 }
 ",
     "table": "users",
-    "title": "alter_users_add2",
+    "title": "alter_users_add2_alter4",
     "type": "normal",
   },
 ]
@@ -430,7 +430,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("test_order_entities", (table) => {
     table.increments().primary();
     table
-      .timestamp("created_at", { useTz: true })
+      .timestamp("created_at", { useTz: true, precision: 3 })
       .notNullable()
       .defaultTo(knex.raw("CURRENT_TIMESTAMP"));
     table.string("name", 255).notNullable();

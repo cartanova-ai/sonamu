@@ -239,7 +239,7 @@ describe("migration-set.ts", () => {
       test("numeric(10, 2) -> numberOrNumeric", () => {
         const col = {
           udt_name: "numeric",
-          numeric_precision: 10,
+          precision: 10,
           numeric_scale: 2,
         } as PgColumn;
 

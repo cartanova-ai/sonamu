@@ -131,7 +131,9 @@ function genNormalColumnDefinition(column: MigrationColumn): string {
     }
   } else if (column.type === "date") {
     // date
-    chains.push(`timestamp('${column.name}', { useTz: true })`);
+    chains.push(
+      `timestamp('${column.name}', { useTz: true, precision: ${column.precision ?? 3} })`,
+    );
   } else if (column.type === "json") {
     // json
     chains.push(`jsonb('${column.name}')`);

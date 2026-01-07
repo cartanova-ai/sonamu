@@ -14,7 +14,7 @@ export type PgColumn = {
   data_type: string;
   udt_name: string;
   character_maximum_length: number | null;
-  numeric_precision: number | null;
+  precision: number | null;
   numeric_scale: number | null;
   is_nullable: string;
   column_default: string | null;
@@ -203,7 +203,7 @@ class PostgreSQLSchemaReaderClass {
         c.data_type,
         c.udt_name,
         c.character_maximum_length,
-        c.numeric_precision,
+        COALESCE(c.datetime_precision, c.numeric_precision) AS precision,
         c.numeric_scale,
         c.is_nullable,
         c.column_default,
@@ -349,12 +349,7 @@ class PostgreSQLSchemaReaderClass {
     MigrationColumn,
     "type" | "length" | "precision" | "scale" | "numberType" | "dimensions"
   > {
-    const {
-      udt_name: _udt_name,
-      character_maximum_length,
-      numeric_precision,
-      numeric_scale,
-    } = dbColumn;
+    const { udt_name: _udt_name, character_maximum_length, precision, numeric_scale } = dbColumn;
 
     const { udt_name, singleOrArray } = (() => {
       if (_udt_name.startsWith("_")) {
@@ -400,9 +395,9 @@ class PostgreSQLSchemaReaderClass {
       return {
         type: `numberOrNumeric${singleOrArray}`,
         numberType: "numeric",
-        ...(numeric_precision !== null &&
+        ...(precision !== null &&
           numeric_scale !== null && {
-            precision: numeric_precision,
+            precision: precision,
             scale: numeric_scale,
           }),
       };
@@ -421,7 +416,12 @@ class PostgreSQLSchemaReaderClass {
 
     // Timestampz types
     if (udt_name === "timestamptz") {
-      return { type: `date${singleOrArray}` }; // DateProp → timestamptz
+      return {
+        type: `date${singleOrArray}`,
+        ...(precision !== null && {
+          precision: precision,
+        }),
+      }; // DateProp → timestamptz
     }
 
     // JSON

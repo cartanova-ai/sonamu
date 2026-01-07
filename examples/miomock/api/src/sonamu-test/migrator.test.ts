@@ -152,7 +152,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add2");
+      expect(alterCode?.title).toBe("alter_users_add2_alter4");
 
       // up
       expect(alterCode?.formatted).toContain(
@@ -180,14 +180,14 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.title.startsWith("alter_users_"));
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_drop1");
+      expect(alterCode?.title).toBe("alter_users_drop1_alter3");
 
       // up
       expect(alterCode?.formatted).toContain('table.dropColumns("deleted_at")');
 
       // down
       expect(alterCode?.formatted).toContain(
-        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+        'table.timestamp("deleted_at", { useTz: true, precision: 3 }).nullable()',
       );
     });
 
@@ -208,22 +208,22 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_alter1");
+      expect(alterCode?.title).toBe("alter_users_alter4");
 
       // up
       expect(alterCode?.formatted).toContain(
-        'table.timestamp("deleted_at", { useTz: true }).notNullable()',
+        'table.timestamp("deleted_at", { useTz: true, precision: 3 }).notNullable()',
       );
       expect(alterCode?.formatted).toContain(
-        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+        'table.timestamp("deleted_at", { useTz: true, precision: 3 }).nullable()',
       );
 
       // down
       expect(alterCode?.formatted).toContain(
-        'table.timestamp("deleted_at", { useTz: true }).nullable()',
+        'table.timestamp("deleted_at", { useTz: true, precision: 3 }).nullable()',
       );
       expect(alterCode?.formatted).toContain(
-        'table.timestamp("deleted_at", { useTz: true }).notNullable()',
+        'table.timestamp("deleted_at", { useTz: true, precision: 3 }).notNullable()',
       );
     });
 
@@ -249,7 +249,7 @@ describe("Migrator test", () => {
         (code) => code.table === "users" && code.type === "normal",
       );
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add1_drop1");
+      expect(alterCode?.title).toBe("alter_users_add1_drop1_alter4");
 
       // up
       expect(alterCode?.formatted).toContain('table.string("full_name", 255).notNullable()');
@@ -311,7 +311,7 @@ describe("Migrator test", () => {
       expect(Naite.get("migrator:getStatus:preparedCodes").first()).toMatchSnapshot();
       const preparedCodes = status.preparedCodes.find((code) => code.table === "users");
       expect(preparedCodes).toBeDefined();
-      expect(preparedCodes?.title).toBe("alter_users");
+      expect(preparedCodes?.title).toBe("alter_users_alter4");
 
       // up
       expect(preparedCodes?.formatted).toContain(
@@ -557,8 +557,9 @@ describe("Migrator test", () => {
         const status = await migrator.getStatus();
 
         const alterCode = status.preparedCodes.find((code) => code.table === "users");
+        console.log(alterCode);
         expect(alterCode).toBeDefined();
-        expect(alterCode?.title).toBe("alter_users");
+        expect(alterCode?.title).toBe("alter_users_alter4");
 
         // up: 기존 인덱스 삭제 후 새 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -589,7 +590,7 @@ describe("Migrator test", () => {
 
         const alterCode = status.preparedCodes.find((code) => code.table === "users");
         expect(alterCode).toBeDefined();
-        expect(alterCode?.title).toBe("alter_users");
+        expect(alterCode?.title).toBe("alter_users_alter4");
 
         // up: 기존 인덱스 삭제 후 NULLS NOT DISTINCT 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -619,7 +620,7 @@ describe("Migrator test", () => {
 
         const alterCode = status.preparedCodes.find((code) => code.table === "users");
         expect(alterCode).toBeDefined();
-        expect(alterCode?.title).toBe("alter_users");
+        expect(alterCode?.title).toBe("alter_users_alter4");
 
         // up: 기존 인덱스 삭제 후 NULLS FIRST 인덱스 생성
         expect(alterCode?.formatted).toContain('table.dropIndex(["email"], "users_email_unique")');
@@ -659,7 +660,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add1");
+      expect(alterCode?.title).toBe("alter_users_add1_alter4");
 
       // up
       expect(alterCode?.formatted).toContain('table.integer("company_id").notNullable()');
@@ -694,7 +695,7 @@ describe("Migrator test", () => {
       // then
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add1");
+      expect(alterCode?.title).toBe("alter_users_add1_alter4");
 
       // up
       expect(alterCode?.formatted).toContain('table.integer("profile_id").notNullable()');
@@ -1131,7 +1132,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add1");
+      expect(alterCode?.title).toBe("alter_users_add1_alter4");
 
       // Generated Column은 ALTER TABLE ADD COLUMN 방식으로 생성
       expect(alterCode?.formatted).toContain(
@@ -1242,7 +1243,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "users");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_users_add2");
+      expect(alterCode?.title).toBe("alter_users_add2_alter4");
 
       // 일반 컬럼은 alterTable 내부에서 추가
       expect(alterCode?.formatted).toContain('table.string("nickname", 50)');
@@ -1370,7 +1371,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "departments");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_departments_drop1");
+      expect(alterCode?.title).toBe("alter_departments_drop1_alter1");
 
       // up: Generated Column도 일반 컬럼처럼 dropColumns로 삭제
       expect(alterCode?.formatted).toContain('table.dropColumns("code")');
@@ -1427,7 +1428,7 @@ describe("Migrator test", () => {
       // drop + add로 처리됨
       const alterCode = status.preparedCodes.find((code) => code.table === "departments");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_departments_add1_drop1");
+      expect(alterCode?.title).toBe("alter_departments_add1_drop1_alter1");
 
       // up: drop 후 VIRTUAL로 재생성
       expect(alterCode?.formatted).toContain('table.dropColumns("code")');
@@ -1463,7 +1464,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "departments");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_departments_add1_drop1");
+      expect(alterCode?.title).toBe("alter_departments_add1_drop1_alter1");
 
       // up: Generated Column drop 후 일반 컬럼으로 재생성
       expect(alterCode?.formatted).toContain('table.dropColumns("code")');
@@ -1497,7 +1498,7 @@ describe("Migrator test", () => {
 
       const alterCode = status.preparedCodes.find((code) => code.table === "departments");
       expect(alterCode).toBeDefined();
-      expect(alterCode?.title).toBe("alter_departments_add1_drop1");
+      expect(alterCode?.title).toBe("alter_departments_add1_drop1_alter1");
 
       // up: 일반 컬럼 drop 후 Generated Column으로 재생성
       expect(alterCode?.formatted).toContain('table.dropColumns("name")');
