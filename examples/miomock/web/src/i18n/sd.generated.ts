@@ -303,3 +303,19 @@ export function localizedColumn<T extends Record<string, unknown>, K extends key
 
   return undefined;
 }
+
+/**
+ * Enum의 localized labels를 Proxy로 반환합니다.
+ * Select 컴포넌트 등에서 EnumLabel[key] 대신 사용합니다.
+ *
+ * @example
+ * SD.enumLabels("TagOrderBy")[key]  // → 현재 locale의 라벨
+ */
+SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
+  return new Proxy({} as Record<string, LocalizedString>, {
+    get(_, key: string) {
+      const dictKey = `enum.${enumName}.${key}` as DictKey;
+      return getDictValue(dictKey, getCurrentLocale());
+    },
+  });
+};
