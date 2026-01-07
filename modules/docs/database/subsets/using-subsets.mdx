@@ -1,6 +1,334 @@
 ---
 title: "Subset 사용하기"
-description: "getPuri로 Subset 활용하기"
+description: "Model에서 Subset 활용하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Subset은 Model의 메서드를 통해 사용합니다.
+
+## Model 메서드와 Subset
+
+### findById - 단일 레코드 조회
+
+```typescript
+// Subset 1개
+const user = await UserModel.findById(1, ["P"]);
+// 타입: UserSubsetMapping["P"]
+
+// Subset 여러 개 (Union)
+const user = await UserModel.findById(1, ["A", "P"]);
+// 타입: UserSubsetMapping["A"] | UserSubsetMapping["P"]
+```
+
+### findOne - 조건으로 단일 레코드
+
+```typescript
+const user = await UserModel.findOne({
+  where: [["email", "john@test.com"]],
+  subsetKey: "P",
+});
+// 타입: UserSubsetMapping["P"] | undefined
+```
+
+### findMany - 여러 레코드 조회
+
+```typescript
+const users = await UserModel.findMany({
+  listParams: {
+    page: 1,
+    pageSize: 20,
+  },
+  subsetKey: "L",
+});
+// 타입: UserSubsetMapping["L"][]
+```
+
+## getPuri로 Subset 쿼리 시작
+
+`getPuri`를 사용하여 Subset 기반 쿼리를 시작합니다:
+
+```typescript
+// Subset P의 쿼리 시작
+const query = UserModel.getPuri("r", ["P"]);
+
+// 추가 조건 적용
+const users = await query
+  .where("users.role", "admin")
+  .where("users.is_verified", true)
+  .orderBy("users.created_at", "desc");
+
+// 타입: UserSubsetMapping["P"][]
+```
+
+<Info>
+`getPuri("r", ["P"])`는 Subset P에 정의된 JOIN과 SELECT를 자동으로 적용합니다.
+</Info>
+
+## Subset 쿼리 확장
+
+### WHERE 조건 추가
+
+```typescript
+const admins = await UserModel.getPuri("r", ["L"])
+  .where("users.role", "admin")
+  .where("users.is_verified", true);
+
+// Subset L의 기본 필드 + WHERE 조건
+```
+
+### ORDER BY 정렬
+
+```typescript
+const recentUsers = await UserModel.getPuri("r", ["L"])
+  .orderBy("users.created_at", "desc")
+  .limit(10);
+```
+
+### 복합 조건
+
+```typescript
+const activeEngineers = await UserModel.getPuri("r", ["P"])
+  .where("users.role", "normal")
+  .where("employee__department.name", "Engineering")
+  .where("employee.salary", ">", "60000")
+  .orderBy("employee.salary", "desc");
+
+// Subset P는 employee.department.name을 포함하므로
+// JOIN이 자동으로 설정됨
+```
+
+## Subset 타입 안전성
+
+<Frame>
+  <img src="/images/subsets/type-safety.png" alt="Subset 타입 안전성" />
+</Frame>
+
+### 컴파일 타임 검증
+
+```typescript
+// ✅ OK: Subset P는 employee__department 테이블 포함
+await UserModel.getPuri("r", ["P"])
+  .where("employee__department.name", "Engineering");
+
+// ❌ Type Error: Subset L은 employee 테이블 미포함
+await UserModel.getPuri("r", ["L"])
+  .where("employee__department.name", "Engineering");
+//     ^^^^^^^^^^^^^^^^^^^^^^^^^ Property does not exist
+```
+
+### 자동 타입 추론
+
+```typescript
+const user = await UserModel.findById(1, ["P"]);
+
+// TypeScript가 자동으로 타입 추론
+user.id;        // number
+user.username;  // string
+user.employee;  // { salary: string; department: { name: string } } | null
+
+// ❌ Compile Error
+user.password;  // Property 'password' does not exist
+```
+
+## 실전 예제
+
+### 사용자 목록 API
+
+```typescript
+// Controller
+class UserController {
+  async list(req: TypedRequest<UserListParams>) {
+    const { page, pageSize, role, search } = req.body;
+    
+    let query = UserModel.getPuri("r", ["L"]);
+    
+    // 역할 필터
+    if (role) {
+      query = query.where("users.role", role);
+    }
+    
+    // 검색
+    if (search) {
+      query = query.where("users.username", "like", `%${search}%`);
+    }
+    
+    const users = await query
+      .orderBy("users.created_at", "desc")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+    
+    return users;
+  }
+}
+```
+
+### 프로필 조회 API
+
+```typescript
+async getProfile(userId: number) {
+  const user = await UserModel.findById(userId, ["P"]);
+  
+  if (!user) {
+    throw new NotFoundException("User not found");
+  }
+  
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    bio: user.bio,
+    department: user.employee?.department?.name,
+    salary: user.employee?.salary,
+  };
+}
+```
+
+### 복합 검색 API
+
+```typescript
+async searchUsers(params: {
+  role?: UserRole;
+  departmentName?: string;
+  minSalary?: number;
+}) {
+  let query = UserModel.getPuri("r", ["P"]);
+  
+  if (params.role) {
+    query = query.where("users.role", params.role);
+  }
+  
+  if (params.departmentName) {
+    query = query.where(
+      "employee__department.name",
+      "like",
+      `%${params.departmentName}%`
+    );
+  }
+  
+  if (params.minSalary) {
+    query = query.where("employee.salary", ">=", String(params.minSalary));
+  }
+  
+  return await query.orderBy("users.username", "asc");
+}
+```
+
+## Subset 조합
+
+### 여러 Subset 사용 (Union)
+
+```typescript
+// 상황에 따라 다른 Subset 사용
+async getUser(userId: number, detailed: boolean) {
+  if (detailed) {
+    return await UserModel.findById(userId, ["P"]);
+    // 타입: UserSubsetMapping["P"] | undefined
+  } else {
+    return await UserModel.findById(userId, ["SS"]);
+    // 타입: UserSubsetMapping["SS"] | undefined
+  }
+}
+```
+
+### 조건부 Subset 선택
+
+```typescript
+async getUserData(userId: number, role: UserRole) {
+  const subsets = role === "admin" ? ["A"] : ["P"];
+  
+  return await UserModel.findById(userId, subsets);
+  // 타입: UserSubsetMapping["A"] | UserSubsetMapping["P"] | undefined
+}
+```
+
+## 성능 최적화
+
+### 필요한 Subset만 사용
+
+```typescript
+// ❌ 나쁨: 목록에서 Subset A 사용 (과도한 데이터)
+const users = await UserModel.findMany({
+  listParams: { page: 1, pageSize: 20 },
+  subsetKey: "A",  // 모든 필드 로딩
+});
+
+// ✅ 좋음: 목록에는 Subset L 사용
+const users = await UserModel.findMany({
+  listParams: { page: 1, pageSize: 20 },
+  subsetKey: "L",  // 필요한 필드만
+});
+```
+
+### JOIN 최소화
+
+```typescript
+// ❌ 나쁨: 불필요한 JOIN (Subset P)
+const userIds = await UserModel.getPuri("r", ["P"])
+  .pluck("users.id");
+// employee, department 테이블도 JOIN됨
+
+// ✅ 좋음: JOIN 없는 Subset (SS)
+const userIds = await UserModel.getPuri("r", ["SS"])
+  .pluck("users.id");
+// users 테이블만 조회
+```
+
+## Subset과 Raw Puri 비교
+
+### Subset 사용
+
+```typescript
+// ✅ Subset - 타입 안전, 간결
+const users = await UserModel.getPuri("r", ["P"])
+  .where("users.role", "admin");
+
+// 타입: UserSubsetMapping["P"][]
+// JOIN 자동 설정
+// SELECT 자동 설정
+```
+
+### Raw Puri 사용
+
+```typescript
+// ⚠️ Raw Puri - 수동 설정
+const users = await UserModel.getPuri("r")
+  .table("users")
+  .leftJoin("employees", "users.id", "employees.user_id")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    id: "users.id",
+    username: "users.username",
+    employee__salary: "employees.salary",
+    employee__department__name: "departments.name",
+  })
+  .where("users.role", "admin");
+
+// 타입: { id: number; username: string; ... }[]
+// JOIN 수동 설정
+// SELECT 수동 설정
+// Hydrate 수동 적용 필요
+```
+
+<Tip>
+**Subset을 사용하세요!**
+- 타입 안전성 보장
+- 코드 재사용성 향상
+- 유지보수 편리
+- 쿼리 일관성 유지
+</Tip>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="중첩 관계" icon="diagram-project" href="/database/subsets/nested-relations">
+    LoaderQuery로 1:N, N:M 로딩
+  </Card>
+  <Card title="Subset 정의" icon="pen" href="/database/subsets/defining-subsets">
+    Entity에서 Subset 생성
+  </Card>
+  <Card title="Model 메서드" icon="cube" href="/core-concepts/model/model-methods">
+    Model CRUD 메서드
+  </Card>
+  <Card title="Puri 쿼리" icon="database" href="/database/puri/basic-queries">
+    Puri 쿼리 빌더
+  </Card>
+</CardGroup>

@@ -1,6 +1,506 @@
 ---
 title: "중첩 관계"
-description: "관계 데이터 로딩하기"
+description: "LoaderQuery로 1:N, N:M 관계 데이터 로딩"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+LoaderQuery는 1:N, N:M 관계의 데이터를 효율적으로 로딩하는 시스템입니다.
+
+## LoaderQuery 개요
+
+<CardGroup cols={2}>
+  <Card title="1:N 관계" icon="arrow-right-to-bracket">
+    부모 → 자식 여러 개
+    
+    HasMany
+  </Card>
+  <Card title="N:M 관계" icon="diagram-project">
+    양방향 다대다 관계
+    
+    ManyToMany
+  </Card>
+  <Card title="N+1 해결" icon="gauge-high">
+    효율적인 데이터 로딩
+    
+    Batch Loading
+  </Card>
+  <Card title="중첩 Loader" icon="layer-group">
+    재귀적 관계 로딩
+    
+    Nested Relations
+  </Card>
+</CardGroup>
+
+## LoaderQuery vs SubsetQuery
+
+<Frame>
+  <img src="/images/subsets/loader-vs-subset-query.png" alt="LoaderQuery vs SubsetQuery 비교" />
+</Frame>
+
+### SubsetQuery (JOIN)
+
+OneToOne 또는 BelongsTo 관계에 적합:
+
+```typescript
+// SubsetQuery: LEFT JOIN으로 처리
+{
+  "subsets": {
+    "P": [
+      "id",
+      "username",
+      "employee.salary",           // ← OneToOne
+      "employee.department.name"   // ← BelongsTo
+    ]
+  }
+}
+
+// SQL: LEFT JOIN employees, LEFT JOIN departments
+// 결과: 1행당 1개의 employee
+```
+
+### LoaderQuery (Separate Query)
+
+HasMany 또는 ManyToMany 관계에 적합:
+
+```typescript
+// LoaderQuery: 별도 쿼리로 처리
+{
+  loaders: [
+    {
+      as: "posts",
+      refId: "user_id",
+      qb: (qb, fromIds) => 
+        qb.table("posts")
+          .whereIn("user_id", fromIds)
+    }
+  ]
+}
+
+// SQL: SELECT * FROM posts WHERE user_id IN (1, 2, 3)
+// 결과: 1명당 N개의 posts 배열
+```
+
+## LoaderQuery 정의
+
+LoaderQuery는 `subset-loaders.ts` 파일에서 정의합니다:
+
+```typescript
+// src/application/user/user.subset-loaders.ts
+
+import type { SubsetLoaderMap } from "sonamu";
+
+export const UserSubsetLoaders: SubsetLoaderMap<"User"> = {
+  // Subset A에 posts 로더 추가
+  A: [
+    {
+      as: "posts",              // 결과 필드명
+      refId: "user_id",         // 참조 필드 (posts.user_id)
+      qb: (qb, fromIds) => 
+        qb.table("posts")
+          .whereIn("user_id", fromIds)
+          .select({
+            id: "id",
+            title: "title",
+            created_at: "created_at",
+          })
+          .orderBy("created_at", "desc"),
+    },
+  ],
+};
+```
+
+<Info>
+LoaderQuery는 자동으로 **Batch Loading**을 수행하여 N+1 문제를 해결합니다.
+</Info>
+
+## 1:N 관계 (HasMany)
+
+### 부서 → 직원들
+
+```typescript
+// Department Entity
+export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+  P: [
+    {
+      as: "employees",
+      refId: "department_id",
+      qb: (qb, fromIds) => 
+        qb.table("employees")
+          .whereIn("department_id", fromIds)
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            employee_number: "employees.employee_number",
+            username: "users.username",
+            salary: "employees.salary",
+          })
+          .orderBy("employees.employee_number", "asc"),
+    },
+  ],
+};
+```
+
+**사용 예시**:
+
+```typescript
+const dept = await DepartmentModel.findById(1, ["P"]);
+
+// 타입:
+// {
+//   id: number;
+//   name: string;
+//   employees: Array<{
+//     id: number;
+//     employee_number: string;
+//     username: string;
+//     salary: string;
+//   }>;
+// }
+
+console.log(`${dept.name} 부서 직원 수: ${dept.employees.length}`);
+dept.employees.forEach(emp => {
+  console.log(`- ${emp.username} (${emp.employee_number})`);
+});
+```
+
+## N:M 관계 (ManyToMany)
+
+### 프로젝트 ↔ 직원
+
+```typescript
+// Project Entity
+export const ProjectSubsetLoaders: SubsetLoaderMap<"Project"> = {
+  P: [
+    {
+      as: "members",
+      refId: "project_id",
+      qb: (qb, fromIds) => 
+        qb.table("projects__employees")
+          .whereIn("project_id", fromIds)
+          .join("employees", "projects__employees.employee_id", "employees.id")
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            username: "users.username",
+            employee_number: "employees.employee_number",
+            role: "projects__employees.role",  // 중간 테이블 필드
+          }),
+    },
+  ],
+};
+```
+
+**사용 예시**:
+
+```typescript
+const project = await ProjectModel.findById(1, ["P"]);
+
+// 타입:
+// {
+//   id: number;
+//   name: string;
+//   members: Array<{
+//     id: number;
+//     username: string;
+//     employee_number: string;
+//     role: string;  // 중간 테이블의 role
+//   }>;
+// }
+
+console.log(`프로젝트: ${project.name}`);
+console.log(`참여자 ${project.members.length}명:`);
+project.members.forEach(member => {
+  console.log(`- ${member.username} (${member.role})`);
+});
+```
+
+## 중첩 LoaderQuery
+
+<Frame>
+  <img src="/images/subsets/nested-loader.png" alt="중첩 LoaderQuery 구조" />
+</Frame>
+
+LoaderQuery는 **재귀적으로 중첩**할 수 있습니다:
+
+```typescript
+// Department Entity
+export const DepartmentSubsetLoaders: SubsetLoaderMap<"Department"> = {
+  P: [
+    {
+      as: "employees",
+      refId: "department_id",
+      qb: (qb, fromIds) => 
+        qb.table("employees")
+          .whereIn("department_id", fromIds)
+          .join("users", "employees.user_id", "users.id")
+          .select({
+            id: "employees.id",
+            username: "users.username",
+            user_id: "users.id",  // ← 다음 Loader를 위한 refId
+          }),
+      
+      // 중첩 Loader: 직원 → 프로젝트들
+      loaders: [
+        {
+          as: "projects",
+          refId: "employee_id",
+          qb: (qb, fromIds) => 
+            qb.table("projects__employees")
+              .whereIn("employee_id", fromIds)
+              .join("projects", "projects__employees.project_id", "projects.id")
+              .select({
+                id: "projects.id",
+                name: "projects.name",
+                status: "projects.status",
+              }),
+        },
+      ],
+    },
+  ],
+};
+```
+
+**결과 구조**:
+
+```typescript
+{
+  id: 1,
+  name: "Engineering",
+  employees: [
+    {
+      id: 1,
+      username: "john",
+      projects: [
+        { id: 1, name: "Project A", status: "in_progress" },
+        { id: 2, name: "Project B", status: "completed" }
+      ]
+    },
+    {
+      id: 2,
+      username: "jane",
+      projects: [
+        { id: 3, name: "Project C", status: "in_progress" }
+      ]
+    }
+  ]
+}
+```
+
+## Batch Loading 동작 원리
+
+<Frame>
+  <img src="/images/subsets/batch-loading-solution.png" alt="N+1 문제와 Batch Loading 해결" />
+</Frame>
+
+### N+1 문제
+
+```typescript
+// ❌ N+1 문제 발생
+const users = await UserModel.findMany({ subsetKey: "L" }); // 1 query
+
+for (const user of users) {
+  const posts = await PostModel.findMany({
+    where: [["user_id", user.id]],
+    subsetKey: "L",
+  }); // N queries (users 수만큼)
+  
+  console.log(`${user.username}: ${posts.length} posts`);
+}
+
+// 총 쿼리: 1 + N개
+```
+
+### Batch Loading 해결
+
+```typescript
+// ✅ Batch Loading으로 해결
+const users = await UserModel.findMany({
+  subsetKey: "A",  // A Subset에 posts Loader 포함
+});
+
+// 쿼리 1: SELECT * FROM users
+// 쿼리 2: SELECT * FROM posts WHERE user_id IN (1, 2, 3, ...)
+
+users.forEach(user => {
+  console.log(`${user.username}: ${user.posts.length} posts`);
+});
+
+// 총 쿼리: 2개 (users 수와 무관)
+```
+
+## 실전 예제
+
+### 부서별 직원 목록
+
+```typescript
+async getDepartmentWithEmployees(deptId: number) {
+  const dept = await DepartmentModel.findById(deptId, ["P"]);
+  
+  if (!dept) {
+    throw new NotFoundException("Department not found");
+  }
+  
+  return {
+    id: dept.id,
+    name: dept.name,
+    employeeCount: dept.employees.length,
+    employees: dept.employees.map(emp => ({
+      id: emp.id,
+      name: emp.username,
+      number: emp.employee_number,
+      salary: emp.salary,
+    })),
+  };
+}
+```
+
+### 프로젝트 대시보드
+
+```typescript
+async getProjectDashboard(projectId: number) {
+  const project = await ProjectModel.findById(projectId, ["Dashboard"]);
+  
+  if (!project) {
+    throw new NotFoundException("Project not found");
+  }
+  
+  return {
+    id: project.id,
+    name: project.name,
+    status: project.status,
+    
+    // Members from LoaderQuery
+    members: project.members.map(m => ({
+      id: m.id,
+      name: m.username,
+      role: m.role,
+    })),
+    
+    // Tasks from LoaderQuery
+    tasks: project.tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      assignee: t.assignee_name,
+    })),
+    
+    stats: {
+      memberCount: project.members.length,
+      taskCount: project.tasks.length,
+      completedTasks: project.tasks.filter(t => t.status === "completed").length,
+    },
+  };
+}
+```
+
+### 사용자 활동 요약
+
+```typescript
+// User Subset with posts and comments
+const user = await UserModel.findById(userId, ["Activity"]);
+
+const summary = {
+  user: {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+  },
+  
+  activity: {
+    totalPosts: user.posts.length,
+    recentPosts: user.posts.slice(0, 5).map(p => ({
+      id: p.id,
+      title: p.title,
+      createdAt: p.created_at,
+    })),
+    
+    totalComments: user.comments.length,
+    recentComments: user.comments.slice(0, 5).map(c => ({
+      id: c.id,
+      content: c.content,
+      postTitle: c.post_title,
+      createdAt: c.created_at,
+    })),
+  },
+};
+```
+
+## LoaderQuery 설계 원칙
+
+### 1. 필요한 필드만 SELECT
+
+```typescript
+// ❌ 나쁨: 모든 필드 로딩
+{
+  as: "employees",
+  refId: "department_id",
+  qb: (qb, fromIds) => 
+    qb.table("employees")
+      .whereIn("department_id", fromIds)
+      .selectAll(),  // 모든 필드 (password 등 포함)
+}
+
+// ✅ 좋음: 필요한 필드만
+{
+  as: "employees",
+  refId: "department_id",
+  qb: (qb, fromIds) => 
+    qb.table("employees")
+      .whereIn("department_id", fromIds)
+      .select({
+        id: "id",
+        username: "username",
+        employee_number: "employee_number",
+      }),
+}
+```
+
+### 2. 정렬과 제한
+
+```typescript
+// 최근 5개 게시글만
+{
+  as: "recentPosts",
+  refId: "user_id",
+  qb: (qb, fromIds) => 
+    qb.table("posts")
+      .whereIn("user_id", fromIds)
+      .orderBy("created_at", "desc")
+      .limit(5),
+}
+```
+
+### 3. 조건 필터링
+
+```typescript
+// 완료된 프로젝트만
+{
+  as: "completedProjects",
+  refId: "employee_id",
+  qb: (qb, fromIds) => 
+    qb.table("projects__employees")
+      .whereIn("employee_id", fromIds)
+      .join("projects", "projects__employees.project_id", "projects.id")
+      .where("projects.status", "completed")
+      .select({
+        id: "projects.id",
+        name: "projects.name",
+      }),
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Subset 정의" icon="pen" href="/database/subsets/defining-subsets">
+    Entity에서 Subset 생성
+  </Card>
+  <Card title="Subset 사용" icon="code" href="/database/subsets/using-subsets">
+    Model에서 Subset 활용
+  </Card>
+  <Card title="Model 메서드" icon="cube" href="/core-concepts/model/model-methods">
+    Model CRUD 메서드
+  </Card>
+  <Card title="Puri 조인" icon="link" href="/database/puri/joins">
+    Puri JOIN 쿼리
+  </Card>
+</CardGroup>
