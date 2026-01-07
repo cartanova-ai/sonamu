@@ -157,7 +157,7 @@ describe("Syncer", () => {
 
     // 목적: config 파일이 변경되면 .sonamu.env 파일이 재생성되는지 확인
     test("config 파일 변경 → .sonamu.env 재생성", async () => {
-      const configPath = join(apiRootPath, "src/application/sonamu.config.ts") as AbsolutePath;
+      const configPath = join(apiRootPath, "src/sonamu.config.ts") as AbsolutePath;
 
       await syncer.doSyncActions([configPath]);
 
@@ -622,7 +622,7 @@ describe("Syncer", () => {
       const paths = [
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.types.ts"),
         join(apiRootPath, "src/application/sync-fixture/sync-fixture.model.ts"),
-        join(apiRootPath, "src/application/sonamu.config.ts"),
+        join(apiRootPath, "src/sonamu.config.ts"),
         join(apiRootPath, "src/application/sonamu.generated.ts"),
       ] as AbsolutePath[];
 
