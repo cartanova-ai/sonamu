@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScaffoldingRouteImport } from './routes/scaffolding'
 import { Route as MigrationsRouteImport } from './routes/migrations'
+import { Route as I18nRouteImport } from './routes/i18n'
 import { Route as FixtureRouteImport } from './routes/fixture'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,6 +25,11 @@ const ScaffoldingRoute = ScaffoldingRouteImport.update({
 const MigrationsRoute = MigrationsRouteImport.update({
   id: '/migrations',
   path: '/migrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const I18nRoute = I18nRouteImport.update({
+  id: '/i18n',
+  path: '/i18n',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FixtureRoute = FixtureRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
+  '/i18n': typeof I18nRoute
   '/migrations': typeof MigrationsRoute
   '/scaffolding': typeof ScaffoldingRoute
   '/entities/$entityId': typeof EntitiesEntityIdRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
+  '/i18n': typeof I18nRoute
   '/migrations': typeof MigrationsRoute
   '/scaffolding': typeof ScaffoldingRoute
   '/entities/$entityId': typeof EntitiesEntityIdRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRouteWithChildren
   '/fixture': typeof FixtureRoute
+  '/i18n': typeof I18nRoute
   '/migrations': typeof MigrationsRoute
   '/scaffolding': typeof ScaffoldingRoute
   '/entities/$entityId': typeof EntitiesEntityIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/entities'
     | '/fixture'
+    | '/i18n'
     | '/migrations'
     | '/scaffolding'
     | '/entities/$entityId'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/entities'
     | '/fixture'
+    | '/i18n'
     | '/migrations'
     | '/scaffolding'
     | '/entities/$entityId'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/entities'
     | '/fixture'
+    | '/i18n'
     | '/migrations'
     | '/scaffolding'
     | '/entities/$entityId'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EntitiesRoute: typeof EntitiesRouteWithChildren
   FixtureRoute: typeof FixtureRoute
+  I18nRoute: typeof I18nRoute
   MigrationsRoute: typeof MigrationsRoute
   ScaffoldingRoute: typeof ScaffoldingRoute
 }
@@ -121,6 +134,13 @@ declare module '@tanstack/react-router' {
       path: '/migrations'
       fullPath: '/migrations'
       preLoaderRoute: typeof MigrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/i18n': {
+      id: '/i18n'
+      path: '/i18n'
+      fullPath: '/i18n'
+      preLoaderRoute: typeof I18nRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fixture': {
@@ -170,6 +190,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EntitiesRoute: EntitiesRouteWithChildren,
   FixtureRoute: FixtureRoute,
+  I18nRoute: I18nRoute,
   MigrationsRoute: MigrationsRoute,
   ScaffoldingRoute: ScaffoldingRoute,
 }

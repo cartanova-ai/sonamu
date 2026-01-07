@@ -28,6 +28,10 @@ function App({ children }: AppProps) {
       name: "Fixture",
       path: "/fixture",
     },
+    {
+      name: "i18n",
+      path: "/i18n",
+    },
   ];
   const location = useLocation();
 
