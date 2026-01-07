@@ -109,13 +109,19 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
     return [];
   }
 
-  const previousChecksums = JSON.parse(await readFile(checksumFilePath, "utf-8")).map(
-    (r: { path: ApiRelativePath; checksum: string }) => ({
-      path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
-      checksum: r.checksum,
-    }),
-  ) as PathAndChecksum[];
-  return previousChecksums;
+  try {
+    const previousChecksums = JSON.parse(await readFile(checksumFilePath, "utf-8")).map(
+      (r: { path: ApiRelativePath; checksum: string }) => ({
+        path: path.join(Sonamu.apiRootPath, r.path), // 체크섬 파일에서 읽을 때: API 상대 경로 → 절대 경로
+        checksum: r.checksum,
+      }),
+    ) as PathAndChecksum[];
+    return previousChecksums;
+  } catch (e) {
+    // 체크섬 파일이 손상된 경우 빈 배열 반환 (전체 재동기화 유도)
+    console.warn(`체크섬 파일(${checksumFilePath})을 파싱하는 데 실패했습니다. 전체 재동기화를 진행합니다.`, e);
+    return [];
+  }
 }
 
 function getChecksumFilePath(): AbsolutePath {

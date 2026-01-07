@@ -253,78 +253,82 @@ export class FixtureManagerClass {
     const sourceDB = createKnexInstance(Sonamu.dbConfig[sourceDBName]);
     const targetDB = createKnexInstance(Sonamu.dbConfig[targetDBName]);
 
-    const { entityId, field, value, searchType } = searchOptions;
+    try {
+      const { entityId, field, value, searchType } = searchOptions;
 
-    const entity = EntityManager.get(entityId);
-    const column =
-      entity.props.find((prop) => prop.name === field)?.type === "relation" ? `${field}_id` : field;
+      const entity = EntityManager.get(entityId);
+      const column =
+        entity.props.find((prop) => prop.name === field)?.type === "relation"
+          ? `${field}_id`
+          : field;
 
-    let query = sourceDB(entity.table);
-    if (searchType === "equals") {
-      query = query.where(column, value);
-    } else if (searchType === "like") {
-      query = query.where(column, "like", `%${value}%`);
-    }
-
-    const rows = await query;
-    if (rows.length === 0) {
-      throw new Error("No records found");
-    }
-
-    const fixtures: FixtureRecord[] = [];
-    for (const row of rows) {
-      const initialRecordsLength = fixtures.length;
-      const newRecords = await this.createFixtureRecord(entity, row, {
-        _db: sourceDB,
-      });
-      fixtures.push(...newRecords);
-      const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
-
-      if (currentFixtureRecord) {
-        // 현재 fixture로부터 생성된 fetchedRecords 설정
-        currentFixtureRecord.fetchedRecords = fixtures
-          .filter((r) => r.fixtureId !== currentFixtureRecord.fixtureId)
-          .slice(initialRecordsLength)
-          .map((r) => r.fixtureId);
+      let query = sourceDB(entity.table);
+      if (searchType === "equals") {
+        query = query.where(column, value);
+      } else if (searchType === "like") {
+        query = query.where(column, "like", `%${value}%`);
       }
-    }
 
-    for await (const fixture of fixtures) {
-      const entity = EntityManager.get(fixture.entityId);
+      const rows = await query;
+      if (rows.length === 0) {
+        throw new Error("No records found");
+      }
 
-      // 사용자 지정 컬럼 기준 중복 확인 → target
-      const customColumns = duplicateCheck?.columns?.[fixture.entityId];
-      if (customColumns && customColumns.length > 0) {
-        const customDuplicateRow = await this.checkDuplicateByColumns(
-          targetDB,
-          entity,
-          fixture,
-          customColumns,
-        );
-        if (customDuplicateRow) {
-          const [record] = await this.createFixtureRecord(entity, customDuplicateRow, {
-            singleRecord: true,
-            _db: targetDB,
-          });
-          fixture.target = record;
+      const fixtures: FixtureRecord[] = [];
+      for (const row of rows) {
+        const initialRecordsLength = fixtures.length;
+        const newRecords = await this.createFixtureRecord(entity, row, {
+          _db: sourceDB,
+        });
+        fixtures.push(...newRecords);
+        const currentFixtureRecord = fixtures.find((r) => r.fixtureId === `${entityId}#${row.id}`);
+
+        if (currentFixtureRecord) {
+          // 현재 fixture로부터 생성된 fetchedRecords 설정
+          currentFixtureRecord.fetchedRecords = fixtures
+            .filter((r) => r.fixtureId !== currentFixtureRecord.fixtureId)
+            .slice(initialRecordsLength)
+            .map((r) => r.fixtureId);
         }
       }
 
-      // Unique index 기준 중복 확인 → fixture.unique
-      const uniqueRow = await this.checkUniqueViolation(targetDB, entity, fixture);
-      if (uniqueRow) {
-        const [record] = await this.createFixtureRecord(entity, uniqueRow, {
-          singleRecord: true,
-          _db: targetDB,
-        });
-        fixture.unique = record;
+      for await (const fixture of fixtures) {
+        const entity = EntityManager.get(fixture.entityId);
+
+        // 사용자 지정 컬럼 기준 중복 확인 → target
+        const customColumns = duplicateCheck?.columns?.[fixture.entityId];
+        if (customColumns && customColumns.length > 0) {
+          const customDuplicateRow = await this.checkDuplicateByColumns(
+            targetDB,
+            entity,
+            fixture,
+            customColumns,
+          );
+          if (customDuplicateRow) {
+            const [record] = await this.createFixtureRecord(entity, customDuplicateRow, {
+              singleRecord: true,
+              _db: targetDB,
+            });
+            fixture.target = record;
+          }
+        }
+
+        // Unique index 기준 중복 확인 → fixture.unique
+        const uniqueRow = await this.checkUniqueViolation(targetDB, entity, fixture);
+        if (uniqueRow) {
+          const [record] = await this.createFixtureRecord(entity, uniqueRow, {
+            singleRecord: true,
+            _db: targetDB,
+          });
+          fixture.unique = record;
+        }
       }
+
+      return unique(fixtures, (f) => f.fixtureId);
+    } finally {
+      await targetDB.destroy();
+      await sourceDB.destroy();
     }
-
-    await targetDB.destroy();
-    await sourceDB.destroy();
-
-    return unique(fixtures, (f) => f.fixtureId);
   }
 
   async createFixtureRecord(
