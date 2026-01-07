@@ -1,10 +1,516 @@
 ---
-title: 'View Scaffolding'
-description: '목록/상세/편집 뷰 생성하기'
+title: "View Scaffolding"
+description: "CRUD 뷰를 자동으로 생성하기"
 ---
 
-# View Scaffolding
+Sonamu의 스캐폴딩 시스템으로 관리자 페이지의 목록과 폼 뷰를 자동으로 생성하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## View Scaffolding 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    목록/폼 뷰
+    
+    웹 UI로 생성
+  </Card>
+  <Card title="타입 안전" icon="shield-check">
+    Entity 기반
+    
+    컴파일 타임 검증
+  </Card>
+  <Card title="커스터마이징" icon="sliders">
+    생성 후 수정
+    
+    완전한 제어
+  </Card>
+  <Card title="일관성" icon="clone">
+    통일된 UI/UX
+    
+    베스트 프랙티스
+  </Card>
+</CardGroup>
+
+## View Scaffolding이란?
+
+### 문제: 반복적인 CRUD 뷰 작성
+
+전통적인 개발에서는 각 엔티티마다 비슷한 CRUD 화면을 **수동으로 반복 작성**해야 합니다.
+
+**수동 작성 시 문제점**:
+1. **시간 낭비**: 목록, 생성, 수정 페이지를 모두 손으로 작성
+2. **일관성 부족**: 개발자마다 다른 스타일, 다른 구조
+3. **유지보수 어려움**: 엔티티 변경 시 모든 뷰 수정 필요
+4. **실수 가능성**: 필드 누락, 잘못된 타입, 유효성 검사 누락
+5. **보일러플레이트**: 테이블, 폼, 버튼 등 반복 코드
+
+**예시**: User 엔티티 하나에 필요한 페이지
+```
+/admin/users        → 목록 페이지 (테이블, 페이지네이션, 검색)
+/admin/users/form   → 생성/수정 페이지 (폼, 유효성 검사)
+```
+
+각 페이지마다 100~200줄 이상의 코드가 필요하고, 이를 모든 엔티티에 반복해야 합니다.
+
+### 해결: 자동 스캐폴딩
+
+Sonamu는 Entity 정의를 기반으로 **관리자 페이지 뷰를 자동 생성**합니다.
+
+**장점**:
+1. ✨ **즉시 생성**: 웹 UI로 클릭만으로 뷰 생성
+2. ✨ **타입 안전**: Entity 타입이 컴포넌트에 그대로 반영
+3. ✨ **일관된 UI**: 통일된 디자인 시스템
+4. ✨ **베스트 프랙티스**: 검증된 패턴 적용
+5. ✨ **커스터마이징 가능**: 생성 후 필요한 부분만 수정
+
+**Sonamu의 스캐폴딩 철학**:
+> "80%는 자동으로, 20%는 커스터마이징"
+
+대부분의 CRUD 기능은 자동 생성하고, 특별한 비즈니스 로직만 추가로 구현합니다.
+
+## 스캐폴딩 실행
+
+### Sonamu 웹 UI 사용
+
+Sonamu는 웹 기반 관리 UI를 제공합니다.
+
+```bash
+# Sonamu 개발 서버 실행
+pnpm dev
+
+# 브라우저에서 Sonamu UI 접속
+# http://localhost:3000/sonamu
+```
+
+**웹 UI에서 뷰 생성**:
+1. Sonamu UI 접속
+2. "Scaffold" 메뉴 선택
+3. Entity 선택 (예: User)
+4. "Generate View List" 버튼 클릭 → `index.tsx` 생성
+5. "Generate View Form" 버튼 클릭 → `form.tsx` 생성
+
+<Info>
+**CLI 명령어는 현재 비활성화되어 있습니다**. 뷰 생성은 Sonamu 웹 UI를 통해서만 가능합니다.
+</Info>
+
+### 생성되는 파일 구조
+
+```
+web/src/routes/admin/
+└── users/
+    ├── index.tsx    # 목록 페이지 (테이블 포함)
+    └── form.tsx     # 생성/수정 통합 폼
+```
+
+**실제 생성되는 파일**:
+- **index.tsx**: 목록 테이블이 직접 포함된 페이지
+- **form.tsx**: 생성과 수정을 하나의 폼으로 통합
+
+<Warning>
+**주의**: 
+- 별도의 컴포넌트 파일(UserTable.tsx, UserForm.tsx)은 생성되지 않음
+- 상세 페이지([id].tsx)는 자동 생성되지 않음
+- 모든 로직이 두 개의 페이지 파일에 통합됨
+</Warning>
+
+## 생성된 뷰 구조
+
+### 목록 페이지 (index.tsx)
+
+목록을 테이블로 표시하고 페이지네이션, 검색 기능을 제공합니다.
+
+```typescript
+// web/src/routes/admin/users/index.tsx (자동 생성)
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { UserService } from "@/services/services.generated";
+
+export default function UsersPage() {
+  const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  
+  // TanStack Query Hook 사용
+  const { data: users, isLoading } = UserService.useUsers("A", {
+    page,
+    pageSize: 20,
+    search,
+  });
+  
+  return (
+    <div className="admin-page">
+      <div className="header">
+        <h1>Users</h1>
+        <button onClick={() => navigate("/admin/users/form")}>
+          Create New User
+        </button>
+      </div>
+      
+      <div className="search">
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      
+      {/* 테이블이 직접 포함됨 */}
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users?.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.email}</td>
+              <td>{user.username}</td>
+              <td>
+                <button onClick={() => navigate(`/admin/users/form?id=${user.id}`)}>
+                  Edit
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      {/* 페이지네이션 */}
+      <div className="pagination">
+        <button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          Previous
+        </button>
+        <span>Page {page}</span>
+        <button onClick={() => setPage(page + 1)}>
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+**기능**:
+- 페이지네이션
+- 검색 필터
+- "Create New" 버튼
+- "Edit" 버튼 (각 행)
+- **테이블이 페이지에 직접 포함** (별도 컴포넌트 없음)
+
+### 폼 페이지 (form.tsx)
+
+생성과 수정을 하나의 폼으로 통합합니다.
+
+```typescript
+// web/src/routes/admin/users/form.tsx (자동 생성)
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { UserService } from "@/services/services.generated";
+
+export default function UserFormPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get("id");
+  
+  const [formData, setFormData] = useState({
+    email: "",
+    username: "",
+    bio: "",
+  });
+  
+  const [saving, setSaving] = useState(false);
+  
+  // 수정 모드: 기존 데이터 로드
+  useEffect(() => {
+    if (userId) {
+      UserService.getUser("C", parseInt(userId)).then((user) => {
+        setFormData({
+          email: user.email,
+          username: user.username,
+          bio: user.bio || "",
+        });
+      });
+    }
+  }, [userId]);
+  
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    
+    try {
+      if (userId) {
+        // 수정
+        await UserService.update(parseInt(userId), formData);
+      } else {
+        // 생성
+        await UserService.create(formData);
+      }
+      
+      navigate("/admin/users");
+    } catch (error) {
+      alert("Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+  
+  return (
+    <div className="admin-page">
+      <div className="header">
+        <h1>{userId ? "Edit User" : "Create New User"}</h1>
+        <button onClick={() => navigate("/admin/users")}>
+          Back to List
+        </button>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="entity-form">
+        <div className="form-field">
+          <label>Email *</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+          />
+        </div>
+        
+        <div className="form-field">
+          <label>Username *</label>
+          <input
+            type="text"
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            required
+          />
+        </div>
+        
+        <div className="form-field">
+          <label>Bio</label>
+          <textarea
+            value={formData.bio}
+            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            rows={4}
+          />
+        </div>
+        
+        <div className="form-actions">
+          <button type="submit" disabled={saving}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+```
+
+**기능**:
+- **생성/수정 통합**: URL 파라미터(`?id=`)로 모드 구분
+- 수정 시 기존 데이터 자동 로드
+- 유효성 검사
+- 저장 중 버튼 비활성화
+- "Back to List" 버튼
+
+## 생성 파일의 특징
+
+### 통합 구조
+
+Sonamu의 스캐폴딩은 **최소한의 파일**로 구성됩니다:
+
+**전통적인 구조** (복잡함):
+```
+pages/users/
+  ├── index.tsx
+  ├── [id].tsx
+  ├── new.tsx
+  └── [id]/edit.tsx
+components/users/
+  ├── UserTable.tsx
+  ├── UserDetail.tsx
+  └── UserForm.tsx
+```
+
+**Sonamu 구조** (간결함):
+```
+admin/users/
+  ├── index.tsx    # 테이블 포함
+  └── form.tsx     # 생성/수정 통합
+```
+
+**통합 구조의 장점**:
+- 파일 수 최소화
+- 파일 간 이동 감소
+- 유지보수 간편
+- 코드 응집도 높음
+
+### 라우팅 패턴
+
+```
+GET  /admin/users           → index.tsx (목록)
+GET  /admin/users/form      → form.tsx  (생성)
+GET  /admin/users/form?id=1 → form.tsx  (수정)
+```
+
+URL 파라미터로 생성/수정 모드를 구분합니다.
+
+## 커스터마이징
+
+### 생성 후 수정
+
+생성된 파일은 완전히 수정 가능합니다.
+
+```typescript
+// web/src/routes/admin/users/index.tsx (커스터마이징)
+export default function UsersPage() {
+  // 추가: 역할별 필터
+  const [role, setRole] = useState<string | null>(null);
+  
+  const { data: users } = UserService.useUsers("A", {
+    page,
+    pageSize: 20,
+    search,
+    role, // 커스텀 파라미터
+  });
+  
+  return (
+    <div>
+      {/* 추가: 역할 필터 UI */}
+      <select value={role || ""} onChange={(e) => setRole(e.target.value || null)}>
+        <option value="">All Roles</option>
+        <option value="admin">Admin</option>
+        <option value="user">User</option>
+      </select>
+      
+      {/* 기존 테이블... */}
+    </div>
+  );
+}
+```
+
+### 별도 컴포넌트로 분리
+
+필요하면 수동으로 컴포넌트를 분리할 수 있습니다:
+
+```typescript
+// components/users/UserTable.tsx (수동 생성)
+export function UserTable({ users }: { users: User[] }) {
+  return (
+    <table className="data-table">
+      {/* 테이블 내용 */}
+    </table>
+  );
+}
+
+// admin/users/index.tsx (수정)
+import { UserTable } from "@/components/users/UserTable";
+
+export default function UsersPage() {
+  const { data: users } = UserService.useUsers("A", { page, pageSize: 20 });
+  
+  return (
+    <div>
+      <UserTable users={users || []} />
+    </div>
+  );
+}
+```
+
+### 상세 페이지 추가
+
+자동 생성되지 않는 상세 페이지는 수동으로 추가:
+
+```typescript
+// admin/users/[id].tsx (수동 생성)
+import { useParams } from "react-router-dom";
+import { UserService } from "@/services/services.generated";
+
+export default function UserDetailPage() {
+  const { id } = useParams();
+  const { data: user } = UserService.useUser("C", parseInt(id!));
+  
+  return (
+    <div>
+      <h1>{user?.username}</h1>
+      <p>{user?.email}</p>
+      <p>{user?.bio}</p>
+    </div>
+  );
+}
+```
+
+## 베스트 프랙티스
+
+### 1. 생성 후 즉시 Git 커밋
+
+```bash
+# Sonamu UI에서 뷰 생성
+git add web/src/routes/admin/users/
+git commit -m "feat: scaffold User views"
+```
+
+이렇게 하면 커스터마이징 내역을 추적할 수 있습니다.
+
+### 2. 공통 로직은 Hook으로 추출
+
+```typescript
+// hooks/useEntityList.ts
+export function useEntityList<T>(
+  entityName: string,
+  useHook: any
+) {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  
+  const { data, isLoading } = useHook("A", {
+    page,
+    pageSize: 20,
+    search,
+  });
+  
+  return { data, isLoading, page, setPage, search, setSearch };
+}
+```
+
+### 3. 스타일은 전역으로 관리
+
+```css
+/* styles/admin.css */
+.admin-page { }
+.data-table { }
+.entity-form { }
+```
+
+모든 관리자 페이지에서 일관된 스타일 사용.
+
+## 주의사항
+
+<Warning>
+**View Scaffolding 사용 시 주의사항**:
+1. **웹 UI에서만 생성 가능** (CLI 명령어 비활성화됨)
+2. **index.tsx, form.tsx만 생성** (별도 컴포넌트 없음)
+3. 상세 페이지는 **수동 추가 필요**
+4. 재생성하면 **커스터마이징 손실** (Git 커밋 필수)
+5. 생성 후 필요에 따라 **컴포넌트 분리 권장**
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="커스텀 컴포넌트" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    컴포넌트 커스터마이징
+  </Card>
+  <Card title="ID Async Select" icon="list-dropdown" href="/frontend-integration/react-components/id-async-select">
+    관계 데이터 선택
+  </Card>
+  <Card title="Search Input" icon="magnifying-glass" href="/frontend-integration/react-components/search-input">
+    검색 컴포넌트
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 통합
+  </Card>
+</CardGroup>

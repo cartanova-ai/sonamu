@@ -1,10 +1,722 @@
 ---
-title: 'Search Input'
-description: '검색 컴포넌트'
+title: "Search Input"
+description: "검색 자동완성 컴포넌트"
 ---
 
-# Search Input
+Sonamu의 Search Input 컴포넌트로 실시간 검색과 자동완성 기능을 구현하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Search Input 개요
+
+<CardGroup cols={2}>
+  <Card title="실시간 검색" icon="bolt">
+    타이핑하면서 검색
+    
+    즉각적인 결과
+  </Card>
+  <Card title="자동완성" icon="wand-magic-sparkles">
+    추천 검색어
+    
+    빠른 선택
+  </Card>
+  <Card title="디바운스" icon="clock">
+    API 호출 최적화
+    
+    불필요한 요청 제거
+  </Card>
+  <Card title="하이라이팅" icon="highlighter">
+    검색어 강조
+    
+    가독성 향상
+  </Card>
+</CardGroup>
+
+## Search Input이란?
+
+### 문제: 기본 검색의 한계
+
+기본 HTML `<input type="search">`는 검색 버튼을 눌러야만 검색이 실행됩니다.
+
+```typescript
+// ❌ 전통적인 검색 - 불편함
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const { results } = await searchService.search({ query });
+    setResults(results);
+  }
+  
+  return (
+    <form onSubmit={handleSearch}>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button type="submit">Search</button>
+    </form>
+  );
+}
+```
+
+**문제점**:
+1. **버튼 클릭 필요**: 엔터키나 버튼을 눌러야만 검색
+2. **피드백 지연**: 결과를 보려면 검색 실행 필요
+3. **자동완성 없음**: 사용자가 모든 것을 타이핑해야 함
+4. **오타 수정 어려움**: 결과를 보기 전까지 오타 발견 불가
+
+### 해결: Search Input 컴포넌트
+
+Sonamu의 Search Input은 **타이핑하면서 실시간으로 검색**하고 **자동완성**을 제공합니다.
+
+```typescript
+// ✅ 실시간 검색 - 편리함
+<SearchInput
+  onSearch={(query) => {
+    // 타이핑하면서 자동으로 호출됨
+  }}
+  placeholder="Search..."
+  showSuggestions
+/>
+```
+
+**장점**:
+1. ✨ **즉각적인 피드백**: 타이핑하면서 결과 확인
+2. ✨ **자동완성**: 추천 검색어로 빠른 입력
+3. ✨ **디바운스**: 불필요한 API 호출 최소화
+4. ✨ **키보드 네비게이션**: 방향키로 제안 항목 선택
+
+## 기본 사용법
+
+### 단순 검색
+
+가장 기본적인 검색 기능입니다.
+
+```typescript
+import { SearchInput } from "@/components/common/SearchInput";
+import { useState } from "react";
+
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search posts..."
+      />
+      
+      {query && (
+        <div>Searching for: {query}</div>
+      )}
+    </div>
+  );
+}
+```
+
+### 자동완성 포함
+
+제안 항목을 표시합니다.
+
+```typescript
+function SearchWithSuggestions() {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  // 검색어 변경 시 제안 로드
+  useEffect(() => {
+    if (query) {
+      searchService.getSuggestions({ query }).then(({ suggestions }) => {
+        setSuggestions(suggestions);
+      });
+    } else {
+      setSuggestions([]);
+    }
+  }, [query]);
+  
+  return (
+    <SearchInput
+      value={query}
+      onChange={setQuery}
+      suggestions={suggestions}
+      onSelectSuggestion={(suggestion) => {
+        setQuery(suggestion);
+        // 선택한 제안으로 검색 실행
+      }}
+      placeholder="Type to search..."
+    />
+  );
+}
+```
+
+### Service와 통합
+
+Sonamu Service를 사용하여 검색합니다.
+
+```typescript
+import { searchService } from "@/services/search.service";
+import { useDebounce } from "@/hooks/useDebounce";
+
+function SearchPage() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const debouncedQuery = useDebounce(query, 300);
+  
+  // 디바운스된 쿼리로 검색
+  useEffect(() => {
+    if (debouncedQuery) {
+      searchService.search({ query: debouncedQuery }).then(({ results }) => {
+        setResults(results);
+      });
+    } else {
+      setResults([]);
+    }
+  }, [debouncedQuery]);
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search..."
+      />
+      
+      <div className="results">
+        {results.map((result) => (
+          <div key={result.id}>{result.title}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+## 고급 기능
+
+### 엔티티별 검색
+
+특정 엔티티를 검색합니다.
+
+```typescript
+function EntitySearch() {
+  const [entityType, setEntityType] = useState<"users" | "posts">("users");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  
+  useEffect(() => {
+    if (query) {
+      const service = entityType === "users" ? userService : postService;
+      service.search({ query }).then(({ results }) => {
+        setResults(results);
+      });
+    }
+  }, [query, entityType]);
+  
+  return (
+    <div>
+      <div className="entity-selector">
+        <button
+          className={entityType === "users" ? "active" : ""}
+          onClick={() => setEntityType("users")}
+        >
+          Users
+        </button>
+        <button
+          className={entityType === "posts" ? "active" : ""}
+          onClick={() => setEntityType("posts")}
+        >
+          Posts
+        </button>
+      </div>
+      
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder={`Search ${entityType}...`}
+      />
+      
+      <div className="results">
+        {results.map((result) => (
+          <div key={result.id}>
+            {entityType === "users" 
+              ? result.username 
+              : result.title
+            }
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### 필터와 통합
+
+검색어와 함께 필터를 적용합니다.
+
+```typescript
+function AdvancedSearch() {
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({
+    category: null,
+    dateRange: null,
+    author: null,
+  });
+  
+  const { results, isLoading } = useSearch({
+    query,
+    ...filters,
+  });
+  
+  return (
+    <div>
+      <div className="search-bar">
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search posts..."
+        />
+      </div>
+      
+      <div className="filters">
+        <select
+          value={filters.category || ""}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value || null })}
+        >
+          <option value="">All Categories</option>
+          <option value="tech">Tech</option>
+          <option value="news">News</option>
+        </select>
+      </div>
+      
+      <div className="results">
+        {isLoading ? (
+          <div>Loading...</div>
+        ) : (
+          results.map((result) => (
+            <div key={result.id}>{result.title}</div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### 검색 히스토리
+
+최근 검색어를 저장하고 표시합니다.
+
+```typescript
+function SearchWithHistory() {
+  const [query, setQuery] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  
+  // 로컬 스토리지에서 히스토리 로드
+  useEffect(() => {
+    const saved = localStorage.getItem("search-history");
+    if (saved) {
+      setHistory(JSON.parse(saved));
+    }
+  }, []);
+  
+  function handleSearch(searchQuery: string) {
+    // 히스토리에 추가
+    const newHistory = [searchQuery, ...history.filter(h => h !== searchQuery)].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem("search-history", JSON.stringify(newHistory));
+    
+    // 검색 실행
+    setQuery(searchQuery);
+  }
+  
+  return (
+    <SearchInput
+      value={query}
+      onChange={setQuery}
+      onSearch={handleSearch}
+      suggestions={query ? [] : history} // 입력 없으면 히스토리 표시
+      placeholder="Search..."
+    />
+  );
+}
+```
+
+### 하이라이팅
+
+검색어를 결과에서 강조 표시합니다.
+
+```typescript
+function SearchResults({ results, query }: { 
+  results: any[]; 
+  query: string;
+}) {
+  function highlightText(text: string, highlight: string) {
+    if (!highlight) return text;
+    
+    const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+    return parts.map((part, i) => 
+      part.toLowerCase() === highlight.toLowerCase() ? (
+        <mark key={i}>{part}</mark>
+      ) : (
+        part
+      )
+    );
+  }
+  
+  return (
+    <div>
+      {results.map((result) => (
+        <div key={result.id}>
+          <h3>{highlightText(result.title, query)}</h3>
+          <p>{highlightText(result.content, query)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## 커스텀 Hook 패턴
+
+### useSearch Hook
+
+검색 로직을 재사용 가능한 Hook으로 추상화합니다.
+
+```typescript
+// hooks/useSearch.ts
+import { useState, useEffect } from "react";
+import { useDebounce } from "./useDebounce";
+
+export function useSearch<T>(
+  searchFn: (query: string) => Promise<T[]>,
+  debounceMs: number = 300
+) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<T[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const debouncedQuery = useDebounce(query, debounceMs);
+  
+  useEffect(() => {
+    if (!debouncedQuery) {
+      setResults([]);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    searchFn(debouncedQuery)
+      .then(setResults)
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, [debouncedQuery]);
+  
+  return {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    error,
+  };
+}
+```
+
+**사용**:
+
+```typescript
+function SearchPage() {
+  const { query, setQuery, results, isLoading } = useSearch(
+    (q) => postService.search({ query: q }).then(r => r.posts)
+  );
+  
+  return (
+    <div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search posts..."
+      />
+      
+      {isLoading ? (
+        <div>Searching...</div>
+      ) : (
+        <div>
+          {results.map((post) => (
+            <div key={post.id}>{post.title}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### useSearchSuggestions Hook
+
+자동완성 제안을 관리합니다.
+
+```typescript
+// hooks/useSearchSuggestions.ts
+import { useState, useEffect } from "react";
+import { useDebounce } from "./useDebounce";
+
+export function useSearchSuggestions(
+  getSuggestionsFn: (query: string) => Promise<string[]>,
+  minLength: number = 2
+) {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  
+  const debouncedQuery = useDebounce(query, 200);
+  
+  useEffect(() => {
+    if (debouncedQuery.length < minLength) {
+      setSuggestions([]);
+      return;
+    }
+    
+    getSuggestionsFn(debouncedQuery).then(setSuggestions);
+  }, [debouncedQuery]);
+  
+  return {
+    query,
+    setQuery,
+    suggestions,
+  };
+}
+```
+
+## 실전 예제
+
+### 글로벌 검색
+
+사이트 전체를 검색합니다.
+
+```typescript
+function GlobalSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{
+    users: User[];
+    posts: Post[];
+    comments: Comment[];
+  }>({
+    users: [],
+    posts: [],
+    comments: [],
+  });
+  
+  const debouncedQuery = useDebounce(query, 300);
+  
+  useEffect(() => {
+    if (debouncedQuery) {
+      // 여러 엔티티 동시 검색
+      Promise.all([
+        userService.search({ query: debouncedQuery }),
+        postService.search({ query: debouncedQuery }),
+        commentService.search({ query: debouncedQuery }),
+      ]).then(([users, posts, comments]) => {
+        setResults({
+          users: users.users,
+          posts: posts.posts,
+          comments: comments.comments,
+        });
+      });
+    }
+  }, [debouncedQuery]);
+  
+  return (
+    <div className="global-search">
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search everything..."
+      />
+      
+      {query && (
+        <div className="results">
+          {results.users.length > 0 && (
+            <div className="result-section">
+              <h3>Users ({results.users.length})</h3>
+              {results.users.map((user) => (
+                <div key={user.id}>{user.username}</div>
+              ))}
+            </div>
+          )}
+          
+          {results.posts.length > 0 && (
+            <div className="result-section">
+              <h3>Posts ({results.posts.length})</h3>
+              {results.posts.map((post) => (
+                <div key={post.id}>{post.title}</div>
+              ))}
+            </div>
+          )}
+          
+          {results.comments.length > 0 && (
+            <div className="result-section">
+              <h3>Comments ({results.comments.length})</h3>
+              {results.comments.map((comment) => (
+                <div key={comment.id}>{comment.content}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### 네비게이션 검색
+
+헤더에 통합된 검색입니다.
+
+```typescript
+function Header() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { query, setQuery, results, isLoading } = useSearch(
+    (q) => searchService.globalSearch({ query: q })
+  );
+  
+  return (
+    <header>
+      <div className="logo">My App</div>
+      
+      <div className="search-container">
+        {/* 검색 아이콘 */}
+        <button onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          🔍
+        </button>
+        
+        {/* 검색 모달 */}
+        {isSearchOpen && (
+          <div className="search-modal">
+            <SearchInput
+              value={query}
+              onChange={setQuery}
+              placeholder="Search..."
+              autoFocus
+            />
+            
+            {isLoading && <div>Loading...</div>}
+            
+            {results.length > 0 && (
+              <div className="quick-results">
+                {results.slice(0, 5).map((result) => (
+                  <a
+                    key={result.id}
+                    href={`/${result.type}/${result.id}`}
+                    onClick={() => setIsSearchOpen(false)}
+                  >
+                    {result.title}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <nav>{/* 네비게이션 메뉴 */}</nav>
+    </header>
+  );
+}
+```
+
+## 성능 최적화
+
+### 디바운스 최적화
+
+검색 빈도에 따라 디바운스 시간을 조정합니다.
+
+```typescript
+// 빠른 타이핑: 짧은 디바운스
+const fastDebounce = useDebounce(query, 200);
+
+// 느린 타이핑: 긴 디바운스
+const slowDebounce = useDebounce(query, 500);
+
+// API 응답이 느린 경우: 더 긴 디바운스
+const longDebounce = useDebounce(query, 1000);
+```
+
+### 캐싱 전략
+
+TanStack Query로 검색 결과를 캐싱합니다.
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+
+function useSearchWithCache(query: string) {
+  const debouncedQuery = useDebounce(query, 300);
+  
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["search", debouncedQuery],
+    queryFn: () => searchService.search({ query: debouncedQuery }),
+    enabled: !!debouncedQuery,
+    staleTime: 5000, // 5초간 fresh 상태 유지
+    refetchOnWindowFocus: false, // 포커스 시 재검증 안함
+  });
+  
+  return {
+    results: data?.results || [],
+    isLoading,
+    error,
+  };
+}
+```
+
+### 요청 취소
+
+컴포넌트 언마운트 시 진행 중인 요청을 취소합니다.
+
+```typescript
+useEffect(() => {
+  const abortController = new AbortController();
+  
+  if (debouncedQuery) {
+    searchService.search(
+      { query: debouncedQuery },
+      { signal: abortController.signal }
+    ).then(setResults);
+  }
+  
+  return () => {
+    abortController.abort();
+  };
+}, [debouncedQuery]);
+```
+
+## 주의사항
+
+<Warning>
+**Search Input 사용 시 주의사항**:
+1. **디바운스 필수**: 300~500ms 권장
+2. 최소 검색 길이 설정 (보통 2~3자)
+3. **빈 문자열 처리**: 모든 결과 반환 방지
+4. **키보드 네비게이션** 지원 (접근성)
+5. 검색 API는 **인덱스 최적화** 필수
+6. 결과가 많으면 **페이지네이션** 고려
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="ID Async Select" icon="list-dropdown" href="/frontend-integration/react-components/id-async-select">
+    관계 데이터 선택
+  </Card>
+  <Card title="커스텀 컴포넌트" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    컴포넌트 커스터마이징
+  </Card>
+  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/frontend-integration/react-components/scaffolding-views">
+    자동 뷰 생성
+  </Card>
+  <Card title="TanStack Query Hook" icon="arrows-rotate" href="/frontend-integration/generated-services/tanstack-query">
+    데이터 캐싱
+  </Card>
+</CardGroup>

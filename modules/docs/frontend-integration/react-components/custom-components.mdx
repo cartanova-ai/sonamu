@@ -1,10 +1,862 @@
 ---
-title: '커스텀 컴포넌트'
-description: '컴포넌트 커스터마이징하기'
+title: "커스텀 컴포넌트"
+description: "Sonamu 컴포넌트 커스터마이징하기"
 ---
 
-# 커스텀 컴포넌트
+Sonamu가 생성한 컴포넌트와 뷰를 프로젝트 요구사항에 맞게 커스터마이징하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 커스터마이징 개요
+
+<CardGroup cols={2}>
+  <Card title="생성 후 수정" icon="pen-to-square">
+    완전한 제어권
+    
+    자유로운 수정
+  </Card>
+  <Card title="Props 확장" icon="puzzle-piece">
+    새로운 기능 추가
+    
+    인터페이스 확장
+  </Card>
+  <Card title="스타일링" icon="palette">
+    디자인 시스템
+    
+    테마 적용
+  </Card>
+  <Card title="로직 추가" icon="code">
+    비즈니스 로직
+    
+    유효성 검사
+  </Card>
+</CardGroup>
+
+## 커스터마이징 철학
+
+### Sonamu의 접근 방식
+
+Sonamu는 **"80%는 자동으로, 20%는 커스터마이징"** 철학을 따릅니다.
+
+**생성 vs 커스터마이징**:
+```
+생성 단계: 기본적인 CRUD 기능, 표준 UI 패턴
+   ↓
+커스터마이징 단계: 비즈니스 로직, 고유한 UI/UX
+```
+
+**커스터마이징이 필요한 경우**:
+- 특별한 유효성 검사 규칙
+- 복잡한 관계 처리
+- 고유한 UI/UX 요구사항
+- 권한 기반 기능 제어
+- 워크플로우 통합
+
+**커스터마이징 vs 재생성**:
+- 생성된 파일은 **재생성하면 덮어씀**
+- 따라서 생성 후 **즉시 Git 커밋** 권장
+- 커스터마이징은 **생성된 코드를 직접 수정**
+- 필요하면 **새 컴포넌트를 만들어** 사용
+
+## View 커스터마이징
+
+### 목록 페이지 확장
+
+생성된 목록 페이지에 기능을 추가합니다.
+
+**원본 (자동 생성)**:
+```typescript
+// pages/users/index.tsx
+export default function UsersPage() {
+  const [page, setPage] = useState(1);
+  const { users, total, isLoading } = useUsers({ page, pageSize: 20 });
+  
+  return (
+    <div>
+      <h1>Users</h1>
+      <UserTable users={users} isLoading={isLoading} />
+      {/* 페이지네이션 */}
+    </div>
+  );
+}
+```
+
+**커스터마이징 (필터 추가)**:
+```typescript
+// pages/users/index.tsx (수정)
+export default function UsersPage() {
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState({
+    role: null as string | null,
+    isActive: true,
+    search: "",
+  });
+  
+  const { users, total, isLoading } = useUsers({
+    page,
+    pageSize: 20,
+    ...filters, // 필터 추가
+  });
+  
+  return (
+    <div>
+      <div className="header">
+        <h1>Users</h1>
+        <button onClick={() => router.push("/users/new")}>
+          Create New User
+        </button>
+      </div>
+      
+      {/* 추가: 필터 UI */}
+      <div className="filters">
+        <SearchInput
+          value={filters.search}
+          onChange={(search) => setFilters({ ...filters, search })}
+          placeholder="Search users..."
+        />
+        
+        <select
+          value={filters.role || ""}
+          onChange={(e) => setFilters({ ...filters, role: e.target.value || null })}
+        >
+          <option value="">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+          <option value="guest">Guest</option>
+        </select>
+        
+        <label>
+          <input
+            type="checkbox"
+            checked={filters.isActive}
+            onChange={(e) => setFilters({ ...filters, isActive: e.target.checked })}
+          />
+          Active Only
+        </label>
+      </div>
+      
+      <UserTable users={users} isLoading={isLoading} />
+      {/* 페이지네이션 */}
+    </div>
+  );
+}
+```
+
+**추가된 기능**:
+- 검색 필터
+- 역할 필터
+- 활성 상태 필터
+
+### 폼 커스터마이징
+
+생성/수정 폼에 비즈니스 로직을 추가합니다.
+
+**원본 (자동 생성)**:
+```typescript
+// components/users/UserForm.tsx
+export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProps) {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: initialValues,
+  });
+  
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register("email", { required: true })} />
+      <input {...register("username", { required: true })} />
+      <button type="submit">Save</button>
+    </form>
+  );
+}
+```
+
+**커스터마이징 (복잡한 유효성 검사)**:
+```typescript
+// components/users/UserForm.tsx (수정)
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// 유효성 검사 스키마
+const userSchema = z.object({
+  email: z.string()
+    .email("Invalid email address")
+    .refine(
+      async (email) => {
+        // 이메일 중복 확인
+        const { exists } = await userService.checkEmail({ email });
+        return !exists;
+      },
+      { message: "Email already taken" }
+    ),
+  username: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be at most 20 characters")
+    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+export function UserForm({ initialValues, onSubmit, isSubmitting }: UserFormProps) {
+  const { register, handleSubmit, formState: { errors }, watch } = useForm({
+    resolver: zodResolver(userSchema),
+    defaultValues: initialValues,
+  });
+  
+  const password = watch("password");
+  
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div>
+        <label>Email *</label>
+        <input {...register("email")} />
+        {errors.email && <span className="error">{errors.email.message}</span>}
+      </div>
+      
+      <div>
+        <label>Username *</label>
+        <input {...register("username")} />
+        {errors.username && <span className="error">{errors.username.message}</span>}
+      </div>
+      
+      <div>
+        <label>Password *</label>
+        <input type="password" {...register("password")} />
+        {errors.password && <span className="error">{errors.password.message}</span>}
+        
+        {/* 추가: 비밀번호 강도 표시 */}
+        {password && (
+          <div className="password-strength">
+            <div className="strength-bar" data-strength={getPasswordStrength(password)} />
+            <span>{getPasswordStrength(password)}</span>
+          </div>
+        )}
+      </div>
+      
+      <div>
+        <label>Confirm Password *</label>
+        <input type="password" {...register("confirmPassword")} />
+        {errors.confirmPassword && <span className="error">{errors.confirmPassword.message}</span>}
+      </div>
+      
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Saving..." : "Save"}
+      </button>
+    </form>
+  );
+}
+```
+
+**추가된 기능**:
+- Zod 스키마 기반 유효성 검사
+- 이메일 중복 확인 (비동기)
+- 비밀번호 복잡도 규칙
+- 비밀번호 확인
+- 비밀번호 강도 표시
+
+### 테이블 커스터마이징
+
+테이블에 기능을 추가합니다.
+
+**원본 (자동 생성)**:
+```typescript
+// components/users/UserTable.tsx
+export function UserTable({ users, isLoading }: UserTableProps) {
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Username</th>
+        </tr>
+      </thead>
+      <tbody>
+        {users.map((user) => (
+          <tr key={user.id}>
+            <td>{user.id}</td>
+            <td>{user.email}</td>
+            <td>{user.username}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+**커스터마이징 (정렬, 선택, 액션)**:
+```typescript
+// components/users/UserTable.tsx (수정)
+interface UserTableProps {
+  users: User[];
+  isLoading: boolean;
+  onRowClick?: (user: User) => void;
+  onDelete?: (userId: number) => void;
+  selectable?: boolean;
+  onSelectionChange?: (selectedIds: number[]) => void;
+}
+
+export function UserTable({ 
+  users, 
+  isLoading,
+  onRowClick,
+  onDelete,
+  selectable,
+  onSelectionChange 
+}: UserTableProps) {
+  const [sortField, setSortField] = useState<keyof User>("id");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  
+  // 정렬 로직
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      const order = sortOrder === "asc" ? 1 : -1;
+      return aVal > bVal ? order : -order;
+    });
+  }, [users, sortField, sortOrder]);
+  
+  // 정렬 핸들러
+  function handleSort(field: keyof User) {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  }
+  
+  // 선택 핸들러
+  function handleSelect(userId: number) {
+    const newSelection = selectedIds.includes(userId)
+      ? selectedIds.filter(id => id !== userId)
+      : [...selectedIds, userId];
+    setSelectedIds(newSelection);
+    onSelectionChange?.(newSelection);
+  }
+  
+  function handleSelectAll() {
+    const newSelection = selectedIds.length === users.length
+      ? []
+      : users.map(u => u.id);
+    setSelectedIds(newSelection);
+    onSelectionChange?.(newSelection);
+  }
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  return (
+    <table>
+      <thead>
+        <tr>
+          {selectable && (
+            <th>
+              <input
+                type="checkbox"
+                checked={selectedIds.length === users.length && users.length > 0}
+                onChange={handleSelectAll}
+              />
+            </th>
+          )}
+          
+          <th onClick={() => handleSort("id")} className="sortable">
+            ID {sortField === "id" && (sortOrder === "asc" ? "↑" : "↓")}
+          </th>
+          
+          <th onClick={() => handleSort("email")} className="sortable">
+            Email {sortField === "email" && (sortOrder === "asc" ? "↑" : "↓")}
+          </th>
+          
+          <th onClick={() => handleSort("username")} className="sortable">
+            Username {sortField === "username" && (sortOrder === "asc" ? "↑" : "↓")}
+          </th>
+          
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sortedUsers.map((user) => (
+          <tr key={user.id}>
+            {selectable && (
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(user.id)}
+                  onChange={() => handleSelect(user.id)}
+                />
+              </td>
+            )}
+            
+            <td onClick={() => onRowClick?.(user)}>{user.id}</td>
+            <td onClick={() => onRowClick?.(user)}>{user.email}</td>
+            <td onClick={() => onRowClick?.(user)}>{user.username}</td>
+            
+            <td>
+              <button onClick={() => onRowClick?.(user)}>View</button>
+              <button onClick={() => onDelete?.(user.id)}>Delete</button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+**추가된 기능**:
+- 컬럼 클릭으로 정렬
+- 체크박스로 다중 선택
+- 전체 선택/해제
+- 행별 액션 버튼
+
+## 컴포넌트 스타일링
+
+### Tailwind CSS
+
+```typescript
+// components/users/UserTable.tsx
+export function UserTable({ users }: UserTableProps) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              ID
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Email
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Username
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {users.map((user) => (
+            <tr key={user.id} className="hover:bg-gray-50">
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {user.id}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {user.email}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {user.username}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+### CSS Modules
+
+```typescript
+// components/users/UserTable.module.css
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background-color: var(--color-gray-100);
+}
+
+.table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.table td {
+  padding: 12px;
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.table tbody tr:hover {
+  background-color: var(--color-gray-50);
+}
+```
+
+```typescript
+// components/users/UserTable.tsx
+import styles from "./UserTable.module.css";
+
+export function UserTable({ users }: UserTableProps) {
+  return (
+    <table className={styles.table}>
+      {/* ... */}
+    </table>
+  );
+}
+```
+
+### Styled Components
+
+```typescript
+// components/users/UserTable.styled.ts
+import styled from "styled-components";
+
+export const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+`;
+
+export const TableHead = styled.thead`
+  background-color: ${props => props.theme.colors.gray[100]};
+`;
+
+export const TableHeader = styled.th`
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+`;
+
+export const TableRow = styled.tr`
+  &:hover {
+    background-color: ${props => props.theme.colors.gray[50]};
+  }
+`;
+
+export const TableCell = styled.td`
+  padding: 12px;
+  border-top: 1px solid ${props => props.theme.colors.gray[200]};
+`;
+```
+
+```typescript
+// components/users/UserTable.tsx
+import * as S from "./UserTable.styled";
+
+export function UserTable({ users }: UserTableProps) {
+  return (
+    <S.Table>
+      <S.TableHead>
+        <S.TableRow>
+          <S.TableHeader>ID</S.TableHeader>
+          <S.TableHeader>Email</S.TableHeader>
+          <S.TableHeader>Username</S.TableHeader>
+        </S.TableRow>
+      </S.TableHead>
+      <tbody>
+        {users.map((user) => (
+          <S.TableRow key={user.id}>
+            <S.TableCell>{user.id}</S.TableCell>
+            <S.TableCell>{user.email}</S.TableCell>
+            <S.TableCell>{user.username}</S.TableCell>
+          </S.TableRow>
+        ))}
+      </tbody>
+    </S.Table>
+  );
+}
+```
+
+## IdAsyncSelect 커스터마이징
+
+### 커스텀 옵션 렌더링
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 커스텀 옵션 렌더링
+  renderOption={(user) => (
+    <div className="user-option">
+      <img
+        src={user.avatar || "/default-avatar.png"}
+        alt=""
+        className="avatar"
+      />
+      <div className="user-info">
+        <div className="username">{user.username}</div>
+        <div className="email">{user.email}</div>
+        {user.role && (
+          <span className="badge">{user.role}</span>
+        )}
+      </div>
+    </div>
+  )}
+  // 선택된 값 렌더링
+  renderValue={(user) => (
+    <div className="selected-user">
+      <img src={user.avatar || "/default-avatar.png"} alt="" />
+      <span>{user.username}</span>
+    </div>
+  )}
+/>
+```
+
+### 그룹화된 옵션
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 그룹화 함수
+  groupBy={(user) => user.role}
+  // 그룹 레이블
+  renderGroup={(role) => (
+    <div className="group-header">
+      {role.toUpperCase()}
+    </div>
+  )}
+/>
+```
+
+## SearchInput 커스터마이징
+
+### 커스텀 제안 렌더링
+
+```typescript
+<SearchInput
+  value={query}
+  onChange={setQuery}
+  suggestions={suggestions}
+  // 커스텀 제안 렌더링
+  renderSuggestion={(suggestion) => (
+    <div className="suggestion-item">
+      <span className="icon">🔍</span>
+      <span className="text">{suggestion.text}</span>
+      {suggestion.count && (
+        <span className="count">{suggestion.count}</span>
+      )}
+    </div>
+  )}
+  onSelectSuggestion={(suggestion) => {
+    setQuery(suggestion.text);
+    // 검색 실행
+  }}
+/>
+```
+
+### 카테고리별 검색
+
+```typescript
+function CategorizedSearch() {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  
+  return (
+    <div className="search-container">
+      <select
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+      >
+        <option value="all">All</option>
+        <option value="posts">Posts</option>
+        <option value="users">Users</option>
+        <option value="comments">Comments</option>
+      </select>
+      
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder={`Search ${category}...`}
+        onSearch={(q) => {
+          // 카테고리별 검색 실행
+          searchService.search({
+            query: q,
+            category: category === "all" ? undefined : category,
+          });
+        }}
+      />
+    </div>
+  );
+}
+```
+
+## 새 컴포넌트 만들기
+
+생성된 컴포넌트를 기반으로 새로운 컴포넌트를 만듭니다.
+
+### 복합 컴포넌트
+
+```typescript
+// components/users/UserManagement.tsx
+import { UserTable } from "./UserTable";
+import { UserForm } from "./UserForm";
+import { SearchInput } from "@/components/common/SearchInput";
+
+export function UserManagement() {
+  const [mode, setMode] = useState<"list" | "create" | "edit">("list");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [filters, setFilters] = useState({ search: "", role: null });
+  
+  const { users, isLoading, refresh } = useUsers(filters);
+  
+  async function handleCreate(data: CreateUserInput) {
+    await userService.create(data);
+    setMode("list");
+    refresh();
+  }
+  
+  async function handleUpdate(data: UpdateUserInput) {
+    if (selectedUser) {
+      await userService.update(selectedUser.id, data);
+      setMode("list");
+      setSelectedUser(null);
+      refresh();
+    }
+  }
+  
+  return (
+    <div className="user-management">
+      {mode === "list" && (
+        <>
+          <div className="header">
+            <h1>Users</h1>
+            <button onClick={() => setMode("create")}>
+              Create New User
+            </button>
+          </div>
+          
+          <SearchInput
+            value={filters.search}
+            onChange={(search) => setFilters({ ...filters, search })}
+            placeholder="Search users..."
+          />
+          
+          <UserTable
+            users={users}
+            isLoading={isLoading}
+            onRowClick={(user) => {
+              setSelectedUser(user);
+              setMode("edit");
+            }}
+          />
+        </>
+      )}
+      
+      {mode === "create" && (
+        <div className="form-container">
+          <h2>Create New User</h2>
+          <UserForm onSubmit={handleCreate} />
+          <button onClick={() => setMode("list")}>Cancel</button>
+        </div>
+      )}
+      
+      {mode === "edit" && selectedUser && (
+        <div className="form-container">
+          <h2>Edit User</h2>
+          <UserForm
+            initialValues={selectedUser}
+            onSubmit={handleUpdate}
+          />
+          <button onClick={() => setMode("list")}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## 베스트 프랙티스
+
+### 1. 생성 후 즉시 커밋
+
+```bash
+pnpm scaffold:view User
+git add .
+git commit -m "feat: scaffold User views"
+
+# 이제 안전하게 커스터마이징
+```
+
+### 2. 공통 로직은 Hook으로
+
+```typescript
+// hooks/useEntityCRUD.ts
+export function useEntityCRUD<T>(entityName: string, service: any) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  async function create(data: Partial<T>) {
+    setSaving(true);
+    setError(null);
+    
+    try {
+      const result = await service.create(data);
+      router.push(`/${entityName}/${result.id}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  
+  return { create, saving, error };
+}
+```
+
+### 3. 스타일은 전역으로
+
+```css
+/* styles/components.css */
+.entity-table { }
+.entity-form { }
+.entity-detail { }
+```
+
+### 4. 타입은 확장
+
+```typescript
+// types/user.types.ts (생성된 파일)
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+}
+
+// types/user.extended.ts (커스텀 파일)
+import type { User } from "./user.types";
+
+export interface UserWithStats extends User {
+  postCount: number;
+  commentCount: number;
+  lastActiveAt: Date;
+}
+```
+
+## 주의사항
+
+<Warning>
+**커스터마이징 시 주의사항**:
+1. **재생성하면 덮어씀** - Git 커밋 필수
+2. 타입 변경은 백엔드에서 먼저
+3. 복잡한 로직은 Hook으로 분리
+4. Props 인터페이스는 확장 가능하게
+5. 스타일은 일관성 유지
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/frontend-integration/react-components/scaffolding-views">
+    자동 뷰 생성
+  </Card>
+  <Card title="ID Async Select" icon="list-dropdown" href="/frontend-integration/react-components/id-async-select">
+    관계 데이터 선택
+  </Card>
+  <Card title="Search Input" icon="magnifying-glass" href="/frontend-integration/react-components/search-input">
+    검색 컴포넌트
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 통합
+  </Card>
+</CardGroup>

@@ -1,10 +1,681 @@
 ---
-title: 'ID Async Select'
-description: '관계 데이터 선택하기'
+title: "ID Async Select"
+description: "관계 데이터를 선택하는 비동기 셀렉트 컴포넌트"
 ---
 
-# ID Async Select
+외래키 관계를 처리하기 위한 ID Async Select 컴포넌트 사용법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## ID Async Select 개요
+
+<CardGroup cols={2}>
+  <Card title="비동기 로딩" icon="clock">
+    API 호출
+    
+    자동 완성
+  </Card>
+  <Card title="타입 안전" icon="shield-check">
+    Entity 기반
+    
+    ID 타입 보장
+  </Card>
+  <Card title="검색 지원" icon="magnifying-glass">
+    실시간 필터링
+    
+    디바운스
+  </Card>
+  <Card title="다중 선택" icon="list-check">
+    단일/다중 모드
+    
+    배열 반환
+  </Card>
+</CardGroup>
+
+## ID Async Select란?
+
+### 문제: 외래키 선택의 복잡성
+
+데이터베이스에서 외래키 관계를 처리할 때, 프론트엔드에서는 **관련 엔티티를 선택**해야 합니다.
+
+**전통적인 방식의 문제점**:
+```typescript
+// ❌ 모든 사용자를 한 번에 로드 (비효율적)
+const [users, setUsers] = useState([]);
+
+useEffect(() => {
+  userService.list({ pageSize: 1000 }).then(({ users }) => {
+    setUsers(users); // 1000명 전부 로드!
+  });
+}, []);
+
+return (
+  <select>
+    {users.map((user) => (
+      <option key={user.id} value={user.id}>
+        {user.username}
+      </option>
+    ))}
+  </select>
+);
+```
+
+**문제점**:
+1. **성능**: 데이터가 많으면 로딩 시간 증가
+2. **메모리**: 불필요한 데이터를 모두 메모리에 적재
+3. **UX**: 사용자가 원하는 항목을 찾기 어려움
+4. **확장성**: 데이터가 계속 늘어나면 감당 불가
+
+### 해결: ID Async Select
+
+Sonamu의 ID Async Select는 **필요할 때만 비동기로 로드**하고 **검색 기능**을 제공합니다.
+
+```typescript
+// ✅ 검색어 기반으로 필요한 데이터만 로드
+<IdAsyncSelect
+  entity="User"
+  value={selectedUserId}
+  onChange={(userId) => setSelectedUserId(userId)}
+  searchField="username"
+/>
+```
+
+**장점**:
+1. ✨ **성능**: 처음에는 최소한만 로드, 검색 시 필요한 것만
+2. ✨ **사용자 경험**: 자동완성으로 빠른 선택
+3. ✨ **타입 안전**: Entity 타입이 자동으로 적용
+4. ✨ **확장성**: 데이터가 아무리 많아도 문제없음
+
+## 기본 사용법
+
+### 단일 선택
+
+하나의 엔티티를 선택합니다.
+
+```typescript
+import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { useState } from "react";
+
+function PostForm() {
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      <label>Author</label>
+      <IdAsyncSelect
+        entity="User"
+        value={authorId}
+        onChange={setAuthorId}
+        searchField="username"
+        placeholder="Select author..."
+      />
+    </div>
+  );
+}
+```
+
+**동작 방식**:
+1. 컴포넌트 마운트 시 초기 옵션 로드 (보통 최근 10개)
+2. 사용자가 타이핑하면 검색 API 호출
+3. 검색 결과를 드롭다운에 표시
+4. 선택 시 ID만 저장 (메모리 효율적)
+
+### 다중 선택
+
+여러 엔티티를 선택합니다.
+
+```typescript
+function PostForm() {
+  const [tagIds, setTagIds] = useState<number[]>([]);
+  
+  return (
+    <div>
+      <label>Tags</label>
+      <IdAsyncSelect
+        entity="Tag"
+        value={tagIds}
+        onChange={setTagIds}
+        searchField="name"
+        multiple
+        placeholder="Select tags..."
+      />
+    </div>
+  );
+}
+```
+
+**다중 선택 특징**:
+- 선택된 항목을 태그 형태로 표시
+- X 버튼으로 개별 제거
+- 배열 형태로 ID 반환 (`number[]`)
+
+### 초기값 설정
+
+기존 데이터 수정 시 초기값을 설정합니다.
+
+```typescript
+function EditPostForm({ post }: { post: Post }) {
+  const [authorId, setAuthorId] = useState(post.author_id);
+  
+  return (
+    <IdAsyncSelect
+      entity="User"
+      value={authorId}
+      onChange={setAuthorId}
+      searchField="username"
+    />
+  );
+}
+```
+
+**초기값 처리**:
+- `value`에 ID를 전달하면 자동으로 해당 엔티티 로드
+- 레이블 표시를 위해 백그라운드에서 단건 조회
+- 로딩 중에는 ID만 표시
+
+## 고급 사용법
+
+### 커스텀 검색 로직
+
+기본 검색 대신 커스텀 로직을 사용할 수 있습니다.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  // 커스텀 검색 함수
+  onSearch={async (query) => {
+    const { users } = await userService.search({
+      query,
+      role: "admin", // 관리자만 검색
+      isActive: true, // 활성 사용자만
+    });
+    return users;
+  }}
+  // 레이블 포맷
+  getLabel={(user) => `${user.username} (${user.email})`}
+/>
+```
+
+**커스텀 검색의 사용 사례**:
+- 특정 조건 필터링 (역할, 상태 등)
+- 복잡한 검색 로직
+- 다른 API 엔드포인트 사용
+
+### 레이블 커스터마이징
+
+표시되는 레이블을 원하는 형식으로 변경합니다.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 레이블 포맷: "이름 (이메일)"
+  getLabel={(user) => `${user.username} (${user.email})`}
+  
+  // 또는 컴포넌트로 렌더링
+  renderOption={(user) => (
+    <div className="user-option">
+      <img src={user.avatar} alt="" />
+      <div>
+        <div>{user.username}</div>
+        <div className="email">{user.email}</div>
+      </div>
+    </div>
+  )}
+/>
+```
+
+### 조건부 옵션 필터링
+
+특정 조건에 맞는 항목만 선택 가능하게 합니다.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 조건: 역할이 'editor' 또는 'admin'인 사용자만
+  filterOption={(user) => 
+    user.role === "editor" || user.role === "admin"
+  }
+  // 비활성화 조건
+  isOptionDisabled={(user) => !user.isActive}
+/>
+```
+
+### 디바운스 설정
+
+검색 API 호출 빈도를 조절합니다.
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 500ms 디바운스 (기본값: 300ms)
+  debounceMs={500}
+  // 최소 입력 글자 수 (기본값: 1)
+  minSearchLength={2}
+/>
+```
+
+**디바운스 설명**:
+- 사용자가 타이핑을 멈춘 후 지정된 시간이 지나면 검색 실행
+- API 호출 횟수를 줄여 서버 부하 감소
+- 사용자 경험도 향상 (불필요한 로딩 감소)
+
+## 타입 안전성
+
+### 자동 타입 추론
+
+Entity 이름을 지정하면 타입이 자동으로 추론됩니다.
+
+```typescript
+// entity="User"를 지정하면
+<IdAsyncSelect
+  entity="User"
+  value={userId}  // number | null
+  onChange={(id) => {
+    // id의 타입이 number | null로 자동 추론
+  }}
+  onSearch={async (query) => {
+    // 반환 타입이 User[]여야 함
+    return users;
+  }}
+  getLabel={(user) => {
+    // user의 타입이 User로 자동 추론
+    return user.username;
+  }}
+/>
+```
+
+**타입 체인**:
+```
+Entity Definition 
+  → Type Generation 
+  → IdAsyncSelect Props 
+  → Type-safe Callbacks
+```
+
+### 제네릭 사용
+
+명시적으로 타입을 지정할 수도 있습니다.
+
+```typescript
+import type { User } from "@/types/user.types";
+
+<IdAsyncSelect<User>
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+/>
+```
+
+## 실전 예제
+
+### 게시글 작성 폼
+
+```typescript
+import { useState } from "react";
+import { IdAsyncSelect } from "@/components/common/IdAsyncSelect";
+import { postService } from "@/services/post.service";
+
+function CreatePostForm() {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [tagIds, setTagIds] = useState<number[]>([]);
+  
+  async function handleSubmit() {
+    if (!authorId || !categoryId) {
+      alert("Please select author and category");
+      return;
+    }
+    
+    await postService.create({
+      title,
+      content,
+      author_id: authorId,
+      category_id: categoryId,
+      tag_ids: tagIds,
+    });
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Title</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+      
+      <div>
+        <label>Content</label>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+      </div>
+      
+      {/* 작성자 선택 (단일) */}
+      <div>
+        <label>Author *</label>
+        <IdAsyncSelect
+          entity="User"
+          value={authorId}
+          onChange={setAuthorId}
+          searchField="username"
+          placeholder="Select author..."
+        />
+      </div>
+      
+      {/* 카테고리 선택 (단일) */}
+      <div>
+        <label>Category *</label>
+        <IdAsyncSelect
+          entity="Category"
+          value={categoryId}
+          onChange={setCategoryId}
+          searchField="name"
+          placeholder="Select category..."
+        />
+      </div>
+      
+      {/* 태그 선택 (다중) */}
+      <div>
+        <label>Tags</label>
+        <IdAsyncSelect
+          entity="Tag"
+          value={tagIds}
+          onChange={setTagIds}
+          searchField="name"
+          multiple
+          placeholder="Select tags..."
+        />
+      </div>
+      
+      <button type="submit">Create Post</button>
+    </form>
+  );
+}
+```
+
+### 게시글 수정 폼
+
+```typescript
+function EditPostForm({ postId }: { postId: number }) {
+  const { post, isLoading } = usePost(postId);
+  const [authorId, setAuthorId] = useState<number | null>(null);
+  
+  // post 로드 시 초기값 설정
+  useEffect(() => {
+    if (post) {
+      setAuthorId(post.author_id);
+    }
+  }, [post]);
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  return (
+    <form>
+      {/* 초기값이 있는 경우 */}
+      <IdAsyncSelect
+        entity="User"
+        value={authorId}
+        onChange={setAuthorId}
+        searchField="username"
+      />
+    </form>
+  );
+}
+```
+
+### 조건부 필터링
+
+```typescript
+function AssignTaskForm() {
+  const [assigneeId, setAssigneeId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      <label>Assign To</label>
+      <IdAsyncSelect
+        entity="User"
+        value={assigneeId}
+        onChange={setAssigneeId}
+        searchField="username"
+        // 활성 사용자만 선택 가능
+        filterOption={(user) => user.isActive}
+        // 역할이 'developer'인 사용자만
+        onSearch={async (query) => {
+          const { users } = await userService.search({
+            query,
+            role: "developer",
+            isActive: true,
+          });
+          return users;
+        }}
+        getLabel={(user) => `${user.username} (${user.role})`}
+      />
+    </div>
+  );
+}
+```
+
+### 계층적 선택
+
+부모를 선택한 후 자식을 선택하는 패턴입니다.
+
+```typescript
+function ProductForm() {
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
+  
+  return (
+    <div>
+      {/* 1단계: 카테고리 선택 */}
+      <div>
+        <label>Category</label>
+        <IdAsyncSelect
+          entity="Category"
+          value={categoryId}
+          onChange={(id) => {
+            setCategoryId(id);
+            setSubcategoryId(null); // 부모 변경 시 자식 초기화
+          }}
+          searchField="name"
+        />
+      </div>
+      
+      {/* 2단계: 하위 카테고리 선택 (카테고리 선택 후에만) */}
+      {categoryId && (
+        <div>
+          <label>Subcategory</label>
+          <IdAsyncSelect
+            entity="Subcategory"
+            value={subcategoryId}
+            onChange={setSubcategoryId}
+            searchField="name"
+            // 부모 카테고리에 속한 것만
+            onSearch={async (query) => {
+              const { subcategories } = await subcategoryService.search({
+                query,
+                category_id: categoryId,
+              });
+              return subcategories;
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## 내부 구현
+
+### Service 통합
+
+내부적으로 생성된 Service를 사용합니다.
+
+```typescript
+// components/common/IdAsyncSelect.tsx (내부 구현)
+import { useQuery } from "@tanstack/react-query";
+
+interface IdAsyncSelectProps<T> {
+  entity: string;
+  value: number | number[] | null;
+  onChange: (value: number | number[] | null) => void;
+  searchField: keyof T;
+  multiple?: boolean;
+}
+
+export function IdAsyncSelect<T extends { id: number }>({
+  entity,
+  value,
+  onChange,
+  searchField,
+  multiple = false,
+}: IdAsyncSelectProps<T>) {
+  const [inputValue, setInputValue] = useState("");
+  const [debouncedInput] = useDebounce(inputValue, 300);
+  
+  // Service 동적 import
+  const service = getServiceByEntity(entity); // userService, postService 등
+  
+  // 검색 결과 로드
+  const { data: options } = useQuery({
+    queryKey: [entity, "search", debouncedInput],
+    queryFn: () => service.search({
+      query: debouncedInput,
+      searchField,
+    }),
+    enabled: !!debouncedInput,
+  });
+  
+  // 초기값 로드 (value가 있지만 options에 없는 경우)
+  const { data: initialValues } = useQuery({
+    queryKey: [entity, value as number],
+    queryFn: () => service.get(value as number),
+    enabled: !!value && !multiple,
+  });
+  
+  // 선택된 항목 표시
+  const selectedOptions = multiple
+    ? options?.filter((opt: any) => (value as number[]).includes(opt.id))
+    : initialValues || options?.find((opt: any) => opt.id === value);
+  
+  return (
+    <Select
+      options={options}
+      value={selectedOptions}
+      onChange={(selected) => {
+        if (multiple) {
+          onChange(selected.map((s: any) => s.id));
+        } else {
+          onChange(selected?.id || null);
+        }
+      }}
+      onInputChange={setInputValue}
+      isMulti={multiple}
+    />
+  );
+}
+```
+
+### 캐싱 전략
+
+TanStack Query를 활용하여 검색 결과를 캐싱합니다.
+
+```typescript
+// 같은 검색어는 캐시에서 즉시 반환
+const { data } = useQuery({
+  queryKey: [entity, "search", debouncedInput],
+  queryFn: () => service.search({ query: debouncedInput }),
+  staleTime: 5000, // 5초간 fresh 상태 유지
+  refetchOnWindowFocus: false, // 포커스 시 재검증 안함
+});
+```
+
+## 성능 최적화
+
+### 1. 디바운스로 API 호출 최소화
+
+```typescript
+const [inputValue, setInputValue] = useState("");
+const [debouncedInput] = useDebounce(inputValue, 300);
+
+// debouncedInput이 변경될 때만 API 호출
+useQuery({
+  queryKey: ["search", debouncedInput],
+  queryFn: fetcher,
+  enabled: !!debouncedInput,
+});
+```
+
+### 2. 가상 스크롤링
+
+옵션이 많을 때 가상 스크롤링으로 성능 향상:
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  virtualScroll // 1000개 이상일 때 자동 활성화
+  virtualiRowHeight={40}
+/>
+```
+
+### 3. 초기 로딩 최소화
+
+```typescript
+<IdAsyncSelect
+  entity="User"
+  value={userId}
+  onChange={setUserId}
+  searchField="username"
+  // 처음에는 로드하지 않음
+  loadOnMount={false}
+  // 최소 검색 길이
+  minSearchLength={2}
+/>
+```
+
+## 주의사항
+
+<Warning>
+**ID Async Select 사용 시 주의사항**:
+1. `searchField`는 Entity의 실제 필드명과 일치해야 함
+2. **API에 검색 엔드포인트 필수** (`search` 메서드)
+3. 다중 선택 시 **배열 타입** 확인
+4. 디바운스 시간은 API 응답 속도에 맞춰 조정
+5. 많은 데이터는 **페이지네이션** 고려
+6. 초기값 로딩 실패 시 에러 처리 필수
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="View Scaffolding" icon="wand-magic-sparkles" href="/frontend-integration/react-components/scaffolding-views">
+    자동 뷰 생성
+  </Card>
+  <Card title="Search Input" icon="magnifying-glass" href="/frontend-integration/react-components/search-input">
+    검색 컴포넌트
+  </Card>
+  <Card title="커스텀 컴포넌트" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    컴포넌트 커스터마이징
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 통합
+  </Card>
+</CardGroup>
