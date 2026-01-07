@@ -1,10 +1,619 @@
 ---
-title: '커스텀 Context'
-description: 'Context 확장하기'
+title: "커스텀 Context"
+description: "프로젝트에 맞게 Context 확장하기"
 ---
 
-# 커스텀 Context
+SonamuContext를 확장하여 프로젝트에 필요한 커스텀 데이터를 추가할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Context 확장 개요
+
+<CardGroup cols={2}>
+  <Card title="타입 확장" icon="code">
+    TypeScript 타입 확장
+    
+    자동완성 지원
+  </Card>
+  <Card title="미들웨어" icon="layer-group">
+    요청 전처리
+    
+    커스텀 데이터 주입
+  </Card>
+  <Card title="검증 로직" icon="shield-check">
+    인증/권한 체크
+    
+    비즈니스 규칙 적용
+  </Card>
+  <Card title="공통 데이터" icon="database">
+    세션, 테넌트 등
+    
+    요청 범위 데이터
+  </Card>
+</CardGroup>
+
+## 타입 확장
+
+### 커스텀 User 타입
+
+```typescript
+// types/context.ts
+
+// 기본 Context 확장
+declare module "sonamu" {
+  interface ContextUser {
+    id: number;
+    email: string;
+    username: string;
+    role: "admin" | "manager" | "normal";
+    
+    // 커스텀 필드 추가
+    organizationId: number;
+    departmentId: number;
+    permissions: string[];
+    lastLoginAt: Date;
+    preferredLanguage: "ko" | "en" | "ja";
+  }
+}
+```
+
+### 커스텀 Context 필드
+
+```typescript
+// types/context.ts
+
+declare module "sonamu" {
+  interface SonamuContext {
+    // 기본 필드
+    request: FastifyRequest;
+    reply: FastifyReply;
+    user?: ContextUser;
+    
+    // 커스텀 필드 추가
+    tenant?: {
+      id: number;
+      name: string;
+      subdomain: string;
+      features: string[];
+    };
+    
+    session?: {
+      id: string;
+      createdAt: Date;
+      expiresAt: Date;
+      data: Record<string, any>;
+    };
+    
+    locale: string;
+    timezone: string;
+    requestId: string;
+  }
+}
+```
+
+<Info>
+TypeScript의 Declaration Merging을 사용하여 타입을 확장합니다.
+이렇게 하면 IDE에서 자동완성과 타입 체크가 작동합니다.
+</Info>
+
+## 미들웨어로 데이터 주입
+
+### 인증 미들웨어
+
+```typescript
+// middleware/auth.middleware.ts
+import { FastifyRequest, FastifyReply } from "fastify";
+import jwt from "jsonwebtoken";
+import { Sonamu } from "sonamu";
+
+export async function authMiddleware(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  // Authorization 헤더에서 토큰 추출
+  const authHeader = request.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return; // 토큰 없음 (선택적 인증)
+  }
+  
+  const token = authHeader.substring(7);
+  
+  try {
+    // JWT 토큰 검증
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+      userId: number;
+      role: string;
+      organizationId: number;
+      departmentId: number;
+      permissions: string[];
+    };
+    
+    // DB에서 사용자 정보 조회
+    const rdb = Sonamu.getPuri("r");
+    const user = await rdb
+      .table("users")
+      .where("id", payload.userId)
+      .first();
+    
+    if (!user) {
+      reply.status(401);
+      throw new Error("Invalid token");
+    }
+    
+    // Context에 user 설정
+    const context = Sonamu.getContext();
+    context.user = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      organizationId: payload.organizationId,
+      departmentId: payload.departmentId,
+      permissions: payload.permissions,
+      lastLoginAt: user.last_login_at,
+      preferredLanguage: user.preferred_language,
+    };
+    
+    // 마지막 활동 시간 업데이트
+    await rdb
+      .table("users")
+      .where("id", user.id)
+      .update({ last_activity_at: new Date() });
+  } catch (error) {
+    reply.status(401);
+    throw new Error("Invalid or expired token");
+  }
+}
+```
+
+### 테넌트 미들웨어
+
+```typescript
+// middleware/tenant.middleware.ts
+import { FastifyRequest } from "fastify";
+import { Sonamu } from "sonamu";
+
+export async function tenantMiddleware(request: FastifyRequest) {
+  const context = Sonamu.getContext();
+  
+  // 서브도메인 또는 헤더에서 테넌트 정보 추출
+  const subdomain = getSubdomain(request.hostname);
+  const tenantId = request.headers["x-tenant-id"] as string;
+  
+  if (!subdomain && !tenantId) {
+    return; // 테넌트 정보 없음
+  }
+  
+  const rdb = Sonamu.getPuri("r");
+  
+  // 테넌트 조회
+  const tenant = await rdb
+    .table("tenants")
+    .where((qb) => {
+      if (subdomain) {
+        qb.where("subdomain", subdomain);
+      }
+      if (tenantId) {
+        qb.orWhere("id", parseInt(tenantId));
+      }
+    })
+    .first();
+  
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+  
+  // 테넌트 활성 상태 확인
+  if (!tenant.is_active) {
+    throw new Error("Tenant is inactive");
+  }
+  
+  // Context에 tenant 설정
+  context.tenant = {
+    id: tenant.id,
+    name: tenant.name,
+    subdomain: tenant.subdomain,
+    features: tenant.features || [],
+  };
+}
+
+function getSubdomain(hostname: string): string | null {
+  const parts = hostname.split(".");
+  if (parts.length >= 3) {
+    return parts[0];
+  }
+  return null;
+}
+```
+
+### 로케일 미들웨어
+
+```typescript
+// middleware/locale.middleware.ts
+import { FastifyRequest } from "fastify";
+import { Sonamu } from "sonamu";
+
+const SUPPORTED_LOCALES = ["ko", "en", "ja"];
+const DEFAULT_LOCALE = "ko";
+
+export function localeMiddleware(request: FastifyRequest) {
+  const context = Sonamu.getContext();
+  
+  // 1. URL 쿼리 파라미터
+  const queryLocale = request.query?.locale as string;
+  if (queryLocale && SUPPORTED_LOCALES.includes(queryLocale)) {
+    context.locale = queryLocale;
+    return;
+  }
+  
+  // 2. 사용자 설정 (로그인 상태)
+  if (context.user?.preferredLanguage) {
+    context.locale = context.user.preferredLanguage;
+    return;
+  }
+  
+  // 3. Accept-Language 헤더
+  const acceptLanguage = request.headers["accept-language"];
+  if (acceptLanguage) {
+    const lang = acceptLanguage.split(",")[0].split("-")[0];
+    if (SUPPORTED_LOCALES.includes(lang)) {
+      context.locale = lang;
+      return;
+    }
+  }
+  
+  // 4. 기본값
+  context.locale = DEFAULT_LOCALE;
+}
+```
+
+### Request ID 미들웨어
+
+```typescript
+// middleware/request-id.middleware.ts
+import { FastifyRequest } from "fastify";
+import { Sonamu } from "sonamu";
+import crypto from "crypto";
+
+export function requestIdMiddleware(request: FastifyRequest) {
+  const context = Sonamu.getContext();
+  
+  // 클라이언트가 제공한 Request ID 또는 새로 생성
+  const requestId =
+    (request.headers["x-request-id"] as string) ||
+    crypto.randomUUID();
+  
+  context.requestId = requestId;
+  
+  // 응답 헤더에도 추가
+  context.reply.header("X-Request-Id", requestId);
+}
+```
+
+## 미들웨어 등록
+
+```typescript
+// server.ts
+import fastify from "fastify";
+import { authMiddleware } from "./middleware/auth.middleware";
+import { tenantMiddleware } from "./middleware/tenant.middleware";
+import { localeMiddleware } from "./middleware/locale.middleware";
+import { requestIdMiddleware } from "./middleware/request-id.middleware";
+
+const app = fastify();
+
+// 미들웨어 등록 (순서 중요!)
+app.addHook("preHandler", requestIdMiddleware);
+app.addHook("preHandler", tenantMiddleware);
+app.addHook("preHandler", authMiddleware);
+app.addHook("preHandler", localeMiddleware);
+
+// API 라우트 등록
+// ...
+```
+
+## 실전 사용 예제
+
+### 멀티 테넌트 API
+
+```typescript
+class ProductModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<Product[]> {
+    const context = Sonamu.getContext();
+    
+    // 테넌트 확인
+    if (!context.tenant) {
+      throw new Error("Tenant required");
+    }
+    
+    const rdb = this.getPuri("r");
+    
+    // 테넌트별 데이터만 조회
+    const products = await rdb
+      .table("products")
+      .where("tenant_id", context.tenant.id)
+      .select("*");
+    
+    return products;
+  }
+  
+  @api({ httpMethod: "POST" })
+  async create(params: ProductSaveParams): Promise<{ productId: number }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.tenant) {
+      throw new Error("Tenant required");
+    }
+    
+    const wdb = this.getPuri("w");
+    
+    // 테넌트 ID 자동 추가
+    const [product] = await wdb
+      .table("products")
+      .insert({
+        ...params,
+        tenant_id: context.tenant.id,
+      })
+      .returning({ id: "id" });
+    
+    return { productId: product.id };
+  }
+}
+```
+
+### 권한 기반 접근 제어
+
+```typescript
+class BaseModelClass {
+  protected requirePermission(permission: string): void {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      context.reply.status(401);
+      throw new Error("Authentication required");
+    }
+    
+    if (!context.user.permissions.includes(permission)) {
+      context.reply.status(403);
+      throw new Error(`Permission denied: ${permission} required`);
+    }
+  }
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    // 권한 확인
+    this.requirePermission("user:create");
+    
+    const wdb = this.getPuri("w");
+    const [user] = await wdb
+      .table("users")
+      .insert(params)
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+  
+  @api({ httpMethod: "DELETE" })
+  async remove(userId: number): Promise<void> {
+    this.requirePermission("user:delete");
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", userId).delete();
+  }
+}
+```
+
+### 다국어 메시지
+
+```typescript
+// services/i18n.service.ts
+import { Sonamu } from "sonamu";
+
+const messages: Record<string, Record<string, string>> = {
+  ko: {
+    "user.not_found": "사용자를 찾을 수 없습니다",
+    "user.created": "사용자가 생성되었습니다",
+    "permission.denied": "권한이 없습니다",
+  },
+  en: {
+    "user.not_found": "User not found",
+    "user.created": "User created",
+    "permission.denied": "Permission denied",
+  },
+  ja: {
+    "user.not_found": "ユーザーが見つかりません",
+    "user.created": "ユーザーが作成されました",
+    "permission.denied": "権限がありません",
+  },
+};
+
+export function t(key: string): string {
+  const context = Sonamu.getContext();
+  const locale = context.locale || "ko";
+  
+  return messages[locale]?.[key] || key;
+}
+
+// 사용
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", id).first();
+    
+    if (!user) {
+      // 다국어 에러 메시지
+      throw new Error(t("user.not_found"));
+    }
+    
+    return user;
+  }
+}
+```
+
+### 감사 로그 자동화
+
+```typescript
+class BaseModelClass {
+  protected async audit(
+    action: string,
+    resourceType: string,
+    resourceId: number,
+    details?: any
+  ): Promise<void> {
+    const context = Sonamu.getContext();
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("audit_logs").insert({
+      user_id: context.user?.id,
+      tenant_id: context.tenant?.id,
+      action,
+      resource_type: resourceType,
+      resource_id: resourceId,
+      details: JSON.stringify(details || {}),
+      ip_address: context.request.ip,
+      user_agent: context.request.headers["user-agent"],
+      request_id: context.requestId,
+      timestamp: new Date(),
+    });
+  }
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    const [user] = await wdb
+      .table("users")
+      .insert(params)
+      .returning({ id: "id" });
+    
+    // 감사 로그 자동 기록
+    await this.audit("CREATE", "user", user.id, { email: params.email });
+    
+    return { userId: user.id };
+  }
+  
+  @api({ httpMethod: "DELETE" })
+  async remove(userId: number): Promise<void> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", userId).first();
+    
+    await this.audit("DELETE", "user", userId, { username: user.username });
+    
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", userId).delete();
+  }
+}
+```
+
+## 조직/부서 필터링
+
+```typescript
+class DocumentModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<Document[]> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("documents");
+    
+    // 관리자가 아니면 자기 조직/부서만
+    if (context.user.role !== "admin") {
+      query = query.where((qb) => {
+        qb.where("organization_id", context.user!.organizationId)
+          .orWhere("department_id", context.user!.departmentId)
+          .orWhere("user_id", context.user!.id);
+      });
+    }
+    
+    return query.select("*");
+  }
+}
+```
+
+## Context 기반 캐싱
+
+```typescript
+class CacheService {
+  private cache = new Map<string, any>();
+  
+  get(key: string): any {
+    const context = Sonamu.getContext();
+    const cacheKey = `${context.tenant?.id || "global"}:${key}`;
+    return this.cache.get(cacheKey);
+  }
+  
+  set(key: string, value: any, ttl: number = 3600): void {
+    const context = Sonamu.getContext();
+    const cacheKey = `${context.tenant?.id || "global"}:${key}`;
+    this.cache.set(cacheKey, value);
+    
+    // TTL 후 삭제
+    setTimeout(() => {
+      this.cache.delete(cacheKey);
+    }, ttl * 1000);
+  }
+}
+
+// 사용
+class ProductModel extends BaseModelClass {
+  private cacheService = new CacheService();
+  
+  @api({ httpMethod: "GET" })
+  async list(): Promise<Product[]> {
+    // 테넌트별 캐시
+    const cached = this.cacheService.get("products:list");
+    if (cached) {
+      return cached;
+    }
+    
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const products = await rdb
+      .table("products")
+      .where("tenant_id", context.tenant?.id)
+      .select("*");
+    
+    this.cacheService.set("products:list", products);
+    
+    return products;
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**커스텀 Context 사용 시 주의사항**:
+1. 타입 확장은 프로젝트 초기에 정의
+2. 미들웨어 실행 순서 중요
+3. Context 데이터는 불변으로 취급
+4. 민감한 정보는 암호화 고려
+5. 메모리 누수 방지 (큰 데이터 저장 지양)
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="SonamuContext" icon="cube" href="/api-development/context/sonamu-context">
+    Context 구조 이해하기
+  </Card>
+  <Card title="Context 가져오기" icon="hand" href="/api-development/context/getting-context">
+    Sonamu.getContext() 사용법
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+  <Card title="미들웨어" icon="layer-group" href="/api-development/middleware">
+    요청 전처리
+  </Card>
+</CardGroup>
