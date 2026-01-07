@@ -20,10 +20,9 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
-import { useCommonModal } from "../components/core/CommonModal";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import { MigrationActionForm } from "./entities/_action_form";
+import { MigrationActionModal } from "./migrations/_migration_action_modal";
 
 export const Route = createFileRoute("/migrations")({
   component: MigrationsIndex,
@@ -36,14 +35,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
   const { preparedCodes, conns, codes } = status ?? {};
   const migrationStatusError = status?.error;
 
-  // useCommonModal
-  const { openModal } = useCommonModal();
-
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
 
   const [selectedConnKeys, setSelectedConnKeys] = useState<(keyof SonamuDBConfig)[]>([]);
   const [selectedCodeNames, setSelectedCodeNames] = useState<string[]>([]);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [actionModalData, setActionModalData] = useState<{
+    action: "apply" | "rollback" | "shadow";
+    targets: (keyof SonamuDBConfig)[];
+  } | null>(null);
   const [isAllCodeViewerOpen, setAllCodeViewerOpen] = useState(false);
 
   const toggleConnKeys = (preset: "ALL" | "LOCAL" | "REMOTE" | "TESTING" | "FIXTURE") => {
@@ -116,11 +117,12 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
       return;
     }
     const targets = _targets ?? selectedConnKeys;
-    openModal(<MigrationActionForm action={action} targets={targets} conns={conns} />, {
-      onCompleted: () => {
-        refetch();
-      },
-    });
+    setActionModalData({ action, targets });
+    setActionModalOpen(true);
+  };
+
+  const handleActionModalCompleted = () => {
+    refetch();
   };
 
   const toggleAllFiles = () => {
@@ -137,19 +139,23 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
 
   if (error) {
     return (
-      <div className="migrations-index">
-        <div className="message-box error">{error.message}</div>
+      <div className="p-8">
+        <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-red-500">
+          {error.message}
+        </div>
       </div>
     );
   }
   return (
-    <div className="migrations-index">
-      <div className={`ui segment migrations-index ${loading || isLoading ? "loading" : ""}`}>
+    <div className="p-8">
+      <div
+        className={`block p-4 bg-white border border-gray-200 rounded-md shadow-sm ${loading || isLoading ? "opacity-50 pointer-events-none" : ""}`}
+      >
         {preparedCodes && (
-          <div className="prepared">
-            <h3>
+          <div className="p-4">
+            <h3 className="relative ">
               Prepared Migration Codes{" "}
-              <div className="flex gap-2 justify-end">
+              <div className="absolute right-0 top-0 flex gap-2">
                 <Button
                   icon={isAllCodeViewerOpen ? <ToggleRightIcon /> : <ToggleLeftIcon />}
                   size="xs"
@@ -157,7 +163,6 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 >
                   Toggle codes
                 </Button>
-                <div className="ui vertical divider" />
                 <Button size="xs" icon={<PlayIcon />} onClick={() => generatePreparedCodes()}>
                   Generate
                 </Button>
@@ -180,7 +185,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 )}
                 {!migrationStatusError && preparedCodes.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>No prepared migration codes.</TableCell>
+                    <TableCell colSpan={6} className="text-center">
+                      No prepared migration codes.
+                    </TableCell>
                   </TableRow>
                 )}
                 {preparedCodes.map((pcode, pcodeIndex) => (
@@ -195,12 +202,12 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 ))}
               </TableBody>
             </Table>
-            <div className="ui divider" />
+            <div className="border-b border-gray-200" />
           </div>
         )}
-        <div className="codes">
+        <div className="p-4">
           <h3>Migration Code Files</h3>
-          <div className="tools">
+          <div className="flex gap-8">
             <div className="flex-1">
               <Button
                 variant="destructive"
@@ -238,7 +245,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
             </div>
           </div>
           {conns && codes && (
-            <Table className="mt-4">
+            <Table className="mt-4 text-[0.9em]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-gray-100">
                   <TableHead className="flex items-center gap-1">
@@ -254,8 +261,8 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                     <TableHead
                       key={connIndex}
                       style={{ width: "150px" }}
-                      className={classNames({
-                        "conn-selected": selectedConnKeys.includes(conn.connKey),
+                      className={classNames("py-2 px-3", {
+                        "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
                       })}
                     >
                       <Checkbox
@@ -324,23 +331,20 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                       {conns.map((conn, connIndex) => (
                         <TableCell
                           key={connIndex}
-                          className={classNames("conn-status", {
-                            "conn-selected": selectedConnKeys.includes(conn.connKey),
+                          className={classNames("text-center py-2 px-3", {
+                            "bg-[#dafde6]": selectedConnKeys.includes(conn.connKey),
                           })}
                         >
                           {conn.pending.includes(code.name) ? (
-                            <span className="ui mini yellow label">
-                              <i className="minus icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-yellow-500 text-white">
                               PENDING
                             </span>
                           ) : conn.status === "error" || !!migrationStatusError ? (
-                            <span className="ui mini red label">
-                              <i className="times icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-red-500 text-white">
                               ERROR
                             </span>
                           ) : (
-                            <span className="ui mini green label">
-                              <i className="check icon" />
+                            <span className="inline-block px-2 py-1 text-xs font-bold rounded bg-green-500 text-white">
                               APPLIED
                             </span>
                           )}
@@ -354,6 +358,16 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
           )}
         </div>
       </div>
+      {conns && actionModalData && (
+        <MigrationActionModal
+          action={actionModalData.action}
+          targets={actionModalData.targets}
+          conns={conns}
+          open={actionModalOpen}
+          onOpenChange={setActionModalOpen}
+          onCompleted={handleActionModalCompleted}
+        />
+      )}
     </div>
   );
 }
@@ -364,6 +378,14 @@ type CodeViewerProps = {
 };
 function CodeViewer({ code, open }: CodeViewerProps) {
   return (
-    <div className="code-viewer">{open ? <code>{code}</code> : <div>Code is collapsed</div>}</div>
+    <div className="flex items-start">
+      {open ? (
+        <pre className="bg-green-50 text-gray-900 p-4 rounded-lg overflow-x-auto text-sm font-mono leading-relaxed text-left">
+          <code>{code}</code>
+        </pre>
+      ) : (
+        <div className="m-auto">Code is collapsed</div>
+      )}
+    </div>
   );
 }

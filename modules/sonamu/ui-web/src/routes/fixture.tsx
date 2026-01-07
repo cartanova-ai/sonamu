@@ -269,18 +269,18 @@ function FixtureIndex() {
   const tabValue = String(activeTab);
 
   return (
-    <div className="fixture-index">
+    <div className="p-5 min-h-screen bg-[#f7f7f7] flex gap-5">
       {/* 좌측: 설정 패널 */}
-      <div className="fixture-sidebar">
-        <div className="ui segment fixture-header">
+      <div className="w-[300px] shrink-0">
+        <div className="flex flex-col gap-[15px] shadow-[0_5px_15px_rgba(0,0,0,0.1)] rounded-xl mb-[25px] p-5 bg-white border border-gray-200">
           {/* 1. Search Section */}
-          <div className="search-section">
+          <div className="flex flex-wrap flex-col gap-[5px] p-[15px] bg-[#fcfcfc] border border-[#e0e0e0] rounded-lg">
             <div className="flex gap-2 items-center mb-2">
               <SearchIcon />
               <span className="text-lg font-bold">검색 대상 설정</span>
             </div>
 
-            <div className="db-dropdown-wrapper">
+            <div className="grow min-w-[150px]">
               <Select
                 value={sourceDB}
                 onValueChange={(value) => setSourceDB(value || "development_master")}
@@ -360,20 +360,10 @@ function FixtureIndex() {
           </div>
 
           {/* 2. Save Section */}
-          <div className="save-section">
+          <div className="flex flex-wrap flex-col gap-[5px] p-[15px] bg-[#e6f7ff] border border-[#99d8ff] rounded-lg">
             <button
               type="button"
-              className="save-title"
-              style={{
-                cursor: "pointer",
-                background: "none",
-                border: "none",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                width: "100%",
-                textAlign: "left",
-              }}
+              className="min-w-[130px] text-[1.1em] font-bold text-[#007bff] flex items-center cursor-pointer bg-transparent border-none p-0 w-full text-left"
               onClick={() => setShowSaveTargets(!showSaveTargets)}
             >
               {showSaveTargets ? (
@@ -399,14 +389,17 @@ function FixtureIndex() {
                   });
 
                   return (
-                    <span className="ui green small label" style={{ marginLeft: "auto" }}>
+                    <span
+                      className="inline-block leading-none bg-green-500 text-white font-bold rounded px-2 py-1 text-xs"
+                      style={{ marginLeft: "auto" }}
+                    >
                       {saveTargets.length}개 저장 예정
                     </span>
                   );
                 })()}
             </button>
 
-            <div className="db-dropdown-wrapper">
+            <div className="grow min-w-[150px]">
               <Select value={targetDB} onValueChange={(value) => setTargetDB(value || "test")}>
                 <SelectTrigger>
                   <SelectValue placeholder="저장할 대상 DB 선택" />
@@ -454,7 +447,7 @@ function FixtureIndex() {
                     <p style={{ color: "#666", fontSize: "12px", marginBottom: "10px" }}>
                       저장될 픽스쳐 목록
                     </p>
-                    <div className="fixture-record-group">
+                    <div className="flex flex-col gap-[10px]">
                       {Object.entries(groupedByEntity).map(([entityId, fixtures]) => (
                         <div
                           key={entityId}
@@ -479,11 +472,13 @@ function FixtureIndex() {
                               return (
                                 <span
                                   key={f.fixtureId}
-                                  className="ui tiny label"
+                                  className="inline-block leading-none bg-gray-200 text-gray-600 font-bold rounded px-2 py-1 text-[10px]"
                                   style={{ margin: "2px" }}
                                 >
                                   #{f.id}
-                                  <span className="detail">{reason}</span>
+                                  <span className="inline-block align-top ml-4 opacity-80">
+                                    {reason}
+                                  </span>
                                 </span>
                               );
                             })}
@@ -528,7 +523,7 @@ function FixtureIndex() {
               }}
             />
           ) : (
-            <div className="duplicate-check-section">
+            <div className="flex flex-wrap flex-col gap-[5px] p-[15px] bg-[#fcfcfc] border border-[#e0e0e0] rounded-lg">
               <p style={{ color: "#666", fontSize: "11px" }}>
                 엔티티별로 중복 확인에 사용할 컬럼을 지정합니다. <br />
                 지정하지 않으면 unique index만 사용합니다.
@@ -601,10 +596,8 @@ function FixtureIndex() {
                   {Object.entries(duplicateCheckColumns).map(([entityId, columns]) => (
                     <span
                       key={entityId}
-                      className="ui medium label"
+                      className="inline-flex items-center leading-none bg-gray-200 text-gray-600 font-bold rounded text-sm"
                       style={{
-                        display: "flex",
-                        alignItems: "center",
                         gap: "6px",
                         padding: "8px 12px",
                       }}
@@ -628,8 +621,8 @@ function FixtureIndex() {
           )}
         </div>
       </div>
-      <div className="fixture-main">
-        <div className="fixture-viewer">
+      <div className="flex-1 min-w-0">
+        <div className="w-full">
           <div
             style={{
               display: "flex",

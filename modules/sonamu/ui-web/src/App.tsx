@@ -1,10 +1,8 @@
+import { CommonModal } from "@sonamu-kit/react-components";
 import { Link, useLocation } from "@tanstack/react-router";
+import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import "./styles/App.scss";
-import "semantic-ui-css/semantic.min.css";
-import classNames from "classnames";
-import { CommonModal } from "./components/core/CommonModal";
 import SearchModal from "./components/SearchModal";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
@@ -63,19 +61,27 @@ function App({ children }: AppProps) {
   return (
     <>
       <div className="app">
-        <div className="gnb">
-          <div className="menu">
-            <div className="title">
+        <div className="w-full h-gnb bg-sidebar-bg text-white sticky top-0 left-0 flex items-center z-100 border-b border-white/10 justify-between">
+          <div className="flex">
+            <div className="p-4 font-bold w-sidemenu tracking-[-0.5px]">
               <span>🌲 &nbsp; Sonamu UI</span>
-              <span className="project-name"> &nbsp; {projectName}</span>
+              <span className="font-normal text-text-muted text-[0.9em] ml-2">
+                &nbsp; {projectName}
+              </span>
             </div>
-            <div className="menus">
+            <div className="flex gap-[0.3em] text-[0.9em]">
               {menus.map((menu, menuIndex) => (
                 <Link
                   key={menuIndex}
-                  className={classNames("menu", {
-                    selected: location.pathname.includes(menu.path),
-                  })}
+                  className={classNames(
+                    "self-center px-6 py-[0.8em] cursor-pointer text-center text-text-light! no-underline rounded-md transition-all duration-200",
+                    "hover:bg-white/10 hover:text-white!",
+                    {
+                      "bg-white/15! font-semibold text-white!": location.pathname.includes(
+                        menu.path,
+                      ),
+                    },
+                  )}
                   to={menu.path}
                 >
                   <div>{menu.name}</div>
@@ -83,7 +89,11 @@ function App({ children }: AppProps) {
               ))}
             </div>
           </div>
-          <button className="search" type="button" onClick={() => setShowSearch(true)}>
+          <button
+            type="button"
+            className="mr-4 px-4 py-[0.4em] rounded-[20px] border border-white/10 bg-black/20 cursor-pointer text-text-muted text-[0.9em] transition-all duration-200 hover:border-accent hover:text-white *:mr-2"
+            onClick={() => setShowSearch(true)}
+          >
             <span>🔍</span>
             <span>Search</span>
             <kbd className="keycap">⌘</kbd>

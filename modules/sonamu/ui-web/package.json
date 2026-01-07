@@ -29,7 +29,6 @@
     "react-markdown": "catalog:",
     "react-syntax-highlighter": "catalog:",
     "sass": "catalog:",
-    "semantic-ui-css": "catalog:",
     "sonamu": "workspace:^",
     "vite": "catalog:",
     "zod": "catalog:"

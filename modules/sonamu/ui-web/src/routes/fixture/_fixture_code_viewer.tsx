@@ -51,7 +51,7 @@ export default function FixtureCodeViewer({
   };
 
   return (
-    <div className="ui segment fixture-code-viewer-container">
+    <div className="block p-4 bg-white border border-gray-200 rounded-md shadow-sm fixture-code-viewer-container">
       <div className="top-controls">
         <Select
           value={theme}

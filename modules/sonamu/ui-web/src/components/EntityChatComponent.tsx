@@ -138,9 +138,11 @@ export default function EntityChatComponent({
     const config = statusConfig[toolState];
 
     return (
-      <div className="chat-response-area">
-        <div className={`status-header ${toolState}`}>
-          <div className="status-icon">
+      <div className="max-h-[300px] overflow-y-auto text-[0.9em] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10">
+        <div
+          className={`flex items-center gap-2 mb-2 text-text-muted text-[0.85em] ${toolState === "running" ? "text-[#fbbf24]" : ""} ${toolState === "success" ? "text-[#34d399]" : ""}`}
+        >
+          <div>
             {toolState === "idle" && (
               <MessageCircleIcon style={{ color: config.color, margin: 0 }} />
             )}
@@ -154,12 +156,12 @@ export default function EntityChatComponent({
               <AlertCircleIcon style={{ color: config.color, margin: 0 }} />
             )}
           </div>
-          <span className="tool-name">{displayName}</span>
-          {toolState === "running" && <span className="status-text">처리 중...</span>}
+          <span className="font-mono bg-black/30 px-[0.4em] py-[0.1em] rounded">{displayName}</span>
+          {toolState === "running" && <span>처리 중...</span>}
         </div>
 
         {errorMessage && (
-          <div className="error-message animate-fade-in">
+          <div className="text-[#fca5a5] bg-red-500/10 p-[0.8em] rounded-lg border border-red-500/20 animate-fade-in">
             <CircleIcon className="inline-block mr-1" /> {errorMessage}
           </div>
         )}
@@ -168,10 +170,10 @@ export default function EntityChatComponent({
   };
 
   return (
-    <div className="entity-ai-chat">
+    <div className="bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-[10px]">
       {renderStatus()}
 
-      <div className="chat-input-wrapper">
+      <div className="relative bg-black/30 rounded-[20px] px-[0.8em] py-[0.2em] pl-[0.8em] pr-[0.5em] border border-white/10 transition-[border-color] duration-200 flex items-center focus-within:border-accent focus-within:bg-black/40">
         <Textarea
           placeholder="Entity 또는 Enum 생성 요청..."
           value={input}
@@ -179,6 +181,7 @@ export default function EntityChatComponent({
           disabled={isLoading}
           rows={1}
           style={{ height: "auto", minHeight: "38px" }}
+          className="flex-1 bg-transparent border-none text-white resize-none py-[0.6em] text-[0.95em] max-h-[100px] min-h-0 leading-[1.4] focus:outline-none placeholder:text-white/30"
           onInput={(e) => {
             const target = e.target as HTMLTextAreaElement;
             target.style.height = "auto";
@@ -191,11 +194,11 @@ export default function EntityChatComponent({
             }
           }}
         />
-        <div className="action-buttons">
+        <div className="flex items-center ml-[0.3em]">
           {isLoading ? (
             <Button
               icon={<StopCircleIcon />}
-              className="stop-btn"
+              className="m-0 p-[0.5em] shadow-none!"
               size="xs"
               onClick={stop}
               variant="ghost"
@@ -203,7 +206,7 @@ export default function EntityChatComponent({
           ) : (
             <Button
               icon={<SendIcon />}
-              className={`send-btn ${input.trim() ? "active" : ""}`}
+              className={`m-0 p-[0.5em] shadow-none! ${input.trim() ? "text-accent! bg-accent/10!" : "text-text-muted!"}`}
               size="xs"
               onClick={handleSubmit}
               disabled={!input.trim()}

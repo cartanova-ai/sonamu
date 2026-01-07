@@ -1597,9 +1597,6 @@ importers:
       sass:
         specifier: 'catalog:'
         version: 1.97.1
-      semantic-ui-css:
-        specifier: 'catalog:'
-        version: 2.5.0
       sonamu:
         specifier: workspace:^
         version: link:..

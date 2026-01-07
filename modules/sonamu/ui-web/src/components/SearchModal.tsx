@@ -1,4 +1,11 @@
-import { Dialog, DialogContent, DialogDescription, Input } from "@sonamu-kit/react-components";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from "@sonamu-kit/react-components";
 import { useNavigate } from "@tanstack/react-router";
 import { group } from "radashi";
 import { useCallback, useEffect, useState } from "react";
@@ -152,7 +159,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     return grouped.map(([key, items], index) => {
       if (!items) return null;
       return (
-        <div key={key} className="sub-item">
+        <div key={key} className="ml-4">
           <div className="list-description">
             <strong>{`Subset${key} >`}</strong>
           </div>
@@ -162,11 +169,11 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
               dangerouslySetInnerHTML={{
                 __html: highlightText(field.desc, query),
               }}
-              className={`click-item sub-item list-description ${
+              className={`hover:bg-[#d0dbb0] ml-4 list-description cursor-pointer ${
                 index === selectedIndex &&
                 selectedIndex2 !== -1 &&
                 selectedIndex2 === fields.indexOf(field)
-                  ? "selected"
+                  ? "bg-[#d0dbb0]"
                   : ""
               }`}
               onClick={() => handleResultClick(`/entities/${result.id}`, field.desc)}
@@ -197,9 +204,12 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       }}
     >
       <DialogContent className="search-modal max-w-3xl max-h-[80vh] flex flex-col">
-        <DialogDescription className="sr-only">
-          Search through entities, props, subsets, and enums
-        </DialogDescription>
+        <DialogHeader>
+          <DialogTitle className="sr-only">Search</DialogTitle>
+          <DialogDescription className="sr-only">
+            Search through entities, props, subsets, and enums
+          </DialogDescription>
+        </DialogHeader>
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -217,13 +227,13 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             {results.map(({ item: result, fields }, index) => (
               <div
                 key={`${result.id}-${index}`}
-                className={`search-result list-item ${
-                  index === selectedIndex && selectedIndex2 === -1 ? "selected" : ""
+                className={`bg-[#f3f3f3] mt-[0.3em] pl-4 list-item ${
+                  index === selectedIndex && selectedIndex2 === -1 ? "bg-[#d0dbb0]" : ""
                 }`}
               >
                 <button
                   type="button"
-                  className="click-item"
+                  className="hover:bg-[#d0dbb0] w-full text-left"
                   onClick={() => handleResultClick(`/entities/${result.id}`)}
                 >
                   <div
@@ -242,9 +252,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
                 {!!fields?.filter((f) => f.type === "scaffolding")?.length && (
                   <div
-                    className={`click-item sub-item list-description ${
+                    className={`hover:bg-[#d0dbb0] ml-4 list-description cursor-pointer ${
                       index === selectedIndex && selectedIndex2 !== -1 && selectedIndex2 === 0
-                        ? "selected"
+                        ? "bg-[#d0dbb0]"
                         : ""
                     }`}
                     onClick={() => handleResultClick("/scaffolding", result.id)}
@@ -259,7 +269,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
                 <div>
                   {!!fields?.filter((f) => f.type === "props")?.length && (
-                    <div className="sub-item">
+                    <div className="ml-4">
                       <div className="list-description">
                         <strong>{"props >"}</strong>
                       </div>
@@ -272,11 +282,11 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                             dangerouslySetInnerHTML={{
                               __html: highlightText(`${field.key}(${field.desc})`, query),
                             }}
-                            className={`click-item sub-item list-description ${
+                            className={`hover:bg-[#d0dbb0] ml-4 list-description cursor-pointer ${
                               index === selectedIndex &&
                               selectedIndex2 !== -1 &&
                               selectedIndex2 === fieldIndex
-                                ? "selected"
+                                ? "bg-[#d0dbb0]"
                                 : ""
                             }`}
                             onClick={() =>
@@ -292,7 +302,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                     getResultDescriptions(result, fields)}
 
                   {!!fields?.filter((f) => f.type === "enums")?.length && (
-                    <div className="sub-item">
+                    <div className="ml-4">
                       <div className="list-description">
                         <strong>{"enums >"}</strong>
                       </div>
@@ -305,11 +315,11 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
                             dangerouslySetInnerHTML={{
                               __html: highlightText(field.key, query),
                             }}
-                            className={`click-item sub-item list-description ${
+                            className={`hover:bg-[#d0dbb0] ml-4 list-description cursor-pointer ${
                               index === selectedIndex &&
                               selectedIndex2 !== -1 &&
                               selectedIndex2 === fields.indexOf(field)
-                                ? "selected"
+                                ? "bg-[#d0dbb0]"
                                 : ""
                             }`}
                             onClick={() =>

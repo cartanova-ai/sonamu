@@ -18,15 +18,14 @@ import type { EntityIndex, EntityProp, FlattenSubsetRow } from "sonamu";
 import CheckIcon from "~icons/lucide/check";
 import PlusIcon from "~icons/lucide/plus";
 import Trash2Icon from "~icons/lucide/trash-2";
-import { useCommonModal } from "../../components/core/CommonModal";
 import { EditableInput } from "../../components/EditableInput";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
-import { EntitySelector } from "../entities/_entity_selector";
-import { EntityIndexForm } from "../entities/_index_form";
-import { EntityPropForm } from "../entities/_prop_form";
+import { EntityIndexModal } from "../entities/_entity_index_modal";
+import { EntityPropModal } from "../entities/_entity_prop_modal";
+import { EntitySelectorModal } from "../entities/_entity_selector_modal";
 
 export const Route = createFileRoute("/entities/$entityId")({
   component: EntitiesShowPage,
@@ -67,8 +66,26 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
 
-  // commonModal
-  const { openModal, open } = useCommonModal();
+  // EntityPropModal 상태
+  const [propModalOpen, setPropModalOpen] = useState(false);
+  const [propModalData, setPropModalData] = useState<{
+    mode: "add" | "modify";
+    at?: number;
+    oldOne?: EntityProp;
+    focusIndex?: number;
+  } | null>(null);
+
+  // EntitySelectorModal 상태
+  const [selectorModalOpen, setSelectorModalOpen] = useState(false);
+
+  // EntityIndexModal 상태
+  const [indexModalOpen, setIndexModalOpen] = useState(false);
+  const [indexModalData, setIndexModalData] = useState<{
+    mode: "add" | "modify";
+    at?: number;
+    oldOne?: EntityIndex;
+    focusIndex?: number;
+  } | null>(null);
 
   // useSheetTable
   const { regRow, regCell, cursor, setCursor, setFocusedCursor, turnKeyHandler, isFocused } =
@@ -93,9 +110,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       ],
       onExecute: (sheet, y, x) => {
         if (sheet === "props") {
-          openPropForm("modify", y, x);
+          openPropModal("modify", y, x);
         } else if (sheet === "indexes") {
-          openIndexForm("modify", y, x);
+          openIndexModal("modify", y, x);
         }
       },
       onKeywordChanged: (sheet, keyword) => {
@@ -135,9 +152,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           case "N":
             if (e.ctrlKey && e.metaKey && e.shiftKey) {
               if (cursor.sheet === "props") {
-                openPropForm("add", undefined, 2);
+                openPropModal("add", undefined, 2);
               } else if (cursor.sheet === "indexes") {
-                openIndexForm("add", cursor.y);
+                openIndexModal("add", cursor.y);
               } else if (cursor.sheet.includes("enumLabels")) {
                 addEnumLabelRow(cursor.sheet.split("-")[1], cursor.y);
               }
@@ -175,23 +192,14 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           case "p":
           case "P":
             if (e.ctrlKey && e.shiftKey && e.metaKey) {
-              openModal(<EntitySelector />, {
-                onControlledOpen: () => {
-                  turnKeyHandler(false);
-                },
-                onControlledClose: () => {
-                  turnKeyHandler(true);
-                },
-                onCompleted: (entityId) => {
-                  navigate({ to: "/entities/$entityId", params: { entityId: entityId as string } });
-                },
-              });
+              setSelectorModalOpen(true);
+              turnKeyHandler(false);
             }
             break;
         }
         return true;
       },
-      disable: open,
+      disable: propModalOpen,
     });
 
   // subsets
@@ -427,46 +435,59 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   };
 
   // props
-  const openPropForm = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
+  const openPropModal = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
     if (!entity) {
       return;
     }
 
     const oldOne = mode === "add" ? undefined : entity.props[at!];
 
-    openModal(<EntityPropForm entityId={entity.id} oldOne={oldOne} />, {
-      onControlledOpen: () => {
-        // keySwitch off
-        turnKeyHandler(false);
-
-        // focus
-        const focusInput = document.querySelector(`.entity-prop-form .focus-${focusIndex} input`);
-        if (focusInput) {
-          (focusInput as HTMLInputElement).focus();
-        }
-      },
-      onControlledClose: () => {
-        // keySwitch on
-        turnKeyHandler(true);
-      },
-      onCompleted: async (data: unknown) => {
-        if (oldOne) {
-          await SonamuUIService.modifyProp(entity.id, data as EntityProp, at!);
-        } else {
-          await SonamuUIService.createProp(entity.id, data as EntityProp, at);
-        }
-
-        refetch();
-        setTimeout(() => {
-          setCursor({
-            ...cursor,
-            sheet: "props",
-            y: at! + 1,
-          });
-        }, 100);
-      },
-    });
+    setPropModalData({ mode, at, oldOne, focusIndex });
+    setPropModalOpen(true);
+    turnKeyHandler(false);
   };
+
+  const handlePropModalCompleted = async (data: EntityProp) => {
+    if (!entity || !propModalData) return;
+
+    const { mode, at } = propModalData;
+
+    if (mode === "modify") {
+      await SonamuUIService.modifyProp(entity.id, data, at!);
+    } else {
+      await SonamuUIService.createProp(entity.id, data, at);
+    }
+
+    refetch();
+    setTimeout(() => {
+      setCursor({
+        ...cursor,
+        sheet: "props",
+        y: at! + 1,
+      });
+    }, 100);
+  };
+
+  const handlePropModalOpenChange = (open: boolean) => {
+    setPropModalOpen(open);
+    if (!open) {
+      setPropModalData(null);
+      turnKeyHandler(true);
+    }
+  };
+
+  // EntitySelectorModal 핸들러
+  const handleSelectorModalOpenChange = (open: boolean) => {
+    setSelectorModalOpen(open);
+    if (!open) {
+      turnKeyHandler(true);
+    }
+  };
+
+  const handleSelectorModalCompleted = (entityId: string) => {
+    navigate({ to: "/entities/$entityId", params: { entityId } });
+  };
+
   const confirmDelProp = async (at: number) => {
     if (!entity) {
       return;
@@ -488,57 +509,60 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   };
 
   // indexes
-  const openIndexForm = (mode: "add" | "modify", at?: number, focusIndex: number = 0) => {
+  const openIndexModal = (mode: "add" | "modify", at?: number, focusIndex?: number) => {
     if (!entity) {
       return;
     }
 
     const oldOne = mode === "add" ? undefined : entity.indexes[at!];
 
-    openModal(<EntityIndexForm entityId={entity.id} table={entity.table} oldOne={oldOne} />, {
-      onControlledOpen: () => {
-        // keySwitch off
-        turnKeyHandler(false);
+    setIndexModalData({ mode, at, oldOne, focusIndex });
+    setIndexModalOpen(true);
+    turnKeyHandler(false);
+  };
 
-        // focus
-        const focusInput = document.querySelector(`.entity-index-form .focus-${focusIndex} input`);
-        if (focusInput) {
-          (focusInput as HTMLInputElement).focus();
-        }
-      },
-      onControlledClose: () => {
-        // keySwitch on
-        turnKeyHandler(true);
-      },
-      onCompleted: (data: unknown) => {
-        const newIndexes = (() => {
-          const newIndexes = [...entity.indexes];
-          if (mode === "add") {
-            at ??= newIndexes.length - 1;
-            newIndexes.splice(at + 1, 0, data as EntityIndex);
-            return newIndexes;
-          } else {
-            return newIndexes.map((index, __index) =>
-              __index === at ? (data as EntityIndex) : index,
-            );
-          }
-        })();
+  const handleIndexModalCompleted = async (data: EntityIndex | null) => {
+    if (!entity || !indexModalData) return;
 
-        SonamuUIService.modifyIndexes(entity.id, newIndexes)
-          .then(({ updated }) => {
-            entity.indexes = updated;
-            refetch();
-            setTimeout(() => {
-              setCursor({
-                ...cursor,
-                sheet: "indexes",
-                y: at! + 1,
-              });
-            }, 100);
-          })
-          .catch(defaultCatch);
-      },
-    });
+    if (data === null) {
+      // Cancel 처리
+      setIndexModalOpen(false);
+      setIndexModalData(null);
+      turnKeyHandler(true);
+      return;
+    }
+
+    const { mode, at } = indexModalData;
+    const newIndexes = [...entity.indexes];
+
+    if (mode === "modify") {
+      newIndexes[at!] = data;
+    } else {
+      if (at === undefined) {
+        newIndexes.push(data);
+      } else {
+        newIndexes.splice(at, 0, data);
+      }
+    }
+
+    await SonamuUIService.modifyIndexes(entity.id, newIndexes);
+    refetch();
+
+    setTimeout(() => {
+      setCursor({
+        ...cursor,
+        sheet: "indexes",
+        y: mode === "modify" ? at! : newIndexes.length - 1,
+      });
+    }, 100);
+  };
+
+  const handleIndexModalOpenChange = (open: boolean) => {
+    setIndexModalOpen(open);
+    if (!open) {
+      setIndexModalData(null);
+      turnKeyHandler(true);
+    }
   };
   const confirmDelIndex = (at: number) => {
     if (!entity) {
@@ -687,12 +711,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
   const [dragEnterPropIndex, setDragEnterPropIndex] = useState<number | null>();
 
   return (
-    <div className="entities-detail">
+    <div className="flex-1 p-8 overflow-x-hidden flex flex-col gap-8 min-h-[calc(100vh-50px)] bg-gray-50">
       {isLoading && <div>Loading</div>}
       {entity && (
         <>
-          <div className="entity-base">
-            <h3>
+          <div className="relative pb-4 border-b border-gray-200">
+            <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
               <span>
                 Entity: <strong className="text-green-600">{entity.id}</strong>
               </span>
@@ -701,28 +725,28 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 variant="destructive"
                 icon={<Trash2Icon />}
                 content="Delete"
-                className="btn-del-entity"
+                className="absolute text-[0.4em] right-0 top-0 opacity-70 hover:opacity-100"
                 onClick={() => delEntity()}
               />
             </h3>
-            <form className="ui form">
-              <div className="equal width fields">
-                <div className="field">
-                  <label>ParentID</label>
+            <form className="block">
+              <div className="flex gap-[14px]">
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">ParentID</label>
                   <EditableInput
                     value={entity.parentId ?? ""}
                     onChange={handleEntityBaseOnEnter("parentId")}
                   />
                 </div>
-                <div className="field">
-                  <label>Title</label>
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">Title</label>
                   <EditableInput value={entity.title} onChange={handleEntityBaseOnEnter("title")} />
                 </div>
-                <div className="field">
-                  <label>TableName</label>
+                <div className="flex-1">
+                  <label className="block mb-1 font-bold">TableName</label>
                   <EditableInput value={entity.table} onChange={handleEntityBaseOnEnter("table")} />
                 </div>
-                <div className="field">
+                <div className="flex-1">
                   {/* <EditableInput
                     originValue={entity.table}
                     onEnter={handleEntityBaseOnEnter}
@@ -731,8 +755,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </div>
             </form>
           </div>
-          <div className="props-and-indexes">
-            <div className="props">
+          <div className="flex gap-4">
+            <div className="flex-1">
               <h3>Props</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
@@ -755,7 +779,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         "props",
                         propIndex,
                         classNames({
-                          "drag-enter": dragEnterPropIndex === propIndex,
+                          "[&>td]:!border-t-red-500": dragEnterPropIndex === propIndex,
                         }),
                       )}
                       draggable={true}
@@ -793,34 +817,28 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 3)}>
-                        {prop.nullable && <span className="ui label">NULL</span>}
+                        {prop.nullable && (
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#e8e8e8] text-[rgba(0,0,0,0.6)]">
+                            NULL
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell {...regCell("props", propIndex, 4)}>
                         {prop.type === "enum" && (
-                          <span
-                            className="ui label"
-                            style={{ backgroundColor: "#6b7280", color: "white" }}
-                          >
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#6b7280] text-white">
                             {prop.id}
                           </span>
                         )}
                         {(prop.type === "json" || prop.type === "virtual") && (
-                          <span
-                            className="ui label"
-                            style={{ backgroundColor: "#ca8a04", color: "white" }}
-                          >
+                          <span className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#ca8a04] text-white">
                             {prop.id}
                           </span>
                         )}
                         {prop.type === "relation" && (
                           <span
-                            className="ui label"
-                            style={{
-                              backgroundColor: prop.relationType.endsWith("ToOne")
-                                ? "#f97316"
-                                : "#a855f7",
-                              color: "white",
-                            }}
+                            className={`inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] text-white ${
+                              prop.relationType.endsWith("ToOne") ? "bg-[#f97316]" : "bg-[#a855f7]"
+                            }`}
                           >
                             {prop.relationType}: {prop.with}
                           </span>
@@ -840,7 +858,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
-                        onClick={() => openPropForm("add", undefined, 2)}
+                        onClick={() => openPropModal("add", undefined, 2)}
                       >
                         Add a prop
                       </Button>
@@ -849,7 +867,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                 </TableBody>
               </Table>
             </div>
-            <div className="indexes">
+            <div className="flex-[0.5]">
               <h3>Indexes</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
@@ -866,7 +884,10 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       </TableCell>
                       <TableCell {...regCell("indexes", indexIndex, 1)}>
                         {index.columns.map((col, colIndex) => (
-                          <span className="ui label" key={colIndex}>
+                          <span
+                            className="inline-block px-[8.33px] py-[5.833px] text-[10px] font-bold leading-[10px] rounded-[4px] bg-[#e8e8e8] text-[rgba(0,0,0,0.6)] mr-1"
+                            key={colIndex}
+                          >
                             {col.name}
                           </span>
                         ))}
@@ -878,7 +899,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                       <Button
                         variant="blue"
                         icon={<PlusIcon />}
-                        onClick={() => openIndexForm("add", undefined, 0)}
+                        onClick={() => openIndexModal("add", undefined, 0)}
                       >
                         Add a index
                       </Button>
@@ -888,15 +909,15 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </Table>
             </div>
           </div>
-          <div className="enums-and-subsets">
+          <div className="flex gap-8">
             {entity && Object.keys(enumLabelsArray).length > 0 && (
-              <div className="enums">
+              <div className="flex-1">
                 <h3>
                   Enums <Button size="xs" icon={<PlusIcon />} onClick={() => openCreateNewEnum()} />
                 </h3>
-                <div className="enums-list">
+                <div className="flex flex-wrap gap-8">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
-                    <div className="enums-table" key={enumsIndex}>
+                    <div className="w-80" key={enumsIndex}>
                       <Table id={`enum-${enumId}`} className="border rounded-lg bg-white">
                         <TableHeader className="bg-gray-50">
                           <TableRow>
@@ -963,12 +984,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             </TableRow>
                           ))}
                           <TableRow>
-                            <TableCell colSpan={2}>
+                            <TableCell colSpan={2} className="text-center">
                               <Button
                                 size="xs"
                                 variant="default"
                                 icon={<PlusIcon />}
-                                className="btn-add-enum-label"
+                                className="mx-auto py-[0.3em] px-4"
                                 onClick={() => addEnumLabelRow(enumId)}
                               />
                             </TableCell>
@@ -981,7 +1002,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </div>
             )}
             {entity && Object.keys(entity.subsets).length > 0 && (
-              <div className="subsets">
+              <div className="flex-[0.5]">
                 <h3>
                   Subsets{" "}
                   <Button
@@ -1044,7 +1065,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                               <Button
                                 variant="green"
                                 size="xs"
-                                className="btn-relation-entity"
+                                className="ml-2"
                                 onClick={expandRelationEntity(subsetRowIndex)}
                                 disabled={subsetRow.isOpen}
                               >
@@ -1136,6 +1157,30 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             )}
           </div>
         </>
+      )}
+      {entity && propModalData && (
+        <EntityPropModal
+          entityId={entity.id}
+          oldOne={propModalData.oldOne}
+          open={propModalOpen}
+          onOpenChange={handlePropModalOpenChange}
+          onCompleted={handlePropModalCompleted}
+        />
+      )}
+      <EntitySelectorModal
+        open={selectorModalOpen}
+        onOpenChange={handleSelectorModalOpenChange}
+        onCompleted={handleSelectorModalCompleted}
+      />
+      {entity && indexModalData && (
+        <EntityIndexModal
+          entityId={entity.id}
+          table={entity.table}
+          oldOne={indexModalData.oldOne}
+          open={indexModalOpen}
+          onOpenChange={handleIndexModalOpenChange}
+          onCompleted={handleIndexModalCompleted}
+        />
       )}
     </div>
   );

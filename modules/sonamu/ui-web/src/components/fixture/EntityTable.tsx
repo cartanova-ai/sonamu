@@ -1,4 +1,16 @@
-import { Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@sonamu-kit/react-components";
+import {
+  Checkbox,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@sonamu-kit/react-components";
+import classNames from "classnames";
 import type { SetStateAction } from "react";
 import type { FixtureRecord } from "sonamu";
 import InfoIcon from "~icons/lucide/info";
@@ -74,30 +86,35 @@ export default function EntityTable({
   const firstRecord = fixtures[0];
 
   return (
-    <table className="ui celled structured table entity-table" key={entityId}>
+    <Table className="entity-table bg-white border rounded-lg" key={entityId}>
       {isGraphNode && <strong className="table-node-header">{entityId}</strong>}
-      <thead>
+      <TableHeader>
         {!isGraphNode && (
-          <tr>
-            <th colSpan={Object.keys(firstRecord.columns).length + 2}>{entityId}</th>
-          </tr>
+          <TableRow className="hover:bg-transparent bg-gray-100">
+            <TableHead colSpan={Object.keys(firstRecord.columns).length + 2}>{entityId}</TableHead>
+          </TableRow>
         )}
-        <tr>
-          <th className="collapsing">ID</th>
-          <th className="collapsing">DB</th>
+        <TableRow className="hover:bg-transparent bg-gray-100">
+          <TableHead className="w-[1%] whitespace-nowrap">ID</TableHead>
+          <TableHead className="w-[1%] whitespace-nowrap">DB</TableHead>
           {refineColumns(firstRecord.columns).map(([key]) => (
-            <th key={key} className="collapsing">
+            <TableHead key={key} className="w-[1%] whitespace-nowrap">
               {key}
-            </th>
+            </TableHead>
           ))}
-        </tr>
-      </thead>
-      <tbody>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {fixtures.map((record) => (
           <>
             {/* Source Row */}
-            <tr key={record.id} className={record.unique ? "unique-violated" : ""}>
-              <td className="collapsing" rowSpan={getRowSpan(record)}>
+            <TableRow
+              key={record.id}
+              className={classNames({
+                "bg-yellow-50": record.unique,
+              })}
+            >
+              <TableCell className="w-[1%] whitespace-nowrap" rowSpan={getRowSpan(record)}>
                 <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                   <span>{record.id}</span>
 
@@ -160,16 +177,16 @@ export default function EntityTable({
                     </Tooltip>
                   )}
                 </div>
-              </td>
+              </TableCell>
 
-              <td className="collapsing">source</td>
+              <TableCell className="w-[1%] whitespace-nowrap">source</TableCell>
               {refineColumns(record.columns).map(([key, columnData]) => {
                 const { prop, value } = columnData as {
                   prop: { type: string; relationType?: string; with?: string };
                   value: unknown;
                 };
                 return (
-                  <td key={key} className="collapsing">
+                  <TableCell key={key} className="w-[1%] whitespace-nowrap">
                     <div className="scrollable-cell-content">
                       {(Array.isArray(value) ? value : [value]).map((v, index) =>
                         prop.type === "relation" && prop.relationType !== "BelongsToOne" ? (
@@ -195,57 +212,57 @@ export default function EntityTable({
                         ),
                       )}
                     </div>
-                  </td>
+                  </TableCell>
                 );
               })}
-            </tr>
+            </TableRow>
 
             {/* Target Row (사용자 지정 컬럼 기준 중복) */}
             {record.target && (
-              <tr key={`${record.id}-target`} className="warning">
-                <td className="collapsing">
+              <TableRow key={`${record.id}-target`} className="bg-yellow-50">
+                <TableCell className="w-[1%] whitespace-nowrap">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>target</span>
                     </TooltipTrigger>
                     <TooltipContent>사용자 지정 컬럼 기준 중복</TooltipContent>
                   </Tooltip>
-                </td>
+                </TableCell>
                 {refineColumns(record.target.columns).map(([key, columnData]) => {
                   const { value } = columnData as { value: unknown };
                   return (
-                    <td key={key} className="collapsing">
+                    <TableCell key={key} className="w-[1%] whitespace-nowrap">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
-                    </td>
+                    </TableCell>
                   );
                 })}
-              </tr>
+              </TableRow>
             )}
 
             {/* Unique Row (unique index 기준 중복) */}
             {record.unique && (
-              <tr key={`${record.id}-unique`} className="negative">
-                <td className="collapsing">
+              <TableRow key={`${record.id}-unique`} className="bg-red-50">
+                <TableCell className="w-[1%] whitespace-nowrap">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span>unique</span>
                     </TooltipTrigger>
                     <TooltipContent>Unique Index 기준 중복</TooltipContent>
                   </Tooltip>
-                </td>
+                </TableCell>
                 {refineColumns(record.unique.columns).map(([key, columnData]) => {
                   const { value } = columnData as { value: unknown };
                   return (
-                    <td key={key} className="collapsing">
+                    <TableCell key={key} className="w-[1%] whitespace-nowrap">
                       <div className="scrollable-cell-content">{JSON.stringify(value)}</div>
-                    </td>
+                    </TableCell>
                   );
                 })}
-              </tr>
+              </TableRow>
             )}
           </>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }

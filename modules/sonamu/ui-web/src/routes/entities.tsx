@@ -5,10 +5,9 @@ import { useState } from "react";
 import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
-import { useCommonModal } from "../components/core/CommonModal";
 import EntityChatComponent from "../components/EntityChatComponent";
 import { SonamuUIService } from "../services/sonamu-ui.service";
-import { EntityCreateForm } from "./entities/_create_form";
+import { EntityCreateModal } from "./entities/_entity_create_modal";
 
 export const Route = createFileRoute("/entities")({
   component: EntitiesLayout,
@@ -27,28 +26,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
 
   // AI Chat 토글 상태
   const [showAIChat, setShowAIChat] = useState(false);
-
-  // useCommonModal
-  const { openModal } = useCommonModal();
-
-  const createEntity = () => {
-    openModal(<EntityCreateForm />, {
-      onControlledOpen: () => {
-        const focusInput = document.querySelector(
-          ".entity-create-form .focus-0 input",
-        ) as HTMLInputElement;
-        if (focusInput) {
-          focusInput.focus();
-        }
-      },
-      onCompleted: (newEntityId) => {
-        refetch();
-        setTimeout(() => {
-          navigate({ to: "/entities/$entityId", params: { entityId: newEntityId as string } });
-        }, 200);
-      },
-    });
-  };
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const handleEntityCreated = (entityId: string) => {
     refetch();
@@ -62,47 +40,58 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
   };
 
   return (
-    <div className="entities-layout" id="scroller">
-      <div className="sidemenu">
-        <div className="entity-list-container">
+    <div className="flex min-h-[calc(100vh-50px)]" id="scroller">
+      <div className="w-sidemenu bg-sidebar-bg text-[0.95em] sticky left-0 top-gnb h-[calc(100vh-var(--spacing-gnb))] flex flex-col border-r border-white/5">
+        <div className="flex-1 overflow-y-auto py-4 [&::-webkit-scrollbar]:w-[6px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
           {isLoading && <div className="loading-state">Loading...</div>}
           {error && <div className="error-state">Error: {error.message}</div>}
           {entities?.map((entity) => (
             <Link
               key={entity.id}
-              className={classnames("entity-list-item", {
-                selected: entity.id === entityId,
-              })}
+              className={classnames(
+                "py-[0.6em] px-[1.2em] cursor-pointer font-normal flex items-center text-text-muted no-underline transition-all duration-200 border-l-[3px] border-transparent",
+                "hover:bg-sidebar-hover hover:text-white hover:pl-[1.5em] hover:[&_.parent-prefix]:opacity-80",
+                {
+                  "bg-sidebar-selected! text-white! border-l-accent font-medium [&_.entity-name]:text-white!":
+                    entity.id === entityId,
+                },
+              )}
               to="/entities/$entityId"
               params={{ entityId: entity.id }}
             >
-              {entity.parentId && <span className="parent-prefix">{entity.parentId}</span>}
-              <span className="entity-name">{entity.id}</span>
+              {entity.parentId && (
+                <span className="parent-prefix text-[0.85em] opacity-60 mr-[0.5em] text-text-muted after:content-['>'] after:ml-[0.3em]">
+                  {entity.parentId}
+                </span>
+              )}
+              <span className="entity-name text-text-light">{entity.id}</span>
             </Link>
           ))}
         </div>
 
-        <div className="sidebar-footer">
-          <div className="action-buttons-row">
+        <div className="shrink-0 p-4 bg-black/20 border-t border-white/10 flex flex-col gap-[0.8em]">
+          <div className="flex gap-[0.5em]">
             <Button
               size="sm"
               variant="green"
-              className="footer-btn w-full"
-              onClick={() => createEntity()}
+              className="flex-1 shadow-none! hover:bg-white/10!"
+              onClick={() => setCreateModalOpen(true)}
             >
               <PlusIcon className="mr-2 h-4 w-4" /> New Entity
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className={`ai-toggle-btn ${showAIChat ? "active" : ""}`}
+              className={classnames("w-[36px] p-0 flex items-center justify-center shadow-none!", {
+                "bg-accent! text-white! border-accent!": showAIChat,
+              })}
               onClick={() => setShowAIChat(!showAIChat)}
               icon={<MessageSquareIcon />}
             />
           </div>
 
           {showAIChat && (
-            <div className="ai-chat-container">
+            <div className="mt-[0.5em] animate-[slideUp_0.3s_ease-out]">
               <EntityChatComponent
                 onEntityCreated={handleEntityCreated}
                 onEntityUpdated={handleEntityUpdated}
@@ -114,9 +103,14 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
       <Outlet />
       <Button
         variant="outline"
-        className="move-to-top rounded-full"
+        className="fixed right-[2em] bottom-[2em] z-1000 bg-sidebar-bg text-white shadow-[0_4px_12px_rgba(0,0,0,0.2)] transition-transform duration-200 hover:-translate-y-[2px] hover:bg-sidebar-hover rounded-full"
         onClick={() => document.getElementById("scroller")?.scrollIntoView({ behavior: "smooth" })}
         icon={<ArrowUpIcon />}
+      />
+      <EntityCreateModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+        onCompleted={handleEntityCreated}
       />
     </div>
   );

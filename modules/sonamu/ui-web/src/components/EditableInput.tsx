@@ -37,8 +37,8 @@ export function EditableInput({ onChange, value: originValue, ...inputProps }: E
       onKeyDown={handleKeyDown}
       value={value ?? ""}
       onValueChange={setValue}
-      className={classNames("editable-input", {
-        "is-dirty": !!originValue && originValue !== value,
+      className={classNames({
+        "border-red-500! bg-[rgb(255,217,217)]!": !!originValue && originValue !== value,
         "opacity-50": loading,
       })}
     />

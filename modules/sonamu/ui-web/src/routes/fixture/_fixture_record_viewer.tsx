@@ -24,7 +24,7 @@ export default function FixtureRecordViewer({
   const groupedRecords = group(fixtureRecords, (record) => record.entityId);
 
   return (
-    <div className="fixture-record-viewer">
+    <div className="fixture-record-viewer flex flex-col gap-4">
       {Object.entries(groupedRecords).map(([entityId, records]) => (
         <EntityTable
           key={entityId}

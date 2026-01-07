@@ -10,3 +10,133 @@
 /* react-components 패키지 */
 @source "../../../react-components/src/**/*.tsx";
 @source "../../../react-components/src/**/*.ts";
+
+/* 커스텀 테마 변수 (App.scss에서 이전) */
+@theme {
+  /* 색상 */
+  --color-sidebar-bg: #112c15;
+  --color-sidebar-hover: #1e4d2b;
+  --color-sidebar-selected: #205428;
+  --color-text-light: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-accent: #10b981;
+
+  /* 간격 */
+  --spacing-sidemenu: 280px;
+  --spacing-gnb: 50px;
+}
+
+/* 글로벌 리셋 */
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 애니메이션 */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Input 컴포넌트 오버라이드 (ui-web용) */
+input[data-slot="input"] {
+  background-color: #fff !important;
+}
+
+/* ui-web 기본 폰트 스타일 */
+body {
+  font-family: Lato, "Helvetica Neue", Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.4285em;
+  color: rgba(0, 0, 0, 0.87);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: Lato, "Helvetica Neue", Arial, Helvetica, sans-serif;
+  line-height: 1.28571429em;
+  margin: calc(2rem - 0.14285714em) 0 1rem;
+  font-weight: 700;
+  padding: 0;
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.71428571rem;
+}
+
+h3 {
+  font-size: 1.28571429rem;
+}
+
+h4 {
+  font-size: 1.07142857rem;
+}
+
+h5 {
+  font-size: 1rem;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: Lato, "Helvetica Neue", Arial, Helvetica, sans-serif;
+  font-size: 100%;
+  line-height: 1.15;
+}
+
+b,
+strong {
+  font-weight: 700;
+}
+
+/* Keycap 스타일 */
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background-color: var(--muted);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  color: var(--muted-foreground);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
