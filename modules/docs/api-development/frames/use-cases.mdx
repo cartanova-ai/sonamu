@@ -1,10 +1,953 @@
 ---
-title: '사용 사례'
-description: '헬스체크, 유틸리티 API'
+title: "사용 사례"
+description: "Frame의 다양한 활용 예제"
 ---
 
-# 사용 사례
+Frame을 활용한 실전 사용 사례를 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 사용 사례 개요
+
+<CardGroup cols={2}>
+  <Card title="헬스체크" icon="heart-pulse">
+    서버 상태 모니터링
+    
+    DB, 메모리, 업타임
+  </Card>
+  <Card title="유틸리티" icon="wrench">
+    해시, 암호화, UUID
+    
+    문자열 처리
+  </Card>
+  <Card title="외부 API" icon="cloud">
+    날씨, 지도, 결제
+    
+    API 프록시
+  </Card>
+  <Card title="통계/집계" icon="chart-line">
+    대시보드 데이터
+    
+    다중 테이블 집계
+  </Card>
+</CardGroup>
+
+## 1. 헬스체크 & 모니터링
+
+### 기본 헬스체크
+
+```typescript
+// health.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{
+    status: "ok" | "error";
+    timestamp: Date;
+    uptime: number;
+  }> {
+    return {
+      status: "ok",
+      timestamp: new Date(),
+      uptime: process.uptime(),
+    };
+  }
+  
+  @api({ httpMethod: "GET" })
+  async ping(): Promise<{ pong: string }> {
+    return { pong: "pong" };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+**사용**:
+```bash
+# Kubernetes liveness probe
+curl http://api.example.com/api/health/ping
+
+# 모니터링 시스템
+curl http://api.example.com/api/health/check
+```
+
+### 상세 헬스체크
+
+```typescript
+interface HealthDetailResponse {
+  status: "healthy" | "degraded" | "unhealthy";
+  timestamp: Date;
+  uptime: number;
+  system: {
+    memory: {
+      total: number;
+      used: number;
+      free: number;
+      percentage: number;
+    };
+    cpu: {
+      model: string;
+      cores: number;
+      loadAverage: number[];
+    };
+  };
+  services: {
+    database: {
+      status: "connected" | "disconnected";
+      responseTime?: number;
+    };
+    redis?: {
+      status: "connected" | "disconnected";
+      responseTime?: number;
+    };
+  };
+}
+
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async detail(): Promise<HealthDetailResponse> {
+    const startTime = Date.now();
+    
+    // DB 연결 체크
+    let dbStatus: "connected" | "disconnected" = "disconnected";
+    let dbResponseTime: number | undefined;
+    
+    try {
+      const rdb = this.getPuri("r");
+      const dbStart = Date.now();
+      await rdb.raw("SELECT 1");
+      dbResponseTime = Date.now() - dbStart;
+      dbStatus = "connected";
+    } catch (error) {
+      console.error("Database health check failed:", error);
+    }
+    
+    // 메모리 정보
+    const memoryUsage = process.memoryUsage();
+    const totalMemory = memoryUsage.heapTotal;
+    const usedMemory = memoryUsage.heapUsed;
+    const freeMemory = totalMemory - usedMemory;
+    
+    // CPU 정보
+    const os = require("os");
+    const cpus = os.cpus();
+    
+    // 전체 상태 결정
+    let overallStatus: "healthy" | "degraded" | "unhealthy";
+    
+    if (dbStatus === "disconnected") {
+      overallStatus = "unhealthy";
+    } else if ((usedMemory / totalMemory) > 0.9) {
+      overallStatus = "degraded";
+    } else {
+      overallStatus = "healthy";
+    }
+    
+    return {
+      status: overallStatus,
+      timestamp: new Date(),
+      uptime: process.uptime(),
+      system: {
+        memory: {
+          total: totalMemory,
+          used: usedMemory,
+          free: freeMemory,
+          percentage: (usedMemory / totalMemory) * 100,
+        },
+        cpu: {
+          model: cpus[0]?.model || "unknown",
+          cores: cpus.length,
+          loadAverage: os.loadavg(),
+        },
+      },
+      services: {
+        database: {
+          status: dbStatus,
+          responseTime: dbResponseTime,
+        },
+      },
+    };
+  }
+}
+```
+
+## 2. 암호화 & 보안 유틸리티
+
+### 해시 & 암호화
+
+```typescript
+// crypto.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+
+interface HashParams {
+  text: string;
+  algorithm: "md5" | "sha256" | "sha512" | "bcrypt";
+  saltRounds?: number; // bcrypt용
+}
+
+interface EncryptParams {
+  plaintext: string;
+  secret: string;
+}
+
+interface DecryptParams {
+  ciphertext: string;
+  secret: string;
+}
+
+class CryptoFrame extends BaseFrameClass {
+  frameName = "Crypto";
+  
+  // 해시 생성
+  @api({ httpMethod: "POST" })
+  async hash(params: HashParams): Promise<{ hash: string }> {
+    if (params.algorithm === "bcrypt") {
+      const saltRounds = params.saltRounds || 10;
+      const hash = await bcrypt.hash(params.text, saltRounds);
+      return { hash };
+    }
+    
+    const hash = crypto
+      .createHash(params.algorithm)
+      .update(params.text)
+      .digest("hex");
+    
+    return { hash };
+  }
+  
+  // bcrypt 검증
+  @api({ httpMethod: "POST" })
+  async verifyHash(params: {
+    text: string;
+    hash: string;
+  }): Promise<{ valid: boolean }> {
+    const valid = await bcrypt.compare(params.text, params.hash);
+    return { valid };
+  }
+  
+  // AES 암호화
+  @api({ httpMethod: "POST" })
+  async encrypt(params: EncryptParams): Promise<{
+    ciphertext: string;
+    iv: string;
+  }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.secret, "salt", 32);
+    const iv = crypto.randomBytes(16);
+    
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    
+    let encrypted = cipher.update(params.plaintext, "utf8", "hex");
+    encrypted += cipher.final("hex");
+    
+    return {
+      ciphertext: encrypted,
+      iv: iv.toString("hex"),
+    };
+  }
+  
+  // AES 복호화
+  @api({ httpMethod: "POST" })
+  async decrypt(params: DecryptParams & {
+    iv: string;
+  }): Promise<{ plaintext: string }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.secret, "salt", 32);
+    const iv = Buffer.from(params.iv, "hex");
+    
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    
+    let decrypted = decipher.update(params.ciphertext, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    
+    return { plaintext: decrypted };
+  }
+  
+  // JWT 토큰 검증 (간단 버전)
+  @api({ httpMethod: "POST" })
+  async verifyToken(params: {
+    token: string;
+    secret: string;
+  }): Promise<{
+    valid: boolean;
+    payload?: any;
+    error?: string;
+  }> {
+    try {
+      const jwt = require("jsonwebtoken");
+      const payload = jwt.verify(params.token, params.secret);
+      
+      return {
+        valid: true,
+        payload,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+  
+  // UUID 생성
+  @api({ httpMethod: "POST" })
+  async uuid(): Promise<{ uuid: string }> {
+    return { uuid: crypto.randomUUID() };
+  }
+  
+  // 랜덤 문자열 생성
+  @api({ httpMethod: "POST" })
+  async randomString(params: {
+    length: number;
+    charset?: "alphanumeric" | "hex" | "base64";
+  }): Promise<{ random: string }> {
+    const length = Math.min(params.length, 1024);
+    const charset = params.charset || "alphanumeric";
+    
+    let random: string;
+    
+    switch (charset) {
+      case "hex":
+        random = crypto.randomBytes(Math.ceil(length / 2))
+          .toString("hex")
+          .slice(0, length);
+        break;
+      case "base64":
+        random = crypto.randomBytes(Math.ceil(length * 3 / 4))
+          .toString("base64")
+          .slice(0, length);
+        break;
+      case "alphanumeric":
+      default:
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        random = Array.from(crypto.randomBytes(length))
+          .map((byte) => chars[byte % chars.length])
+          .join("");
+        break;
+    }
+    
+    return { random };
+  }
+}
+
+export const CryptoFrameInstance = new CryptoFrame();
+```
+
+## 3. 외부 API 프록시
+
+### 날씨 API
+
+```typescript
+// weather.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import axios from "axios";
+
+class WeatherFrame extends BaseFrameClass {
+  frameName = "Weather";
+  
+  private apiKey = process.env.OPENWEATHER_API_KEY || "";
+  private baseUrl = "https://api.openweathermap.org/data/2.5";
+  
+  @api({ httpMethod: "GET" })
+  async current(params: {
+    city: string;
+    country?: string;
+    units?: "metric" | "imperial";
+  }): Promise<{
+    city: string;
+    country: string;
+    temperature: number;
+    feelsLike: number;
+    condition: string;
+    description: string;
+    humidity: number;
+    windSpeed: number;
+    pressure: number;
+    visibility: number;
+    timestamp: Date;
+  }> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/weather`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: params.units || "metric",
+        },
+        timeout: 5000,
+      });
+      
+      const data = response.data;
+      
+      return {
+        city: data.name,
+        country: data.sys.country,
+        temperature: data.main.temp,
+        feelsLike: data.main.feels_like,
+        condition: data.weather[0].main,
+        description: data.weather[0].description,
+        humidity: data.main.humidity,
+        windSpeed: data.wind.speed,
+        pressure: data.main.pressure,
+        visibility: data.visibility,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(`Weather API error: ${error.message}`);
+      }
+      throw new Error("Failed to fetch weather data");
+    }
+  }
+  
+  @api({ httpMethod: "GET" })
+  async forecast(params: {
+    city: string;
+    country?: string;
+    days?: number;
+  }): Promise<{
+    city: string;
+    forecast: Array<{
+      date: string;
+      temperature: {
+        min: number;
+        max: number;
+        avg: number;
+      };
+      condition: string;
+      humidity: number;
+      windSpeed: number;
+    }>;
+  }> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    const days = Math.min(params.days || 5, 7);
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/forecast`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: "metric",
+          cnt: days * 8, // 3시간 간격 데이터
+        },
+        timeout: 5000,
+      });
+      
+      const data = response.data;
+      
+      // 일별로 그룹화
+      const dailyData = new Map<string, any[]>();
+      
+      data.list.forEach((item: any) => {
+        const date = item.dt_txt.split(" ")[0];
+        if (!dailyData.has(date)) {
+          dailyData.set(date, []);
+        }
+        dailyData.get(date)!.push(item);
+      });
+      
+      const forecast = Array.from(dailyData.entries()).map(([date, items]) => {
+        const temps = items.map((i) => i.main.temp);
+        const conditions = items.map((i) => i.weather[0].main);
+        
+        return {
+          date,
+          temperature: {
+            min: Math.min(...temps),
+            max: Math.max(...temps),
+            avg: temps.reduce((a, b) => a + b, 0) / temps.length,
+          },
+          condition: conditions[0], // 첫 번째 조건 사용
+          humidity: items[0].main.humidity,
+          windSpeed: items[0].wind.speed,
+        };
+      });
+      
+      return {
+        city: data.city.name,
+        forecast,
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch forecast data");
+    }
+  }
+}
+
+export const WeatherFrameInstance = new WeatherFrame();
+```
+
+### 결제 게이트웨이 프록시
+
+```typescript
+// payment.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import axios from "axios";
+
+class PaymentFrame extends BaseFrameClass {
+  frameName = "Payment";
+  
+  private stripeApiKey = process.env.STRIPE_SECRET_KEY || "";
+  private stripeBaseUrl = "https://api.stripe.com/v1";
+  
+  @api({ httpMethod: "POST" })
+  async createPaymentIntent(params: {
+    amount: number; // 센트 단위
+    currency: string;
+    customerId?: string;
+  }): Promise<{
+    clientSecret: string;
+    paymentIntentId: string;
+  }> {
+    try {
+      const response = await axios.post(
+        `${this.stripeBaseUrl}/payment_intents`,
+        new URLSearchParams({
+          amount: params.amount.toString(),
+          currency: params.currency,
+          ...(params.customerId && { customer: params.customerId }),
+        }),
+        {
+          headers: {
+            Authorization: `Bearer ${this.stripeApiKey}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+      
+      return {
+        clientSecret: response.data.client_secret,
+        paymentIntentId: response.data.id,
+      };
+    } catch (error) {
+      throw new Error("Failed to create payment intent");
+    }
+  }
+  
+  @api({ httpMethod: "POST" })
+  async verifyPayment(params: {
+    paymentIntentId: string;
+  }): Promise<{
+    status: string;
+    amount: number;
+    currency: string;
+    paid: boolean;
+  }> {
+    try {
+      const response = await axios.get(
+        `${this.stripeBaseUrl}/payment_intents/${params.paymentIntentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.stripeApiKey}`,
+          },
+        }
+      );
+      
+      return {
+        status: response.data.status,
+        amount: response.data.amount,
+        currency: response.data.currency,
+        paid: response.data.status === "succeeded",
+      };
+    } catch (error) {
+      throw new Error("Failed to verify payment");
+    }
+  }
+}
+
+export const PaymentFrameInstance = new PaymentFrame();
+```
+
+## 4. 통계 & 대시보드
+
+### 관리자 대시보드
+
+```typescript
+// admin-stats.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+interface DashboardStats {
+  users: {
+    total: number;
+    active: number;
+    newToday: number;
+    newThisWeek: number;
+    newThisMonth: number;
+    byRole: {
+      admin: number;
+      manager: number;
+      normal: number;
+    };
+  };
+  content: {
+    totalPosts: number;
+    totalComments: number;
+    postsToday: number;
+    commentsToday: number;
+  };
+  engagement: {
+    averagePostsPerUser: number;
+    averageCommentsPerPost: number;
+    mostActiveUsers: Array<{
+      userId: number;
+      username: string;
+      postCount: number;
+    }>;
+  };
+  system: {
+    databaseSize: number;
+    cacheHitRate: number;
+    averageResponseTime: number;
+  };
+}
+
+class AdminStatsFrame extends BaseFrameClass {
+  frameName = "AdminStats";
+  
+  @api({ httpMethod: "GET" })
+  async dashboard(): Promise<DashboardStats> {
+    const rdb = this.getPuri("r");
+    
+    // 날짜 계산
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    
+    // 사용자 통계
+    const [{ totalUsers }] = await rdb
+      .table("users")
+      .count({ totalUsers: "*" });
+    
+    const [{ activeUsers }] = await rdb
+      .table("users")
+      .where("is_active", true)
+      .count({ activeUsers: "*" });
+    
+    const [{ newToday }] = await rdb
+      .table("users")
+      .where("created_at", ">=", today)
+      .count({ newToday: "*" });
+    
+    const [{ newThisWeek }] = await rdb
+      .table("users")
+      .where("created_at", ">=", weekAgo)
+      .count({ newThisWeek: "*" });
+    
+    const [{ newThisMonth }] = await rdb
+      .table("users")
+      .where("created_at", ">=", monthAgo)
+      .count({ newThisMonth: "*" });
+    
+    // 역할별 통계
+    const roleStats = await rdb
+      .table("users")
+      .select({ role: "role" })
+      .count({ count: "*" })
+      .groupBy("role");
+    
+    const byRole = {
+      admin: roleStats.find((s) => s.role === "admin")?.count || 0,
+      manager: roleStats.find((s) => s.role === "manager")?.count || 0,
+      normal: roleStats.find((s) => s.role === "normal")?.count || 0,
+    };
+    
+    // 콘텐츠 통계
+    const [{ totalPosts }] = await rdb
+      .table("posts")
+      .count({ totalPosts: "*" });
+    
+    const [{ totalComments }] = await rdb
+      .table("comments")
+      .count({ totalComments: "*" });
+    
+    const [{ postsToday }] = await rdb
+      .table("posts")
+      .where("created_at", ">=", today)
+      .count({ postsToday: "*" });
+    
+    const [{ commentsToday }] = await rdb
+      .table("comments")
+      .where("created_at", ">=", today)
+      .count({ commentsToday: "*" });
+    
+    // 참여도 통계
+    const averagePostsPerUser = totalUsers > 0
+      ? totalPosts / totalUsers
+      : 0;
+    
+    const averageCommentsPerPost = totalPosts > 0
+      ? totalComments / totalPosts
+      : 0;
+    
+    // 가장 활동적인 사용자
+    const mostActiveUsers = await rdb
+      .table("posts")
+      .select({
+        userId: "user_id",
+        username: "users.username",
+      })
+      .count({ postCount: "*" })
+      .join("users", "posts.user_id", "users.id")
+      .groupBy("posts.user_id", "users.username")
+      .orderBy("postCount", "desc")
+      .limit(5);
+    
+    return {
+      users: {
+        total: totalUsers,
+        active: activeUsers,
+        newToday,
+        newThisWeek,
+        newThisMonth,
+        byRole,
+      },
+      content: {
+        totalPosts,
+        totalComments,
+        postsToday,
+        commentsToday,
+      },
+      engagement: {
+        averagePostsPerUser,
+        averageCommentsPerPost,
+        mostActiveUsers,
+      },
+      system: {
+        databaseSize: 0, // TODO: 구현
+        cacheHitRate: 0, // TODO: 구현
+        averageResponseTime: 0, // TODO: 구현
+      },
+    };
+  }
+}
+
+export const AdminStatsFrameInstance = new AdminStatsFrame();
+```
+
+## 5. 검증 & 유효성 체크
+
+```typescript
+// validation.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import dns from "dns/promises";
+
+class ValidationFrame extends BaseFrameClass {
+  frameName = "Validation";
+  
+  // 이메일 검증
+  @api({ httpMethod: "POST" })
+  async validateEmail(params: {
+    email: string;
+    checkDns?: boolean;
+  }): Promise<{
+    valid: boolean;
+    format: boolean;
+    domain: boolean;
+    message?: string;
+  }> {
+    // 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const formatValid = emailRegex.test(params.email);
+    
+    if (!formatValid) {
+      return {
+        valid: false,
+        format: false,
+        domain: false,
+        message: "Invalid email format",
+      };
+    }
+    
+    // 도메인 검증
+    let domainValid = true;
+    const domain = params.email.split("@")[1];
+    
+    if (params.checkDns) {
+      try {
+        await dns.resolveMx(domain);
+      } catch (error) {
+        domainValid = false;
+      }
+    }
+    
+    return {
+      valid: formatValid && domainValid,
+      format: formatValid,
+      domain: domainValid,
+      message: !domainValid ? "Domain does not exist or has no MX records" : undefined,
+    };
+  }
+  
+  // URL 검증
+  @api({ httpMethod: "POST" })
+  async validateUrl(params: {
+    url: string;
+    checkReachable?: boolean;
+  }): Promise<{
+    valid: boolean;
+    format: boolean;
+    reachable?: boolean;
+    statusCode?: number;
+    message?: string;
+  }> {
+    // 형식 검증
+    let urlObj: URL;
+    try {
+      urlObj = new URL(params.url);
+    } catch (error) {
+      return {
+        valid: false,
+        format: false,
+        message: "Invalid URL format",
+      };
+    }
+    
+    // HTTP/HTTPS만 허용
+    if (!["http:", "https:"].includes(urlObj.protocol)) {
+      return {
+        valid: false,
+        format: false,
+        message: "Only HTTP/HTTPS protocols are supported",
+      };
+    }
+    
+    // 도달 가능 여부 확인
+    let reachable: boolean | undefined;
+    let statusCode: number | undefined;
+    
+    if (params.checkReachable) {
+      try {
+        const axios = require("axios");
+        const response = await axios.head(params.url, {
+          timeout: 5000,
+          validateStatus: () => true, // 모든 상태 코드 허용
+        });
+        
+        statusCode = response.status;
+        reachable = statusCode >= 200 && statusCode < 400;
+      } catch (error) {
+        reachable = false;
+      }
+    }
+    
+    return {
+      valid: true && (reachable !== false),
+      format: true,
+      reachable,
+      statusCode,
+    };
+  }
+  
+  // 전화번호 검증 (한국)
+  @api({ httpMethod: "POST" })
+  async validatePhoneKR(params: {
+    phone: string;
+  }): Promise<{
+    valid: boolean;
+    formatted: string;
+    type: "mobile" | "landline" | "unknown";
+    message?: string;
+  }> {
+    // 숫자만 추출
+    const digits = params.phone.replace(/\D/g, "");
+    
+    // 길이 체크 (10-11자리)
+    if (digits.length < 10 || digits.length > 11) {
+      return {
+        valid: false,
+        formatted: params.phone,
+        type: "unknown",
+        message: "Phone number must be 10-11 digits",
+      };
+    }
+    
+    // 유형 판단
+    let type: "mobile" | "landline" | "unknown" = "unknown";
+    let formatted: string;
+    
+    if (digits.startsWith("010") && digits.length === 11) {
+      // 휴대폰
+      type = "mobile";
+      formatted = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    } else if (digits.length === 10) {
+      // 지역번호
+      type = "landline";
+      formatted = `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6)}`;
+    } else {
+      formatted = params.phone;
+    }
+    
+    return {
+      valid: type !== "unknown",
+      formatted,
+      type,
+    };
+  }
+}
+
+export const ValidationFrameInstance = new ValidationFrame();
+```
+
+## 사용 패턴 요약
+
+```mermaid
+flowchart TD
+    A[Frame 사용 사례] --> B[헬스체크]
+    A --> C[유틸리티]
+    A --> D[외부 API]
+    A --> E[통계/집계]
+    
+    B --> B1[서버 상태]
+    B --> B2[DB 연결]
+    B --> B3[메모리/CPU]
+    
+    C --> C1[암호화]
+    C --> C2[해시]
+    C --> C3[검증]
+    
+    D --> D1[날씨]
+    D --> D2[결제]
+    D --> D3[지도]
+    
+    E --> E1[대시보드]
+    E --> E2[리포트]
+    E --> E3[분석]
+    
+    style A fill:#e3f2fd
+    style B fill:#e8f5e9
+    style C fill:#fff9c4
+    style D fill:#ffe0b2
+    style E fill:#f3e5f5
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Frame 생성하기" icon="plus" href="/api-development/frames/creating-frames">
+    BaseFrameClass 사용법
+  </Card>
+  <Card title="Frame이란?" icon="circle-question" href="/api-development/frames/what-are-frames">
+    Frame 개념 이해하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+  <Card title="Model" icon="database" href="/core-concepts/entities">
+    Entity 기반 API
+  </Card>
+</CardGroup>

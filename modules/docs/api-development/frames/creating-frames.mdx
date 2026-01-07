@@ -1,10 +1,619 @@
 ---
-title: 'Frame 생성하기'
-description: 'BaseFrameClass 사용하기'
+title: "Frame 생성하기"
+description: "BaseFrameClass로 독립적인 API 만들기"
 ---
 
-# Frame 생성하기
+Frame을 생성하는 방법과 구조를 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 기본 구조
+
+### Frame 파일 생성
+
+```typescript
+// api/src/frames/health/health.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+class HealthFrame extends BaseFrameClass {
+  // Frame 이름 (URL 경로에 사용됨)
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{
+    status: string;
+    timestamp: Date;
+  }> {
+    return {
+      status: "ok",
+      timestamp: new Date(),
+    };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+**생성되는 엔드포인트**:
+- `GET /api/health/check`
+
+<Info>
+Frame은 `frameName` 속성으로 URL 경로가 결정됩니다.
+소문자로 변환되어 `/api/{frameName}/{methodName}` 형태가 됩니다.
+</Info>
+
+## 필수 요소
+
+### 1. BaseFrameClass 상속
+
+```typescript
+import { BaseFrameClass } from "sonamu";
+
+class MyFrame extends BaseFrameClass {
+  // Frame 구현
+}
+```
+
+### 2. frameName 정의
+
+```typescript
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health"; // ← 필수!
+}
+
+// URL: /api/health/...
+```
+
+### 3. @api 데코레이터
+
+```typescript
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  // @api 데코레이터 필수
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{ status: string }> {
+    return { status: "ok" };
+  }
+}
+```
+
+### 4. 인스턴스 export
+
+```typescript
+export const HealthFrameInstance = new HealthFrame();
+```
+
+## 실전 예제
+
+### 헬스체크 Frame
+
+```typescript
+// health.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+
+interface HealthCheckResponse {
+  status: "ok" | "error";
+  timestamp: Date;
+  uptime: number;
+  memory: {
+    total: number;
+    used: number;
+    free: number;
+  };
+  database: "connected" | "disconnected";
+}
+
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<HealthCheckResponse> {
+    // DB 연결 체크
+    let dbStatus: "connected" | "disconnected" = "disconnected";
+    
+    try {
+      const rdb = this.getPuri("r");
+      await rdb.raw("SELECT 1");
+      dbStatus = "connected";
+    } catch (error) {
+      console.error("Database connection failed:", error);
+    }
+    
+    // 메모리 정보
+    const memoryUsage = process.memoryUsage();
+    
+    return {
+      status: dbStatus === "connected" ? "ok" : "error",
+      timestamp: new Date(),
+      uptime: process.uptime(),
+      memory: {
+        total: memoryUsage.heapTotal,
+        used: memoryUsage.heapUsed,
+        free: memoryUsage.heapTotal - memoryUsage.heapUsed,
+      },
+      database: dbStatus,
+    };
+  }
+  
+  @api({ httpMethod: "GET" })
+  async ping(): Promise<{ message: string; timestamp: Date }> {
+    return {
+      message: "pong",
+      timestamp: new Date(),
+    };
+  }
+  
+  @api({ httpMethod: "GET" })
+  async version(): Promise<{
+    version: string;
+    buildDate: string;
+    nodeVersion: string;
+  }> {
+    return {
+      version: process.env.APP_VERSION || "1.0.0",
+      buildDate: process.env.BUILD_DATE || new Date().toISOString(),
+      nodeVersion: process.version,
+    };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+### 유틸리티 Frame
+
+```typescript
+// utils.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import crypto from "crypto";
+
+interface HashParams {
+  text: string;
+  algorithm: "md5" | "sha256" | "sha512";
+}
+
+interface EncryptParams {
+  text: string;
+  key: string;
+}
+
+interface DecryptParams {
+  encrypted: string;
+  key: string;
+}
+
+class UtilsFrame extends BaseFrameClass {
+  frameName = "Utils";
+  
+  @api({ httpMethod: "POST" })
+  async hash(params: HashParams): Promise<{ hash: string }> {
+    const hash = crypto
+      .createHash(params.algorithm)
+      .update(params.text)
+      .digest("hex");
+    
+    return { hash };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async uuid(): Promise<{ uuid: string }> {
+    return {
+      uuid: crypto.randomUUID(),
+    };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async encrypt(params: EncryptParams): Promise<{ encrypted: string }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.key, "salt", 32);
+    const iv = crypto.randomBytes(16);
+    
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    
+    let encrypted = cipher.update(params.text, "utf8", "hex");
+    encrypted += cipher.final("hex");
+    
+    // IV를 함께 반환 (복호화에 필요)
+    return {
+      encrypted: iv.toString("hex") + ":" + encrypted,
+    };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async decrypt(params: DecryptParams): Promise<{ decrypted: string }> {
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(params.key, "salt", 32);
+    
+    // IV와 암호문 분리
+    const [ivHex, encrypted] = params.encrypted.split(":");
+    const iv = Buffer.from(ivHex, "hex");
+    
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    
+    return { decrypted };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async randomString(params: {
+    length: number;
+    charset?: "alphanumeric" | "hex" | "base64";
+  }): Promise<{ random: string }> {
+    const length = Math.min(params.length, 1024); // 최대 1024자
+    const charset = params.charset || "alphanumeric";
+    
+    let random: string;
+    
+    switch (charset) {
+      case "hex":
+        random = crypto.randomBytes(Math.ceil(length / 2)).toString("hex").slice(0, length);
+        break;
+      case "base64":
+        random = crypto.randomBytes(Math.ceil(length * 3 / 4)).toString("base64").slice(0, length);
+        break;
+      case "alphanumeric":
+      default:
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        random = Array.from(crypto.randomBytes(length))
+          .map((byte) => chars[byte % chars.length])
+          .join("");
+        break;
+    }
+    
+    return { random };
+  }
+}
+
+export const UtilsFrameInstance = new UtilsFrame();
+```
+
+### 외부 API 프록시 Frame
+
+```typescript
+// weather.frame.ts
+import { BaseFrameClass, api } from "sonamu";
+import axios from "axios";
+
+interface WeatherParams {
+  city: string;
+  country?: string;
+}
+
+interface WeatherResponse {
+  city: string;
+  temperature: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  timestamp: Date;
+}
+
+class WeatherFrame extends BaseFrameClass {
+  frameName = "Weather";
+  
+  private apiKey = process.env.WEATHER_API_KEY || "";
+  private baseUrl = "https://api.openweathermap.org/data/2.5";
+  
+  @api({ httpMethod: "GET" })
+  async current(params: WeatherParams): Promise<WeatherResponse> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/weather`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: "metric",
+        },
+      });
+      
+      const data = response.data;
+      
+      return {
+        city: data.name,
+        temperature: data.main.temp,
+        condition: data.weather[0].description,
+        humidity: data.main.humidity,
+        windSpeed: data.wind.speed,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch weather data");
+    }
+  }
+  
+  @api({ httpMethod: "GET" })
+  async forecast(params: WeatherParams): Promise<{
+    city: string;
+    forecast: Array<{
+      date: string;
+      temperature: number;
+      condition: string;
+    }>;
+  }> {
+    const query = params.country
+      ? `${params.city},${params.country}`
+      : params.city;
+    
+    try {
+      const response = await axios.get(`${this.baseUrl}/forecast`, {
+        params: {
+          q: query,
+          appid: this.apiKey,
+          units: "metric",
+          cnt: 5, // 5일 예보
+        },
+      });
+      
+      const data = response.data;
+      
+      return {
+        city: data.city.name,
+        forecast: data.list.map((item: any) => ({
+          date: item.dt_txt,
+          temperature: item.main.temp,
+          condition: item.weather[0].description,
+        })),
+      };
+    } catch (error) {
+      throw new Error("Failed to fetch forecast data");
+    }
+  }
+}
+
+export const WeatherFrameInstance = new WeatherFrame();
+```
+
+## DB 접근
+
+Frame에서도 DB에 접근할 수 있습니다.
+
+### 읽기 작업
+
+```typescript
+class StatsFrame extends BaseFrameClass {
+  frameName = "Stats";
+  
+  @api({ httpMethod: "GET" })
+  async dashboard(): Promise<{
+    totalUsers: number;
+    totalPosts: number;
+    totalComments: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const [{ userCount }] = await rdb
+      .table("users")
+      .count({ userCount: "*" });
+    
+    const [{ postCount }] = await rdb
+      .table("posts")
+      .count({ postCount: "*" });
+    
+    const [{ commentCount }] = await rdb
+      .table("comments")
+      .count({ commentCount: "*" });
+    
+    return {
+      totalUsers: userCount,
+      totalPosts: postCount,
+      totalComments: commentCount,
+    };
+  }
+}
+```
+
+### 쓰기 작업 (@transactional)
+
+```typescript
+class AdminFrame extends BaseFrameClass {
+  frameName = "Admin";
+  
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async clearOldLogs(params: {
+    beforeDate: Date;
+  }): Promise<{
+    deletedCount: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    const deletedCount = await wdb
+      .table("logs")
+      .where("created_at", "<", params.beforeDate)
+      .delete();
+    
+    return { deletedCount };
+  }
+}
+```
+
+## 에러 처리
+
+### try-catch 패턴
+
+```typescript
+class ExternalApiFrame extends BaseFrameClass {
+  frameName = "External";
+  
+  @api({ httpMethod: "GET" })
+  async fetchData(params: { url: string }): Promise<any> {
+    try {
+      const response = await axios.get(params.url, {
+        timeout: 5000,
+      });
+      
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(`External API error: ${error.message}`);
+      }
+      
+      throw new Error("Unknown error occurred");
+    }
+  }
+}
+```
+
+### 검증 로직
+
+```typescript
+class ValidationFrame extends BaseFrameClass {
+  frameName = "Validation";
+  
+  @api({ httpMethod: "POST" })
+  async validateEmail(params: {
+    email: string;
+  }): Promise<{
+    valid: boolean;
+    message?: string;
+  }> {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(params.email)) {
+      return {
+        valid: false,
+        message: "Invalid email format",
+      };
+    }
+    
+    // 추가 검증 (도메인 체크 등)
+    const domain = params.email.split("@")[1];
+    const blockedDomains = ["tempmail.com", "throwaway.com"];
+    
+    if (blockedDomains.includes(domain)) {
+      return {
+        valid: false,
+        message: "Domain not allowed",
+      };
+    }
+    
+    return { valid: true };
+  }
+}
+```
+
+## 파일 구조
+
+### 권장 구조
+
+```
+api/src/frames/
+├── health/
+│   └── health.frame.ts
+├── utils/
+│   └── utils.frame.ts
+├── weather/
+│   └── weather.frame.ts
+└── stats/
+    └── stats.frame.ts
+```
+
+### 타입 파일 분리 (선택)
+
+```
+api/src/frames/
+├── health/
+│   ├── health.frame.ts
+│   └── health.types.ts      # ← 타입만 분리
+├── utils/
+│   ├── utils.frame.ts
+│   └── utils.types.ts
+```
+
+```typescript
+// utils.types.ts
+export interface HashParams {
+  text: string;
+  algorithm: "md5" | "sha256" | "sha512";
+}
+
+export interface HashResponse {
+  hash: string;
+}
+
+// utils.frame.ts
+import { HashParams, HashResponse } from "./utils.types";
+
+class UtilsFrame extends BaseFrameClass {
+  @api({ httpMethod: "POST" })
+  async hash(params: HashParams): Promise<HashResponse> {
+    // ...
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**Frame 사용 시 주의사항**:
+1. `frameName` 속성 필수
+2. 메서드는 `async` 함수여야 함
+3. 인스턴스를 export 해야 함
+4. 복잡한 로직은 Model 사용 고려
+5. Entity가 필요하면 Model로 전환
+</Warning>
+
+### 흔한 실수
+
+```typescript
+// ❌ 잘못됨: frameName 없음
+class HealthFrame extends BaseFrameClass {
+  // frameName = "Health"; // ← 필수!
+  
+  @api({ httpMethod: "GET" })
+  async check() { /* ... */ }
+}
+
+// ❌ 잘못됨: 인스턴스 export 없음
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  // ...
+}
+// export const HealthFrameInstance = new HealthFrame(); // ← 필수!
+
+// ❌ 잘못됨: async 아님
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  check(): { status: string } { // ← async 필요
+    return { status: "ok" };
+  }
+}
+
+// ✅ 올바름
+class HealthFrame extends BaseFrameClass {
+  frameName = "Health";
+  
+  @api({ httpMethod: "GET" })
+  async check(): Promise<{ status: string }> {
+    return { status: "ok" };
+  }
+}
+
+export const HealthFrameInstance = new HealthFrame();
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="사용 사례" icon="lightbulb" href="/api-development/frames/use-cases">
+    실전 Frame 예제
+  </Card>
+  <Card title="Frame이란?" icon="circle-question" href="/api-development/frames/what-are-frames">
+    Frame 개념 이해하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/error-handling">
+    API 에러 핸들링
+  </Card>
+</CardGroup>
