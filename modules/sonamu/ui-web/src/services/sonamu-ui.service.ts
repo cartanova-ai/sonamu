@@ -409,6 +409,54 @@ export namespace SonamuUIService {
       data: { db, fixtures },
     });
   }
+
+  // i18n
+  export type I18nDictionaryRow = {
+    key: string;
+    source: "entity" | "sonamu" | "project";
+    isFunction: boolean;
+    [locale: string]: string | boolean;
+  };
+
+  export function useI18nDictionary() {
+    return useQuery({
+      queryKey: ["i18n", "dictionary"],
+      queryFn: () =>
+        fetch({
+          method: "GET",
+          url: `/sonamu-ui/api/i18n/dictionary`,
+        }) as Promise<{
+          rows: I18nDictionaryRow[];
+          locales: string[];
+          defaultLocale: string;
+        }>,
+    });
+  }
+
+  export function exportI18n(): Promise<Blob> {
+    return fetch({
+      method: "GET",
+      url: `/sonamu-ui/api/i18n/export`,
+      responseType: "blob",
+    });
+  }
+
+  export function importI18n(file: File): Promise<{
+    success: boolean;
+    updatedEntities: number;
+    updatedLocales: number;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/i18n/import`,
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  }
 }
 
 export type ScaffoldingStatus = {
