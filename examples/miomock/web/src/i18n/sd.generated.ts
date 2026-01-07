@@ -282,9 +282,14 @@ export function localizedColumn<T extends Record<string, unknown>, K extends key
   const locale = getCurrentLocale();
   const otherLocales = SUPPORTED_LOCALES.filter((l: string) => l !== locale);
   const localizedKey = (column: K, locale: string) => `${String(column)}_${locale}`;
+  const keys = [
+    localizedKey(column, locale),
+    column,
+    ...otherLocales.map((l) => localizedKey(column, l)),
+  ];
 
-  for (const loc of [locale, column, ...otherLocales]) {
-    const value = row[localizedKey(column, loc)];
+  for (const key of keys) {
+    const value = row[key];
     if (value != null && value !== "") {
       return String(value);
     }
