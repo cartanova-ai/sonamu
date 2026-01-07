@@ -1,4 +1,5 @@
 const DEFAULT_LOCALE = "ko";
+const SUPPORTED_LOCALES = ["ko", "en"];
 let _currentLocale = DEFAULT_LOCALE;
 
 export function setLocale(locale: string) {
@@ -263,3 +264,31 @@ SD.locale =
   <K extends DictKey>(key: K): MergedDictionary[K] => {
     return getDictValue(key, locale);
   };
+
+/**
+ * locale에 따라 적절한 컬럼 값을 반환합니다.
+ * DB에 name, name_ko, name_en처럼 localized column이 있을 때 사용합니다.
+ *
+ * 우선순위 (ko locale): column_ko → column → column_en
+ * 우선순위 (en locale): column_en → column → column_ko
+ *
+ * @example
+ * localizedColumn(tag, "name")
+ */
+export function localizedColumn<T extends Record<string, unknown>, K extends keyof T & string>(
+  row: T,
+  column: K,
+): string | undefined {
+  const locale = getCurrentLocale();
+  const otherLocales = SUPPORTED_LOCALES.filter((l: string) => l !== locale);
+  const localizedKey = (column: K, locale: string) => `${String(column)}_${locale}`;
+
+  for (const loc of [locale, column, ...otherLocales]) {
+    const value = row[localizedKey(column, loc)];
+    if (value != null && value !== "") {
+      return String(value);
+    }
+  }
+
+  return undefined;
+}

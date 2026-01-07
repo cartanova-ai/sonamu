@@ -107,6 +107,8 @@ export default defineLocale({
   "entity.Tag.create": "Create Tag",
   "entity.Tag.edit": (id: number) => `Edit Tag #${id}`,
   "entity.Tag.name": "Tag Name",
+  "entity.Tag.name_ko": "Tag Name (KO)",
+  "entity.Tag.name_en": "Tag Name (EN)",
 
   // ===== Entity: File =====
   "entity.File": "File",

@@ -27,7 +27,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
 import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
-import { SD } from "@/i18n/sd.generated";
+import { localizedColumn, SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import { TagOrderBy, TagSearchField } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
@@ -88,8 +88,8 @@ function TagList({}: TagListProps) {
       fit: true,
     },
     {
-      label: SD("entity.Tag.name"),
-      tc: (row) => <>{row.name}</>,
+      label: `${SD("entity.Tag.name")} (localizedColumn)`,
+      tc: (row) => <>{localizedColumn(row, "name")}</>,
       fit: true,
     },
     {
@@ -100,7 +100,6 @@ function TagList({}: TagListProps) {
     {
       label: SD("entity.Tag.name_en"),
       tc: (row) => <>{row.name_en}</>,
-      fit: true,
     },
     {
       label: SD("common.manage"),
