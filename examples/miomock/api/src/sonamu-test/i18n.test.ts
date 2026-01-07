@@ -1,7 +1,7 @@
 import { Sonamu } from "sonamu";
 import { bootstrap, runWithContext } from "sonamu/test";
 import { describe, expect, test, vi } from "vitest";
-import { localizedColumn } from "../i18n/sd.generated";
+import { localizedColumn, SD } from "../i18n/sd.generated";
 
 bootstrap(vi);
 describe("i18n", () => {
@@ -44,6 +44,34 @@ describe("i18n", () => {
         },
         async () => {
           expect(localizedColumn(tag, "name")).toBe("test");
+        },
+      );
+    });
+  });
+
+  describe("SD.enumLabels", () => {
+    test("ko locale인 경우, 한국어 라벨 반환", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "ko",
+        },
+        async () => {
+          const labels = SD.enumLabels("TagOrderBy");
+          expect(labels["id-desc"]).toBe("ID최신순");
+        },
+      );
+    });
+
+    test("en locale인 경우, 영어 라벨 반환", async () => {
+      await runWithContext(
+        {
+          ...Sonamu.getContext(),
+          locale: "en",
+        },
+        async () => {
+          const labels = SD.enumLabels("TagOrderBy");
+          expect(labels["id-desc"]).toBe("ID Descending");
         },
       );
     });
