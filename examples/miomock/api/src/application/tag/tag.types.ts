@@ -9,5 +9,7 @@ export type TagListParams = z.infer<typeof TagListParams>;
 export const TagSaveParams = TagBaseSchema.partial({
   id: true,
   created_at: true,
+  name_ko: true,
+  name_en: true,
 });
 export type TagSaveParams = z.infer<typeof TagSaveParams>;

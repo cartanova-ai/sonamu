@@ -97,7 +97,7 @@
   },
   {
     "path": "src/application/tag/tag.types.ts",
-    "checksum": "e9b97b10eb5248d142767fadfb055b1561a730c9"
+    "checksum": "8b6bb5381463ee93ddc7374f3e848cd510204ffa"
   },
   {
     "path": "src/application/user/user.entity.json",
