@@ -874,9 +874,17 @@ export class Puri<TSchema, TTables extends Record<string, any>, TResult> {
     return new ResolvedPuri(this.knexQuery, this.knex);
   }
 
-  // INSERT
+  // INSERT : 단일 객체
   insert(
     data: InsertData<SingleTableValue<TTables>>,
+  ): ResolvedPuri<InsertResult, SingleTableValue<TTables>>;
+  // INSERT: 배열
+  insert(
+    data: InsertData<SingleTableValue<TTables>>[],
+  ): ResolvedPuri<InsertResult, SingleTableValue<TTables>>;
+  // INSERT 실제 구현
+  insert(
+    data: InsertData<SingleTableValue<TTables>> | InsertData<SingleTableValue<TTables>>[],
   ): ResolvedPuri<InsertResult, SingleTableValue<TTables>> {
     this.knexQuery.insert(data);
     return new ResolvedPuri(this.knexQuery, this.knex);

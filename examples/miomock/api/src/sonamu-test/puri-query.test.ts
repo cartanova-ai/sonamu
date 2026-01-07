@@ -37,7 +37,7 @@ describe("Puri Query", () => {
       expectQuery(query, "columns").toMatchInlineSnapshot(`"*"`);
     });
 
-    test("insert", async () => {
+    test("insert - 단일 객체", async () => {
       const db = UserModel.getPuri("w");
       await db
         .table("users")
@@ -46,6 +46,23 @@ describe("Puri Query", () => {
 
       expectQuery(query, "type").toMatchInlineSnapshot(`"insert"`);
       expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
+    });
+
+    test("insert - 배열 (다중 행)", async () => {
+      const db = UserModel.getPuri("w");
+      await db.table("users").insert([
+        { username: "user1", email: "user1@test.com", password: "pass1", role: "normal" },
+        { username: "user2", email: "user2@test.com", password: "pass2", role: "normal" },
+        { username: "user3", email: "user3@test.com", password: "pass3", role: "admin" },
+      ]);
+      const query = Naite.get("puri:executed-query").first();
+
+      expectQuery(query, "type").toMatchInlineSnapshot(`"insert"`);
+      expectQuery(query, "table").toMatchInlineSnapshot(`"users"`);
+
+      expect(query).toContain("user1@test.com");
+      expect(query).toContain("user2@test.com");
+      expect(query).toContain("user3@test.com");
     });
 
     test("update", async () => {
