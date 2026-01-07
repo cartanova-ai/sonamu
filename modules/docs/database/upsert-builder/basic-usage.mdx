@@ -1,10 +1,406 @@
 ---
-title: '기본 사용법'
-description: '단순 upsert 작업'
+title: "기본 사용법"
+description: "UpsertBuilder로 데이터 저장하기"
 ---
 
-# 기본 사용법
+UpsertBuilder는 복잡한 관계 데이터를 트랜잭션 내에서 효율적으로 저장하는 도구입니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## UpsertBuilder 개요
+
+<CardGroup cols={2}>
+  <Card title="트랜잭션 필수" icon="arrows-rotate">
+    항상 트랜잭션 내에서 사용
+    
+    데이터 일관성 보장
+  </Card>
+  <Card title="UBRef 참조" icon="link">
+    외래 키 자동 해결
+    
+    ID 없이 관계 정의
+  </Card>
+  <Card title="순차 저장" icon="list-ol">
+    의존 순서대로 저장
+    
+    외래 키 제약 충족
+  </Card>
+  <Card title="타입 안전성" icon="shield">
+    컴파일 타임 검증
+    
+    테이블 스키마 확인
+  </Card>
+</CardGroup>
+
+## 기본 개념
+
+### 일반 INSERT의 문제
+
+```typescript
+// ❌ 문제: 외래 키를 미리 알 수 없음
+await db.transaction(async (trx) => {
+  // 1. Company 생성
+  const [companyId] = await trx
+    .table("companies")
+    .insert({ name: "Tech Corp" })
+    .returning("id");
+  
+  // 2. Department 생성 (company_id 필요)
+  const [deptId] = await trx
+    .table("departments")
+    .insert({
+      name: "Engineering",
+      company_id: companyId, // ← 위에서 받은 ID 사용
+    })
+    .returning("id");
+  
+  // 3. User 생성
+  const [userId] = await trx
+    .table("users")
+    .insert({
+      email: "john@test.com",
+      username: "john",
+      password: "pass",
+      role: "normal",
+    })
+    .returning("id");
+  
+  // 4. Employee 생성 (user_id, department_id 필요)
+  await trx.table("employees").insert({
+    user_id: userId, // ← 위에서 받은 ID
+    department_id: deptId, // ← 위에서 받은 ID
+    employee_number: "E001",
+  });
+});
+
+// 코드가 길고 복잡함
+// ID를 매번 추적해야 함
+```
+
+### UpsertBuilder의 해결
+
+```typescript
+// ✅ 해결: UBRef로 관계 정의
+await db.transaction(async (trx) => {
+  // 1. 데이터 등록 (UBRef 받기)
+  const companyRef = trx.ubRegister("companies", {
+    name: "Tech Corp",
+  });
+  
+  const deptRef = trx.ubRegister("departments", {
+    name: "Engineering",
+    company_id: companyRef, // ← UBRef 사용
+  });
+  
+  const userRef = trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  });
+  
+  trx.ubRegister("employees", {
+    user_id: userRef, // ← UBRef 사용
+    department_id: deptRef, // ← UBRef 사용
+    employee_number: "E001",
+  });
+  
+  // 2. 순서대로 저장
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("departments");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+
+// 간결하고 명확함
+// ID 추적 불필요
+```
+
+<Frame>
+  <img src="/images/upsert-builder/ubref-concept.png" alt="UBRef 개념" />
+</Frame>
+
+## ubRegister - 데이터 등록
+
+`ubRegister`는 저장할 데이터를 등록하고 **UBRef**를 반환합니다.
+
+### 기본 사용
+
+```typescript
+await db.transaction(async (trx) => {
+  // 테이블과 데이터 지정
+  const userRef = trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "hashed_password",
+    role: "normal",
+  });
+  
+  // userRef는 UBRef 타입
+  // 실제 ID가 아니라 참조 객체
+});
+```
+
+### 타입 안전성
+
+```typescript
+// ✅ OK: 올바른 필드
+trx.ubRegister("users", {
+  email: "john@test.com",
+  username: "john",
+  password: "pass",
+  role: "normal",
+});
+
+// ❌ Type Error: 잘못된 필드
+trx.ubRegister("users", {
+  email: "john@test.com",
+  invalid_field: "value", // Property 'invalid_field' does not exist
+});
+
+// ❌ Type Error: 필수 필드 누락
+trx.ubRegister("users", {
+  email: "john@test.com",
+  // username 누락 → Type Error
+});
+```
+
+## ubUpsert - 실제 저장
+
+`ubUpsert`는 등록된 데이터를 DB에 실제로 저장합니다.
+
+### 기본 사용
+
+```typescript
+await db.transaction(async (trx) => {
+  trx.ubRegister("users", {
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  });
+  
+  // DB에 저장하고 생성된 ID 배열 반환
+  const userIds = await trx.ubUpsert("users");
+  
+  console.log(userIds); // [1]
+});
+```
+
+### 반환값
+
+```typescript
+// 단일 레코드
+const [userId] = await trx.ubUpsert("users");
+console.log(userId); // 1
+
+// 여러 레코드
+const userIds = await trx.ubUpsert("users");
+console.log(userIds); // [1, 2, 3]
+```
+
+### 저장 순서
+
+```typescript
+await db.transaction(async (trx) => {
+  // 등록 (순서 무관)
+  const userRef = trx.ubRegister("users", { ... });
+  const companyRef = trx.ubRegister("companies", { ... });
+  const deptRef = trx.ubRegister("departments", {
+    company_id: companyRef,
+  });
+  const empRef = trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: deptRef,
+  });
+  
+  // 저장 (의존성 순서 필수)
+  await trx.ubUpsert("companies");   // 1. 의존성 없음
+  await trx.ubUpsert("departments"); // 2. company_id 필요
+  await trx.ubUpsert("users");       // 3. 의존성 없음
+  await trx.ubUpsert("employees");   // 4. user_id, department_id 필요
+});
+```
+
+<Warning>
+**저장 순서 중요!**
+
+외래 키가 참조하는 테이블을 먼저 저장해야 합니다.
+잘못된 순서는 외래 키 제약 위반 에러를 발생시킵니다.
+</Warning>
+
+## 실전 예제
+
+### 사용자 등록
+
+```typescript
+async createUser(data: {
+  email: string;
+  username: string;
+  password: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // User 등록
+    trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: data.password,
+      role: "normal",
+      is_verified: false,
+    });
+    
+    // 저장
+    const [userId] = await trx.ubUpsert("users");
+    
+    return userId;
+  });
+}
+```
+
+### 회사 + 부서 생성
+
+```typescript
+async createCompanyWithDepartment(data: {
+  companyName: string;
+  departmentName: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // 1. Company 등록
+    const companyRef = trx.ubRegister("companies", {
+      name: data.companyName,
+    });
+    
+    // 2. Department 등록 (Company 참조)
+    trx.ubRegister("departments", {
+      name: data.departmentName,
+      company_id: companyRef,
+    });
+    
+    // 3. 순서대로 저장
+    const [companyId] = await trx.ubUpsert("companies");
+    const [departmentId] = await trx.ubUpsert("departments");
+    
+    return { companyId, departmentId };
+  });
+}
+```
+
+### 직원 등록 (User + Employee)
+
+```typescript
+async createEmployee(data: {
+  email: string;
+  username: string;
+  password: string;
+  departmentId: number;
+  employeeNumber: string;
+  salary: string;
+}) {
+  return await this.getPuri("w").transaction(async (trx) => {
+    // 1. User 등록
+    const userRef = trx.ubRegister("users", {
+      email: data.email,
+      username: data.username,
+      password: data.password,
+      role: "normal",
+    });
+    
+    // 2. Employee 등록
+    trx.ubRegister("employees", {
+      user_id: userRef,
+      department_id: data.departmentId, // 기존 ID 사용
+      employee_number: data.employeeNumber,
+      salary: data.salary,
+    });
+    
+    // 3. 저장
+    const [userId] = await trx.ubUpsert("users");
+    const [employeeId] = await trx.ubUpsert("employees");
+    
+    return { userId, employeeId };
+  });
+}
+```
+
+## UBRef 타입
+
+UBRef는 실제 ID가 아닌 **참조 객체**입니다:
+
+```typescript
+// UBRef 타입
+type UBRef = {
+  _type: "UBRef";
+  table: string;
+  index: number;
+};
+
+// 사용 예시
+const userRef = trx.ubRegister("users", { ... });
+console.log(userRef);
+// { _type: "UBRef", table: "users", index: 0 }
+
+// ❌ 직접 사용 불가
+const userId = userRef; // Type Error
+await db.table("posts").insert({
+  user_id: userRef, // ❌ Runtime Error
+});
+
+// ✅ UpsertBuilder 내에서만 사용
+trx.ubRegister("employees", {
+  user_id: userRef, // ✅ OK
+});
+```
+
+## 에러 처리
+
+### 트랜잭션 롤백
+
+```typescript
+try {
+  await db.transaction(async (trx) => {
+    trx.ubRegister("users", { ... });
+    trx.ubRegister("employees", { ... });
+    
+    await trx.ubUpsert("users");
+    
+    // 에러 발생 시 자동 롤백
+    throw new Error("Something went wrong");
+  });
+} catch (error) {
+  console.error("Transaction failed:", error);
+  // users 삽입도 롤백됨
+}
+```
+
+### 외래 키 제약 위반
+
+```typescript
+await db.transaction(async (trx) => {
+  const userRef = trx.ubRegister("users", { ... });
+  trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: 999, // 존재하지 않는 ID
+  });
+  
+  await trx.ubUpsert("users");
+  
+  // ❌ 외래 키 제약 위반 에러
+  await trx.ubUpsert("employees");
+  // Error: FOREIGN KEY constraint failed
+});
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="관계 데이터" icon="link" href="/database/upsert-builder/relations">
+    UBRef로 복잡한 관계 처리
+  </Card>
+  <Card title="배치 작업" icon="layer-group" href="/database/upsert-builder/batch-operations">
+    대량 데이터 등록
+  </Card>
+  <Card title="고급 패턴" icon="wand-magic-sparkles" href="/database/upsert-builder/advanced-patterns">
+    복잡한 데이터 구조
+  </Card>
+  <Card title="트랜잭션" icon="arrows-rotate" href="/database/transactions">
+    트랜잭션 상세 가이드
+  </Card>
+</CardGroup>
