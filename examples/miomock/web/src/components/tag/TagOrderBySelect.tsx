@@ -5,8 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@sonamu-kit/react-components/components";
-
-import { TagOrderBy, TagOrderByLabel } from "@/services/sonamu.generated";
+import { SD } from "@/i18n/sd.generated";
+import { TagOrderBy } from "@/services/sonamu.generated";
 
 export type TagOrderBySelectProps = {
   value?: string;
@@ -29,6 +29,7 @@ export function TagOrderBySelect({
 }: TagOrderBySelectProps) {
   // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
   const validOptions = TagOrderBy.options.filter((key) => (key as string) !== "");
+  const enumLabels = SD.enumLabels("TagOrderBy");
 
   return (
     <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
@@ -39,7 +40,7 @@ export function TagOrderBySelect({
         {clearable && <SelectItem value="">전체</SelectItem>}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
-            {(textPrefix ?? "") + TagOrderByLabel[key]}
+            {(textPrefix ?? "") + enumLabels[key]}
           </SelectItem>
         ))}
       </SelectContent>

@@ -109,6 +109,7 @@ export default defineLocale({
   "entity.Tag.name": "Tag Name",
   "entity.Tag.name_ko": "Tag Name (KO)",
   "entity.Tag.name_en": "Tag Name (EN)",
+  "enum.TagOrderBy.id-desc": "ID Descending",
 
   // ===== Entity: File =====
   "entity.File": "File",
