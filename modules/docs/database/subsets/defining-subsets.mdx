@@ -152,9 +152,27 @@ LEFT JOIN companies ON departments.company_id = companies.id
 }
 ```
 
-<Frame>
-  <img src="/images/subsets/nested-relation-hydrate.png" alt="중첩 관계 Hydrate 과정" />
-</Frame>
+```mermaid
+flowchart LR
+    A[SQL 결과<br/>Flat 데이터] --> B{Hydrate 변환}
+    B --> C[중첩 객체<br/>employee.department.company]
+    
+    A1["employee__salary
+    employee__department__name
+    employee__department__company__name"] -.-> A
+    
+    C1["employee: {
+      salary,
+      department: {
+        name,
+        company: { name }
+      }
+    }"] -.-> C
+    
+    style A fill:#fff9c4
+    style B fill:#e8f5e9
+    style C fill:#e3f2fd
+```
 
 ## Subset 네이밍 전략
 

@@ -249,9 +249,21 @@ Batch 2: alter_users_add1.ts  ← 유지
 Batch 1: create__users.ts, create__posts.ts  ← 유지
 ```
 
-<Frame>
-  <img src="/images/migrations/rollback-scenario.png" alt="롤백 시나리오" />
-</Frame>
+```mermaid
+flowchart TD
+    A[Batch 3<br/>alter_users_add2<br/>alter_posts_add2] --> B[rollback 명령어]
+    C[Batch 2<br/>alter_users_add1] --> D[계속 유지]
+    E[Batch 1<br/>create__users<br/>create__posts] --> D
+    
+    B --> F[Batch 3 롤백됨]
+    D --> G[Batch 2, 1 유지됨]
+    
+    style A fill:#ffcdd2
+    style C fill:#c8e6c9
+    style E fill:#c8e6c9
+    style F fill:#ef5350
+    style G fill:#66bb6a
+```
 
 ## 데이터 보존
 

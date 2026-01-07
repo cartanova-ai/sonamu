@@ -79,9 +79,19 @@ Migration은 **파일명의 타임스탬프 순서**로 실행됩니다:
 5. 20251209160751_foreign__employees__user_id.ts
 ```
 
-<Frame>
-  <img src="/images/migrations/execution-order.png" alt="Migration 실행 순서" />
-</Frame>
+```mermaid
+flowchart TD
+    A["1. create__companies.ts<br/>(batch 1)"] --> B["2. create__departments.ts<br/>(batch 1)"]
+    B --> C["3. create__employees.ts<br/>(batch 1)"]
+    C --> D["4. foreign__departments.ts<br/>(batch 1)"]
+    D --> E["5. foreign__employees.ts<br/>(batch 1)"]
+    
+    style A fill:#e3f2fd
+    style B fill:#e3f2fd
+    style C fill:#e3f2fd
+    style D fill:#fff3e0
+    style E fill:#fff3e0
+```
 
 ## 단계별 실행
 

@@ -60,9 +60,21 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/one-to-one-relation.png" alt="OneToOne 관계" />
-</Frame>
+```mermaid
+erDiagram
+    USER ||--|| EMPLOYEE : "1:1"
+    USER {
+        int id PK
+        string email
+        string username
+    }
+    EMPLOYEE {
+        int id PK
+        int user_id FK
+        string employee_number
+        string salary
+    }
+```
 
 ## OneToMany 관계
 
@@ -111,9 +123,19 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/one-to-many-relation.png" alt="OneToMany 관계" />
-</Frame>
+```mermaid
+erDiagram
+    DEPARTMENT ||--o{ EMPLOYEE : "1:N"
+    DEPARTMENT {
+        int id PK
+        string name
+    }
+    EMPLOYEE {
+        int id PK
+        int department_id FK
+        string employee_number
+    }
+```
 
 ## ManyToMany 관계
 
@@ -187,9 +209,26 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/many-to-many-relation.png" alt="ManyToMany 관계" />
-</Frame>
+```mermaid
+erDiagram
+    PROJECT }o--o{ EMPLOYEE : "N:M"
+    PROJECT {
+        int id PK
+        string name
+        string status
+    }
+    PROJECTS__EMPLOYEES {
+        int id PK
+        int project_id FK
+        int employee_id FK
+    }
+    EMPLOYEE {
+        int id PK
+        string employee_number
+    }
+    PROJECT ||--o{ PROJECTS__EMPLOYEES : ""
+    EMPLOYEE ||--o{ PROJECTS__EMPLOYEES : ""
+```
 
 <Info>
 **ManyToMany 저장 순서**:
@@ -289,9 +328,21 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/complex-relations.png" alt="복합 관계" />
-</Frame>
+```mermaid
+flowchart TD
+    A[Company] --> B[Department]
+    B --> C[Employee]
+    D[User] --> C
+    
+    A -."company_id".-> B
+    B -."department_id".-> C
+    D -."user_id".-> C
+    
+    style A fill:#e1f5ff
+    style B fill:#e8f5e9
+    style C fill:#fff9c4
+    style D fill:#fce4ec
+```
 
 ## 실전 예제
 

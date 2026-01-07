@@ -73,9 +73,24 @@ const summary = await UserModel.findById(1, ["SS"]);
 
 ## Subset의 구성 요소
 
-<Frame>
-  <img src="/images/subsets/subset-components.png" alt="Subset의 3가지 구성 요소" />
-</Frame>
+```mermaid
+flowchart TD
+    A[Subset] --> B[1. SubsetQuery<br/>필드 선택 + JOIN]
+    A --> C[2. LoaderQuery<br/>1:N, N:M 로딩]
+    A --> D[3. Hydrate<br/>Flat → 중첩 객체]
+    
+    B --> E[기본 쿼리 실행]
+    C --> F[관계 데이터 로딩]
+    E --> D
+    F --> D
+    D --> G[최종 결과]
+    
+    style A fill:#e3f2fd
+    style B fill:#e8f5e9
+    style C fill:#fff9c4
+    style D fill:#ffebee
+    style G fill:#e1f5ff
+```
 
 ### 1. SubsetQuery - 기본 쿼리
 
@@ -135,9 +150,25 @@ Flat 데이터 → 중첩 객체:
 }
 ```
 
-<Frame>
-  <img src="/images/subsets/hydrate-transformation.png" alt="Hydrate 변환 과정" />
-</Frame>
+```mermaid
+flowchart LR
+    A["Flat 데이터
+    {id: 1,
+    username: john,
+    employee__dept__name: Eng}"] --> B[Hydrate<br/>변환]
+    B --> C["중첩 객체
+    {id: 1,
+    username: john,
+    employee: {
+      department: {
+        name: Eng
+      }
+    }}"]
+    
+    style A fill:#fff9c4
+    style B fill:#e8f5e9
+    style C fill:#e3f2fd
+```
 
 ## Subset 명명 규칙
 

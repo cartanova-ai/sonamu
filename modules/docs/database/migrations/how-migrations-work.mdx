@@ -230,9 +230,22 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-<Frame>
-  <img src="/images/migrations/schema-comparison.png" alt="스키마 비교 과정" />
-</Frame>
+```mermaid
+flowchart TD
+    A[Entity JSON] --> C{Sonamu 비교 시스템}
+    B[DB 스키마] --> C
+    C --> D[테이블 비교]
+    C --> E[컴럼 비교]
+    C --> F[인덱스 비교]
+    C --> G[외래 키 비교]
+    D --> H{차이점
+감지}
+    E --> H
+    F --> H
+    G --> H
+    H -->|차이 없음| I[마이그레이션 불필요]
+    H -->|차이 있음| J[Migration 파일 생성]
+```
 
 ## Migration 실행 순서
 

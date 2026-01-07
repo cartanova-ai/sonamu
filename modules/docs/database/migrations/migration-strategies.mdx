@@ -36,9 +36,15 @@ description: "안전하고 효율적인 스키마 변경 방법"
 
 새 구조 추가 → 마이그레이션 → 구 구조 제거
 
-<Frame>
-  <img src="/images/migrations/expand-contract-pattern.png" alt="Expand-Contract 패턴" />
-</Frame>
+```mermaid
+flowchart LR
+    A[Step 1: Expand<br/>새 컴럼 추가<br/>nullable] --> B[Step 2: Migrate<br/>데이터 이전<br/>양쪽 모두 쓰기]
+    B --> C[Step 3: Contract<br/>구 컴럼 삭제<br/>신규 컴럼만 사용]
+    
+    style A fill:#e8f5e9
+    style B fill:#fff9c4
+    style C fill:#ffebee
+```
 
 **Step 1: Expand (확장)** - 새 컬럼 추가
 ```typescript
@@ -223,9 +229,19 @@ export async function up(knex: Knex): Promise<void> {
 }
 ```
 
-<Frame>
-  <img src="/images/migrations/type-change-strategy.png" alt="타입 변경 전략" />
-</Frame>
+```mermaid
+flowchart TD
+    A[1. 새 컴럼 추가<br/>price_decimal nullable] --> B[2. 데이터 복사<br/>price → price_decimal]
+    B --> C[3. 애플리케이션 배포<br/>price_decimal 사용]
+    C --> D[4. 구 컴럼 삭제<br/>price 제거]
+    D --> E[5. 컴럼 이름 변경<br/>price_decimal → price]
+    
+    style A fill:#e3f2fd
+    style B fill:#e1f5ff
+    style C fill:#fff9c4
+    style D fill:#ffebee
+    style E fill:#e8f5e9
+```
 
 ## 인덱스 전략
 

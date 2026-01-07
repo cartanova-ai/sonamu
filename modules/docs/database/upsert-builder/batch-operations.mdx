@@ -111,9 +111,23 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/batch-with-relations.png" alt="관계가 있는 배치 작업" />
-</Frame>
+```mermaid
+flowchart LR
+    D[Department<br/>UBRef] --> E1[Employee 1<br/>UBRef]
+    D --> E2[Employee 2<br/>UBRef]
+    D --> E3[Employee 3<br/>UBRef]
+    U1[User 1<br/>UBRef] --> E1
+    U2[User 2<br/>UBRef] --> E2
+    U3[User 3<br/>UBRef] --> E3
+    
+    style D fill:#e8f5e9
+    style E1 fill:#fff9c4
+    style E2 fill:#fff9c4
+    style E3 fill:#fff9c4
+    style U1 fill:#fce4ec
+    style U2 fill:#fce4ec
+    style U3 fill:#fce4ec
+```
 
 ## Array.map을 활용한 배치
 
@@ -206,9 +220,29 @@ await db.transaction(async (trx) => {
 });
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/organization-batch.png" alt="조직 구조 대량 생성" />
-</Frame>
+```mermaid
+flowchart TD
+    C[Company] --> D1[Department 1]
+    C --> D2[Department 2]
+    C --> D3[Department 3]
+    
+    D1 --> E1[Employee 1]
+    D1 --> E2[Employee 2]
+    D2 --> E3[Employee 3]
+    D2 --> E4[Employee 4]
+    D3 --> E5[Employee 5]
+    
+    U1[User 1] --> E1
+    U2[User 2] --> E2
+    U3[User 3] --> E3
+    U4[User 4] --> E4
+    U5[User 5] --> E5
+    
+    style C fill:#e1f5ff
+    style D1 fill:#e8f5e9
+    style D2 fill:#e8f5e9
+    style D3 fill:#e8f5e9
+```
 
 ## ManyToMany 배치
 

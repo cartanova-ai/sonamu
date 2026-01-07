@@ -114,9 +114,15 @@ await db.transaction(async (trx) => {
 // ID 추적 불필요
 ```
 
-<Frame>
-  <img src="/images/upsert-builder/ubref-concept.png" alt="UBRef 개념" />
-</Frame>
+```mermaid
+graph LR
+    A[ubRegister 호출] --> B[UBRef 객체 생성]
+    B --> C[{_type: UBRef<br/>table: users<br/>index: 0}]
+    C --> D[ubRegister에서<br/>참조로 사용]
+    D --> E[ubUpsert 실행]
+    E --> F[실제 ID로 변환]
+    F --> G[DB에 저장]
+```
 
 ## ubRegister - 데이터 등록
 
