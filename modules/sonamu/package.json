@@ -120,6 +120,7 @@
     "tsicli": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
+    "xlsx": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

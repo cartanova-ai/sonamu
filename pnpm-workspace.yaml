@@ -204,6 +204,7 @@ catalog:
   vite-plugin-dts: 4.5.4
   vite-tsconfig-paths: ^5.1.4
   vitest: ^4.0.10
+  xlsx: ^0.18.5
   voyageai: ^0.0.8
   zod: ^4.1.12
   zx: ^8.8.5
