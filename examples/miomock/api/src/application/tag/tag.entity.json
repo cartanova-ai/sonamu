@@ -4,18 +4,18 @@
   "title": "TAG",
   "props": [
     { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "created_at", "type": "date", "desc": "등록일시", "dbDefault": "CURRENT_TIMESTAMP" },
+    { "name": "name", "desc": "태그명", "type": "string" },
     {
-      "name": "created_at",
-      "type": "date",
-      "desc": "등록일시",
-      "dbDefault": "CURRENT_TIMESTAMP"
+      "name": "name_ko",
+      "nullable": true,
+      "desc": "태그명 한국어",
+      "type": "string",
+      "length": 30
     },
-    { "name": "name", "desc": "태그명", "type": "string" }
+    { "name": "name_en", "nullable": true, "desc": "태그명 영어", "type": "string", "length": 30 }
   ],
   "indexes": [],
-  "subsets": { "A": ["id", "created_at", "name"] },
-  "enums": {
-    "TagOrderBy": { "id-desc": "ID최신순" },
-    "TagSearchField": { "id": "ID" }
-  }
+  "subsets": { "A": ["id", "created_at", "name", "name_ko", "name_en"] },
+  "enums": { "TagOrderBy": { "id-desc": "ID최신순" }, "TagSearchField": { "id": "ID" } }
 }

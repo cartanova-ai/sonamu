@@ -424,6 +424,8 @@ export const tagSubsetQueries = {
       id: "tags.id",
       created_at: "tags.created_at",
       name: "tags.name",
+      name_ko: "tags.name_ko",
+      name_en: "tags.name_en",
     });
   },
 };

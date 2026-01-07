@@ -26,7 +26,11 @@ import { runWithGracefulShutdown } from "../utils/process-utils";
 import { areFilesSame, findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
 import { generateTemplate, renderTemplate } from "./code-generator";
 import { createEntity, delEntity } from "./entity-operations";
-import { type FileType, getChecksumPatternGroupInAbsolutePath } from "./file-patterns";
+import {
+  checksumPatternGroup,
+  type FileType,
+  getChecksumPatternGroupInAbsolutePath,
+} from "./file-patterns";
 import {
   type LoadedApis,
   type LoadedModels,
@@ -334,14 +338,21 @@ export class Syncer {
     };
   }
 
-  // FIXME minimatch 사용
   calculateDiffGroups(diffFiles: AbsolutePath[]): DiffGroups {
-    return group(diffFiles, (r) => {
-      if (r.includes("/i18n/")) {
-        return "i18n";
+    const fileTypes = Object.keys(checksumPatternGroup) as FileType[];
+
+    return group(diffFiles, (filePath) => {
+      // 절대 경로에서 src/로 시작하는 상대 경로 부분을 추출합니다.
+      const srcIndex = filePath.indexOf("/src/");
+      if (srcIndex === -1) return "unknown";
+      const relativePath = filePath.slice(srcIndex + 1); // "src/..." 형태
+
+      for (const fileType of fileTypes) {
+        if (minimatch(relativePath, checksumPatternGroup[fileType])) {
+          return fileType;
+        }
       }
-      const matched = r.match(/\.(model|types|functions|entity|generated|frame|config)\.[tj]s/);
-      return matched?.[1] ?? "unknown";
+      return "unknown";
     }) as unknown as DiffGroups;
   }
 

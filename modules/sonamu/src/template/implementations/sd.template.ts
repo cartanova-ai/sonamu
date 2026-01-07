@@ -43,7 +43,7 @@ export class Template__sd extends Template {
 import { Sonamu } from "sonamu";
 
 const DEFAULT_LOCALE = "${defaultLocale}";
-
+const SUPPORTED_LOCALES = ${JSON.stringify(supportedLocales)};
 function getCurrentLocale(): string {
   const ctx = Sonamu.getContext();
   return ctx?.locale ?? DEFAULT_LOCALE;
@@ -51,6 +51,7 @@ function getCurrentLocale(): string {
 `.trim()
         : `
 const DEFAULT_LOCALE = "${defaultLocale}";
+const SUPPORTED_LOCALES = ${JSON.stringify(supportedLocales)};
 let _currentLocale = DEFAULT_LOCALE;
 
 export function setLocale(locale: string) {
@@ -67,19 +68,12 @@ export function getCurrentLocale(): string {
       .map((locale) => `import ${locale} from "./${locale}";`)
       .join("\n");
 
-    // sonamu 내장 dict import (모든 지원 locale)
-    const sonamuDictImports = supportedLocales
-      .map((locale) => `sonamuDict${this.capitalize(locale)}`)
-      .join(", ");
-    const sonamuDictImport = `import { ${sonamuDictImports} } from "sonamu/dict";`;
-
     // entityLabels를 코드로 변환
     const entityLabelsCode = this.generateEntityLabelsCode(entityLabels);
 
     const body = `
 ${localeManagementCode}
 
-${sonamuDictImport}
 ${localeImports}
 
 // entity.json에서 추출한 entity labels (defaultLocale 전용)
@@ -101,6 +95,7 @@ type MergedDictionary = {
     : string;
 };
 type DictKey = keyof MergedDictionary;
+export type LocalizedString = string & { __brand: "LocalizedString" };
 
 export function defineLocale(dict: Partial<MergedDictionary>) {
   return dict;
@@ -115,9 +110,14 @@ const dictionaries: Record<string, Partial<MergedDictionary>> = {
     .join("\n")}
 };
 
-function getDictValue<K extends DictKey>(key: K, locale: string): MergedDictionary[K] {
+type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: infer P) => string
+  ? (...args: P) => LocalizedString
+  : LocalizedString;
+
+function getDictValue<K extends DictKey>(key: K, locale: string): SDReturnType<K> {
   const dict = dictionaries[locale];
-  return (dict?.[key] ?? dictionaries[DEFAULT_LOCALE]?.[key] ?? key) as MergedDictionary[K];
+  const value = dict?.[key] ?? dictionaries[DEFAULT_LOCALE]?.[key] ?? key;
+  return value as unknown as SDReturnType<K>;
 }
 
 /**
@@ -125,10 +125,10 @@ function getDictValue<K extends DictKey>(key: K, locale: string): MergedDictiona
  * locale에 맞는 번역 텍스트를 반환합니다.
  *
  * @example
- * SD("common.save")  // → "저장"
- * SD("validation.required")("이름")  // → "이름은(는) 필수입니다"
+ * SD("common.save")  // → "저장" (LocalizedString)
+ * SD("user.notFound")(1)  // → "존재하지 않는 User ID 1" (LocalizedString)
  */
-export function SD<K extends DictKey>(key: K): MergedDictionary[K] {
+export function SD<K extends DictKey>(key: K): SDReturnType<K> {
   const locale = getCurrentLocale();
   return getDictValue(key, locale);
 }
@@ -140,8 +140,53 @@ export function SD<K extends DictKey>(key: K): MergedDictionary[K] {
  * const EN = SD.locale("en");
  * EN("common.save")  // → "Save"
  */
-SD.locale = (locale: string) => <K extends DictKey>(key: K): MergedDictionary[K] => {
+SD.locale = (locale: string) => <K extends DictKey>(key: K): SDReturnType<K> => {
   return getDictValue(key, locale);
+};
+
+/**
+ * locale에 따라 적절한 컬럼 값을 반환합니다.
+ * DB에 name, name_ko, name_en처럼 localized column이 있을 때 사용합니다.
+ *
+ * 우선순위 (ko locale): column_ko → column → column_en
+ * 우선순위 (en locale): column_en → column → column_ko
+ *
+ * @example
+ * localizedColumn(tag, "name")
+ */
+export function localizedColumn<T extends Record<string, unknown>, K extends keyof T & string>(
+  row: T,
+  column: K,
+): string | undefined {
+  const locale = getCurrentLocale();
+  const otherLocales = SUPPORTED_LOCALES.filter((l: string) => l !== locale);
+  const localizedKey = (column: K, locale: string) => \`\${String(column)}_\${locale}\`;
+  const keys = [localizedKey(column, locale), column, ...otherLocales.map((l) => localizedKey(column, l))];
+
+  for (const key of keys) {
+    const value = row[key];
+    if (value != null && value !== "") {
+      return String(value);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Enum의 localized labels를 Proxy로 반환합니다.
+ * Select 컴포넌트 등에서 EnumLabel[key] 대신 사용합니다.
+ *
+ * @example
+ * SD.enumLabels("TagOrderBy")[key]  // → 현재 locale의 라벨
+ */
+SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
+  return new Proxy({} as Record<string, LocalizedString>, {
+    get(_, key: string) {
+      const dictKey = \`enum.\${enumName}.\${key}\` as DictKey;
+      return getDictValue(dictKey, getCurrentLocale());
+    }
+  });
 };
 `.trim();
 

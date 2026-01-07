@@ -266,9 +266,11 @@ export const TagBaseSchema = z.object({
   id: z.int(),
   created_at: z.date(),
   name: z.string(),
+  name_ko: z.string().max(30).nullable(),
+  name_en: z.string().max(30).nullable(),
 });
 export type TagBaseSchema = z.infer<typeof TagBaseSchema> & {
-  readonly __hasDefault__: readonly ["created_at", "id"];
+  readonly __hasDefault__: readonly ["created_at", "name_ko", "name_en", "id"];
 };
 
 // BaseSchema: User
@@ -710,6 +712,8 @@ export const TagSubsetA = z.object({
   id: z.int(),
   created_at: z.date(),
   name: z.string(),
+  name_ko: z.string().max(30).nullable(),
+  name_en: z.string().max(30).nullable(),
 });
 export type TagSubsetA = z.infer<typeof TagSubsetA>;
 export type TagSubsetMapping = {

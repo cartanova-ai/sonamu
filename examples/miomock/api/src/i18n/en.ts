@@ -107,6 +107,9 @@ export default defineLocale({
   "entity.Tag.create": "Create Tag",
   "entity.Tag.edit": (id: number) => `Edit Tag #${id}`,
   "entity.Tag.name": "Tag Name",
+  "entity.Tag.name_ko": "Tag Name (KO)",
+  "entity.Tag.name_en": "Tag Name (EN)",
+  "enum.TagOrderBy.id-desc": "ID Descending",
 
   // ===== Entity: File =====
   "entity.File": "File",
@@ -119,6 +122,7 @@ export default defineLocale({
 
   // ===== API Error Messages =====
   "user.login.failed": "Email or password does not match",
+  "user.logout.failed": "Failed to logout",
   "user.email.duplicate": "Email is already in use",
   "user.notFound": (id: number) => `User ID ${id} not found`,
   "employee.notFound": (id: number) => `Employee ID ${id} not found`,
