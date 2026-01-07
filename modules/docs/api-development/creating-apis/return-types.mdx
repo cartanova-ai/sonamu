@@ -1,10 +1,872 @@
 ---
-title: '반환 타입'
-description: '응답 타입 정의하기'
+title: "반환 타입"
+description: "API 응답 타입 정의하기"
 ---
 
-# 반환 타입
+API 반환 타입을 명확하게 정의하면 클라이언트와 서버 간의 계약이 명확해지고 타입 안전성이 보장됩니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 반환 타입 개요
+
+<CardGroup cols={2}>
+  <Card title="타입 안전성" icon="shield">
+    컴파일 타임 검증
+    
+    런타임 에러 방지
+  </Card>
+  <Card title="자동완성" icon="wand-magic-sparkles">
+    IDE 지원
+    
+    개발 생산성 향상
+  </Card>
+  <Card title="명확한 계약" icon="file-contract">
+    API 명세 자동화
+    
+    클라이언트 가이드
+  </Card>
+  <Card title="리팩토링 안전" icon="code">
+    타입 변경 추적
+    
+    영향 범위 파악
+  </Card>
+</CardGroup>
+
+## 기본 반환 타입
+
+### 단일 객체
+
+```typescript
+interface User {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  createdAt: Date;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+
+// 응답:
+// {
+//   "id": 1,
+//   "email": "test@example.com",
+//   "username": "testuser",
+//   "role": "normal",
+//   "createdAt": "2025-01-07T00:00:00.000Z"
+// }
+```
+
+### 배열
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<User[]> {
+    const rdb = this.getPuri("r");
+    return rdb.table("users").select("*");
+  }
+}
+
+// 응답:
+// [
+//   { "id": 1, "email": "user1@test.com", ... },
+//   { "id": 2, "email": "user2@test.com", ... }
+// ]
+```
+
+### void (응답 없음)
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).delete();
+    // 반환값 없음 → HTTP 204 No Content
+  }
+  
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).update(params);
+    // 반환값 없음
+  }
+}
+```
+
+### 원시 타입
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 숫자 반환
+  @api({ httpMethod: "GET" })
+  async count(): Promise<number> {
+    const rdb = this.getPuri("r");
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    return count;
+  }
+  
+  // 불리언 반환
+  @api({ httpMethod: "GET" })
+  async exists(email: string): Promise<boolean> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("email", email).first();
+    return !!user;
+  }
+  
+  // 문자열 반환
+  @api({ httpMethod: "GET" })
+  async getStatus(id: number): Promise<string> {
+    const rdb = this.getPuri("r");
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    return user.status;
+  }
+}
+```
+
+## 구조화된 응답
+
+### 생성 결과
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{
+    userId: number;
+    message: string;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    const [user] = await wdb
+      .table("users")
+      .insert(params)
+      .returning({ id: "id" });
+    
+    return {
+      userId: user.id,
+      message: "User created successfully",
+    };
+  }
+}
+
+// 응답:
+// {
+//   "userId": 123,
+//   "message": "User created successfully"
+// }
+```
+
+### 페이지네이션 응답
+
+```typescript
+interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<PaginatedResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    // 데이터 조회
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    // 전체 개수
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      data: users,
+      pagination: {
+        page,
+        pageSize,
+        total: count,
+        totalPages: Math.ceil(count / pageSize),
+      },
+    };
+  }
+}
+
+// 응답:
+// {
+//   "data": [...],
+//   "pagination": {
+//     "page": 1,
+//     "pageSize": 20,
+//     "total": 150,
+//     "totalPages": 8
+//   }
+// }
+```
+
+### 메타데이터 포함
+
+```typescript
+interface UserDetailResponse {
+  user: User;
+  profile: Profile | null;
+  stats: {
+    postCount: number;
+    followerCount: number;
+    followingCount: number;
+  };
+  meta: {
+    isOwner: boolean;
+    isFollowing: boolean;
+    lastSeen: Date | null;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getDetail(
+    userId: number,
+    currentUserId?: number
+  ): Promise<UserDetailResponse> {
+    const rdb = this.getPuri("r");
+    
+    // User 조회
+    const user = await rdb.table("users").where("id", userId).first();
+    if (!user) throw new Error("User not found");
+    
+    // Profile 조회
+    const profile = await rdb.table("profiles").where("user_id", userId).first();
+    
+    // 통계
+    const [{ postCount }] = await rdb
+      .table("posts")
+      .where("user_id", userId)
+      .count({ postCount: "*" });
+    
+    const [{ followerCount }] = await rdb
+      .table("follows")
+      .where("following_id", userId)
+      .count({ followerCount: "*" });
+    
+    const [{ followingCount }] = await rdb
+      .table("follows")
+      .where("follower_id", userId)
+      .count({ followingCount: "*" });
+    
+    // 메타 정보
+    const isOwner = currentUserId === userId;
+    
+    const isFollowing = currentUserId
+      ? !!(await rdb
+          .table("follows")
+          .where("follower_id", currentUserId)
+          .where("following_id", userId)
+          .first())
+      : false;
+    
+    return {
+      user,
+      profile: profile || null,
+      stats: {
+        postCount,
+        followerCount,
+        followingCount,
+      },
+      meta: {
+        isOwner,
+        isFollowing,
+        lastSeen: user.last_seen_at,
+      },
+    };
+  }
+}
+```
+
+## 유니온 타입
+
+### 조건부 응답
+
+```typescript
+type UserResponse = 
+  | { success: true; user: User }
+  | { success: false; error: string };
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByEmail(email: string): Promise<UserResponse> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("email", email)
+      .first();
+    
+    if (!user) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
+    
+    return {
+      success: true,
+      user,
+    };
+  }
+}
+
+// 성공 응답:
+// { "success": true, "user": { ... } }
+
+// 실패 응답:
+// { "success": false, "error": "User not found" }
+```
+
+### Nullable 응답
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findByUsername(username: string): Promise<User | null> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("username", username)
+      .first();
+    
+    return user || null;
+  }
+}
+
+// 존재하면: { "id": 1, "username": "test", ... }
+// 없으면: null
+```
+
+## 제네릭 응답 타입
+
+### 공통 응답 래퍼
+
+```typescript
+// 성공 응답
+interface SuccessResponse<T> {
+  success: true;
+  data: T;
+  timestamp: Date;
+}
+
+// 에러 응답
+interface ErrorResponse {
+  success: false;
+  error: {
+    message: string;
+    code: string;
+  };
+  timestamp: Date;
+}
+
+type ApiResponse<T> = SuccessResponse<T> | ErrorResponse;
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<ApiResponse<User>> {
+    try {
+      const rdb = this.getPuri("r");
+      
+      const user = await rdb
+        .table("users")
+        .where("id", id)
+        .first();
+      
+      if (!user) {
+        return {
+          success: false,
+          error: {
+            message: "User not found",
+            code: "USER_NOT_FOUND",
+          },
+          timestamp: new Date(),
+        };
+      }
+      
+      return {
+        success: true,
+        data: user,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : "Unknown error",
+          code: "INTERNAL_ERROR",
+        },
+        timestamp: new Date(),
+      };
+    }
+  }
+}
+```
+
+### 리스트 응답 래퍼
+
+```typescript
+interface ListResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<ListResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      items: users,
+      total: count,
+      page,
+      pageSize,
+      hasMore: page * pageSize < count,
+    };
+  }
+}
+```
+
+## 부분 타입 (Partial)
+
+### 업데이트 응답
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: Partial<User>
+  ): Promise<{
+    updated: Partial<User>;
+    timestamp: Date;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    await wdb.table("users").where("id", id).update(params);
+    
+    return {
+      updated: params,
+      timestamp: new Date(),
+    };
+  }
+}
+
+// 응답:
+// {
+//   "updated": {
+//     "username": "newname",
+//     "bio": "Updated bio"
+//   },
+//   "timestamp": "2025-01-07T12:00:00.000Z"
+// }
+```
+
+## 중첩 타입
+
+### 관계 데이터 포함
+
+```typescript
+interface UserWithRelations {
+  user: User;
+  profile: Profile | null;
+  posts: Post[];
+  followers: Array<{
+    id: number;
+    username: string;
+    avatarUrl: string | null;
+  }>;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getWithRelations(id: number): Promise<UserWithRelations> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    
+    const profile = await rdb.table("profiles").where("user_id", id).first();
+    
+    const posts = await rdb
+      .table("posts")
+      .where("user_id", id)
+      .select("*");
+    
+    const followers = await rdb
+      .table("follows")
+      .join("users", "follows.follower_id", "users.id")
+      .where("follows.following_id", id)
+      .select({
+        id: "users.id",
+        username: "users.username",
+        avatarUrl: "users.avatar_url",
+      });
+    
+    return {
+      user,
+      profile: profile || null,
+      posts,
+      followers,
+    };
+  }
+}
+```
+
+## 배치 작업 응답
+
+### 일괄 생성
+
+```typescript
+interface BatchCreateResponse {
+  created: number[];
+  failed: Array<{
+    index: number;
+    error: string;
+  }>;
+  summary: {
+    total: number;
+    success: number;
+    failed: number;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async createBatch(
+    users: CreateUserParams[]
+  ): Promise<BatchCreateResponse> {
+    const wdb = this.getPuri("w");
+    
+    const created: number[] = [];
+    const failed: Array<{ index: number; error: string }> = [];
+    
+    for (let i = 0; i < users.length; i++) {
+      try {
+        const [user] = await wdb
+          .table("users")
+          .insert(users[i])
+          .returning({ id: "id" });
+        
+        created.push(user.id);
+      } catch (error) {
+        failed.push({
+          index: i,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+    
+    return {
+      created,
+      failed,
+      summary: {
+        total: users.length,
+        success: created.length,
+        failed: failed.length,
+      },
+    };
+  }
+}
+```
+
+## Subset 반환
+
+### Subset 타입 활용
+
+```typescript
+// Subset 정의 (Entity에서 정의)
+interface UserListSubset {
+  id: number;
+  email: string;
+  username: string;
+  role: UserRole;
+  // password 등 민감한 정보 제외
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(): Promise<UserListSubset[]> {
+    const rdb = this.getPuri("r");
+    
+    // Subset을 사용하면 필요한 필드만 조회
+    return rdb
+      .table("users")
+      .select({
+        id: "id",
+        email: "email",
+        username: "username",
+        role: "role",
+      });
+  }
+}
+```
+
+## 타입 재사용 패턴
+
+### Base 타입 확장
+
+```typescript
+// Base 응답 타입
+interface BaseResponse {
+  timestamp: Date;
+  requestId: string;
+}
+
+// 데이터 응답
+interface DataResponse<T> extends BaseResponse {
+  data: T;
+}
+
+// 에러 응답
+interface ErrorResponse extends BaseResponse {
+  error: {
+    message: string;
+    code: string;
+    details?: any;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<DataResponse<User>> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb.table("users").where("id", id).first();
+    if (!user) throw new Error("User not found");
+    
+    return {
+      data: user,
+      timestamp: new Date(),
+      requestId: crypto.randomUUID(),
+    };
+  }
+}
+```
+
+## 실전 패턴
+
+### CRUD 응답 패턴
+
+```typescript
+class UserModel extends BaseModelClass {
+  // Create - 생성된 ID 반환
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{
+    userId: number;
+  }> {
+    // ...
+    return { userId };
+  }
+  
+  // Read - 전체 객체 반환
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    // ...
+    return user;
+  }
+  
+  // Update - void 또는 업데이트 요약
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(id: number, params: UpdateUserParams): Promise<void> {
+    // ...
+  }
+  
+  // Delete - void
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    // ...
+  }
+  
+  // List - 페이지네이션 응답
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    // ...
+    return { users, total };
+  }
+}
+```
+
+### 통계 응답
+
+```typescript
+interface UserStatsResponse {
+  totalUsers: number;
+  activeUsers: number;
+  newUsersToday: number;
+  usersByRole: {
+    admin: number;
+    manager: number;
+    normal: number;
+  };
+  userGrowth: Array<{
+    date: string;
+    count: number;
+  }>;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getStats(): Promise<UserStatsResponse> {
+    const rdb = this.getPuri("r");
+    
+    // 전체 사용자
+    const [{ total }] = await rdb.table("users").count({ total: "*" });
+    
+    // 활성 사용자
+    const [{ active }] = await rdb
+      .table("users")
+      .where("is_active", true)
+      .count({ active: "*" });
+    
+    // 오늘 가입자
+    const [{ newToday }] = await rdb
+      .table("users")
+      .where("created_at", ">=", new Date().toISOString().split("T")[0])
+      .count({ newToday: "*" });
+    
+    // 역할별 통계
+    const roleStats = await rdb
+      .table("users")
+      .select({ role: "role" })
+      .count({ count: "*" })
+      .groupBy("role");
+    
+    const usersByRole = {
+      admin: roleStats.find((s) => s.role === "admin")?.count || 0,
+      manager: roleStats.find((s) => s.role === "manager")?.count || 0,
+      normal: roleStats.find((s) => s.role === "normal")?.count || 0,
+    };
+    
+    // 성장 추이 (최근 7일)
+    const userGrowth = []; // ... 구현
+    
+    return {
+      totalUsers: total,
+      activeUsers: active,
+      newUsersToday: newToday,
+      usersByRole,
+      userGrowth,
+    };
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**반환 타입 정의 시 주의사항**:
+1. 항상 명시적으로 타입 정의
+2. `any` 타입 사용 지양
+3. null과 undefined 구분
+4. 민감한 정보 제외 (password 등)
+5. 일관된 응답 구조 유지
+</Warning>
+
+### 흔한 실수
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ❌ 나쁨: any 타입
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<any> {
+    // 타입 안전성 없음
+  }
+  
+  // ❌ 나쁨: 타입 미지정
+  @api({ httpMethod: "GET" })
+  async list() {
+    // Promise<unknown>으로 추론됨
+  }
+  
+  // ❌ 나쁨: 민감한 정보 포함
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    // User에 password 필드 포함 → 보안 위험
+    return fullUser;
+  }
+  
+  // ✅ 좋음: 명시적 타입, 민감 정보 제외
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<UserPublicInfo> {
+    const user = await this.getFullUser(id);
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      // password 제외
+    };
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    기본 사용법
+  </Card>
+  <Card title="파라미터" icon="sliders" href="/api-development/creating-apis/parameters">
+    타입 정의 및 검증
+  </Card>
+  <Card title="HTTP 메서드" icon="globe" href="/api-development/creating-apis/http-methods">
+    GET, POST, PUT, DELETE
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/error-handling">
+    API 에러 핸들링
+  </Card>
+</CardGroup>

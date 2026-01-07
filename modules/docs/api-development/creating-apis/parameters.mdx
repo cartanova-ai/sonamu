@@ -1,10 +1,646 @@
 ---
-title: '파라미터'
-description: '타입 정의 및 검증'
+title: "파라미터"
+description: "API 파라미터 타입 정의 및 검증"
 ---
 
-# 파라미터
+API 파라미터를 올바르게 정의하면 타입 안전성과 명확한 API 문서를 얻을 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 파라미터 개요
+
+<CardGroup cols={2}>
+  <Card title="타입 안전성" icon="shield">
+    컴파일 타임 검증
+    
+    자동완성 지원
+  </Card>
+  <Card title="명확한 계약" icon="file-contract">
+    API 명세 자동 생성
+    
+    클라이언트 가이드
+  </Card>
+  <Card title="검증" icon="check-double">
+    자동 타입 검증
+    
+    에러 조기 발견
+  </Card>
+  <Card title="문서화" icon="book">
+    주석으로 설명 추가
+    
+    유지보수 용이
+  </Card>
+</CardGroup>
+
+## 기본 타입
+
+### 원시 타입
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 숫자
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // GET /api/user/getUser?id=1
+    // ...
+  }
+  
+  // 문자열
+  @api({ httpMethod: "GET" })
+  async findByEmail(email: string): Promise<User | null> {
+    // GET /api/user/findByEmail?email=test@example.com
+    // ...
+  }
+  
+  // 불리언
+  @api({ httpMethod: "GET" })
+  async listActive(active: boolean): Promise<User[]> {
+    // GET /api/user/listActive?active=true
+    // ...
+  }
+  
+  // 날짜
+  @api({ httpMethod: "GET" })
+  async listByDate(fromDate: Date, toDate: Date): Promise<User[]> {
+    // GET /api/user/listByDate?fromDate=2025-01-01&toDate=2025-12-31
+    // ...
+  }
+}
+```
+
+### 배열 타입
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 숫자 배열
+  @api({ httpMethod: "GET" })
+  async getMultiple(ids: number[]): Promise<User[]> {
+    // GET /api/user/getMultiple?ids=1,2,3
+    const rdb = this.getPuri("r");
+    return rdb.table("users").whereIn("id", ids).select("*");
+  }
+  
+  // 문자열 배열
+  @api({ httpMethod: "GET" })
+  async findByRoles(roles: UserRole[]): Promise<User[]> {
+    // GET /api/user/findByRoles?roles=admin,manager
+    const rdb = this.getPuri("r");
+    return rdb.table("users").whereIn("role", roles).select("*");
+  }
+}
+```
+
+## 인터페이스 정의
+
+### 단순 인터페이스
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  role: "admin" | "manager" | "normal";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    // params.email, params.username 등 자동완성 가능
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        email: params.email,
+        username: params.username,
+        password: params.password,
+        role: params.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+
+// 호출: POST /api/user/create
+// Body: {
+//   "email": "test@example.com",
+//   "username": "testuser",
+//   "password": "hashedpass",
+//   "role": "normal"
+// }
+```
+
+### 옵셔널 필드
+
+```typescript
+interface UserListParams {
+  // 필수 파라미터
+  page: number;
+  pageSize: number;
+  
+  // 옵셔널 파라미터
+  search?: string;
+  role?: UserRole;
+  isActive?: boolean;
+  sortBy?: "created_at" | "username" | "email";
+  sortOrder?: "asc" | "desc";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    // 옵셔널 파라미터 처리
+    if (params.search) {
+      query = query.where("username", "like", `%${params.search}%`);
+    }
+    
+    if (params.role) {
+      query = query.where("role", params.role);
+    }
+    
+    if (params.isActive !== undefined) {
+      query = query.where("is_active", params.isActive);
+    }
+    
+    // 정렬 (기본값 제공)
+    const sortBy = params.sortBy || "created_at";
+    const sortOrder = params.sortOrder || "desc";
+    query = query.orderBy(sortBy, sortOrder);
+    
+    // 페이지네이션
+    const users = await query
+      .limit(params.pageSize)
+      .offset((params.page - 1) * params.pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return { users, total: count };
+  }
+}
+```
+
+### 중첩 객체
+
+```typescript
+interface RegisterParams {
+  // User 정보
+  email: string;
+  username: string;
+  password: string;
+  
+  // Profile 정보 (중첩)
+  profile: {
+    bio: string;
+    avatarUrl?: string;
+    socialLinks?: {
+      twitter?: string;
+      github?: string;
+      linkedin?: string;
+    };
+  };
+  
+  // 설정 (중첩)
+  preferences: {
+    theme: "light" | "dark";
+    language: "ko" | "en";
+    notifications: {
+      email: boolean;
+      push: boolean;
+    };
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async register(params: RegisterParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    // User 생성
+    const userRef = wdb.ubRegister("users", {
+      email: params.email,
+      username: params.username,
+      password: params.password,
+      role: "normal",
+    });
+    
+    // Profile 생성
+    wdb.ubRegister("profiles", {
+      user_id: userRef,
+      bio: params.profile.bio,
+      avatar_url: params.profile.avatarUrl || null,
+      social_links: JSON.stringify(params.profile.socialLinks || {}),
+    });
+    
+    // Preferences 생성
+    wdb.ubRegister("user_preferences", {
+      user_id: userRef,
+      theme: params.preferences.theme,
+      language: params.preferences.language,
+      email_notifications: params.preferences.notifications.email,
+      push_notifications: params.preferences.notifications.push,
+    });
+    
+    const [userId] = await wdb.ubUpsert("users");
+    await wdb.ubUpsert("profiles");
+    await wdb.ubUpsert("user_preferences");
+    
+    return { userId };
+  }
+}
+```
+
+## 유니온 타입과 Enum
+
+### Enum 사용
+
+```typescript
+// Enum 정의
+enum UserRole {
+  Admin = "admin",
+  Manager = "manager",
+  Normal = "normal",
+}
+
+enum UserStatus {
+  Active = "active",
+  Inactive = "inactive",
+  Suspended = "suspended",
+}
+
+interface UpdateUserParams {
+  role?: UserRole;
+  status?: UserStatus;
+  bio?: string;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: UpdateUserParams
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const updateData: any = {};
+    
+    if (params.role) {
+      // Enum 값 검증 자동
+      updateData.role = params.role;
+    }
+    
+    if (params.status) {
+      updateData.status = params.status;
+    }
+    
+    if (params.bio !== undefined) {
+      updateData.bio = params.bio;
+    }
+    
+    await wdb.table("users").where("id", id).update(updateData);
+  }
+}
+```
+
+### 리터럴 유니온 타입
+
+```typescript
+interface SearchParams {
+  query: string;
+  // 리터럴 유니온 타입
+  searchIn: "username" | "email" | "bio" | "all";
+  sortBy: "relevance" | "created_at" | "username";
+  order: "asc" | "desc";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async search(params: SearchParams): Promise<User[]> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    // searchIn에 따른 검색 필드 결정
+    switch (params.searchIn) {
+      case "username":
+        query = query.where("username", "like", `%${params.query}%`);
+        break;
+      case "email":
+        query = query.where("email", "like", `%${params.query}%`);
+        break;
+      case "bio":
+        query = query.where("bio", "like", `%${params.query}%`);
+        break;
+      case "all":
+        query = query.where((qb) => {
+          qb.where("username", "like", `%${params.query}%`)
+            .orWhere("email", "like", `%${params.query}%`)
+            .orWhere("bio", "like", `%${params.query}%`);
+        });
+        break;
+    }
+    
+    return query.orderBy(params.sortBy, params.order).select("*");
+  }
+}
+```
+
+## 제네릭 타입
+
+### 공통 리스트 파라미터
+
+```typescript
+// 재사용 가능한 제네릭 인터페이스
+interface ListParams<T> {
+  page: number;
+  pageSize: number;
+  sortBy?: keyof T;
+  sortOrder?: "asc" | "desc";
+}
+
+// User용 확장
+interface UserListParams extends ListParams<User> {
+  search?: string;
+  role?: UserRole;
+}
+
+// Product용 확장
+interface ProductListParams extends ListParams<Product> {
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<User[]> {
+    // sortBy는 User의 키만 가능 (타입 안전)
+    // ...
+  }
+}
+```
+
+## 검증 로직
+
+### 커스텀 검증
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  age?: number;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // 파라미터 검증
+    this.validateCreateParams(params);
+    
+    const wdb = this.getPuri("w");
+    
+    // ...
+  }
+  
+  private validateCreateParams(params: CreateUserParams): void {
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(params.email)) {
+      throw new Error("Invalid email format");
+    }
+    
+    // 사용자명 길이 검증
+    if (params.username.length < 3 || params.username.length > 20) {
+      throw new Error("Username must be between 3 and 20 characters");
+    }
+    
+    // 비밀번호 강도 검증
+    if (params.password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    
+    // 나이 검증
+    if (params.age !== undefined && (params.age < 18 || params.age > 120)) {
+      throw new Error("Age must be between 18 and 120");
+    }
+  }
+}
+```
+
+### Zod를 사용한 검증
+
+```typescript
+import { z } from "zod";
+
+// Zod 스키마 정의
+const CreateUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  username: z.string().min(3).max(20),
+  password: z.string().min(8),
+  age: z.number().min(18).max(120).optional(),
+  role: z.enum(["admin", "manager", "normal"]),
+});
+
+type CreateUserParams = z.infer<typeof CreateUserSchema>;
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // Zod로 검증
+    const validated = CreateUserSchema.parse(params);
+    
+    const wdb = this.getPuri("w");
+    
+    // validated는 타입이 보장됨
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        email: validated.email,
+        username: validated.username,
+        password: validated.password,
+        age: validated.age,
+        role: validated.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+```
+
+## 파라미터 문서화
+
+### JSDoc 주석
+
+```typescript
+/**
+ * 사용자 목록을 조회합니다.
+ */
+interface UserListParams {
+  /**
+   * 페이지 번호 (1부터 시작)
+   * @example 1
+   */
+  page: number;
+  
+  /**
+   * 페이지당 항목 수
+   * @example 20
+   * @min 1
+   * @max 100
+   */
+  pageSize: number;
+  
+  /**
+   * 검색 키워드 (username, email에서 검색)
+   * @example "john"
+   */
+  search?: string;
+  
+  /**
+   * 사용자 역할 필터
+   * @example "admin"
+   */
+  role?: "admin" | "manager" | "normal";
+  
+  /**
+   * 정렬 기준 필드
+   * @default "created_at"
+   */
+  sortBy?: "created_at" | "username" | "email";
+  
+  /**
+   * 정렬 순서
+   * @default "desc"
+   */
+  sortOrder?: "asc" | "desc";
+}
+```
+
+## 실전 패턴
+
+### 페이지네이션 파라미터
+
+```typescript
+interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+interface UserListParams extends PaginationParams {
+  search?: string;
+  role?: UserRole;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    data: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const rdb = this.getPuri("r");
+    
+    // 기본값 처리
+    const page = Math.max(1, params.page);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize));
+    
+    // ...
+  }
+}
+```
+
+### 필터 파라미터
+
+```typescript
+interface ProductFilterParams {
+  // 카테고리
+  category?: string;
+  
+  // 가격 범위
+  minPrice?: number;
+  maxPrice?: number;
+  
+  // 재고 상태
+  inStock?: boolean;
+  
+  // 브랜드
+  brands?: string[];
+  
+  // 태그
+  tags?: string[];
+  
+  // 검색
+  search?: string;
+}
+
+class ProductModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async search(
+    params: ProductFilterParams & PaginationParams
+  ): Promise<Product[]> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("products");
+    
+    if (params.category) {
+      query = query.where("category", params.category);
+    }
+    
+    if (params.minPrice !== undefined) {
+      query = query.where("price", ">=", params.minPrice);
+    }
+    
+    if (params.maxPrice !== undefined) {
+      query = query.where("price", "<=", params.maxPrice);
+    }
+    
+    if (params.inStock !== undefined) {
+      if (params.inStock) {
+        query = query.where("stock", ">", 0);
+      } else {
+        query = query.where("stock", "=", 0);
+      }
+    }
+    
+    if (params.brands && params.brands.length > 0) {
+      query = query.whereIn("brand", params.brands);
+    }
+    
+    // ...
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="반환 타입" icon="arrow-turn-down-left" href="/api-development/creating-apis/return-types">
+    응답 타입 정의하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    기본 사용법
+  </Card>
+  <Card title="HTTP 메서드" icon="globe" href="/api-development/creating-apis/http-methods">
+    GET, POST, PUT, DELETE
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/error-handling">
+    API 에러 핸들링
+  </Card>
+</CardGroup>

@@ -1,10 +1,742 @@
 ---
-title: 'HTTP 메서드'
-description: 'GET, POST, PUT, DELETE'
+title: "HTTP 메서드"
+description: "GET, POST, PUT, DELETE 상세 가이드"
 ---
 
-# HTTP 메서드
+HTTP 메서드는 API의 의도를 명확하게 표현하고 RESTful 원칙을 따르도록 합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## HTTP 메서드 개요
+
+<CardGroup cols={2}>
+  <Card title="GET" icon="magnifying-glass">
+    데이터 조회
+    
+    안전하고 멱등성
+  </Card>
+  <Card title="POST" icon="plus">
+    데이터 생성
+    
+    비멱등성
+  </Card>
+  <Card title="PUT" icon="pen">
+    데이터 수정
+    
+    멱등성
+  </Card>
+  <Card title="DELETE" icon="trash">
+    데이터 삭제
+    
+    멱등성
+  </Card>
+</CardGroup>
+
+## GET - 조회
+
+데이터를 조회할 때 사용합니다. 서버 상태를 변경하지 않습니다.
+
+### 단일 리소스 조회
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+
+// 호출: GET /api/user/get?id=1
+```
+
+### 목록 조회
+
+```typescript
+interface UserListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: UserRole;
+  sortBy?: "created_at" | "username";
+  sortOrder?: "asc" | "desc";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    // 기본값 설정
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    const sortBy = params.sortBy || "created_at";
+    const sortOrder = params.sortOrder || "desc";
+    
+    // 쿼리 빌드
+    let query = rdb.table("users");
+    
+    // 검색 조건
+    if (params.search) {
+      query = query.where((qb) => {
+        qb.where("username", "like", `%${params.search}%`)
+          .orWhere("email", "like", `%${params.search}%`);
+      });
+    }
+    
+    // 역할 필터
+    if (params.role) {
+      query = query.where("role", params.role);
+    }
+    
+    // 정렬
+    query = query.orderBy(sortBy, sortOrder);
+    
+    // 페이지네이션
+    const users = await query
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    // 전체 개수
+    const [{ count }] = await rdb
+      .table("users")
+      .count({ count: "*" });
+    
+    return {
+      users,
+      total: count,
+      page,
+      pageSize,
+    };
+  }
+}
+
+// 호출: GET /api/user/list?page=1&pageSize=20&search=john&role=admin&sortBy=username&sortOrder=asc
+```
+
+### 관계 데이터 조회
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getWithProfile(id: number): Promise<{
+    user: User;
+    profile: Profile | null;
+    posts: Post[];
+  }> {
+    const rdb = this.getPuri("r");
+    
+    // User 조회
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // Profile 조회 (1:1)
+    const profile = await rdb
+      .table("profiles")
+      .where("user_id", id)
+      .first();
+    
+    // Posts 조회 (1:N)
+    const posts = await rdb
+      .table("posts")
+      .where("user_id", id)
+      .orderBy("created_at", "desc")
+      .select("*");
+    
+    return {
+      user,
+      profile: profile || null,
+      posts,
+    };
+  }
+}
+```
+
+<Info>
+**GET 메서드 특징**:
+- 안전함 (Safe): 서버 상태를 변경하지 않음
+- 멱등성 (Idempotent): 같은 요청을 여러 번 해도 결과 동일
+- 캐시 가능 (Cacheable): 브라우저/프록시에서 캐시 가능
+- 파라미터는 URL 쿼리 스트링으로 전달
+</Info>
+
+## POST - 생성
+
+새로운 리소스를 생성할 때 사용합니다.
+
+### 단순 생성
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: CreateUserParams): Promise<{
+    userId: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    // 중복 체크
+    const existing = await wdb
+      .table("users")
+      .where("email", params.email)
+      .first();
+    
+    if (existing) {
+      throw new Error("Email already exists");
+    }
+    
+    // User 생성
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        email: params.email,
+        username: params.username,
+        password: params.password, // 실제로는 해시 필요
+        role: params.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+
+// 호출: POST /api/user/create
+// Body: { "email": "...", "username": "...", "password": "...", "role": "normal" }
+```
+
+### 복잡한 생성 (관계 데이터 포함)
+
+```typescript
+interface RegisterParams {
+  email: string;
+  username: string;
+  password: string;
+  profile: {
+    bio: string;
+    avatarUrl?: string;
+  };
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async register(params: RegisterParams): Promise<{
+    userId: number;
+    profileId: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    // User 생성
+    const userRef = wdb.ubRegister("users", {
+      email: params.email,
+      username: params.username,
+      password: params.password,
+      role: "normal",
+    });
+    
+    // Profile 생성
+    wdb.ubRegister("profiles", {
+      user_id: userRef,
+      bio: params.profile.bio,
+      avatar_url: params.profile.avatarUrl || null,
+    });
+    
+    // 저장
+    const [userId] = await wdb.ubUpsert("users");
+    const [profileId] = await wdb.ubUpsert("profiles");
+    
+    return { userId, profileId };
+  }
+}
+```
+
+### 배치 생성
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async createBatch(users: CreateUserParams[]): Promise<{
+    userIds: number[];
+    count: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    // 모든 User 등록
+    users.forEach((user) => {
+      wdb.ubRegister("users", {
+        email: user.email,
+        username: user.username,
+        password: user.password,
+        role: user.role,
+      });
+    });
+    
+    // 일괄 저장
+    const userIds = await wdb.ubUpsert("users");
+    
+    return {
+      userIds,
+      count: userIds.length,
+    };
+  }
+}
+
+// 호출: POST /api/user/createBatch
+// Body: [
+//   { "email": "user1@test.com", "username": "user1", ... },
+//   { "email": "user2@test.com", "username": "user2", ... }
+// ]
+```
+
+<Info>
+**POST 메서드 특징**:
+- 비안전함: 서버 상태를 변경함
+- 비멱등성: 같은 요청을 여러 번 하면 리소스가 중복 생성될 수 있음
+- 캐시 불가능
+- 파라미터는 Body로 전달
+- 일반적으로 생성된 리소스의 ID를 반환
+</Info>
+
+## PUT - 수정
+
+기존 리소스를 수정할 때 사용합니다.
+
+### 전체 수정
+
+```typescript
+interface UpdateUserParams {
+  email: string;
+  username: string;
+  role: UserRole;
+  bio: string | null;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: UpdateUserParams
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    // User 존재 확인
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 전체 필드 업데이트
+    await wdb
+      .table("users")
+      .where("id", id)
+      .update({
+        email: params.email,
+        username: params.username,
+        role: params.role,
+        bio: params.bio,
+      });
+  }
+}
+
+// 호출: PUT /api/user/update?id=1
+// Body: { "email": "...", "username": "...", "role": "admin", "bio": "..." }
+```
+
+### 부분 수정 (PATCH 스타일)
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async updatePartial(
+    id: number,
+    params: Partial<UpdateUserParams>
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    // User 존재 확인
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 전달된 필드만 업데이트
+    const updateData: any = {};
+    
+    if (params.email !== undefined) updateData.email = params.email;
+    if (params.username !== undefined) updateData.username = params.username;
+    if (params.role !== undefined) updateData.role = params.role;
+    if (params.bio !== undefined) updateData.bio = params.bio;
+    
+    if (Object.keys(updateData).length > 0) {
+      await wdb
+        .table("users")
+        .where("id", id)
+        .update(updateData);
+    }
+  }
+}
+
+// 호출: PUT /api/user/updatePartial?id=1
+// Body: { "bio": "Updated bio" }  // 다른 필드는 변경 안 됨
+```
+
+### 상태 변경
+
+```typescript
+class OrderModel extends BaseModelClass {
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async updateStatus(
+    orderId: number,
+    status: "pending" | "paid" | "shipped" | "delivered" | "cancelled"
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const order = await wdb
+      .table("orders")
+      .where("id", orderId)
+      .first();
+    
+    if (!order) {
+      throw new Error("Order not found");
+    }
+    
+    // 상태 전환 검증
+    if (!this.isValidStatusTransition(order.status, status)) {
+      throw new Error(`Cannot change status from ${order.status} to ${status}`);
+    }
+    
+    await wdb
+      .table("orders")
+      .where("id", orderId)
+      .update({ status });
+  }
+  
+  private isValidStatusTransition(
+    from: string,
+    to: string
+  ): boolean {
+    const transitions: Record<string, string[]> = {
+      pending: ["paid", "cancelled"],
+      paid: ["shipped", "cancelled"],
+      shipped: ["delivered"],
+      delivered: [],
+      cancelled: [],
+    };
+    
+    return transitions[from]?.includes(to) || false;
+  }
+}
+```
+
+<Info>
+**PUT 메서드 특징**:
+- 비안전함: 서버 상태를 변경함
+- 멱등성: 같은 요청을 여러 번 해도 결과 동일
+- 일반적으로 리소스 전체를 교체
+- 파라미터는 Body로 전달
+- 성공 시 빈 응답 또는 업데이트된 리소스 반환
+</Info>
+
+## DELETE - 삭제
+
+리소스를 삭제할 때 사용합니다.
+
+### 단일 삭제
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    // User 존재 확인
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 삭제
+    await wdb
+      .table("users")
+      .where("id", id)
+      .delete();
+  }
+}
+
+// 호출: DELETE /api/user/remove?id=1
+```
+
+### 소프트 삭제
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async softDelete(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .whereNull("deleted_at")
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // deleted_at 설정 (실제 삭제 안 함)
+    await wdb
+      .table("users")
+      .where("id", id)
+      .update({
+        deleted_at: new Date(),
+      });
+  }
+  
+  // 소프트 삭제 복구
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async restore(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .whereNotNull("deleted_at")
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found or not deleted");
+    }
+    
+    await wdb
+      .table("users")
+      .where("id", id)
+      .update({
+        deleted_at: null,
+      });
+  }
+}
+```
+
+### 관련 데이터와 함께 삭제
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async removeWithRelations(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    const user = await wdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // 1. Profile 삭제
+    await wdb
+      .table("profiles")
+      .where("user_id", id)
+      .delete();
+    
+    // 2. Posts 삭제
+    await wdb
+      .table("posts")
+      .where("user_id", id)
+      .delete();
+    
+    // 3. User 삭제
+    await wdb
+      .table("users")
+      .where("id", id)
+      .delete();
+  }
+}
+```
+
+### 배치 삭제
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async removeBatch(ids: number[]): Promise<{
+    deletedCount: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    const deletedCount = await wdb
+      .table("users")
+      .whereIn("id", ids)
+      .delete();
+    
+    return { deletedCount };
+  }
+}
+
+// 호출: DELETE /api/user/removeBatch
+// Body: { "ids": [1, 2, 3] }
+```
+
+<Info>
+**DELETE 메서드 특징**:
+- 비안전함: 서버 상태를 변경함
+- 멱등성: 이미 삭제된 리소스를 다시 삭제해도 결과 동일
+- 성공 시 일반적으로 빈 응답 (204 No Content)
+- 소프트 삭제 고려 (deleted_at 컬럼 사용)
+</Info>
+
+## 메서드 선택 가이드
+
+```mermaid
+flowchart TD
+    A{작업 유형} --> B[조회]
+    A --> C[생성]
+    A --> D[수정]
+    A --> E[삭제]
+    
+    B --> F[GET]
+    C --> G[POST]
+    D --> H{전체 교체?}
+    E --> I[DELETE]
+    
+    H -->|Yes| J[PUT]
+    H -->|No| K[PUT with Partial]
+    
+    F --> L[\uc548\uc804, \uba71\ub4f1\uc131]
+    G --> M[\ube44\uc548\uc804, \ube44\uba71\ub4f1\uc131]
+    J --> N[\ube44\uc548\uc804, \uba71\ub4f1\uc131]
+    K --> N
+    I --> N
+    
+    style F fill:#e8f5e9
+    style G fill:#fff9c4
+    style J fill:#e3f2fd
+    style K fill:#e3f2fd
+    style I fill:#ffebee
+```
+
+### 선택 기준
+
+| 작업 | 메서드 | 예시 |
+|------|--------|------|
+| 단일 조회 | GET | `/api/user/get?id=1` |
+| 목록 조회 | GET | `/api/user/list?page=1` |
+| 새로 생성 | POST | `/api/user/create` |
+| 전체 수정 | PUT | `/api/user/update?id=1` |
+| 부분 수정 | PUT | `/api/user/updatePartial?id=1` |
+| 삭제 | DELETE | `/api/user/remove?id=1` |
+
+## RESTful 원칙
+
+### 좋은 예
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ✅ GET: 조회
+  @api({ httpMethod: "GET" })
+  async list(): Promise<User[]> { /* ... */ }
+  
+  // ✅ POST: 생성
+  @api({ httpMethod: "POST" })
+  async create(params: CreateUserParams): Promise<{ userId: number }> { /* ... */ }
+  
+  // ✅ PUT: 수정
+  @api({ httpMethod: "PUT" })
+  async update(id: number, params: UpdateUserParams): Promise<void> { /* ... */ }
+  
+  // ✅ DELETE: 삭제
+  @api({ httpMethod: "DELETE" })
+  async remove(id: number): Promise<void> { /* ... */ }
+}
+```
+
+### 나쁜 예
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ❌ GET으로 데이터 변경
+  @api({ httpMethod: "GET" })
+  async deleteUser(id: number): Promise<void> {
+    // GET은 안전해야 함 (상태 변경 X)
+  }
+  
+  // ❌ POST로 조회
+  @api({ httpMethod: "POST" })
+  async getUser(id: number): Promise<User> {
+    // POST는 생성용
+  }
+  
+  // ❌ DELETE로 수정
+  @api({ httpMethod: "DELETE" })
+  async updateUser(id: number, params: any): Promise<void> {
+    // DELETE는 삭제용
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="파라미터" icon="sliders" href="/api-development/creating-apis/parameters">
+    타입 정의 및 검증
+  </Card>
+  <Card title="반환 타입" icon="arrow-turn-down-left" href="/api-development/creating-apis/return-types">
+    응답 타입 정의하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    기본 사용법
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/error-handling">
+    API 에러 핸들링
+  </Card>
+</CardGroup>

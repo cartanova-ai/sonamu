@@ -1,10 +1,766 @@
 ---
-title: '@api 데코레이터'
-description: '기본 사용법'
+title: "@api 데코레이터"
+description: "메서드를 API 엔드포인트로 변환하기"
 ---
 
-# @api 데코레이터
+`@api` 데코레이터는 Model 클래스의 메서드를 자동으로 HTTP API 엔드포인트로 변환합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 데코레이터 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 라우팅" icon="route">
+    메서드를 API로 변환
+    
+    URL 자동 생성
+  </Card>
+  <Card title="타입 안전성" icon="shield">
+    파라미터 타입 검증
+    
+    컴파일 타임 체크
+  </Card>
+  <Card title="HTTP 메서드" icon="globe">
+    GET, POST, PUT, DELETE
+    
+    RESTful API 지원
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation">
+    자동 에러 변환
+    
+    일관된 응답 형식
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+### 가장 단순한 형태
+
+```typescript
+import { BaseModelClass, api } from "sonamu";
+
+class UserModel extends BaseModelClass {
+  modelName = "User";
+  
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+}
+```
+
+**생성되는 엔드포인트**:
+- URL: `GET /api/user/getUser`
+- 파라미터: `{ id: number }`
+- 응답: `User` 객체
+
+### HTTP 메서드 지정
+
+```typescript
+class UserModel extends BaseModelClass {
+  modelName = "User";
+  
+  // GET 요청
+  @api({ httpMethod: "GET" })
+  async list(): Promise<User[]> {
+    const rdb = this.getPuri("r");
+    return rdb.table("users").select("*");
+  }
+  
+  // POST 요청
+  @api({ httpMethod: "POST" })
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    const [userId] = await wdb
+      .table("users")
+      .insert(params)
+      .returning({ id: "id" });
+    
+    return { userId: userId.id };
+  }
+  
+  // PUT 요청
+  @api({ httpMethod: "PUT" })
+  async update(id: number, params: Partial<UserSaveParams>): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).update(params);
+  }
+  
+  // DELETE 요청
+  @api({ httpMethod: "DELETE" })
+  async remove(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    await wdb.table("users").where("id", id).delete();
+  }
+}
+```
+
+## API 라우팅 규칙
+
+### URL 생성 패턴
+
+```typescript
+class UserModel extends BaseModelClass {
+  modelName = "User"; // ← 모델명이 URL에 사용됨
+  
+  @api({ httpMethod: "GET" })
+  async getProfile(userId: number) {
+    // URL: GET /api/user/getProfile
+    // ...
+  }
+  
+  @api({ httpMethod: "POST" })
+  async register(params: RegisterParams) {
+    // URL: POST /api/user/register
+    // ...
+  }
+}
+```
+
+```mermaid
+flowchart LR
+    A[Model Class] --> B[modelName: User]
+    C[Method] --> D[getProfile]
+    E[httpMethod] --> F[GET]
+    
+    B --> G[/api/user]
+    D --> G
+    F --> H[GET /api/user/getProfile]
+    G --> H
+    
+    style A fill:#e3f2fd
+    style C fill:#e8f5e9
+    style E fill:#fff9c4
+    style H fill:#c8e6c9
+```
+
+<Info>
+**URL 규칙**:
+- 기본 경로: `/api/{modelName}/{methodName}`
+- modelName은 소문자로 변환
+- 예: `UserModel.getProfile` → `/api/user/getProfile`
+</Info>
+
+## 파라미터 처리
+
+### 단일 파라미터
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 숫자 파라미터
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // GET /api/user/getUser?id=1
+    // ...
+  }
+  
+  // 문자열 파라미터
+  @api({ httpMethod: "GET" })
+  async findByEmail(email: string): Promise<User | null> {
+    // GET /api/user/findByEmail?email=test@example.com
+    // ...
+  }
+  
+  // 불리언 파라미터
+  @api({ httpMethod: "GET" })
+  async listActive(active: boolean): Promise<User[]> {
+    // GET /api/user/listActive?active=true
+    // ...
+  }
+}
+```
+
+### 복합 파라미터 (객체)
+
+```typescript
+interface UserListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: UserRole;
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    if (params.search) {
+      query = query.where("username", "like", `%${params.search}%`);
+    }
+    
+    if (params.role) {
+      query = query.where("role", params.role);
+    }
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    const users = await query
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return { users, total: count };
+  }
+}
+
+// 호출: GET /api/user/list?page=1&pageSize=20&search=john&role=admin
+```
+
+### 여러 파라미터
+
+```typescript
+class OrderModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async createOrder(
+    userId: number,
+    items: OrderItem[],
+    shippingAddress: string
+  ): Promise<{ orderId: number }> {
+    // POST /api/order/createOrder
+    // Body: { userId: 1, items: [...], shippingAddress: "..." }
+    
+    const wdb = this.getPuri("w");
+    
+    const [order] = await wdb
+      .table("orders")
+      .insert({
+        user_id: userId,
+        shipping_address: shippingAddress,
+        status: "pending",
+      })
+      .returning({ id: "id" });
+    
+    // 주문 아이템 저장
+    for (const item of items) {
+      await wdb.table("order_items").insert({
+        order_id: order.id,
+        product_id: item.productId,
+        quantity: item.quantity,
+      });
+    }
+    
+    return { orderId: order.id };
+  }
+}
+```
+
+## 반환 타입
+
+### 기본 타입
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 객체 반환
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // ...
+    return user;
+  }
+  
+  // 배열 반환
+  @api({ httpMethod: "GET" })
+  async list(): Promise<User[]> {
+    // ...
+    return users;
+  }
+  
+  // void (응답 없음)
+  @api({ httpMethod: "DELETE" })
+  async remove(id: number): Promise<void> {
+    // ...
+    // 성공 시 빈 응답
+  }
+  
+  // 숫자 반환
+  @api({ httpMethod: "GET" })
+  async count(): Promise<number> {
+    // ...
+    return count;
+  }
+}
+```
+
+### 구조화된 응답
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    data: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    const users = await rdb
+      .table("users")
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      data: users,
+      pagination: {
+        page,
+        pageSize,
+        total: count,
+        totalPages: Math.ceil(count / pageSize),
+      },
+    };
+  }
+}
+```
+
+## 데코레이터 조합
+
+### @api + @transactional
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 순서는 상관없음
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async register(params: RegisterParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    // 중복 체크
+    const existing = await wdb
+      .table("users")
+      .where("email", params.email)
+      .first();
+    
+    if (existing) {
+      throw new Error("Email already exists");
+    }
+    
+    // User 생성
+    wdb.ubRegister("users", {
+      email: params.email,
+      username: params.username,
+      password: params.password,
+      role: "normal",
+    });
+    
+    const [userId] = await wdb.ubUpsert("users");
+    
+    return { userId };
+  }
+  
+  // 반대 순서도 가능
+  @transactional()
+  @api({ httpMethod: "PUT" })
+  async updateProfile(
+    userId: number,
+    params: ProfileParams
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", userId)
+      .update({
+        bio: params.bio,
+        avatar_url: params.avatarUrl,
+      });
+  }
+}
+```
+
+## 에러 처리
+
+### 자동 에러 변환
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      // Error 객체 → HTTP 500
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+  
+  @api({ httpMethod: "POST" })
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    try {
+      const [userId] = await wdb
+        .table("users")
+        .insert(params)
+        .returning({ id: "id" });
+      
+      return { userId: userId.id };
+    } catch (error) {
+      // DB 에러 → HTTP 500
+      throw new Error("Failed to create user");
+    }
+  }
+}
+```
+
+<Warning>
+기본적으로 모든 에러는 HTTP 500으로 변환됩니다.
+커스텀 에러 처리가 필요하면 별도 에러 핸들러를 구현해야 합니다.
+</Warning>
+
+## 실전 예제
+
+### CRUD API
+
+```typescript
+interface UserSaveParams {
+  email: string;
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
+interface UserListParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+}
+
+class UserModel extends BaseModelClass {
+  modelName = "User";
+  
+  // Create
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    const wdb = this.getPuri("w");
+    
+    wdb.ubRegister("users", params);
+    const [userId] = await wdb.ubUpsert("users");
+    
+    return { userId };
+  }
+  
+  // Read (단일)
+  @api({ httpMethod: "GET" })
+  async get(id: number): Promise<User> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    return user;
+  }
+  
+  // Read (목록)
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    if (params.search) {
+      query = query.where("username", "like", `%${params.search}%`);
+    }
+    
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    
+    const users = await query
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return { users, total: count };
+  }
+  
+  // Update
+  @api({ httpMethod: "PUT" })
+  @transactional()
+  async update(
+    id: number,
+    params: Partial<UserSaveParams>
+  ): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", id)
+      .update(params);
+  }
+  
+  // Delete
+  @api({ httpMethod: "DELETE" })
+  @transactional()
+  async remove(id: number): Promise<void> {
+    const wdb = this.getPuri("w");
+    
+    await wdb
+      .table("users")
+      .where("id", id)
+      .delete();
+  }
+}
+```
+
+### 복잡한 비즈니스 로직
+
+```typescript
+class OrderModel extends BaseModelClass {
+  modelName = "Order";
+  
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async placeOrder(params: {
+    userId: number;
+    items: Array<{ productId: number; quantity: number }>;
+    shippingAddress: string;
+    paymentMethod: string;
+  }): Promise<{
+    orderId: number;
+    totalAmount: number;
+  }> {
+    const wdb = this.getPuri("w");
+    
+    // 1. 재고 확인
+    for (const item of params.items) {
+      const product = await wdb
+        .table("products")
+        .where("id", item.productId)
+        .first();
+      
+      if (!product || product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for product ${item.productId}`);
+      }
+    }
+    
+    // 2. 총액 계산
+    let totalAmount = 0;
+    for (const item of params.items) {
+      const product = await wdb
+        .table("products")
+        .where("id", item.productId)
+        .first();
+      
+      totalAmount += product.price * item.quantity;
+    }
+    
+    // 3. 주문 생성
+    const [order] = await wdb
+      .table("orders")
+      .insert({
+        user_id: params.userId,
+        total_amount: totalAmount,
+        shipping_address: params.shippingAddress,
+        payment_method: params.paymentMethod,
+        status: "pending",
+      })
+      .returning({ id: "id" });
+    
+    // 4. 주문 아이템 생성
+    for (const item of params.items) {
+      await wdb.table("order_items").insert({
+        order_id: order.id,
+        product_id: item.productId,
+        quantity: item.quantity,
+      });
+      
+      // 재고 차감
+      await wdb
+        .table("products")
+        .where("id", item.productId)
+        .decrement("stock", item.quantity);
+    }
+    
+    return {
+      orderId: order.id,
+      totalAmount,
+    };
+  }
+}
+```
+
+## 타입 안전성
+
+### 파라미터 타입 검증
+
+```typescript
+interface CreateUserParams {
+  email: string;
+  username: string;
+  password: string;
+  role: "admin" | "normal";
+}
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // TypeScript가 params 타입을 검증
+    // params.email, params.username 등은 자동완성됨
+    
+    const wdb = this.getPuri("w");
+    
+    // ✅ 타입이 맞으면 OK
+    const [userId] = await wdb
+      .table("users")
+      .insert({
+        email: params.email,
+        username: params.username,
+        password: params.password,
+        role: params.role,
+      })
+      .returning({ id: "id" });
+    
+    return { userId: userId.id };
+  }
+}
+
+// 호출 시:
+// POST /api/user/create
+// Body: {
+//   "email": "test@example.com",
+//   "username": "testuser",
+//   "password": "hashedpass",
+//   "role": "normal"  // "admin" 또는 "normal"만 가능
+// }
+```
+
+### 반환 타입 명시
+
+```typescript
+class UserModel extends BaseModelClass {
+  // 반환 타입을 명시하면 타입 안전성 보장
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<{
+    user: User;
+    profile: Profile | null;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const user = await rdb
+      .table("users")
+      .where("id", id)
+      .first();
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    const profile = await rdb
+      .table("profiles")
+      .where("user_id", id)
+      .first();
+    
+    // ✅ 반환 타입이 명시한 구조와 일치해야 함
+    return {
+      user,
+      profile: profile || null,
+    };
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**@api 사용 시 주의사항**:
+1. Model 클래스에서만 사용 가능
+2. 메서드는 `async` 함수여야 함
+3. `modelName` 속성 필수
+4. 파라미터/반환 타입 명시 권장
+5. 에러는 throw로 전파
+</Warning>
+
+### 흔한 실수
+
+```typescript
+class UserModel extends BaseModelClass {
+  // ❌ 잘못됨: modelName 없음
+  // modelName = "User"; // ← 필수!
+  
+  // ❌ 잘못됨: async 아님
+  @api({ httpMethod: "GET" })
+  getUser(id: number): User {
+    // ...
+  }
+  
+  // ❌ 잘못됨: 타입 미지정
+  @api({ httpMethod: "POST" })
+  async create(params): Promise<any> {
+    // params와 반환 타입이 any
+  }
+  
+  // ✅ 올바름
+  modelName = "User";
+  
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // ...
+  }
+  
+  @api({ httpMethod: "POST" })
+  async create(params: UserSaveParams): Promise<{ userId: number }> {
+    // ...
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="HTTP 메서드" icon="globe" href="/api-development/creating-apis/http-methods">
+    GET, POST, PUT, DELETE 상세
+  </Card>
+  <Card title="파라미터" icon="sliders" href="/api-development/creating-apis/parameters">
+    타입 정의 및 검증
+  </Card>
+  <Card title="반환 타입" icon="arrow-turn-down-left" href="/api-development/creating-apis/return-types">
+    응답 타입 정의하기
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/error-handling">
+    API 에러 핸들링
+  </Card>
+</CardGroup>
