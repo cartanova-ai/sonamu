@@ -1,9 +1,26 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import React from "react";
+import { type LocalizedString, SD } from "../i18n/sd.generated";
 import { UserService } from "../services/services.generated";
 import type { UserSubsetSS } from "../services/sonamu.generated";
 import type { UserLoginParams } from "../services/user/user.types";
+
+/**
+ * LocalizedString만 받는 MessageAlert
+ * 하드코딩된 문자열 사용 시 타입 에러 발생
+ *
+ * @example
+ * showAlert(SD("error.loginFailed"))  // ✅ OK
+ * showAlert("로그인 실패")             // ❌ 타입 에러
+ */
+interface MessageAlertProps {
+  message: LocalizedString;
+}
+
+function showAlert({ message }: MessageAlertProps) {
+  alert(message);
+}
 
 interface AuthContextType {
   user: UserSubsetSS | null;
@@ -38,7 +55,7 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
           },
           onError: (error) => {
             console.error("Login failed:", error);
-            alert("로그인에 실패했습니다");
+            showAlert({ message: SD("user.login.failed") });
           },
         },
       );
@@ -51,7 +68,7 @@ export function AuthProvider({ children }: { children?: React.ReactNode }) {
         },
         onError: (error) => {
           console.error("Logout failed:", error);
-          alert("로그아웃에 실패했습니다");
+          showAlert({ message: SD("user.logout.failed") });
         },
       });
     },

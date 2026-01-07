@@ -121,6 +121,7 @@ export default defineLocale({
 
   // ===== API Error Messages =====
   "user.login.failed": "Email or password does not match",
+  "user.logout.failed": "Failed to logout",
   "user.email.duplicate": "Email is already in use",
   "user.notFound": (id: number) => `User ID ${id} not found`,
   "employee.notFound": (id: number) => `Employee ID ${id} not found`,

@@ -47,6 +47,7 @@ export default {
 
   // ===== API 에러 메시지 =====
   "user.login.failed": "이메일 또는 비밀번호가 일치하지 않습니다",
+  "user.logout.failed": "로그아웃 실패",
   "user.email.duplicate": "이미 사용중인 이메일입니다",
   "user.notFound": (id: number) => `존재하지 않는 User ID ${id}`,
   "employee.notFound": (id: number) => `존재하지 않는 Employee ID ${id}`,
