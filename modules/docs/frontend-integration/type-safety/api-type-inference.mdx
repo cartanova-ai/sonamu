@@ -1,10 +1,564 @@
 ---
-title: 'API 타입 추론'
-description: '완전한 타입 추론'
+title: "API 타입 추론"
+description: "백엔드에서 프론트엔드로 완전한 타입 추론"
 ---
 
-# API 타입 추론
+Sonamu가 백엔드 API의 타입을 프론트엔드에서 자동으로 추론하여 완전한 타입 안전성을 제공하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## API 타입 추론 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 타입 생성" icon="wand-magic-sparkles">
+    백엔드 → 프론트엔드
+    
+    수동 작업 불필요
+  </Card>
+  <Card title="완전한 추론" icon="shield-check">
+    파라미터부터 응답까지
+    
+    모든 타입 보장
+  </Card>
+  <Card title="실시간 동기화" icon="arrows-rotate">
+    API 변경 시
+    
+    자동 업데이트
+  </Card>
+  <Card title="IDE 지원" icon="code">
+    자동 완성
+    
+    타입 힌트
+  </Card>
+</CardGroup>
+
+## 타입 추론이란?
+
+### 문제: 수동 타입 정의의 어려움
+
+전통적인 개발에서는 백엔드와 프론트엔드의 타입을 **각각 수동으로 정의**해야 합니다.
+
+```typescript
+// ❌ 백엔드 (Node.js + Express)
+app.get("/api/user/:id", async (req, res) => {
+  const user = await db.users.findById(req.params.id);
+  res.json({ user });
+});
+
+// ❌ 프론트엔드 (수동 타입 정의)
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  // 필드 추가/변경 시 수동 동기화 필요
+}
+
+async function getUser(id: number): Promise<{ user: User }> {
+  const response = await fetch(`/api/user/${id}`);
+  return response.json();
+}
+```
+
+**문제점**:
+1. **중복 작업**: 백엔드와 프론트엔드에서 같은 타입 두 번 정의
+2. **동기화 누락**: 백엔드 변경 시 프론트엔드 타입 업데이트 누락
+3. **런타임 에러**: 타입 불일치를 런타임에만 발견
+4. **유지보수 어려움**: 타입이 많아질수록 관리 복잡도 증가
+
+### 해결: 자동 타입 추론
+
+Sonamu는 **백엔드 타입을 자동으로 추론**하여 프론트엔드에 전달합니다.
+
+```typescript
+// ✅ 백엔드 (Sonamu)
+@api({ httpMethod: "GET" })
+async getUser(userId: number): Promise<{
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}> {
+  const user = await this.findById(userId);
+  return { user };
+}
+
+// ✅ 프론트엔드 (자동 생성)
+export namespace UserService {
+  export async function getUser(
+    userId: number
+  ): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getUser?${qs.stringify({ userId })}`,
+    });
+  }
+}
+```
+
+**장점**:
+- 백엔드 타입이 프론트엔드에 **자동으로 복사**됨
+- API 변경 시 **자동으로 동기화**됨
+- **단일 진실 공급원** (백엔드가 유일한 타입 소스)
+
+## 타입 추론 과정
+
+### 1단계: 백엔드 API 정의
+
+TypeScript 타입을 포함하여 API를 정의합니다.
+
+```typescript
+// backend/models/user.model.ts
+import { BaseModelClass, api } from "sonamu";
+
+class UserModel extends BaseModelClass {
+  modelName = "User";
+  
+  @api({ httpMethod: "GET" })
+  async getProfile(userId: number): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+      role: "admin" | "user";
+      createdAt: Date;
+    };
+    stats: {
+      postCount: number;
+      followerCount: number;
+    };
+  }> {
+    const user = await this.findById(userId);
+    const stats = await this.getStats(userId);
+    
+    return { user, stats };
+  }
+}
+```
+
+**TypeScript 타입 시스템 활용**:
+- 반환 타입을 명시적으로 선언
+- 중첩 객체, 유니온 타입, 리터럴 타입 모두 지원
+- TypeScript의 모든 타입 기능 활용 가능
+
+### 2단계: AST 파싱
+
+Sonamu는 TypeScript 컴파일러 API를 사용하여 코드를 분석합니다.
+
+```typescript
+// Sonamu 내부 동작 (의사 코드)
+import * as ts from "typescript";
+
+function extractApiType(methodNode: ts.MethodDeclaration) {
+  // 1. 반환 타입 추출
+  const returnType = typeChecker.getTypeAtLocation(methodNode.type);
+  
+  // 2. 타입 정보를 TypeScript 코드로 변환
+  const typeString = typeChecker.typeToString(returnType);
+  
+  // 3. 파라미터 타입 추출
+  const parameters = methodNode.parameters.map(param => ({
+    name: param.name.getText(),
+    type: typeChecker.getTypeAtLocation(param.type),
+  }));
+  
+  return {
+    returnType: typeString,
+    parameters,
+  };
+}
+```
+
+**AST (Abstract Syntax Tree)**:
+- TypeScript 코드를 트리 구조로 표현
+- 타입 정보를 프로그래밍 방식으로 추출 가능
+- 100% 정확한 타입 정보 획득
+
+### 3단계: Service 타입 생성
+
+추출한 타입을 Service 코드에 삽입합니다.
+
+```typescript
+// services.generated.ts (자동 생성)
+export namespace UserService {
+  // 파라미터 타입도 정확히 추론
+  export async function getProfile(
+    userId: number  // ← 백엔드와 동일한 타입
+  ): Promise<{
+    user: {
+      id: number;
+      username: string;
+      email: string;
+      role: "admin" | "user";  // ← 리터럴 타입도 보존
+      createdAt: Date;
+    };
+    stats: {
+      postCount: number;
+      followerCount: number;
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/getProfile?${qs.stringify({ userId })}`,
+    });
+  }
+}
+```
+
+**타입 보존**:
+- 유니온 타입 (`"admin" | "user"`)
+- 중첩 객체
+- 배열 타입
+- Date, null, undefined 등 모든 TypeScript 타입
+
+### 4단계: TanStack Query Hook 생성
+
+React Hook에도 타입이 정확히 전달됩니다.
+
+```typescript
+// services.generated.ts (계속)
+export namespace UserService {
+  export const getProfileQueryOptions = (userId: number) =>
+    queryOptions({
+      queryKey: ["User", "getProfile", userId],
+      queryFn: () => getProfile(userId),
+    });
+  
+  export const useProfile = (
+    userId: number,
+    options?: { enabled?: boolean }
+  ) =>
+    useQuery({
+      ...getProfileQueryOptions(userId),
+      ...options,
+    });
+}
+```
+
+**타입 체인**:
+```
+Backend Method
+  → TypeScript AST
+  → Service Function
+  → Query Options
+  → React Hook
+  → Component
+```
+
+모든 단계에서 타입이 100% 보존됩니다!
+
+## 고급 타입 추론
+
+### 제네릭 타입
+
+제네릭을 사용하는 API도 정확히 추론됩니다.
+
+```typescript
+// 백엔드
+@api({ httpMethod: "GET" })
+async getList<T extends "posts" | "comments">(
+  entityType: T
+): Promise<{
+  items: T extends "posts" ? Post[] : Comment[];
+}> {
+  // 구현...
+}
+
+// 프론트엔드 (자동 생성)
+export namespace DataService {
+  export async function getList<T extends "posts" | "comments">(
+    entityType: T
+  ): Promise<{
+    items: T extends "posts" ? Post[] : Comment[];
+  }> {
+    return fetch({
+      method: "GET",
+      url: `/api/data/getList?${qs.stringify({ entityType })}`,
+    });
+  }
+}
+
+// 사용
+const { items } = await DataService.getList("posts");
+// items의 타입: Post[]
+```
+
+### Subset 시스템
+
+Subset 타입도 자동으로 생성됩니다.
+
+```typescript
+// Entity 정의에서 Subset 추출
+export type UserSubsetKey = "A" | "B" | "C";
+
+export type UserSubsetMapping = {
+  A: { id: number; username: string; email: string };
+  B: { id: number; username: string; email: string; bio: string };
+  C: User; // 전체 필드
+};
+
+// Service에서 사용
+export namespace UserService {
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+}
+
+// 타입 안전한 사용
+const basicUser = await UserService.getUser("A", 123);
+// 타입: { id: number; username: string; email: string }
+
+const fullUser = await UserService.getUser("C", 123);
+// 타입: User
+```
+
+**Mapped Types**:
+- `UserSubsetMapping[T]`로 Subset에 따른 정확한 타입 반환
+- TypeScript의 조건부 타입 활용
+
+### 복잡한 중첩 구조
+
+깊게 중첩된 타입도 정확히 추론됩니다.
+
+```typescript
+// 백엔드
+@api({ httpMethod: "GET" })
+async getDashboard(): Promise<{
+  user: {
+    profile: {
+      name: string;
+      avatar: string;
+    };
+    settings: {
+      notifications: {
+        email: boolean;
+        push: boolean;
+      };
+      privacy: {
+        profileVisibility: "public" | "private";
+      };
+    };
+  };
+  stats: {
+    posts: { count: number; latest: Post[] };
+    followers: { count: number; recent: User[] };
+  };
+}> {
+  // 구현...
+}
+
+// 프론트엔드 (자동 생성)
+export namespace DashboardService {
+  export async function getDashboard(): Promise<{
+    user: {
+      profile: {
+        name: string;
+        avatar: string;
+      };
+      settings: {
+        notifications: {
+          email: boolean;
+          push: boolean;
+        };
+        privacy: {
+          profileVisibility: "public" | "private";
+        };
+      };
+    };
+    stats: {
+      posts: { count: number; latest: Post[] };
+      followers: { count: number; recent: User[] };
+    };
+  }> {
+    return fetch({
+      method: "GET",
+      url: "/api/dashboard/getDashboard",
+    });
+  }
+}
+
+// 사용 (완전한 타입 안전성)
+const dashboard = await DashboardService.getDashboard();
+console.log(dashboard.user.settings.notifications.email); // ✅ boolean
+console.log(dashboard.stats.posts.latest[0].title); // ✅ string
+```
+
+## 실전 활용
+
+### React 컴포넌트
+
+타입이 자동으로 추론되어 IDE 지원을 받습니다.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+function UserProfile({ userId }: { userId: number }) {
+  const { data, isLoading } = UserService.useProfile(userId);
+  
+  if (isLoading) return <div>Loading...</div>;
+  
+  // data의 타입이 자동으로 추론됨
+  return (
+    <div>
+      <h1>{data.user.username}</h1>
+      <p>Role: {data.user.role}</p>
+      <p>Posts: {data.stats.postCount}</p>
+      <p>Followers: {data.stats.followerCount}</p>
+    </div>
+  );
+}
+```
+
+**IDE 자동 완성**:
+- `data.` 입력 시 `user`, `stats` 자동 제안
+- `data.user.` 입력 시 모든 필드 자동 제안
+- 잘못된 필드 접근 시 즉시 에러 표시
+
+### 타입 재사용
+
+생성된 타입을 다른 곳에서 재사용할 수 있습니다.
+
+```typescript
+import type { UserService } from "@/services/services.generated";
+
+// Service 함수의 반환 타입 추출
+type UserProfile = Awaited<ReturnType<typeof UserService.getProfile>>;
+
+// 타입 사용
+function processProfile(profile: UserProfile) {
+  console.log(profile.user.username);
+  console.log(profile.stats.postCount);
+}
+```
+
+### 폼 데이터 타입
+
+API 파라미터 타입도 추론됩니다.
+
+```typescript
+// 백엔드
+@api({ httpMethod: "POST" })
+async createPost(params: {
+  title: string;
+  content: string;
+  tags: string[];
+  published: boolean;
+}): Promise<{ post: Post }> {
+  // 구현...
+}
+
+// 프론트엔드 (자동 생성)
+export namespace PostService {
+  export async function createPost(params: {
+    title: string;
+    content: string;
+    tags: string[];
+    published: boolean;
+  }): Promise<{ post: Post }> {
+    return fetch({
+      method: "POST",
+      url: "/api/post/createPost",
+      data: params,
+    });
+  }
+}
+
+// 사용 (파라미터 타입 검증)
+function CreatePostForm() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    
+    await PostService.createPost({
+      title: "Hello",
+      content: "World",
+      tags: ["typescript", "sonamu"],
+      published: true,
+      // author: "John" // ❌ 컴파일 에러: 존재하지 않는 필드
+    });
+  }
+}
+```
+
+## 타입 안전성 보장
+
+### 1. 파라미터 검증
+
+잘못된 파라미터는 컴파일 타임에 감지됩니다.
+
+```typescript
+// ❌ 컴파일 에러
+await UserService.getProfile("123"); // string 대신 number 필요
+
+// ✅ 정상
+await UserService.getProfile(123);
+```
+
+### 2. 응답 타입 보장
+
+API 응답의 타입이 보장됩니다.
+
+```typescript
+const { user } = await UserService.getProfile(123);
+
+console.log(user.username); // ✅ string
+console.log(user.age); // ❌ 컴파일 에러: age 필드 없음
+```
+
+### 3. null/undefined 처리
+
+옵셔널 필드도 정확히 표현됩니다.
+
+```typescript
+// 백엔드
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    bio?: string; // 옵셔널
+  };
+}> {
+  // 구현...
+}
+
+// 프론트엔드
+const { user } = await UserService.getUser();
+console.log(user.bio?.length); // ✅ 옵셔널 체이닝 필수
+```
+
+## 주의사항
+
+<Warning>
+**API 타입 추론 사용 시 주의사항**:
+1. 백엔드 API에 **명시적 타입 선언 필수**
+2. `any` 타입 사용 금지 (타입 추론 불가)
+3. `pnpm generate` 실행해야 타입 업데이트
+4. 생성된 타입 파일 **수동 수정 금지**
+5. 복잡한 타입은 **별도 interface로 분리** 권장
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="컴파일 타임 에러" icon="triangle-exclamation" href="/frontend-integration/type-safety/compile-time-errors">
+    API 변경 감지
+  </Card>
+  <Card title="공유 타입" icon="share-nodes" href="/frontend-integration/type-safety/shared-types">
+    타입 파일 구조
+  </Card>
+  <Card title="Service 동작 원리" icon="diagram-project" href="/frontend-integration/generated-services/how-services-work">
+    자동 생성 이해
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 활용법
+  </Card>
+</CardGroup>

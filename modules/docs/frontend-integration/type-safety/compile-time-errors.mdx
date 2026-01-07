@@ -1,10 +1,566 @@
 ---
-title: '컴파일 타임 에러'
-description: 'API 변경 감지하기'
+title: "컴파일 타임 에러"
+description: "API 변경을 즉시 감지하여 런타임 에러 방지"
 ---
 
-# 컴파일 타임 에러
+Sonamu가 API 변경을 컴파일 타임에 감지하여 런타임 에러를 사전에 방지하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 컴파일 타임 에러 개요
+
+<CardGroup cols={2}>
+  <Card title="즉시 감지" icon="bolt">
+    API 변경 시
+    
+    컴파일 타임 에러
+  </Card>
+  <Card title="런타임 안전" icon="shield-check">
+    배포 전 발견
+    
+    프로덕션 안정성
+  </Card>
+  <Card title="IDE 통합" icon="code">
+    빨간 밑줄
+    
+    즉각적인 피드백
+  </Card>
+  <Card title="리팩터링 안전" icon="rotate">
+    대규모 변경
+    
+    영향 범위 파악
+  </Card>
+</CardGroup>
+
+## 컴파일 타임 에러란?
+
+### 문제: 런타임에만 발견되는 에러
+
+전통적인 개발에서는 API 변경이 **런타임에서만** 발견됩니다.
+
+```typescript
+// ❌ 백엔드에서 필드명 변경
+// username → displayName
+
+// 프론트엔드 (변경 사항 모름)
+function UserProfile({ userId }: { userId: number }) {
+  const user = await fetchUser(userId);
+  
+  return (
+    <div>
+      {/* 런타임 에러! username 필드가 없음 */}
+      <h1>{user.username}</h1>
+    </div>
+  );
+}
+```
+
+**런타임 에러의 문제점**:
+1. **프로덕션에서 발생**: 사용자가 직접 경험
+2. **발견 지연**: QA나 사용자 리포트로만 발견
+3. **디버깅 어려움**: 어디서 문제가 발생했는지 추적 필요
+4. **신뢰도 하락**: 서비스 안정성 저하
+
+### 해결: 컴파일 타임 에러
+
+Sonamu는 API 변경을 **컴파일 타임**에 즉시 감지합니다.
+
+```typescript
+// ✅ 백엔드에서 필드명 변경
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    displayName: string; // username → displayName
+    email: string;
+  };
+}> {
+  // 구현...
+}
+
+// pnpm generate 실행 → Service 재생성
+
+// 프론트엔드 (컴파일 타임 에러 발생!)
+function UserProfile({ userId }: { userId: number }) {
+  const { data } = UserService.useUser("A", userId);
+  
+  return (
+    <div>
+      {/* ❌ 컴파일 에러! Property 'username' does not exist */}
+      <h1>{data.user.username}</h1>
+      
+      {/* ✅ 수정 후 정상 */}
+      <h1>{data.user.displayName}</h1>
+    </div>
+  );
+}
+```
+
+**컴파일 타임 에러의 장점**:
+1. ✨ **즉시 발견**: 코드 작성 중 IDE에서 즉시 표시
+2. ✨ **배포 전 수정**: 프로덕션 배포 전에 모든 문제 해결
+3. ✨ **영향 범위 파악**: 변경이 영향을 주는 모든 곳 확인
+4. ✨ **자동 리팩터링**: IDE의 Rename 기능 활용
+
+## 에러 감지 시나리오
+
+### 1. 필드명 변경
+
+```typescript
+// 백엔드: username → displayName
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: { id: number; displayName: string; }
+}> {
+  // 구현...
+}
+
+// pnpm generate 후
+// 프론트엔드: 모든 user.username 사용 지점에서 에러
+const { data } = await UserService.getUser("A", 123);
+console.log(data.user.username); // ❌ 컴파일 에러
+```
+
+**IDE 에러 메시지**:
+```
+Property 'username' does not exist on type '{ id: number; displayName: string; }'.
+Did you mean 'displayName'?
+```
+
+### 2. 필드 타입 변경
+
+```typescript
+// 백엔드: age를 number에서 string으로 변경
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: { id: number; age: string; } // number → string
+}> {
+  // 구현...
+}
+
+// 프론트엔드
+const { data } = await UserService.getUser("A", 123);
+const nextYear = data.user.age + 1; 
+// ❌ 컴파일 에러: string + number
+```
+
+**IDE 에러 메시지**:
+```
+Operator '+' cannot be applied to types 'string' and 'number'.
+```
+
+### 3. 필수/옵셔널 변경
+
+```typescript
+// 백엔드: bio를 필수에서 옵셔널로 변경
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    bio?: string; // string → string | undefined
+  };
+}> {
+  // 구현...
+}
+
+// 프론트엔드
+const { data } = await UserService.getUser("C", 123);
+const bioLength = data.user.bio.length;
+// ❌ 컴파일 에러: bio가 undefined일 수 있음
+```
+
+**IDE 에러 메시지**:
+```
+Object is possibly 'undefined'.
+```
+
+**수정**:
+```typescript
+// ✅ 옵셔널 체이닝 사용
+const bioLength = data.user.bio?.length;
+
+// ✅ 또는 널 체크
+if (data.user.bio) {
+  const bioLength = data.user.bio.length;
+}
+```
+
+### 4. 필드 삭제
+
+```typescript
+// 백엔드: profile 필드 제거
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    username: string;
+    // profile 필드 삭제됨
+  };
+}> {
+  // 구현...
+}
+
+// 프론트엔드
+const { data } = await UserService.getUser("C", 123);
+console.log(data.user.profile.avatar);
+// ❌ 컴파일 에러: Property 'profile' does not exist
+```
+
+### 5. 파라미터 변경
+
+```typescript
+// 백엔드: 파라미터 타입 변경
+@api({ httpMethod: "GET" })
+async searchUsers(query: {
+  keyword: string;
+  limit: number; // string → number
+}): Promise<{ users: User[] }> {
+  // 구현...
+}
+
+// 프론트엔드
+await UserService.searchUsers({
+  keyword: "john",
+  limit: "10", // ❌ 컴파일 에러: string은 number에 할당 불가
+});
+```
+
+**IDE 에러 메시지**:
+```
+Type 'string' is not assignable to type 'number'.
+```
+
+### 6. 반환 타입 변경
+
+```typescript
+// 백엔드: 단일 객체에서 배열로 변경
+@api({ httpMethod: "GET" })
+async getPosts(): Promise<{
+  posts: Post[]; // Post → Post[]
+}> {
+  // 구현...
+}
+
+// 프론트엔드
+const { data } = await PostService.getPosts();
+console.log(data.posts.title);
+// ❌ 컴파일 에러: Property 'title' does not exist on type 'Post[]'
+```
+
+**수정**:
+```typescript
+// ✅ 배열 처리
+data.posts.forEach((post) => {
+  console.log(post.title);
+});
+```
+
+## 리팩터링 지원
+
+### 대규모 변경도 안전
+
+API 변경이 영향을 주는 모든 위치를 즉시 파악할 수 있습니다.
+
+```typescript
+// 시나리오: User 엔티티의 구조 대폭 변경
+
+// 백엔드 (변경 전)
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}> {
+  // ...
+}
+
+// 백엔드 (변경 후)
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{
+  user: {
+    id: number;
+    profile: {
+      displayName: string;
+      contactEmail: string;
+    };
+  };
+}> {
+  // ...
+}
+```
+
+**pnpm generate 실행 후**:
+
+IDE에서 모든 에러 위치가 표시됩니다:
+```
+src/components/UserProfile.tsx:15 - Property 'name' does not exist
+src/components/UserCard.tsx:8 - Property 'name' does not exist
+src/pages/users/[id].tsx:42 - Property 'email' does not exist
+... (총 23개 위치)
+```
+
+**수정 과정**:
+1. IDE의 "Problems" 패널에서 모든 에러 확인
+2. 각 위치를 방문하여 새로운 구조에 맞게 수정
+3. 모든 에러가 해결되면 컴파일 성공
+4. 안전하게 배포
+
+### IDE의 자동 리팩터링 활용
+
+TypeScript의 강력한 리팩터링 기능을 활용할 수 있습니다.
+
+**예시: 필드명 일괄 변경**
+
+1. Service 파일에서 타입 확인
+2. 필드명에 커서 위치
+3. F2 (Rename Symbol) 또는 우클릭 → Rename
+4. 새 이름 입력
+5. 모든 사용처가 자동으로 변경됨
+
+```typescript
+// ✅ username → displayName 일괄 변경
+// IDE가 자동으로 프로젝트 전체에서 변경
+
+// Before
+data.user.username
+
+// After (자동 변경됨)
+data.user.displayName
+```
+
+## 실전 워크플로우
+
+### 1. 백엔드 API 변경
+
+```typescript
+// backend/models/user.model.ts
+@api({ httpMethod: "GET" })
+async getProfile(): Promise<{
+  user: {
+    id: number;
+    displayName: string; // 변경: username → displayName
+    email: string;
+  };
+}> {
+  // 구현...
+}
+```
+
+### 2. Service 재생성
+
+```bash
+pnpm generate
+```
+
+**출력**:
+```
+✓ Analyzing API methods...
+✓ Generating services.generated.ts...
+✓ Generating types...
+✓ Done!
+```
+
+### 3. TypeScript 컴파일
+
+```bash
+pnpm tsc --noEmit
+```
+
+**출력 (에러 발생)**:
+```
+src/components/UserProfile.tsx:15:23 - error TS2339: 
+Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
+
+15     <h1>{data.user.username}</h1>
+                      ~~~~~~~~
+
+src/components/UserCard.tsx:8:35 - error TS2339: 
+Property 'username' does not exist on type '{ id: number; displayName: string; email: string; }'.
+
+8   const name = user.username;
+                      ~~~~~~~~
+
+Found 2 errors.
+```
+
+### 4. 에러 수정
+
+```typescript
+// src/components/UserProfile.tsx
+- <h1>{data.user.username}</h1>
++ <h1>{data.user.displayName}</h1>
+
+// src/components/UserCard.tsx
+- const name = user.username;
++ const name = user.displayName;
+```
+
+### 5. 재검증
+
+```bash
+pnpm tsc --noEmit
+```
+
+**출력 (성공)**:
+```
+✓ No errors found!
+```
+
+### 6. 안전하게 배포
+
+모든 타입 에러가 해결되었으므로 안전하게 배포할 수 있습니다.
+
+## CI/CD 통합
+
+### TypeScript 체크를 CI에 추가
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Generate Services
+        run: pnpm generate
+      
+      - name: TypeScript Check
+        run: pnpm tsc --noEmit
+```
+
+**이점**:
+- Pull Request에서 타입 에러 자동 감지
+- 타입 에러가 있으면 머지 차단
+- 팀 전체의 코드 품질 보장
+
+## 베스트 프랙티스
+
+### 1. 정기적인 Service 재생성
+
+```bash
+# 개발 시작 시
+pnpm generate
+
+# 백엔드 변경 후
+pnpm generate
+
+# Pull 받은 후
+pnpm generate
+```
+
+### 2. Pre-commit Hook 설정
+
+```json
+// package.json
+{
+  "husky": {
+    "hooks": {
+      "pre-commit": "pnpm tsc --noEmit"
+    }
+  }
+}
+```
+
+타입 에러가 있으면 커밋 차단됩니다.
+
+### 3. VSCode 설정
+
+```json
+// .vscode/settings.json
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
+}
+```
+
+### 4. 타입 에러 무시하지 않기
+
+```typescript
+// ❌ 타입 에러 무시 (위험!)
+// @ts-ignore
+console.log(data.user.username);
+
+// ✅ 올바른 수정
+console.log(data.user.displayName);
+```
+
+`@ts-ignore`는 **절대 사용하지 마세요**. 타입 에러는 실제 문제를 나타냅니다.
+
+## 에러 메시지 이해하기
+
+### 자주 보는 에러 메시지
+
+**1. Property does not exist**
+```
+Property 'username' does not exist on type 'User'.
+```
+→ 필드가 삭제되었거나 이름이 변경됨
+
+**2. Type is not assignable**
+```
+Type 'string' is not assignable to type 'number'.
+```
+→ 타입이 변경됨
+
+**3. Object is possibly undefined**
+```
+Object is possibly 'undefined'.
+```
+→ 필수에서 옵셔널로 변경됨
+
+**4. Cannot find name**
+```
+Cannot find name 'UserService'.
+```
+→ Service가 재생성되지 않았거나 import 누락
+
+**5. Expected N arguments, but got M**
+```
+Expected 2 arguments, but got 1.
+```
+→ API 파라미터가 추가/삭제됨
+
+## 주의사항
+
+<Warning>
+**컴파일 타임 에러 처리 시 주의사항**:
+1. **pnpm generate 필수**: API 변경 후 반드시 실행
+2. **@ts-ignore 금지**: 타입 에러를 무시하지 말 것
+3. **any 타입 금지**: 타입 안전성이 깨짐
+4. **모든 에러 수정**: 하나라도 남기면 런타임 에러 가능
+5. **CI/CD 통합**: 자동 타입 체크 설정
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="API 타입 추론" icon="wand-magic-sparkles" href="/frontend-integration/type-safety/api-type-inference">
+    타입 추론 이해
+  </Card>
+  <Card title="공유 타입" icon="share-nodes" href="/frontend-integration/type-safety/shared-types">
+    타입 파일 구조
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 활용법
+  </Card>
+  <Card title="테스팅" icon="vial" href="/testing/overview">
+    테스트 작성
+  </Card>
+</CardGroup>

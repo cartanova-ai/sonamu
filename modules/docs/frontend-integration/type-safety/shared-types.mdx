@@ -1,10 +1,597 @@
 ---
-title: '공유 타입'
-description: 'services/sonamu.generated.ts'
+title: "공유 타입"
+description: "services.generated.ts의 타입 구조"
 ---
 
-# 공유 타입
+Sonamu가 생성하는 `services.generated.ts` 파일의 타입 구조와 활용 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 공유 타입 개요
+
+<CardGroup cols={2}>
+  <Card title="단일 파일" icon="file">
+    services.generated.ts
+    
+    모든 타입 한 곳에
+  </Card>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    백엔드에서 추출
+    
+    수동 작업 불필요
+  </Card>
+  <Card title="타입 재사용" icon="recycle">
+    Export된 타입
+    
+    프로젝트 전체 사용
+  </Card>
+  <Card title="일관성" icon="clone">
+    단일 진실 공급원
+    
+    타입 충돌 없음
+  </Card>
+</CardGroup>
+
+## services.generated.ts 구조
+
+### 파일 개요
+
+Sonamu는 모든 타입과 Service를 단일 파일에 생성합니다.
+
+```typescript
+// services.generated.ts (자동 생성)
+
+// 1. 공통 Import
+import { useQuery, useMutation, queryOptions } from "@tanstack/react-query";
+import qs from "qs";
+
+// 2. Entity 타입
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  createdAt: Date;
+}
+
+// 3. Subset 타입
+export type UserSubsetKey = "A" | "B" | "C";
+export type UserSubsetMapping = {
+  A: { id: number; username: string };
+  B: { id: number; username: string; email: string };
+  C: User;
+};
+
+// 4. Service Namespace
+export namespace UserService {
+  // Service 함수
+  export async function getUser<T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ): Promise<UserSubsetMapping[T]> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/findById?${qs.stringify({ subset, id })}`,
+    });
+  }
+  
+  // TanStack Query Hook
+  export const getUserQueryOptions = <T extends UserSubsetKey>(
+    subset: T,
+    id: number
+  ) =>
+    queryOptions({
+      queryKey: ["User", "getUser", subset, id],
+      queryFn: () => getUser(subset, id),
+    });
+  
+  export const useUser = <T extends UserSubsetKey>(
+    subset: T,
+    id: number,
+    options?: { enabled?: boolean }
+  ) =>
+    useQuery({
+      ...getUserQueryOptions(subset, id),
+      ...options,
+    });
+}
+
+// 5. 다른 Entity들도 동일한 구조
+export interface Post { /* ... */ }
+export namespace PostService { /* ... */ }
+```
+
+**파일 크기**:
+- 보통 1,000 ~ 5,000 줄
+- Entity와 API가 많으면 10,000 줄 이상도 가능
+- 하지만 모두 자동 생성되므로 관리 부담 없음
+
+## 타입 종류
+
+### 1. Entity 타입
+
+데이터베이스 테이블의 구조를 나타냅니다.
+
+```typescript
+// User Entity
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: "admin" | "user";
+  bio: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Post Entity
+export interface Post {
+  id: number;
+  title: string;
+  content: string;
+  author_id: number;
+  published: boolean;
+  createdAt: Date;
+}
+```
+
+**특징**:
+- 백엔드 Entity와 완전히 동일
+- 모든 필드 타입이 정확히 매핑됨
+- null, undefined, 유니온 타입 모두 보존
+
+### 2. Subset 타입
+
+Entity의 부분 집합을 정의합니다.
+
+```typescript
+// Subset Key (리터럴 유니온)
+export type UserSubsetKey = "A" | "B" | "C";
+
+// Subset Mapping (각 Key별 타입)
+export type UserSubsetMapping = {
+  A: Pick<User, "id" | "username">;
+  B: Pick<User, "id" | "username" | "email">;
+  C: User; // 전체
+};
+
+// Mapped Type으로 사용
+type SubsetA = UserSubsetMapping["A"];
+// { id: number; username: string }
+```
+
+**Subset 네이밍 규칙**:
+- **A**: 최소 필드 (id + 핵심 1~2개)
+- **B**: 중간 필드 (A + 추가 정보)
+- **C**: 전체 필드
+
+### 3. API 파라미터 타입
+
+API 함수의 파라미터를 정의합니다.
+
+```typescript
+export namespace UserService {
+  // 명시적 파라미터 타입
+  export async function updateProfile(params: {
+    username?: string;
+    bio?: string;
+    avatar?: string;
+  }): Promise<{ user: User }> {
+    return fetch({
+      method: "PUT",
+      url: "/api/user/updateProfile",
+      data: params,
+    });
+  }
+  
+  // 복잡한 검색 파라미터
+  export async function search(query: {
+    keyword: string;
+    role?: "admin" | "user";
+    isActive?: boolean;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ users: User[]; total: number }> {
+    return fetch({
+      method: "GET",
+      url: `/api/user/search?${qs.stringify(query)}`,
+    });
+  }
+}
+```
+
+### 4. API 응답 타입
+
+API 함수의 반환 타입을 정의합니다.
+
+```typescript
+export namespace UserService {
+  // 단순 응답
+  export async function getUser(
+    id: number
+  ): Promise<{ user: User }> {
+    // ...
+  }
+  
+  // 복잡한 응답
+  export async function getDashboard(): Promise<{
+    user: User;
+    stats: {
+      postCount: number;
+      followerCount: number;
+      viewCount: number;
+    };
+    recentPosts: Post[];
+    recentComments: Comment[];
+  }> {
+    // ...
+  }
+}
+```
+
+### 5. TanStack Query 관련 타입
+
+React Hook에서 사용하는 타입들입니다.
+
+```typescript
+export namespace UserService {
+  // Query Options 타입 (재사용 가능)
+  export const getUserQueryOptions = (id: number) =>
+    queryOptions({
+      queryKey: ["User", "getUser", id],
+      queryFn: () => getUser(id),
+    });
+  
+  // Hook 타입 (자동 추론)
+  export const useUser = (
+    id: number,
+    options?: { enabled?: boolean }
+  ) =>
+    useQuery({
+      ...getUserQueryOptions(id),
+      ...options,
+    });
+}
+
+// 사용 시 타입 자동 추론
+const { data, isLoading } = UserService.useUser(123);
+// data의 타입: { user: User } | undefined
+```
+
+## 타입 재사용
+
+### Type Helper 활용
+
+TypeScript의 유틸리티 타입으로 기존 타입을 재사용합니다.
+
+```typescript
+import type { UserService, User } from "@/services/services.generated";
+
+// 1. 함수 반환 타입 추출
+type UserProfile = Awaited<ReturnType<typeof UserService.getProfile>>;
+// { user: User; stats: { postCount: number; ... } }
+
+// 2. 파라미터 타입 추출
+type UpdateParams = Parameters<typeof UserService.updateProfile>[0];
+// { username?: string; bio?: string; avatar?: string }
+
+// 3. Entity 부분 타입
+type UserBasic = Pick<User, "id" | "username" | "email">;
+
+// 4. 옵셔널 모든 필드
+type PartialUser = Partial<User>;
+
+// 5. 특정 필드 제외
+type UserWithoutDates = Omit<User, "createdAt" | "updatedAt">;
+```
+
+### 컴포넌트 Props
+
+생성된 타입을 Props로 사용합니다.
+
+```typescript
+import type { User, Post } from "@/services/services.generated";
+
+// Entity 타입 직접 사용
+interface UserCardProps {
+  user: User;
+}
+
+function UserCard({ user }: UserCardProps) {
+  return (
+    <div>
+      <h3>{user.username}</h3>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+
+// 여러 Entity 조합
+interface DashboardProps {
+  user: User;
+  posts: Post[];
+}
+
+function Dashboard({ user, posts }: DashboardProps) {
+  return (
+    <div>
+      <h1>Welcome, {user.username}</h1>
+      {posts.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  );
+}
+```
+
+### 폼 데이터 타입
+
+API 파라미터 타입을 폼 데이터로 사용합니다.
+
+```typescript
+import { useState } from "react";
+import type { UserService } from "@/services/services.generated";
+
+// 파라미터 타입 추출
+type UpdateProfileParams = Parameters<typeof UserService.updateProfile>[0];
+
+function EditProfileForm() {
+  // 타입 안전한 state
+  const [formData, setFormData] = useState<UpdateProfileParams>({
+    username: "",
+    bio: "",
+    avatar: "",
+  });
+  
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await UserService.updateProfile(formData); // ✅ 타입 일치
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={formData.username}
+        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+      />
+      {/* ... */}
+    </form>
+  );
+}
+```
+
+### 상태 관리
+
+전역 상태에서도 타입을 재사용합니다.
+
+```typescript
+import { create } from "zustand";
+import type { User } from "@/services/services.generated";
+
+// Zustand Store
+interface AuthStore {
+  user: User | null;
+  login: (user: User) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  login: (user) => set({ user }),
+  logout: () => set({ user: null }),
+}));
+```
+
+## 네임스페이스 활용
+
+### Service 그룹화
+
+Entity별로 Service가 Namespace로 그룹화됩니다.
+
+```typescript
+// services.generated.ts
+export namespace UserService {
+  export async function getUser() { /* ... */ }
+  export async function updateUser() { /* ... */ }
+  export async function deleteUser() { /* ... */ }
+  export const useUser = () => { /* ... */ };
+}
+
+export namespace PostService {
+  export async function getPost() { /* ... */ }
+  export async function createPost() { /* ... */ }
+  export const usePost = () => { /* ... */ };
+}
+```
+
+**사용**:
+```typescript
+// ✅ Namespace로 명확하게 구분
+import { UserService, PostService } from "@/services/services.generated";
+
+await UserService.getUser("A", 123);
+await PostService.getPost("A", 456);
+```
+
+**장점**:
+- 이름 충돌 방지 (getUser vs getPost)
+- 관련 함수들이 논리적으로 그룹화
+- Import가 간결해짐
+- IDE 자동 완성이 더 정확해짐
+
+### Type Import
+
+타입만 import할 때는 `type` 키워드를 사용합니다.
+
+```typescript
+// ✅ 타입만 import (번들 크기 감소)
+import type { User, Post } from "@/services/services.generated";
+
+// ❌ 전체 import (불필요한 코드 포함)
+import { User, Post } from "@/services/services.generated";
+```
+
+**Tree-shaking**:
+- `import type`은 컴파일 후 제거됨
+- 번들 크기 최적화
+- 빌드 속도 향상
+
+## 파일 크기 관리
+
+### 대규모 프로젝트
+
+Entity와 API가 많으면 파일이 매우 커질 수 있습니다.
+
+```typescript
+// services.generated.ts (예시)
+// 100개 Entity × 평균 50줄 = 5,000줄
+// + Service 함수들 = 10,000줄 이상
+```
+
+**하지만 괜찮습니다**:
+1. ✅ **자동 생성**: 수동 관리 불필요
+2. ✅ **Tree-shaking**: 사용하지 않는 코드는 번들에서 제외
+3. ✅ **IDE 성능**: 현대 IDE는 큰 파일도 문제없음
+4. ✅ **타입 체크**: TypeScript 컴파일러가 효율적으로 처리
+
+### Code Splitting
+
+필요하면 동적 import로 코드를 분할할 수 있습니다.
+
+```typescript
+// ✅ 필요할 때만 로드
+async function loadUserService() {
+  const { UserService } = await import("@/services/services.generated");
+  return UserService;
+}
+
+// 사용
+const UserService = await loadUserService();
+await UserService.getUser("A", 123);
+```
+
+## 버전 관리
+
+### Git에 포함 여부
+
+**포함하는 경우** (권장):
+```gitignore
+# services.generated.ts를 Git에 포함
+# (주석 처리 또는 제거)
+# services.generated.ts
+```
+
+**장점**:
+- Pull 받으면 바로 사용 가능
+- 백엔드 없이도 프론트엔드 개발 가능
+- 타입 변경 이력 추적 가능
+
+**포함하지 않는 경우**:
+```gitignore
+# services.generated.ts를 Git에서 제외
+services.generated.ts
+```
+
+**장점**:
+- Conflict 발생 적음
+- 각자 최신 버전 생성
+- Git 히스토리가 깔끔
+
+**권장**: **포함하는 것**이 일반적으로 더 편리합니다.
+
+### 충돌 해결
+
+Merge conflict 발생 시:
+
+```bash
+# 1. 최신 코드 pull
+git pull origin main
+
+# 2. Service 재생성
+pnpm generate
+
+# 3. 재생성된 파일로 충돌 해결
+git add services.generated.ts
+git commit -m "resolve: regenerate services"
+```
+
+## 디버깅
+
+### 생성된 타입 확인
+
+IDE에서 타입을 바로 확인할 수 있습니다.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+// 함수 위에 마우스 호버
+UserService.getUser
+// ↓ IDE가 타입 표시
+// (alias) getUser<T extends UserSubsetKey>(
+//   subset: T,
+//   id: number
+// ): Promise<UserSubsetMapping[T]>
+```
+
+**단축키**:
+- VSCode: `Cmd + Click` (Mac) / `Ctrl + Click` (Windows)
+- 타입 정의로 바로 이동
+
+### 타입 에러 디버깅
+
+타입 에러가 발생하면:
+
+1. **에러 메시지 확인**
+```
+Property 'username' does not exist on type 'User'.
+```
+
+2. **타입 정의 확인**
+```typescript
+// services.generated.ts에서 User 타입 확인
+export interface User {
+  id: number;
+  displayName: string; // username이 아님!
+  email: string;
+}
+```
+
+3. **백엔드 확인**
+```typescript
+// backend에서 실제 정의 확인
+@api({ httpMethod: "GET" })
+async getUser(): Promise<{ user: { displayName: string } }> {
+  // username이 아니라 displayName!
+}
+```
+
+4. **코드 수정**
+```typescript
+// username → displayName
+console.log(user.displayName);
+```
+
+## 주의사항
+
+<Warning>
+**공유 타입 사용 시 주의사항**:
+1. **services.generated.ts 수동 수정 금지**
+2. `import type` 사용하여 번들 크기 최적화
+3. API 변경 시 **pnpm generate 필수**
+4. Namespace를 통해 Service 접근
+5. 타입 재사용 시 **Type Helper 활용**
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="API 타입 추론" icon="wand-magic-sparkles" href="/frontend-integration/type-safety/api-type-inference">
+    타입 추론 이해
+  </Card>
+  <Card title="컴파일 타임 에러" icon="triangle-exclamation" href="/frontend-integration/type-safety/compile-time-errors">
+    에러 감지 방법
+  </Card>
+  <Card title="Service 사용하기" icon="code" href="/frontend-integration/generated-services/using-services">
+    Service 활용법
+  </Card>
+  <Card title="커스텀 컴포넌트" icon="sliders" href="/frontend-integration/react-components/custom-components">
+    컴포넌트 작성
+  </Card>
+</CardGroup>
