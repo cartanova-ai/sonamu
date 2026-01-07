@@ -1,6 +1,440 @@
 ---
 title: "마이그레이션 생성하기"
-description: "Sonamu UI에서 생성하기"
+description: "Sonamu UI에서 자동으로 생성하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Sonamu는 Entity 변경 사항을 감지하여 자동으로 Migration 파일을 생성합니다.
+
+## 생성 워크플로우
+
+<CardGroup cols={2}>
+  <Card title="Entity 수정" icon="pen">
+    JSON 파일 편집
+    
+    필드, 타입, 인덱스
+  </Card>
+  <Card title="Sonamu UI" icon="wand-magic-sparkles">
+    Generate 버튼
+    
+    자동 비교 및 생성
+  </Card>
+  <Card title="Migration 확인" icon="file-code">
+    src/migrations/*.ts
+    
+    up/down 검토
+  </Card>
+  <Card title="실행" icon="play">
+    pnpm sonamu migrate
+    
+    DB 적용
+  </Card>
+</CardGroup>
+
+## Sonamu UI에서 생성하기
+
+### 1. Entity 수정
+
+먼저 Entity JSON 파일을 수정합니다:
+
+```json
+// src/application/user/user.entity.json
+{
+  "id": "User",
+  "table": "users",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string", "length": 255 },
+    { "name": "username", "type": "string", "length": 255 },
+    { "name": "phone", "type": "string", "length": 20, "nullable": true }  // ← 새 필드 추가
+  ]
+}
+```
+
+### 2. Sonamu UI 열기
+
+```bash
+pnpm sonamu ui
+```
+
+<Frame>
+  <img src="/images/migrations/sonamu-ui-main.png" alt="Sonamu UI 메인 화면" />
+</Frame>
+
+### 3. Generate 버튼 클릭
+
+Entity 탭에서 **Generate** 버튼을 클릭합니다.
+
+<Frame>
+  <img src="/images/migrations/generate-button.png" alt="Generate 버튼" />
+</Frame>
+
+### 4. Migration 확인
+
+자동으로 생성된 Migration 파일을 확인합니다:
+
+```typescript
+// src/migrations/20251220143022_alter_users_add1.ts
+import type { Knex } from "knex";
+
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("phone", 20).nullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("phone");
+  });
+}
+```
+
+<Info>
+Sonamu는 Entity와 현재 DB 스키마를 비교하여 차이점만 Migration으로 생성합니다.
+</Info>
+
+## 생성되는 Migration 유형
+
+### 새 테이블 생성
+
+**Entity 추가**:
+```json
+// src/application/post/post.entity.json
+{
+  "id": "Post",
+  "table": "posts",
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "title", "type": "string", "length": 200 },
+    { "name": "content", "type": "string" }
+  ]
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143100_create__posts.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable("posts", (table) => {
+    table.increments().primary();
+    table.string("title", 200).notNullable();
+    table.text("content").notNullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.dropTable("posts");
+}
+```
+
+### 컬럼 추가
+
+**Entity 변경**:
+```json
+{
+  "props": [
+    // ... 기존 필드
+    { "name": "bio", "type": "string", "nullable": true }  // ← 추가
+  ]
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143200_alter_users_add1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.text("bio").nullable();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("bio");
+  });
+}
+```
+
+### 컬럼 삭제
+
+**Entity 변경**:
+```json
+{
+  "props": [
+    { "name": "id", "type": "integer" },
+    { "name": "email", "type": "string" }
+    // "old_field" 제거됨
+  ]
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143300_alter_users_drop1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropColumns("old_field");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    // 롤백 시 재추가 (타입 정보 필요)
+    table.string("old_field", 100).nullable();
+  });
+}
+```
+
+<Warning>
+**컬럼 삭제 주의!**
+
+롤백 시 데이터가 복구되지 않습니다. 
+프로덕션에서는 신중하게 진행하세요.
+</Warning>
+
+### 컬럼 타입 변경
+
+**Entity 변경**:
+```json
+{
+  "name": "age",
+  "type": "integer"  // string에서 integer로 변경
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143400_alter_users_modify1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN age TYPE integer USING age::integer`
+  );
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN age TYPE varchar(255)`
+  );
+}
+```
+
+### 인덱스 추가
+
+**Entity 변경**:
+```json
+{
+  "indexes": [
+    { "type": "unique", "column": "email" },
+    { "type": "index", "column": "username" }  // ← 추가
+  ]
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143500_alter_users_index1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.index(["username"], "users_username_index");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.dropIndex(["username"], "users_username_index");
+  });
+}
+```
+
+### 외래 키 추가
+
+**Entity 변경**:
+```json
+{
+  "props": [
+    {
+      "type": "relation",
+      "name": "department",
+      "with": "Department",
+      "relationType": "BelongsTo"
+    }
+  ]
+}
+```
+
+**생성된 Migration**:
+```typescript
+// 20251220143600_foreign__employees__department_id.ts
+export async function up(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("employees", (table) => {
+    table
+      .foreign("department_id")
+      .references("departments.id")
+      .onUpdate("CASCADE")
+      .onDelete("SET NULL");
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  return knex.schema.alterTable("employees", (table) => {
+    table.dropForeign(["department_id"]);
+  });
+}
+```
+
+## 복합 변경
+
+여러 변경 사항이 있으면 여러 Migration이 생성됩니다:
+
+**Entity 변경**:
+```json
+{
+  "props": [
+    { "name": "phone", "type": "string", "nullable": true },  // 추가
+    { "name": "bio", "type": "string", "nullable": true }     // 추가
+  ],
+  "indexes": [
+    { "type": "index", "column": "phone" }  // 추가
+  ]
+}
+```
+
+**생성된 Migrations**:
+```
+20251220143700_alter_users_add1.ts      (컬럼 2개 추가)
+20251220143701_alter_users_index1.ts    (인덱스 추가)
+```
+
+<Info>
+Sonamu는 변경 유형별로 Migration을 분리하여 관리하기 쉽게 합니다.
+</Info>
+
+## Migration 파일 이름 규칙
+
+```
+{타임스탬프}_{작업}_{테이블명}[_{번호}].ts
+```
+
+- **타임스탬프**: `YYYYMMDDHHmmss`
+- **작업**: `create`, `alter`, `foreign`, `drop`
+- **테이블명**: 언더스코어로 구분
+- **번호**: 같은 작업이 여러 개면 `add1`, `add2` 등
+
+**예시**:
+```
+20251220143022_create__users.ts
+20251220143100_alter_users_add1.ts
+20251220143101_foreign__users__department_id.ts
+```
+
+## 생성 전 확인 사항
+
+### 1. DB 연결 확인
+
+```bash
+# DB가 실행 중인지 확인
+psql -U postgres -h localhost -p 5432 -d mydb
+```
+
+### 2. 기존 Migration 상태 확인
+
+```bash
+# 실행된 Migration 확인
+pnpm sonamu migrate status
+```
+
+### 3. Entity 검증
+
+```bash
+# Entity 문법 검증
+pnpm sonamu validate
+```
+
+## 수동 수정
+
+자동 생성된 Migration을 수동으로 수정할 수 있습니다:
+
+```typescript
+// 20251220143022_alter_users_add1.ts
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("phone", 20).nullable();
+    
+    // 수동 추가: 기본값 설정
+    table.string("country_code", 3).notNullable().defaultTo("+82");
+  });
+}
+```
+
+<Warning>
+**수동 수정 주의사항**:
+- down 함수도 함께 수정
+- 다음 Generate 시 덮어씌워질 수 있음
+- 복잡한 로직은 별도 Migration으로 분리
+</Warning>
+
+## 특수 케이스
+
+### Generated 컬럼
+
+```typescript
+// 직접 raw SQL 사용
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE "users" 
+     ADD COLUMN "full_name" varchar(510) 
+     GENERATED ALWAYS AS (first_name || ' ' || last_name) 
+     STORED`
+  );
+}
+```
+
+### 데이터 마이그레이션
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // 1. 컬럼 추가
+  await knex.schema.alterTable("users", (table) => {
+    table.string("status", 20).nullable();
+  });
+  
+  // 2. 데이터 이전
+  await knex("users").update({
+    status: knex.raw("CASE WHEN is_active THEN 'active' ELSE 'inactive' END"),
+  });
+  
+  // 3. nullable → notNullable
+  await knex.raw(`ALTER TABLE users ALTER COLUMN status SET NOT NULL`);
+}
+```
+
+### 조건부 실행
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  const hasColumn = await knex.schema.hasColumn("users", "phone");
+  
+  if (!hasColumn) {
+    await knex.schema.alterTable("users", (table) => {
+      table.string("phone", 20).nullable();
+    });
+  }
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="마이그레이션 실행" icon="play" href="/database/migrations/running-migrations">
+    migrate run으로 적용
+  </Card>
+  <Card title="롤백하기" icon="rotate-left" href="/database/migrations/rolling-back">
+    변경 사항 되돌리기
+  </Card>
+  <Card title="동작 원리" icon="gear" href="/database/migrations/how-migrations-work">
+    자동 생성 이해하기
+  </Card>
+  <Card title="전략" icon="chess" href="/database/migrations/migration-strategies">
+    안전한 마이그레이션
+  </Card>
+</CardGroup>

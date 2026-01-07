@@ -1,6 +1,440 @@
 ---
 title: "마이그레이션 실행하기"
-description: "pnpm sonamu migrate run"
+description: "pnpm sonamu migrate로 데이터베이스 적용하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+생성된 Migration 파일을 데이터베이스에 적용하는 방법입니다.
+
+## 실행 명령어
+
+<CardGroup cols={2}>
+  <Card title="migrate run" icon="play">
+    모든 Migration 실행
+    
+    DB 최신 상태로
+  </Card>
+  <Card title="migrate status" icon="list-check">
+    실행 상태 확인
+    
+    pending 목록
+  </Card>
+  <Card title="migrate latest" icon="forward">
+    최신까지 실행
+    
+    run과 동일
+  </Card>
+  <Card title="migrate up" icon="arrow-up">
+    한 번에 하나씩
+    
+    단계별 실행
+  </Card>
+</CardGroup>
+
+## 기본 실행
+
+### 모든 Migration 실행
+
+```bash
+pnpm sonamu migrate run
+```
+
+**실행 결과**:
+```
+Batch 1 run: 3 migrations
+✅ 20251220143022_create__users.ts
+✅ 20251220143100_create__posts.ts
+✅ 20251220143200_foreign__posts__user_id.ts
+```
+
+<Info>
+`migrate run`은 아직 실행되지 않은 모든 Migration을 순서대로 실행합니다.
+</Info>
+
+### 실행 상태 확인
+
+```bash
+pnpm sonamu migrate status
+```
+
+**출력 예시**:
+```
+Executed migrations:
+  ✅ 20251220143022_create__users.ts
+  ✅ 20251220143100_create__posts.ts
+
+Pending migrations:
+  ⏳ 20251220143200_alter_users_add1.ts
+  ⏳ 20251220143300_alter_posts_add1.ts
+```
+
+## 실행 순서
+
+Migration은 **파일명의 타임스탬프 순서**로 실행됩니다:
+
+```
+1. 20251209160740_create__companies.ts
+2. 20251209160741_create__departments.ts
+3. 20251209160742_create__employees.ts
+4. 20251209160750_foreign__departments__company_id.ts
+5. 20251209160751_foreign__employees__user_id.ts
+```
+
+<Frame>
+  <img src="/images/migrations/execution-order.png" alt="Migration 실행 순서" />
+</Frame>
+
+## 단계별 실행
+
+### 한 번에 하나씩
+
+```bash
+pnpm sonamu migrate up
+```
+
+**첫 번째 실행**:
+```
+Batch 1 run: 1 migration
+✅ 20251220143022_create__users.ts
+```
+
+**두 번째 실행**:
+```
+Batch 2 run: 1 migration
+✅ 20251220143100_create__posts.ts
+```
+
+<Info>
+`migrate up`은 pending 중 가장 오래된 Migration 하나만 실행합니다.
+</Info>
+
+## Batch 시스템
+
+### Batch란?
+
+함께 실행된 Migration 그룹입니다:
+
+```sql
+SELECT * FROM knex_migrations ORDER BY id;
+```
+
+| id | name | batch | migration_time |
+|----|------|-------|----------------|
+| 1 | 20251220143022_create__users.ts | 1 | 2025-12-20 14:30:22 |
+| 2 | 20251220143100_create__posts.ts | 1 | 2025-12-20 14:30:22 |
+| 3 | 20251220143200_alter_users_add1.ts | 2 | 2025-12-20 15:00:00 |
+
+### Batch의 역할
+
+- **롤백 단위**: 같은 batch의 Migration은 함께 롤백됩니다
+- **실행 그룹**: `migrate run`으로 한 번에 실행하면 같은 batch
+
+```bash
+# Batch 1: 한 번에 2개 실행
+pnpm sonamu migrate run
+✅ 20251220143022_create__users.ts     (batch 1)
+✅ 20251220143100_create__posts.ts     (batch 1)
+
+# Batch 2: 나중에 1개 더 실행
+pnpm sonamu migrate run
+✅ 20251220143200_alter_users_add1.ts  (batch 2)
+```
+
+## 환경별 실행
+
+### 개발 환경
+
+```bash
+# .env.development
+DATABASE_URL=postgresql://user:pass@localhost:5432/dev_db
+
+pnpm sonamu migrate run
+```
+
+### 스테이징 환경
+
+```bash
+# .env.staging
+DATABASE_URL=postgresql://user:pass@staging-db:5432/staging_db
+
+NODE_ENV=staging pnpm sonamu migrate run
+```
+
+### 프로덕션 환경
+
+```bash
+# .env.production
+DATABASE_URL=postgresql://user:pass@prod-db:5432/prod_db
+
+NODE_ENV=production pnpm sonamu migrate run
+```
+
+<Warning>
+**프로덕션 실행 전 주의사항**:
+1. 스테이징에서 먼저 테스트
+2. 백업 완료 확인
+3. 다운타임 계획
+4. 롤백 계획 준비
+</Warning>
+
+## 트랜잭션
+
+### 자동 트랜잭션
+
+각 Migration은 **별도 트랜잭션**으로 실행됩니다:
+
+```typescript
+// 20251220143022_create__users.ts
+export async function up(knex: Knex): Promise<void> {
+  // 이 함수 전체가 하나의 트랜잭션
+  await knex.schema.createTable("users", (table) => {
+    table.increments().primary();
+    table.string("email", 255).notNullable();
+  });
+  
+  // 에러 발생 시 위 CREATE TABLE도 롤백됨
+  await knex.schema.createTable("profiles", (table) => {
+    table.increments().primary();
+    table.integer("user_id").notNullable();
+  });
+}
+```
+
+### 트랜잭션 비활성화
+
+```typescript
+// knexfile.ts에서 설정
+export default {
+  migrations: {
+    disableTransactions: true,  // 트랜잭션 비활성화
+  },
+};
+```
+
+<Info>
+일부 DDL 작업은 트랜잭션을 지원하지 않을 수 있습니다.
+</Info>
+
+## 에러 처리
+
+### 실행 중 에러
+
+```bash
+pnpm sonamu migrate run
+```
+
+**에러 발생**:
+```
+Batch 1 run: 3 migrations
+✅ 20251220143022_create__users.ts
+✅ 20251220143100_create__posts.ts
+❌ 20251220143200_alter_users_add1.ts
+   Error: column "phone" already exists
+```
+
+**처리 방법**:
+1. Migration 파일 수정
+2. 다시 실행 시도
+
+### 부분 실패
+
+```
+Batch 1 run: 2 migrations (1 successful, 1 failed)
+✅ 20251220143022_create__users.ts     (committed)
+❌ 20251220143100_create__posts.ts     (rolled back)
+```
+
+<Warning>
+Migration이 실패하면:
+- 해당 Migration만 롤백
+- 이전 Migration은 유지
+- knex_migrations 테이블에 기록 안 됨
+</Warning>
+
+## 실행 로그 확인
+
+### 상세 로그
+
+```bash
+pnpm sonamu migrate run --verbose
+```
+
+**출력**:
+```
+Running migration: 20251220143022_create__users.ts
+SQL: CREATE TABLE "users" (
+  "id" serial primary key,
+  "email" varchar(255) not null
+)
+✅ Completed in 45ms
+
+Running migration: 20251220143100_create__posts.ts
+SQL: CREATE TABLE "posts" (
+  "id" serial primary key,
+  "title" varchar(200) not null
+)
+✅ Completed in 32ms
+
+Total time: 77ms
+```
+
+### 실행 기록 조회
+
+```sql
+-- 모든 실행 기록
+SELECT * FROM knex_migrations 
+ORDER BY migration_time DESC;
+
+-- 최근 batch
+SELECT * FROM knex_migrations 
+WHERE batch = (SELECT MAX(batch) FROM knex_migrations);
+
+-- 특정 Migration 확인
+SELECT * FROM knex_migrations 
+WHERE name LIKE '%users%';
+```
+
+## CI/CD 통합
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm sonamu migrate run
+```
+
+### Docker
+
+```dockerfile
+# Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
+
+COPY . .
+
+# Migration 실행
+CMD ["pnpm", "sonamu", "migrate", "run"]
+```
+
+## 다운타임 최소화
+
+### Blue-Green Deployment
+
+```bash
+# 1. Blue 환경 (현재 운영 중)
+DATABASE_URL=postgresql://blue-db pnpm start
+
+# 2. Green 환경에 Migration 적용
+DATABASE_URL=postgresql://green-db pnpm sonamu migrate run
+
+# 3. Green 환경 테스트
+DATABASE_URL=postgresql://green-db pnpm test
+
+# 4. 트래픽 전환 (Blue → Green)
+# 5. Blue 환경 업데이트
+DATABASE_URL=postgresql://blue-db pnpm sonamu migrate run
+```
+
+### 호환성 유지
+
+```typescript
+// Step 1: 새 컬럼 추가 (nullable)
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("users", (table) => {
+    table.string("new_field").nullable();  // ← nullable
+  });
+}
+
+// Step 2: 애플리케이션 배포 (new_field 사용)
+
+// Step 3: 데이터 마이그레이션
+
+// Step 4: NOT NULL 제약 추가
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(
+    `ALTER TABLE users ALTER COLUMN new_field SET NOT NULL`
+  );
+}
+```
+
+## 실전 팁
+
+### 1. 실행 전 확인
+
+```bash
+# 상태 확인
+pnpm sonamu migrate status
+
+# pending Migration 검토
+cat src/migrations/20251220143200_alter_users_add1.ts
+
+# 스테이징에서 테스트
+NODE_ENV=staging pnpm sonamu migrate run
+```
+
+### 2. 백업
+
+```bash
+# PostgreSQL 백업
+pg_dump -U postgres -d mydb > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Migration 실행
+pnpm sonamu migrate run
+
+# 문제 발생 시 복원
+psql -U postgres -d mydb < backup_20251220_143000.sql
+```
+
+### 3. 모니터링
+
+```typescript
+// Migration 실행 시간 측정
+const startTime = Date.now();
+
+await knex.migrate.latest();
+
+const duration = Date.now() - startTime;
+console.log(`Migration completed in ${duration}ms`);
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="롤백하기" icon="rotate-left" href="/database/migrations/rolling-back">
+    migrate rollback으로 되돌리기
+  </Card>
+  <Card title="전략" icon="chess" href="/database/migrations/migration-strategies">
+    안전한 마이그레이션
+  </Card>
+  <Card title="마이그레이션 생성" icon="plus" href="/database/migrations/creating-migrations">
+    Sonamu UI에서 생성
+  </Card>
+  <Card title="동작 원리" icon="gear" href="/database/migrations/how-migrations-work">
+    자동 생성 이해하기
+  </Card>
+</CardGroup>
