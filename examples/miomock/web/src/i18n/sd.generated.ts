@@ -136,6 +136,8 @@ const entityLabels = {
   "entity.Tag.id": "ID",
   "entity.Tag.created_at": "등록일시",
   "entity.Tag.name": "태그명",
+  "entity.Tag.name_ko": "태그명 한국어",
+  "entity.Tag.name_en": "태그명 영어",
   "enum.TagOrderBy.id-desc": "ID최신순",
   "enum.TagSearchField.id": "ID",
   "entity.User": "USER",

@@ -90,6 +90,17 @@ function TagList({}: TagListProps) {
     {
       label: SD("entity.Tag.name"),
       tc: (row) => <>{row.name}</>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Tag.name_ko"),
+      tc: (row) => <>{row.name_ko}</>,
+      fit: true,
+    },
+    {
+      label: SD("entity.Tag.name_en"),
+      tc: (row) => <>{row.name_en}</>,
+      fit: true,
     },
     {
       label: SD("common.manage"),
