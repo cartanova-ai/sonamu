@@ -1,10 +1,617 @@
 ---
-title: '파일 저장'
-description: 'saveToDisk 사용하기'
+title: "파일 저장"
+description: "Storage Manager와 다양한 스토리지 드라이버"
 ---
 
-# 파일 저장
+Sonamu의 Storage Manager를 사용하여 로컬, S3, GCS 등에 파일을 저장하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Storage Manager 개요
+
+<CardGroup cols={2}>
+  <Card title="통합 인터페이스" icon="layer-group">
+    단일 API
+    
+    여러 스토리지 지원
+  </Card>
+  <Card title="드라이버 시스템" icon="plug">
+    local, s3, gcs
+    
+    확장 가능
+  </Card>
+  <Card title="saveToDisk()" icon="floppy-disk">
+    간편한 저장
+    
+    URL 자동 생성
+  </Card>
+  <Card title="디스크 관리" icon="hard-drive">
+    여러 디스크 설정
+    
+    목적별 분리
+  </Card>
+</CardGroup>
+
+## saveToDisk() 메서드 (권장)
+
+### 기본 사용법
+
+`UploadedFile`의 `saveToDisk()` 메서드가 가장 간편한 파일 저장 방법입니다.
+
+```typescript
+import type { UploadedFile } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // 파일 저장 (기본 디스크)
+    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    
+    return { url };
+  }
+}
+```
+
+### 디스크 선택
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadToS3(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // S3 디스크에 저장
+    const url = await file.saveToDisk(
+      `uploads/${Date.now()}-${file.filename}`,
+      "s3" // 디스크 이름
+    );
+    
+    return { url };
+  }
+}
+```
+
+## Storage Manager 직접 사용
+
+### 기본 사용법
+
+`saveToDisk()`를 사용할 수 없는 경우 Storage Manager를 직접 사용할 수 있습니다.
+
+```typescript
+import { Sonamu } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async uploadBuffer(params: {
+    buffer: Buffer;
+    filename: string;
+    mimetype: string;
+  }): Promise<{ url: string }> {
+    const { buffer, filename, mimetype } = params;
+    
+    // 기본 디스크 가져오기
+    const disk = Sonamu.storage.use();
+    
+    // 파일 저장
+    const key = `uploads/${Date.now()}-${filename}`;
+    await disk.put(key, new Uint8Array(buffer), {
+      contentType: mimetype,
+    });
+    
+    // URL 생성
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+### 특정 디스크 사용
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async uploadToS3(params: {
+    buffer: Buffer;
+    filename: string;
+  }): Promise<{ url: string }> {
+    const { buffer, filename } = params;
+    
+    // S3 디스크 가져오기
+    const s3Disk = Sonamu.storage.use("s3");
+    
+    // 파일 저장
+    const key = `uploads/${Date.now()}-${filename}`;
+    await s3Disk.put(key, new Uint8Array(buffer), {
+      contentType: "application/octet-stream",
+    });
+    
+    // URL 생성
+    const url = await s3Disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+## Storage 설정
+
+### storage.config.ts
+
+```typescript
+// storage.config.ts
+import type { StorageConfig } from "sonamu";
+
+export const storageConfig: StorageConfig = {
+  default: "local", // 기본 디스크
+  
+  disks: {
+    // 로컬 스토리지
+    local: {
+      driver: "local",
+      root: "uploads",
+      url: process.env.APP_URL || "http://localhost:3000",
+    },
+    
+    // AWS S3
+    s3: {
+      driver: "s3",
+      bucket: process.env.S3_BUCKET!,
+      region: process.env.S3_REGION || "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+      endpoint: process.env.S3_ENDPOINT, // MinIO 등
+    },
+    
+    // Google Cloud Storage
+    gcs: {
+      driver: "gcs",
+      bucket: process.env.GCS_BUCKET!,
+      projectId: process.env.GCS_PROJECT_ID!,
+      keyFilename: process.env.GCS_KEY_FILENAME!,
+    },
+    
+    // Public 파일용
+    public: {
+      driver: "s3",
+      bucket: process.env.PUBLIC_S3_BUCKET!,
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+    },
+    
+    // 프라이빗 파일용
+    private: {
+      driver: "s3",
+      bucket: process.env.PRIVATE_S3_BUCKET!,
+      region: "us-east-1",
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      },
+    },
+  },
+};
+```
+
+## Storage Driver API
+
+### put() - 파일 저장
+
+```typescript
+const disk = Sonamu.storage.use();
+
+await disk.put(key, data, options);
+```
+
+**파라미터**:
+- `key: string` - 저장 경로
+- `data: Uint8Array` - 파일 데이터
+- `options: { contentType?: string }` - 옵션
+
+### get() - 파일 읽기
+
+```typescript
+const buffer = await disk.get(key);
+```
+
+### delete() - 파일 삭제
+
+```typescript
+await disk.delete(key);
+```
+
+### exists() - 파일 존재 확인
+
+```typescript
+const exists = await disk.exists(key);
+```
+
+### getUrl() - Public URL 생성
+
+```typescript
+const url = await disk.getUrl(key);
+```
+
+### getSignedUrl() - Signed URL 생성
+
+```typescript
+const signedUrl = await disk.getSignedUrl(key, expiresIn);
+```
+
+## 실전 예제
+
+### 날짜별 폴더 구조
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // 날짜별 경로 생성
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    
+    const key = `uploads/${year}/${month}/${day}/${Date.now()}.${file.extname}`;
+    
+    const url = await file.saveToDisk(key);
+    
+    return { url };
+  }
+}
+```
+
+### 사용자별 폴더 구조
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { file } = params;
+    
+    // 사용자별 경로
+    const key = `users/${context.user.id}/${Date.now()}.${file.extname}`;
+    
+    const url = await file.saveToDisk(key);
+    
+    return { url };
+  }
+}
+```
+
+### 카테고리별 디스크
+
+```typescript
+class MediaModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadMedia(params: {
+    file: UploadedFile;
+    category: "public" | "private";
+  }): Promise<{ url: string }> {
+    const { file, category } = params;
+    
+    // 카테고리별 디스크 선택
+    const diskName = category === "public" ? "public" : "private";
+    
+    const key = `media/${Date.now()}.${file.extname}`;
+    const url = await file.saveToDisk(key, diskName);
+    
+    return { url };
+  }
+}
+```
+
+### 이미지 최적화 후 저장
+
+```typescript
+import sharp from "sharp";
+
+class ImageModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadOptimized(params: {
+    image: UploadedFile;
+  }): Promise<{
+    originalUrl: string;
+    thumbnailUrl: string;
+    mediumUrl: string;
+  }> {
+    const { image } = params;
+    
+    // 원본 이미지 Buffer
+    const buffer = await image.toBuffer();
+    
+    const timestamp = Date.now();
+    const ext = image.extname;
+    
+    // 원본 저장
+    const originalKey = `images/original/${timestamp}.${ext}`;
+    const originalUrl = await image.saveToDisk(originalKey);
+    
+    // Storage Manager 가져오기
+    const disk = Sonamu.storage.use();
+    
+    // 썸네일 생성 및 저장 (200x200)
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(200, 200, { fit: "cover" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    
+    const thumbnailKey = `images/thumbnail/${timestamp}.jpg`;
+    await disk.put(thumbnailKey, new Uint8Array(thumbnailBuffer), {
+      contentType: "image/jpeg",
+    });
+    const thumbnailUrl = await disk.getUrl(thumbnailKey);
+    
+    // 중간 크기 생성 및 저장 (800x800)
+    const mediumBuffer = await sharp(buffer)
+      .resize(800, 800, { fit: "inside" })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    
+    const mediumKey = `images/medium/${timestamp}.jpg`;
+    await disk.put(mediumKey, new Uint8Array(mediumBuffer), {
+      contentType: "image/jpeg",
+    });
+    const mediumUrl = await disk.getUrl(mediumKey);
+    
+    return {
+      originalUrl,
+      thumbnailUrl,
+      mediumUrl,
+    };
+  }
+}
+```
+
+### 여러 디스크에 동시 저장
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithBackup(params: {
+    file: UploadedFile;
+  }): Promise<{
+    primaryUrl: string;
+    backupUrl: string;
+  }> {
+    const { file } = params;
+    
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    const buffer = await file.toBuffer();
+    
+    // Primary 디스크에 저장
+    const primaryUrl = await file.saveToDisk(key, "s3");
+    
+    // Backup 디스크에도 저장
+    const backupDisk = Sonamu.storage.use("backup");
+    await backupDisk.put(key, new Uint8Array(buffer), {
+      contentType: file.mimetype,
+    });
+    const backupUrl = await backupDisk.getUrl(key);
+    
+    return {
+      primaryUrl,
+      backupUrl,
+    };
+  }
+}
+```
+
+## 파일 삭제
+
+### 파일 삭제
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  async remove(fileId: number): Promise<void> {
+    const rdb = this.getPuri("r");
+    
+    // 파일 정보 조회
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Storage에서 삭제
+    const disk = Sonamu.storage.use(file.disk_name);
+    await disk.delete(file.key);
+    
+    // DB에서 삭제
+    const wdb = this.getPuri("w");
+    await wdb.table("files").where("id", fileId).delete();
+  }
+}
+```
+
+### 파일 존재 확인 후 삭제
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "DELETE" })
+  async removeSafe(fileId: number): Promise<void> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    const disk = Sonamu.storage.use(file.disk_name);
+    
+    // 파일 존재 확인
+    const exists = await disk.exists(file.key);
+    
+    if (exists) {
+      await disk.delete(file.key);
+    } else {
+      console.warn(`File not found in storage: ${file.key}`);
+    }
+    
+    // DB에서 삭제
+    const wdb = this.getPuri("w");
+    await wdb.table("files").where("id", fileId).delete();
+  }
+}
+```
+
+## 고급 사용
+
+### 스트리밍 업로드 (대용량 파일)
+
+대용량 파일의 경우 Buffer 대신 스트리밍을 사용할 수 있습니다.
+
+```typescript
+import { pipeline } from "stream/promises";
+import fs from "fs";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadLarge(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // 임시 파일로 저장
+    const tempPath = `/tmp/${Date.now()}.${file.extname}`;
+    const writeStream = fs.createWriteStream(tempPath);
+    
+    await pipeline(file.raw.file, writeStream);
+    
+    // 임시 파일을 Storage에 업로드
+    const disk = Sonamu.storage.use();
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    
+    const buffer = await fs.promises.readFile(tempPath);
+    await disk.put(key, new Uint8Array(buffer), {
+      contentType: file.mimetype,
+    });
+    
+    // 임시 파일 삭제
+    await fs.promises.unlink(tempPath);
+    
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+### 파일 메타데이터 저장
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithMetadata(params: {
+    file: UploadedFile;
+    title?: string;
+    description?: string;
+    tags?: string[];
+  }): Promise<{ fileId: number; url: string }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { file, title, description, tags } = params;
+    
+    // MD5 해시 계산
+    const md5Hash = await file.md5();
+    
+    // 파일 저장
+    const key = `uploads/${Date.now()}.${file.extname}`;
+    const url = await file.saveToDisk(key);
+    
+    // DB에 메타데이터 저장
+    const wdb = this.getPuri("w");
+    const [record] = await wdb
+      .table("files")
+      .insert({
+        user_id: context.user.id,
+        key,
+        filename: file.filename,
+        mime_type: file.mimetype,
+        size: file.size,
+        md5_hash: md5Hash,
+        url,
+        title,
+        description,
+        tags: tags ? JSON.stringify(tags) : null,
+        uploaded_at: new Date(),
+      })
+      .returning({ id: "id" });
+    
+    return {
+      fileId: record.id,
+      url,
+    };
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**파일 저장 시 주의사항**:
+1. `saveToDisk()`가 가장 간편한 방법
+2. 디스크 설정 확인
+3. 파일 크기 제한 설정
+4. 에러 처리 필수
+5. 대용량 파일은 스트리밍 고려
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="파일 업로드 설정" icon="gear" href="/api-development/file-upload/setup">
+    @upload 데코레이터
+  </Card>
+  <Card title="UploadedFile 클래스" icon="file" href="/api-development/file-upload/uploaded-file-class">
+    파일 정보 접근
+  </Card>
+  <Card title="URL 생성" icon="link" href="/api-development/file-upload/url-generation">
+    URL 생성하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+</CardGroup>

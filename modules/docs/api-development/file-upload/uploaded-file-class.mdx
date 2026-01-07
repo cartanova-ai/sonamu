@@ -1,10 +1,650 @@
 ---
-title: 'UploadedFile 클래스'
-description: 'UploadedFile 사용하기'
+title: "UploadedFile 클래스"
+description: "파일 정보 접근과 saveToDisk() 메서드"
 ---
 
-# UploadedFile 클래스
+UploadedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveToDisk()` 메서드로 파일을 저장합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## UploadedFile 개요
+
+<CardGroup cols={2}>
+  <Card title="파일 정보" icon="circle-info">
+    filename, mimetype, size
+    
+    extname, md5
+  </Card>
+  <Card title="saveToDisk()" icon="floppy-disk">
+    스토리지에 저장
+    
+    URL 자동 생성
+  </Card>
+  <Card title="toBuffer()" icon="memory">
+    Buffer 변환
+    
+    캐싱 지원
+  </Card>
+  <Card title="URL 속성" icon="link">
+    url, signedUrl
+    
+    저장 후 자동 설정
+  </Card>
+</CardGroup>
+
+## 기본 속성
+
+### 파일 정보
+
+```typescript
+import type { UploadedFile } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<any> {
+    const { file } = params;
+    
+    // 파일 정보 접근
+    console.log({
+      filename: file.filename,      // 원본 파일명: "photo.jpg"
+      mimetype: file.mimetype,      // MIME 타입: "image/jpeg"
+      size: file.size,              // 파일 크기 (bytes): 524288
+      extname: file.extname,        // 확장자: "jpg" (점 제외)
+    });
+    
+    return {
+      filename: file.filename,
+      mimetype: file.mimetype,
+      size: file.size,
+      extname: file.extname,
+    };
+  }
+}
+```
+
+**속성 목록**:
+- `filename: string` - 원본 파일명
+- `mimetype: string` - MIME 타입
+- `size: number` - 파일 크기 (바이트)
+- `extname: string | false` - 확장자 (점 제외)
+- `url: string | undefined` - 저장 후 Public URL
+- `signedUrl: string | undefined` - 저장 후 Signed URL
+
+## saveToDisk() 메서드
+
+### 기본 사용법
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // 파일 저장 (기본 디스크 사용)
+    const url = await file.saveToDisk(`uploads/${Date.now()}-${file.filename}`);
+    
+    // url 속성에 자동으로 저장됨
+    console.log(file.url);        // Public URL
+    console.log(file.signedUrl);  // Signed URL
+    
+    return { url };
+  }
+}
+```
+
+### 특정 디스크에 저장
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadToS3(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // S3 디스크에 저장
+    const url = await file.saveToDisk(
+      `uploads/${Date.now()}-${file.filename}`,
+      "s3" // 디스크 이름
+    );
+    
+    return { url };
+  }
+  
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadPublic(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // Public 디스크에 저장
+    const url = await file.saveToDisk(
+      `public/${Date.now()}-${file.filename}`,
+      "public"
+    );
+    
+    return { url };
+  }
+}
+```
+
+## Buffer 변환
+
+### toBuffer() 메서드
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async processImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    // Buffer로 변환 (캐싱됨)
+    const buffer = await image.toBuffer();
+    
+    console.log("Buffer size:", buffer.length);
+    
+    // Buffer를 이용한 이미지 처리
+    const sharp = require("sharp");
+    const resized = await sharp(buffer)
+      .resize(800, 600)
+      .toBuffer();
+    
+    // 처리된 이미지 저장
+    // (saveToDisk는 원본 파일을 저장하므로, 
+    // 처리된 Buffer는 Storage Manager를 직접 사용)
+    const disk = Sonamu.storage.use();
+    const key = `images/${Date.now()}.jpg`;
+    
+    await disk.put(key, new Uint8Array(resized), {
+      contentType: "image/jpeg",
+    });
+    
+    const url = await disk.getUrl(key);
+    
+    return { url };
+  }
+}
+```
+
+<Info>
+`toBuffer()`는 결과를 캐싱하므로, 여러 번 호출해도 한 번만 읽습니다.
+</Info>
+
+## MD5 해시
+
+### md5() 메서드
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadWithHash(params: {
+    file: UploadedFile;
+  }): Promise<{
+    url: string;
+    md5: string;
+  }> {
+    const { file } = params;
+    
+    // MD5 해시 계산
+    const md5Hash = await file.md5();
+    console.log("MD5:", md5Hash); // "abc123def456..."
+    
+    // 중복 파일 체크
+    const rdb = this.getPuri("r");
+    const existing = await rdb
+      .table("files")
+      .where("md5_hash", md5Hash)
+      .first();
+    
+    if (existing) {
+      // 이미 동일한 파일이 존재
+      return {
+        url: existing.url,
+        md5: md5Hash,
+      };
+    }
+    
+    // 새 파일 저장
+    const url = await file.saveToDisk(`uploads/${md5Hash}.${file.extname}`);
+    
+    // DB에 저장
+    const wdb = this.getPuri("w");
+    await wdb.table("files").insert({
+      filename: file.filename,
+      mime_type: file.mimetype,
+      size: file.size,
+      md5_hash: md5Hash,
+      url,
+    });
+    
+    return { url, md5: md5Hash };
+  }
+}
+```
+
+## 파일 검증
+
+### 크기 검증
+
+```typescript
+class FileValidator {
+  static validateSize(file: UploadedFile, maxSize: number): void {
+    if (file.size > maxSize) {
+      throw new Error(
+        `File too large: ${file.size} bytes (max ${maxSize} bytes)`
+      );
+    }
+  }
+}
+
+// 사용
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { file } = params;
+    
+    // 크기 검증 (10MB)
+    FileValidator.validateSize(file, 10 * 1024 * 1024);
+    
+    const url = await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+### MIME 타입 검증
+
+```typescript
+class FileValidator {
+  static validateMimeType(
+    file: UploadedFile,
+    allowedTypes: string[]
+  ): void {
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(
+        `Invalid file type: ${file.mimetype}. ` +
+        `Allowed: ${allowedTypes.join(", ")}`
+      );
+    }
+  }
+}
+
+// 사용
+class ImageModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    // MIME 타입 검증
+    FileValidator.validateMimeType(image, [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]);
+    
+    const url = await image.saveToDisk(`images/${Date.now()}.${image.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+### 확장자 검증
+
+```typescript
+class FileValidator {
+  static validateExtension(
+    file: UploadedFile,
+    allowedExtensions: string[]
+  ): void {
+    const ext = file.extname;
+    
+    if (!ext || !allowedExtensions.includes(ext.toLowerCase())) {
+      throw new Error(
+        `Invalid file extension: ${ext}. ` +
+        `Allowed: ${allowedExtensions.join(", ")}`
+      );
+    }
+  }
+}
+
+// 사용
+class DocumentModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadDocument(params: {
+    document: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { document } = params;
+    
+    // 확장자 검증
+    FileValidator.validateExtension(document, [
+      "pdf",
+      "doc",
+      "docx",
+      "txt",
+    ]);
+    
+    const url = await document.saveToDisk(
+      `documents/${Date.now()}.${document.extname}`
+    );
+    
+    return { url };
+  }
+}
+```
+
+### 통합 검증 클래스
+
+```typescript
+class FileValidator {
+  static validateImage(file: UploadedFile): void {
+    // 크기 확인 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("Image too large (max 5MB)");
+    }
+    
+    // MIME 타입 확인
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid image type: ${file.mimetype}`);
+    }
+    
+    // 확장자 확인
+    const allowedExtensions = ["jpg", "jpeg", "png", "gif", "webp"];
+    if (!file.extname || !allowedExtensions.includes(file.extname.toLowerCase())) {
+      throw new Error(`Invalid image extension: ${file.extname}`);
+    }
+  }
+  
+  static validateDocument(file: UploadedFile): void {
+    // 크기 확인 (20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error("Document too large (max 20MB)");
+    }
+    
+    // MIME 타입 확인
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
+    
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid document type: ${file.mimetype}`);
+    }
+  }
+  
+  static validateVideo(file: UploadedFile): void {
+    // 크기 확인 (100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      throw new Error("Video too large (max 100MB)");
+    }
+    
+    // MIME 타입 확인
+    const allowedTypes = [
+      "video/mp4",
+      "video/mpeg",
+      "video/quicktime",
+      "video/x-msvideo",
+    ];
+    
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error(`Invalid video type: ${file.mimetype}`);
+    }
+  }
+}
+
+// 사용
+class MediaModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadImage(params: {
+    image: UploadedFile;
+  }): Promise<{ url: string }> {
+    const { image } = params;
+    
+    FileValidator.validateImage(image);
+    
+    const url = await image.saveToDisk(`images/${Date.now()}.${image.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+## 실전 예제
+
+### 프로필 이미지 업로드
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadProfileImage(params: {
+    image: UploadedFile;
+  }): Promise<{
+    imageId: number;
+    url: string;
+    thumbnailUrl: string;
+  }> {
+    const context = Sonamu.getContext();
+    
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    const { image } = params;
+    
+    // 검증
+    FileValidator.validateImage(image);
+    
+    // 원본 이미지 Buffer
+    const buffer = await image.toBuffer();
+    
+    // 썸네일 생성
+    const sharp = require("sharp");
+    const thumbnailBuffer = await sharp(buffer)
+      .resize(200, 200, { fit: "cover" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    
+    // 원본 저장
+    const originalKey = `profiles/${context.user.id}/original-${Date.now()}.${image.extname}`;
+    const originalUrl = await image.saveToDisk(originalKey);
+    
+    // 썸네일 저장 (Storage Manager 직접 사용)
+    const disk = Sonamu.storage.use();
+    const thumbnailKey = `profiles/${context.user.id}/thumb-${Date.now()}.jpg`;
+    await disk.put(thumbnailKey, new Uint8Array(thumbnailBuffer), {
+      contentType: "image/jpeg",
+    });
+    const thumbnailUrl = await disk.getUrl(thumbnailKey);
+    
+    // DB에 저장
+    const wdb = this.getPuri("w");
+    const [record] = await wdb
+      .table("profile_images")
+      .insert({
+        user_id: context.user.id,
+        original_key: originalKey,
+        thumbnail_key: thumbnailKey,
+        original_url: originalUrl,
+        thumbnail_url: thumbnailUrl,
+        mime_type: image.mimetype,
+        size: image.size,
+      })
+      .returning({ id: "id" });
+    
+    return {
+      imageId: record.id,
+      url: originalUrl,
+      thumbnailUrl,
+    };
+  }
+}
+```
+
+### 여러 파일 일괄 처리
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "multiple" })
+  async uploadMultiple(params: {
+    files: UploadedFile[];
+    category?: string;
+  }): Promise<{
+    uploadedFiles: Array<{
+      fileId: number;
+      filename: string;
+      url: string;
+      md5: string;
+    }>;
+  }> {
+    const { files, category } = params;
+    
+    if (!files || files.length === 0) {
+      throw new Error("At least one file is required");
+    }
+    
+    if (files.length > 10) {
+      throw new Error("Maximum 10 files allowed");
+    }
+    
+    const uploadedFiles = [];
+    const wdb = this.getPuri("w");
+    
+    for (const file of files) {
+      // 검증
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error(`File ${file.filename} too large (max 20MB)`);
+      }
+      
+      // MD5 해시
+      const md5Hash = await file.md5();
+      
+      // 중복 체크
+      const rdb = this.getPuri("r");
+      const existing = await rdb
+        .table("files")
+        .where("md5_hash", md5Hash)
+        .first();
+      
+      if (existing) {
+        // 이미 존재하는 파일
+        uploadedFiles.push({
+          fileId: existing.id,
+          filename: existing.filename,
+          url: existing.url,
+          md5: md5Hash,
+        });
+        continue;
+      }
+      
+      // 새 파일 저장
+      const key = `uploads/${category}/${Date.now()}.${file.extname}`;
+      const url = await file.saveToDisk(key);
+      
+      // DB에 저장
+      const [record] = await wdb
+        .table("files")
+        .insert({
+          key,
+          filename: file.filename,
+          mime_type: file.mimetype,
+          size: file.size,
+          md5_hash: md5Hash,
+          url,
+          category,
+        })
+        .returning({ id: "id" });
+      
+      uploadedFiles.push({
+        fileId: record.id,
+        filename: file.filename,
+        url,
+        md5: md5Hash,
+      });
+    }
+    
+    return { uploadedFiles };
+  }
+}
+```
+
+## 원본 MultipartFile 접근
+
+### raw 속성
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async uploadAdvanced(params: {
+    file: UploadedFile;
+  }): Promise<any> {
+    const { file } = params;
+    
+    // 원본 Fastify MultipartFile 접근
+    const rawFile = file.raw;
+    
+    console.log({
+      encoding: rawFile.encoding,
+      fieldname: rawFile.fieldname,
+      // ...
+    });
+    
+    const url = await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    
+    return { url };
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**UploadedFile 사용 시 주의사항**:
+1. `saveToDisk()` 호출 전 검증 필수
+2. `toBuffer()`는 캐싱되므로 여러 번 호출 가능
+3. `url`, `signedUrl`은 저장 후에만 사용 가능
+4. 대용량 파일은 스트리밍 고려
+5. Storage 설정 확인
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="파일 업로드 설정" icon="gear" href="/api-development/file-upload/setup">
+    @upload 데코레이터 설정
+  </Card>
+  <Card title="파일 저장" icon="floppy-disk" href="/api-development/file-upload/saving-files">
+    Storage Manager 사용
+  </Card>
+  <Card title="URL 생성" icon="link" href="/api-development/file-upload/url-generation">
+    URL 생성하기
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+</CardGroup>

@@ -1,10 +1,608 @@
 ---
-title: 'URL 생성'
-description: 'url, signedUrl 생성하기'
+title: "URL 생성"
+description: "Public URL과 Signed URL"
 ---
 
-# URL 생성
+파일 저장 후 접근을 위한 URL을 생성하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## URL 생성 개요
+
+<CardGroup cols={2}>
+  <Card title="Public URL" icon="globe">
+    공개 접근
+    
+    영구적 링크
+  </Card>
+  <Card title="Signed URL" icon="lock">
+    시간 제한 접근
+    
+    보안 강화
+  </Card>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    saveToDisk 후 자동
+    
+    url, signedUrl 속성
+  </Card>
+  <Card title="Storage Manager" icon="database">
+    getUrl()
+    
+    getSignedUrl()
+  </Card>
+</CardGroup>
+
+## UploadedFile URL 속성
+
+### url 속성 (Public URL)
+
+`saveToDisk()` 호출 후 자동으로 Public URL이 생성됩니다.
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  @upload({ mode: "single" })
+  async upload(params: {
+    file: UploadedFile;
+  }): Promise<{
+    url: string;
+    signedUrl: string;
+  }> {
+    const { file } = params;
+    
+    // 파일 저장
+    await file.saveToDisk(`uploads/${Date.now()}.${file.extname}`);
+    
+    // URL 자동 생성됨
+    const publicUrl = file.url!;        // Public URL
+    const signedUrl = file.signedUrl!;  // Signed URL
+    
+    return {
+      url: publicUrl,
+      signedUrl,
+    };
+  }
+}
+```
+
+<Info>
+`url`과 `signedUrl`은 `saveToDisk()` 호출 후에만 사용 가능합니다.
+</Info>
+
+## Storage Manager로 URL 생성
+
+### getUrl() - Public URL
+
+```typescript
+import { Sonamu } from "sonamu";
+
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getFileUrl(fileId: number): Promise<{ url: string }> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Storage Manager로 URL 생성
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getUrl(file.key);
+    
+    return { url };
+  }
+}
+```
+
+### getSignedUrl() - Signed URL
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getDownloadUrl(
+    fileId: number,
+    expiresIn: number = 3600 // 1시간
+  ): Promise<{
+    url: string;
+    expiresAt: Date;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Signed URL 생성
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getSignedUrl(file.key, expiresIn);
+    
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    
+    return {
+      url,
+      expiresAt,
+    };
+  }
+}
+```
+
+## 스토리지별 URL 형식
+
+### Local Storage
+
+```typescript
+// Local 스토리지 URL
+// http://localhost:3000/uploads/1736234567.jpg
+```
+
+로컬 스토리지는 앱 URL을 기반으로 Public URL을 생성합니다.
+
+### AWS S3
+
+```typescript
+// S3 Public URL
+// https://my-bucket.s3.us-east-1.amazonaws.com/uploads/1736234567.jpg
+
+// S3 Signed URL
+// https://my-bucket.s3.us-east-1.amazonaws.com/uploads/1736234567.jpg?
+// X-Amz-Algorithm=AWS4-HMAC-SHA256&
+// X-Amz-Credential=...&
+// X-Amz-Date=...&
+// X-Amz-Expires=3600&
+// X-Amz-Signature=...&
+// X-Amz-SignedHeaders=host
+```
+
+### Google Cloud Storage
+
+```typescript
+// GCS Public URL
+// https://storage.googleapis.com/my-bucket/uploads/1736234567.jpg
+
+// GCS Signed URL
+// https://storage.googleapis.com/my-bucket/uploads/1736234567.jpg?
+// GoogleAccessId=...&
+// Expires=...&
+// Signature=...
+```
+
+## 실전 예제
+
+### 파일 다운로드 URL
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getDownloadUrl(fileId: number): Promise<{
+    url: string;
+    filename: string;
+    expiresAt: Date;
+  }> {
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // 다운로드 로그
+    const wdb = this.getPuri("w");
+    await wdb.table("download_logs").insert({
+      file_id: fileId,
+      user_id: context.user?.id,
+      ip_address: context.request.ip,
+      user_agent: context.request.headers["user-agent"],
+      downloaded_at: new Date(),
+    });
+    
+    // Signed URL 생성 (1시간)
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getSignedUrl(file.key, 3600);
+    const expiresAt = new Date(Date.now() + 3600 * 1000);
+    
+    return {
+      url,
+      filename: file.filename,
+      expiresAt,
+    };
+  }
+}
+```
+
+### 이미지 크기별 URL
+
+```typescript
+class ImageModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getImageUrls(imageId: number): Promise<{
+    original: string;
+    thumbnail: string;
+    medium: string;
+  }> {
+    const rdb = this.getPuri("r");
+    
+    const image = await rdb
+      .table("images")
+      .where("id", imageId)
+      .first();
+    
+    if (!image) {
+      throw new Error("Image not found");
+    }
+    
+    const disk = Sonamu.storage.use(image.disk_name);
+    
+    return {
+      original: await disk.getUrl(image.original_key),
+      thumbnail: await disk.getUrl(image.thumbnail_key),
+      medium: await disk.getUrl(image.medium_key),
+    };
+  }
+}
+```
+
+### 권한 기반 URL 생성
+
+```typescript
+class DocumentModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getDocumentUrl(documentId: number): Promise<{
+    url: string;
+    type: "public" | "signed";
+  }> {
+    const context = Sonamu.getContext();
+    const rdb = this.getPuri("r");
+    
+    const document = await rdb
+      .table("documents")
+      .where("id", documentId)
+      .first();
+    
+    if (!document) {
+      throw new Error("Document not found");
+    }
+    
+    const disk = Sonamu.storage.use(document.disk_name);
+    
+    // Public 문서는 Public URL
+    if (document.is_public) {
+      const url = await disk.getUrl(document.key);
+      return {
+        url,
+        type: "public",
+      };
+    }
+    
+    // Private 문서는 Signed URL
+    if (!context.user) {
+      throw new Error("Authentication required");
+    }
+    
+    // 권한 확인
+    if (document.user_id !== context.user.id && context.user.role !== "admin") {
+      throw new Error("Access denied");
+    }
+    
+    const url = await disk.getSignedUrl(document.key, 3600);
+    
+    return {
+      url,
+      type: "signed",
+    };
+  }
+}
+```
+
+### 일괄 URL 생성
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async getBatchUrls(params: {
+    fileIds: number[];
+  }): Promise<{
+    urls: Record<number, {
+      url: string;
+      signedUrl: string;
+    }>;
+  }> {
+    const { fileIds } = params;
+    
+    if (fileIds.length > 100) {
+      throw new Error("Maximum 100 files at once");
+    }
+    
+    const rdb = this.getPuri("r");
+    
+    const files = await rdb
+      .table("files")
+      .whereIn("id", fileIds)
+      .select("*");
+    
+    const urls: Record<number, {
+      url: string;
+      signedUrl: string;
+    }> = {};
+    
+    for (const file of files) {
+      const disk = Sonamu.storage.use(file.disk_name);
+      
+      urls[file.id] = {
+        url: await disk.getUrl(file.key),
+        signedUrl: await disk.getSignedUrl(file.key, 3600),
+      };
+    }
+    
+    return { urls };
+  }
+}
+```
+
+## URL 캐싱
+
+### Redis 캐싱
+
+```typescript
+import Redis from "ioredis";
+
+class FileModel extends BaseModelClass {
+  private redis = new Redis(process.env.REDIS_URL);
+  
+  @api({ httpMethod: "GET" })
+  async getSignedUrlCached(fileId: number): Promise<{
+    url: string;
+    expiresAt: Date;
+  }> {
+    // 캐시 확인
+    const cacheKey = `signed-url:${fileId}`;
+    const cached = await this.redis.get(cacheKey);
+    
+    if (cached) {
+      const data = JSON.parse(cached);
+      return data;
+    }
+    
+    // 파일 정보 조회
+    const rdb = this.getPuri("r");
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Signed URL 생성
+    const disk = Sonamu.storage.use(file.disk_name);
+    const expiresIn = 3600; // 1시간
+    const url = await disk.getSignedUrl(file.key, expiresIn);
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    
+    const result = { url, expiresAt };
+    
+    // 캐시 저장 (만료 시간보다 짧게)
+    await this.redis.setex(
+      cacheKey,
+      expiresIn - 60, // 1분 여유
+      JSON.stringify(result)
+    );
+    
+    return result;
+  }
+}
+```
+
+## CDN URL
+
+### CloudFront (AWS)
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getCDNUrl(fileId: number): Promise<{ url: string }> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // CloudFront URL 생성
+    const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
+    
+    if (cloudFrontDomain) {
+      const url = `https://${cloudFrontDomain}/${file.key}`;
+      return { url };
+    }
+    
+    // CloudFront 없으면 일반 URL
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getUrl(file.key);
+    
+    return { url };
+  }
+}
+```
+
+### Cloud CDN (GCP)
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getCDNUrl(fileId: number): Promise<{ url: string }> {
+    const rdb = this.getPuri("r");
+    
+    const file = await rdb
+      .table("files")
+      .where("id", fileId)
+      .first();
+    
+    if (!file) {
+      throw new Error("File not found");
+    }
+    
+    // Cloud CDN URL 생성
+    const cdnDomain = process.env.CLOUD_CDN_DOMAIN;
+    
+    if (cdnDomain) {
+      const url = `https://${cdnDomain}/${file.key}`;
+      return { url };
+    }
+    
+    // CDN 없으면 일반 URL
+    const disk = Sonamu.storage.use(file.disk_name);
+    const url = await disk.getUrl(file.key);
+    
+    return { url };
+  }
+}
+```
+
+## 임시 업로드 URL (Presigned Upload)
+
+### 클라이언트 직접 업로드
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async getUploadUrl(params: {
+    filename: string;
+    contentType: string;
+  }): Promise<{
+    uploadUrl: string;
+    key: string;
+  }> {
+    const { filename, contentType } = params;
+    
+    // 안전한 키 생성
+    const ext = filename.split(".").pop();
+    const key = `uploads/${Date.now()}.${ext}`;
+    
+    // Presigned Upload URL 생성 (5분)
+    const disk = Sonamu.storage.use();
+    const uploadUrl = await disk.getSignedUrl(key, 300);
+    
+    return {
+      uploadUrl,
+      key,
+    };
+  }
+  
+  @api({ httpMethod: "POST" })
+  async confirmUpload(params: {
+    key: string;
+    filename: string;
+    contentType: string;
+    size: number;
+  }): Promise<{
+    fileId: number;
+    url: string;
+  }> {
+    const { key, filename, contentType, size } = params;
+    
+    // 파일 존재 확인
+    const disk = Sonamu.storage.use();
+    const exists = await disk.exists(key);
+    
+    if (!exists) {
+      throw new Error("File not uploaded");
+    }
+    
+    // DB에 메타데이터 저장
+    const wdb = this.getPuri("w");
+    const [record] = await wdb
+      .table("files")
+      .insert({
+        key,
+        filename,
+        mime_type: contentType,
+        size,
+        url: await disk.getUrl(key),
+      })
+      .returning({ id: "id" });
+    
+    return {
+      fileId: record.id,
+      url: await disk.getUrl(key),
+    };
+  }
+}
+```
+
+## URL 유효성 검사
+
+### URL 만료 시간 확인
+
+```typescript
+class FileModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async checkUrlValidity(url: string): Promise<{
+    valid: boolean;
+    expiresAt?: Date;
+  }> {
+    // Signed URL에서 만료 시간 추출
+    const urlObj = new URL(url);
+    const expires = urlObj.searchParams.get("Expires") ||
+                    urlObj.searchParams.get("X-Amz-Date");
+    
+    if (!expires) {
+      // Public URL (만료 없음)
+      return { valid: true };
+    }
+    
+    const expiresAt = new Date(parseInt(expires) * 1000);
+    const valid = expiresAt > new Date();
+    
+    return {
+      valid,
+      expiresAt,
+    };
+  }
+}
+```
+
+## 주의사항
+
+<Warning>
+**URL 생성 시 주의사항**:
+1. Signed URL은 만료 시간 설정
+2. Public URL은 영구적이므로 신중히 사용
+3. CDN 사용 시 캐시 무효화 고려
+4. URL 로깅으로 사용 추적 권장
+5. 민감한 파일은 Signed URL 사용
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="파일 업로드 설정" icon="gear" href="/api-development/file-upload/setup">
+    @upload 데코레이터
+  </Card>
+  <Card title="UploadedFile 클래스" icon="file" href="/api-development/file-upload/uploaded-file-class">
+    파일 정보 접근
+  </Card>
+  <Card title="파일 저장" icon="floppy-disk" href="/api-development/file-upload/saving-files">
+    Storage Manager
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+</CardGroup>
