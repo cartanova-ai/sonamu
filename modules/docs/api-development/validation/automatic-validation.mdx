@@ -1,10 +1,633 @@
 ---
-title: '자동 검증'
-description: 'Zod 기반 검증'
+title: "자동 검증"
+description: "Zod를 활용한 타입 안전 파라미터 검증"
 ---
 
-# 자동 검증
+Sonamu는 Zod를 사용하여 API 파라미터를 자동으로 검증할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Zod 검증 개요
+
+<CardGroup cols={2}>
+  <Card title="타입 안전성" icon="shield-check">
+    컴파일 타임 검증
+    
+    런타임 검증 자동화
+  </Card>
+  <Card title="자동 검증" icon="wand-magic-sparkles">
+    스키마 기반 검증
+    
+    에러 메시지 자동 생성
+  </Card>
+  <Card title="타입 추론" icon="code">
+    TypeScript 타입 생성
+    
+    자동완성 지원
+  </Card>
+  <Card title="확장 가능" icon="puzzle-piece">
+    커스텀 검증 규칙
+    
+    변환(Transform) 지원
+  </Card>
+</CardGroup>
+
+## Zod 설치
+
+```bash
+npm install zod
+# or
+pnpm add zod
+```
+
+<Info>
+Sonamu는 Zod v4를 지원합니다. 최신 버전을 설치하세요.
+</Info>
+
+## 기본 사용법
+
+### Zod 스키마 정의
+
+```typescript
+import { z } from "zod";
+import { BaseModelClass, api } from "sonamu";
+
+// Zod 스키마 정의
+const CreateUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  username: z.string().min(3, "Username must be at least 3 characters").max(20),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  age: z.number().int().min(18, "Must be at least 18 years old").optional(),
+  role: z.enum(["admin", "manager", "normal"]),
+});
+
+// TypeScript 타입 추론
+type CreateUserParams = z.infer<typeof CreateUserSchema>;
+
+class UserModel extends BaseModelClass {
+  modelName = "User";
+  
+  @api({ httpMethod: "POST" })
+  async create(params: CreateUserParams): Promise<{ userId: number }> {
+    // 스키마로 검증
+    const validated = CreateUserSchema.parse(params);
+    
+    const wdb = this.getPuri("w");
+    const [user] = await wdb
+      .table("users")
+      .insert(validated)
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+```
+
+### 검증 에러 처리
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async create(params: unknown): Promise<{ userId: number }> {
+    try {
+      // 검증
+      const validated = CreateUserSchema.parse(params);
+      
+      const wdb = this.getPuri("w");
+      const [user] = await wdb
+        .table("users")
+        .insert(validated)
+        .returning({ id: "id" });
+      
+      return { userId: user.id };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Zod 검증 에러
+        const messages = error.errors.map((e) => e.message).join(", ");
+        throw new Error(`Validation failed: ${messages}`);
+      }
+      throw error;
+    }
+  }
+}
+```
+
+## Zod 스키마 타입
+
+### 원시 타입
+
+```typescript
+import { z } from "zod";
+
+// 문자열
+const StringSchema = z.string();
+const EmailSchema = z.string().email();
+const UrlSchema = z.string().url();
+const UuidSchema = z.string().uuid();
+
+// 숫자
+const NumberSchema = z.number();
+const IntSchema = z.number().int();
+const PositiveSchema = z.number().positive();
+const MinMaxSchema = z.number().min(0).max(100);
+
+// 불리언
+const BooleanSchema = z.boolean();
+
+// 날짜
+const DateSchema = z.date();
+const DateStringSchema = z.string().datetime(); // ISO 8601
+```
+
+### 객체
+
+```typescript
+const UserSchema = z.object({
+  email: z.string().email(),
+  username: z.string().min(3).max(20),
+  age: z.number().int().min(18).optional(),
+  profile: z.object({
+    bio: z.string().max(500).optional(),
+    avatarUrl: z.string().url().optional(),
+    socialLinks: z.object({
+      twitter: z.string().url().optional(),
+      github: z.string().url().optional(),
+    }).optional(),
+  }).optional(),
+});
+
+type User = z.infer<typeof UserSchema>;
+// {
+//   email: string;
+//   username: string;
+//   age?: number;
+//   profile?: {
+//     bio?: string;
+//     avatarUrl?: string;
+//     socialLinks?: {
+//       twitter?: string;
+//       github?: string;
+//     };
+//   };
+// }
+```
+
+### 배열
+
+```typescript
+// 문자열 배열
+const StringArraySchema = z.array(z.string());
+
+// 객체 배열
+const UserArraySchema = z.array(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+  })
+);
+
+// 최소/최대 길이
+const ArraySchema = z.array(z.string()).min(1).max(10);
+
+// 비어있지 않은 배열
+const NonEmptyArraySchema = z.array(z.string()).nonempty();
+```
+
+### Enum과 Literal
+
+```typescript
+// Enum
+const RoleSchema = z.enum(["admin", "manager", "normal"]);
+type Role = z.infer<typeof RoleSchema>; // "admin" | "manager" | "normal"
+
+// Literal (Zod v4에서 여러 값 지원)
+const StatusSchema = z.literal(["active", "inactive", "pending"]);
+
+// Union
+const RoleOrStatusSchema = z.union([
+  z.literal("admin"),
+  z.literal("user"),
+  z.literal("guest"),
+]);
+```
+
+### 옵셔널과 Nullable
+
+```typescript
+// 옵셔널 (undefined 허용)
+const OptionalSchema = z.string().optional();
+// string | undefined
+
+// Nullable (null 허용)
+const NullableSchema = z.string().nullable();
+// string | null
+
+// 둘 다 허용
+const NullishSchema = z.string().nullish();
+// string | null | undefined
+
+// 기본값
+const DefaultSchema = z.string().default("default value");
+```
+
+## 실전 예제
+
+### 사용자 등록
+
+```typescript
+const RegisterSchema = z.object({
+  email: z.string().email("유효한 이메일을 입력하세요"),
+  username: z
+    .string()
+    .min(3, "사용자명은 최소 3자 이상이어야 합니다")
+    .max(20, "사용자명은 최대 20자까지 가능합니다")
+    .regex(/^[a-zA-Z0-9_]+$/, "사용자명은 영문, 숫자, 언더스코어만 사용 가능합니다"),
+  password: z
+    .string()
+    .min(8, "비밀번호는 최소 8자 이상이어야 합니다")
+    .regex(/[A-Z]/, "비밀번호에 대문자가 최소 1개 포함되어야 합니다")
+    .regex(/[a-z]/, "비밀번호에 소문자가 최소 1개 포함되어야 합니다")
+    .regex(/[0-9]/, "비밀번호에 숫자가 최소 1개 포함되어야 합니다"),
+  confirmPassword: z.string(),
+  agreeToTerms: z.boolean().refine((val) => val === true, {
+    message: "이용약관에 동의해야 합니다",
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "비밀번호가 일치하지 않습니다",
+  path: ["confirmPassword"],
+});
+
+type RegisterParams = z.infer<typeof RegisterSchema>;
+
+class AuthModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async register(params: RegisterParams): Promise<{ userId: number }> {
+    const validated = RegisterSchema.parse(params);
+    
+    const wdb = this.getPuri("w");
+    
+    // confirmPassword 제외하고 저장
+    const { confirmPassword, agreeToTerms, ...userData } = validated;
+    
+    const [user] = await wdb
+      .table("users")
+      .insert({
+        ...userData,
+        role: "normal",
+      })
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+```
+
+### 페이지네이션 파라미터
+
+```typescript
+const PaginationSchema = z.object({
+  page: z.number().int().positive().default(1),
+  pageSize: z.number().int().min(1).max(100).default(20),
+  sortBy: z.enum(["created_at", "updated_at", "name"]).optional(),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
+const UserListSchema = PaginationSchema.extend({
+  search: z.string().optional(),
+  role: z.enum(["admin", "manager", "normal"]).optional(),
+  isActive: z.boolean().optional(),
+});
+
+type UserListParams = z.infer<typeof UserListSchema>;
+
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async list(params: UserListParams): Promise<{
+    users: User[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const validated = UserListSchema.parse(params);
+    
+    const rdb = this.getPuri("r");
+    
+    let query = rdb.table("users");
+    
+    if (validated.search) {
+      query = query.where("username", "like", `%${validated.search}%`);
+    }
+    
+    if (validated.role) {
+      query = query.where("role", validated.role);
+    }
+    
+    if (validated.isActive !== undefined) {
+      query = query.where("is_active", validated.isActive);
+    }
+    
+    const users = await query
+      .orderBy(validated.sortBy || "created_at", validated.sortOrder)
+      .limit(validated.pageSize)
+      .offset((validated.page - 1) * validated.pageSize)
+      .select("*");
+    
+    const [{ count }] = await rdb.table("users").count({ count: "*" });
+    
+    return {
+      users,
+      total: count,
+      page: validated.page,
+      pageSize: validated.pageSize,
+    };
+  }
+}
+```
+
+### 날짜 범위 검증
+
+```typescript
+const DateRangeSchema = z.object({
+  startDate: z.string().datetime(),
+  endDate: z.string().datetime(),
+}).refine(
+  (data) => new Date(data.startDate) < new Date(data.endDate),
+  {
+    message: "시작일은 종료일보다 이전이어야 합니다",
+    path: ["endDate"],
+  }
+);
+
+const ReportSchema = z.object({
+  dateRange: DateRangeSchema,
+  type: z.enum(["sales", "traffic", "conversion"]),
+  format: z.enum(["pdf", "excel", "csv"]).default("pdf"),
+});
+
+type ReportParams = z.infer<typeof ReportSchema>;
+
+class ReportModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async generate(params: ReportParams): Promise<{ reportId: number }> {
+    const validated = ReportSchema.parse(params);
+    
+    // 리포트 생성 로직
+    // ...
+  }
+}
+```
+
+## Transform (데이터 변환)
+
+### 문자열 변환
+
+```typescript
+const TrimmedStringSchema = z.string().transform((val) => val.trim());
+
+const LowercaseEmailSchema = z
+  .string()
+  .email()
+  .transform((val) => val.toLowerCase());
+
+const UserSchema = z.object({
+  email: z.string().email().transform((val) => val.toLowerCase()),
+  username: z.string().transform((val) => val.trim()),
+});
+```
+
+### 숫자 변환
+
+```typescript
+// 문자열을 숫자로 변환
+const StringToNumberSchema = z.string().transform((val) => parseInt(val, 10));
+
+// Coerce (강제 변환)
+const CoerceNumberSchema = z.coerce.number();
+// "123" → 123
+// true → 1
+// false → 0
+```
+
+### 날짜 변환
+
+```typescript
+// ISO 문자열을 Date 객체로
+const DateFromStringSchema = z
+  .string()
+  .datetime()
+  .transform((val) => new Date(val));
+
+// Coerce
+const CoerceDateSchema = z.coerce.date();
+// "2025-01-07" → Date object
+// "2025-01-07T12:00:00Z" → Date object
+```
+
+### 복잡한 변환
+
+```typescript
+const ProductSchema = z.object({
+  name: z.string(),
+  price: z.string().transform((val) => parseFloat(val)),
+  tags: z.string().transform((val) => val.split(",").map((t) => t.trim())),
+  metadata: z.string().transform((val) => {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return {};
+    }
+  }),
+});
+
+// 입력:
+// {
+//   name: "Product",
+//   price: "29.99",
+//   tags: "electronics, gadget, new",
+//   metadata: '{"color": "blue", "size": "M"}'
+// }
+
+// 출력:
+// {
+//   name: "Product",
+//   price: 29.99,
+//   tags: ["electronics", "gadget", "new"],
+//   metadata: { color: "blue", size: "M" }
+// }
+```
+
+## 커스텀 검증
+
+### refine() 사용
+
+```typescript
+const PasswordSchema = z
+  .string()
+  .min(8)
+  .refine((val) => /[A-Z]/.test(val), {
+    message: "대문자 필요",
+  })
+  .refine((val) => /[a-z]/.test(val), {
+    message: "소문자 필요",
+  })
+  .refine((val) => /[0-9]/.test(val), {
+    message: "숫자 필요",
+  });
+
+// 객체 전체 검증
+const UserSchema = z
+  .object({
+    password: z.string(),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "비밀번호 불일치",
+    path: ["confirmPassword"],
+  });
+```
+
+### superRefine() 사용 (복잡한 검증)
+
+```typescript
+const ComplexSchema = z
+  .object({
+    startDate: z.date(),
+    endDate: z.date(),
+    participants: z.array(z.string()),
+  })
+  .superRefine((data, ctx) => {
+    // 날짜 검증
+    if (data.startDate >= data.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "시작일은 종료일보다 이전이어야 합니다",
+        path: ["endDate"],
+      });
+    }
+    
+    // 참가자 수 검증
+    if (data.participants.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "최소 2명 이상의 참가자가 필요합니다",
+        path: ["participants"],
+      });
+    }
+    
+    // 중복 검증
+    const uniqueParticipants = new Set(data.participants);
+    if (uniqueParticipants.size !== data.participants.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "중복된 참가자가 있습니다",
+        path: ["participants"],
+      });
+    }
+  });
+```
+
+## safeParse (안전한 검증)
+
+```typescript
+class UserModel extends BaseModelClass {
+  @api({ httpMethod: "POST" })
+  async create(params: unknown): Promise<{ userId: number }> {
+    // safeParse는 예외를 던지지 않음
+    const result = CreateUserSchema.safeParse(params);
+    
+    if (!result.success) {
+      // 검증 실패
+      const context = Sonamu.getContext();
+      context.reply.status(400);
+      
+      const errors = result.error.errors.map((e) => ({
+        field: e.path.join("."),
+        message: e.message,
+      }));
+      
+      throw new Error(JSON.stringify({ errors }));
+    }
+    
+    // 검증 성공
+    const validated = result.data;
+    
+    const wdb = this.getPuri("w");
+    const [user] = await wdb
+      .table("users")
+      .insert(validated)
+      .returning({ id: "id" });
+    
+    return { userId: user.id };
+  }
+}
+```
+
+## 에러 메시지 커스터마이징
+
+### 전역 에러 맵
+
+```typescript
+import { z } from "zod";
+
+// 에러 메시지 커스터마이징
+z.setErrorMap((issue, ctx) => {
+  if (issue.code === z.ZodIssueCode.invalid_type) {
+    if (issue.expected === "string") {
+      return { message: "문자열이어야 합니다" };
+    }
+    if (issue.expected === "number") {
+      return { message: "숫자여야 합니다" };
+    }
+  }
+  
+  if (issue.code === z.ZodIssueCode.too_small) {
+    if (issue.type === "string") {
+      return { message: `최소 ${issue.minimum}자 이상이어야 합니다` };
+    }
+  }
+  
+  return { message: ctx.defaultError };
+});
+```
+
+### 개별 에러 메시지
+
+```typescript
+const UserSchema = z.object({
+  email: z.string({
+    required_error: "이메일은 필수입니다",
+    invalid_type_error: "이메일은 문자열이어야 합니다",
+  }).email("유효한 이메일 형식이 아닙니다"),
+  
+  age: z.number({
+    required_error: "나이는 필수입니다",
+    invalid_type_error: "나이는 숫자여야 합니다",
+  }).min(18, "18세 이상이어야 합니다"),
+});
+```
+
+## 주의사항
+
+<Warning>
+**Zod 검증 사용 시 주의사항**:
+1. parse()는 검증 실패 시 예외 발생
+2. safeParse()는 결과 객체 반환
+3. Transform은 검증 후 실행됨
+4. refine()은 마지막에 실행됨
+5. 성능을 위해 스키마를 재사용
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="커스텀 검증" icon="code" href="/api-development/validation/custom-validation">
+    커스텀 검증 로직 구현
+  </Card>
+  <Card title="에러 처리" icon="triangle-exclamation" href="/api-development/validation/error-handling">
+    SonamuError 사용하기
+  </Card>
+  <Card title="파라미터" icon="sliders" href="/api-development/creating-apis/parameters">
+    API 파라미터 정의
+  </Card>
+  <Card title="@api 데코레이터" icon="at" href="/api-development/creating-apis/api-decorator">
+    API 기본 사용법
+  </Card>
+</CardGroup>
