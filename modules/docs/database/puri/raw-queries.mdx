@@ -1,6 +1,504 @@
 ---
-title: "Raw 쿼리"
-description: "whereRaw, selectRaw 사용하기"
+title: "Raw Queries"
+description: "SQL 표현식과 복잡한 쿼리 작성하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Puri는 타입 안전한 쿼리 빌더이지만, 복잡한 SQL 표현식이 필요할 때는 Raw SQL을 사용할 수 있습니다.
+
+## Raw 함수 개요
+
+<CardGroup cols={2}>
+  <Card title="Raw 타입 함수" icon="code">
+    타입별 Raw 함수 rawString, rawNumber
+  </Card>
+  <Card title="WHERE Raw" icon="filter">
+    복잡한 조건문 whereRaw
+  </Card>
+  <Card title="CASE WHEN" icon="code-branch">
+    조건부 값 선택 CASE 표현식
+  </Card>
+  <Card title="서브쿼리" icon="layer-group">
+    중첩 쿼리 작성 Subquery
+  </Card>
+</CardGroup>
+
+## Raw 타입 함수
+
+### rawString - 문자열 반환
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  fullName: Puri.rawString("CONCAT(first_name, ' ', last_name)"),
+  upperName: Puri.upper("username"),
+  lowerEmail: Puri.lower("email"),
+});
+
+// 타입: { id: number; fullName: string; upperName: string; lowerEmail: string; }[]
+```
+
+### rawNumber - 숫자 반환
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  salary: "salary",
+  yearsSince: Puri.rawNumber("EXTRACT(YEAR FROM AGE(NOW(), hire_date))"),
+  roundedSalary: Puri.rawNumber("ROUND(salary, -3)"),
+});
+
+// 타입: { id: number; salary: string; yearsSince: number; roundedSalary: number; }[]
+```
+
+### rawBoolean - 불린 반환
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  isActive: "is_active",
+  isAdmin: Puri.rawBoolean("role = 'admin'"),
+  hasEmail: Puri.rawBoolean("email IS NOT NULL"),
+});
+
+// 타입: { id: number; isActive: boolean; isAdmin: boolean; hasEmail: boolean; }[]
+```
+
+### rawDate - 날짜 반환
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  createdAt: "created_at",
+  nextWeek: Puri.rawDate("created_at + INTERVAL '7 days'"),
+});
+
+// 타입: { id: number; createdAt: Date; nextWeek: Date; }[]
+```
+
+### rawStringArray - 문자열 배열 반환
+
+```typescript
+const results = await db
+  .table("projects")
+  .join("projects__employees", "projects.id", "projects__employees.project_id")
+  .join("users", "projects__employees.employee_id", "users.id")
+  .select({
+    projectId: "projects.id",
+    memberNames: Puri.rawStringArray("ARRAY_AGG(users.username)"),
+  })
+  .groupBy("projects.id");
+
+// 타입: { projectId: number; memberNames: string[]; }[]
+```
+
+## Static SQL 함수
+
+Puri가 제공하는 내장 SQL 함수들입니다.
+
+### 문자열 함수
+
+<CodeGroup>
+```typescript title="CONCAT"
+const results = await db
+  .table("users")
+  .select({
+    fullName: Puri.concat("first_name", "' '", "last_name"),
+  });
+```
+
+```typescript title="UPPER / LOWER"
+const results = await db.table("users").select({
+  upperName: Puri.upper("username"),
+  lowerEmail: Puri.lower("email"),
+});
+```
+
+</CodeGroup>
+
+### 집계 함수
+
+```typescript
+const results = await db.table("employees").select({
+  total: Puri.count("id"),
+  totalSalary: Puri.sum("salary"),
+  avgSalary: Puri.avg("salary"),
+  maxSalary: Puri.max("salary"),
+  minSalary: Puri.min("salary"),
+});
+```
+
+## WHERE Raw
+
+복잡한 WHERE 조건을 직접 작성할 수 있습니다.
+
+### 기본 WHERE Raw
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", salary: "salary" })
+  .whereRaw("salary > ?", [50000])
+  .whereRaw("EXTRACT(YEAR FROM hire_date) = ?", [2023]);
+```
+
+<Warning>
+  **SQL Injection 주의**: `whereRaw`에서는 반드시 바인딩(`?`)을 사용하세요.
+  사용자 입력을 직접 문자열에 넣으면 안 됩니다.
+</Warning>
+
+### 복잡한 조건
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", name: "username" })
+  .whereRaw(
+    `
+    (department_id = ? AND salary > ?)
+    OR (department_id = ? AND salary > ?)
+  `,
+    [1, 60000, 2, 70000]
+  );
+```
+
+### 날짜 함수
+
+```typescript
+// 최근 30일 데이터
+const results = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereRaw("created_at > NOW() - INTERVAL '30 days'");
+
+// 특정 연도
+const results = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereRaw("EXTRACT(YEAR FROM created_at) = ?", [2024]);
+```
+
+## CASE WHEN - 조건부 값
+
+CASE WHEN 표현식으로 조건에 따라 다른 값을 반환할 수 있습니다.
+
+### 기본 CASE WHEN
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salaryLevel: Puri.rawString(`
+      CASE
+        WHEN salary < 50000 THEN 'Junior'
+        WHEN salary < 70000 THEN 'Mid'
+        ELSE 'Senior'
+      END
+    `),
+});
+```
+
+### 숫자 계산
+
+```typescript
+const results = await db.table("products").select({
+  id: "id",
+  name: "name",
+  price: "price",
+  discountedPrice: Puri.rawNumber(`
+      CASE
+        WHEN category = 'sale' THEN price * 0.8
+        WHEN category = 'clearance' THEN price * 0.5
+        ELSE price
+      END
+    `),
+});
+```
+
+### Boolean 결과
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  name: "username",
+  isPremium: Puri.rawBoolean(`
+      CASE
+        WHEN subscription_tier IN ('gold', 'platinum') THEN TRUE
+        ELSE FALSE
+      END
+    `),
+});
+```
+
+## 서브쿼리와 Raw SQL
+
+### Scalar 서브쿼리
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  name: "username",
+  postCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+    `),
+});
+```
+
+### COALESCE - NULL 처리
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  departmentName: Puri.rawString(`
+      COALESCE(
+        (SELECT name FROM departments WHERE id = employees.department_id),
+        'No Department'
+      )
+    `),
+});
+```
+
+## 실전 예제
+
+### 사용자 통계 대시보드
+
+```typescript
+async getUserStats(userId: number) {
+  const stats = await this.getPuri("r")
+    .table("users")
+    .select({
+      userId: "users.id",
+      username: "users.username",
+
+      // 게시글 통계
+      totalPosts: Puri.rawNumber(`
+        (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+      `),
+
+      recentPosts: Puri.rawNumber(`
+        (SELECT COUNT(*)
+         FROM posts
+         WHERE posts.user_id = users.id
+         AND posts.created_at > NOW() - INTERVAL '30 days')
+      `),
+
+      // 활동 레벨
+      activityLevel: Puri.rawString(`
+        CASE
+          WHEN (SELECT COUNT(*) FROM posts WHERE user_id = users.id) > 100 THEN 'High'
+          WHEN (SELECT COUNT(*) FROM posts WHERE user_id = users.id) > 10 THEN 'Medium'
+          ELSE 'Low'
+        END
+      `),
+
+      // 가입 경과 일수
+      daysSinceJoined: Puri.rawNumber(`
+        EXTRACT(DAY FROM AGE(NOW(), users.created_at))
+      `),
+    })
+    .where("users.id", userId)
+    .first();
+
+  return stats;
+}
+```
+
+### 시간대별 집계
+
+```typescript
+async getHourlyStats(date: string) {
+  const stats = await this.getPuri("r")
+    .table("events")
+    .select({
+      hour: Puri.rawNumber("EXTRACT(HOUR FROM created_at)"),
+      date: Puri.rawDate("DATE(created_at)"),
+      eventCount: Puri.count("id"),
+      uniqueUsers: Puri.rawNumber("COUNT(DISTINCT user_id)"),
+    })
+    .whereRaw("DATE(created_at) = ?", [date])
+    .groupBy("hour", "date")
+    .orderBy("hour", "asc");
+
+  return stats;
+}
+```
+
+### 순위 계산
+
+```typescript
+async getTopUsers() {
+  const results = await this.getPuri("r")
+    .table("users")
+    .select({
+      userId: "users.id",
+      username: "users.username",
+      postCount: Puri.rawNumber(`
+        (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+      `),
+      rank: Puri.rawNumber(`
+        RANK() OVER (ORDER BY
+          (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id) DESC
+        )
+      `),
+    })
+    .whereRaw(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id) > 0
+    `)
+    .orderBy("rank", "asc")
+    .limit(10);
+
+  return results;
+}
+```
+
+## 윈도우 함수
+
+### ROW_NUMBER
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  name: "username",
+  salary: "salary",
+  rowNumber: Puri.rawNumber(`
+      ROW_NUMBER() OVER (ORDER BY salary DESC)
+    `),
+});
+```
+
+### RANK / DENSE_RANK
+
+```typescript
+const results = await db.table("employees").select({
+  id: "id",
+  departmentId: "department_id",
+  salary: "salary",
+  rankInDept: Puri.rawNumber(`
+      RANK() OVER (PARTITION BY department_id ORDER BY salary DESC)
+    `),
+});
+```
+
+### LAG / LEAD - 이전/다음 행
+
+```typescript
+const results = await db
+  .table("sales")
+  .select({
+    id: "id",
+    month: "month",
+    amount: "amount",
+    previousMonth: Puri.rawNumber(`
+      LAG(amount, 1) OVER (ORDER BY month)
+    `),
+    nextMonth: Puri.rawNumber(`
+      LEAD(amount, 1) OVER (ORDER BY month)
+    `),
+  })
+  .orderBy("month", "asc");
+```
+
+## JSON 함수 (PostgreSQL)
+
+### JSON 필드 추출
+
+```typescript
+const results = await db.table("users").select({
+  id: "id",
+  city: Puri.rawString("metadata->>'city'"),
+  age: Puri.rawNumber("(metadata->>'age')::integer"),
+  tags: Puri.rawStringArray(
+    "ARRAY(SELECT jsonb_array_elements_text(metadata->'tags'))"
+  ),
+});
+```
+
+### JSON 집계
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    employees: Puri.rawString(`
+      JSON_AGG(JSON_BUILD_OBJECT(
+        'id', id,
+        'name', username,
+        'salary', salary
+      ))
+    `),
+  })
+  .groupBy("department_id");
+```
+
+## 성능 최적화
+
+### EXPLAIN 사용
+
+```typescript
+// 쿼리 실행 계획 확인
+const plan = await db
+  .table("employees")
+  .select({ id: "id" })
+  .where("department_id", 1)
+  .rawQuery()
+  .explain();
+
+console.log(plan);
+```
+
+### 인덱스 힌트 (PostgreSQL은 지원 안함)
+
+PostgreSQL은 옵티마이저가 자동으로 인덱스를 선택합니다. 대신 통계 업데이트:
+
+```sql
+ANALYZE employees;
+```
+
+## 타입 안전성
+
+Raw 함수들은 반환 타입을 명시합니다.
+
+```typescript
+const results = await db.table("users").select({
+  stringValue: Puri.rawString("'test'"), // string
+  numberValue: Puri.rawNumber("123"), // number
+  boolValue: Puri.rawBoolean("TRUE"), // boolean
+  dateValue: Puri.rawDate("NOW()"), // Date
+  arrayValue: Puri.rawStringArray("'{}'"), // string[]
+});
+
+// 타입이 자동으로 추론됨
+results[0].stringValue; // string
+results[0].numberValue; // number
+results[0].boolValue; // boolean
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    Puri의 타입 안전성 이해하기
+  </Card>
+  <Card
+    title="Advanced Patterns"
+    icon="wand-magic-sparkles"
+    href="/database/puri/advanced-patterns"
+  >
+    서브쿼리와 트랜잭션
+  </Card>
+  <Card
+    title="Aggregations"
+    icon="calculator"
+    href="/database/puri/aggregations"
+  >
+    집계 함수 사용하기
+  </Card>
+  <Card
+    title="Basic Queries"
+    icon="magnifying-glass"
+    href="/database/puri/basic-queries"
+  >
+    기본 쿼리로 돌아가기
+  </Card>
+</CardGroup>
+```

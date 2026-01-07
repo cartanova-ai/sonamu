@@ -1,6 +1,452 @@
 ---
 title: "타입 안전성"
-description: "완전한 타입 추론"
+description: "Puri의 완벽한 타입 안전성 이해하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Puri는 TypeScript의 타입 시스템을 최대한 활용하여 컴파일 타임에 SQL 쿼리의 오류를 잡아냅니다.
+
+## 타입 안전성 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 타입 추론" icon="wand-magic-sparkles">
+    쿼리 결과 타입 자동 추론
+    
+    컴파일 타임 검증
+  </Card>
+  <Card title="컬럼 자동완성" icon="keyboard">
+    IDE 자동완성 지원
+    
+    오타 방지
+  </Card>
+  <Card title="JOIN 타입 추론" icon="link">
+    조인 후 타입 자동 확장
+    
+    LEFT JOIN nullable
+  </Card>
+  <Card title="Raw 함수 타입" icon="code">
+    Raw SQL도 타입 안전
+    
+    반환 타입 명시
+  </Card>
+</CardGroup>
+
+## 기본 타입 추론
+
+### SELECT 타입 추론
+
+```typescript
+const users = await db
+  .table("users")
+  .select({
+    id: "id",              // number
+    name: "username",      // string
+    email: "email",        // string
+    isActive: "is_active", // boolean
+    createdAt: "created_at", // Date
+  });
+
+// 타입이 자동으로 추론됨
+const first = users[0];
+first.id;        // number
+first.name;      // string
+first.email;     // string
+first.isActive;  // boolean
+first.createdAt; // Date
+
+// ❌ 컴파일 에러
+first.nonExistent; // Error: Property 'nonExistent' does not exist
+```
+
+### WHERE 타입 검증
+
+```typescript
+// ✅ 올바른 타입
+await db
+  .table("users")
+  .where("id", 1)              // number
+  .where("username", "john")   // string
+  .where("is_active", true);   // boolean
+
+// ❌ 컴파일 에러
+await db
+  .table("users")
+  .where("id", "not-a-number"); // Error: Type 'string' is not assignable to type 'number'
+```
+
+## JOIN 타입 확장
+
+### INNER JOIN
+
+```typescript
+const results = await db
+  .table("employees")
+  .join("users", "employees.user_id", "users.id")
+  .select({
+    employeeId: "employees.id",  // number
+    userName: "users.username",   // string
+  });
+
+// 조인 후 두 테이블의 컬럼 모두 사용 가능
+results[0].employeeId;  // number
+results[0].userName;    // string
+```
+
+### LEFT JOIN - nullable 타입
+
+```typescript
+const results = await db
+  .table("employees")
+  .leftJoin("departments", "employees.department_id", "departments.id")
+  .select({
+    employeeId: "employees.id",      // number
+    departmentName: "departments.name", // string | null (LEFT JOIN)
+  });
+
+// LEFT JOIN된 컬럼은 nullable
+const first = results[0];
+first.employeeId;      // number
+first.departmentName;  // string | null
+
+// null 체크 필요
+if (first.departmentName) {
+  console.log(first.departmentName.toUpperCase()); // ✅ OK
+}
+```
+
+<Info>
+**LEFT JOIN의 타입 안전성**:
+- INNER JOIN: 값이 항상 존재 → `T`
+- LEFT JOIN: 값이 없을 수 있음 → `T | null`
+
+TypeScript가 자동으로 null 체크를 강제합니다.
+</Info>
+
+## 컬럼 자동완성
+
+### IDE 자동완성
+
+```typescript
+await db
+  .table("users")
+  .select({
+    id: "users.", // ← IDE가 자동완성 제공
+    // users.id
+    // users.username
+    // users.email
+    // ...
+  });
+```
+
+### 잘못된 컬럼 방지
+
+```typescript
+// ❌ 컴파일 에러
+await db
+  .table("users")
+  .select({
+    id: "users.nonexistent", // Error: Column does not exist
+  });
+```
+
+## Raw 함수 타입 안전성
+
+### 명시적 타입 지정
+
+```typescript
+const results = await db
+  .table("users")
+  .select({
+    id: "id",
+    // 각 Raw 함수는 반환 타입을 명시
+    fullName: Puri.rawString("CONCAT(first_name, last_name)"),  // string
+    age: Puri.rawNumber("EXTRACT(YEAR FROM AGE(birth_date))"),  // number
+    isAdmin: Puri.rawBoolean("role = 'admin'"),                 // boolean
+    tags: Puri.rawStringArray("string_to_array(tags, ',')"),    // string[]
+  });
+
+// 타입이 정확히 추론됨
+results[0].fullName;  // string
+results[0].age;       // number
+results[0].isAdmin;   // boolean
+results[0].tags;      // string[]
+```
+
+## 집계 함수 타입
+
+```typescript
+const stats = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",  // number
+    count: Puri.count("id"),         // number
+    avgSalary: Puri.avg("salary"),   // number
+    maxSalary: Puri.max("salary"),   // number
+  })
+  .groupBy("department_id");
+
+stats[0].count;      // number
+stats[0].avgSalary;  // number
+```
+
+## first() 타입
+
+`first()`는 단일 결과 또는 `undefined`를 반환합니다.
+
+```typescript
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("id", 1)
+  .first();
+
+// 타입: { id: number; name: string; } | undefined
+
+if (user) {
+  // ✅ null 체크 후 안전하게 사용
+  console.log(user.name.toUpperCase());
+} else {
+  console.log("User not found");
+}
+
+// ❌ 컴파일 에러 (null 체크 없이 사용)
+console.log(user.name); // Error: Object is possibly 'undefined'
+```
+
+## pluck() 타입
+
+```typescript
+// 단일 컬럼의 배열
+const ids = await db
+  .table("users")
+  .where("role", "admin")
+  .pluck("id");
+
+// 타입: number[]
+ids[0]; // number
+
+const names = await db
+  .table("users")
+  .pluck("username");
+
+// 타입: string[]
+names[0]; // string
+```
+
+## 타입 안전한 파라미터
+
+### Params 타입 정의
+
+```typescript
+// user.types.ts
+export const UserListParams = z.object({
+  role: z.enum(["admin", "normal"]).optional(),
+  search: z.string().optional(),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(100),
+});
+export type UserListParams = z.infer<typeof UserListParams>;
+```
+
+### API 메서드에서 사용
+
+```typescript
+async findUsers(params: UserListParams) {
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      name: "username",
+      role: "role",
+    });
+
+  // 타입 안전한 조건 추가
+  if (params.role) {
+    query = query.where("role", params.role);
+  }
+
+  if (params.search) {
+    query = query.where("username", "like", `%${params.search}%`);
+  }
+
+  const users = await query
+    .orderBy("created_at", "desc")
+    .limit(params.pageSize)
+    .offset((params.page - 1) * params.pageSize);
+
+  return users;
+}
+```
+
+## 서브쿼리 타입
+
+```typescript
+// 서브쿼리의 결과 타입도 안전
+const adminUsers = db
+  .table("users")
+  .where("role", "admin")
+  .select({
+    id: "id",
+    name: "username",
+  });
+
+// adminUsers 타입: Puri<Schema, { users: User }, { id: number; name: string; }>
+
+const results = await db
+  .table({ admins: adminUsers })
+  .select({
+    adminId: "admins.id",      // number
+    adminName: "admins.name",  // string
+  });
+```
+
+## 실전 예제
+
+### 타입 안전한 검색 필터
+
+```typescript
+interface SearchFilters {
+  departmentId?: number;
+  minSalary?: number;
+  maxSalary?: number;
+  isActive?: boolean;
+  search?: string;
+}
+
+async searchEmployees(filters: SearchFilters) {
+  let query = this.getPuri("r")
+    .table("employees")
+    .join("users", "employees.user_id", "users.id")
+    .leftJoin("departments", "employees.department_id", "departments.id")
+    .select({
+      employeeId: "employees.id",
+      userName: "users.username",
+      salary: "employees.salary",
+      departmentName: "departments.name", // string | null
+      isActive: "users.is_active",
+    });
+
+  // 모든 조건이 타입 안전
+  if (filters.departmentId !== undefined) {
+    query = query.where("employees.department_id", filters.departmentId);
+  }
+
+  if (filters.minSalary !== undefined) {
+    query = query.where("employees.salary", ">=", filters.minSalary);
+  }
+
+  if (filters.maxSalary !== undefined) {
+    query = query.where("employees.salary", "<=", filters.maxSalary);
+  }
+
+  if (filters.isActive !== undefined) {
+    query = query.where("users.is_active", filters.isActive);
+  }
+
+  if (filters.search) {
+    query = query.where("users.username", "like", `%${filters.search}%`);
+  }
+
+  return await query.orderBy("employees.id", "asc");
+}
+```
+
+### 제네릭 활용
+
+```typescript
+interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+async paginate<T>(
+  query: Puri<any, any, T>,
+  params: PaginationParams
+): Promise<PaginatedResult<T>> {
+  const { page, pageSize } = params;
+
+  // 전체 개수
+  const countQuery = query.clone();
+  const total = await countQuery.count();
+
+  // 페이지 데이터
+  const data = await query
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+
+  return {
+    data,
+    total,
+    page,
+    pageSize,
+  };
+}
+
+// 사용
+const userQuery = db.table("users").select({ id: "id", name: "username" });
+const result = await this.paginate(userQuery, { page: 1, pageSize: 20 });
+// result.data 타입: { id: number; name: string; }[]
+```
+
+## 타입 가드
+
+### 결과 타입 좁히기
+
+```typescript
+interface AdminUser {
+  id: number;
+  username: string;
+  role: "admin";
+  permissions: string[];
+}
+
+interface NormalUser {
+  id: number;
+  username: string;
+  role: "normal";
+}
+
+type User = AdminUser | NormalUser;
+
+function isAdmin(user: User): user is AdminUser {
+  return user.role === "admin";
+}
+
+const user = await db
+  .table("users")
+  .select({
+    id: "id",
+    username: "username",
+    role: "role",
+  })
+  .where("id", 1)
+  .first();
+
+if (user && isAdmin(user)) {
+  // TypeScript가 user를 AdminUser로 인식
+  console.log(user.permissions); // ✅ OK
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    고급 패턴 배우기
+  </Card>
+  <Card title="Basic Queries" icon="magnifying-glass" href="/database/puri/basic-queries">
+    기본 쿼리로 돌아가기
+  </Card>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    조인의 타입 안전성
+  </Card>
+  <Card title="Model" icon="cube" href="/core-concepts/model/what-is-model">
+    Model에서 Puri 사용하기
+  </Card>
+</CardGroup>

@@ -1,6 +1,625 @@
 ---
 title: "집계 함수"
-description: "count, sum, avg 사용하기"
+description: "COUNT, SUM, AVG 등 집계 함수 사용하기"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Puri는 SQL의 강력한 집계 함수를 타입 안전하게 사용할 수 있습니다. 이 문서는 COUNT, SUM, AVG, MAX, MIN과 GROUP BY, HAVING을 설명합니다.
+
+## 집계 함수 개요
+
+<CardGroup cols={2}>
+  <Card title="COUNT" icon="hashtag">
+    레코드 개수 세기
+    
+    Puri.count()
+  </Card>
+  <Card title="SUM/AVG" icon="calculator">
+    합계와 평균 계산
+    
+    Puri.sum(), Puri.avg()
+  </Card>
+  <Card title="MAX/MIN" icon="arrow-up-wide-short">
+    최대값과 최소값 찾기
+    
+    Puri.max(), Puri.min()
+  </Card>
+  <Card title="GROUP BY" icon="layer-group">
+    그룹별로 집계하기
+    
+    groupBy(), having()
+  </Card>
+</CardGroup>
+
+## COUNT - 개수 세기
+
+### 기본 COUNT
+
+<CodeGroup>
+```typescript title="전체 레코드 수"
+const result = await db
+  .table("employees")
+  .select({
+    total: Puri.count(),
+  })
+  .first();
+
+console.log(result.total); // 150
+// 타입: { total: number }
+```
+
+```typescript title="특정 컬럼 COUNT"
+const result = await db
+  .table("employees")
+  .select({
+    total: Puri.count("id"),
+  })
+  .first();
+
+// COUNT(id) - NULL 제외
+```
+
+```typescript title="DISTINCT COUNT"
+const result = await db
+  .table("employees")
+  .select({
+    uniqueDepts: Puri.rawNumber("COUNT(DISTINCT department_id)"),
+  })
+  .first();
+
+// 중복 제거 후 개수
+```
+</CodeGroup>
+
+<Info>
+`Puri.count()`는 `COUNT(*)`를 생성합니다. NULL을 포함한 모든 행을 셉니다.
+`Puri.count("column")`은 해당 컬럼이 NULL이 아닌 행만 셉니다.
+</Info>
+
+### COUNT with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    employeeCount: Puri.count("id"),
+  })
+  .groupBy("department_id");
+
+// 부서별 직원 수
+// [
+//   { departmentId: 1, employeeCount: 20 },
+//   { departmentId: 2, employeeCount: 15 },
+//   ...
+// ]
+```
+
+## SUM - 합계
+
+숫자 컬럼의 합계를 계산합니다.
+
+<CodeGroup>
+```typescript title="기본 SUM"
+const result = await db
+  .table("employees")
+  .select({
+    totalSalary: Puri.sum("salary"),
+  })
+  .first();
+
+console.log(result.totalSalary); // 5000000
+// 타입: { totalSalary: number }
+```
+
+```typescript title="조건부 SUM"
+const result = await db
+  .table("employees")
+  .select({
+    totalSalary: Puri.sum("salary"),
+  })
+  .where("department_id", 1)
+  .first();
+
+// 특정 부서의 급여 합계
+```
+</CodeGroup>
+
+### SUM with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    totalSalary: Puri.sum("salary"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id")
+  .orderBy("totalSalary", "desc");
+
+// 부서별 급여 합계 & 평균
+```
+
+## AVG - 평균
+
+숫자 컬럼의 평균을 계산합니다.
+
+<CodeGroup>
+```typescript title="기본 AVG"
+const result = await db
+  .table("employees")
+  .select({
+    avgSalary: Puri.avg("salary"),
+  })
+  .first();
+
+console.log(result.avgSalary); // 65000
+// 타입: { avgSalary: number }
+```
+
+```typescript title="ROUND와 함께"
+const result = await db
+  .table("employees")
+  .select({
+    avgSalary: Puri.rawNumber("ROUND(AVG(salary), 2)"),
+  })
+  .first();
+
+// 소수점 2자리까지 반올림
+```
+</CodeGroup>
+
+## MAX / MIN - 최대값 / 최소값
+
+### 최대값
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    highestSalary: Puri.max("salary"),
+    latestHireDate: Puri.max("hire_date"),
+  })
+  .first();
+
+// 가장 높은 급여, 가장 최근 입사일
+```
+
+### 최소값
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    lowestSalary: Puri.min("salary"),
+    earliestHireDate: Puri.min("hire_date"),
+  })
+  .first();
+
+// 가장 낮은 급여, 가장 오래된 입사일
+```
+
+### MAX/MIN with GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    minSalary: Puri.min("salary"),
+    maxSalary: Puri.max("salary"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+
+// 부서별 최저/최고/평균 급여
+```
+
+## GROUP BY - 그룹화
+
+데이터를 특정 컬럼 기준으로 그룹화하여 집계합니다.
+
+### 단일 컬럼 GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+
+// 부서별 통계
+```
+
+### 여러 컬럼 GROUP BY
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    hireYear: Puri.rawNumber("EXTRACT(YEAR FROM hire_date)"),
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id", "hireYear")
+  .orderBy("department_id", "asc")
+  .orderBy("hireYear", "asc");
+
+// 부서 + 연도별 신입 직원 수
+```
+
+<Warning>
+**GROUP BY 규칙**:
+- SELECT에 있는 집계 함수가 아닌 모든 컬럼은 GROUP BY에 있어야 합니다
+- GROUP BY에 없는 컬럼은 SELECT할 수 없습니다 (집계 함수 제외)
+</Warning>
+
+### GROUP BY with JOIN
+
+```typescript
+const results = await db
+  .table("departments")
+  .leftJoin("employees", "departments.id", "employees.department_id")
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    empCount: Puri.count("employees.id"),
+    avgSalary: Puri.avg("employees.salary"),
+  })
+  .groupBy("departments.id", "departments.name")
+  .orderBy("empCount", "desc");
+
+// 부서별 직원 수 & 평균 급여
+```
+
+## HAVING - 집계 결과 필터링
+
+HAVING은 GROUP BY 후 집계 결과를 필터링합니다.
+
+### 기본 HAVING
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id")
+  .having("count", ">=", 10);
+
+// 직원 10명 이상인 부서만
+```
+
+<Info>
+**WHERE vs HAVING**:
+- `WHERE`: GROUP BY **전**에 필터링 (개별 행 대상)
+- `HAVING`: GROUP BY **후**에 필터링 (집계 결과 대상)
+</Info>
+
+### HAVING with 집계 함수
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+    count: Puri.count("id"),
+  })
+  .groupBy("department_id")
+  .having("avgSalary", ">", 70000)
+  .having("count", ">=", 5);
+
+// 평균 급여 7만 이상 & 직원 5명 이상인 부서
+```
+
+### WHERE + HAVING 조합
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+  })
+  .where("hire_date", ">=", "2020-01-01")  // 개별 행 필터
+  .groupBy("department_id")
+  .having("avgSalary", ">", 65000);         // 집계 결과 필터
+
+// 2020년 이후 입사자 중, 부서별 평균 급여 6.5만 이상
+```
+
+## 복합 집계 예제
+
+### 부서별 상세 통계
+
+```typescript
+const stats = await db
+  .table("departments")
+  .leftJoin("employees", "departments.id", "employees.department_id")
+  .select({
+    deptId: "departments.id",
+    deptName: "departments.name",
+    
+    // 직원 수
+    empCount: Puri.count("employees.id"),
+    
+    // 급여 통계
+    minSalary: Puri.min("employees.salary"),
+    maxSalary: Puri.max("employees.salary"),
+    avgSalary: Puri.avg("employees.salary"),
+    totalSalary: Puri.sum("employees.salary"),
+    
+    // 입사일 통계
+    earliestHire: Puri.min("employees.hire_date"),
+    latestHire: Puri.max("employees.hire_date"),
+  })
+  .groupBy("departments.id", "departments.name")
+  .having("empCount", ">", 0)
+  .orderBy("empCount", "desc");
+```
+
+### 프로젝트 진행 현황
+
+```typescript
+const projectStats = await db
+  .table("projects")
+  .leftJoin("projects__employees", "projects.id", "projects__employees.project_id")
+  .select({
+    projectId: "projects.id",
+    projectName: "projects.name",
+    status: "projects.status",
+    memberCount: Puri.count("projects__employees.employee_id"),
+  })
+  .groupBy("projects.id", "projects.name", "projects.status")
+  .orderBy("status", "asc")
+  .orderBy("memberCount", "desc");
+
+// 프로젝트별 참여자 수 (상태별 정렬)
+```
+
+### 월별 매출 분석
+
+```typescript
+const monthlySales = await db
+  .table("orders")
+  .select({
+    year: Puri.rawNumber("EXTRACT(YEAR FROM created_at)"),
+    month: Puri.rawNumber("EXTRACT(MONTH FROM created_at)"),
+    orderCount: Puri.count("id"),
+    totalAmount: Puri.sum("amount"),
+    avgAmount: Puri.avg("amount"),
+  })
+  .where("status", "completed")
+  .groupBy("year", "month")
+  .orderBy("year", "desc")
+  .orderBy("month", "desc");
+
+// 월별 주문 통계
+```
+
+## 조건부 집계
+
+CASE WHEN을 사용한 조건부 집계입니다.
+
+### 상태별 카운트
+
+```typescript
+const stats = await db
+  .table("projects")
+  .select({
+    totalProjects: Puri.count("id"),
+    
+    activeProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'in_progress' THEN 1 END)
+    `),
+    
+    completedProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'completed' THEN 1 END)
+    `),
+    
+    cancelledProjects: Puri.rawNumber(`
+      COUNT(CASE WHEN status = 'cancelled' THEN 1 END)
+    `),
+  })
+  .first();
+
+// 전체/진행중/완료/취소 프로젝트 수
+```
+
+### 구간별 집계
+
+```typescript
+const salaryRanges = await db
+  .table("employees")
+  .select({
+    under50k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary < 50000 THEN 1 END)
+    `),
+    
+    range50to70k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary BETWEEN 50000 AND 70000 THEN 1 END)
+    `),
+    
+    above70k: Puri.rawNumber(`
+      COUNT(CASE WHEN salary > 70000 THEN 1 END)
+    `),
+  })
+  .first();
+
+// 급여 구간별 직원 수
+```
+
+## 실전 예제
+
+### 대시보드 통계
+
+```typescript
+async getDashboardStats() {
+  // 전체 통계
+  const overall = await this.getPuri("r")
+    .table("employees")
+    .select({
+      totalEmployees: Puri.count("id"),
+      avgSalary: Puri.avg("salary"),
+      maxSalary: Puri.max("salary"),
+      minSalary: Puri.min("salary"),
+    })
+    .first();
+
+  // 부서별 통계
+  const byDepartment = await this.getPuri("r")
+    .table("departments")
+    .leftJoin("employees", "departments.id", "employees.department_id")
+    .select({
+      deptName: "departments.name",
+      empCount: Puri.count("employees.id"),
+      avgSalary: Puri.avg("employees.salary"),
+    })
+    .groupBy("departments.id", "departments.name")
+    .orderBy("empCount", "desc")
+    .limit(10);
+
+  return {
+    overall,
+    byDepartment,
+  };
+}
+```
+
+### 입사 연도별 통계
+
+```typescript
+async getHiringTrends() {
+  const trends = await this.getPuri("r")
+    .table("employees")
+    .select({
+      year: Puri.rawNumber("EXTRACT(YEAR FROM hire_date)"),
+      hireCount: Puri.count("id"),
+      avgSalary: Puri.avg("salary"),
+    })
+    .groupBy("year")
+    .orderBy("year", "desc")
+    .limit(5);
+
+  return trends;
+}
+```
+
+### TOP 5 부서
+
+```typescript
+async getTop5Departments() {
+  const top5 = await this.getPuri("r")
+    .table("departments")
+    .leftJoin("employees", "departments.id", "employees.department_id")
+    .select({
+      deptId: "departments.id",
+      deptName: "departments.name",
+      empCount: Puri.count("employees.id"),
+      totalSalary: Puri.sum("employees.salary"),
+      avgSalary: Puri.avg("employees.salary"),
+    })
+    .groupBy("departments.id", "departments.name")
+    .having("empCount", ">", 0)
+    .orderBy("totalSalary", "desc")
+    .limit(5);
+
+  return top5;
+}
+```
+
+## 성능 최적화
+
+### 인덱스 활용
+
+```sql
+-- GROUP BY할 컬럼에 인덱스
+CREATE INDEX idx_employees_department_id ON employees(department_id);
+CREATE INDEX idx_employees_hire_date ON employees(hire_date);
+
+-- 집계할 컬럼에 인덱스 (선택적)
+CREATE INDEX idx_employees_salary ON employees(salary);
+```
+
+### 필요한 집계만 수행
+
+```typescript
+// ❌ 나쁨: 불필요한 집계
+await db
+  .table("employees")
+  .select({
+    count: Puri.count("id"),
+    sum: Puri.sum("salary"),
+    avg: Puri.avg("salary"),
+    max: Puri.max("salary"),
+    min: Puri.min("salary"),
+    // ... 더 많은 집계
+  })
+  .groupBy("department_id");
+
+// ✅ 좋음: 필요한 것만
+await db
+  .table("employees")
+  .select({
+    departmentId: "department_id",
+    count: Puri.count("id"),
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+```
+
+### WHERE로 먼저 필터링
+
+```typescript
+// ✅ 좋음: 집계 전 불필요한 행 제거
+await db
+  .table("employees")
+  .where("is_active", true)        // 먼저 필터
+  .where("hire_date", ">=", "2020-01-01")
+  .select({
+    departmentId: "department_id",
+    avgSalary: Puri.avg("salary"),
+  })
+  .groupBy("department_id");
+```
+
+## 타입 안전성
+
+집계 함수의 결과 타입이 자동으로 추론됩니다.
+
+```typescript
+const result = await db
+  .table("employees")
+  .select({
+    count: Puri.count("id"),           // number
+    avgSalary: Puri.avg("salary"),     // number
+    maxDate: Puri.max("hire_date"),    // string (날짜는 문자열로 반환)
+  })
+  .first();
+
+result.count;      // number
+result.avgSalary;  // number
+result.maxDate;    // string
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Raw Queries" icon="code" href="/database/puri/raw-queries">
+    복잡한 SQL 직접 작성하기
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    윈도우 함수와 고급 패턴
+  </Card>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    조인과 함께 집계하기
+  </Card>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    집계 함수의 타입 안전성
+  </Card>
+</CardGroup>

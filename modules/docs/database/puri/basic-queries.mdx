@@ -1,6 +1,593 @@
 ---
 title: "기본 쿼리"
-description: "select, where, orderBy 사용하기"
+description: "Puri의 기본적인 CRUD 쿼리 사용법"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Puri는 TypeScript로 안전하게 SQL 쿼리를 작성할 수 있는 타입 안전한 쿼리 빌더입니다. 이 문서는 SELECT, INSERT, UPDATE, DELETE의 기본 사용법을 설명합니다.
+
+## 쿼리 시작하기
+
+<CardGroup cols={2}>
+  <Card title="SELECT" icon="magnifying-glass">
+    데이터 조회하기
+    
+    select, selectAll, first
+  </Card>
+  <Card title="INSERT" icon="plus">
+    데이터 추가하기
+    
+    insert, upsert, returning
+  </Card>
+  <Card title="UPDATE" icon="pen">
+    데이터 수정하기
+    
+    update, increment, decrement
+  </Card>
+  <Card title="DELETE" icon="trash">
+    데이터 삭제하기
+    
+    delete, truncate
+  </Card>
+</CardGroup>
+
+## SELECT - 데이터 조회
+
+### 기본 SELECT
+
+<CodeGroup>
+```typescript title="특정 컬럼 선택"
+const users = await db.table("users").select({
+  id: "id",
+  name: "username",
+  email: "email",
+});
+// 결과: { id: number; name: string; email: string; }[]
+```
+
+```typescript title="모든 컬럼 선택"
+const users = await db.table("users").selectAll();
+// 결과: User[]
+```
+
+```typescript title="단일 레코드 조회"
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("id", 1)
+  .first();
+// 결과: { id: number; name: string; } | undefined
+```
+</CodeGroup>
+
+<Info>
+`select` 메서드는 **객체 형태**로 컬럼을 선택합니다. 키는 결과 필드명, 값은 실제 테이블 컬럼명입니다.
+</Info>
+
+### 컬럼 별칭(Alias)
+
+```typescript
+const posts = await db.table("posts").select({
+  postId: "id",              // 별칭 사용
+  postTitle: "title",
+  authorName: "author_name", // snake_case → camelCase
+  createdDate: "created_at",
+});
+
+// 결과 타입이 자동으로 추론됨
+const firstPost = posts[0];
+console.log(firstPost.postId);      // number
+console.log(firstPost.postTitle);   // string
+```
+
+### appendSelect - 컬럼 추가
+
+이미 선택한 컬럼에 추가로 컬럼을 선택할 수 있습니다.
+
+```typescript
+const query = db.table("users").select({
+  id: "id",
+  name: "username",
+});
+
+const users = await query.appendSelect({
+  email: "email",
+  role: "role",
+});
+
+// 결과: { id, name, email, role }
+```
+
+## WHERE - 조건 필터링
+
+### 기본 WHERE
+
+<CodeGroup>
+```typescript title="단일 조건"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin");
+```
+
+```typescript title="비교 연산자"
+const users = await db
+  .table("users")
+  .select({ id: "id", age: "age" })
+  .where("age", ">=", 18);
+// 지원: =, !=, <, <=, >, >=
+```
+
+```typescript title="NULL 체크"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .where("deleted_at", "!=", null);
+```
+</CodeGroup>
+
+### 복수 조건 (AND)
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin")
+  .where("is_active", true)
+  .where("age", ">=", 18);
+
+// SQL: WHERE role = 'admin' AND is_active = true AND age >= 18
+```
+
+### OR 조건
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("role", "admin")
+  .orWhere("role", "moderator");
+
+// SQL: WHERE role = 'admin' OR role = 'moderator'
+```
+
+<Warning>
+`orWhere`는 단순 OR 조건입니다. 복잡한 조건 그룹은 `whereGroup`을 사용하세요.
+자세한 내용은 [Advanced Patterns](/database/puri/advanced-patterns) 참고
+</Warning>
+
+### IN / NOT IN
+
+<CodeGroup>
+```typescript title="whereIn"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereIn("role", ["admin", "moderator"]);
+```
+
+```typescript title="whereNotIn"
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .whereNotIn("status", ["deleted", "banned"]);
+```
+</CodeGroup>
+
+### LIKE 검색
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("username", "like", "%john%");
+
+// SQL: WHERE username LIKE '%john%'
+```
+
+## INSERT - 데이터 추가
+
+### 단일 레코드 추가
+
+```typescript
+const result = await db.table("users").insert({
+  username: "john",
+  email: "john@example.com",
+  password: "hashed_password",
+  role: "normal",
+});
+
+// result: number (삽입된 레코드 수)
+```
+
+### RETURNING으로 삽입된 데이터 받기
+
+```typescript
+const inserted = await db
+  .table("users")
+  .insert({
+    username: "john",
+    email: "john@example.com",
+    password: "hashed_password",
+    role: "normal",
+  })
+  .returning({ id: "id", name: "username" });
+
+console.log(inserted);
+// [{ id: 1, name: "john" }]
+```
+
+### 여러 레코드 추가
+
+```typescript
+const result = await db.table("users").insert([
+  {
+    username: "john",
+    email: "john@example.com",
+    password: "hash1",
+    role: "normal",
+  },
+  {
+    username: "jane",
+    email: "jane@example.com",
+    password: "hash2",
+    role: "normal",
+  },
+]);
+```
+
+## UPDATE - 데이터 수정
+
+### 기본 UPDATE
+
+```typescript
+const count = await db
+  .table("users")
+  .where("id", 1)
+  .update({
+    username: "updated_name",
+    updated_at: new Date(),
+  });
+
+console.log(`${count} rows updated`);
+```
+
+<Warning>
+**WHERE 절 필수**: UPDATE는 반드시 WHERE 조건과 함께 사용해야 합니다. 조건 없이 전체 데이터를 수정하면 에러가 발생할 수 있습니다.
+</Warning>
+
+### increment / decrement
+
+숫자 컬럼을 증가/감소시킬 수 있습니다.
+
+<CodeGroup>
+```typescript title="increment"
+await db
+  .table("posts")
+  .where("id", 1)
+  .increment("view_count", 1);
+
+// SQL: UPDATE posts SET view_count = view_count + 1 WHERE id = 1
+```
+
+```typescript title="decrement"
+await db
+  .table("users")
+  .where("id", 1)
+  .decrement("credit", 100);
+
+// SQL: UPDATE users SET credit = credit - 100 WHERE id = 1
+```
+</CodeGroup>
+
+### 여러 컬럼 동시 수정
+
+```typescript
+await db
+  .table("users")
+  .where("id", 1)
+  .update({
+    username: "new_name",
+    email: "new@example.com",
+    updated_at: new Date(),
+  });
+```
+
+## DELETE - 데이터 삭제
+
+### 기본 DELETE
+
+```typescript
+const count = await db
+  .table("users")
+  .where("id", 1)
+  .delete();
+
+console.log(`${count} rows deleted`);
+```
+
+<Warning>
+**WHERE 절 필수**: DELETE도 반드시 WHERE 조건과 함께 사용해야 합니다.
+</Warning>
+
+### 여러 레코드 삭제
+
+```typescript
+const count = await db
+  .table("users")
+  .whereIn("status", ["deleted", "banned"])
+  .delete();
+```
+
+## LIMIT & OFFSET - 페이지네이션
+
+### LIMIT - 결과 개수 제한
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .limit(10);
+
+// 최대 10개만 조회
+```
+
+### OFFSET - 건너뛰기
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .limit(10)
+  .offset(20);
+
+// 20개를 건너뛰고 다음 10개 조회 (21~30번째)
+```
+
+### 페이지네이션 예제
+
+```typescript
+function getUsers(page: number, pageSize: number) {
+  return db
+    .table("users")
+    .select({ id: "id", name: "username" })
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+}
+
+// 1페이지 (1~10)
+await getUsers(1, 10);
+
+// 2페이지 (11~20)
+await getUsers(2, 10);
+```
+
+## ORDER BY - 정렬
+
+### 기본 정렬
+
+<CodeGroup>
+```typescript title="오름차순 (ASC)"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .orderBy("created_at", "asc");
+```
+
+```typescript title="내림차순 (DESC)"
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .orderBy("created_at", "desc");
+```
+</CodeGroup>
+
+### 여러 컬럼 정렬
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id", name: "username", age: "age" })
+  .orderBy("age", "desc")      // 1순위: 나이 내림차순
+  .orderBy("created_at", "asc"); // 2순위: 생성일 오름차순
+```
+
+## first() - 단일 결과 조회
+
+`first()`는 첫 번째 결과만 반환합니다.
+
+```typescript
+const user = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .where("email", "john@example.com")
+  .first();
+
+if (user) {
+  console.log(user.name); // string
+} else {
+  console.log("User not found");
+}
+
+// 타입: { id: number; name: string; } | undefined
+```
+
+<Info>
+`first()`는 결과가 없으면 `undefined`를 반환합니다. 반드시 존재 여부를 체크하세요.
+</Info>
+
+## pluck() - 단일 컬럼 추출
+
+특정 컬럼의 값들만 배열로 가져옵니다.
+
+<CodeGroup>
+```typescript title="기본 사용"
+const userIds = await db
+  .table("users")
+  .where("role", "admin")
+  .pluck("id");
+
+// [1, 2, 3, 4, 5]
+// 타입: number[]
+```
+
+```typescript title="select와 함께 사용"
+const emails = await db
+  .table("users")
+  .select({ userId: "id", userEmail: "email" })
+  .where("role", "admin")
+  .pluck("email");
+
+// ["admin1@test.com", "admin2@test.com"]
+// 타입: string[]
+```
+</CodeGroup>
+
+## count() - 개수 세기
+
+레코드 개수를 빠르게 조회합니다.
+
+```typescript
+const count = await db
+  .table("users")
+  .where("role", "admin")
+  .count();
+
+console.log(`Total admins: ${count}`);
+// 타입: number
+```
+
+<Tip>
+`count()`는 집계 함수가 아닌 간단한 개수 조회 메서드입니다. 
+복잡한 집계는 [Aggregations](/database/puri/aggregations) 참고
+</Tip>
+
+## 실전 예제
+
+### 사용자 목록 조회 API
+
+```typescript
+async findUsers(params: {
+  role?: string;
+  search?: string;
+  page: number;
+  pageSize: number;
+}) {
+  const { role, search, page, pageSize } = params;
+  
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      username: "username",
+      email: "email",
+      role: "role",
+      createdAt: "created_at",
+    });
+  
+  // 조건 추가
+  if (role) {
+    query = query.where("role", role);
+  }
+  
+  if (search) {
+    query = query.where("username", "like", `%${search}%`);
+  }
+  
+  // 페이지네이션
+  const users = await query
+    .orderBy("created_at", "desc")
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+  
+  // 전체 개수
+  const total = await this.getPuri("r")
+    .table("users")
+    .where("role", role)
+    .count();
+  
+  return { users, total };
+}
+```
+
+### 게시글 작성 API
+
+```typescript
+async createPost(data: {
+  title: string;
+  content: string;
+  userId: number;
+}) {
+  const inserted = await this.getPuri("w")
+    .table("posts")
+    .insert({
+      title: data.title,
+      content: data.content,
+      user_id: data.userId,
+      status: "draft",
+      created_at: new Date(),
+    })
+    .returning({
+      id: "id",
+      title: "title",
+      createdAt: "created_at",
+    });
+  
+  return inserted[0];
+}
+```
+
+### 조회수 증가
+
+```typescript
+async incrementViewCount(postId: number) {
+  await this.getPuri("w")
+    .table("posts")
+    .where("id", postId)
+    .increment("view_count", 1);
+}
+```
+
+## 쿼리 디버깅
+
+### debug() - SQL 출력
+
+```typescript
+const users = await db
+  .table("users")
+  .select({ id: "id" })
+  .where("role", "admin")
+  .debug(); // 콘솔에 SQL 출력
+
+// 출력:
+// SELECT "users"."id" AS `id` FROM "users" WHERE "role" = 'admin'
+```
+
+### rawQuery() - Knex QueryBuilder 얻기
+
+내부 Knex 쿼리 빌더에 접근할 수 있습니다.
+
+```typescript
+const knexQuery = db
+  .table("users")
+  .select({ id: "id" })
+  .rawQuery();
+
+console.log(knexQuery.toQuery());
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Joins" icon="link" href="/database/puri/joins">
+    테이블 조인하기
+  </Card>
+  <Card title="Aggregations" icon="calculator" href="/database/puri/aggregations">
+    집계 함수 사용하기
+  </Card>
+  <Card title="Type Safety" icon="shield" href="/database/puri/type-safety">
+    타입 안전성 이해하기
+  </Card>
+  <Card title="Advanced Patterns" icon="wand-magic-sparkles" href="/database/puri/advanced-patterns">
+    고급 패턴 배우기
+  </Card>
+</CardGroup>

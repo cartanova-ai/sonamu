@@ -1,6 +1,734 @@
 ---
 title: "고급 패턴"
-description: "서브쿼리, JSONB 연산"
+description: "트랜잭션, 서브쿼리, 벡터 검색 등 고급 기능"
 ---
 
-<Note>이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!</Note>
+Puri의 고급 기능들을 활용하여 복잡한 데이터베이스 작업을 수행할 수 있습니다.
+
+## 고급 기능 개요
+
+<CardGroup cols={2}>
+  <Card title="Transaction" icon="arrows-rotate">
+    트랜잭션으로 데이터 일관성 보장
+    
+    ACID 속성
+  </Card>
+  <Card title="서브쿼리" icon="layer-group">
+    중첩 쿼리로 복잡한 조건 표현
+    
+    FROM, WHERE, SELECT
+  </Card>
+  <Card title="Upsert" icon="code-merge">
+    INSERT OR UPDATE 한번에
+    
+    ON CONFLICT
+  </Card>
+  <Card title="Vector Search" icon="magnifying-glass-chart">
+    AI 임베딩 유사도 검색
+    
+    pgvector
+  </Card>
+</CardGroup>
+
+## Transaction - 트랜잭션
+
+트랜잭션은 여러 쿼리를 하나의 단위로 묶어 데이터 일관성을 보장합니다.
+
+### 기본 트랜잭션
+
+```typescript
+await db.transaction(async (trx) => {
+  // 1. 사용자 생성
+  const [userId] = await trx
+    .table("users")
+    .insert({
+      username: "john",
+      email: "john@test.com",
+      password: "hashed",
+      role: "normal",
+    })
+    .returning("id");
+
+  // 2. 프로필 생성
+  await trx.table("profiles").insert({
+    user_id: userId.id,
+    bio: "Hello world",
+  });
+
+  // 3. 초기 설정 생성
+  await trx.table("user_settings").insert({
+    user_id: userId.id,
+    theme: "dark",
+    language: "ko",
+  });
+
+  // 모든 작업이 성공하면 자동 커밋
+  // 하나라도 실패하면 자동 롤백
+});
+```
+
+<Info>
+**트랜잭션의 ACID 속성**:
+- **Atomicity**: 모두 성공 또는 모두 실패
+- **Consistency**: 데이터 일관성 유지
+- **Isolation**: 동시 실행 격리
+- **Durability**: 영구 저장
+</Info>
+
+### 명시적 롤백
+
+```typescript
+await db.transaction(async (trx) => {
+  // 데이터 삽입
+  await trx.table("users").insert({
+    username: "test",
+    email: "test@test.com",
+    password: "pass",
+    role: "normal",
+  });
+
+  // 조건에 따라 롤백
+  const existingUser = await trx
+    .table("users")
+    .where("email", "test@test.com")
+    .first();
+
+  if (existingUser) {
+    // 수동 롤백
+    await trx.rollback();
+    return;
+  }
+
+  // 롤백하지 않으면 자동 커밋
+});
+```
+
+### 트랜잭션 에러 처리
+
+```typescript
+try {
+  await db.transaction(async (trx) => {
+    await trx.table("users").insert({
+      username: "john",
+      email: "john@test.com",
+      password: "pass",
+      role: "normal",
+    });
+
+    // 에러 발생 시 자동 롤백
+    throw new Error("Something went wrong");
+  });
+} catch (error) {
+  console.error("Transaction failed:", error);
+  // 모든 변경사항이 롤백됨
+}
+```
+
+## 서브쿼리
+
+서브쿼리를 사용하여 복잡한 쿼리를 작성할 수 있습니다.
+
+### FROM 절 서브쿼리
+
+```typescript
+// 서브쿼리 정의
+const activeUsers = db
+  .table("users")
+  .where("is_active", true)
+  .select({
+    id: "id",
+    username: "username",
+    email: "email",
+  });
+
+// 서브쿼리를 테이블처럼 사용
+const results = await db
+  .table({ active: activeUsers })
+  .join("posts", "active.id", "posts.user_id")
+  .select({
+    userId: "active.id",
+    username: "active.username",
+    postCount: Puri.count("posts.id"),
+  })
+  .groupBy("active.id", "active.username");
+```
+
+### WHERE 절 서브쿼리
+
+```typescript
+// 평균 급여보다 높은 직원
+const results = await db
+  .table("employees")
+  .select({
+    id: "id",
+    name: "username",
+    salary: "salary",
+  })
+  .whereRaw(`
+    salary > (SELECT AVG(salary) FROM employees)
+  `);
+```
+
+### SELECT 절 서브쿼리
+
+```typescript
+const results = await db
+  .table("users")
+  .select({
+    id: "id",
+    username: "username",
+    postCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM posts WHERE posts.user_id = users.id)
+    `),
+    commentCount: Puri.rawNumber(`
+      (SELECT COUNT(*) FROM comments WHERE comments.user_id = users.id)
+    `),
+  });
+```
+
+## WHERE 그룹 - 복잡한 조건
+
+### whereGroup - AND/OR 조합
+
+```typescript
+const results = await db
+  .table("users")
+  .select({ id: "id", name: "username" })
+  .whereGroup((g) =>
+    g
+      .where("role", "admin")
+      .orWhere("role", "moderator")
+  )
+  .where("is_active", true);
+
+// SQL: WHERE (role = 'admin' OR role = 'moderator') AND is_active = true
+```
+
+### 중첩 그룹
+
+```typescript
+const results = await db
+  .table("employees")
+  .select({ id: "id", name: "username" })
+  .whereGroup((g) =>
+    g
+      .whereGroup((g2) =>
+        g2
+          .where("department_id", 1)
+          .where("salary", ">", 50000)
+      )
+      .orWhereGroup((g2) =>
+        g2
+          .where("department_id", 2)
+          .where("salary", ">", 60000)
+      )
+  );
+
+// SQL: WHERE (
+//   (department_id = 1 AND salary > 50000)
+//   OR
+//   (department_id = 2 AND salary > 60000)
+// )
+```
+
+### 실전 예제 - 검색 필터
+
+```typescript
+async searchUsers(params: {
+  search?: string;
+  role?: string[];
+  isActive?: boolean;
+  minAge?: number;
+}) {
+  let query = this.getPuri("r")
+    .table("users")
+    .select({
+      id: "id",
+      username: "username",
+      email: "email",
+    });
+
+  // 검색어 (여러 필드)
+  if (params.search) {
+    query = query.whereGroup((g) =>
+      g
+        .where("username", "like", `%${params.search}%`)
+        .orWhere("email", "like", `%${params.search}%`)
+        .orWhere("bio", "like", `%${params.search}%`)
+    );
+  }
+
+  // 역할 필터
+  if (params.role && params.role.length > 0) {
+    query = query.whereIn("role", params.role);
+  }
+
+  // 활성 상태
+  if (params.isActive !== undefined) {
+    query = query.where("is_active", params.isActive);
+  }
+
+  // 나이 필터
+  if (params.minAge !== undefined) {
+    query = query.whereRaw(
+      "EXTRACT(YEAR FROM AGE(birth_date)) >= ?",
+      [params.minAge]
+    );
+  }
+
+  return await query.orderBy("created_at", "desc");
+}
+```
+
+## UPSERT - ON CONFLICT
+
+INSERT와 UPDATE를 한 번에 수행합니다.
+
+### 기본 UPSERT
+
+```typescript
+await db
+  .table("users")
+  .insert({
+    email: "john@test.com",
+    username: "john",
+    password: "hashed",
+    role: "normal",
+  })
+  .onConflict("email", {
+    update: ["username", "password"],
+  });
+
+// email이 이미 존재하면 username과 password만 업데이트
+// 존재하지 않으면 새로 삽입
+```
+
+### 선택적 업데이트
+
+```typescript
+await db
+  .table("user_stats")
+  .insert({
+    user_id: 1,
+    login_count: 1,
+    last_login: new Date(),
+  })
+  .onConflict("user_id", {
+    update: {
+      login_count: Puri.rawNumber("user_stats.login_count + 1"),
+      last_login: new Date(),
+    },
+  });
+
+// login_count는 기존 값 + 1
+// last_login은 새 값으로 업데이트
+```
+
+### DO NOTHING
+
+```typescript
+await db
+  .table("users")
+  .insert({
+    email: "john@test.com",
+    username: "john",
+    password: "pass",
+    role: "normal",
+  })
+  .onConflict("email", "nothing");
+
+// email이 이미 존재하면 아무것도 하지 않음
+```
+
+### 복수 컬럼 UNIQUE
+
+```typescript
+await db
+  .table("user_preferences")
+  .insert({
+    user_id: 1,
+    key: "theme",
+    value: "dark",
+  })
+  .onConflict(["user_id", "key"], {
+    update: ["value"],
+  });
+
+// (user_id, key) 조합이 이미 존재하면 value만 업데이트
+```
+
+## UpsertBuilder - 복잡한 관계 저장
+
+여러 테이블의 관계를 한 번에 저장할 때 사용합니다.
+
+### 기본 사용법
+
+```typescript
+await db.transaction(async (trx) => {
+  // 1. Company 등록
+  const companyRef = trx.ubRegister("companies", {
+    name: "Tech Corp",
+  });
+
+  // 2. Department 등록 (Company 참조)
+  const deptRef = trx.ubRegister("departments", {
+    name: "Engineering",
+    company_id: companyRef, // UBRef 사용
+  });
+
+  // 3. User 등록
+  const userRef = trx.ubRegister("users", {
+    email: "dev@tech.com",
+    username: "developer",
+    password: "hashed",
+    role: "normal",
+  });
+
+  // 4. Employee 등록 (User, Department 참조)
+  trx.ubRegister("employees", {
+    user_id: userRef,
+    department_id: deptRef,
+    employee_number: "E001",
+    salary: "70000",
+  });
+
+  // 5. 순서대로 저장
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("departments");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+```
+
+<Info>
+**UBRef의 장점**:
+- 외래 키를 신경 쓰지 않고 관계 정의
+- 자동으로 의존 순서 해결
+- 트랜잭션 내에서 ID 자동 할당
+</Info>
+
+### Many-to-Many 관계
+
+```typescript
+await db.transaction(async (trx) => {
+  // Project 생성
+  const projectRef = trx.ubRegister("projects", {
+    name: "New Feature",
+    status: "in_progress",
+  });
+
+  // 여러 Employee 생성
+  const emp1Ref = trx.ubRegister("employees", {
+    employee_number: "E100",
+    salary: "60000",
+  });
+
+  const emp2Ref = trx.ubRegister("employees", {
+    employee_number: "E101",
+    salary: "65000",
+  });
+
+  // M:N 관계 설정
+  trx.ubRegister("projects__employees", {
+    project_id: projectRef,
+    employee_id: emp1Ref,
+  });
+
+  trx.ubRegister("projects__employees", {
+    project_id: projectRef,
+    employee_id: emp2Ref,
+  });
+
+  // 저장
+  await trx.ubUpsert("projects");
+  await trx.ubUpsert("employees");
+  await trx.ubUpsert("projects__employees");
+});
+```
+
+### 대량 등록
+
+```typescript
+await db.transaction(async (trx) => {
+  const companyRef = trx.ubRegister("companies", {
+    name: "Startup Inc",
+  });
+
+  // 10명의 직원 등록
+  for (let i = 0; i < 10; i++) {
+    const userRef = trx.ubRegister("users", {
+      email: `user${i}@startup.com`,
+      username: `user${i}`,
+      password: "pass",
+      role: "normal",
+    });
+
+    trx.ubRegister("employees", {
+      user_id: userRef,
+      employee_number: `E${1000 + i}`,
+      salary: String(50000 + i * 5000),
+    });
+  }
+
+  // 일괄 저장
+  await trx.ubUpsert("companies");
+  await trx.ubUpsert("users");
+  await trx.ubUpsert("employees");
+});
+```
+
+## Vector Search - 벡터 유사도 검색
+
+AI 임베딩을 사용한 의미론적 검색입니다.
+
+### Cosine Similarity (기본)
+
+```typescript
+const queryEmbedding = [0.1, 0.2, 0.3, ...]; // 1536차원 벡터
+
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "cosine",
+    threshold: 0.7, // 70% 이상 유사도
+  })
+  .select({
+    id: "id",
+    title: "title",
+    similarity: "similarity", // 자동 추가됨
+  })
+  .limit(10);
+
+// 결과는 similarity 내림차순 정렬
+results[0].similarity; // 0.95 (높을수록 유사)
+```
+
+### L2 Distance
+
+```typescript
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "l2",
+    threshold: 1.0, // 거리 1.0 이하
+  })
+  .select({
+    id: "id",
+    title: "title",
+    similarity: "similarity", // 거리값 (낮을수록 유사)
+  })
+  .limit(10);
+```
+
+### Inner Product
+
+```typescript
+const results = await db
+  .table("documents")
+  .vectorSimilarity("embedding", queryEmbedding, {
+    method: "inner_product",
+    threshold: 0.5,
+  })
+  .select({
+    id: "id",
+    content: "content",
+    similarity: "similarity",
+  })
+  .limit(20);
+```
+
+<Tip>
+**Vector Search 메서드 선택**:
+- **cosine**: 일반적인 임베딩 검색 (OpenAI, Cohere 등)
+- **l2**: 거리 기반 검색
+- **inner_product**: 정규화된 벡터에 적합
+</Tip>
+
+## Full-text Search
+
+### PGroonga (한글 지원 우수)
+
+```typescript
+// 단일 컬럼 검색
+const results = await db
+  .table("posts")
+  .whereSearch("title", "검색어")
+  .select({
+    id: "id",
+    title: "title",
+    score: Puri.score(), // 검색 점수
+  })
+  .orderBy("score", "desc");
+
+// 복합 컬럼 검색 (가중치)
+const results = await db
+  .table("posts")
+  .whereSearch(["title", "content"], "검색어", {
+    weights: [10, 1], // title이 10배 중요
+  })
+  .select({
+    id: "id",
+    title: "title",
+    highlightedTitle: Puri.highlight("title", "검색어"),
+    score: Puri.score(),
+  })
+  .orderBy("score", "desc");
+```
+
+### PostgreSQL tsvector
+
+```typescript
+// 기본 검색
+const results = await db
+  .table("documents")
+  .whereTsSearch("title", "search query", "simple")
+  .select({
+    id: "id",
+    title: "title",
+    highlighted: Puri.tsHighlight("title", "search query"),
+    rank: Puri.tsRank("to_tsvector('simple', title)", "search query"),
+  })
+  .orderBy("rank", "desc");
+
+// 고급 검색 옵션
+const results = await db
+  .table("documents")
+  .whereTsSearch("content", "important keywords", {
+    config: "english",
+    parser: "plainto_tsquery",
+  })
+  .select({
+    id: "id",
+    content: Puri.tsHighlight("content", "important keywords", {
+      startSel: "<mark>",
+      stopSel: "</mark>",
+      maxFragments: 3,
+    }),
+    rank: Puri.tsRankCd("to_tsvector('english', content)", "important keywords"),
+  })
+  .orderBy("rank", "desc");
+```
+
+## 배치 작업
+
+### Batch Insert
+
+```typescript
+const users = [
+  { username: "user1", email: "user1@test.com", password: "pass", role: "normal" },
+  { username: "user2", email: "user2@test.com", password: "pass", role: "normal" },
+  { username: "user3", email: "user3@test.com", password: "pass", role: "normal" },
+];
+
+await db.table("users").insert(users);
+```
+
+### Batch Update
+
+```typescript
+await db.transaction(async (trx) => {
+  for (const userId of userIds) {
+    await trx
+      .table("users")
+      .where("id", userId)
+      .update({ is_active: true });
+  }
+});
+```
+
+### Batch Delete
+
+```typescript
+// IN 사용
+await db
+  .table("users")
+  .whereIn("id", [1, 2, 3, 4, 5])
+  .delete();
+
+// 조건
+await db
+  .table("users")
+  .where("last_login", "<", "2023-01-01")
+  .delete();
+```
+
+## 성능 최적화
+
+### 인덱스 활용
+
+```sql
+-- 자주 조회하는 컬럼에 인덱스
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+
+-- 복합 인덱스
+CREATE INDEX idx_users_role_active ON users(role, is_active);
+
+-- 벡터 인덱스 (HNSW)
+CREATE INDEX idx_documents_embedding ON documents 
+USING hnsw (embedding vector_cosine_ops);
+
+-- Full-text 인덱스
+CREATE INDEX idx_posts_content_pgroonga ON posts 
+USING pgroonga (content);
+```
+
+### SELECT 최적화
+
+```typescript
+// ❌ 나쁨: 불필요한 컬럼 조회
+await db.table("users").selectAll();
+
+// ✅ 좋음: 필요한 컬럼만
+await db
+  .table("users")
+  .select({
+    id: "id",
+    name: "username",
+  });
+```
+
+### JOIN 최적화
+
+```typescript
+// ✅ 작은 테이블 → 큰 테이블 순서
+await db
+  .table("departments")      // 10개
+  .join("employees", ...)    // 100개
+  .join("user_logs", ...);   // 10000개
+```
+
+### 페이지네이션 최적화
+
+```typescript
+// ✅ Cursor 기반 페이지네이션 (대량 데이터)
+async function getCursorPage(lastId: number, limit: number) {
+  return await db
+    .table("posts")
+    .select({ id: "id", title: "title" })
+    .where("id", ">", lastId)
+    .orderBy("id", "asc")
+    .limit(limit);
+}
+
+// 사용
+const page1 = await getCursorPage(0, 20);
+const page2 = await getCursorPage(page1[page1.length - 1].id, 20);
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Model" icon="cube" href="/core-concepts/model/what-is-model">
+    Model에서 Puri 활용하기
+  </Card>
+  <Card title="API Development" icon="code" href="/api-development/controllers/basic-routing">
+    API에서 Puri 사용하기
+  </Card>
+  <Card title="Testing" icon="flask" href="/testing/unit-testing">
+    Puri 쿼리 테스트하기
+  </Card>
+  <Card title="Basic Queries" icon="magnifying-glass" href="/database/puri/basic-queries">
+    기본 쿼리로 돌아가기
+  </Card>
+</CardGroup>
