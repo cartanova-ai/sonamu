@@ -198,7 +198,7 @@
                 "pages": [
                   "frontend-integration/generated-services/how-services-work",
                   "frontend-integration/generated-services/using-services",
-                  "frontend-integration/generated-services/swr-hooks"
+                  "frontend-integration/generated-services/tanstack-query"
                 ]
               },
               {
