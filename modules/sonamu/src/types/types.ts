@@ -884,8 +884,6 @@ const BasePropFieldsWithoutAdditional = z
       z.literal("bigInteger[]"),
       z.literal("boolean"),
       z.literal("boolean[]"),
-      z.literal("date"),
-      z.literal("date[]"),
       z.literal("uuid"),
       z.literal("uuid[]"),
       z.literal("tsvector"),
@@ -946,6 +944,21 @@ const NumberArrayPropSchema = z
     type: z.literal("number[]"),
     ...PrecisionScaleFields,
     numberType: z.enum(["real", "double precision", "numeric"]).optional(),
+  })
+  .strict();
+
+const DatePropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("date"),
+    precision: z.number().optional(),
+  })
+  .strict();
+const DateArrayPropSchema = z
+  .object({
+    ...BasePropFields,
+    type: z.literal("date[]"),
+    precision: z.number().optional(),
   })
   .strict();
 
@@ -1116,6 +1129,8 @@ export const NormalPropSchema = z
       EnumArrayPropSchema,
       NumberPropSchema,
       NumberArrayPropSchema,
+      DatePropSchema,
+      DateArrayPropSchema,
       NumericPropSchema,
       NumericArrayPropSchema,
       JsonPropSchema,
