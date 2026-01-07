@@ -425,25 +425,25 @@ class ApiModel extends BaseModelClass {
 
 ```mermaid
 flowchart TD
-    A[API 요청] --> B[Sonamu.getContext()]
-    B --> C{인증 필요?}
+    A["API 요청"] --> B["Sonamu.getContext()"]
+    B --> C{"인증 필요?"}
     
-    C -->|Yes| D[context.user 확인]
-    C -->|No| E[요청 처리]
+    C -->|Yes| D["context.user 확인"]
+    C -->|No| E["요청 처리"]
     
-    D --> F{user 존재?}
-    F -->|No| G[401 Unauthorized]
-    F -->|Yes| H{권한 확인}
+    D --> F{"user 존재?"}
+    F -->|No| G["401 Unauthorized"]
+    F -->|Yes| H{"권한 확인"}
     
     H -->|Pass| E
-    H -->|Fail| I[403 Forbidden]
+    H -->|Fail| I["403 Forbidden"]
     
-    E --> J[비즈니스 로직]
-    J --> K[응답 생성]
+    E --> J["비즈니스 로직"]
+    J --> K["응답 생성"]
     
-    K --> L[context.reply 설정]
-    L --> M[헤더/쿠키/상태코드]
-    M --> N[응답 반환]
+    K --> L["context.reply 설정"]
+    L --> M["헤더/쿠키/상태코드"]
+    M --> N["응답 반환"]
     
     style A fill:#e3f2fd
     style B fill:#fff9c4
