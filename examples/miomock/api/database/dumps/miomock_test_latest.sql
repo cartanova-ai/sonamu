@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict YuaLG6bCei6Cet5qGlcdoCsdNJnV0xyPRWCTdFyb3mdKsIrbBMWq0XGLNLR8a8R
+\restrict 6V3CfNNR3BNCtSo1OCBAKczSweVWdBQMOG2Jq1kdiBplgMtl3bmvWBwX1n3p0ad
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
 -- Dumped by pg_dump version 18.1
@@ -411,7 +411,9 @@ ALTER SEQUENCE public.sync_fixtures_id_seq OWNED BY public.sync_fixtures.id;
 CREATE TABLE public.tags (
     id integer NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    name text NOT NULL
+    name text NOT NULL,
+    name_en character varying(30),
+    name_ko character varying(30)
 );
 
 
@@ -650,6 +652,7 @@ INSERT INTO public.knex_migrations VALUES (55, '20251216132209_alter_projects_dr
 INSERT INTO public.knex_migrations VALUES (56, '20251216132334_alter_projects_add1.ts', 6, '2025-12-16 13:38:53.383+09');
 INSERT INTO public.knex_migrations VALUES (57, '20251216173556_alter_projects.ts', 7, '2025-12-17 12:33:05.699+09');
 INSERT INTO public.knex_migrations VALUES (58, '20251217163711_alter_projects.ts', 8, '2025-12-18 11:14:15.717+09');
+INSERT INTO public.knex_migrations VALUES (59, '20260107130556_alter_tags_add2.ts', 9, '2026-01-07 13:06:04.088+09');
 
 
 --
@@ -1730,14 +1733,14 @@ INSERT INTO public.sync_fixtures VALUES (1000, '2025-12-11 16:45:01.535807+09', 
 -- Data for Name: tags; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-INSERT INTO public.tags VALUES (1, '2025-11-25 00:17:02+09', '웹');
-INSERT INTO public.tags VALUES (2, '2025-11-25 00:17:02+09', '모바일');
-INSERT INTO public.tags VALUES (3, '2025-11-25 00:17:02+09', '백엔드');
-INSERT INTO public.tags VALUES (4, '2025-11-25 00:17:02+09', '프론트엔드');
-INSERT INTO public.tags VALUES (5, '2025-11-25 00:17:02+09', '데이터');
-INSERT INTO public.tags VALUES (6, '2025-11-25 00:17:02+09', '인프라');
-INSERT INTO public.tags VALUES (7, '2025-11-25 00:17:02+09', '보안');
-INSERT INTO public.tags VALUES (8, '2025-11-25 00:17:02+09', 'UI/UX');
+INSERT INTO public.tags VALUES (1, '2025-11-25 00:17:02+09', '웹', 'Web', '웹');
+INSERT INTO public.tags VALUES (2, '2025-11-25 00:17:02+09', '모바일', 'Mobile', '모바일');
+INSERT INTO public.tags VALUES (3, '2025-11-25 00:17:02+09', '백엔드', 'Backend', '백엔드');
+INSERT INTO public.tags VALUES (4, '2025-11-25 00:17:02+09', '프론트엔드', 'Frontend', '프론트엔드');
+INSERT INTO public.tags VALUES (5, '2025-11-25 00:17:02+09', '데이터', 'Data', '데이터');
+INSERT INTO public.tags VALUES (6, '2025-11-25 00:17:02+09', '인프라', 'Infrastructure', '인프라');
+INSERT INTO public.tags VALUES (7, '2025-11-25 00:17:02+09', '보안', 'Security', '보안');
+INSERT INTO public.tags VALUES (8, '2025-11-25 00:17:02+09', 'UI/UX', 'UI/UX', 'UI/UX');
 
 
 --
@@ -2075,5 +2078,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YuaLG6bCei6Cet5qGlcdoCsdNJnV0xyPRWCTdFyb3mdKsIrbBMWq0XGLNLR8a8R
+\unrestrict 6V3CfNNR3BNCtSo1OCBAKczSweVWdBQMOG2Jq1kdiBplgMtl3bmvWBwX1n3p0ad
 
