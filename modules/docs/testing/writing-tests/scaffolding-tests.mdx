@@ -1,10 +1,429 @@
 ---
-title: '테스트 Scaffolding'
-description: 'model.test.ts 생성하기'
+title: "테스트 Scaffolding"
+description: "model.test.ts 자동 생성하기"
 ---
 
-# 테스트 Scaffolding
+Sonamu는 `pnpm generate` 명령어로 모델 테스트 파일을 자동 생성합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Scaffolding 개요
+
+<CardGroup cols={2}>
+  <Card title="자동 생성" icon="wand-magic-sparkles">
+    model.test.ts 생성
+    
+    기본 구조 포함
+  </Card>
+  <Card title="bootstrap 포함" icon="bolt">
+    테스트 환경 자동 설정
+    
+    즉시 실행 가능
+  </Card>
+  <Card title="CRUD 테스트" icon="list-check">
+    기본 테스트 스켈레톤
+    
+    커스터마이징 가능
+  </Card>
+  <Card title="타입 안전" icon="shield-check">
+    모델과 연동
+    
+    자동완성 지원
+  </Card>
+</CardGroup>
+
+## 테스트 파일 생성
+
+### 명령어
+
+```bash
+pnpm generate
+```
+
+Entity가 정의되어 있으면 자동으로 `{model}.test.ts` 파일이 생성됩니다.
+
+**생성 위치**:
+```
+api/src/models/
+├── user.model.ts
+├── user.model.test.ts       # 자동 생성됨
+├── post.model.ts
+└── post.model.test.ts        # 자동 생성됨
+```
+
+### 생성된 파일 구조
+
+```typescript
+// api/src/models/user.model.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { UserModel } from "./user.model";
+
+// 테스트 환경 초기화
+bootstrap(vi);
+
+test("사용자 생성", async () => {
+  const userModel = new UserModel();
+  
+  // 테스트 코드 작성
+  const { user } = await userModel.create({
+    username: "john",
+    email: "john@example.com",
+    password: "password123",
+  });
+  
+  expect(user.id).toBeGreaterThan(0);
+  expect(user.username).toBe("john");
+});
+
+test("사용자 조회", async () => {
+  const userModel = new UserModel();
+  
+  // 테스트 데이터 생성
+  const { user } = await userModel.create({
+    username: "jane",
+    email: "jane@example.com",
+    password: "password123",
+  });
+  
+  // 조회 테스트
+  const { user: found } = await userModel.getUser("C", user.id);
+  
+  expect(found.id).toBe(user.id);
+  expect(found.username).toBe("jane");
+});
+```
+
+## 테스트 실행
+
+### 단일 파일 실행
+
+```bash
+# 특정 모델 테스트만 실행
+pnpm vitest user.model.test.ts
+```
+
+### 전체 테스트 실행
+
+```bash
+# 모든 테스트 실행
+pnpm test
+
+# 또는
+pnpm vitest
+```
+
+### Watch 모드
+
+```bash
+# 파일 변경 시 자동 재실행
+pnpm vitest --watch
+```
+
+## 테스트 작성 가이드
+
+### CRUD 테스트 패턴
+
+```typescript
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { PostModel } from "./post.model";
+
+bootstrap(vi);
+
+// Create
+test("게시글 생성", async () => {
+  const postModel = new PostModel();
+  
+  const { post } = await postModel.create({
+    title: "Test Post",
+    content: "Test Content",
+    author_id: 1,
+  });
+  
+  expect(post.id).toBeGreaterThan(0);
+  expect(post.title).toBe("Test Post");
+});
+
+// Read
+test("게시글 조회", async () => {
+  const postModel = new PostModel();
+  
+  // 테스트 데이터 생성
+  const { post } = await postModel.create({
+    title: "Test Post",
+    content: "Test Content",
+    author_id: 1,
+  });
+  
+  // 조회
+  const { post: found } = await postModel.getPost("C", post.id);
+  
+  expect(found.id).toBe(post.id);
+  expect(found.title).toBe("Test Post");
+});
+
+// Update
+test("게시글 수정", async () => {
+  const postModel = new PostModel();
+  
+  // 테스트 데이터 생성
+  const { post } = await postModel.create({
+    title: "Original Title",
+    content: "Original Content",
+    author_id: 1,
+  });
+  
+  // 수정
+  await postModel.update(post.id, {
+    title: "Updated Title",
+  });
+  
+  // 확인
+  const { post: updated } = await postModel.getPost("C", post.id);
+  expect(updated.title).toBe("Updated Title");
+  expect(updated.content).toBe("Original Content"); // 변경 안 됨
+});
+
+// Delete
+test("게시글 삭제", async () => {
+  const postModel = new PostModel();
+  
+  // 테스트 데이터 생성
+  const { post } = await postModel.create({
+    title: "Test Post",
+    content: "Test Content",
+    author_id: 1,
+  });
+  
+  // 삭제
+  await postModel.delete(post.id);
+  
+  // 확인
+  const deleted = await postModel.findById("C", post.id);
+  expect(deleted).toBeNull();
+});
+```
+
+### 관계 테스트
+
+```typescript
+test("사용자와 게시글 관계", async () => {
+  const userModel = new UserModel();
+  const postModel = new PostModel();
+  
+  // 사용자 생성
+  const { user } = await userModel.create({
+    username: "author",
+    email: "author@example.com",
+    password: "password",
+  });
+  
+  // 게시글 생성
+  const { post } = await postModel.create({
+    title: "User's Post",
+    content: "Content",
+    author_id: user.id,
+  });
+  
+  // 관계 확인
+  expect(post.author_id).toBe(user.id);
+  
+  // Subset "C"로 조회하면 author 정보 포함
+  const { post: fullPost } = await postModel.getPost("C", post.id);
+  expect(fullPost.author?.username).toBe("author");
+});
+```
+
+### 에러 테스트
+
+```typescript
+test("중복 이메일 검증", async () => {
+  const userModel = new UserModel();
+  
+  // 첫 번째 사용자 생성
+  await userModel.create({
+    username: "user1",
+    email: "duplicate@example.com",
+    password: "password",
+  });
+  
+  // 같은 이메일로 다시 생성 시도
+  await expect(
+    userModel.create({
+      username: "user2",
+      email: "duplicate@example.com",
+      password: "password",
+    })
+  ).rejects.toThrow("이미 존재하는 이메일입니다");
+});
+
+test("존재하지 않는 게시글 조회", async () => {
+  const postModel = new PostModel();
+  
+  await expect(
+    postModel.getPost("C", 999999)
+  ).rejects.toThrow("게시글을 찾을 수 없습니다");
+});
+```
+
+## 테스트 구조화
+
+### 여러 테스트 그룹화
+
+```typescript
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { describe } from "vitest";
+import { UserModel } from "./user.model";
+
+bootstrap(vi);
+
+describe("사용자 생성", () => {
+  test("정상적인 생성", async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "john",
+      email: "john@example.com",
+      password: "password",
+    });
+    expect(user.id).toBeGreaterThan(0);
+  });
+  
+  test("중복 이메일 검증", async () => {
+    const userModel = new UserModel();
+    await userModel.create({
+      username: "user1",
+      email: "duplicate@example.com",
+      password: "password",
+    });
+    
+    await expect(
+      userModel.create({
+        username: "user2",
+        email: "duplicate@example.com",
+        password: "password",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("사용자 조회", () => {
+  test("ID로 조회", async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "test",
+      email: "test@example.com",
+      password: "password",
+    });
+    
+    const { user: found } = await userModel.getUser("C", user.id);
+    expect(found.id).toBe(user.id);
+  });
+  
+  test("존재하지 않는 사용자 조회", async () => {
+    const userModel = new UserModel();
+    await expect(
+      userModel.getUser("C", 999999)
+    ).rejects.toThrow();
+  });
+});
+```
+
+## 베스트 프랙티스
+
+### 1. 테스트 격리
+
+각 테스트는 독립적으로 실행되어야 합니다.
+
+```typescript
+// ✅ 올바른 방법: 각 테스트가 독립적
+test("테스트 1", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({ /* ... */ });
+  // 테스트 종료 후 자동 롤백
+});
+
+test("테스트 2", async () => {
+  const userModel = new UserModel();
+  // 깨끗한 DB 상태에서 시작
+  const { user } = await userModel.create({ /* ... */ });
+});
+
+// ❌ 잘못된 방법: 테스트 간 의존성
+let sharedUserId: number;
+
+test("테스트 1", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({ /* ... */ });
+  sharedUserId = user.id; // ❌ 다른 테스트와 공유
+});
+
+test("테스트 2", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.getUser("C", sharedUserId); // ❌ 실패함!
+});
+```
+
+### 2. 명확한 테스트 이름
+
+```typescript
+// ✅ 올바른 방법
+test("중복 이메일로 사용자 생성 시 에러 발생", async () => {
+  // ...
+});
+
+// ❌ 잘못된 방법
+test("테스트 1", async () => {
+  // ...
+});
+```
+
+### 3. Arrange-Act-Assert 패턴
+
+```typescript
+test("게시글 수정", async () => {
+  // Arrange (준비)
+  const postModel = new PostModel();
+  const { post } = await postModel.create({
+    title: "Original",
+    content: "Content",
+    author_id: 1,
+  });
+  
+  // Act (실행)
+  await postModel.update(post.id, {
+    title: "Updated",
+  });
+  
+  // Assert (검증)
+  const { post: updated } = await postModel.getPost("C", post.id);
+  expect(updated.title).toBe("Updated");
+});
+```
+
+## 주의사항
+
+<Warning>
+**테스트 작성 시 주의사항**:
+1. **자동 생성 파일 수정 금지**: 재생성 시 덮어씌워집니다
+2. **독립적인 테스트**: 테스트 간 의존성 없어야 함
+3. **Transaction 기반**: 각 테스트 종료 후 자동 롤백
+4. **비동기 필수**: 모든 테스트는 async 함수
+5. **명확한 이름**: 테스트가 무엇을 검증하는지 명확하게
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="테스트 구조" icon="sitemap" href="/testing/writing-tests/test-structure">
+    bootstrap, test, testAs
+  </Card>
+  <Card title="테스트 헬퍼" icon="wrench" href="/testing/writing-tests/test-helpers">
+    Fixture와 유틸리티
+  </Card>
+  <Card title="Vitest 공식 문서" icon="external-link" href="https://vitest.dev">
+    Vitest 가이드
+  </Card>
+  <Card title="Model System" icon="cube" href="/core-concepts/model-system/overview">
+    Model 이해하기
+  </Card>
+</CardGroup>

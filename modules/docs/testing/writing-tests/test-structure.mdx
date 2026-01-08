@@ -1,10 +1,447 @@
 ---
-title: '테스트 구조'
-description: 'Vitest 기반 테스트'
+title: "테스트 구조"
+description: "Vitest 기반 Sonamu 테스트 시스템"
 ---
 
-# 테스트 구조
+Sonamu의 Vitest 기반 테스트 시스템과 구조를 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 테스트 시스템 개요
+
+<CardGroup cols={2}>
+  <Card title="Vitest" icon="vial">
+    빠른 테스트 실행
+    
+    Vite 통합
+  </Card>
+  <Card title="Context 기반" icon="user">
+    인증 테스트
+    
+    권한 시뮬레이션
+  </Card>
+  <Card title="Transaction" icon="database">
+    자동 롤백
+    
+    격리된 테스트
+  </Card>
+  <Card title="Fixture 시스템" icon="box">
+    테스트 데이터
+    
+    재사용 가능
+  </Card>
+</CardGroup>
+
+## bootstrap 함수
+
+Sonamu는 `bootstrap` 함수로 테스트 환경을 초기화합니다.
+
+```typescript
+// api/src/application/sonamu.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+
+// 테스트 환경 초기화
+bootstrap(vi);
+
+test("사용자 생성", async () => {
+  // 테스트 코드
+});
+```
+
+### bootstrap의 역할
+
+```typescript
+// sonamu/src/testing/bootstrap.ts
+export function bootstrap(vi: VitestUtils) {
+  beforeAll(async () => {
+    // Sonamu 테스트 모드로 초기화
+    await Sonamu.initForTesting();
+  });
+  
+  beforeEach(async () => {
+    // 각 테스트마다 Transaction 시작
+    await DB.createTestTransaction();
+  });
+  
+  afterEach(async () => {
+    // 타이머 리셋
+    vi.useRealTimers();
+    
+    // Transaction 롤백 (자동 정리)
+    await DB.clearTestTransaction();
+  });
+  
+  afterAll(() => {
+    // 정리 작업
+  });
+}
+```
+
+**주요 기능**:
+1. **Sonamu 초기화**: 테스트 모드로 프레임워크 초기화
+2. **Transaction 관리**: 각 테스트마다 자동 롤백
+3. **타이머 리셋**: Vitest의 fake timers 초기화
+4. **테스트 리포팅**: Naite 시스템에 결과 전달
+
+## test 함수
+
+Sonamu는 Vitest의 `test`를 래핑한 커스텀 `test` 함수를 제공합니다.
+
+### 기본 사용법
+
+```typescript
+import { test } from "sonamu/test";
+import { expect } from "vitest";
+import { UserModel } from "@/models/user.model";
+
+test("사용자 생성", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({
+    username: "john",
+    email: "john@example.com",
+    password: "password123",
+  });
+  
+  expect(user.id).toBeGreaterThan(0);
+  expect(user.username).toBe("john");
+});
+
+test("사용자 조회", async () => {
+  const userModel = new UserModel();
+  
+  // 테스트 데이터 생성
+  const { user } = await userModel.create({
+    username: "jane",
+    email: "jane@example.com",
+    password: "password123",
+  });
+  
+  // 조회
+  const { user: found } = await userModel.getUser("C", user.id);
+  
+  expect(found.id).toBe(user.id);
+  expect(found.username).toBe("jane");
+});
+```
+
+### Context 주입
+
+`test` 함수는 자동으로 Mock Context를 주입합니다.
+
+```typescript
+// 내부 동작
+function getMockContext(): Context {
+  return {
+    ip: "127.0.0.1",
+    session: {},
+    user: null,  // 기본값: 로그인하지 않은 상태
+    passport: {
+      login: async () => {},
+      logout: () => {},
+    },
+    naiteStore: Naite.createStore(),
+  };
+}
+
+export const test = async (title: string, fn: TestFunction) => {
+  return vitestTest(title, async (context) => {
+    await runWithMockContext(async () => {
+      await fn(context);
+    });
+  });
+};
+```
+
+## testAs 함수
+
+특정 사용자로 인증된 상태에서 테스트할 수 있습니다.
+
+### 기본 사용법
+
+```typescript
+import { testAs } from "sonamu/test";
+import { expect } from "vitest";
+import { PostModel } from "@/models/post.model";
+
+testAs(
+  { id: 1, username: "admin", role: "admin" },  // 인증된 사용자
+  "관리자는 모든 게시글을 삭제할 수 있다",
+  async () => {
+    const postModel = new PostModel();
+    
+    // Context.user가 위의 사용자로 설정됨
+    await postModel.deletePost(123);
+    
+    // 삭제 확인
+    const deleted = await postModel.findById("C", 123);
+    expect(deleted).toBeNull();
+  }
+);
+
+testAs(
+  { id: 2, username: "user", role: "user" },  // 일반 사용자
+  "일반 사용자는 자신의 게시글만 삭제할 수 있다",
+  async () => {
+    const postModel = new PostModel();
+    
+    // Context.user.id === 2인 상태
+    await expect(
+      postModel.deletePost(999)  // 다른 사용자의 게시글
+    ).rejects.toThrow("권한이 없습니다");
+  }
+);
+```
+
+### 권한 테스트
+
+```typescript
+import { testAs } from "sonamu/test";
+
+// 관리자 테스트
+testAs(
+  { id: 1, role: "admin" },
+  "관리자는 사용자 목록을 볼 수 있다",
+  async () => {
+    const userModel = new UserModel();
+    const { users } = await userModel.getUsers({ page: 1, pageSize: 10 });
+    
+    expect(users.length).toBeGreaterThan(0);
+  }
+);
+
+// 일반 사용자 테스트
+testAs(
+  { id: 2, role: "user" },
+  "일반 사용자는 사용자 목록을 볼 수 없다",
+  async () => {
+    const userModel = new UserModel();
+    
+    await expect(
+      userModel.getUsers({ page: 1, pageSize: 10 })
+    ).rejects.toThrow();
+  }
+);
+```
+
+## test.skip, test.only, test.todo
+
+Vitest의 기능들을 그대로 사용할 수 있습니다.
+
+```typescript
+import { test } from "sonamu/test";
+
+// 스킵
+test.skip("아직 구현되지 않은 테스트", async () => {
+  // 이 테스트는 실행되지 않음
+});
+
+// 이 테스트만 실행
+test.only("이 테스트만 실행", async () => {
+  // 다른 테스트는 무시되고 이것만 실행됨
+});
+
+// TODO 표시
+test.todo("나중에 작성할 테스트");
+```
+
+## test.each
+
+여러 입력값으로 동일한 테스트를 반복할 수 있습니다.
+
+```typescript
+import { test } from "sonamu/test";
+import { expect } from "vitest";
+
+test.each([
+  { input: "user1@example.com", expected: true },
+  { input: "invalid-email", expected: false },
+  { input: "user@domain", expected: false },
+  { input: "user@example.co.kr", expected: true },
+])("이메일 검증: $input → $expected", async ({ input, expected }) => {
+  const isValid = validateEmail(input);
+  expect(isValid).toBe(expected);
+});
+```
+
+## Transaction 자동 롤백
+
+각 테스트는 독립된 Transaction에서 실행되고 **자동으로 롤백**됩니다.
+
+```typescript
+import { test } from "sonamu/test";
+
+test("사용자 생성 테스트", async () => {
+  const userModel = new UserModel();
+  
+  // 데이터베이스에 데이터 삽입
+  await userModel.create({
+    username: "test-user",
+    email: "test@example.com",
+    password: "password",
+  });
+  
+  // 테스트 종료 후 자동으로 롤백됨
+  // → 데이터베이스는 깨끗한 상태 유지
+});
+
+test("다음 테스트는 깨끗한 DB에서 시작", async () => {
+  const userModel = new UserModel();
+  
+  // 이전 테스트의 "test-user"는 없음
+  const { users } = await userModel.getUsers({ page: 1, pageSize: 10 });
+  expect(users.find(u => u.username === "test-user")).toBeUndefined();
+});
+```
+
+**장점**:
+- 테스트 간 격리
+- 데이터 정리 불필요
+- 빠른 실행 (실제 INSERT/DELETE 없음)
+
+## 테스트 파일 구조
+
+```typescript
+// api/src/models/user.model.test.ts
+import { bootstrap, test, testAs } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { UserModel } from "./user.model";
+
+// 1. bootstrap으로 테스트 환경 초기화
+bootstrap(vi);
+
+// 2. 테스트 그룹 (describe는 선택사항)
+test("사용자 생성", async () => {
+  const userModel = new UserModel();
+  const { user } = await userModel.create({
+    username: "john",
+    email: "john@example.com",
+    password: "password123",
+  });
+  
+  expect(user.id).toBeGreaterThan(0);
+  expect(user.username).toBe("john");
+});
+
+test("중복 이메일 검증", async () => {
+  const userModel = new UserModel();
+  
+  // 첫 번째 사용자 생성
+  await userModel.create({
+    username: "user1",
+    email: "duplicate@example.com",
+    password: "password",
+  });
+  
+  // 같은 이메일로 다시 생성 시도
+  await expect(
+    userModel.create({
+      username: "user2",
+      email: "duplicate@example.com",
+      password: "password",
+    })
+  ).rejects.toThrow("이미 존재하는 이메일입니다");
+});
+
+testAs(
+  { id: 1, role: "admin" },
+  "관리자는 사용자를 삭제할 수 있다",
+  async () => {
+    const userModel = new UserModel();
+    
+    // 사용자 생성
+    const { user } = await userModel.create({
+      username: "temp",
+      email: "temp@example.com",
+      password: "password",
+    });
+    
+    // 삭제
+    await userModel.deleteUser(user.id);
+    
+    // 확인
+    const deleted = await userModel.findById("C", user.id);
+    expect(deleted).toBeNull();
+  }
+);
+```
+
+## Context 접근
+
+테스트 내에서 Context를 직접 사용할 수 있습니다.
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+test("Context에서 사용자 정보 확인", async () => {
+  const context = Sonamu.getContext();
+  
+  // Mock context이므로 user는 null
+  expect(context.user).toBeNull();
+  expect(context.ip).toBe("127.0.0.1");
+});
+```
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+testAs(
+  { id: 1, username: "admin" },
+  "인증된 Context 확인",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    expect(context.user).not.toBeNull();
+    expect(context.user?.id).toBe(1);
+    expect(context.user?.username).toBe("admin");
+  }
+);
+```
+
+## 비동기 테스트
+
+모든 테스트는 `async` 함수여야 합니다.
+
+```typescript
+import { test } from "sonamu/test";
+
+// ✅ 올바른 사용
+test("비동기 테스트", async () => {
+  const result = await someAsyncFunction();
+  expect(result).toBe("expected");
+});
+
+// ❌ 잘못된 사용
+test("동기 테스트", () => {  // async 없음!
+  const result = someAsyncFunction();  // await 없음!
+  expect(result).toBe("expected");  // Promise 객체와 비교됨
+});
+```
+
+## 주의사항
+
+<Warning>
+**테스트 작성 시 주의사항**:
+1. **bootstrap(vi) 필수**: 테스트 파일마다 호출
+2. **async 필수**: 모든 테스트 함수는 async
+3. **Transaction 기반**: 테스트 종료 후 자동 롤백
+4. **Context 주입**: test/testAs가 자동으로 Context 설정
+5. **격리된 테스트**: 테스트 간 의존성 없어야 함
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="테스트 Scaffolding" icon="wand-magic-sparkles" href="/testing/writing-tests/scaffolding-tests">
+    자동 테스트 생성
+  </Card>
+  <Card title="테스트 헬퍼" icon="wrench" href="/testing/writing-tests/test-helpers">
+    Fixture와 유틸리티
+  </Card>
+  <Card title="Vitest 공식 문서" icon="external-link" href="https://vitest.dev">
+    Vitest 가이드
+  </Card>
+  <Card title="Model System" icon="cube" href="/core-concepts/model-system/overview">
+    Model 이해하기
+  </Card>
+</CardGroup>
