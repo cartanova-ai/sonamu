@@ -1,10 +1,613 @@
 ---
-title: 'API별 압축 제어'
-description: '엔드포인트별 압축 설정하기'
+title: "API별 압축 제어"
+description: "@api 데코레이터로 엔드포인트별 압축 설정하기"
 ---
 
-# API별 압축 제어
+Sonamu의 `@api` 데코레이터에 `compress` 옵션을 추가하여 **API별로 압축을 세밀하게 제어**할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 기본 사용법
+
+### @api 데코레이터에 추가
+
+```typescript
+import { BaseModel, api, CompressPresets } from "sonamu";
+
+class ProductModelClass extends BaseModel {
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.aggressive,  // 이 API만 적극적 압축
+  })
+  async findAll() {
+    return this.findMany({});
+  }
+}
+```
+
+## 설정 방법
+
+<Tabs>
+  <Tab title="프리셋 사용" icon="list">
+    **가장 간단한 방법**
+    
+    ```typescript
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.aggressive,
+    })
+    async getData() {
+      return this.findMany({});
+    }
+    ```
+  </Tab>
+  
+  <Tab title="boolean" icon="toggle-on">
+    **압축 활성화/비활성화**
+    
+    ```typescript
+    // 압축 비활성화
+    @api({
+      httpMethod: 'GET',
+      compress: false,
+    })
+    async getImage() {
+      return this.sendImageFile();
+    }
+    
+    // 압축 활성화 (global: false일 때)
+    @api({
+      httpMethod: 'GET',
+      compress: true,
+    })
+    async getLargeData() {
+      return this.findMany({ num: 10000 });
+    }
+    ```
+  </Tab>
+  
+  <Tab title="커스텀 옵션" icon="screwdriver-wrench">
+    **세밀한 제어**
+    
+    ```typescript
+    @api({
+      httpMethod: 'GET',
+      compress: {
+        threshold: 512,  // 512B 이상만 압축
+        encodings: ["br", "gzip"],  // brotli와 gzip만
+      }
+    })
+    async getData() {
+      return this.findMany({});
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 우선순위
+
+압축 설정은 다음 순서로 적용됩니다:
+
+```mermaid
+graph LR
+    A[@api 데코레이터의 compress] -->|1순위| D[적용]
+    B[전역 plugins.compress] -->|2순위| D
+    C[기본값: 압축 없음] -->|3순위| D
+```
+
+1. **@api 데코레이터의 compress** (가장 우선)
+2. **전역 plugins.compress 설정**
+3. **기본값** (압축 없음)
+
+### 예시
+
+```typescript
+// sonamu.config.ts
+plugins: {
+  compress: CompressPresets.default,  // 전역: 기본 압축
+}
+
+// Model
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.aggressive,  // 이 API만: 적극적 압축
+})
+async getData() { ... }
+```
+
+**결과**: `aggressive` 적용 (데코레이터가 우선)
+
+## 압축 비활성화
+
+특정 API만 압축하지 않으려면:
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: false,  // 전역 설정 무시, 압축 안 함
+})
+async getAlreadyCompressed() {
+  return this.sendCompressedFile();
+}
+```
+
+**사용 사례**:
+- 이미 압축된 파일 (이미지, 비디오, zip)
+- 매우 작은 응답 (< 100 바이트)
+- 실시간 스트리밍
+- 압축 해제 오류 회피
+
+## 선택적 압축 (global: false)
+
+기본적으로는 압축하지 않고, 특정 API만 선택적으로 압축하려면:
+
+```typescript
+// sonamu.config.ts
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: {
+        global: false,  // 기본적으로 압축 안 함
+        threshold: 1024,
+        encodings: ["br", "gzip", "deflate"],
+      }
+    }
+  }
+};
+
+// Model - 선택적 압축
+class DataModelClass extends BaseModel {
+  // 이 API만 압축
+  @api({
+    httpMethod: 'GET',
+    compress: true,
+  })
+  async getLargeData() {
+    return this.findMany({ num: 10000 });
+  }
+  
+  // 압축 안 함 (기본값)
+  @api({
+    httpMethod: 'GET',
+  })
+  async getSmallData() {
+    return { status: "ok" };
+  }
+}
+```
+
+**장점**:
+- 불필요한 압축 방지
+- CPU 사용량 최소화
+- 정확한 제어
+
+## 응답 크기별 전략
+
+### 작은 응답 (< 1KB)
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: false,  // 압축 비활성화
+})
+async getStatus() {
+  return { status: "ok", timestamp: Date.now() };
+}
+```
+
+**이유**: 압축 오버헤드가 이득보다 큼
+
+### 중간 응답 (1KB~100KB)
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.default,  // 기본 압축
+})
+async getList() {
+  return this.findMany({ num: 100 });
+}
+```
+
+**이유**: 압축 효과가 좋음
+
+### 대용량 응답 (> 100KB)
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.aggressive,  // 적극적 압축
+})
+async exportData() {
+  return this.findMany({ num: 10000 });
+}
+```
+
+**이유**: 네트워크 시간 절약이 압축 시간보다 훨씬 중요
+
+## 콘텐츠 타입별 전략
+
+### JSON API
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.default,
+})
+async getProducts() {
+  return this.findMany({});
+}
+```
+
+**특징**: JSON은 압축 효과가 매우 좋음 (70~90% 감소)
+
+### 이미지/바이너리
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: false,  // 압축 비활성화
+})
+async getImage(id: number) {
+  return this.sendFile(`images/${id}.jpg`);
+}
+```
+
+**이유**: 이미 압축된 형식 (JPEG, PNG, MP4 등)
+
+### HTML/CSS
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.aggressive,
+})
+async getHTML() {
+  return this.renderTemplate();
+}
+```
+
+**특징**: 텍스트 기반, 압축 효과 매우 좋음
+
+## 실전 예제
+
+### 1. 전자상거래 API
+
+```typescript
+class ProductModelClass extends BaseModel {
+  // 상품 목록: 기본 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.default,
+  })
+  async findAll(page: number) {
+    return this.findMany({ page, num: 20 });
+  }
+  
+  // 상품 상세: 기본 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.default,
+  })
+  async findById(id: number) {
+    return this.findOne(['id', id]);
+  }
+  
+  // 대량 데이터 내보내기: 적극적 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.aggressive,
+  })
+  async exportAll() {
+    return this.findMany({ num: 100000 });
+  }
+  
+  // 상품 이미지: 압축 안 함
+  @api({
+    httpMethod: 'GET',
+    compress: false,
+  })
+  async getImage(id: number) {
+    return this.sendFile(`products/${id}.jpg`);
+  }
+  
+  // 생성/수정: 압축 안 함 (작은 응답)
+  @api({
+    httpMethod: 'POST',
+    compress: false,
+  })
+  async create(data: ProductSave) {
+    return this.saveOne(data);
+  }
+}
+```
+
+### 2. 파일 다운로드 API
+
+```typescript
+class FileModelClass extends BaseModel {
+  // JSON 파일: 적극적 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.aggressive,
+  })
+  async downloadJSON(id: number) {
+    return this.getJSONFile(id);
+  }
+  
+  // 이미 압축된 파일: 압축 안 함
+  @api({
+    httpMethod: 'GET',
+    compress: false,
+  })
+  async downloadZip(id: number) {
+    return this.getZipFile(id);
+  }
+  
+  // 텍스트 파일: 기본 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.default,
+  })
+  async downloadText(id: number) {
+    return this.getTextFile(id);
+  }
+}
+```
+
+### 3. 통계/리포트 API
+
+```typescript
+class ReportModelClass extends BaseModel {
+  // 실시간 통계: 보수적 압축 (빠른 응답)
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.conservative,
+  })
+  async getRealTimeStats() {
+    return this.calculateRealTimeStats();
+  }
+  
+  // 일간 리포트: 기본 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.default,
+  })
+  async getDailyReport(date: string) {
+    return this.generateDailyReport(date);
+  }
+  
+  // 대용량 분석: 적극적 압축
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.aggressive,
+  })
+  async getFullAnalysis(startDate: string, endDate: string) {
+    return this.generateFullAnalysis(startDate, endDate);
+  }
+}
+```
+
+### 4. 스트리밍 API
+
+```typescript
+class StreamModelClass extends BaseModel {
+  // SSE 스트림: 압축 안 함
+  @stream({
+    type: 'sse',
+    events: z.object({
+      message: z.string(),
+    }),
+  })
+  @api({
+    compress: false,  // 스트리밍은 압축 안 함
+  })
+  async *streamUpdates() {
+    yield { message: "update 1" };
+    yield { message: "update 2" };
+  }
+}
+```
+
+## SSR 페이지 압축
+
+SSR 라우트에도 압축 설정이 가능합니다.
+
+```typescript
+import { registerSSR, CompressPresets } from "sonamu";
+
+// HTML 페이지: 적극적 압축
+registerSSR({
+  path: '/products/:id',
+  Component: ProductDetail,
+  compress: CompressPresets.aggressive,
+});
+
+// 작은 페이지: 기본 압축
+registerSSR({
+  path: '/about',
+  Component: About,
+  compress: CompressPresets.default,
+});
+
+// 압축 비활성화
+registerSSR({
+  path: '/stream',
+  Component: StreamPage,
+  compress: false,
+});
+```
+
+## 조건부 압축
+
+런타임에 조건에 따라 압축을 제어할 수는 없지만, 여러 API로 분리할 수 있습니다:
+
+```typescript
+// 압축 버전
+@api({
+  httpMethod: 'GET',
+  path: '/products',
+  compress: CompressPresets.aggressive,
+})
+async getProducts() {
+  return this.findMany({});
+}
+
+// 비압축 버전 (특수 클라이언트용)
+@api({
+  httpMethod: 'GET',
+  path: '/products/raw',
+  compress: false,
+})
+async getProductsRaw() {
+  return this.findMany({});
+}
+```
+
+## 압축 옵션 오버라이드
+
+전역 설정의 일부만 변경할 수 있습니다:
+
+```typescript
+// 전역: default 프리셋
+plugins: {
+  compress: CompressPresets.default,  // threshold: 1024
+}
+
+// API: threshold만 변경
+@api({
+  httpMethod: 'GET',
+  compress: {
+    threshold: 2048,  // 2KB로 변경
+    // encodings는 전역 설정 유지
+  }
+})
+async getData() {
+  return this.findMany({});
+}
+```
+
+## 모니터링
+
+압축 효과를 확인하려면:
+
+```typescript
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.default,
+})
+async getData() {
+  const data = this.findMany({});
+  
+  // 개발 환경에서 크기 로깅
+  if (process.env.NODE_ENV === 'development') {
+    const size = JSON.stringify(data).length;
+    console.log(`Response size: ${size} bytes`);
+  }
+  
+  return data;
+}
+```
+
+브라우저 개발자 도구에서 확인:
+```
+Network 탭 → 요청 선택 → Headers 탭
+
+Response Headers:
+  Content-Encoding: gzip
+  Content-Length: 1234 (압축된 크기)
+
+Size:
+  1.2 KB (압축)
+  10.5 KB (원본)
+```
+
+## 주의사항
+
+<Warning>
+**API별 압축 제어 시 주의사항**:
+
+1. **이미 압축된 콘텐츠는 비활성화**: 이미지, 비디오, zip
+   ```typescript
+   // ✅ 올바른 예
+   @api({ compress: false })
+   async getImage() { return this.sendImageFile(); }
+   ```
+
+2. **작은 응답은 압축 비효율적**: < 1KB는 압축 안 하는 게 나음
+   ```typescript
+   // ✅ 작은 응답
+   @api({ compress: false })
+   async getStatus() { return { status: "ok" }; }
+   ```
+
+3. **스트리밍은 압축 비활성화**: SSE, WebSocket
+   ```typescript
+   // ✅ 스트리밍
+   @stream({ type: 'sse', events: ... })
+   @api({ compress: false })
+   async *streamData() { ... }
+   ```
+
+4. **일관된 전략 사용**: 비슷한 API는 같은 설정
+   ```typescript
+   // ✅ 일관성
+   // 모든 조회 API: default
+   // 모든 대용량 내보내기: aggressive
+   // 모든 바이너리: false
+   ```
+
+5. **성능 모니터링**: 압축으로 인한 CPU 부하 확인
+   ```typescript
+   // aggressive 사용 시 서버 CPU 사용률 모니터링 필요
+   ```
+</Warning>
+
+## 디버깅 팁
+
+### 1. 압축이 적용되는지 확인
+
+```bash
+# curl로 확인
+curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products -v
+
+# 응답 헤더 확인
+< Content-Encoding: gzip
+```
+
+### 2. 압축 크기 비교
+
+```bash
+# 압축 없이
+curl http://localhost:3000/api/products > uncompressed.json
+ls -lh uncompressed.json  # 100KB
+
+# 압축 적용
+curl -H "Accept-Encoding: gzip" http://localhost:3000/api/products --compressed > compressed.json
+ls -lh compressed.json  # 10KB
+```
+
+### 3. 압축 알고리즘 확인
+
+```typescript
+// 테스트 코드에서 확인
+const response = await server.inject({
+  method: 'GET',
+  url: '/api/products',
+  headers: { 'accept-encoding': 'br, gzip' }
+});
+
+console.log(response.headers['content-encoding']);  // "br" 또는 "gzip"
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="압축 설정" icon="gear" href="/advanced-features/compress/compress-configuration">
+    전역 압축 플러그인 설정
+  </Card>
+  <Card title="압축 프리셋" icon="list" href="/advanced-features/compress/compress-presets">
+    사전 정의된 압축 설정
+  </Card>
+  <Card title="성능 최적화" icon="gauge-high" href="/advanced-features/compress/performance-optimization">
+    압축 최적화 전략
+  </Card>
+</CardGroup>

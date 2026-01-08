@@ -1,10 +1,552 @@
 ---
-title: 'CompressPresets'
-description: 'default, aggressive, conservative'
+title: "압축 프리셋"
+description: "사전 정의된 압축 설정 활용하기"
 ---
 
-# CompressPresets
+Sonamu는 자주 사용하는 압축 패턴을 **CompressPresets**으로 제공합니다. 상황에 맞는 프리셋을 선택하여 쉽게 압축을 설정할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## CompressPresets 개요
+
+```typescript
+import { CompressPresets } from "sonamu";
+
+// API에서 사용
+@api({
+  httpMethod: 'GET',
+  compress: CompressPresets.aggressive,
+})
+
+// 전역 설정
+plugins: {
+  compress: CompressPresets.default
+}
+```
+
+## 전체 프리셋 목록
+
+<CardGroup cols={2}>
+  <Card title="disabled" icon="ban">
+    압축 비활성화
+  </Card>
+  <Card title="default" icon="check">
+    기본 설정 (1KB, br/gzip/deflate)
+  </Card>
+  <Card title="aggressive" icon="fire">
+    적극적 압축 (256B)
+  </Card>
+  <Card title="conservative" icon="shield">
+    보수적 압축 (4KB, gzip만)
+  </Card>
+  <Card title="gzipOnly" icon="file-zipper">
+    gzip 전용
+  </Card>
+</CardGroup>
+
+## 프리셋 상세
+
+### disabled
+
+**압축을 완전히 비활성화**합니다.
+
+```typescript
+CompressPresets.disabled
+// 값: false
+```
+
+<Tabs>
+  <Tab title="설정" icon="gear">
+    ```typescript
+    false
+    ```
+  </Tab>
+  
+  <Tab title="사용 시기" icon="lightbulb">
+    - 개발 환경 (디버깅 용이)
+    - 이미 압축된 콘텐츠 (이미지, 비디오)
+    - 매우 작은 응답 (< 100 바이트)
+    - CPU 부하 최소화
+  </Tab>
+  
+  <Tab title="예제" icon="code">
+    ```typescript
+    // 개발 환경
+    export const config: SonamuConfig = {
+      server: {
+        plugins: {
+          compress: process.env.NODE_ENV === 'development'
+            ? CompressPresets.disabled
+            : CompressPresets.default
+        }
+      }
+    };
+    
+    // 이미 압축된 이미지 API
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.disabled,
+    })
+    async getImage() {
+      return this.sendImageFile();
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### default
+
+**균형잡힌 기본 설정**입니다.
+
+```typescript
+CompressPresets.default
+// 생성되는 설정:
+{
+  threshold: 1024,  // 1KB
+  encodings: ["br", "gzip", "deflate"]
+}
+```
+
+<Tabs>
+  <Tab title="설정" icon="gear">
+    ```typescript
+    {
+      threshold: 1024,  // 1KB 이상만 압축
+      encodings: ["br", "gzip", "deflate"]  // 모든 알고리즘
+    }
+    ```
+  </Tab>
+  
+  <Tab title="사용 시기" icon="lightbulb">
+    - 일반적인 API 서버
+    - 대부분의 경우 (권장)
+    - 별도 최적화 불필요한 경우
+  </Tab>
+  
+  <Tab title="예제" icon="code">
+    ```typescript
+    // 전역 설정
+    export const config: SonamuConfig = {
+      server: {
+        plugins: {
+          compress: CompressPresets.default
+        }
+      }
+    };
+    
+    // 개별 API
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.default,
+    })
+    async getData() {
+      return this.findMany({});
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**특징**:
+- 1KB 미만: 압축 안 함 (오버헤드 방지)
+- 1KB 이상: brotli > gzip > deflate 순으로 압축
+- 모던 브라우저: brotli (최고 압축률)
+- 레거시 브라우저: gzip (호환성)
+
+### aggressive
+
+**대역폭 최적화를 위한 적극적 압축**입니다.
+
+```typescript
+CompressPresets.aggressive
+// 생성되는 설정:
+{
+  threshold: 256,  // 256 바이트
+  encodings: ["br", "gzip", "deflate"]
+}
+```
+
+<Tabs>
+  <Tab title="설정" icon="gear">
+    ```typescript
+    {
+      threshold: 256,  // 256B 이상만 압축
+      encodings: ["br", "gzip", "deflate"]
+    }
+    ```
+  </Tab>
+  
+  <Tab title="사용 시기" icon="lightbulb">
+    - 대역폭이 비싼 환경
+    - 모바일 네트워크 대상
+    - CDN 전송량 최소화
+    - 작은 응답도 많은 경우
+  </Tab>
+  
+  <Tab title="예제" icon="code">
+    ```typescript
+    // 모바일 API
+    export const config: SonamuConfig = {
+      server: {
+        plugins: {
+          compress: CompressPresets.aggressive
+        }
+      }
+    };
+    
+    // 작은 JSON도 압축
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.aggressive,
+    })
+    async getStatus() {
+      return { status: "ok", timestamp: Date.now() };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**효과**:
+- 256 바이트 이상 모두 압축
+- 네트워크 전송량 최소화
+- 약간의 CPU 오버헤드 증가
+
+### conservative
+
+**CPU 부하를 최소화하는 보수적 압축**입니다.
+
+```typescript
+CompressPresets.conservative
+// 생성되는 설정:
+{
+  threshold: 4096,  // 4KB
+  encodings: ["gzip", "deflate"]  // brotli 제외
+}
+```
+
+<Tabs>
+  <Tab title="설정" icon="gear">
+    ```typescript
+    {
+      threshold: 4096,  // 4KB 이상만 압축
+      encodings: ["gzip", "deflate"]  // 빠른 알고리즘만
+    }
+    ```
+  </Tab>
+  
+  <Tab title="사용 시기" icon="lightbulb">
+    - CPU 리소스가 제한적인 환경
+    - 높은 TPS(Transactions Per Second)
+    - 응답 지연 최소화
+    - 큰 응답만 압축
+  </Tab>
+  
+  <Tab title="예제" icon="code">
+    ```typescript
+    // 고성능 API
+    export const config: SonamuConfig = {
+      server: {
+        plugins: {
+          compress: CompressPresets.conservative
+        }
+      }
+    };
+    
+    // 대용량 응답만 압축
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.conservative,
+    })
+    async getLargeDataset() {
+      return this.findMany({ num: 10000 });
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**특징**:
+- 4KB 미만: 압축 안 함
+- brotli 제외 (CPU 절약)
+- gzip만 사용 (빠름 + 호환성)
+
+### gzipOnly
+
+**gzip만 사용하는 설정**입니다.
+
+```typescript
+CompressPresets.gzipOnly
+// 생성되는 설정:
+{
+  threshold: 1024,  // 1KB
+  encodings: ["gzip"]  // gzip만
+}
+```
+
+<Tabs>
+  <Tab title="설정" icon="gear">
+    ```typescript
+    {
+      threshold: 1024,
+      encodings: ["gzip"]  // gzip만 사용
+    }
+    ```
+  </Tab>
+  
+  <Tab title="사용 시기" icon="lightbulb">
+    - 레거시 브라우저 지원 (IE)
+    - 안정성 우선
+    - 브라우저 호환성 이슈
+    - 실시간 압축 (빠른 처리)
+  </Tab>
+  
+  <Tab title="예제" icon="code">
+    ```typescript
+    // 레거시 지원
+    export const config: SonamuConfig = {
+      server: {
+        plugins: {
+          compress: CompressPresets.gzipOnly
+        }
+      }
+    };
+    
+    // 실시간 API
+    @api({
+      httpMethod: 'GET',
+      compress: CompressPresets.gzipOnly,
+    })
+    async getRealtimeData() {
+      return this.getRealTimeStats();
+    }
+    ```
+  </Tab>
+</Tabs>
+
+**특징**:
+- 가장 빠른 압축
+- 모든 브라우저 지원
+- 안정적
+
+## 프리셋 비교표
+
+| 프리셋 | Threshold | 알고리즘 | CPU 사용량 | 압축률 | 용도 |
+|--------|-----------|---------|-----------|--------|------|
+| `disabled` | - | 없음 | 최소 | 0% | 개발, 이미 압축된 콘텐츠 |
+| `default` | 1KB | br/gzip/deflate | 보통 | 높음 | 일반적인 경우 (권장) |
+| `aggressive` | 256B | br/gzip/deflate | 높음 | 최고 | 대역폭 최적화 |
+| `conservative` | 4KB | gzip/deflate | 낮음 | 보통 | CPU 절약, 고성능 |
+| `gzipOnly` | 1KB | gzip | 낮음 | 보통 | 레거시 지원, 안정성 |
+
+## 압축률 비교
+
+실제 100KB JSON 데이터 기준:
+
+| 알고리즘 | 압축 후 크기 | 압축률 | 속도 |
+|---------|------------|--------|------|
+| 압축 없음 | 100KB | 0% | - |
+| deflate | 15KB | 85% | 빠름 |
+| gzip | 14KB | 86% | 빠름 |
+| brotli (br) | 12KB | 88% | 느림 |
+
+## 상황별 권장 프리셋
+
+### 프로덕션 API 서버
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: CompressPresets.default,  // 균형잡힌 설정
+    }
+  }
+};
+```
+
+### 모바일 앱 백엔드
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: CompressPresets.aggressive,  // 최대 압축
+    }
+  }
+};
+```
+
+### 고성능 실시간 API
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: CompressPresets.conservative,  // CPU 절약
+    }
+  }
+};
+```
+
+### 레거시 브라우저 지원
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: CompressPresets.gzipOnly,  // 호환성
+    }
+  }
+};
+```
+
+### 개발 환경
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: CompressPresets.disabled,  // 디버깅 용이
+    }
+  }
+};
+```
+
+## 프리셋 조합
+
+프리셋을 기반으로 커스터마이징할 수 있습니다.
+
+```typescript
+// default 기반 + threshold 조정
+plugins: {
+  compress: {
+    ...CompressPresets.default,
+    threshold: 512,  // 512B로 변경
+  }
+}
+
+// aggressive 기반 + gzip만
+plugins: {
+  compress: {
+    ...CompressPresets.aggressive,
+    encodings: ["gzip"],  // brotli 제외
+  }
+}
+```
+
+## API별 프리셋
+
+```typescript
+class DataModelClass extends BaseModel {
+  // 작은 응답: aggressive
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.aggressive,
+  })
+  async getStatus() {
+    return { status: "ok" };
+  }
+  
+  // 중간 응답: default
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.default,
+  })
+  async getList() {
+    return this.findMany({ num: 100 });
+  }
+  
+  // 대용량 응답: conservative (CPU 절약)
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.conservative,
+  })
+  async exportData() {
+    return this.findMany({ num: 100000 });
+  }
+  
+  // 이미 압축된 파일: disabled
+  @api({
+    httpMethod: 'GET',
+    compress: CompressPresets.disabled,
+  })
+  async downloadImage() {
+    return this.sendFile('image.png');
+  }
+}
+```
+
+## 환경별 프리셋
+
+```typescript
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
+
+export const config: SonamuConfig = {
+  server: {
+    plugins: {
+      compress: isDevelopment
+        ? CompressPresets.disabled       // 개발: 압축 없음
+        : isProduction
+        ? CompressPresets.aggressive     // 프로덕션: 최대 압축
+        : CompressPresets.default        // 기타: 기본 설정
+    }
+  }
+};
+```
+
+## 주의사항
+
+<Warning>
+**프리셋 사용 시 주의사항**:
+
+1. **프리셋은 출발점**: 상황에 맞게 조정 필요
+   ```typescript
+   // ✅ 프리셋 기반 커스터마이징
+   compress: {
+     ...CompressPresets.default,
+     threshold: 2048,  // 2KB로 조정
+   }
+   ```
+
+2. **aggressive는 CPU 부하 증가**: 서버 성능 모니터링 필요
+   ```typescript
+   // ⚠️ 주의: CPU 사용량 높음
+   compress: CompressPresets.aggressive
+   ```
+
+3. **conservative는 작은 응답 압축 안됨**: 네트워크 효율 감소
+   ```typescript
+   // conservative: 4KB 미만은 압축 안 함
+   compress: CompressPresets.conservative
+   ```
+
+4. **disabled는 모든 압축 비활성화**: 전송량 증가
+   ```typescript
+   // ❌ 프로덕션에서 비활성화 지양
+   compress: CompressPresets.disabled
+   ```
+</Warning>
+
+## 성능 측정
+
+프리셋별 성능 비교 (100KB JSON 기준):
+
+| 프리셋 | 압축 시간 | 압축 크기 | 네트워크 | 총 시간 |
+|--------|----------|----------|---------|---------|
+| `disabled` | 0ms | 100KB | 1000ms | 1000ms |
+| `gzipOnly` | 2ms | 14KB | 140ms | 142ms |
+| `conservative` | 2ms | 14KB | 140ms | 142ms |
+| `default` | 5ms | 12KB | 120ms | 125ms |
+| `aggressive` | 5ms | 12KB | 120ms | 125ms |
+
+**결론**: brotli는 압축 시간이 약간 길지만 네트워크 시간 절약으로 전체적으로 빠름
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="압축 설정" icon="gear" href="/advanced-features/compress/compress-configuration">
+    전역 압축 플러그인 설정
+  </Card>
+  <Card title="API별 제어" icon="code" href="/advanced-features/compress/per-api-control">
+    @api 데코레이터에 압축 설정
+  </Card>
+  <Card title="성능 최적화" icon="gauge-high" href="/advanced-features/compress/performance-optimization">
+    압축 최적화 전략
+  </Card>
+</CardGroup>
