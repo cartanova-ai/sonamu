@@ -1,10 +1,391 @@
 ---
-title: 'runWithMockContext'
-description: 'Mock Context로 테스트하기'
+title: "runWithMockContext"
+description: "Mock Context로 테스트 실행하기"
 ---
 
-# runWithMockContext
+Mock Context를 사용하여 테스트를 격리하고, 인증 상태를 제어하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## runWithMockContext란?
+
+**runWithMockContext**는 Sonamu의 테스트 환경에서 격리된 Context를 제공하는 함수입니다. Sonamu는 AsyncLocalStorage를 사용하여 각 요청마다 독립된 Context를 유지하는데, 테스트에서도 동일한 메커니즘을 사용합니다.
+
+### Context의 구성 요소
+
+Mock Context는 다음과 같은 속성을 포함합니다:
+
+```typescript
+type Context = {
+  ip: string;              // 클라이언트 IP 주소
+  session: object;         // 세션 데이터
+  user: PassportUser | null;  // 인증된 사용자 정보
+  passport: {
+    login: (user: PassportUser) => Promise<void>;
+    logout: () => void;
+  };
+  naiteStore: NaiteStore;  // Naite 로그 저장소
+  request: FastifyRequest;
+  reply: FastifyReply;
+  headers: IncomingHttpHeaders;
+  // ... 기타 속성
+};
+```
+
+테스트에서는 간소화된 Mock Context가 제공됩니다:
+
+```typescript
+{
+  ip: "127.0.0.1",
+  session: {},
+  user: null,
+  passport: {
+    login: async () => {},
+    logout: () => {},
+  },
+  naiteStore: Naite.createStore(),
+}
+```
+
+## 기본 사용법
+
+### 일반 테스트 (비인증)
+
+Sonamu에서 제공하는 `test()` 함수는 자동으로 `runWithMockContext`를 실행합니다.
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("Context 접근 테스트", async () => {
+  // test() 함수가 자동으로 runWithMockContext를 호출하므로
+  // 바로 Context에 접근할 수 있습니다
+  const context = Sonamu.getContext();
+  
+  expect(context.ip).toBe("127.0.0.1");
+  expect(context.user).toBeNull();
+  expect(context.session).toEqual({});
+});
+```
+
+### 직접 사용하기
+
+`runWithMockContext`를 직접 호출할 수도 있습니다:
+
+```typescript
+import { runWithMockContext } from "sonamu/test";
+import { Sonamu } from "sonamu";
+
+await runWithMockContext(async () => {
+  const context = Sonamu.getContext();
+  
+  // 이 블록 내에서는 Mock Context가 활성화됩니다
+  console.log(context.ip); // "127.0.0.1"
+});
+```
+
+## 인증된 사용자로 테스트하기
+
+### testAs() 사용
+
+특정 사용자로 로그인한 상태를 시뮬레이션하려면 `testAs()`를 사용합니다:
+
+```typescript
+import { testAs } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, username: "john" },  // 사용자 정보
+  "인증된 사용자 테스트",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    expect(context.user).toEqual({ id: 1, username: "john" });
+  }
+);
+```
+
+### 타입 안전성
+
+`testAs()`는 제네릭을 지원하여 타입 안전성을 보장합니다:
+
+```typescript
+type MyUser = {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+};
+
+testAs<MyUser>(
+  { id: 1, username: "admin", role: "admin" },
+  "관리자 권한 테스트",
+  async () => {
+    const context = Sonamu.getContext();
+    
+    // context.user는 MyUser | null 타입으로 추론됩니다
+    expect(context.user?.role).toBe("admin");
+  }
+);
+```
+
+## 실전 예제
+
+### Model 메서드 테스트
+
+```typescript
+import { test, testAs } from "sonamu/test";
+import { userModel } from "../application/user/user.model";
+import { expect } from "vitest";
+
+test("사용자 목록 조회 (비인증)", async () => {
+  // Mock Context가 자동으로 제공됨
+  const users = await userModel.findMany({});
+  
+  expect(Array.isArray(users)).toBe(true);
+});
+
+testAs(
+  { id: 1, username: "john" },
+  "내 프로필 조회 (인증)",
+  async () => {
+    // context.user = { id: 1, username: "john" }
+    const profile = await userModel.getMyProfile();
+    
+    expect(profile.username).toBe("john");
+  }
+);
+```
+
+### 권한 검증 테스트
+
+```typescript
+import { testAs } from "sonamu/test";
+import { postModel } from "../application/post/post.model";
+import { expect } from "vitest";
+
+testAs(
+  { id: 1, role: "admin" },
+  "관리자는 모든 게시글 삭제 가능",
+  async () => {
+    const result = await postModel.delete({ id: 999 });
+    expect(result.success).toBe(true);
+  }
+);
+
+testAs(
+  { id: 2, role: "user" },
+  "일반 사용자는 타인 게시글 삭제 불가",
+  async () => {
+    await expect(
+      postModel.delete({ id: 999 })
+    ).rejects.toThrow("권한이 없습니다");
+  }
+);
+```
+
+### Context 속성 조작
+
+특정 시나리오를 테스트하기 위해 Context 속성을 수정할 수 있습니다:
+
+```typescript
+import { test } from "sonamu/test";
+import { Sonamu } from "sonamu";
+import { expect } from "vitest";
+
+test("특정 IP에서의 접근 테스트", async () => {
+  const context = Sonamu.getContext();
+  
+  // Context 속성 수정
+  context.ip = "192.168.1.100";
+  
+  const result = await someService.checkIPRestriction();
+  expect(result.allowed).toBe(true);
+});
+```
+
+## test() vs testAs() 비교
+
+<Tabs>
+  <Tab title="test()" icon="circle">
+    **비인증 테스트**
+    
+    ```typescript
+    test("제목", async () => {
+      // context.user === null
+    });
+    ```
+    
+    **사용 시기**:
+    - 인증이 필요 없는 공개 API 테스트
+    - 인증 여부와 무관한 로직 테스트
+    - Model의 기본 CRUD 작업 테스트
+  </Tab>
+  
+  <Tab title="testAs()" icon="user">
+    **인증된 사용자 테스트**
+    
+    ```typescript
+    testAs(user, "제목", async () => {
+      // context.user === user
+    });
+    ```
+    
+    **사용 시기**:
+    - 로그인이 필요한 API 테스트
+    - 사용자별 권한 검증 테스트
+    - 소유권 확인이 필요한 기능 테스트
+  </Tab>
+</Tabs>
+
+## 내부 구조
+
+### getMockContext()
+
+Mock Context는 다음과 같이 생성됩니다:
+
+```typescript
+function getMockContext(): Context {
+  return {
+    ip: "127.0.0.1",
+    session: {},
+    user: null,
+    passport: {
+      login: async () => {},
+      logout: () => {},
+    },
+    naiteStore: Naite.createStore(),
+  } as unknown as Context;
+}
+```
+
+**특징**:
+- `ip`: 로컬 환경을 나타내는 `127.0.0.1`
+- `session`: 빈 객체로 초기화
+- `user`: 기본값은 `null` (비인증 상태)
+- `passport`: Mock 함수로 실제 인증 로직은 실행되지 않음
+- `naiteStore`: 각 테스트마다 독립된 로그 저장소
+
+### AsyncLocalStorage 격리
+
+Sonamu는 Node.js의 `AsyncLocalStorage`를 사용하여 Context를 격리합니다:
+
+```typescript
+export async function runWithContext(
+  context: Context | null, 
+  fn: () => Promise<void>
+) {
+  await Sonamu.asyncLocalStorage.run(
+    { context: context ?? getMockContext() }, 
+    fn
+  );
+}
+
+export async function runWithMockContext(fn: () => Promise<void>) {
+  await runWithContext(getMockContext(), fn);
+}
+```
+
+**격리의 이점**:
+- 테스트 간 Context가 섞이지 않음
+- 병렬 테스트 실행 시에도 안전
+- 각 테스트는 독립된 Naite 로그 저장소를 가짐
+
+## test() 래퍼의 작동 원리
+
+Sonamu의 `test()` 함수는 Vitest의 `test()`를 래핑하여 자동으로 Mock Context를 제공합니다:
+
+```typescript
+export const test = async (
+  title: string, 
+  fn: TestFunction<object>, 
+  options?: TestOptions
+) => {
+  return vitestTest(title, options, async (context) => {
+    await runWithMockContext(async () => {
+      try {
+        await fn(context);
+        context.task.meta.traces = Naite.getAllTraces();
+      } catch (e: unknown) {
+        context.task.meta.traces = Naite.getAllTraces();
+        throw e;
+      }
+    });
+  });
+};
+```
+
+**처리 과정**:
+1. Vitest의 `test()` 실행
+2. `runWithMockContext()`로 Mock Context 생성 및 활성화
+3. 테스트 함수 실행
+4. 성공/실패 여부와 무관하게 Naite 로그 수집
+5. Context 자동 정리
+
+### testAs() 구조
+
+`testAs()`는 사용자 정보를 추가로 받아 Context를 확장합니다:
+
+```typescript
+export const testAs = async <User extends AuthContext["user"]>(
+  user: User,
+  title: string,
+  fn: TestFunction<object>,
+  options?: TestOptions,
+) => {
+  return vitestTest(title, options, async (context) => {
+    await runWithContext(
+      {
+        ...getMockContext(),
+        user,  // 사용자 정보 추가
+      },
+      async () => {
+        try {
+          await fn(context);
+          context.task.meta.traces = Naite.getAllTraces();
+        } catch (e: unknown) {
+          context.task.meta.traces = Naite.getAllTraces();
+          throw e;
+        }
+      },
+    );
+  });
+};
+```
+
+## 주의사항
+
+<Warning>
+**Context 사용 시 주의사항**:
+
+1. **test() 외부에서 Context 접근 불가**: `Sonamu.getContext()`는 테스트 함수 내부에서만 호출해야 합니다. 외부에서 호출하면 `undefined`를 반환합니다.
+
+2. **Context 수정의 영향 범위**: Context를 수정하면 해당 테스트 전체에 영향을 미칩니다. 테스트 종료 시 자동으로 정리됩니다.
+
+3. **testAs() 파라미터 순서**: 사용자 정보가 **첫 번째** 파라미터입니다.
+   ```typescript
+   // ✅ 올바른 사용
+   testAs(user, "제목", async () => {});
+   
+   // ❌ 잘못된 사용
+   testAs("제목", user, async () => {});
+   ```
+
+4. **타입 안전성**: `testAs()`의 사용자 타입은 `AuthContext["user"]`를 확장해야 합니다.
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Database Mocking" icon="database" href="/testing/mocking/database-mocking">
+    트랜잭션으로 DB 테스트 격리하기
+  </Card>
+  <Card title="API Mocking" icon="code" href="/testing/mocking/api-mocking">
+    외부 API 호출 모킹하기
+  </Card>
+  <Card title="Naite 로깅" icon="pen" href="/testing/naite/recording-logs">
+    테스트 로그 기록 및 추적
+  </Card>
+  <Card title="Bootstrap" icon="gear" href="/testing/getting-started/bootstrap">
+    테스트 환경 초기화
+  </Card>
+</CardGroup>
