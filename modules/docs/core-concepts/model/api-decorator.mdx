@@ -13,7 +13,7 @@ import { api } from "sonamu";
 class UserModelClass extends BaseModelClass {
   @api({ httpMethod: "GET" })
   async findById(id: number): Promise<User> {
-    return this.puri().where("id", id).first();
+    return this.getPuri("r").where("id", id).first();
   }
 }
 ```
@@ -482,7 +482,7 @@ async uploadAvatar(): Promise<{ url: string }> {
   resourceName: "User",
 })
 async findById(id: number): Promise<User> {
-  const user = await this.puri()
+  const user = await this.getPuri("r")
     .where("id", id)
     .first();
     
@@ -524,7 +524,7 @@ async findMany(params: UserListParams): Promise<ListResult<User>> {
 async save(params: UserSaveParams[]): Promise<number[]> {
   // 검증
   for (const param of params) {
-    const existing = await this.puri()
+    const existing = await this.getPuri("r")
       .where("email", param.email)
       .whereNot("id", param.id ?? 0)
       .first();
@@ -575,7 +575,7 @@ async login(params: LoginParams): Promise<{ user: User; token: string }> {
   const { email, password } = params;
   
   // 사용자 조회
-  const user = await this.puri()
+  const user = await this.getPuri("r")
     .where("email", email)
     .first();
     
