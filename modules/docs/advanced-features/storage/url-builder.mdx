@@ -1,10 +1,673 @@
 ---
-title: 'URL 빌더'
-description: '파일 URL 생성하기'
+title: "URL 빌더"
+description: "파일 URL 생성 및 커스터마이징"
 ---
 
-# URL 빌더
+Storage 드라이버는 저장된 파일의 **URL을 생성**하는 방법을 제어할 수 있습니다. URL 빌더를 사용하여 CDN, 커스텀 도메인, Signed URL 등을 구현할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## URL 빌더란?
+
+**URL 빌더**는 파일 키(key)를 URL로 변환하는 함수입니다.
+
+```typescript
+{
+  urlBuilder: {
+    generateURL: (key: string) => string
+  }
+}
+```
+
+**예시**:
+```typescript
+key: 'uploads/avatar.png'
+→ '/uploads/avatar.png'  (fs)
+→ 'https://bucket.s3.amazonaws.com/uploads/avatar.png'  (s3)
+→ 'https://cdn.example.com/uploads/avatar.png'  (CDN)
+```
+
+## fs 드라이버 URL 빌더
+
+fs 드라이버는 **반드시 urlBuilder 설정**이 필요합니다.
+
+### 기본 설정
+
+```typescript
+import { drivers } from "sonamu";
+
+storage: {
+  default: 'fs',
+  drivers: {
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => `/uploads/${key}`,
+      }
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// key: 'avatars/user-1.png'
+// location: './uploads'
+// 파일 경로: ./uploads/avatars/user-1.png
+// URL: /uploads/avatars/user-1.png
+```
+
+### 커스텀 도메인
+
+```typescript
+storage: {
+  default: 'fs',
+  drivers: {
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => 
+          `https://files.example.com/uploads/${key}`,
+      }
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// key: 'avatars/user-1.png'
+// URL: https://files.example.com/uploads/avatars/user-1.png
+```
+
+**사용 사례**: 별도 파일 서버나 CDN
+
+### 정적 파일 서빙
+
+fs 드라이버를 사용할 때는 Fastify static 플러그인이 필요합니다.
+
+```typescript
+import path from "path";
+import { type SonamuConfig } from "sonamu";
+
+export const config: SonamuConfig = {
+  server: {
+    // 정적 파일 서빙
+    plugins: {
+      static: {
+        root: path.join(process.cwd(), 'uploads'),
+        prefix: '/uploads/',
+      }
+    },
+    
+    // Storage 설정
+    storage: {
+      default: 'fs',
+      drivers: {
+        fs: drivers.fs({
+          location: './uploads',
+          urlBuilder: {
+            generateURL: (key) => `/uploads/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**효과**:
+```
+http://localhost:3000/uploads/avatars/user-1.png
+→ ./uploads/avatars/user-1.png 파일 서빙
+```
+
+## S3 드라이버 URL 빌더
+
+S3 드라이버는 기본적으로 S3 URL을 생성하지만, urlBuilder로 커스터마이징 가능합니다.
+
+### 기본 동작 (urlBuilder 없음)
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      // urlBuilder 없음
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// key: 'uploads/avatar.png'
+// URL: https://my-bucket.s3.ap-northeast-2.amazonaws.com/uploads/avatar.png
+```
+
+### CloudFront CDN
+
+CDN을 통해 파일을 서빙하려면:
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => 
+          `https://d111111abcdef8.cloudfront.net/${key}`,
+      }
+    }),
+  }
+}
+```
+
+```.env
+CLOUDFRONT_DOMAIN=d111111abcdef8.cloudfront.net
+```
+
+**장점**:
+- 빠른 전송 속도 (엣지 로케이션)
+- 대역폭 비용 절감
+- 캐싱
+
+### 커스텀 도메인
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => 
+          `https://cdn.example.com/${key}`,
+      }
+    }),
+  }
+}
+```
+
+**설정 방법**:
+1. CloudFront 배포 생성
+2. Origin: S3 버킷
+3. CNAME: cdn.example.com
+4. DNS: cdn.example.com → CloudFront
+
+## 동적 URL 생성
+
+URL 빌더에서 환경변수나 로직을 사용할 수 있습니다.
+
+### 환경별 URL
+
+```typescript
+const baseUrl = process.env.NODE_ENV === 'production'
+  ? 'https://cdn.example.com'
+  : 'http://localhost:3000/uploads';
+
+storage: {
+  default: 'fs',
+  drivers: {
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => `${baseUrl}/${key}`,
+      }
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// 개발: http://localhost:3000/uploads/avatar.png
+// 프로덕션: https://cdn.example.com/avatar.png
+```
+
+### 경로 변환
+
+```typescript
+storage: {
+  default: 'fs',
+  drivers: {
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => {
+          // 공백을 하이픈으로 변환
+          const safeKey = key.replace(/\s+/g, '-');
+          return `/uploads/${safeKey}`;
+        }
+      }
+    }),
+  }
+}
+```
+
+### 버전 관리
+
+```typescript
+const version = 'v1';
+
+storage: {
+  default: 'fs',
+  drivers: {
+    fs: drivers.fs({
+      location: './uploads',
+      urlBuilder: {
+        generateURL: (key) => `/uploads/${version}/${key}`,
+      }
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// URL: /uploads/v1/avatars/user-1.png
+```
+
+## Signed URL (S3)
+
+S3는 **임시 접근 URL**을 생성할 수 있습니다.
+
+### getSignedUrl()
+
+```typescript
+import { Sonamu } from "sonamu";
+
+@api({ httpMethod: 'GET' })
+async getPrivateFileUrl(key: string) {
+  const disk = Sonamu.storage.use('s3');
+  
+  // Signed URL 생성 (1시간 유효)
+  const signedUrl = await disk.getSignedUrl(key, {
+    expiresIn: '1h'
+  });
+  
+  return { url: signedUrl };
+}
+```
+
+**결과**:
+```
+https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expires=3600
+```
+
+**용도**:
+- Private 파일 임시 공유
+- 보안이 필요한 다운로드
+- 시간 제한 액세스
+
+### UploadedFile의 signedUrl
+
+```typescript
+@upload({ mode: 'single' })
+@api({ httpMethod: 'POST' })
+async uploadPrivateFile() {
+  const { file } = Sonamu.getUploadContext();
+  
+  if (!file) {
+    throw new Error('파일이 없습니다');
+  }
+  
+  // 저장
+  await file.saveToDisk('private/doc.pdf', 's3');
+  
+  return {
+    url: file.url,           // Unsigned URL
+    signedUrl: file.signedUrl  // Signed URL
+  };
+}
+```
+
+## 실전 예제
+
+### 1. CDN + 버전 관리
+
+```typescript
+const cdnDomain = process.env.CDN_DOMAIN;
+const version = process.env.ASSET_VERSION || 'v1';
+
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+          region: 'ap-northeast-2',
+          bucket: 'my-bucket',
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://${cdnDomain}/${version}/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+```.env
+CDN_DOMAIN=d111111abcdef8.cloudfront.net
+ASSET_VERSION=v2
+```
+
+**결과**:
+```typescript
+// key: 'images/logo.png'
+// URL: https://d111111abcdef8.cloudfront.net/v2/images/logo.png
+```
+
+### 2. 다중 CDN
+
+```typescript
+export const config: SonamuConfig = {
+  server: {
+    storage: {
+      default: 's3',
+      drivers: {
+        // 이미지용 CDN
+        images: drivers.s3({
+          credentials: { /* ... */ },
+          region: 'ap-northeast-2',
+          bucket: 'images-bucket',
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://images.cdn.example.com/${key}`,
+          }
+        }),
+        
+        // 비디오용 CDN
+        videos: drivers.s3({
+          credentials: { /* ... */ },
+          region: 'ap-northeast-2',
+          bucket: 'videos-bucket',
+          urlBuilder: {
+            generateURL: (key) => 
+              `https://videos.cdn.example.com/${key}`,
+          }
+        }),
+      }
+    }
+  }
+};
+```
+
+**사용**:
+```typescript
+// 이미지
+await file.saveToDisk('photo.jpg', 'images');
+// URL: https://images.cdn.example.com/photo.jpg
+
+// 비디오
+await file.saveToDisk('video.mp4', 'videos');
+// URL: https://videos.cdn.example.com/video.mp4
+```
+
+### 3. 해시 기반 URL
+
+```typescript
+import { createHash } from "crypto";
+
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => {
+          // key로부터 해시 생성 (캐시 버스팅)
+          const hash = createHash('md5')
+            .update(key)
+            .digest('hex')
+            .substring(0, 8);
+          
+          return `https://cdn.example.com/${key}?v=${hash}`;
+        }
+      }
+    }),
+  }
+}
+```
+
+**결과**:
+```typescript
+// key: 'images/logo.png'
+// URL: https://cdn.example.com/images/logo.png?v=5d41402a
+```
+
+### 4. 조건부 URL
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => {
+          // 이미지는 CDN, 나머지는 S3 직접
+          if (key.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            return `https://cdn.example.com/${key}`;
+          }
+          return `https://my-bucket.s3.amazonaws.com/${key}`;
+        }
+      }
+    }),
+  }
+}
+```
+
+### 5. 리사이징 서비스
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => {
+          // 이미지 리사이징 서비스 통과
+          if (key.match(/\.(jpg|jpeg|png)$/i)) {
+            return `https://img.example.com/resize/800x600/${key}`;
+          }
+          return `https://cdn.example.com/${key}`;
+        }
+      }
+    }),
+  }
+}
+```
+
+## URL 타입
+
+Sonamu Storage는 두 가지 URL 타입을 제공합니다.
+
+### Unsigned URL
+
+**일반 공개 URL**
+
+```typescript
+const url = await disk.getUrl('uploads/avatar.png');
+// => https://bucket.s3.amazonaws.com/uploads/avatar.png
+```
+
+**특징**:
+- 영구적
+- 만료 없음
+- Public 파일용
+
+### Signed URL (S3)
+
+**서명된 임시 URL**
+
+```typescript
+const signedUrl = await disk.getSignedUrl('private/doc.pdf', {
+  expiresIn: '1h'  // 1시간 후 만료
+});
+// => https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...
+```
+
+**특징**:
+- 임시적 (만료 시간 설정)
+- 서명으로 보호됨
+- Private 파일용
+
+**만료 시간 옵션**:
+```typescript
+{ expiresIn: '1h' }    // 1시간
+{ expiresIn: '30m' }   // 30분
+{ expiresIn: '1d' }    // 1일
+{ expiresIn: '7d' }    // 7일
+```
+
+## 주의사항
+
+<Warning>
+**URL 빌더 사용 시 주의사항**:
+
+1. **fs는 urlBuilder 필수**: fs 드라이버는 반드시 urlBuilder 설정
+   ```typescript
+   // ❌ urlBuilder 없음
+   fs: drivers.fs({
+     location: './uploads',
+   })
+   
+   // ✅ urlBuilder 설정
+   fs: drivers.fs({
+     location: './uploads',
+     urlBuilder: {
+       generateURL: (key) => `/uploads/${key}`,
+     }
+   })
+   ```
+
+2. **정적 파일 서빙**: fs 사용 시 static 플러그인 필요
+   ```typescript
+   plugins: {
+     static: {
+       root: path.join(process.cwd(), 'uploads'),
+       prefix: '/uploads/',
+     }
+   }
+   ```
+
+3. **HTTPS 사용**: 프로덕션에서는 HTTPS URL 사용
+   ```typescript
+   // ❌ HTTP
+   generateURL: (key) => `http://cdn.example.com/${key}`
+   
+   // ✅ HTTPS
+   generateURL: (key) => `https://cdn.example.com/${key}`
+   ```
+
+4. **경로 인코딩**: 특수 문자 처리
+   ```typescript
+   // ✅ 안전한 처리
+   generateURL: (key) => {
+     const encoded = encodeURIComponent(key);
+     return `/uploads/${encoded}`;
+   }
+   ```
+
+5. **캐시 무효화**: URL 변경 시 CDN 캐시 고려
+   ```typescript
+   // 버전 파라미터 추가로 캐시 무효화
+   generateURL: (key) => 
+     `/uploads/${key}?v=${Date.now()}`
+   ```
+</Warning>
+
+## CloudFront 설정
+
+CloudFront를 URL 빌더와 함께 사용하는 방법입니다.
+
+### 1. CloudFront 배포 생성
+
+1. AWS Console → CloudFront
+2. "Create Distribution" 클릭
+3. Origin:
+   - Origin Domain: `my-bucket.s3.ap-northeast-2.amazonaws.com`
+   - Origin Path: (비워둠)
+4. Default Cache Behavior:
+   - Viewer Protocol Policy: Redirect HTTP to HTTPS
+   - Allowed HTTP Methods: GET, HEAD, OPTIONS
+5. Create Distribution
+
+### 2. Domain 확인
+
+배포 생성 후 Domain Name 확인:
+```
+d111111abcdef8.cloudfront.net
+```
+
+### 3. URL 빌더 설정
+
+```typescript
+storage: {
+  default: 's3',
+  drivers: {
+    s3: drivers.s3({
+      credentials: { /* ... */ },
+      region: 'ap-northeast-2',
+      bucket: 'my-bucket',
+      urlBuilder: {
+        generateURL: (key) => 
+          `https://d111111abcdef8.cloudfront.net/${key}`,
+      }
+    }),
+  }
+}
+```
+
+### 4. 커스텀 도메인 (선택)
+
+1. Route 53에서 CNAME 레코드 생성:
+   ```
+   cdn.example.com → d111111abcdef8.cloudfront.net
+   ```
+
+2. CloudFront 배포 설정:
+   - Alternate Domain Names (CNAMEs): `cdn.example.com`
+   - SSL Certificate: 인증서 추가
+
+3. URL 빌더 수정:
+   ```typescript
+   urlBuilder: {
+     generateURL: (key) => 
+       `https://cdn.example.com/${key}`,
+   }
+   ```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Storage Manager" icon="database" href="/advanced-features/storage/storage-manager">
+    여러 디스크 관리하기
+  </Card>
+  <Card title="스토리지 드라이버" icon="hard-drive" href="/advanced-features/storage/storage-drivers">
+    fs, S3 드라이버 설정
+  </Card>
+  <Card title="파일 저장 및 조회" icon="upload" href="/advanced-features/storage/file-operations">
+    파일 업로드 및 다운로드
+  </Card>
+</CardGroup>
