@@ -26,6 +26,7 @@ import {
   type PathAndCode,
   TemplateKey,
 } from "../types/types";
+import { formatCode } from "../utils/formatter";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
 
@@ -859,11 +860,11 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         const objectContent = objectMatch[1];
 
         // 각 키-값 쌍 추출
-        // 문자열 값: "key": "value" 또는 "key": `template`
-        const stringPattern = /"([^"]+)":\s*(?:"([^"]*?)"|`([^`]*?)`)/g;
+        const stringPattern =
+          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*)):\s*(?:"([^"]*?)"|`([^`]*?)`)/g;
         for (const match of objectContent.matchAll(stringPattern)) {
-          const key = match[1];
-          const value = match[2] ?? match[3];
+          const key = match[1] ?? match[2];
+          const value = match[3] ?? match[4];
           // 함수가 아닌 경우만 (화살표 함수 패턴이 아닌 경우)
           const lineStart = objectContent.lastIndexOf("\n", match.index ?? 0);
           const lineEnd = objectContent.indexOf("\n", (match.index ?? 0) + match[0].length);
@@ -873,12 +874,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           }
         }
 
-        // 함수 값: "key": (params) => `template` 또는 "key": (params) => "string"
         // 함수 원형 전체를 value에 저장
-        const functionPattern = /"([^"]+)":\s*(\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*"))/g;
+        // 여러 파라미터도 지원: (name: string, id: number) => `...`
+        const functionPattern =
+          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*)):\s*(\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*"))/g;
         for (const match of objectContent.matchAll(functionPattern)) {
-          const key = match[1];
-          const value = match[2]; // 함수 원형 전체: (params) => `template`
+          const key = match[1] ?? match[2];
+          const value = match[3]; // 함수 원형 전체: (params) => `template`
           entries.push({ key, value, isFunction: true });
         }
 
@@ -1195,9 +1197,10 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         for (const locale of locales) {
           const entries = projectDictEntries[locale];
           if (entries.length > 0) {
-            const content = generateProjectDict(locale, entries, locale === defaultLocale);
             const dictPath = path.join(i18nDir, `${locale}.ts`);
-            fs.writeFileSync(dictPath, content, "utf-8");
+            const content = generateProjectDict(locale, entries, locale === defaultLocale);
+            const formatted = formatCode(content, "typescript", dictPath);
+            fs.writeFileSync(dictPath, formatted, "utf-8");
             updatedLocales++;
           }
         }
