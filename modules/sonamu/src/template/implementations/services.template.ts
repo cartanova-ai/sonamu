@@ -239,6 +239,68 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
           `.trim(),
           );
         }
+
+        // 4. useMutation with multipart (tanstack-mutation-multipart)
+        if (clients.includes("tanstack-mutation-multipart")) {
+          const hookName = inflection.camelize(api.methodName);
+          const isMultiple = api.uploadOptions?.mode === "multiple";
+          const fileParamName = isMultiple ? "files" : "file";
+          const fileParamType = isMultiple ? "File[]" : "File";
+
+          // 파일 외 다른 파라미터들
+          const otherParamsAppend =
+            paramsWithoutContext.length > 0
+              ? paramsWithoutContext
+                  .map((param) => `    formData.append('${param.name}', String(${param.name}));`)
+                  .join("\n")
+              : "";
+
+          // FormData append 로직 (단수/복수 처리)
+          const formDataAppendFile = isMultiple
+            ? `${fileParamName}.forEach(f => { formData.append('${fileParamName}', f); });`
+            : `formData.append('${fileParamName}', ${fileParamName});`;
+
+          // 파라미터 타입 정의
+          const mutationParamType =
+            paramsWithoutContext.length > 0
+              ? `{ ${fileParamName}: ${fileParamType}, ${paramsWithoutContext
+                  .map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, [])}`)
+                  .join(", ")} }`
+              : `{ ${fileParamName}: ${fileParamType} }`;
+
+          const mutationParamDestructure =
+            paramsWithoutContext.length > 0
+              ? `{ ${fileParamName}, ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
+              : `{ ${fileParamName} }`;
+
+          const formDataAppendOthers = otherParamsAppend ? `\n${otherParamsAppend}` : "";
+
+          functions.push(
+            `
+export const use${hookName}Mutation = ${typeParamsDef}(
+  options?: UseMutationOptions<${returnTypeDef}, Error, ${mutationParamType}> & {
+    onUploadProgress?: (e: AxiosProgressEvent) => void;
+  }
+) => useMutation({
+  mutationFn: async (params: ${mutationParamType}) => {
+    const ${mutationParamDestructure} = params;
+    const formData = new FormData();
+    ${formDataAppendFile}${formDataAppendOthers}
+    return fetch({
+      method: 'POST',
+      url: \`${apiBaseUrl}\`,
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: options?.onUploadProgress,
+      data: formData,
+      ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
+    });
+  },
+  retry: false,
+  ...options,
+});
+          `.trim(),
+          );
+        }
       }
 
       namespaces.push(
@@ -258,7 +320,7 @@ ${functions.join("\n\n")}
         "/** biome-ignore-all lint: generated는 무시 */",
         "/** biome-ignore-all assist: generated는 무시 */",
         "",
-        `import { queryOptions, useQuery, useMutation } from '@tanstack/react-query';`,
+        `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
         `import { type ListResult, fetch, type EventHandlers, type SSEStreamOptions, useSSEStream } from './sonamu.shared';`,

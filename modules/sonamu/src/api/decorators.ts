@@ -31,6 +31,7 @@ export type ServiceClient =
   | "axios-multipart"
   | "tanstack-query"
   | "tanstack-mutation"
+  | "tanstack-mutation-multipart"
   | "window-fetch";
 export type ApiDecoratorOptions = {
   httpMethod?: HTTPMethods;
@@ -325,7 +326,7 @@ export function transactional(options: TransactionalOptions = {}) {
 }
 
 /**
- * api 데코레이터와 함께 사용할 수 있습니다.
+ * 파일 업로드 API를 생성해줍니다. (@api 데코레이터 없이 독립적으로 사용)
  * @param options
  * @returns
  */
@@ -339,22 +340,29 @@ export function upload(options: UploadDecoratorOptions = {}) {
     );
     const methodName = propertyKey;
 
+    const defaultPath = `/${inflection.camelize(
+      modelName.replace(/Model$/, "").replace(/Frame$/, ""),
+      true,
+    )}/${inflection.camelize(methodName, true)}`;
+
     // registeredApis에서 해당 API 찾아서 uploadOptions 추가
     const existingApi = registeredApis.find(
       (api) => api.modelName === modelName && api.methodName === methodName,
     );
+
     if (existingApi) {
+      // 재등록 시 업로드 옵션만 갱신
       existingApi.uploadOptions = options;
     } else {
-      // 이 메소드에 붙은 @api 데코레이터가 아직 eval되지 않은 상황입니다. (만약 @api가 안 붙어 있었다면 심각한 상황입니다..!)
-      // 여기에서 최초로 modelName과 methodName에 대해 registeredApis에 하나를 추가해주어야 합니다.
-      // uploadOptions는 그대로 추가하고, path는 빈 스트링으로 추가해줍니다.
-      // 이후 @api 데코레이터가 eval되면 실제 path로 덮어씌워지고, options가 추가됩니다.
+      // 새로 등록
       registeredApis.push({
         modelName,
         methodName,
-        path: "",
-        options: {},
+        path: defaultPath,
+        options: {
+          httpMethod: "POST",
+          clients: ["axios-multipart", "tanstack-mutation-multipart"],
+        },
         uploadOptions: options,
       });
     }

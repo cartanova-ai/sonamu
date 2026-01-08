@@ -119,7 +119,10 @@ async function getPreviousChecksums(): Promise<PathAndChecksum[]> {
     return previousChecksums;
   } catch (e) {
     // 체크섬 파일이 손상된 경우 빈 배열 반환 (전체 재동기화 유도)
-    console.warn(`체크섬 파일(${checksumFilePath})을 파싱하는 데 실패했습니다. 전체 재동기화를 진행합니다.`, e);
+    console.warn(
+      `체크섬 파일(${checksumFilePath})을 파싱하는 데 실패했습니다. 전체 재동기화를 진행합니다.`,
+      e,
+    );
     return [];
   }
 }

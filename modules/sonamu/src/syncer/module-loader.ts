@@ -56,7 +56,7 @@ export async function loadApis(): Promise<LoadedApis> {
   for (const api of apis) {
     if (api.path === "") {
       // api의 경로(path)가 "텅 비어있음"인 상태입니다.
-      // 이는 @api와 함께 사용해야 하는 데코레이터(가령 @upload)가 @api 없이 붙은 상황입니다.
+      // 이는 @api와 함께 사용해야 하는 데코레이터가 @api 없이 붙은 상황입니다.
       throw new Error(
         `API ${api.modelName}.${api.methodName} has no path. Please attach @api decorator to the method.`,
       );

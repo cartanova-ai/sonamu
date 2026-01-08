@@ -134,7 +134,6 @@ class FileModelClass extends BaseModelClass<
     return ids.length;
   }
 
-  @api({ httpMethod: "POST", clients: ["axios-multipart"] })
   @upload()
   async upload(): Promise<{
     file: { name: string; url: string; mime_type: string };
@@ -159,7 +158,6 @@ class FileModelClass extends BaseModelClass<
     };
   }
 
-  @api({ httpMethod: "POST", clients: ["axios-multipart"] })
   @upload({ mode: "multiple" })
   async uploadMultiple(): Promise<{
     files: { name: string; url: string; mime_type: string }[];

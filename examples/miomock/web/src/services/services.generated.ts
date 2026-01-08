@@ -1,7 +1,12 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import {
+  queryOptions,
+  type UseMutationOptions,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import type { AxiosProgressEvent } from "axios";
 import qs from "qs";
 import { CompanyListParams, CompanySaveParams } from "./company/company.types";
@@ -656,6 +661,32 @@ export namespace FileService {
     });
   }
 
+  export const useUploadMutation = (
+    options?: UseMutationOptions<
+      { file: { name: string; url: string; mime_type: string } },
+      Error,
+      { file: File }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: async (params: { file: File }) => {
+        const { file } = params;
+        const formData = new FormData();
+        formData.append("file", file);
+        return fetch({
+          method: "POST",
+          url: `/api/file/upload`,
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: options?.onUploadProgress,
+          data: formData,
+        });
+      },
+      retry: false,
+      ...options,
+    });
+
   export async function uploadMultiple(
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
@@ -675,6 +706,34 @@ export namespace FileService {
       data: formData,
     });
   }
+
+  export const useUploadMultipleMutation = (
+    options?: UseMutationOptions<
+      { files: { name: string; url: string; mime_type: string }[] },
+      Error,
+      { files: File[] }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: async (params: { files: File[] }) => {
+        const { files } = params;
+        const formData = new FormData();
+        files.forEach((f) => {
+          formData.append("files", f);
+        });
+        return fetch({
+          method: "POST",
+          url: `/api/file/uploadMultiple`,
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: options?.onUploadProgress,
+          data: formData,
+        });
+      },
+      retry: false,
+      ...options,
+    });
 }
 
 export namespace EmployeeService {
