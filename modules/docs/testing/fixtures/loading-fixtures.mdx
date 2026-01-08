@@ -1,10 +1,366 @@
 ---
-title: 'Fixture 로딩하기'
-description: 'pnpm sonamu fixture init'
+title: "Fixture 로딩하기"
+description: "프로덕션 데이터를 Fixture DB로 가져오기"
 ---
 
-# Fixture 로딩하기
+실제 프로덕션 데이터를 Fixture DB로 가져와서 테스트에 사용하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Fixture 로딩 개요
+
+<CardGroup cols={2}>
+  <Card title="실제 데이터" icon="database">
+    프로덕션 데이터
+    
+    현실적인 테스트
+  </Card>
+  <Card title="관계 자동 해결" icon="link">
+    BelongsTo 자동 추적
+    
+    연결된 데이터 함께
+  </Card>
+  <Card title="중복 방지" icon="shield-check">
+    ID 기반 관리
+    
+    안전한 가져오기
+  </Card>
+  <Card title="간편한 명령어" icon="terminal">
+    한 줄로 실행
+    
+    자동 동기화
+  </Card>
+</CardGroup>
+
+## pnpm sonamu fixture import
+
+프로덕션 DB의 특정 레코드를 Fixture DB로 가져옵니다.
+
+### 기본 사용법
+
+```bash
+pnpm sonamu fixture import <entityId> <recordIds>
+```
+
+**파라미터**:
+- `entityId`: Entity 이름 (예: "User", "Post")
+- `recordIds`: 가져올 레코드 ID 배열 (쉼표로 구분)
+
+### 예제
+
+```bash
+# User ID 1, 2, 3을 Fixture DB로 가져오기
+pnpm sonamu fixture import User 1,2,3
+
+# Post ID 42를 Fixture DB로 가져오기
+pnpm sonamu fixture import Post 42
+```
+
+## 작동 원리
+
+### 1. 레코드 추출
+
+```typescript
+// sonamu/src/testing/fixture-manager.ts
+async function importFixture(entityId: string, ids: number[]) {
+  const queries = await Promise.all(
+    ids.map(async (id) => {
+      // 각 ID에 대한 import 쿼리 생성
+      return await this.getImportQueries(entityId, "id", id);
+    })
+  );
+  
+  // 쿼리 실행
+  const wdb = BaseModel.getDB("w");
+  for (const query of queries) {
+    await wdb.raw(query);
+  }
+}
+```
+
+### 2. 관계 자동 추적
+
+BelongsTo 관계를 자동으로 추적하여 필요한 데이터를 모두 가져옵니다.
+
+```typescript
+// User #1을 가져오면...
+pnpm sonamu fixture import User 1
+
+// 자동으로 가져옴:
+// - User #1
+// - User #1의 Profile (OneToOne)
+// - Profile의 관련 데이터
+```
+
+**내부 동작**:
+```typescript
+async function getImportQueries(
+  entityId: string,
+  field: string,
+  id: number
+): Promise<string[]> {
+  // 순환 참조 방지
+  const recordKey = `${entityId}#${field}#${id}`;
+  if (this.visitedRecords.has(recordKey)) {
+    return [];
+  }
+  this.visitedRecords.add(recordKey);
+  
+  // 레코드 가져오기
+  const entity = EntityManager.get(entityId);
+  const [row] = await wdb(entity.table).where(field, id).limit(1);
+  
+  if (!row) {
+    throw new Error(`${entityId}#${id} row를 찾을 수 없습니다.`);
+  }
+  
+  // BelongsTo 관계 처리
+  const relatedQueries = [];
+  for (const [, relation] of Object.entries(entity.relations)) {
+    if (isBelongsToOneRelationProp(relation)) {
+      const relatedId = row[`${relation.name}_id`];
+      if (relatedId) {
+        // 재귀적으로 관련 데이터 가져오기
+        relatedQueries.push(
+          ...await this.getImportQueries(relation.with, "id", relatedId)
+        );
+      }
+    }
+  }
+  
+  // INSERT 쿼리 생성
+  const selfQuery = `INSERT IGNORE INTO fixture.${entity.table} 
+    (SELECT * FROM production.${entity.table} WHERE id = ${id})`;
+  
+  return [...relatedQueries, selfQuery];
+}
+```
+
+### 3. 자동 동기화
+
+import 후 자동으로 Fixture DB → Test DB 동기화가 실행됩니다.
+
+```typescript
+async function fixture_import(entityId: string, recordIds: number[]) {
+  await setupFixtureManager();
+  
+  // 1. 프로덕션 → Fixture DB
+  await FixtureManager.importFixture(entityId, recordIds);
+  
+  // 2. Fixture DB → Test DB
+  await FixtureManager.sync();
+}
+```
+
+## 실행 예제
+
+### 사용자 가져오기
+
+```bash
+$ pnpm sonamu fixture import User 1,2,3
+
+{ entityId: 'User', field: 'id', id: 1 }
+{ entityId: 'Profile', field: 'id', id: 1 }  # User의 Profile 자동
+INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 1)
+INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 1)
+
+{ entityId: 'User', field: 'id', id: 2 }
+{ entityId: 'Profile', field: 'id', id: 2 }
+INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 2)
+INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 2)
+
+{ entityId: 'User', field: 'id', id: 3 }
+{ entityId: 'Profile', field: 'id', id: 3 }
+INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 3)
+INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 3)
+
+✅ Import complete! Syncing to test DB...
+
+# 자동으로 fixture sync 실행
+```
+
+### 게시글 가져오기
+
+```bash
+$ pnpm sonamu fixture import Post 42
+
+{ entityId: 'Post', field: 'id', id: 42 }
+{ entityId: 'User', field: 'id', id: 5 }      # Post의 author
+{ entityId: 'Profile', field: 'id', id: 5 }  # User의 Profile
+{ entityId: 'Category', field: 'id', id: 10 } # Post의 Category
+
+INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 5)
+INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 5)
+INSERT IGNORE INTO fixture.categories (SELECT * FROM production.categories WHERE id = 10)
+INSERT IGNORE INTO fixture.posts (SELECT * FROM production.posts WHERE id = 42)
+
+✅ Import complete!
+```
+
+## 복잡한 관계 처리
+
+### HasMany 관계
+
+```bash
+# User #1과 그의 모든 Posts를 가져오려면
+# 1. User 가져오기
+pnpm sonamu fixture import User 1
+
+# 2. User의 Posts를 별도로 가져오기
+pnpm sonamu fixture import Post 10,11,12
+
+# HasMany는 자동으로 추적되지 않음
+# (너무 많은 데이터가 가져와질 수 있음)
+```
+
+### ManyToMany 관계
+
+```bash
+# Post #1과 관련 Tags를 가져오려면
+# 1. Post 가져오기
+pnpm sonamu fixture import Post 1
+
+# 2. 중간 테이블 데이터는 수동으로 처리
+# (또는 fixture.ts에서 직접 생성)
+```
+
+## 중복 처리
+
+`INSERT IGNORE`를 사용하여 중복을 방지합니다.
+
+```bash
+# User #1을 두 번 가져와도 안전
+pnpm sonamu fixture import User 1
+pnpm sonamu fixture import User 1
+
+# 결과: User #1은 한 번만 저장됨
+```
+
+## 순환 참조 방지
+
+방문한 레코드를 추적하여 순환 참조를 방지합니다.
+
+```typescript
+// 순환 참조 예시:
+// User #1 → Profile #1
+// Profile #1 → User #1 (역참조)
+
+// 방문 기록으로 방지
+private visitedRecords = new Set<string>();
+
+const recordKey = `${entityId}#${field}#${id}`;
+if (this.visitedRecords.has(recordKey)) {
+  return []; // 이미 방문함 - 스킵
+}
+this.visitedRecords.add(recordKey);
+```
+
+## 베스트 프랙티스
+
+### 1. 최소 데이터
+
+```bash
+# ✅ 올바른 방법: 필요한 것만
+pnpm sonamu fixture import User 1,2
+
+# ❌ 잘못된 방법: 너무 많은 데이터
+pnpm sonamu fixture import User 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+```
+
+### 2. 대표 케이스
+
+```bash
+# 다양한 케이스를 포함하는 데이터 선택
+pnpm sonamu fixture import User 1    # 일반 사용자
+pnpm sonamu fixture import User 100  # 관리자
+pnpm sonamu fixture import User 500  # 프리미엄 사용자
+```
+
+### 3. fixture.ts와 함께 사용
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+
+export const loadFixtures = createFixtureLoader({
+  // 프로덕션에서 가져온 실제 데이터 사용
+  realUser01: async () => {
+    const userModel = new UserModel();
+    // ID 1은 이미 fixture DB에 있다고 가정
+    const { user } = await userModel.getUser("C", 1);
+    return user;
+  },
+  
+  // 테스트용 새 데이터 생성
+  testUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "test",
+      email: "test@example.com",
+      password: "password",
+    });
+    return user;
+  },
+});
+```
+
+## 문제 해결
+
+### 레코드를 찾을 수 없음
+
+```bash
+Error: User#999 row를 찾을 수 없습니다.
+```
+
+**해결**:
+- 프로덕션 DB에 해당 ID가 존재하는지 확인
+- 올바른 Entity 이름 사용
+
+### 권한 오류
+
+```bash
+Error: Access denied for user 'readonly'@'%' to database 'fixture'
+```
+
+**해결**:
+```sql
+-- Fixture DB 사용자에게 쓰기 권한 부여
+GRANT ALL PRIVILEGES ON fixture.* TO 'user'@'%';
+```
+
+### 너무 많은 데이터
+
+```bash
+# 한 번에 너무 많은 ID를 가져오면 느림
+pnpm sonamu fixture import User 1,2,3,...,100
+
+# 해결: 여러 번 나눠서 실행
+pnpm sonamu fixture import User 1,2,3,4,5
+pnpm sonamu fixture import User 6,7,8,9,10
+```
+
+## 주의사항
+
+<Warning>
+**Fixture 로딩 시 주의사항**:
+1. **최소 데이터**: 필요한 최소한의 레코드만 가져오기
+2. **관계 확인**: BelongsTo는 자동, HasMany는 수동
+3. **중복 안전**: INSERT IGNORE로 중복 방지
+4. **순환 참조**: 자동으로 처리됨
+5. **권한 확인**: Fixture DB에 쓰기 권한 필요
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="테스트 DB" icon="database" href="/testing/fixtures/test-database">
+    테스트 DB 설정
+  </Card>
+  <Card title="Fixture 생성" icon="plus" href="/testing/fixtures/creating-fixtures">
+    fixture.ts 작성하기
+  </Card>
+  <Card title="Fixture 동기화" icon="arrows-rotate" href="/testing/fixtures/syncing-fixtures">
+    Fixture → Test DB
+  </Card>
+  <Card title="테스트 작성" icon="vial" href="/testing/writing-tests/test-structure">
+    테스트 구조 이해하기
+  </Card>
+</CardGroup>

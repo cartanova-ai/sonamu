@@ -1,10 +1,549 @@
 ---
-title: 'Fixture 생성하기'
-description: 'fixture.ts 작성하기'
+title: "Fixture 생성하기"
+description: "fixture.ts로 테스트 데이터 정의하기"
 ---
 
-# Fixture 생성하기
+Sonamu의 createFixtureLoader를 사용하여 재사용 가능한 테스트 데이터를 정의하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Fixture 생성 개요
+
+<CardGroup cols={2}>
+  <Card title="createFixtureLoader" icon="code">
+    타입 안전한 정의
+    
+    자동완성 지원
+  </Card>
+  <Card title="재사용 가능" icon="recycle">
+    한 번 정의
+    
+    여러 테스트 공유
+  </Card>
+  <Card title="관계 처리" icon="link">
+    BelongsTo 자동 해결
+    
+    중첩된 데이터
+  </Card>
+  <Card title="선택적 로딩" icon="filter">
+    필요한 것만
+    
+    빠른 테스트
+  </Card>
+</CardGroup>
+
+## createFixtureLoader
+
+### 기본 구조
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "@/models/user.model";
+import { PostModel } from "@/models/post.model";
+
+export const loadFixtures = createFixtureLoader({
+  // Fixture 이름: 로더 함수
+  user01: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "john",
+      email: "john@example.com",
+      password: "password123",
+    });
+    return user;
+  },
+  
+  admin: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "admin",
+      email: "admin@example.com",
+      password: "admin123",
+      role: "admin",
+    });
+    return user;
+  },
+});
+```
+
+### 타입 정의
+
+```typescript
+/**
+ * Fixture Loader Factory
+ *
+ * 테스트에서 사용할 fixture를 로드하는 함수를 생성
+ */
+export function createFixtureLoader<T extends Record<string, () => Promise<unknown>>>(
+  loaders: T
+) {
+  return async function loadFixtures<K extends keyof T>(
+    names: K[],
+  ): Promise<{ [P in K]: Awaited<ReturnType<T[P]>> }> {
+    return Object.fromEntries(
+      await Promise.all(
+        names.map(async (name) => [name, await loaders[name]()])
+      ),
+    );
+  };
+}
+```
+
+**특징**:
+- 타입 안전: TypeScript가 fixture 이름과 반환 타입을 추론
+- 병렬 로딩: `Promise.all`로 여러 fixture 동시 로드
+- 선택적: 필요한 fixture만 로드
+
+## 실전 예제
+
+### 단순 Fixtures
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "@/models/user.model";
+
+export const loadFixtures = createFixtureLoader({
+  // 일반 사용자
+  guestUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "guest",
+      email: "guest@example.com",
+      password: "password",
+      role: "guest",
+    });
+    return user;
+  },
+  
+  // 프리미엄 사용자
+  premiumUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "premium",
+      email: "premium@example.com",
+      password: "password",
+      role: "premium",
+      subscription_expires_at: new Date("2025-12-31"),
+    });
+    return user;
+  },
+  
+  // 관리자
+  adminUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "admin",
+      email: "admin@example.com",
+      password: "password",
+      role: "admin",
+    });
+    return user;
+  },
+});
+```
+
+### 관계가 있는 Fixtures
+
+```typescript
+// api/src/testing/fixture.ts
+import { createFixtureLoader } from "sonamu/test";
+import { UserModel } from "@/models/user.model";
+import { PostModel } from "@/models/post.model";
+import { CommentModel } from "@/models/comment.model";
+
+export const loadFixtures = createFixtureLoader({
+  // 기본 사용자
+  author: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "author",
+      email: "author@example.com",
+      password: "password",
+    });
+    return user;
+  },
+  
+  // 작성자의 게시글 (author fixture 재사용)
+  authorPost: async () => {
+    // 다른 fixture 로드
+    const { author } = await loadFixtures(["author"]);
+    
+    const postModel = new PostModel();
+    const { post } = await postModel.create({
+      title: "Author's First Post",
+      content: "This is the content",
+      author_id: author.id,  // 관계 설정
+    });
+    return post;
+  },
+  
+  // 게시글의 댓글 (authorPost fixture 재사용)
+  postComment: async () => {
+    const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
+    
+    const commentModel = new CommentModel();
+    const { comment } = await commentModel.create({
+      content: "Great post!",
+      post_id: authorPost.id,
+      author_id: author.id,
+    });
+    return comment;
+  },
+});
+```
+
+### 여러 데이터 생성
+
+```typescript
+export const loadFixtures = createFixtureLoader({
+  // 10명의 사용자
+  users10: async () => {
+    const userModel = new UserModel();
+    const users = [];
+    
+    for (let i = 1; i <= 10; i++) {
+      const { user } = await userModel.create({
+        username: `user${i}`,
+        email: `user${i}@example.com`,
+        password: "password",
+      });
+      users.push(user);
+    }
+    
+    return users;
+  },
+  
+  // 사용자와 그의 게시글들
+  userWith5Posts: async () => {
+    const userModel = new UserModel();
+    const postModel = new PostModel();
+    
+    const { user } = await userModel.create({
+      username: "blogger",
+      email: "blogger@example.com",
+      password: "password",
+    });
+    
+    const posts = [];
+    for (let i = 1; i <= 5; i++) {
+      const { post } = await postModel.create({
+        title: `Post ${i}`,
+        content: `Content ${i}`,
+        author_id: user.id,
+      });
+      posts.push(post);
+    }
+    
+    return { user, posts };
+  },
+});
+```
+
+### 복잡한 시나리오
+
+```typescript
+export const loadFixtures = createFixtureLoader({
+  // 완전한 블로그 시나리오
+  blogScenario: async () => {
+    const userModel = new UserModel();
+    const postModel = new PostModel();
+    const commentModel = new CommentModel();
+    
+    // 1. 작성자 생성
+    const { user: author } = await userModel.create({
+      username: "author",
+      email: "author@example.com",
+      password: "password",
+    });
+    
+    // 2. 독자들 생성
+    const readers = await Promise.all([
+      userModel.create({
+        username: "reader1",
+        email: "reader1@example.com",
+        password: "password",
+      }),
+      userModel.create({
+        username: "reader2",
+        email: "reader2@example.com",
+        password: "password",
+      }),
+    ]);
+    
+    // 3. 게시글 생성
+    const { post } = await postModel.create({
+      title: "Popular Post",
+      content: "This post has many comments",
+      author_id: author.id,
+    });
+    
+    // 4. 댓글 생성
+    const comments = await Promise.all([
+      commentModel.create({
+        content: "First comment",
+        post_id: post.id,
+        author_id: readers[0].user.id,
+      }),
+      commentModel.create({
+        content: "Second comment",
+        post_id: post.id,
+        author_id: readers[1].user.id,
+      }),
+      commentModel.create({
+        content: "Author reply",
+        post_id: post.id,
+        author_id: author.id,
+      }),
+    ]);
+    
+    return {
+      author,
+      readers: readers.map(r => r.user),
+      post,
+      comments: comments.map(c => c.comment),
+    };
+  },
+});
+```
+
+## 테스트에서 사용하기
+
+### 기본 사용
+
+```typescript
+// api/src/models/post.model.test.ts
+import { bootstrap, test } from "sonamu/test";
+import { expect, vi } from "vitest";
+import { PostModel } from "./post.model";
+import { loadFixtures } from "@/testing/fixture";
+
+bootstrap(vi);
+
+test("작성자의 게시글 조회", async () => {
+  // Fixtures 로드
+  const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
+  
+  // 테스트
+  const postModel = new PostModel();
+  const { posts } = await postModel.getPostsByAuthor(author.id);
+  
+  expect(posts).toHaveLength(1);
+  expect(posts[0].id).toBe(authorPost.id);
+});
+```
+
+### 타입 안전성
+
+```typescript
+test("타입 안전한 fixture 사용", async () => {
+  // ✅ IDE가 fixture 이름 자동완성 제공
+  const { author, authorPost } = await loadFixtures(["author", "authorPost"]);
+  
+  // ✅ 타입 추론
+  author.username;  // string
+  authorPost.title; // string
+  
+  // ❌ 존재하지 않는 fixture
+  const { invalid } = await loadFixtures(["invalid"]); // 타입 에러!
+});
+```
+
+### 선택적 로딩
+
+```typescript
+test("필요한 fixture만 로드", async () => {
+  // 필요한 것만
+  const { author } = await loadFixtures(["author"]);
+  
+  // authorPost는 로드하지 않음 → 생성 비용 절약
+});
+
+test("여러 fixture 동시 로드", async () => {
+  // 병렬로 로드 (Promise.all)
+  const { author, premiumUser, adminUser } = await loadFixtures([
+    "author",
+    "premiumUser",
+    "adminUser",
+  ]);
+  
+  expect(author.role).toBe("user");
+  expect(premiumUser.role).toBe("premium");
+  expect(adminUser.role).toBe("admin");
+});
+```
+
+## 베스트 프랙티스
+
+### 1. 명확한 이름
+
+```typescript
+// ✅ 올바른 방법: 용도가 명확한 이름
+export const loadFixtures = createFixtureLoader({
+  adminUser: async () => { /* ... */ },
+  guestUser: async () => { /* ... */ },
+  publishedPost: async () => { /* ... */ },
+  draftPost: async () => { /* ... */ },
+  premiumSubscription: async () => { /* ... */ },
+});
+
+// ❌ 잘못된 방법: 불명확한 이름
+export const loadFixtures = createFixtureLoader({
+  user1: async () => { /* ... */ },
+  user2: async () => { /* ... */ },
+  post1: async () => { /* ... */ },
+  thing: async () => { /* ... */ },
+});
+```
+
+### 2. 최소 데이터
+
+```typescript
+// ✅ 올바른 방법: 필수 필드만
+export const loadFixtures = createFixtureLoader({
+  basicUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+      // 필수 필드만
+    });
+    return user;
+  },
+});
+
+// ❌ 잘못된 방법: 불필요한 필드까지
+export const loadFixtures = createFixtureLoader({
+  complexUser: async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+      bio: "Very long bio...",
+      avatar: "https://...",
+      preferences: { /* 복잡한 객체 */ },
+      // 테스트에 필요하지 않은 필드들
+    });
+    return user;
+  },
+});
+```
+
+### 3. Fixture 재사용
+
+```typescript
+// ✅ 올바른 방법: 다른 fixture에서 재사용
+export const loadFixtures = createFixtureLoader({
+  user: async () => {
+    // 기본 사용자
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username: "user",
+      email: "user@example.com",
+      password: "password",
+    });
+    return user;
+  },
+  
+  userPost: async () => {
+    // user fixture 재사용
+    const { user } = await loadFixtures(["user"]);
+    
+    const postModel = new PostModel();
+    const { post } = await postModel.create({
+      title: "Post",
+      content: "Content",
+      author_id: user.id,
+    });
+    return post;
+  },
+  
+  userPostComment: async () => {
+    // userPost fixture 재사용 (user도 자동으로 포함됨)
+    const { user, userPost } = await loadFixtures(["user", "userPost"]);
+    
+    const commentModel = new CommentModel();
+    const { comment } = await commentModel.create({
+      content: "Comment",
+      post_id: userPost.id,
+      author_id: user.id,
+    });
+    return comment;
+  },
+});
+```
+
+### 4. 일관된 구조
+
+```typescript
+// ✅ 올바른 방법: 일관된 네이밍과 구조
+export const loadFixtures = createFixtureLoader({
+  // 사용자 관련
+  adminUser: async () => { /* ... */ },
+  guestUser: async () => { /* ... */ },
+  premiumUser: async () => { /* ... */ },
+  
+  // 게시글 관련
+  publishedPost: async () => { /* ... */ },
+  draftPost: async () => { /* ... */ },
+  
+  // 시나리오
+  blogScenario: async () => { /* ... */ },
+  forumScenario: async () => { /* ... */ },
+});
+```
+
+## 고급 패턴
+
+### 팩토리 함수
+
+```typescript
+// 동적으로 fixture 생성
+function createUserFixture(username: string, role: string) {
+  return async () => {
+    const userModel = new UserModel();
+    const { user } = await userModel.create({
+      username,
+      email: `${username}@example.com`,
+      password: "password",
+      role,
+    });
+    return user;
+  };
+}
+
+export const loadFixtures = createFixtureLoader({
+  adminUser: createUserFixture("admin", "admin"),
+  guestUser: createUserFixture("guest", "guest"),
+  moderatorUser: createUserFixture("moderator", "moderator"),
+});
+```
+
+## 주의사항
+
+<Warning>
+**Fixture 작성 시 주의사항**:
+1. **Transaction 기반**: 각 테스트마다 자동 롤백됨
+2. **최소 데이터**: 테스트에 필요한 최소한의 데이터만 생성
+3. **독립성**: Fixture는 서로 독립적이어야 함
+4. **재사용**: 공통 fixture를 적극 활용
+5. **명확한 이름**: fixture 이름은 용도를 명확하게 표현
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="테스트 DB" icon="database" href="/testing/fixtures/test-database">
+    테스트 DB 설정
+  </Card>
+  <Card title="Fixture 로딩" icon="download" href="/testing/fixtures/loading-fixtures">
+    프로덕션 데이터 가져오기
+  </Card>
+  <Card title="Fixture 동기화" icon="arrows-rotate" href="/testing/fixtures/syncing-fixtures">
+    Fixture → Test DB
+  </Card>
+  <Card title="테스트 헬퍼" icon="wrench" href="/testing/writing-tests/test-helpers">
+    createFixtureLoader 상세
+  </Card>
+</CardGroup>
