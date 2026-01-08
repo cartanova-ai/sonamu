@@ -70,52 +70,54 @@ export class Migrator {
         const knexOptions = Sonamu.dbConfig[connKey];
         const tConn = createKnexInstance(knexOptions);
 
-        const status = await (async () => {
-          try {
-            return await tConn.migrate.status();
-          } catch (err) {
-            console.warn(
-              chalk.yellow(
-                `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
-              ),
-            );
-            migrationStatusError = err instanceof Error ? err.message : String(err);
-            return "error";
-          }
-        })();
-        const pending: string[] = await (async () => {
-          try {
-            const [, fdList] = await tConn.migrate.list();
-            return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
-          } catch (err) {
-            migrationStatusError = err instanceof Error ? err.message : String(err);
-            return [];
-          }
-        })();
-        const currentVersion = await (async () => {
-          try {
-            return await tConn.migrate.currentVersion();
-          } catch (_err) {
-            migrationStatusError = _err instanceof Error ? _err.message : String(_err);
-            return "error";
-          }
-        })();
-        Naite.t("migrator:getStatus:status", status);
+        try {
+          const status = await (async () => {
+            try {
+              return await tConn.migrate.status();
+            } catch (err) {
+              console.warn(
+                chalk.yellow(
+                  `${connKey}의 마이그레이션 상태를 가져오는 데에 실패하였습니다. 데이터베이스가 올바르게 구성되지 않은 것 같습니다. 확인하시고 다시 시도해주세요.\n시도한 연결 설정:\n${JSON.stringify(knexOptions.connection, null, 2)}\n발생한 에러:\n${err}\n`,
+                ),
+              );
+              migrationStatusError = err instanceof Error ? err.message : String(err);
+              return "error";
+            }
+          })();
+          const pending: string[] = await (async () => {
+            try {
+              const [, fdList] = await tConn.migrate.list();
+              return fdList.map((fd: { file: string }) => fd.file.replace(".ts", ""));
+            } catch (err) {
+              migrationStatusError = err instanceof Error ? err.message : String(err);
+              return [];
+            }
+          })();
+          const currentVersion = await (async () => {
+            try {
+              return await tConn.migrate.currentVersion();
+            } catch (_err) {
+              migrationStatusError = _err instanceof Error ? _err.message : String(_err);
+              return "error";
+            }
+          })();
+          Naite.t("migrator:getStatus:status", status);
 
-        const connection = knexOptions.connection as Knex.PgConnectionConfig;
+          const connection = knexOptions.connection as Knex.PgConnectionConfig;
 
-        await tConn.destroy();
-
-        return {
-          name: connKey.replace("_master", ""),
-          connKey,
-          connString: `pg://${connection.user ?? ""}@${connection.host}:${
-            connection.port
-          }/${connection.database}` as ConnString,
-          currentVersion,
-          status: status as number | "error",
-          pending,
-        };
+          return {
+            name: connKey.replace("_master", ""),
+            connKey,
+            connString: `pg://${connection.user ?? ""}@${connection.host}:${
+              connection.port
+            }/${connection.database}` as ConnString,
+            currentVersion,
+            status: status as number | "error",
+            pending,
+          };
+        } finally {
+          await tConn.destroy();
+        }
       }),
     );
 
