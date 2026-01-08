@@ -9,24 +9,16 @@ description: "프로덕션 데이터를 Fixture DB로 가져오기"
 
 <CardGroup cols={2}>
   <Card title="실제 데이터" icon="database">
-    프로덕션 데이터
-    
-    현실적인 테스트
+    프로덕션 데이터 현실적인 테스트
   </Card>
   <Card title="관계 자동 해결" icon="link">
-    BelongsTo 자동 추적
-    
-    연결된 데이터 함께
+    BelongsTo 자동 추적 연결된 데이터 함께
   </Card>
   <Card title="중복 방지" icon="shield-check">
-    ID 기반 관리
-    
-    안전한 가져오기
+    ID 기반 관리 안전한 가져오기
   </Card>
   <Card title="간편한 명령어" icon="terminal">
-    한 줄로 실행
-    
-    자동 동기화
+    한 줄로 실행 자동 동기화
   </Card>
 </CardGroup>
 
@@ -37,10 +29,11 @@ description: "프로덕션 데이터를 Fixture DB로 가져오기"
 ### 기본 사용법
 
 ```bash
-pnpm sonamu fixture import <entityId> <recordIds>
+pnpm sonamu fixture import [entityId] [recordIds]
 ```
 
 **파라미터**:
+
 - `entityId`: Entity 이름 (예: "User", "Post")
 - `recordIds`: 가져올 레코드 ID 배열 (쉼표로 구분)
 
@@ -67,7 +60,7 @@ async function importFixture(entityId: string, ids: number[]) {
       return await this.getImportQueries(entityId, "id", id);
     })
   );
-  
+
   // 쿼리 실행
   const wdb = BaseModel.getDB("w");
   for (const query of queries) {
@@ -80,17 +73,18 @@ async function importFixture(entityId: string, ids: number[]) {
 
 BelongsTo 관계를 자동으로 추적하여 필요한 데이터를 모두 가져옵니다.
 
-```typescript
-// User #1을 가져오면...
+```bash
+# User #1을 가져오면...
 pnpm sonamu fixture import User 1
 
-// 자동으로 가져옴:
-// - User #1
-// - User #1의 Profile (OneToOne)
-// - Profile의 관련 데이터
+# 자동으로 가져옴:
+# - User #1
+# - User #1의 Profile (OneToOne)
+# - Profile의 관련 데이터
 ```
 
 **내부 동작**:
+
 ```typescript
 async function getImportQueries(
   entityId: string,
@@ -103,15 +97,15 @@ async function getImportQueries(
     return [];
   }
   this.visitedRecords.add(recordKey);
-  
+
   // 레코드 가져오기
   const entity = EntityManager.get(entityId);
   const [row] = await wdb(entity.table).where(field, id).limit(1);
-  
+
   if (!row) {
     throw new Error(`${entityId}#${id} row를 찾을 수 없습니다.`);
   }
-  
+
   // BelongsTo 관계 처리
   const relatedQueries = [];
   for (const [, relation] of Object.entries(entity.relations)) {
@@ -120,31 +114,31 @@ async function getImportQueries(
       if (relatedId) {
         // 재귀적으로 관련 데이터 가져오기
         relatedQueries.push(
-          ...await this.getImportQueries(relation.with, "id", relatedId)
+          ...(await this.getImportQueries(relation.with, "id", relatedId))
         );
       }
     }
   }
-  
+
   // INSERT 쿼리 생성
   const selfQuery = `INSERT IGNORE INTO fixture.${entity.table} 
     (SELECT * FROM production.${entity.table} WHERE id = ${id})`;
-  
+
   return [...relatedQueries, selfQuery];
 }
 ```
 
 ### 3. 자동 동기화
 
-import 후 자동으로 Fixture DB → Test DB 동기화가 실행됩니다.
+`import` 후 자동으로 Fixture DB → Test DB 동기화가 실행됩니다.
 
 ```typescript
 async function fixture_import(entityId: string, recordIds: number[]) {
   await setupFixtureManager();
-  
+
   // 1. 프로덕션 → Fixture DB
   await FixtureManager.importFixture(entityId, recordIds);
-  
+
   // 2. Fixture DB → Test DB
   await FixtureManager.sync();
 }
@@ -155,26 +149,19 @@ async function fixture_import(entityId: string, recordIds: number[]) {
 ### 사용자 가져오기
 
 ```bash
-$ pnpm sonamu fixture import User 1,2,3
+pnpm sonamu fixture import User 1,2,3
 
 { entityId: 'User', field: 'id', id: 1 }
-{ entityId: 'Profile', field: 'id', id: 1 }  # User의 Profile 자동
-INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 1)
-INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 1)
+{ entityId: 'Profile', field: 'id', id: 1 }
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
 
 { entityId: 'User', field: 'id', id: 2 }
 { entityId: 'Profile', field: 'id', id: 2 }
-INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 2)
-INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 2)
-
-{ entityId: 'User', field: 'id', id: 3 }
-{ entityId: 'Profile', field: 'id', id: 3 }
-INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 3)
-INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 3)
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
 
 ✅ Import complete! Syncing to test DB...
-
-# 자동으로 fixture sync 실행
 ```
 
 ### 게시글 가져오기
@@ -183,14 +170,14 @@ INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 3)
 $ pnpm sonamu fixture import Post 42
 
 { entityId: 'Post', field: 'id', id: 42 }
-{ entityId: 'User', field: 'id', id: 5 }      # Post의 author
-{ entityId: 'Profile', field: 'id', id: 5 }  # User의 Profile
-{ entityId: 'Category', field: 'id', id: 10 } # Post의 Category
+{ entityId: 'User', field: 'id', id: 5 }
+{ entityId: 'Profile', field: 'id', id: 5 }
+{ entityId: 'Category', field: 'id', id: 10 }
 
-INSERT IGNORE INTO fixture.profiles (SELECT * FROM production.profiles WHERE id = 5)
-INSERT IGNORE INTO fixture.users (SELECT * FROM production.users WHERE id = 5)
-INSERT IGNORE INTO fixture.categories (SELECT * FROM production.categories WHERE id = 10)
-INSERT IGNORE INTO fixture.posts (SELECT * FROM production.posts WHERE id = 42)
+INSERT IGNORE INTO fixture.profiles ...
+INSERT IGNORE INTO fixture.users ...
+INSERT IGNORE INTO fixture.categories ...
+INSERT IGNORE INTO fixture.posts ...
 
 ✅ Import complete!
 ```
@@ -288,7 +275,7 @@ export const loadFixtures = createFixtureLoader({
     const { user } = await userModel.getUser("C", 1);
     return user;
   },
-  
+
   // 테스트용 새 데이터 생성
   testUser: async () => {
     const userModel = new UserModel();
@@ -311,16 +298,18 @@ Error: User#999 row를 찾을 수 없습니다.
 ```
 
 **해결**:
+
 - 프로덕션 DB에 해당 ID가 존재하는지 확인
 - 올바른 Entity 이름 사용
 
 ### 권한 오류
 
 ```bash
-Error: Access denied for user 'readonly'@'%' to database 'fixture'
+Error: Access denied for user 'readonly'
 ```
 
 **해결**:
+
 ```sql
 -- Fixture DB 사용자에게 쓰기 권한 부여
 GRANT ALL PRIVILEGES ON fixture.* TO 'user'@'%';
@@ -340,27 +329,43 @@ pnpm sonamu fixture import User 6,7,8,9,10
 ## 주의사항
 
 <Warning>
-**Fixture 로딩 시 주의사항**:
-1. **최소 데이터**: 필요한 최소한의 레코드만 가져오기
-2. **관계 확인**: BelongsTo는 자동, HasMany는 수동
-3. **중복 안전**: INSERT IGNORE로 중복 방지
-4. **순환 참조**: 자동으로 처리됨
-5. **권한 확인**: Fixture DB에 쓰기 권한 필요
+  **Fixture 로딩 시 주의사항**:
+  1. **최소 데이터**: 필요한 최소한의 레코드만 가져오기
+  2. **관계 확인**: BelongsTo는 자동, HasMany는 수동
+  3. **중복 안전**: INSERT IGNORE로 중복 방지
+  4. **순환 참조**: 자동으로 처리됨
+  5. **권한 확인**: Fixture DB에 쓰기 권한 필요
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="테스트 DB" icon="database" href="/testing/fixtures/test-database">
+  <Card
+    title="테스트 DB"
+    icon="database"
+    href="/testing/fixtures/test-database"
+  >
     테스트 DB 설정
   </Card>
-  <Card title="Fixture 생성" icon="plus" href="/testing/fixtures/creating-fixtures">
+  <Card
+    title="Fixture 생성"
+    icon="plus"
+    href="/testing/fixtures/creating-fixtures"
+  >
     fixture.ts 작성하기
   </Card>
-  <Card title="Fixture 동기화" icon="arrows-rotate" href="/testing/fixtures/syncing-fixtures">
+  <Card
+    title="Fixture 동기화"
+    icon="arrows-rotate"
+    href="/testing/fixtures/syncing-fixtures"
+  >
     Fixture → Test DB
   </Card>
-  <Card title="테스트 작성" icon="vial" href="/testing/writing-tests/test-structure">
+  <Card
+    title="테스트 작성"
+    icon="vial"
+    href="/testing/writing-tests/test-structure"
+  >
     테스트 구조 이해하기
   </Card>
 </CardGroup>
