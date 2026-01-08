@@ -43,7 +43,7 @@ class DocumentModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(SD("document.notFound")(id));
+      throw new NotFoundException(SD("notFound")(this.modelName, id));
     }
 
     return rows[0];
