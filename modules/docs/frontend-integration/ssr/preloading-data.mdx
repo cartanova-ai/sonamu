@@ -1,10 +1,505 @@
 ---
-title: '데이터 프리로딩'
-description: 'preload 함수 사용하기'
+title: "데이터 프리로딩"
+description: "registerSSR로 서버에서 데이터 미리 로드하기"
 ---
 
-# 데이터 프리로딩
+Sonamu의 `registerSSR`를 사용하여 서버에서 데이터를 미리 로드하고 클라이언트로 전달하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 데이터 프리로딩 개요
+
+<CardGroup cols={2}>
+  <Card title="registerSSR" icon="code">
+    라우트별 preload 설정
+    
+    백엔드 직접 호출
+  </Card>
+  <Card title="SSRQuery" icon="brackets-curly">
+    타입 안전한 쿼리
+    
+    모델/메서드 지정
+  </Card>
+  <Card title="자동 주입" icon="droplet">
+    QueryClient에 자동 주입
+    
+    Hydration 처리
+  </Card>
+  <Card title="No HTTP" icon="bolt">
+    네트워크 오버헤드 없음
+    
+    빠른 응답
+  </Card>
+</CardGroup>
+
+## registerSSR 사용법
+
+### 기본 구조
+
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
+
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
+```
+
+**작동 과정**:
+1. 서버에서 `/users/123` 요청 받음
+2. `path` 매칭: `/users/:id` → `params = { id: "123" }`
+3. `preload` 함수 실행 → `SSRQuery[]` 반환
+4. `UserModel.getUser("C", 123)` 백엔드 직접 호출 (HTTP 없음!)
+5. 결과를 `QueryClient.setQueryData(["User", "getUser", "C", 123], result)` 주입
+6. HTML + dehydratedState를 클라이언트로 전송
+7. 클라이언트가 hydrate하여 즉시 데이터 사용
+
+### SSRQuery 타입
+
+```typescript
+type SSRQuery = {
+  modelName: string;        // "UserModel" - 백엔드 모델 클래스명
+  methodName: string;       // "getUser" - 모델 메서드명
+  params: unknown[];        // ["C", 123] - 메서드 파라미터 (Context 제외)
+  serviceKey: [string, string]; // ["User", "getUser"] - React Query queryKey 앞부분
+};
+```
+
+**중요**: `params`는 **백엔드 메서드의 파라미터 순서**를 따릅니다 (Context 제외).
+
+## 실전 예제
+
+### 단일 데이터 로딩
+
+사용자 상세 페이지에서 사용자 정보를 프리로드합니다.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/users/:id",
+  preload: (params) => [
+    {
+      modelName: "UserModel",
+      methodName: "getUser",
+      params: ["C", parseInt(params.id)],  // subset, id 순서
+      serviceKey: ["User", "getUser"],
+    },
+  ],
+});
+```
+
+```typescript
+// web/src/routes/users/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { UserService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/users/$id")({
+  component: UserPage,
+});
+
+function UserPage() {
+  const { id } = Route.useParams();
+  
+  // 서버에서 프리로드된 데이터를 자동으로 사용
+  // isLoading: false (이미 데이터가 있음)
+  const { data } = UserService.useUser("C", parseInt(id));
+
+  return (
+    <div>
+      <h1>{data?.user.username}</h1>
+      <p>{data?.user.email}</p>
+      <p>Bio: {data?.user.bio}</p>
+    </div>
+  );
+}
+```
+
+### 여러 데이터 동시 로딩
+
+게시글 상세 페이지에서 게시글과 댓글을 동시에 프리로드합니다.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [
+    // 게시글 데이터
+    {
+      modelName: "PostModel",
+      methodName: "getPost",
+      params: ["C", parseInt(params.id)],
+      serviceKey: ["Post", "getPost"],
+    },
+    // 댓글 목록
+    {
+      modelName: "CommentModel",
+      methodName: "getCommentsByPost",
+      params: [parseInt(params.id)],
+      serviceKey: ["Comment", "getCommentsByPost"],
+    },
+  ],
+});
+```
+
+```typescript
+// web/src/routes/posts/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { PostService, CommentService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/posts/$id")({
+  component: PostPage,
+});
+
+function PostPage() {
+  const { id } = Route.useParams();
+  
+  // 두 데이터 모두 프리로드되어 있음
+  const { data: post } = PostService.usePost("C", parseInt(id));
+  const { data: comments } = CommentService.useCommentsByPost(parseInt(id));
+
+  return (
+    <div>
+      <article>
+        <h1>{post?.post.title}</h1>
+        <p>{post?.post.content}</p>
+      </article>
+      
+      <section>
+        <h2>Comments ({comments?.comments.length})</h2>
+        {comments?.comments.map((comment) => (
+          <div key={comment.id}>{comment.content}</div>
+        ))}
+      </section>
+    </div>
+  );
+}
+```
+
+### 파라미터 가공
+
+URL 파라미터를 가공하여 사용할 수 있습니다.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/categories/:slug/posts",
+  preload: (params) => {
+    // slug를 id로 변환하는 로직
+    const categoryId = getCategoryIdBySlug(params.slug);
+    
+    return [
+      {
+        modelName: "CategoryModel",
+        methodName: "getCategory",
+        params: [categoryId],
+        serviceKey: ["Category", "getCategory"],
+      },
+      {
+        modelName: "PostModel",
+        methodName: "getPostsByCategory",
+        params: [categoryId, { page: 1, pageSize: 20 }],
+        serviceKey: ["Post", "getPostsByCategory"],
+      },
+    ];
+  },
+});
+```
+
+### 조건부 프리로딩
+
+특정 조건에 따라 다른 데이터를 로드할 수 있습니다.
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/dashboard/:tab",
+  preload: (params) => {
+    const queries: SSRQuery[] = [
+      // 공통 데이터: 사용자 정보
+      {
+        modelName: "UserModel",
+        methodName: "getCurrentUser",
+        params: [],
+        serviceKey: ["User", "getCurrentUser"],
+      },
+    ];
+
+    // 탭에 따라 추가 데이터 로드
+    if (params.tab === "posts") {
+      queries.push({
+        modelName: "PostModel",
+        methodName: "getMyPosts",
+        params: [{ page: 1, pageSize: 20 }],
+        serviceKey: ["Post", "getMyPosts"],
+      });
+    } else if (params.tab === "settings") {
+      queries.push({
+        modelName: "SettingsModel",
+        methodName: "getUserSettings",
+        params: [],
+        serviceKey: ["Settings", "getUserSettings"],
+      });
+    }
+
+    return queries;
+  },
+});
+```
+
+## 쿼리 키 매칭
+
+프리로드된 데이터가 클라이언트의 useQuery와 매칭되려면 **queryKey가 정확히 일치**해야 합니다.
+
+### 올바른 매칭
+
+```typescript
+// 서버: registerSSR
+{
+  modelName: "UserModel",
+  methodName: "getUser",
+  params: ["C", 123],
+  serviceKey: ["User", "getUser"],  // ["User", "getUser", "C", 123]로 저장됨
+}
+
+// 클라이언트: useQuery
+UserService.useUser("C", 123);  // queryKey: ["User", "getUser", "C", 123]
+// ✅ 매칭 성공!
+```
+
+### 잘못된 매칭
+
+```typescript
+// 서버: Subset "C"로 프리로드
+{
+  params: ["C", 123],
+  serviceKey: ["User", "getUser"],
+}
+
+// 클라이언트: Subset "A" 요청
+UserService.useUser("A", 123);  // queryKey: ["User", "getUser", "A", 123]
+// ❌ 매칭 실패 - 클라이언트가 다시 API 호출
+```
+
+## SSRRoute 옵션
+
+### disableHydrate
+
+Hydration을 비활성화하고 클라이언트에서 새로 렌더링합니다.
+
+```typescript
+registerSSR({
+  path: "/admin/report",
+  preload: (params) => [/* ... */],
+  disableHydrate: true,  // Hydration 비활성화
+});
+```
+
+**사용 사례**:
+- 서버/클라이언트 렌더링 결과가 다를 수 있는 경우
+- 실시간 데이터가 중요한 경우
+- Hydration mismatch 해결
+
+### cacheControl
+
+SSR 응답의 Cache-Control 헤더를 설정합니다.
+
+```typescript
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [/* ... */],
+  cacheControl: {
+    maxAge: 3600,        // 1시간 캐시
+    sMaxAge: 7200,       // CDN에서 2시간 캐시
+    staleWhileRevalidate: 86400,  // 1일간 stale 컨텐츠 제공 가능
+  },
+});
+```
+
+## 내부 동작 원리
+
+### 1. 서버 렌더링 과정
+
+```typescript
+// sonamu/src/ssr/renderer.ts (간략화)
+export async function renderSSR(url: string, route: SSRRoute, params: Record<string, string>) {
+  // 1. preload 실행
+  const preloadConfig = route.preload ? route.preload(params) : [];
+  const preloadedData: PreloadedData[] = [];
+
+  // 2. 각 SSRQuery 실행
+  for (const { modelName, methodName, params: apiParams, serviceKey } of preloadConfig) {
+    const api = Sonamu.syncer.apis.find(
+      (a) => a.modelName === modelName && a.methodName === methodName,
+    );
+
+    // 3. 백엔드 API 직접 호출 (HTTP 없음!)
+    const result = await Sonamu.invokeApiForSSR(api, apiParams);
+    
+    // 4. PreloadedData 저장
+    preloadedData.push({
+      queryKey: [...serviceKey, ...apiParams],
+      data: result,
+    });
+  }
+
+  // 5. entry-server.generated.tsx의 render() 호출
+  const { html, dehydratedState } = await render(url, preloadedData);
+
+  // 6. HTML에 데이터 주입
+  const ssrDataScript = `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState)};</script>`;
+  
+  return html.replace("</body>", `${ssrDataScript}\n</body>`);
+}
+```
+
+### 2. entry-server에서 데이터 주입
+
+```typescript
+// entry-server.generated.tsx
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  const queryClient = new QueryClient();
+
+  // PreloadedData를 QueryClient에 주입
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate (직렬화)
+  const dehydratedState = dehydrate(queryClient);
+
+  // React 렌더링
+  const appHtml = renderToString(<RouterProvider router={router} />);
+
+  return { html: appHtml, dehydratedState };
+}
+```
+
+### 3. 클라이언트 Hydration
+
+```typescript
+// entry-client.tsx
+// window.__SONAMU_SSR__에서 데이터 복원
+const dehydratedState = window.__SONAMU_SSR__;
+
+if (dehydratedState) {
+  // QueryClient에 hydrate
+  hydrate(queryClient, dehydratedState);
+}
+
+// React Hydration
+ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+```
+
+## 에러 처리
+
+### 프리로드 실패 처리
+
+```typescript
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => {
+    try {
+      return [
+        {
+          modelName: "PostModel",
+          methodName: "getPost",
+          params: ["C", parseInt(params.id)],
+          serviceKey: ["Post", "getPost"],
+        },
+      ];
+    } catch (error) {
+      // 파라미터 파싱 실패 등
+      console.error("Preload error:", error);
+      return [];
+    }
+  },
+});
+```
+
+**서버 로그**:
+```
+Failed to preload PostModel.getPost: Post not found
+```
+
+개별 쿼리 실패는 전체 SSR을 중단시키지 않습니다. 실패한 데이터만 클라이언트에서 다시 로드됩니다.
+
+## 성능 최적화
+
+### 1. Subset 활용
+
+필요한 필드만 로드하여 전송 크기를 줄입니다.
+
+```typescript
+// ❌ 전체 필드 (느림)
+params: ["C", userId]  // 모든 필드
+
+// ✅ 필요한 필드만 (빠름)
+params: ["A", userId]  // id, username, email만
+```
+
+### 2. 병렬 로딩
+
+여러 쿼리를 동시에 실행합니다 (자동으로 병렬 처리됨).
+
+```typescript
+preload: (params) => [
+  // 이 쿼리들은 병렬로 실행됨
+  { modelName: "UserModel", methodName: "getUser", ... },
+  { modelName: "PostModel", methodName: "getPosts", ... },
+  { modelName: "CommentModel", methodName: "getComments", ... },
+]
+```
+
+### 3. 조건부 로딩
+
+필요한 데이터만 선택적으로 로드합니다.
+
+```typescript
+preload: (params) => {
+  const queries = [];
+  
+  // 기본 데이터
+  queries.push({ modelName: "PageModel", methodName: "getPage", ... });
+  
+  // 인증된 사용자만
+  if (hasAuth(params)) {
+    queries.push({ modelName: "UserModel", methodName: "getProfile", ... });
+  }
+  
+  return queries;
+}
+```
+
+## 주의사항
+
+<Warning>
+**registerSSR 사용 시 주의사항**:
+1. **queryKey 정확히 매칭**: 서버와 클라이언트의 queryKey가 동일해야 함
+2. **params 순서 주의**: 백엔드 메서드 파라미터 순서를 정확히 따라야 함
+3. **Context 제외**: params에 Context는 포함하지 않습니다
+4. **타입 변환 주의**: `parseInt(params.id)` 등 타입 변환 필요
+5. **에러는 로그로**: 개별 쿼리 실패가 전체 SSR을 중단시키지 않음
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="SSR 설정" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR 기본 구조
+  </Card>
+  <Card title="Hydration 전략" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    하이드레이션 최적화
+  </Card>
+  <Card title="캐시 제어" icon="database" href="/frontend-integration/ssr/cache-control">
+    캐싱 전략
+  </Card>
+  <Card title="Subset System" icon="layer-group" href="/core-concepts/entity-system/subset-system">
+    데이터 최적화
+  </Card>
+</CardGroup>

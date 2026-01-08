@@ -1,10 +1,523 @@
 ---
-title: '캐시 제어'
-description: 'Cache-Control 설정하기'
+title: "캐시 제어"
+description: "TanStack Query 캐싱과 SSR Cache-Control 설정"
 ---
 
-# 캐시 제어
+Sonamu에서 TanStack Query의 클라이언트 캐싱과 SSR 응답의 HTTP 캐싱을 설정하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 캐시 제어 개요
+
+<CardGroup cols={2}>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    클라이언트 메모리 캐싱
+    
+    staleTime/gcTime
+  </Card>
+  <Card title="HTTP 캐시" icon="server">
+    Cache-Control 헤더
+    
+    CDN/브라우저 캐싱
+  </Card>
+  <Card title="재검증" icon="refresh">
+    자동/수동 갱신
+    
+    최신 데이터 유지
+  </Card>
+  <Card title="성능 최적화" icon="gauge-high">
+    빠른 응답
+    
+    서버 부하 감소
+  </Card>
+</CardGroup>
+
+## TanStack Query 클라이언트 캐싱
+
+### 기본 설정
+
+```typescript
+// entry-client.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 캐시 관련 설정
+      staleTime: 5000,             // 5초 (데이터가 fresh한 시간)
+      gcTime: 5 * 60 * 1000,       // 5분 (가비지 컬렉션 시간)
+      
+      // 재검증 설정
+      refetchOnWindowFocus: false, // 윈도우 포커스 시 재검증 안 함
+      refetchOnMount: true,        // 마운트 시 재검증
+      refetchOnReconnect: true,    // 재연결 시 재검증
+      
+      // 재시도 설정
+      retry: false,                // 실패 시 재시도 안 함
+    },
+  },
+});
+```
+
+### staleTime vs gcTime
+
+```typescript
+// staleTime: 데이터가 "신선한" 시간
+// → 이 시간 동안은 재요청하지 않음
+// → 0이면 항상 stale (기본값)
+
+// gcTime: 캐시에 보관하는 시간 (구 cacheTime)
+// → 이 시간 동안 메모리에 유지
+// → 5분 (300000ms)이 기본값
+
+const { data } = useQuery({
+  queryKey: ["user", userId],
+  queryFn: fetchUser,
+  staleTime: 5000,        // 5초간 fresh
+  gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+});
+
+// 타임라인:
+// 0초: 데이터 fetch → fresh
+// 5초: stale 상태로 전환
+//      (하지만 캐시에는 아직 있음)
+//      재요청 시 백그라운드에서 refetch
+// 10분: 캐시에서 제거 (가비지 컬렉션)
+```
+
+### 쿼리별 캐시 설정
+
+Service Hook에 옵션을 전달하여 개별 설정할 수 있습니다.
+
+```typescript
+import { UserService } from "@/services/services.generated";
+
+function UserProfile({ userId }: { userId: number }) {
+  const { data } = UserService.useUser("C", userId, {
+    // 이 쿼리만의 설정
+    staleTime: 10 * 60 * 1000,    // 10분 fresh
+    gcTime: 30 * 60 * 1000,       // 30분 캐시 유지
+    refetchOnWindowFocus: true,   // 포커스 시 재검증
+  });
+
+  return <div>{data?.user.username}</div>;
+}
+```
+
+### 데이터 특성별 캐싱 전략
+
+```typescript
+// 1. 실시간 데이터 (주식, 채팅 등)
+const { data } = useQuery({
+  queryKey: ["stock", symbol],
+  queryFn: fetchStock,
+  staleTime: 0,             // 항상 stale
+  refetchInterval: 5000,    // 5초마다 자동 refetch
+});
+
+// 2. 자주 변경되는 데이터 (피드, 알림 등)
+const { data } = useQuery({
+  queryKey: ["feed"],
+  queryFn: fetchFeed,
+  staleTime: 60 * 1000,     // 1분 fresh
+  refetchOnWindowFocus: true,
+});
+
+// 3. 가끔 변경되는 데이터 (프로필, 설정 등)
+const { data } = useQuery({
+  queryKey: ["profile"],
+  queryFn: fetchProfile,
+  staleTime: 5 * 60 * 1000, // 5분 fresh
+  refetchOnWindowFocus: false,
+});
+
+// 4. 거의 안 변하는 데이터 (카테고리, 국가 목록 등)
+const { data } = useQuery({
+  queryKey: ["categories"],
+  queryFn: fetchCategories,
+  staleTime: Infinity,      // 영원히 fresh
+  gcTime: Infinity,         // 영원히 캐시 유지
+});
+```
+
+## 수동 캐시 제어
+
+### 캐시 무효화
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { PostService } from "@/services/services.generated";
+
+export function CreatePostForm() {
+  const queryClient = useQueryClient();
+
+  async function handleSubmit(data: any) {
+    // 게시글 생성
+    await PostService.createPost(data);
+
+    // 관련 캐시 무효화
+    queryClient.invalidateQueries({
+      queryKey: ["Post", "list"], // 게시글 목록 무효화
+    });
+
+    // 또는 특정 쿼리만
+    queryClient.invalidateQueries({
+      queryKey: ["Post", "list", { page: 1 }],
+    });
+  }
+
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+```
+
+### 캐시 직접 업데이트
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+
+export function LikeButton({ postId }: { postId: number }) {
+  const queryClient = useQueryClient();
+
+  async function handleLike() {
+    // 1. 현재 캐시 가져오기
+    const queryKey = ["Post", "getPost", "C", postId];
+    const previousPost = queryClient.getQueryData(queryKey);
+
+    // 2. 낙관적 업데이트
+    queryClient.setQueryData(queryKey, (old: any) => ({
+      ...old,
+      post: {
+        ...old.post,
+        likes: old.post.likes + 1,
+      },
+    }));
+
+    try {
+      // 3. 서버에 요청
+      await PostService.likePost(postId);
+    } catch (error) {
+      // 4. 실패 시 롤백
+      queryClient.setQueryData(queryKey, previousPost);
+    }
+  }
+
+  return <button onClick={handleLike}>Like</button>;
+}
+```
+
+### 캐시 조회
+
+```typescript
+const queryClient = useQueryClient();
+
+// 단일 쿼리 조회
+const userData = queryClient.getQueryData(["User", "getUser", "C", 123]);
+
+// 모든 쿼리 조회
+const allQueries = queryClient.getQueryCache().getAll();
+
+// 특정 패턴 쿼리 조회
+const postQueries = queryClient.getQueryCache()
+  .findAll({ queryKey: ["Post"] });
+```
+
+## SSR Cache-Control
+
+registerSSR에서 HTTP Cache-Control 헤더를 설정할 수 있습니다.
+
+### 개별 라우트 캐싱
+
+```typescript
+// api/src/application/sonamu.ts
+import { registerSSR } from "sonamu";
+
+registerSSR({
+  path: "/posts/:id",
+  preload: (params) => [/* ... */],
+  cacheControl: {
+    maxAge: 3600,                // 1시간 (브라우저 캐시)
+    sMaxAge: 7200,               // 2시간 (CDN 캐시)
+    staleWhileRevalidate: 86400, // 1일간 stale 컨텐츠 제공 가능
+    public: true,                // 공개 캐시 허용
+  },
+});
+```
+
+**생성되는 헤더**:
+```
+Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
+```
+
+### 캐싱 전략 예시
+
+```typescript
+// 1. 정적 컨텐츠 (긴 캐싱)
+registerSSR({
+  path: "/about",
+  cacheControl: {
+    maxAge: 86400,    // 1일
+    sMaxAge: 604800,  // 7일 (CDN)
+    public: true,
+  },
+});
+
+// 2. 동적 컨텐츠 (짧은 캐싱)
+registerSSR({
+  path: "/posts/:id",
+  cacheControl: {
+    maxAge: 300,      // 5분
+    sMaxAge: 600,     // 10분 (CDN)
+    staleWhileRevalidate: 3600,
+    public: true,
+  },
+});
+
+// 3. 개인화 컨텐츠 (캐싱 안 함)
+registerSSR({
+  path: "/dashboard",
+  cacheControl: {
+    noStore: true,    // 캐시 완전 비활성화
+    private: true,    // 개인 전용
+  },
+});
+
+// 4. 캐시 없음 (매번 재검증)
+registerSSR({
+  path: "/live-feed",
+  cacheControl: {
+    noCache: true,    // 재검증 필수
+  },
+});
+```
+
+### CacheControlConfig 타입
+
+```typescript
+type CacheControlConfig = {
+  maxAge?: number;              // 브라우저 캐시 시간 (초)
+  sMaxAge?: number;             // CDN 캐시 시간 (초)
+  staleWhileRevalidate?: number; // stale 컨텐츠 제공 시간 (초)
+  staleIfError?: number;        // 에러 시 stale 컨텐츠 제공 시간 (초)
+  public?: boolean;             // 공개 캐시 허용
+  private?: boolean;            // 개인 전용 (CDN 캐시 안 함)
+  noCache?: boolean;            // 재검증 필수
+  noStore?: boolean;            // 캐시 완전 비활성화
+  mustRevalidate?: boolean;     // 재검증 강제
+  immutable?: boolean;          // 불변 리소스
+};
+```
+
+### 전역 캐싱 핸들러
+
+모든 SSR 라우트에 적용되는 전역 핸들러를 설정할 수 있습니다.
+
+```typescript
+// api/src/application/sonamu.ts
+import { SonamuFastifyConfig } from "sonamu";
+
+const config: SonamuFastifyConfig = {
+  cacheControlHandler: (req) => {
+    // SSR 요청 정보
+    const { type, url, path, method } = req;
+
+    // 정적 페이지
+    if (path === "/about" || path === "/terms") {
+      return {
+        maxAge: 86400,    // 1일
+        public: true,
+      };
+    }
+
+    // 동적 페이지
+    if (path.startsWith("/posts/")) {
+      return {
+        maxAge: 300,      // 5분
+        staleWhileRevalidate: 3600,
+        public: true,
+      };
+    }
+
+    // 기본값: 캐싱 안 함
+    return {
+      noCache: true,
+    };
+  },
+};
+```
+
+## 하이브리드 캐싱
+
+SSR과 클라이언트 캐싱을 함께 사용합니다.
+
+```typescript
+// 서버: HTTP 캐싱 (1시간)
+registerSSR({
+  path: "/posts/:id",
+  cacheControl: {
+    maxAge: 3600,
+  },
+});
+
+// 클라이언트: 메모리 캐싱 (5분)
+const { data } = PostService.usePost("C", postId, {
+  staleTime: 5 * 60 * 1000,
+});
+```
+
+**캐싱 레이어**:
+1. **브라우저 HTTP 캐시**: 1시간 (max-age=3600)
+2. **TanStack Query 메모리**: 5분 (staleTime)
+3. **서버 SSR 렌더링**: 캐시 미스 시 렌더링
+
+**흐름**:
+1. 첫 방문: SSR → HTML + 데이터 → 브라우저 캐시 저장
+2. 5분 이내 재방문: TanStack Query 메모리 캐시 사용
+3. 5분~1시간: 브라우저 HTTP 캐시 사용
+4. 1시간 이후: 서버에 새로 요청
+
+## 개발 환경 디버깅
+
+### React Query Devtools
+
+```typescript
+// web/src/routes/__root.tsx
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+function RootComponent() {
+  return (
+    <html>
+      <body>
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### 캐시 상태 확인
+
+```typescript
+"use client";
+
+import { useQueryClient } from "@tanstack/react-query";
+
+export function CacheDebugger() {
+  const queryClient = useQueryClient();
+
+  function showCache() {
+    const cache = queryClient.getQueryCache();
+    console.log("Total queries:", cache.getAll().length);
+
+    cache.getAll().forEach((query) => {
+      console.log({
+        queryKey: query.queryKey,
+        state: query.state.status,
+        dataUpdatedAt: new Date(query.state.dataUpdatedAt),
+        staleTime: query.options.staleTime,
+      });
+    });
+  }
+
+  return <button onClick={showCache}>Show Cache</button>;
+}
+```
+
+### HTTP 캐시 헤더 확인
+
+브라우저 개발자 도구 → Network 탭에서 응답 헤더 확인:
+
+```
+Cache-Control: public, max-age=3600, s-maxage=7200, stale-while-revalidate=86400
+Age: 1234
+X-Cache: HIT
+```
+
+## 성능 최적화 전략
+
+### 1. Subset 활용
+
+필요한 필드만 캐시하여 메모리 절약:
+
+```typescript
+// ❌ 전체 필드 캐시 (큼)
+UserService.useUser("C", userId, {
+  staleTime: 5 * 60 * 1000,
+});
+
+// ✅ 필요한 필드만 캐시 (작음)
+UserService.useUser("A", userId, {
+  staleTime: 5 * 60 * 1000,
+});
+```
+
+### 2. 선택적 재검증
+
+중요한 데이터만 적극적으로 재검증:
+
+```typescript
+// 중요한 데이터
+const { data: user } = UserService.useUser("C", userId, {
+  refetchOnWindowFocus: true,
+  refetchOnMount: true,
+});
+
+// 덜 중요한 데이터
+const { data: posts } = PostService.usePosts("A", {
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+});
+```
+
+### 3. 캐시 프리페칭
+
+다음에 필요할 데이터를 미리 캐싱:
+
+```typescript
+const queryClient = useQueryClient();
+
+function prefetchPost(postId: number) {
+  queryClient.prefetchQuery({
+    queryKey: ["Post", "getPost", "C", postId],
+    queryFn: () => PostService.getPost("C", postId),
+  });
+}
+
+// 링크에 마우스 올리면 프리페칭
+<Link
+  to={`/posts/${postId}`}
+  onMouseEnter={() => prefetchPost(postId)}
+>
+  Read more
+</Link>
+```
+
+## 주의사항
+
+<Warning>
+**캐시 사용 시 주의사항**:
+1. **staleTime 설정 필수**: 기본값 0은 항상 refetch
+2. **개인 데이터는 private**: public 캐시 금지
+3. **민감한 데이터**: noStore로 캐싱 비활성화
+4. **SSR cacheControl**: 개별 설정이 전역 핸들러보다 우선
+5. **메모리 관리**: gcTime으로 불필요한 캐시 제거
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="SSR 설정" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR 기본 구조
+  </Card>
+  <Card title="데이터 프리로딩" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    registerSSR 사용법
+  </Card>
+  <Card title="Hydration 전략" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    하이드레이션 최적화
+  </Card>
+  <Card title="TanStack Query 공식 문서" icon="external-link" href="https://tanstack.com/query">
+    Query 상세 가이드
+  </Card>
+</CardGroup>

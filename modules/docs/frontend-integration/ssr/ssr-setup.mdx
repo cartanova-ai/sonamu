@@ -1,10 +1,385 @@
 ---
-title: 'SSR 설정'
-description: 'TanStack Router 설정하기'
+title: "SSR 설정"
+description: "Sonamu의 TanStack Router + Vite SSR 구성"
 ---
 
-# SSR 설정
+Sonamu에서 Server-Side Rendering(SSR)을 설정하고 사용하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## SSR 개요
+
+<CardGroup cols={2}>
+  <Card title="TanStack Router" icon="route">
+    파일 기반 라우팅
+    
+    Type-safe 네비게이션
+  </Card>
+  <Card title="Vite SSR" icon="bolt">
+    빠른 빌드
+    
+    HMR 지원
+  </Card>
+  <Card title="Direct API Call" icon="server">
+    HTTP 오버헤드 없음
+    
+    빠른 응답
+  </Card>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    Hydration 자동화
+    
+    캐싱 통합
+  </Card>
+</CardGroup>
+
+## Sonamu SSR 아키텍처
+
+Sonamu는 **TanStack Router + Vite**를 사용하여 SSR을 구현합니다.
+
+### 핵심 구성 요소
+
+```
+web/src/
+├── entry-server.generated.tsx    # 서버 렌더링 엔트리 (자동 생성)
+├── entry-client.tsx               # 클라이언트 하이드레이션 엔트리
+├── routeTree.gen.ts              # TanStack Router 라우트 트리 (자동 생성)
+└── routes/                        # 파일 기반 라우트
+    ├── __root.tsx                # 루트 레이아웃
+    ├── index.tsx                 # / 경로
+    └── users/
+        └── $id.tsx               # /users/:id 경로
+```
+
+### entry-server.generated.tsx
+
+서버에서 React를 렌더링하는 진입점입니다 (자동 생성됨):
+
+```typescript
+// web/src/entry-server.generated.tsx
+import { QueryClient, dehydrate } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { Suspense } from "react";
+import { renderToString } from "react-dom/server";
+import { routeTree } from "./routeTree.gen";
+
+export type PreloadedData = {
+  queryKey: any[];
+  data: any;
+};
+
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  // QueryClient 생성
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5000,
+        retry: false,
+      },
+    },
+  });
+
+  // Preloaded 데이터를 queryClient에 직접 주입
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate
+  const dehydratedState = dehydrate(queryClient);
+
+  // SSR용 메모리 히스토리 생성
+  const memoryHistory = createMemoryHistory({
+    initialEntries: [url],
+  });
+
+  // Router 생성 (SSR 모드)
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+    history: memoryHistory,
+    defaultPreload: "intent",
+  });
+
+  // 라우터 초기화: SSR에서 반드시 await router.load() 호출 필요
+  await router.load();
+
+  // RouterProvider만 렌더링 (Suspense로 래핑 - hydration mismatch 방지)
+  const appHtml = renderToString(
+    <Suspense fallback={null}>
+      <RouterProvider router={router} />
+    </Suspense>,
+  );
+
+  return {
+    html: appHtml,
+    dehydratedState,
+  };
+}
+```
+
+### entry-client.tsx
+
+클라이언트에서 React를 하이드레이션하는 진입점입니다:
+
+```typescript
+// web/src/entry-client.tsx
+import { hydrate, QueryClient } from "@tanstack/react-query";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import ReactDOM from "react-dom/client";
+import { routeTree } from "./routeTree.gen";
+import { dateReviver } from "./services/sonamu.shared";
+
+// SSR 데이터 타입
+declare global {
+  interface Window {
+    __SONAMU_SSR__?: any;
+    __SONAMU_SSR_CONFIG__?: {
+      disableHydrate?: boolean;
+    };
+  }
+}
+
+// QueryClient 생성
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,
+      retry: false,
+      refetchOnMount: true,
+    },
+  },
+});
+
+// SSR 데이터 복원
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+if (dehydratedState) {
+  hydrate(queryClient, dehydratedState);
+}
+
+// Router 생성
+const router = createRouter({
+  routeTree,
+  context: { queryClient },
+  defaultPreload: "intent",
+});
+
+await router.load();
+
+// Hydration
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR 페이지 - Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  // Pure CSR 페이지 - 새로 렌더링
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+## TanStack Router 라우트 구조
+
+### Root Route
+
+```typescript
+// web/src/routes/__root.tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1.0" },
+      { title: "My App" },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <html lang="ko">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <div id="root">
+          <QueryClientProvider client={queryClient}>
+            <Outlet />
+          </QueryClientProvider>
+        </div>
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+### 파일 라우트
+
+```typescript
+// web/src/routes/index.tsx
+import { createFileRoute } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/")({
+  component: HomePage,
+});
+
+function HomePage() {
+  return (
+    <div>
+      <h1>Home Page</h1>
+    </div>
+  );
+}
+```
+
+### 동적 라우트
+
+```typescript
+// web/src/routes/users/$id.tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { UserService } from "@/services/services.generated";
+
+export const Route = createFileRoute("/users/$id")({
+  component: UserPage,
+});
+
+function UserPage() {
+  const { id } = Route.useParams();
+  const { data } = UserService.useUser("C", parseInt(id));
+
+  return (
+    <div>
+      <h1>{data?.user.username}</h1>
+      <p>{data?.user.email}</p>
+    </div>
+  );
+}
+```
+
+## Vite 설정
+
+```typescript
+// web/vite.config.ts
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react-swc";
+import { defineConfig } from "vite";
+
+export default defineConfig(({ isSsrBuild }) => ({
+  plugins: [
+    react(),
+    tanstackRouter({
+      autoCodeSplitting: true,
+      generatedRouteTree: "./src/routeTree.gen.ts",
+    }),
+  ],
+  build: {
+    outDir: "dist/client",
+    rollupOptions: {
+      output: isSsrBuild
+        ? {}
+        : {
+            manualChunks: {
+              "vendor-react": ["react", "react-dom"],
+              "vendor-tanstack": ["@tanstack/react-query", "@tanstack/react-router"],
+            },
+          },
+    },
+  },
+  ssr: {
+    noExternal: true, // Production 빌드 시 모든 의존성 번들에 포함
+  },
+}));
+```
+
+## SSR vs CSR
+
+Sonamu는 **하이브리드 접근 방식**을 사용합니다:
+
+### SSR 렌더링 (데이터 프리로딩 시)
+
+```typescript
+// registerSSR로 등록된 경로
+// → 서버에서 HTML 생성 + 데이터 포함
+// → 클라이언트에서 hydration
+```
+
+**장점**:
+- 빠른 First Contentful Paint
+- SEO 최적화
+- 초기 데이터 즉시 표시
+
+### CSR 렌더링 (기본)
+
+```typescript
+// registerSSR 없는 경로
+// → 클라이언트에서 직접 렌더링
+// → API 호출하여 데이터 로드
+```
+
+**장점**:
+- 서버 부하 감소
+- 간단한 구현
+- 빠른 개발
+
+## 개발 vs 프로덕션
+
+### 개발 모드
+
+```bash
+pnpm dev
+```
+
+- Vite Dev Server 사용
+- HMR (Hot Module Replacement) 지원
+- `entry-server.generated.tsx`를 Vite가 실시간으로 로드
+
+### 프로덕션 빌드
+
+```bash
+pnpm build
+```
+
+**빌드 결과**:
+```
+api/
+├── dist/ssr/
+│   └── entry-server.generated.js    # SSR 번들
+└── public/web/
+    ├── index.html                    # HTML 템플릿
+    └── assets/                       # 클라이언트 번들
+```
+
+## 주의사항
+
+<Warning>
+**Sonamu SSR 사용 시 주의사항**:
+1. **TanStack Router 기반**: Next.js App Router가 아닙니다
+2. **entry-server.generated.tsx는 자동 생성**: 직접 수정하지 마세요
+3. **window 객체 주의**: 서버에서는 window가 없습니다
+4. **dateReviver 필수**: Date 객체 직렬화/역직렬화 처리
+5. **registerSSR 사용**: 데이터 프리로딩은 다음 문서 참고
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="데이터 프리로딩" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    registerSSR 사용법
+  </Card>
+  <Card title="Hydration 전략" icon="droplet" href="/frontend-integration/ssr/hydration-strategies">
+    하이드레이션 최적화
+  </Card>
+  <Card title="캐시 제어" icon="database" href="/frontend-integration/ssr/cache-control">
+    TanStack Query 캐싱
+  </Card>
+  <Card title="TanStack Router 공식 문서" icon="external-link" href="https://tanstack.com/router">
+    라우터 상세 가이드
+  </Card>
+</CardGroup>

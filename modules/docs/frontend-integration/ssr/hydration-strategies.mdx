@@ -1,10 +1,476 @@
 ---
-title: 'Hydration 전략'
-description: 'none/full 전략 선택하기'
+title: "Hydration 전략"
+description: "TanStack Query Hydration으로 서버 데이터를 클라이언트에 전달"
 ---
 
-# Hydration 전략
+Sonamu에서 서버 렌더링된 HTML을 클라이언트에서 인터랙티브하게 만드는 하이드레이션 전략을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Hydration 개요
+
+<CardGroup cols={2}>
+  <Card title="TanStack Query" icon="arrows-rotate">
+    dehydrate/hydrate
+    
+    자동 상태 복원
+  </Card>
+  <Card title="전체 문서 Hydration" icon="file">
+    document 레벨
+    
+    완전한 SSR
+  </Card>
+  <Card title="Date 직렬화" icon="calendar">
+    dateReviver
+    
+    자동 변환
+  </Card>
+  <Card title="선택적 비활성화" icon="power-off">
+    disableHydrate
+    
+    CSR 전환
+  </Card>
+</CardGroup>
+
+## Sonamu Hydration 프로세스
+
+### 1. 서버: Dehydration
+
+서버에서 Query상태를 직렬화합니다.
+
+```typescript
+// entry-server.generated.tsx
+import { dehydrate } from "@tanstack/react-query";
+
+export async function render(url: string, preloadedData: PreloadedData[] = []) {
+  const queryClient = new QueryClient();
+
+  // 데이터 주입
+  for (const { queryKey, data } of preloadedData) {
+    queryClient.setQueryData(queryKey, data);
+  }
+
+  // Dehydrate: QueryClient 상태를 JSON으로 직렬화
+  const dehydratedState = dehydrate(queryClient);
+
+  const appHtml = renderToString(<RouterProvider router={router} />);
+
+  return {
+    html: appHtml,
+    dehydratedState,  // 직렬화된 상태
+  };
+}
+```
+
+### 2. HTML에 데이터 주입
+
+```typescript
+// sonamu/src/ssr/renderer.ts
+const ssrDataScript = dehydratedState
+  ? `<script>window.__SONAMU_SSR__ = ${JSON.stringify(dehydratedState).replace(/</g, "\\u003c")};</script>`
+  : "";
+
+// </body> 직전에 주입
+const finalHtml = fullDocHtml.replace(
+  "</body>",
+  `${ssrDataScript}\n${viteScripts}\n</body>`,
+);
+```
+
+**생성된 HTML**:
+```html
+<!DOCTYPE html>
+<html>
+  <head>...</head>
+  <body>
+    <div id="root">
+      <!-- 서버 렌더링된 HTML -->
+      <div>Welcome, John</div>
+    </div>
+    
+    <!-- SSR 데이터 -->
+    <script>
+      window.__SONAMU_SSR__ = {
+        "queries": [{
+          "queryKey": ["User", "getUser", "C", 123],
+          "queryHash": "[\"User\",\"getUser\",\"C\",123]",
+          "state": {
+            "data": {
+              "user": {
+                "id": 123,
+                "username": "John",
+                "createdAt": "2024-01-01T00:00:00.000Z"
+              }
+            },
+            "dataUpdateCount": 1,
+            "dataUpdatedAt": 1704067200000,
+            "status": "success"
+          }
+        }]
+      };
+    </script>
+    
+    <!-- Vite 스크립트 -->
+    <script type="module" src="/src/entry-client.tsx"></script>
+  </body>
+</html>
+```
+
+### 3. 클라이언트: Hydration
+
+클라이언트에서 상태를 복원하고 React를 활성화합니다.
+
+```typescript
+// entry-client.tsx
+import { hydrate } from "@tanstack/react-query";
+import { dateReviver } from "./services/sonamu.shared";
+
+// 1. window.__SONAMU_SSR__에서 데이터 가져오기
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+// 2. QueryClient에 hydrate
+if (dehydratedState) {
+  hydrate(queryClient, dehydratedState);
+}
+
+// 3. React Hydration
+if (document.documentElement.innerHTML && dehydratedState) {
+  // SSR 페이지 - Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  // Pure CSR 페이지 - 새로 렌더링
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+## Date 직렬화 처리
+
+### 문제: Date 객체는 JSON.stringify로 문자열이 됨
+
+```typescript
+const user = {
+  id: 123,
+  username: "John",
+  createdAt: new Date("2024-01-01"),  // Date 객체
+};
+
+// 서버에서 직렬화
+JSON.stringify(user);
+// '{"id":123,"username":"John","createdAt":"2024-01-01T00:00:00.000Z"}'
+//                                          ↑ 문자열!
+
+// 클라이언트에서 역직렬화
+JSON.parse(json);
+// { id: 123, username: "John", createdAt: "2024-01-01T00:00:00.000Z" }
+//                                          ↑ 여전히 문자열!
+```
+
+### 해결: dateReviver
+
+Sonamu는 자동으로 ISO 날짜 문자열을 Date 객체로 변환합니다.
+
+```typescript
+// services/sonamu.shared.ts
+export function dateReviver(_key: string, value: unknown): unknown {
+  if (typeof value === "string") {
+    // ISO 8601 날짜 문자열 패턴
+    const isoDatePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+    if (isoDatePattern.test(value)) {
+      return new Date(value);  // Date 객체로 변환
+    }
+  }
+  return value;
+}
+```
+
+```typescript
+// entry-client.tsx
+const dehydratedState = window.__SONAMU_SSR__
+  ? JSON.parse(JSON.stringify(window.__SONAMU_SSR__), dateReviver)
+  : undefined;
+
+// ✅ createdAt이 Date 객체로 복원됨!
+```
+
+## Hydration Mismatch 방지
+
+### 문제: 서버와 클라이언트의 HTML이 다르면 에러
+
+```typescript
+// ❌ Hydration Mismatch 발생
+function Clock() {
+  const [time, setTime] = useState(new Date());
+  // 서버와 클라이언트의 시간이 다름!
+  
+  return <div>{time.toLocaleTimeString()}</div>;
+}
+```
+
+**에러 메시지**:
+```
+Warning: Text content did not match. Server: "10:30:45" Client: "10:30:47"
+```
+
+### 해결 1: useEffect 사용
+
+```typescript
+// ✅ 클라이언트에서만 실행
+function Clock() {
+  const [time, setTime] = useState<Date | null>(null);
+  
+  useEffect(() => {
+    setTime(new Date());
+    const interval = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  if (!time) return <div>--:--:--</div>;  // 서버 렌더링
+  return <div>{time.toLocaleTimeString()}</div>;  // 클라이언트만
+}
+```
+
+### 해결 2: suppressHydrationWarning
+
+의도적으로 서버/클라이언트가 다른 경우 사용합니다.
+
+```typescript
+function RandomQuote() {
+  const [quote] = useState(() => getRandomQuote());
+  
+  return (
+    <div suppressHydrationWarning>
+      {quote}  {/* 서버와 클라이언트가 다를 수 있음 */}
+    </div>
+  );
+}
+```
+
+## disableHydrate 옵션
+
+### Hydration을 비활성화하고 CSR로 전환
+
+```typescript
+// api/src/application/sonamu.ts
+registerSSR({
+  path: "/admin/realtime-dashboard",
+  preload: (params) => [/* ... */],
+  disableHydrate: true,  // Hydration 비활성화
+});
+```
+
+**작동 방식**:
+```typescript
+// entry-client.tsx
+const ssrConfig = window.__SONAMU_SSR_CONFIG__;
+
+if (ssrConfig?.disableHydrate) {
+  // Hydration 대신 새로 렌더링
+  console.log("[Sonamu] Hydration disabled, rendering as CSR");
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+} else {
+  // 정상 Hydration
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+}
+```
+
+**사용 사례**:
+- 실시간 데이터가 중요한 경우 (대시보드, 채팅 등)
+- 서버/클라이언트 렌더링 결과가 의도적으로 다른 경우
+- Hydration mismatch 해결이 어려운 경우
+
+## 전체 문서 Hydration
+
+Sonamu는 **document 전체를 hydrate**합니다 (div#root가 아님).
+
+```typescript
+// ❌ 일반적인 React 앱 (div#root만)
+ReactDOM.hydrateRoot(
+  document.getElementById("root"),
+  <App />
+);
+
+// ✅ Sonamu (document 전체)
+ReactDOM.hydrateRoot(
+  document,
+  <RouterProvider router={router} />
+);
+```
+
+**이유**:
+- TanStack Router가 `<html>`, `<head>` 태그까지 관리
+- `<HeadContent />`, `<Scripts />` 컴포넌트가 head/body 수정
+- SEO 메타 태그를 동적으로 변경 가능
+
+```typescript
+// web/src/routes/__root.tsx
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { title: "My App" },
+    ],
+  }),
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <html lang="ko">
+      <head>
+        <HeadContent />  {/* head 태그 동적 생성 */}
+      </head>
+      <body>
+        <div id="root">
+          <Outlet />
+        </div>
+        <Scripts />  {/* script 태그 동적 생성 */}
+      </body>
+    </html>
+  );
+}
+```
+
+## Suspense와 Hydration
+
+서버에서 Suspense fallback을 렌더링하고 클라이언트에서 실제 컨텐츠를 로드할 수 있습니다.
+
+```typescript
+// entry-server.generated.tsx
+const appHtml = renderToString(
+  <Suspense fallback={null}>  {/* Hydration mismatch 방지 */}
+    <RouterProvider router={router} />
+  </Suspense>,
+);
+```
+
+**fallback={null}을 사용하는 이유**:
+- SSR에서는 모든 데이터가 이미 로드되어 있음
+- fallback이 보이지 않음
+- Hydration mismatch 방지
+
+## QueryClient 설정
+
+### 서버 설정
+
+```typescript
+// entry-server.generated.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,  // 5초
+      retry: false,      // 서버에서는 재시도 안 함
+    },
+  },
+});
+```
+
+### 클라이언트 설정
+
+```typescript
+// entry-client.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5000,        // 5초
+      retry: false,            // 재시도 안 함
+      refetchOnMount: true,    // 마운트 시 재검증
+    },
+  },
+});
+```
+
+**주의**: 서버와 클라이언트의 `staleTime`을 동일하게 설정하는 것이 좋습니다.
+
+## Router Context
+
+QueryClient를 Router Context로 전달합니다.
+
+```typescript
+// web/src/routes/__root.tsx
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <html>
+      <body>
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+        </QueryClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```typescript
+// entry-server.generated.tsx & entry-client.tsx
+const router = createRouter({
+  routeTree,
+  context: { queryClient },  // Context로 전달
+  defaultPreload: "intent",
+});
+```
+
+## 디버깅
+
+### Hydration 확인
+
+```typescript
+// entry-client.tsx
+if (document.documentElement.innerHTML && dehydratedState) {
+  console.log("[Sonamu] Hydrating with SSR data");
+  console.log("Queries:", Object.keys(dehydratedState.queries || {}));
+  ReactDOM.hydrateRoot(document, <RouterProvider router={router} />);
+} else {
+  console.log("[Sonamu] Rendering as CSR (no SSR data)");
+  ReactDOM.createRoot(document).render(<RouterProvider router={router} />);
+}
+```
+
+### QueryClient 상태 확인
+
+```typescript
+// Chrome Extension 지원
+window.__TANSTACK_QUERY_CLIENT__ = queryClient;
+
+// 콘솔에서 확인
+window.__TANSTACK_QUERY_CLIENT__.getQueryCache().getAll();
+```
+
+## 주의사항
+
+<Warning>
+**Hydration 사용 시 주의사항**:
+1. **서버/클라이언트 HTML 일치**: Hydration mismatch 방지
+2. **window 객체 주의**: 서버에서는 window가 없습니다
+3. **Date 객체**: dateReviver가 자동 처리하지만 확인 필요
+4. **QueryClient 설정 동일**: 서버와 클라이언트의 staleTime 일치
+5. **disableHydrate 최소화**: 특별한 경우에만 사용
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="SSR 설정" icon="server" href="/frontend-integration/ssr/ssr-setup">
+    SSR 기본 구조
+  </Card>
+  <Card title="데이터 프리로딩" icon="bolt" href="/frontend-integration/ssr/preloading-data">
+    registerSSR 사용법
+  </Card>
+  <Card title="캐시 제어" icon="database" href="/frontend-integration/ssr/cache-control">
+    TanStack Query 캐싱
+  </Card>
+  <Card title="TanStack Query 공식 문서" icon="external-link" href="https://tanstack.com/query">
+    Query 상세 가이드
+  </Card>
+</CardGroup>
