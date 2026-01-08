@@ -50,7 +50,6 @@ export class Syncer {
   types: LoadedTypes = {};
   models: LoadedModels = {};
   workflows: Map<string, WorkflowMetadata[]> = new Map();
-  isSyncing: boolean = false;
   eventEmitter: EventEmitter = new EventEmitter();
 
   /**
