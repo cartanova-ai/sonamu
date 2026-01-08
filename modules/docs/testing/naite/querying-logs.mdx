@@ -1,10 +1,574 @@
 ---
-title: '로그 조회하기'
-description: 'Naite.get(), fromFile, where'
+title: "로그 조회하기"
+description: "Naite.get()으로 테스트 데이터 쿼리하기"
 ---
 
-# 로그 조회하기
+Naite.get()과 체이닝 메서드를 사용하여 기록된 로그를 조회하는 방법을 알아봅니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Naite.get() 개요
+
+<CardGroup cols={2}>
+  <Card title="wildcard 패턴" icon="asterisk">
+    유연한 키 매칭
+    
+    계층적 조회
+  </Card>
+  <Card title="체이닝 쿼리" icon="link">
+    fromFile, fromFunction
+    
+    where 조건
+  </Card>
+  <Card title="다양한 결과" icon="list">
+    result, first, last
+    
+    at(index)
+  </Card>
+  <Card title="콜스택 활용" icon="layer-group">
+    호출 위치 추적
+    
+    디버깅 지원
+  </Card>
+</CardGroup>
+
+## 기본 사용법
+
+### 키로 조회
+
+```typescript
+import { Naite } from "sonamu";
+
+// 로그 기록
+Naite.t("user:create", { userId: 123, username: "john" });
+
+// 정확한 키로 조회
+const data = Naite.get("user:create").result();
+// [{ userId: 123, username: "john" }]
+
+// 첫 번째 데이터
+const first = Naite.get("user:create").first();
+// { userId: 123, username: "john" }
+```
+
+### wildcard 패턴
+
+```typescript
+// 여러 로그 기록
+Naite.t("user:create", { action: "create" });
+Naite.t("user:update", { action: "update" });
+Naite.t("user:delete", { action: "delete" });
+Naite.t("post:create", { action: "create" });
+
+// user:* 패턴
+const userLogs = Naite.get("user:*").result();
+// user:create, user:update, user:delete 모두 매칭
+// [{ action: "create" }, { action: "update" }, { action: "delete" }]
+
+// *:create 패턴
+const createLogs = Naite.get("*:create").result();
+// user:create, post:create 모두 매칭
+```
+
+## wildcard 패턴 규칙
+
+### 1. Prefix 매칭
+
+마지막이 `*`인 경우 prefix 매칭:
+
+```typescript
+Naite.t("syncer:renderTemplate", { /* ... */ });
+Naite.t("syncer:renderTemplate:user", { /* ... */ });
+Naite.t("syncer:writeFile", { /* ... */ });
+
+// "syncer:*" → 길이 무관하게 syncer:로 시작하는 모든 키
+const logs = Naite.get("syncer:*").result();
+// syncer:renderTemplate
+// syncer:renderTemplate:user
+// syncer:writeFile
+// 모두 매칭됨
+```
+
+### 2. 중간 wildcard
+
+중간에 `*`가 있는 경우:
+
+```typescript
+Naite.t("syncer:renderTemplate:user", { /* ... */ });
+Naite.t("syncer:writeFile:user", { /* ... */ });
+Naite.t("syncer:renderTemplate:post", { /* ... */ });
+
+// "syncer:*:user" → 중간 파트가 * (길이 동일)
+const logs = Naite.get("syncer:*:user").result();
+// syncer:renderTemplate:user
+// syncer:writeFile:user
+// 매칭됨
+
+// syncer:renderTemplate:post는 매칭 안 됨 (마지막이 user가 아님)
+```
+
+### 3. 정확한 매칭
+
+wildcard 없으면 정확한 키만 매칭:
+
+```typescript
+Naite.t("user:create", { /* ... */ });
+Naite.t("user:create:validation", { /* ... */ });
+
+// "user:create" → 정확히 일치만
+const logs = Naite.get("user:create").result();
+// user:create만 매칭
+// user:create:validation은 매칭 안 됨
+```
+
+## 체이닝 메서드
+
+### fromFile() - 파일명으로 필터링
+
+특정 파일에서 호출된 로그만 조회:
+
+```typescript
+test("파일 필터링", async () => {
+  // 여러 파일에서 로그 기록
+  // user.model.test.ts에서:
+  Naite.t("test:log", { file: "user.model.test.ts" });
+  
+  // post.model.test.ts에서:
+  Naite.t("test:log", { file: "post.model.test.ts" });
+  
+  // user.model.test.ts의 로그만 조회
+  const userLogs = Naite.get("test:log")
+    .fromFile("user.model.test.ts")
+    .result();
+  
+  expect(userLogs).toHaveLength(1);
+  expect(userLogs[0].file).toBe("user.model.test.ts");
+});
+```
+
+**작동 방식**:
+```typescript
+// 콜스택의 filePath가 /.../{fileName}으로 끝나는지 확인
+fromFile(fileName: string): NaiteQuery {
+  const filtered = this.traces.filter((t) =>
+    t.stack.some((frame) => frame.filePath.endsWith(`/${fileName}`))
+  );
+  return new NaiteQuery(filtered);
+}
+```
+
+### fromFunction() - 함수명으로 필터링
+
+특정 함수에서 호출된 로그만 조회:
+
+```typescript
+async function renderTemplate(template: string) {
+  Naite.t("syncer:render", { template });
+  // ...
+}
+
+async function writeFile(path: string) {
+  Naite.t("syncer:write", { path });
+  // ...
+}
+
+test("함수 필터링", async () => {
+  await renderTemplate("user.model.ts");
+  await writeFile("output.ts");
+  
+  // renderTemplate에서 호출된 로그만
+  const renderLogs = Naite.get("syncer:*")
+    .fromFunction("renderTemplate")
+    .result();
+  
+  expect(renderLogs).toHaveLength(1);
+  expect(renderLogs[0].template).toBe("user.model.ts");
+});
+```
+
+**옵션**:
+```typescript
+// 직접 호출만 (stack[0])
+fromFunction("renderTemplate", { from: "direct" })
+
+// 간접 호출만 (stack[1+])
+fromFunction("renderTemplate", { from: "indirect" })
+
+// 모두 (기본값)
+fromFunction("renderTemplate", { from: "both" })
+fromFunction("renderTemplate") // 동일
+```
+
+**실제 예제**:
+```typescript
+async function processUser(userId: number) {
+  Naite.t("user:process:start", { userId });
+  
+  await createUser(userId);
+  
+  Naite.t("user:process:done", { userId });
+}
+
+async function createUser(userId: number) {
+  Naite.t("user:create", { userId });
+}
+
+test("호출 관계 추적", async () => {
+  await processUser(123);
+  
+  // processUser에서 직접 호출된 로그만
+  const directLogs = Naite.get("user:*")
+    .fromFunction("processUser", { from: "direct" })
+    .result();
+  
+  // user:process:start, user:process:done
+  expect(directLogs).toHaveLength(2);
+  
+  // processUser 호출 체인에 있는 모든 로그
+  const allLogs = Naite.get("user:*")
+    .fromFunction("processUser", { from: "both" })
+    .result();
+  
+  // user:process:start, user:create, user:process:done
+  expect(allLogs).toHaveLength(3);
+});
+```
+
+### where() - 데이터 조건 필터링
+
+로그 데이터의 특정 필드로 필터링:
+
+```typescript
+test("조건 필터링", async () => {
+  Naite.t("user:create", { userId: 1, status: "active" });
+  Naite.t("user:create", { userId: 2, status: "inactive" });
+  Naite.t("user:create", { userId: 3, status: "active" });
+  
+  // userId > 1
+  const logs = Naite.get("user:create")
+    .where("data.userId", ">", 1)
+    .result();
+  
+  expect(logs).toHaveLength(2);
+  expect(logs[0].userId).toBe(2);
+  expect(logs[1].userId).toBe(3);
+  
+  // status가 active인 것만
+  const activeLogs = Naite.get("user:create")
+    .where("data.status", "=", "active")
+    .result();
+  
+  expect(activeLogs).toHaveLength(2);
+});
+```
+
+**지원 연산자**:
+```typescript
+where("data.userId", ">", 10)   // 보다 큼
+where("data.userId", "<", 100)  // 보다 작음
+where("data.userId", ">=", 10)  // 이상
+where("data.userId", "<=", 100) // 이하
+where("data.status", "=", "active")   // 같음
+where("data.status", "!=", "deleted") // 다름
+where("data.username", "includes", "john") // 포함 (문자열)
+```
+
+**경로 지정**:
+```typescript
+// data 필드 접근
+where("data.userId", "=", 123)
+
+// 중첩 객체 접근 (radashi의 get 사용)
+where("data.user.profile.age", ">", 18)
+```
+
+## 체이닝 조합
+
+여러 메서드를 체이닝하여 복잡한 쿼리 작성:
+
+```typescript
+test("복잡한 쿼리", async () => {
+  // 여러 조건을 체이닝
+  const logs = Naite.get("user:*")
+    .fromFile("user.model.test.ts")
+    .fromFunction("createUser")
+    .where("data.userId", ">", 100)
+    .where("data.status", "=", "active")
+    .result();
+  
+  // user.model.test.ts 파일에서
+  // createUser 함수로 호출되고
+  // userId가 100보다 크고
+  // status가 active인 로그만
+});
+```
+
+## 결과 조회 메서드
+
+### result() - 전체 배열
+
+```typescript
+const logs = Naite.get("user:*").result();
+// [{ ... }, { ... }, { ... }]
+```
+
+### first() - 첫 번째
+
+```typescript
+const first = Naite.get("user:create").first();
+// { userId: 123, username: "john" }
+
+// 없으면 undefined
+const empty = Naite.get("nonexistent").first();
+// undefined
+```
+
+### last() - 마지막
+
+```typescript
+Naite.t("user:create", { userId: 1 });
+Naite.t("user:create", { userId: 2 });
+Naite.t("user:create", { userId: 3 });
+
+const last = Naite.get("user:create").last();
+// { userId: 3 }
+```
+
+### at(index) - n번째
+
+```typescript
+Naite.t("user:create", { userId: 1 });
+Naite.t("user:create", { userId: 2 });
+Naite.t("user:create", { userId: 3 });
+
+const second = Naite.get("user:create").at(1);
+// { userId: 2 }
+
+// 범위 밖이면 undefined
+const outOfRange = Naite.get("user:create").at(10);
+// undefined
+```
+
+## 실전 예제
+
+### 1. 복잡한 흐름 검증
+
+```typescript
+test("게시글 생성 흐름", async () => {
+  const postModel = new PostModel();
+  
+  const { post } = await postModel.create({
+    title: "Test Post",
+    content: "Content",
+    author_id: 1,
+  });
+  
+  // 전체 흐름 확인
+  const allLogs = Naite.get("post:create:*").result();
+  expect(allLogs.length).toBeGreaterThan(0);
+  
+  // 입력 데이터 확인
+  const input = Naite.get("post:create:input").first();
+  expect(input.title).toBe("Test Post");
+  
+  // 출력 데이터 확인
+  const output = Naite.get("post:create:output").first();
+  expect(output.postId).toBeGreaterThan(0);
+  
+  // DB 쿼리 확인
+  const dbLogs = Naite.get("post:create:*")
+    .fromFunction("insertInto")
+    .result();
+  expect(dbLogs.length).toBeGreaterThan(0);
+});
+```
+
+### 2. Syncer 동작 검증
+
+```typescript
+test("Syncer 템플릿 렌더링", async () => {
+  await Sonamu.syncer.generateTemplate("model", { 
+    entityId: "User" 
+  });
+  
+  // renderTemplate 함수 호출 확인
+  const renderLogs = Naite.get("syncer:*")
+    .fromFunction("renderTemplate")
+    .result();
+  
+  expect(renderLogs.length).toBeGreaterThan(0);
+  
+  // User 엔티티 처리 확인
+  const userLogs = Naite.get("syncer:*")
+    .where("data.entityId", "=", "User")
+    .result();
+  
+  expect(userLogs.length).toBeGreaterThan(0);
+});
+```
+
+### 3. 에러 발생 추적
+
+```typescript
+test("에러 상황 추적", async () => {
+  try {
+    await createUser({ username: "" }); // 유효하지 않은 입력
+  } catch (error) {
+    // 에러 로그 확인
+    const errorLogs = Naite.get("user:create:error").result();
+    expect(errorLogs.length).toBeGreaterThan(0);
+    
+    // 에러 원인 확인
+    const validationErrors = Naite.get("user:*")
+      .where("data.error", "includes", "validation")
+      .result();
+    
+    expect(validationErrors.length).toBeGreaterThan(0);
+  }
+});
+```
+
+### 4. 성능 측정
+
+```typescript
+test("처리 시간 측정", async () => {
+  Naite.t("process:start", { at: new Date() });
+  
+  // 긴 작업
+  await longRunningTask();
+  
+  Naite.t("process:end", { at: new Date() });
+  
+  const logs = Naite.get("process:*").result();
+  const start = new Date(logs[0].at);
+  const end = new Date(logs[1].at);
+  
+  const duration = end.getTime() - start.getTime();
+  expect(duration).toBeLessThan(1000); // 1초 이내
+});
+```
+
+## 내부 구조
+
+### NaiteQuery 클래스
+
+```typescript
+export class NaiteQuery {
+  constructor(private traces: NaiteTrace[]) {}
+  
+  fromFile(fileName: string): NaiteQuery {
+    // 필터링 후 새 NaiteQuery 반환 (체이닝 가능)
+  }
+  
+  fromFunction(funcName: string, options?): NaiteQuery {
+    // 필터링 후 새 NaiteQuery 반환
+  }
+  
+  where(path: string, operator: string, value: any): NaiteQuery {
+    // 필터링 후 새 NaiteQuery 반환
+  }
+  
+  result(): any[] {
+    // 최종 데이터 배열 반환
+  }
+  
+  first(): any | undefined {
+    // 첫 번째 데이터
+  }
+  
+  last(): any | undefined {
+    // 마지막 데이터
+  }
+  
+  at(index: number): any | undefined {
+    // n번째 데이터
+  }
+}
+```
+
+### matchesPattern 로직
+
+```typescript
+function matchesPattern(key: string, pattern: string): boolean {
+  const keyParts = key.split(":");
+  const patternParts = pattern.split(":");
+
+  // 마지막이 * → prefix 매칭 (길이 무관)
+  if (patternParts[patternParts.length - 1] === "*") {
+    const prefixParts = patternParts.slice(0, -1);
+    return prefixParts.every((part, i) => part === keyParts[i]);
+  }
+
+  // 길이가 같아야 함
+  if (patternParts.length !== keyParts.length) {
+    return false;
+  }
+
+  // 각 파트가 * 또는 정확히 일치
+  return patternParts.every((part, i) => 
+    part === "*" || part === keyParts[i]
+  );
+}
+```
+
+## 베스트 프랙티스
+
+### 1. 명확한 키 구조
+
+```typescript
+// ✅ 올바른 방법: 계층적 구조
+Naite.t("module:function:action", { /* ... */ });
+
+// 조회 시 wildcard 활용
+Naite.get("module:*")           // 모듈 전체
+Naite.get("module:function:*")  // 특정 함수
+```
+
+### 2. 체이닝 순서 최적화
+
+```typescript
+// ✅ 좋은 방법: 필터가 많이 걸러지는 순서대로
+Naite.get("user:*")
+  .fromFile("user.model.test.ts")  // 파일 필터 (많이 걸러짐)
+  .fromFunction("createUser")      // 함수 필터
+  .where("data.userId", ">", 100)  // 데이터 필터
+  .result();
+```
+
+### 3. 결과 확인
+
+```typescript
+// ✅ 올바른 방법: 예상 결과 검증
+const logs = Naite.get("user:create").result();
+expect(logs.length).toBeGreaterThan(0); // 비어있지 않은지 확인
+
+// 구체적인 값 검증
+expect(logs[0].userId).toBeGreaterThan(0);
+expect(logs[0].username).toBe("john");
+```
+
+## 주의사항
+
+<Warning>
+**Naite.get() 사용 시 주의사항**:
+1. **빈 결과**: 로그가 없으면 빈 배열 반환
+2. **순서**: 기록된 순서대로 반환
+3. **체이닝**: 각 메서드는 새 NaiteQuery 반환
+4. **wildcard**: 패턴 매칭 규칙 이해 필요
+5. **where 경로**: radashi의 get 경로 형식 사용
+</Warning>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card title="Naite Viewer" icon="eye" href="/testing/naite/naite-viewer">
+    VSCode Extension 사용법
+  </Card>
+  <Card title="테스트 디버깅" icon="bug" href="/testing/naite/debugging-tests">
+    콜스택 추적 활용
+  </Card>
+  <Card title="로그 기록하기" icon="pen" href="/testing/naite/recording-logs">
+    Naite.t() 상세 사용법
+  </Card>
+  <Card title="Naite란?" icon="circle-info" href="/testing/naite/what-is-naite">
+    Naite 개요
+  </Card>
+</CardGroup>
