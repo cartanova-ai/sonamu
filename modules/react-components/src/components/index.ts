@@ -147,6 +147,13 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+// File Uploader - Lazy (Single/Multiple)
+export type {
+  CommonFileUploaderProps,
+  LazyFileUploaderProps,
+  LazyFileUploaderRef,
+} from "./ui/file-uploader/lazy-file-uploader";
+export { LazyFileUploader } from "./ui/file-uploader/lazy-file-uploader";
 export {
   Form,
   FormControl,
@@ -158,8 +165,15 @@ export {
   useFormField,
 } from "./ui/form";
 export { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
-export type { ImageUploaderProps } from "./ui/image-uploader";
-export { ImageUploader } from "./ui/image-uploader";
+// Image Uploader - Eager & Lazy
+export type { EagerImageUploaderProps } from "./ui/image-uploader/eager-image-uploader";
+export { EagerImageUploader } from "./ui/image-uploader/eager-image-uploader";
+export type {
+  CommonUploaderProps,
+  LazyImageUploaderProps,
+  LazyImageUploaderRef,
+} from "./ui/image-uploader/lazy-image-uploader";
+export { LazyImageUploader } from "./ui/image-uploader/lazy-image-uploader";
 export { Input, type InputProps } from "./ui/input";
 export {
   InputOTP,
@@ -188,8 +202,16 @@ export {
 } from "./ui/menubar";
 export type { MonthPickerValue } from "./ui/month-picker-multiple";
 export { MonthPickerMultiple } from "./ui/month-picker-multiple";
-export type { MultiImageUploaderProps } from "./ui/multi-image-uploader";
-export { MultiImageUploader } from "./ui/multi-image-uploader";
+// Multi Image Uploader - Eager & Lazy
+export type { EagerMultiImageUploaderProps } from "./ui/multi-image-uploader/eager-multi-image-uploader";
+export { EagerMultiImageUploader } from "./ui/multi-image-uploader/eager-multi-image-uploader";
+export type {
+  CommonMultiUploaderProps,
+  LazyMultiImageUploaderProps,
+  LazyMultiImageUploaderRef,
+} from "./ui/multi-image-uploader/lazy-multi-image-uploader";
+export { LazyMultiImageUploader } from "./ui/multi-image-uploader/lazy-multi-image-uploader";
+
 export type {
   MultiSelectOption,
   MultiSelectProps,

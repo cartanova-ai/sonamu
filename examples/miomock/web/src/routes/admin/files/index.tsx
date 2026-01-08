@@ -12,9 +12,12 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
-  ImageUploader,
+  EagerImageUploader,
+  EagerMultiImageUploader,
   Input,
-  MultiImageUploader,
+  LazyFileUploader,
+  LazyImageUploader,
+  LazyMultiImageUploader,
   Pagination,
   Table,
   TableBody,
@@ -24,20 +27,15 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import {
-  datetimeF,
-  lazyUpload,
-  useListParams,
-  useTypeForm,
-} from "@sonamu-kit/react-components/lib";
+import { datetimeF, useListParams, useTypeForm } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import z from "zod";
 import { ApiLogViewer } from "@/admin-common/ApiLogViewer";
 import { FileOrderBySelect } from "@/components/file/FileOrderBySelect";
 import { FileSearchFieldSelect } from "@/components/file/FileSearchFieldSelect";
 import { SD } from "@/i18n/sd.generated";
-import { FileListParams, FileSaveParams } from "@/services/file/file.types";
+import { FileListParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
 import { FileOrderBy, FileSearchField } from "@/services/sonamu.generated";
 import EditIcon from "~icons/lucide/square-pen";
@@ -62,40 +60,26 @@ function FileList({}: FileListProps) {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number } | null>(null);
-  const [uploading, setUploading] = useState(false);
 
   // Eager 모드 테스트 상태
-  const eagerForm = useTypeForm(FileSaveParams, {
-    name: "",
-    url: "",
-    mime_type: "",
-  });
-  const eagerMultipleForm = useTypeForm(
-    z.object({
-      urls: z.array(z.string()),
-    }),
-    {
-      urls: [],
-    },
-  );
+  const eagerMultipleForm = useTypeForm(z.object({ urls: z.array(z.string()) }), { urls: [] });
+  const eagerForm = useTypeForm(z.object({ url: z.string() }), { url: "" });
 
   // Lazy 모드 테스트 상태
-  const lazyForm = useTypeForm(
-    z.object({
-      url: z.string(),
-    }),
-    {
-      url: "",
-    },
-  );
-  const lazyMultipleForm = useTypeForm(
-    z.object({
-      urls: z.array(z.string()),
-    }),
-    {
-      urls: [],
-    },
-  );
+  const lazyImageRef = useRef<{ commit: () => Promise<string> }>(null);
+  const lazyForm = useTypeForm(z.object({ url: z.string() }), { url: "" });
+  const lazyMultiImageRef = useRef<{ commit: () => Promise<string[]> }>(null);
+  const lazyMultipleForm = useTypeForm(z.object({ urls: z.array(z.string()) }), { urls: [] });
+
+  // File Uploader 테스트 상태
+  const lazyFileSingleRef = useRef<{ commit: () => Promise<string> }>(null);
+  const lazyFileSingleForm = useTypeForm(z.object({ url: z.string() }), { url: "" });
+  const lazyFileMultipleRef = useRef<{ commit: () => Promise<string[]> }>(null);
+  const lazyFileMultipleForm = useTypeForm(z.object({ urls: z.array(z.string()) }), { urls: [] });
+
+  // Upload mutations
+  const uploadSingleMutation = FileService.useUploadMutation();
+  const uploadMultipleMutation = FileService.useUploadMultipleMutation();
 
   // 리스트 필터
   const { listParams, register } = useListParams(FileListParams, {
@@ -207,6 +191,7 @@ function FileList({}: FileListProps) {
   return (
     <div className="flex-1 overflow-auto">
       <div className="max-w-[1800px] mx-auto p-8">
+        {/* 2. Lazy 모드 테스트 */}
         <div className="space-y-6 mb-8">
           {/* Header */}
           <div className="flex items-center gap-2">
@@ -215,13 +200,13 @@ function FileList({}: FileListProps) {
           </div>
 
           {/* Upload Test Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="space-y-4">
+          <div className="space-y-6 mb-6">
+            <div className="grid grid-cols-2 gap-4">
               {/* Eager Single */}
               <Card className="border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-2">
                   <div className="text-sm font-semibold text-blue-700">
-                    Eager 모드 테스트 (기존 방식)
+                    Eager Single Image Uploader
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -229,11 +214,14 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 업로드 (즉시 업로드)
                     </label>
-                    <ImageUploader
-                      {...eagerForm.register("url")}
+                    <EagerImageUploader
+                      value={eagerForm.form.url}
+                      onValueChange={(url) =>
+                        eagerForm.setForm({ ...eagerForm.form, url: url || "" })
+                      }
                       uploader={async (file: File) => {
-                        const response = await FileService.upload(file);
-                        return response.file.url;
+                        const response = await uploadSingleMutation.mutateAsync({ file });
+                        return { url: response.file.url, name: response.file.name };
                       }}
                     />
                   </div>
@@ -244,7 +232,7 @@ function FileList({}: FileListProps) {
               <Card className="border-blue-200 bg-blue-50/50">
                 <CardHeader className="pb-2">
                   <div className="text-sm font-semibold text-blue-700">
-                    Eager 모드 테스트 (Multiple)
+                    Eager Multiple Image Uploader
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -252,22 +240,28 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 업로드 (즉시 업로드)
                     </label>
-                    <MultiImageUploader
-                      {...eagerMultipleForm.register("urls")}
-                      uploader={async (file: File) => {
-                        const response = await FileService.upload(file);
-                        return response.file.url;
+                    <EagerMultiImageUploader
+                      value={eagerMultipleForm.form.urls}
+                      onValueChange={(urls) =>
+                        eagerMultipleForm.setForm({ ...eagerMultipleForm.form, urls })
+                      }
+                      uploader={async (files: File[]) => {
+                        const response = await uploadMultipleMutation.mutateAsync({ files });
+                        return response.files.map((f) => ({ url: f.url, name: f.name }));
                       }}
                     />
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
+            {/* 2. Lazy 모드 테스트 */}
+            <div className="grid grid-cols-2 gap-4">
               {/* Lazy Single */}
               <Card className="border-green-200 bg-green-50/50">
                 <CardHeader className="pb-2">
                   <div className="text-sm font-semibold text-green-700">
-                    Lazy 모드 테스트 (submit 시점에 업로드)
+                    Lazy Single Image Uploader
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -275,12 +269,15 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 선택 (업로드 대기)
                     </label>
-                    <ImageUploader
-                      mode="lazy"
-                      {...lazyForm.register("url")}
+                    <LazyImageUploader
+                      ref={lazyImageRef}
+                      value={lazyForm.form.url}
+                      onValueChange={(url) =>
+                        lazyForm.setForm({ ...lazyForm.form, url: url || "" })
+                      }
                       uploader={async (file: File) => {
-                        const response = await FileService.upload(file);
-                        return response.file.url;
+                        const response = await uploadSingleMutation.mutateAsync({ file });
+                        return { url: response.file.url, name: response.file.name };
                       }}
                     />
                   </div>
@@ -288,21 +285,18 @@ function FileList({}: FileListProps) {
                     <Button
                       className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white"
                       onClick={async () => {
-                        setUploading(true);
-                        try {
-                          await lazyUpload();
+                        if (lazyImageRef.current) {
+                          const url = await lazyImageRef.current.commit();
+                          lazyForm.setForm({ ...lazyForm.form, url });
                           refetch();
-                        } finally {
-                          setUploading(false);
                         }
                       }}
-                      disabled={uploading}
                       icon={<UploadIcon />}
                     >
-                      {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
+                      저장 (클릭 시 업로드 시작)
                     </Button>
                     <span className="text-xs text-gray-500">
-                      {lazyForm.form.url ? lazyForm.form.url : "파일 대기 중"}
+                      {lazyForm.form.url || "파일을 선택하세요"}
                     </span>
                   </div>
                 </CardContent>
@@ -312,7 +306,7 @@ function FileList({}: FileListProps) {
               <Card className="border-green-200 bg-green-50/50">
                 <CardHeader className="pb-2">
                   <div className="text-sm font-semibold text-green-700">
-                    Lazy 모드 테스트 (Multiple)
+                    Lazy Multiple Image Uploader
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -320,42 +314,146 @@ function FileList({}: FileListProps) {
                     <label className="text-xs text-gray-600 mb-1 block">
                       파일 선택 (업로드 대기)
                     </label>
-                    <MultiImageUploader
-                      mode="lazy"
-                      accept="image/*"
-                      {...lazyMultipleForm.register("urls")}
-                      uploader={async (file: File) => {
-                        const response = await FileService.upload(file);
-                        return response.file.url;
+                    <LazyMultiImageUploader
+                      ref={lazyMultiImageRef}
+                      value={lazyMultipleForm.form.urls}
+                      onValueChange={(urls) =>
+                        lazyMultipleForm.setForm({ ...lazyMultipleForm.form, urls })
+                      }
+                      uploader={async (files: File[]) => {
+                        const response = await uploadMultipleMutation.mutateAsync({ files });
+                        return response.files.map((f) => ({ url: f.url, name: f.name }));
                       }}
                     />
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
                       className="h-8 px-4 bg-green-600 hover:bg-green-700 text-white"
+                      icon={<UploadIcon />}
                       onClick={async () => {
-                        setUploading(true);
-                        try {
-                          await lazyUpload();
+                        if (lazyMultiImageRef.current) {
+                          const urls = await lazyMultiImageRef.current.commit();
+                          lazyMultipleForm.setForm({ ...lazyMultipleForm.form, urls });
                           refetch();
-                        } finally {
-                          setUploading(false);
                         }
                       }}
-                      disabled={uploading}
-                      icon={<UploadIcon />}
                     >
-                      {uploading ? "업로드 중..." : "저장 (클릭 시 업로드 시작)"}
+                      저장 (클릭 시 업로드 시작)
                     </Button>
                     <span className="text-xs text-gray-500">
-                      {`${lazyMultipleForm.form.urls.length}개의 파일 대기 중`}
+                      {lazyMultipleForm.form.urls.length > 0
+                        ? `${lazyMultipleForm.form.urls.length}개의 파일 업로드됨`
+                        : "파일을 선택하세요"}
                     </span>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* API Log Viewer */}
+            {/* 3. File Uploader 테스트 */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Lazy Single File Uploader */}
+              <Card className="border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-2">
+                  <div className="text-sm font-semibold text-purple-700">
+                    Lazy Single File Uploader
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      파일 선택 (업로드 대기)
+                    </label>
+                    <LazyFileUploader
+                      ref={lazyFileSingleRef}
+                      multiple={false}
+                      value={lazyFileSingleForm.form.url}
+                      onValueChange={(url) =>
+                        lazyFileSingleForm.setForm({ ...lazyFileSingleForm.form, url: url || "" })
+                      }
+                      uploader={async (file: File) => {
+                        const response = await uploadSingleMutation.mutateAsync({ file });
+                        return { url: response.file.url, name: response.file.name };
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      className="h-8 px-4 bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={async () => {
+                        if (lazyFileSingleRef.current) {
+                          const url = await lazyFileSingleRef.current.commit();
+                          lazyFileSingleForm.setForm({ ...lazyFileSingleForm.form, url });
+                          refetch();
+                        }
+                      }}
+                      disabled={uploadSingleMutation.isPending}
+                      icon={<UploadIcon />}
+                    >
+                      {uploadSingleMutation.isPending
+                        ? "업로드 중..."
+                        : "저장 (클릭 시 업로드 시작)"}
+                    </Button>
+                    <span className="text-xs text-gray-500">
+                      {lazyFileSingleForm.form.url || "파일을 선택하세요"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Lazy Multiple File Uploader */}
+              <Card className="border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-2">
+                  <div className="text-sm font-semibold text-purple-700">
+                    Lazy Multiple File Uploader
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <label className="text-xs text-gray-600 mb-1 block">
+                      파일 선택 (업로드 대기)
+                    </label>
+                    <LazyFileUploader
+                      ref={lazyFileMultipleRef}
+                      multiple={true}
+                      value={lazyFileMultipleForm.form.urls}
+                      onValueChange={(urls) =>
+                        lazyFileMultipleForm.setForm({ ...lazyFileMultipleForm.form, urls })
+                      }
+                      uploader={async (files: File[]) => {
+                        const response = await uploadMultipleMutation.mutateAsync({ files });
+                        return response.files.map((f) => ({ url: f.url, name: f.name }));
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      className="h-8 px-4 bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={async () => {
+                        if (lazyFileMultipleRef.current) {
+                          const urls = await lazyFileMultipleRef.current.commit();
+                          lazyFileMultipleForm.setForm({ ...lazyFileMultipleForm.form, urls });
+                          refetch();
+                        }
+                      }}
+                      disabled={uploadMultipleMutation.isPending}
+                      icon={<UploadIcon />}
+                    >
+                      {uploadMultipleMutation.isPending
+                        ? "업로드 중..."
+                        : "저장 (클릭 시 업로드 시작)"}
+                    </Button>
+                    <span className="text-xs text-gray-500">
+                      {lazyFileMultipleForm.form.urls.length > 0
+                        ? `${lazyFileMultipleForm.form.urls.length}개의 파일 업로드됨`
+                        : "파일을 선택하세요"}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 4. API 로그 */}
             <div>
               <ApiLogViewer bodyOnly={true} />
             </div>

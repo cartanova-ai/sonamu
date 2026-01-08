@@ -5,8 +5,8 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  EagerMultiImageUploader,
   Input,
-  MultiImageUploader,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,6 +69,8 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   }, [id, setForm]);
 
   const saveMutation = ProjectService.useSaveMutation();
+  const uploadMultipleMutation = FileService.useUploadMultipleMutation();
+
   const handleSubmit = () => {
     saveMutation.mutate(
       { spa: [form] },
@@ -176,12 +178,12 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 {/* 이미지URLS */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
-                  <MultiImageUploader
+                  <EagerMultiImageUploader
                     value={Array.isArray(form.image_urls) ? form.image_urls : []}
-                    onValueChange={(urls) => setForm({ ...form, image_urls: urls })}
-                    uploader={async (file: File) => {
-                      const { file: uploadedFile } = await FileService.upload(file);
-                      return uploadedFile.url;
+                    onValueChange={(urls: string[]) => setForm({ ...form, image_urls: urls })}
+                    uploader={async (files: File[]) => {
+                      const response = await uploadMultipleMutation.mutateAsync({ files });
+                      return response.files.map((f) => ({ url: f.url, name: f.name }));
                     }}
                     previewSize="md"
                     placeholder="이미지URLS"
