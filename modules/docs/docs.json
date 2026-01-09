@@ -445,7 +445,9 @@
                 "group": "데코레이터",
                 "pages": [
                   "api-reference/decorators/api",
+                  "api-reference/decorators/stream",
                   "api-reference/decorators/transactional",
+                  "api-reference/decorators/upload",
                   "api-reference/decorators/cache",
                   "api-reference/decorators/workflow"
                 ]
