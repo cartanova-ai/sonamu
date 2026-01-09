@@ -37,6 +37,10 @@ function I18nIndex() {
   const [editValue, setEditValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 미사용 키 상태
+  const [unusedKeys, setUnusedKeys] = useState<Set<string>>(new Set());
+  const [usageCheckError, setUsageCheckError] = useState<string | null>(null);
+
   // 편집 모드 진입 시 input에 포커스
   useEffect(() => {
     if (editingCell && inputRef.current) {
@@ -44,6 +48,30 @@ function I18nIndex() {
       inputRef.current.select();
     }
   }, [editingCell]);
+
+  // 데이터 로드 시 자동으로 미사용 키 검사
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+
+    const checkUsage = async () => {
+      const projectKeys = rows.filter((row) => row.source === "project").map((row) => row.key);
+      if (projectKeys.length === 0) return;
+
+      try {
+        const result = await SonamuUIService.checkI18nUsage(projectKeys);
+        if (result.error) {
+          setUsageCheckError(result.error);
+          return;
+        }
+        setUnusedKeys(new Set(result.unusedKeys));
+        setUsageCheckError(null);
+      } catch {
+        // 네트워크 오류 등은 무시
+      }
+    };
+
+    checkUsage();
+  }, [rows]);
 
   const handleExport = async () => {
     setLoading(true);
@@ -245,6 +273,12 @@ function I18nIndex() {
             Double-click on a cell to edit. Press Enter to save, Escape to cancel.
           </p>
 
+          {usageCheckError && (
+            <p className="text-sm text-yellow-600 mb-4 p-2 bg-yellow-50 rounded">
+              &#x26A0; {usageCheckError}
+            </p>
+          )}
+
           {isLoading && <div className="text-gray-500">Loading...</div>}
           {error && <div className="text-red-500">Error: {String(error)}</div>}
 
@@ -283,7 +317,19 @@ function I18nIndex() {
                     key={row.key}
                     className={row.source === "sonamu" ? "bg-gray-50 text-gray-500" : undefined}
                   >
-                    {renderEditableCell(row, "key", row.key, "font-mono text-sm")}
+                    {renderEditableCell(
+                      row,
+                      "key",
+                      <>
+                        {!usageCheckError && unusedKeys.has(row.key) && (
+                          <span className="text-red-500 mr-1" title="미사용 키">
+                            &#x2757;
+                          </span>
+                        )}
+                        {row.key}
+                      </>,
+                      "font-mono text-sm",
+                    )}
                     <TableCell>
                       <span
                         className={`text-xs px-2 py-0.5 rounded ${

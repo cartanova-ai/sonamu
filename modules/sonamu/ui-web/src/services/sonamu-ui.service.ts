@@ -471,6 +471,18 @@ export namespace SonamuUIService {
       data: params,
     });
   }
+
+  export function checkI18nUsage(keys: string[]): Promise<{
+    unusedKeys: string[];
+    usedKeysCount?: number;
+    error?: string;
+  }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/i18n/checkUsage`,
+      data: { keys },
+    });
+  }
 }
 
 export type ScaffoldingStatus = {

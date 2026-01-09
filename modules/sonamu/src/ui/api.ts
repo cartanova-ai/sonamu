@@ -1345,6 +1345,76 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return { success: true };
       });
 
+      // POST /api/i18n/checkUsage - ast-grep을 사용하여 미사용 키 검사
+      server.post<{ Body: { keys: string[] } }>("/api/i18n/checkUsage", async (request) => {
+        const { keys } = request.body;
+        const { execSync } = await import("child_process");
+
+        // ast-grep 설치 확인
+        let sgPath: string | null = null;
+        try {
+          sgPath = execSync("which sg", { encoding: "utf-8" }).trim();
+        } catch {
+          try {
+            sgPath = execSync("which ast-grep", { encoding: "utf-8" }).trim();
+          } catch {
+            // ast-grep not installed
+          }
+        }
+
+        if (!sgPath) {
+          return {
+            error:
+              "ast-grep이 설치되어 있지 않습니다. brew install ast-grep 또는 npm install -g @ast-grep/cli로 설치해주세요.",
+            unusedKeys: [] as string[],
+          };
+        }
+
+        // 프로젝트 src 디렉토리에서 검색
+        const searchPath = path.join(Sonamu.apiRootPath, "src");
+        const usedKeys = new Set<string>();
+
+        try {
+          // ast-grep으로 SD("...") 패턴 검색
+          // 패턴: SD("KEY") 또는 SD('KEY') 형태
+          const patterns = ['SD("$KEY")', "SD('$KEY')"];
+
+          for (const pattern of patterns) {
+            try {
+              const result = execSync(`${sgPath} --pattern '${pattern}' --json ${searchPath}`, {
+                encoding: "utf-8",
+                maxBuffer: 50 * 1024 * 1024, // 50MB
+              });
+
+              if (result.trim()) {
+                const matches = JSON.parse(result);
+                for (const match of matches) {
+                  // metaVariables.single.KEY.text에서 키 추출
+                  const keyText = match.metaVariables?.single?.KEY?.text;
+                  if (keyText) {
+                    // 따옴표 제거
+                    const cleanKey = keyText.replace(/^["']|["']$/g, "");
+                    usedKeys.add(cleanKey);
+                  }
+                }
+              }
+            } catch {
+              // 패턴 매치 없으면 에러 (무시)
+            }
+          }
+
+          // keys 중에서 usedKeys에 없는 것들이 미사용 키
+          const unusedKeys = keys.filter((k) => !usedKeys.has(k));
+
+          return { unusedKeys, usedKeysCount: usedKeys.size };
+        } catch (e) {
+          return {
+            error: `검색 중 오류 발생: ${e instanceof Error ? e.message : String(e)}`,
+            unusedKeys: [] as string[],
+          };
+        }
+      });
+
       // ui-web 빌드 파일 서빙
       const uiDistPath = path.resolve(import.meta.dirname, "../ui-web");
 
