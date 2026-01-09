@@ -31,13 +31,13 @@ type BaseProps = {
 
 type SingleModeProps = BaseProps & {
   multiple?: false;
-  value: string | File | null;
-  onValueChange?: (value: string | File | null) => void;
+  value: string | File | "";
+  onValueChange?: (value: string | File | "") => void;
 };
 
 type MultipleModeProps = BaseProps & {
   multiple: true;
-  value: (string | File)[];
+  value: (string | File)[] | null;
   onValueChange?: (value: (string | File)[]) => void;
   maxFiles?: number;
 };
@@ -72,13 +72,19 @@ export function FileInput(props: FileInputProps) {
     placeholder ?? `${isImageView ? "이미지" : "파일"} URL${isMultiple ? "S" : ""}`;
 
   // 입력 정규화: 내부적으로 배열로 통일
-  const values = (() => {
-    if (!isMultiple) {
-      const singleValue = (props as SingleModeProps).value;
-      return singleValue ? [singleValue] : [];
-    }
-    return (props as MultipleModeProps).value;
-  })();
+
+  const values =
+    (() => {
+      if (!isMultiple) {
+        const singleValue = (props as SingleModeProps).value;
+        return singleValue ? [singleValue] : [];
+      }
+
+      if (props.value === "") {
+        return [];
+      }
+      return (props as MultipleModeProps).value;
+    })() ?? [];
 
   // File 객체만 추출
   const fileObjects = values.filter((v): v is File => v instanceof File);
@@ -87,7 +93,7 @@ export function FileInput(props: FileInputProps) {
   const blobUrls = useObjectUrls(fileObjects);
 
   // 최종 URLs: 원래 순서를 유지하면서 File은 blob URL로, string은 그대로
-  const urls = values.map((v) => {
+  const urls = values?.map((v) => {
     if (v instanceof File) {
       const index = fileObjects.indexOf(v);
       return blobUrls[index];

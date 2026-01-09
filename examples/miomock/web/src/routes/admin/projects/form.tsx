@@ -5,19 +5,18 @@ import {
   CardHeader,
   CardTitle,
   DateInput,
+  FileInput,
   Input,
-  LazyMultiImageUploader,
-  type LazyMultiImageUploaderRef,
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { z } from "zod";
 import { ProjectStatusSelect } from "@/components/project/ProjectStatusSelect";
 import { SD } from "@/i18n/sd.generated";
 import { ProjectSaveParams } from "@/services/project/project.types";
-import { FileService, ProjectService } from "@/services/services.generated";
+import { ProjectService } from "@/services/services.generated";
 import { defaultCatch } from "@/services/sonamu.shared";
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
@@ -46,9 +45,8 @@ type ProjectsFormProps = {
 export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const lazyMultiImageRef = useRef<LazyMultiImageUploaderRef>(null);
 
-  const { form, setForm, register } = useTypeForm(ProjectSaveParams, {
+  const { form, setForm, register, submit } = useTypeForm(ProjectSaveParams, {
     name: "",
     status: "planning",
     description: null,
@@ -71,39 +69,27 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   }, [id, setForm]);
 
   const saveMutation = ProjectService.useSaveMutation();
-  const uploadMultipleMutation = FileService.useUploadMultipleMutation();
 
-  const handleSubmit = async () => {
-    try {
-      // 대기 중인 이미지 업로드
-      let updatedImageUrls = form.image_urls;
-      if (lazyMultiImageRef.current) {
-        updatedImageUrls = await lazyMultiImageRef.current.commit();
-      }
+  const handleSubmit = submit(async (form) => {
+    // 프로젝트 저장
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["Project"],
+          });
 
-      // 프로젝트 저장 (업데이트된 image_urls 사용)
-      saveMutation.mutate(
-        { spa: [{ ...form, image_urls: updatedImageUrls }] },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({
-              queryKey: ["Project"],
-            });
-
-            if (mode === "modal") {
-              // modal mode
-            } else {
-              router.navigate({ to: "/admin/projects" });
-            }
-          },
-          onError: defaultCatch,
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            router.navigate({ to: "/admin/projects" });
+          }
         },
-      );
-    } catch (error) {
-      console.error("이미지 업로드 실패:", error);
-      defaultCatch(error);
-    }
-  };
+        onError: defaultCatch,
+      },
+    );
+  });
 
   const PAGE = {
     title: id ? SD("entity.Project.edit")(id) : SD("entity.Project.create"),
@@ -192,16 +178,13 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
                 {/* 이미지URLS */}
                 <div className="space-y-2">
                   <label className="block text-xs mb-1 text-gray-600">이미지URLS</label>
-                  <LazyMultiImageUploader
-                    ref={lazyMultiImageRef}
-                    value={Array.isArray(form.image_urls) ? form.image_urls : []}
-                    onValueChange={(urls: string[]) => setForm({ ...form, image_urls: urls })}
-                    uploader={async (files: File[]) => {
-                      const response = await uploadMultipleMutation.mutateAsync({ files });
-                      return response.files.map((f) => ({ url: f.url, name: f.name }));
-                    }}
+                  <FileInput
+                    multiple={true}
+                    uploadMode="lazy"
+                    viewMode="image"
                     previewSize="md"
-                    placeholder="이미지URLS"
+                    maxFiles={10}
+                    {...register("image_urls")}
                   />
                 </div>
 

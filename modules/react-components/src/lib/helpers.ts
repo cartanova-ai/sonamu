@@ -85,7 +85,11 @@ async function traverseAndUploadFiles(
   }
 
   // 객체인 경우 (null 제외)
-  if (value !== null && typeof value === "object") {
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    Object.prototype.toString.call(value) === "[object Object]"
+  ) {
     const result: any = {};
     for (const [key, val] of Object.entries(value)) {
       result[key] = await traverseAndUploadFiles(val, uploader);
