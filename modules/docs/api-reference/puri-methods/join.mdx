@@ -3,8 +3,575 @@ title: 'join'
 description: '테이블 조인하기'
 ---
 
-# join
+`join`과 `leftJoin`은 여러 테이블을 연결하여 관계 데이터를 조회하는 메서드입니다. 타입 안전하게 테이블을 조인하고, 복잡한 조인 조건을 지원합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 기본 사용법
+
+### INNER JOIN
+
+```typescript
+const posts = await puri.table("posts")
+  .join("users", "posts.user_id", "users.id")
+  .select({
+    post_id: "posts.id",
+    title: "posts.title",
+    author_name: "users.name"
+  });
+
+// SELECT posts.id as post_id, posts.title, users.name as author_name
+// FROM posts
+// INNER JOIN users ON posts.user_id = users.id
+```
+
+### LEFT JOIN
+
+```typescript
+const posts = await puri.table("posts")
+  .leftJoin("users", "posts.user_id", "users.id")
+  .select({
+    post_id: "posts.id",
+    title: "posts.title",
+    author_name: "users.name"  // null 가능
+  });
+
+// SELECT posts.id as post_id, posts.title, users.name as author_name
+// FROM posts
+// LEFT JOIN users ON posts.user_id = users.id
+```
+
+<Info>
+**INNER JOIN**: 양쪽 테이블 모두에 매칭되는 레코드만 반환  
+**LEFT JOIN**: 왼쪽 테이블의 모든 레코드 반환 (오른쪽은 null 가능)
+</Info>
+
+## 테이블 별칭 (Alias)
+
+### 별칭 사용
+
+```typescript
+const posts = await puri.table("posts")
+  .join({ u: "users" }, "posts.user_id", "u.id")
+  .select({
+    post_id: "posts.id",
+    author_name: "u.name"  // 별칭 사용
+  });
+
+// FROM posts
+// INNER JOIN users AS u ON posts.user_id = u.id
+```
+
+### 같은 테이블 여러 번 조인
+
+```typescript
+const posts = await puri.table("posts")
+  .join({ author: "users" }, "posts.author_id", "author.id")
+  .leftJoin({ editor: "users" }, "posts.editor_id", "editor.id")
+  .select({
+    post_id: "posts.id",
+    author_name: "author.name",
+    editor_name: "editor.name"  // null 가능
+  });
+
+// FROM posts
+// INNER JOIN users AS author ON posts.author_id = author.id
+// LEFT JOIN users AS editor ON posts.editor_id = editor.id
+```
+
+## 복잡한 조인 조건
+
+### 콜백 함수 사용
+
+여러 조건을 조합할 수 있습니다.
+
+```typescript
+const result = await puri.table("orders")
+  .join("users", (j) => {
+    j.on("orders.user_id", "users.id")
+     .on("orders.country", "users.country");
+  })
+  .select({
+    order_id: "orders.id",
+    user_name: "users.name"
+  });
+
+// FROM orders
+// INNER JOIN users ON orders.user_id = users.id 
+//                  AND orders.country = users.country
+```
+
+### OR 조건
+
+```typescript
+const result = await puri.table("products")
+  .leftJoin("categories", (j) => {
+    j.on("products.category_id", "categories.id")
+     .orOn("products.parent_category_id", "categories.id");
+  })
+  .select({
+    product_name: "products.name",
+    category_name: "categories.name"
+  });
+
+// LEFT JOIN categories ON products.category_id = categories.id 
+//                      OR products.parent_category_id = categories.id
+```
+
+### 조건값과 비교
+
+```typescript
+const result = await puri.table("orders")
+  .join("users", (j) => {
+    j.on("orders.user_id", "users.id")
+     .on("users.status", "=", "active")  // 고정 값 비교
+     .on("orders.created_at", ">", new Date("2024-01-01"));
+  })
+  .selectAll();
+```
+
+## 서브쿼리 조인
+
+서브쿼리를 테이블처럼 조인할 수 있습니다.
+
+```typescript
+// 서브쿼리 생성
+const recentOrders = puri.table("orders")
+  .where("orders.created_at", ">", new Date("2024-01-01"))
+  .select({
+    user_id: "orders.user_id",
+    order_count: Puri.count()
+  })
+  .groupBy("orders.user_id");
+
+// 서브쿼리 조인
+const result = await puri.table("users")
+  .join(
+    { ro: recentOrders },  // 별칭 필수
+    "users.id",
+    "ro.user_id"
+  )
+  .select({
+    user_id: "users.id",
+    user_name: "users.name",
+    order_count: "ro.order_count"
+  });
+
+// FROM users
+// INNER JOIN (
+//   SELECT user_id, COUNT(*) as order_count
+//   FROM orders
+//   WHERE created_at > '2024-01-01'
+//   GROUP BY user_id
+// ) AS ro ON users.id = ro.user_id
+```
+
+## 여러 테이블 조인
+
+순차적으로 여러 테이블을 조인할 수 있습니다.
+
+```typescript
+const posts = await puri.table("posts")
+  .join("users", "posts.user_id", "users.id")
+  .leftJoin("categories", "posts.category_id", "categories.id")
+  .leftJoin("tags", "posts.id", "tags.post_id")
+  .select({
+    // posts
+    post_id: "posts.id",
+    title: "posts.title",
+    
+    // users
+    author_name: "users.name",
+    author_email: "users.email",
+    
+    // categories (nullable)
+    category_name: "categories.name",
+    
+    // tags (nullable)
+    tag_name: "tags.name"
+  });
+
+// FROM posts
+// INNER JOIN users ON posts.user_id = users.id
+// LEFT JOIN categories ON posts.category_id = categories.id
+// LEFT JOIN tags ON posts.id = tags.post_id
+```
+
+## 실전 예시
+
+<Tabs>
+  <Tab title="게시물 + 작성자" icon="file-pen">
+    ```typescript
+    async function getPostsWithAuthors() {
+      return puri.table("posts")
+        .join("users", "posts.user_id", "users.id")
+        .where("posts.published", true)
+        .select({
+          // 게시물 정보
+          id: "posts.id",
+          title: "posts.title",
+          content: "posts.content",
+          created_at: "posts.created_at",
+          
+          // 작성자 정보
+          author: {
+            id: "users.id",
+            name: "users.name",
+            email: "users.email"
+          }
+        })
+        .orderBy("posts.created_at", "desc")
+        .limit(20);
+    }
+    ```
+  </Tab>
+
+  <Tab title="주문 + 사용자 + 상품" icon="cart-shopping">
+    ```typescript
+    async function getOrderDetails(orderId: number) {
+      return puri.table("orders")
+        .join("users", "orders.user_id", "users.id")
+        .join("order_items", "orders.id", "order_items.order_id")
+        .join("products", "order_items.product_id", "products.id")
+        .where("orders.id", orderId)
+        .select({
+          // 주문 정보
+          order_id: "orders.id",
+          order_status: "orders.status",
+          order_date: "orders.created_at",
+          
+          // 사용자 정보
+          customer: {
+            name: "users.name",
+            email: "users.email",
+            phone: "users.phone"
+          },
+          
+          // 상품 정보
+          items: {
+            product_id: "products.id",
+            product_name: "products.name",
+            quantity: "order_items.quantity",
+            price: "order_items.price"
+          }
+        });
+    }
+    ```
+  </Tab>
+
+  <Tab title="통계 쿼리" icon="chart-bar">
+    ```typescript
+    async function getUserStatistics() {
+      return puri.table("users")
+        .leftJoin("posts", "users.id", "posts.user_id")
+        .leftJoin("comments", "users.id", "comments.user_id")
+        .select({
+          user_id: "users.id",
+          user_name: "users.name",
+          
+          // 게시물 수
+          post_count: Puri.rawNumber(
+            "COUNT(DISTINCT posts.id)"
+          ),
+          
+          // 댓글 수
+          comment_count: Puri.rawNumber(
+            "COUNT(DISTINCT comments.id)"
+          ),
+          
+          // 마지막 활동
+          last_activity: Puri.rawDate(
+            "GREATEST(MAX(posts.created_at), MAX(comments.created_at))"
+          )
+        })
+        .groupBy("users.id", "users.name")
+        .having("post_count", ">", 0)
+        .orderBy("post_count", "desc");
+    }
+    ```
+  </Tab>
+
+  <Tab title="셀프 조인" icon="users">
+    ```typescript
+    async function getUsersWithManagers() {
+      return puri.table({ emp: "users" })
+        .leftJoin(
+          { mgr: "users" },
+          "emp.manager_id",
+          "mgr.id"
+        )
+        .select({
+          // 직원 정보
+          employee_id: "emp.id",
+          employee_name: "emp.name",
+          employee_email: "emp.email",
+          
+          // 매니저 정보 (nullable)
+          manager: {
+            id: "mgr.id",
+            name: "mgr.name",
+            email: "mgr.email"
+          }
+        })
+        .orderBy("emp.name", "asc");
+    }
+    ```
+  </Tab>
+
+  <Tab title="서브쿼리 조인" icon="layer-group">
+    ```typescript
+    async function getTopContributors(limit: number = 10) {
+      // 사용자별 게시물 수 계산 (서브쿼리)
+      const postCounts = puri.table("posts")
+        .where("posts.published", true)
+        .select({
+          user_id: "posts.user_id",
+          post_count: Puri.count()
+        })
+        .groupBy("posts.user_id");
+
+      // 사용자 정보와 조인
+      return puri.table("users")
+        .join(
+          { pc: postCounts },
+          "users.id",
+          "pc.user_id"
+        )
+        .select({
+          id: "users.id",
+          name: "users.name",
+          email: "users.email",
+          post_count: "pc.post_count"
+        })
+        .orderBy("pc.post_count", "desc")
+        .limit(limit);
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 조인 조건 그룹핑
+
+복잡한 조인 조건을 그룹으로 묶을 수 있습니다.
+
+```typescript
+const result = await puri.table("products")
+  .leftJoin("discounts", (j) => {
+    j.on("products.id", "discounts.product_id")
+     .on((nested) => {
+       nested.on("discounts.start_date", "<=", new Date())
+             .on("discounts.end_date", ">=", new Date());
+     });
+  })
+  .select({
+    product_id: "products.id",
+    product_name: "products.name",
+    discount_rate: "discounts.rate"
+  });
+
+// LEFT JOIN discounts ON products.id = discounts.product_id
+//   AND (
+//     discounts.start_date <= NOW()
+//     AND discounts.end_date >= NOW()
+//   )
+```
+
+## NULL 처리 (LEFT JOIN)
+
+LEFT JOIN 결과는 nullable 타입으로 자동 추론됩니다.
+
+```typescript
+const posts = await puri.table("posts")
+  .leftJoin("users", "posts.user_id", "users.id")
+  .select({
+    post_id: "posts.id",
+    title: "posts.title",
+    author_name: "users.name"  // string | null
+  });
+
+// 타입 체크
+posts.forEach(post => {
+  if (post.author_name !== null) {
+    console.log(post.author_name.toUpperCase());
+  }
+});
+```
+
+## 성능 최적화
+
+### 1. 필요한 컬럼만 선택
+
+```typescript
+// ❌ 나쁨: 모든 컬럼
+.join("users", ...)
+.selectAll()
+
+// ✅ 좋음: 필요한 컬럼만
+.join("users", ...)
+.select({
+  post_id: "posts.id",
+  author_name: "users.name"  // 필요한 것만
+})
+```
+
+### 2. 조인 순서
+
+```typescript
+// ✅ 좋음: 작은 테이블 먼저 조인
+.table("posts")        // 큰 테이블
+.join("users", ...)    // 작은 테이블
+.join("categories", ...)
+
+// 조인 조건에 인덱스 사용
+.join("users", "posts.user_id", "users.id")  // users.id는 PK (인덱스)
+```
+
+### 3. LEFT JOIN vs INNER JOIN
+
+```typescript
+// LEFT JOIN은 INNER JOIN보다 느림
+// 반드시 존재하는 관계면 INNER JOIN 사용
+
+// ✅ user_id가 NOT NULL이면 INNER JOIN
+.join("users", "posts.user_id", "users.id")
+
+// ⚠️ user_id가 NULL 가능하면 LEFT JOIN
+.leftJoin("users", "posts.user_id", "users.id")
+```
+
+## 타입 안정성
+
+조인한 테이블의 컬럼은 타입 자동 완성과 검증을 지원합니다.
+
+```typescript
+const posts = await puri.table("posts")
+  .join("users", "posts.user_id", "users.id")
+  .select({
+    post_id: "posts.id",      // ✅ OK
+    user_name: "users.name",   // ✅ OK
+    
+    // ❌ 타입 에러: 존재하지 않는 컬럼
+    unknown: "posts.unknown_field",
+    
+    // ❌ 타입 에러: 조인하지 않은 테이블
+    category: "categories.name"
+  });
+```
+
+## 주의사항
+
+### 1. 별칭 필수 (서브쿼리)
+
+```typescript
+// ❌ 에러: 서브쿼리는 별칭 필요
+.join(subquery, ...)
+
+// ✅ 올바름
+.join({ sq: subquery }, ...)
+```
+
+### 2. 조인 조건 테이블 확인
+
+```typescript
+// ❌ 잘못됨: 조인하지 않은 테이블 참조
+.table("posts")
+.join("users", "comments.user_id", "users.id")  // comments 테이블 없음
+
+// ✅ 올바름
+.table("posts")
+.join("users", "posts.user_id", "users.id")
+```
+
+### 3. 중복 컬럼명
+
+```typescript
+// ⚠️ 주의: 컬럼명 충돌
+.table("posts")
+.join("users", ...)
+.select({
+  id: "posts.id",  // ❌ 나중에 덮어씌워짐
+  id: "users.id"   // ❌
+})
+
+// ✅ 올바름: 별칭 사용
+.select({
+  post_id: "posts.id",
+  user_id: "users.id"
+})
+```
+
+### 4. N+1 문제
+
+```typescript
+// ❌ 나쁨: N+1 쿼리
+for (const post of posts) {
+  const user = await puri.table("users")
+    .where("users.id", post.user_id)
+    .first();
+}
+
+// ✅ 좋음: JOIN으로 한 번에
+const posts = await puri.table("posts")
+  .join("users", "posts.user_id", "users.id")
+  .select({
+    post_id: "posts.id",
+    user_name: "users.name"
+  });
+```
+
+## JOIN vs Loader
+
+Puri는 두 가지 관계 데이터 로딩 방법을 제공합니다.
+
+### JOIN (1:1 관계)
+
+```typescript
+// ✅ 적합: 1:1 또는 N:1
+.table("posts")
+.join("users", "posts.user_id", "users.id")
+```
+
+### Loader (1:N 관계)
+
+```typescript
+// ✅ 적합: 1:N 또는 N:M
+// Subset Loader로 처리 (별도 쿼리)
+```
+
+<Info>
+JOIN은 행이 곱해지므로, **1:N 관계에는 Loader**를 사용하는 것이 좋습니다.
+</Info>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="where" 
+    icon="filter" 
+    href="/api-reference/puri-methods/where"
+  >
+    조건 필터링하기
+  </Card>
+  
+  <Card 
+    title="select" 
+    icon="list-check" 
+    href="/api-reference/puri-methods/select"
+  >
+    조회할 필드 선택하기
+  </Card>
+  
+  <Card 
+    title="order-by" 
+    icon="arrow-down-1-9" 
+    href="/api-reference/puri-methods/order-by"
+  >
+    결과 정렬하기
+  </Card>
+  
+  <Card 
+    title="Subset" 
+    icon="layer-group" 
+    href="/database/subsets/what-are-subsets"
+  >
+    서브셋으로 관계 데이터 로딩
+  </Card>
+</CardGroup>

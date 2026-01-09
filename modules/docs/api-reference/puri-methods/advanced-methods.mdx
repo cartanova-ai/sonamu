@@ -1,10 +1,598 @@
 ---
-title: '고급 메서드'
-description: '고급 Puri 메서드'
+title: 'Advanced Methods'
+description: '고급 쿼리 메서드'
 ---
 
-# 고급 메서드
+Puri는 집계, 수정, 벡터 검색 등 다양한 고급 쿼리 메서드를 제공합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 집계 쿼리
+
+### groupBy
+
+결과를 그룹화합니다.
+
+```typescript
+const stats = await puri.table("orders")
+  .select({
+    user_id: "orders.user_id",
+    total_orders: Puri.count(),
+    total_amount: Puri.sum("orders.amount")
+  })
+  .groupBy("orders.user_id");
+
+// GROUP BY orders.user_id
+```
+
+### having
+
+그룹화된 결과를 필터링합니다.
+
+```typescript
+const activeUsers = await puri.table("orders")
+  .select({
+    user_id: "orders.user_id",
+    order_count: Puri.count()
+  })
+  .groupBy("orders.user_id")
+  .having("order_count", ">", 10);
+
+// HAVING order_count > 10
+```
+
+## 데이터 수정
+
+### insert
+
+새 레코드를 삽입합니다.
+
+```typescript
+// 단일 삽입
+const [id] = await puri.table("users")
+  .insert({
+    email: "john@example.com",
+    name: "John Doe"
+  });
+
+// 배치 삽입
+const ids = await puri.table("users")
+  .insert([
+    { email: "john@example.com", name: "John" },
+    { email: "jane@example.com", name: "Jane" }
+  ]);
+```
+
+### update
+
+레코드를 업데이트합니다.
+
+```typescript
+const count = await puri.table("users")
+  .where("users.id", 1)
+  .update({
+    name: "John Smith",
+    updated_at: new Date()
+  });
+
+console.log(`${count} rows updated`);
+```
+
+### delete
+
+레코드를 삭제합니다.
+
+```typescript
+const count = await puri.table("users")
+  .where("users.status", "inactive")
+  .delete();
+
+console.log(`${count} rows deleted`);
+```
+
+### increment / decrement
+
+숫자 컬럼을 증가/감소시킵니다.
+
+```typescript
+// 조회수 증가
+await puri.table("posts")
+  .where("posts.id", 123)
+  .increment("posts.views", 1);
+
+// 재고 감소
+await puri.table("products")
+  .where("products.id", 456)
+  .decrement("products.stock", 5);
+```
+
+## 결과 가져오기
+
+### first
+
+첫 번째 레코드만 가져옵니다.
+
+```typescript
+const user = await puri.table("users")
+  .where("users.email", "john@example.com")
+  .select({ id: "users.id", name: "users.name" })
+  .first();
+
+// user: { id: number, name: string } | undefined
+```
+
+### pluck
+
+특정 컬럼 값들만 배열로 가져옵니다.
+
+```typescript
+const userIds = await puri.table("users")
+  .where("users.status", "active")
+  .pluck("users.id");
+
+// userIds: number[]
+// [1, 2, 3, 4, 5]
+
+const emails = await puri.table("users")
+  .pluck("users.email");
+
+// emails: string[]
+// ["john@example.com", "jane@example.com", ...]
+```
+
+## 벡터 유사도 검색
+
+### vectorSimilarity
+
+pgvector를 사용한 벡터 유사도 검색입니다.
+
+```typescript
+const queryEmbedding = [0.1, 0.2, 0.3, /* ... */];  // 1536 차원
+
+const results = await puri.table("documents")
+  .vectorSimilarity("documents.embedding", queryEmbedding, {
+    method: "cosine",  // 또는 "l2", "inner_product"
+    threshold: 0.7     // 유사도 0.7 이상만
+  })
+  .select({
+    id: "documents.id",
+    title: "documents.title",
+    similarity: "similarity"  // 자동 추가됨
+  })
+  .limit(10);
+
+// ORDER BY documents.embedding <=> '[0.1,0.2,0.3,...]' ASC
+```
+
+**메서드:**
+- `cosine`: 코사인 유사도 (0~1, 높을수록 유사)
+- `l2`: 유클리드 거리 (낮을수록 유사)
+- `inner_product`: 내적 (높을수록 유사)
+
+## Upsert (INSERT or UPDATE)
+
+### onConflict
+
+충돌 시 동작을 지정합니다.
+
+```typescript
+// DO NOTHING
+await puri.table("users")
+  .insert({ email: "john@example.com", name: "John" })
+  .onConflict(["email"], "nothing");
+
+// INSERT ... ON CONFLICT (email) DO NOTHING
+
+// DO UPDATE
+await puri.table("users")
+  .insert({ email: "john@example.com", name: "John Smith" })
+  .onConflict(["email"], {
+    update: ["name"]  // name만 업데이트
+  });
+
+// INSERT ... ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+
+// 객체 형태
+await puri.table("users")
+  .insert({ email: "john@example.com", count: 1 })
+  .onConflict(["email"], {
+    update: {
+      count: Puri.rawNumber("users.count + 1"),  // SQL 표현식
+      updated_at: new Date()
+    }
+  });
+```
+
+### returning
+
+삽입/업데이트된 레코드를 반환합니다.
+
+```typescript
+// 전체 컬럼
+const users = await puri.table("users")
+  .insert({ email: "john@example.com", name: "John" })
+  .returning("*");
+
+// 특정 컬럼
+const [user] = await puri.table("users")
+  .insert({ email: "john@example.com", name: "John" })
+  .returning(["id", "email"]);
+
+console.log(user.id, user.email);
+```
+
+## 유틸리티 메서드
+
+### clone
+
+쿼리를 복제합니다.
+
+```typescript
+const baseQuery = puri.table("users")
+  .where("users.status", "active");
+
+// 복제하여 다른 조건 추가
+const admins = await baseQuery.clone()
+  .where("users.role", "admin")
+  .select({ id: "users.id", name: "users.name" });
+
+const editors = await baseQuery.clone()
+  .where("users.role", "editor")
+  .select({ id: "users.id", name: "users.name" });
+```
+
+### debug
+
+생성된 SQL을 콘솔에 출력합니다.
+
+```typescript
+const users = await puri.table("users")
+  .where("users.status", "active")
+  .select({ id: "users.id", name: "users.name" })
+  .debug();  // SQL 출력
+
+// [Puri Debug] SELECT users.id, users.name FROM users WHERE users.status = 'active'
+```
+
+### toQuery
+
+SQL 쿼리 문자열을 반환합니다.
+
+```typescript
+const query = puri.table("users")
+  .where("users.status", "active")
+  .select({ id: "users.id", name: "users.name" });
+
+const sql = query.toQuery();
+console.log(sql);
+// "SELECT users.id, users.name FROM users WHERE users.status = 'active'"
+```
+
+### raw
+
+Raw SQL을 실행합니다.
+
+```typescript
+const result = await puri.raw(`
+  SELECT * FROM users WHERE status = ?
+`, ["active"]);
+```
+
+## 실전 예시
+
+<Tabs>
+  <Tab title="통계 쿼리" icon="chart-bar">
+    ```typescript
+    async function getUserStatistics() {
+      return puri.table("users")
+        .leftJoin("orders", "users.id", "orders.user_id")
+        .select({
+          user_id: "users.id",
+          user_name: "users.name",
+          
+          // 집계
+          order_count: Puri.count("orders.id"),
+          total_spent: Puri.sum("orders.amount"),
+          avg_order: Puri.avg("orders.amount"),
+          
+          // 첫/마지막 주문
+          first_order: Puri.min("orders.created_at"),
+          last_order: Puri.max("orders.created_at")
+        })
+        .groupBy("users.id", "users.name")
+        .having("order_count", ">", 0)
+        .orderBy("total_spent", "desc");
+    }
+    ```
+  </Tab>
+
+  <Tab title="배치 업데이트" icon="pen-to-square">
+    ```typescript
+    async function updateInactivUsers(days: number = 30) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+
+      const count = await puri.table("users")
+        .where("users.last_login", "<", cutoffDate)
+        .where("users.status", "active")
+        .update({
+          status: "inactive",
+          updated_at: new Date()
+        });
+
+      console.log(`${count} users marked as inactive`);
+      return count;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Upsert 패턴" icon="arrow-up-from-bracket">
+    ```typescript
+    async function upsertUserStats(userId: number, stats: {
+      login_count: number;
+      last_login: Date;
+    }) {
+      await puri.table("user_stats")
+        .insert({
+          user_id: userId,
+          login_count: stats.login_count,
+          last_login: stats.last_login,
+          created_at: new Date()
+        })
+        .onConflict(["user_id"], {
+          update: {
+            login_count: Puri.rawNumber("user_stats.login_count + 1"),
+            last_login: stats.last_login,
+            updated_at: new Date()
+          }
+        })
+        .returning("*");
+    }
+    ```
+  </Tab>
+
+  <Tab title="벡터 검색" icon="magnifying-glass">
+    ```typescript
+    async function semanticSearch(query: string, limit: number = 10) {
+      // 쿼리를 임베딩으로 변환 (예: OpenAI API)
+      const queryEmbedding = await getEmbedding(query);
+
+      return puri.table("documents")
+        // 벡터 유사도 검색
+        .vectorSimilarity("documents.embedding", queryEmbedding, {
+          method: "cosine",
+          threshold: 0.5  // 유사도 0.5 이상
+        })
+        .where("documents.published", true)
+        .select({
+          id: "documents.id",
+          title: "documents.title",
+          content: "documents.content",
+          similarity: "similarity"
+        })
+        .limit(limit);
+    }
+    ```
+  </Tab>
+
+  <Tab title="트랜잭션" icon="arrows-rotate">
+    ```typescript
+    async function transferPoints(
+      fromUserId: number,
+      toUserId: number,
+      points: number
+    ) {
+      const wdb = getPuri("w");
+
+      await wdb.transaction(async (trx) => {
+        // 포인트 차감
+        await trx.table("users")
+          .where("users.id", fromUserId)
+          .decrement("users.points", points);
+
+        // 포인트 증가
+        await trx.table("users")
+          .where("users.id", toUserId)
+          .increment("users.points", points);
+
+        // 히스토리 기록
+        await trx.table("point_history")
+          .insert({
+            from_user_id: fromUserId,
+            to_user_id: toUserId,
+            points,
+            created_at: new Date()
+          });
+      });
+    }
+    ```
+  </Tab>
+
+  <Tab title="조건부 쿼리" icon="code-branch">
+    ```typescript
+    async function searchProducts(filters: {
+      category?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      inStock?: boolean;
+      query?: string;
+    }) {
+      let query = puri.table("products")
+        .select({
+          id: "products.id",
+          name: "products.name",
+          price: "products.price",
+          stock: "products.stock"
+        });
+
+      // 조건부 필터링
+      if (filters.category) {
+        query = query.where("products.category", filters.category);
+      }
+
+      if (filters.minPrice !== undefined) {
+        query = query.where("products.price", ">=", filters.minPrice);
+      }
+
+      if (filters.maxPrice !== undefined) {
+        query = query.where("products.price", "<=", filters.maxPrice);
+      }
+
+      if (filters.inStock) {
+        query = query.where("products.stock", ">", 0);
+      }
+
+      if (filters.query) {
+        query = query.where("products.name", "like", `%${filters.query}%`);
+      }
+
+      return query
+        .orderBy("products.created_at", "desc")
+        .limit(50);
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## 성능 최적화
+
+### 배치 INSERT
+
+```typescript
+// ✅ 좋음: 배치로 한 번에
+await puri.table("users")
+  .insert([
+    { email: "user1@example.com", name: "User 1" },
+    { email: "user2@example.com", name: "User 2" },
+    // ... 1000개
+  ]);
+
+// ❌ 나쁨: 반복문으로 하나씩
+for (const user of users) {
+  await puri.table("users").insert(user);
+}
+```
+
+### increment vs UPDATE
+
+```typescript
+// ✅ 좋음: increment (원자적, 빠름)
+await puri.table("posts")
+  .where("posts.id", 123)
+  .increment("posts.views", 1);
+
+// ❌ 나쁨: SELECT → UPDATE (경쟁 조건, 느림)
+const post = await puri.table("posts").where("posts.id", 123).first();
+await puri.table("posts")
+  .where("posts.id", 123)
+  .update({ views: post.views + 1 });
+```
+
+### HAVING vs WHERE
+
+```typescript
+// ✅ 좋음: WHERE로 먼저 필터링
+await puri.table("orders")
+  .where("orders.status", "completed")  // GROUP BY 전 필터
+  .select({
+    user_id: "orders.user_id",
+    total: Puri.sum("orders.amount")
+  })
+  .groupBy("orders.user_id")
+  .having("total", ">", 1000);  // GROUP BY 후 필터
+
+// ❌ 비효율: 모두 HAVING
+await puri.table("orders")
+  .select({
+    user_id: "orders.user_id",
+    total: Puri.sum("orders.amount")
+  })
+  .groupBy("orders.user_id")
+  .having("total", ">", 1000)
+  .having(/* status 조건 */);  // 비효율적
+```
+
+## 주의사항
+
+### 1. increment/decrement 값
+
+```typescript
+// ✅ 올바름: 양수만
+.increment("column", 1)
+.decrement("column", 5)
+
+// ❌ 에러: 0 이하
+.increment("column", 0)   // Error
+.increment("column", -1)  // Error
+```
+
+### 2. onConflict 제약조건
+
+```typescript
+// 테이블에 UNIQUE 제약조건 또는 PRIMARY KEY 필요
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+
+// 그래야 onConflict 동작
+.onConflict(["email"], ...)
+```
+
+### 3. returning은 PostgreSQL만
+
+```typescript
+// ✅ PostgreSQL
+.insert({ ... })
+.returning("*")
+
+// ❌ MySQL: RETURNING 지원 안 함
+// 대신 insert 후 ID 반환
+const [id] = await puri.table("users").insert({ ... });
+```
+
+### 4. vectorSimilarity는 pgvector 필요
+
+```sql
+-- PostgreSQL 확장 설치 필요
+CREATE EXTENSION vector;
+
+-- 벡터 컬럼 생성
+ALTER TABLE documents 
+ADD COLUMN embedding vector(1536);
+
+-- HNSW 인덱스 생성
+CREATE INDEX ON documents 
+USING hnsw (embedding vector_cosine_ops);
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="select" 
+    icon="list-check" 
+    href="/api-reference/puri-methods/select"
+  >
+    조회할 필드 선택하기
+  </Card>
+  
+  <Card 
+    title="where" 
+    icon="filter" 
+    href="/api-reference/puri-methods/where"
+  >
+    조건 필터링하기
+  </Card>
+  
+  <Card 
+    title="UpsertBuilder" 
+    icon="layer-group" 
+    href="/database/upsert-builder/basic-usage"
+  >
+    대량 Upsert 처리하기
+  </Card>
+  
+  <Card 
+    title="Transactions" 
+    icon="arrows-rotate" 
+    href="/database/transactions/manual-transactions"
+  >
+    트랜잭션 사용하기
+  </Card>
+</CardGroup>
