@@ -786,6 +786,110 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       };
 
       /**
+       * 함수 형태의 값인지 판별: (params) => `template` 또는 (params) => "string"
+       */
+      const FUNCTION_VALUE_PATTERN = /^\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*")$/;
+      function isFunctionValue(value: string): boolean {
+        return FUNCTION_VALUE_PATTERN.test(value);
+      }
+
+      /**
+       * entity key 파싱 결과 타입
+       */
+      type EntityKeyInfo =
+        | { type: "entityTitle"; entityId: string }
+        | { type: "propDesc"; entityId: string; propName: string }
+        | { type: "enumLabel"; enumId: string; enumValue: string }
+        | { type: "other" };
+
+      /**
+       * i18n key를 파싱하여 entity 관련 정보 추출
+       */
+      function parseEntityKey(key: string): EntityKeyInfo {
+        // entity.{EntityId} (list, create, edit 제외)
+        const entityTitleMatch = key.match(/^entity\.([A-Z][a-zA-Z0-9]*)$/);
+        if (
+          entityTitleMatch &&
+          !key.includes(".list") &&
+          !key.includes(".create") &&
+          !key.includes(".edit")
+        ) {
+          return { type: "entityTitle", entityId: entityTitleMatch[1] };
+        }
+
+        // entity.{EntityId}.{propName}
+        const propDescMatch = key.match(/^entity\.([A-Z][a-zA-Z0-9]*)\.([a-z_][a-z0-9_]*)$/);
+        if (propDescMatch) {
+          return { type: "propDesc", entityId: propDescMatch[1], propName: propDescMatch[2] };
+        }
+
+        // enum.{EnumId}.{value}
+        const enumLabelMatch = key.match(/^enum\.([A-Z][a-zA-Z0-9]*)\.(.+)$/);
+        if (enumLabelMatch) {
+          return { type: "enumLabel", enumId: enumLabelMatch[1], enumValue: enumLabelMatch[2] };
+        }
+
+        return { type: "other" };
+      }
+
+      /**
+       * entity key에 대해 entity.json 업데이트 수행
+       * @returns 업데이트 여부
+       */
+      async function updateEntityByKey(key: string, value: string): Promise<boolean> {
+        const keyInfo = parseEntityKey(key);
+
+        switch (keyInfo.type) {
+          case "entityTitle": {
+            try {
+              const entity = EntityManager.get(keyInfo.entityId);
+              if (entity.title !== value) {
+                entity.title = value;
+                await entity.save();
+                return true;
+              }
+            } catch {
+              // entity not found
+            }
+            return false;
+          }
+
+          case "propDesc": {
+            try {
+              const entity = EntityManager.get(keyInfo.entityId);
+              const propIndex = entity.props.findIndex((p) => p.name === keyInfo.propName);
+              if (propIndex !== -1 && entity.props[propIndex].desc !== value) {
+                entity.props[propIndex].desc = value;
+                await entity.save();
+                return true;
+              }
+            } catch {
+              // entity not found
+            }
+            return false;
+          }
+
+          case "enumLabel": {
+            for (const entityId of EntityManager.getAllIds()) {
+              const entity = EntityManager.get(entityId);
+              if (entity.enumLabels[keyInfo.enumId]) {
+                if (entity.enumLabels[keyInfo.enumId][keyInfo.enumValue] !== value) {
+                  entity.enumLabels[keyInfo.enumId][keyInfo.enumValue] = value;
+                  await entity.save();
+                  return true;
+                }
+                break;
+              }
+            }
+            return false;
+          }
+
+          default:
+            return false;
+        }
+      }
+
+      /**
        * entity.json에서 entity labels 추출
        */
       function extractEntityLabels(): { key: string; value: string; isFunction?: boolean }[] {
@@ -1090,11 +1194,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           projectDictEntries[locale] = [];
         }
 
-        // 함수 원형인지 판별: (params) => `template` 형태인지 확인
-        function isFunction(cellValue: string): boolean {
-          return /^\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*")$/.test(cellValue);
-        }
-
         for (const row of jsonData) {
           const key = row.key;
           const source = row.source as "entity" | "project";
@@ -1105,59 +1204,9 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             // entity source: default locale만 entity.json에 저장
             const defaultValue = row[defaultLocale];
             if (defaultValue) {
-              // entity.{EntityId} → entity.title
-              if (
-                key.match(/^entity\.([A-Z][a-zA-Z0-9]*)$/) &&
-                !key.includes(".list") &&
-                !key.includes(".create") &&
-                !key.includes(".edit")
-              ) {
-                const entityId = key.split(".")[1];
-                try {
-                  const entity = EntityManager.get(entityId);
-                  if (entity.title !== defaultValue) {
-                    entity.title = defaultValue;
-                    await entity.save();
-                    updatedEntities++;
-                  }
-                } catch {
-                  // entity not found, skip
-                }
-              }
-              // entity.{EntityId}.{propName} → entity.props[].desc
-              else if (key.match(/^entity\.([A-Z][a-zA-Z0-9]*)\.([a-z_][a-z0-9_]*)$/)) {
-                const parts = key.split(".");
-                const entityId = parts[1];
-                const propName = parts[2];
-                try {
-                  const entity = EntityManager.get(entityId);
-                  const propIndex = entity.props.findIndex((p) => p.name === propName);
-                  if (propIndex !== -1 && entity.props[propIndex].desc !== defaultValue) {
-                    entity.props[propIndex].desc = defaultValue;
-                    await entity.save();
-                    updatedEntities++;
-                  }
-                } catch {
-                  // entity not found, skip
-                }
-              }
-              // enum.{EnumId}.{value} → entity.enumLabels
-              else if (key.match(/^enum\.([A-Z][a-zA-Z0-9]*)\.(.+)$/)) {
-                const parts = key.split(".");
-                const enumId = parts[1];
-                const enumValue = parts.slice(2).join(".");
-                // enumId를 가진 entity 찾기
-                for (const entityId of EntityManager.getAllIds()) {
-                  const entity = EntityManager.get(entityId);
-                  if (entity.enumLabels[enumId]) {
-                    if (entity.enumLabels[enumId][enumValue] !== defaultValue) {
-                      entity.enumLabels[enumId][enumValue] = defaultValue;
-                      await entity.save();
-                      updatedEntities++;
-                    }
-                    break;
-                  }
-                }
+              const updated = await updateEntityByKey(key, defaultValue);
+              if (updated) {
+                updatedEntities++;
               }
             }
 
@@ -1169,7 +1218,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
                 projectDictEntries[locale].push({
                   key,
                   value: cellValue,
-                  isFunction: isFunction(cellValue),
+                  isFunction: isFunctionValue(cellValue),
                 });
               }
             }
@@ -1181,7 +1230,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
                 projectDictEntries[locale].push({
                   key,
                   value: cellValue,
-                  isFunction: isFunction(cellValue),
+                  isFunction: isFunctionValue(cellValue),
                 });
               }
             }
@@ -1235,69 +1284,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
         // entity source의 default locale 처리
         if (source === "entity" && values[defaultLocale]) {
-          const defaultValue = values[defaultLocale];
-
-          // entity.{EntityId} → entity.title
-          if (
-            newKey.match(/^entity\.([A-Z][a-zA-Z0-9]*)$/) &&
-            !newKey.includes(".list") &&
-            !newKey.includes(".create") &&
-            !newKey.includes(".edit")
-          ) {
-            const entityId = newKey.split(".")[1];
-            try {
-              const entity = EntityManager.get(entityId);
-              if (entity.title !== defaultValue) {
-                entity.title = defaultValue;
-                await entity.save();
-              }
-            } catch {
-              // entity not found
-            }
-          }
-          // entity.{EntityId}.{propName} → entity.props[].desc
-          else if (newKey.match(/^entity\.([A-Z][a-zA-Z0-9]*)\.([a-z_][a-z0-9_]*)$/)) {
-            const parts = newKey.split(".");
-            const entityId = parts[1];
-            const propName = parts[2];
-            try {
-              const entity = EntityManager.get(entityId);
-              const propIndex = entity.props.findIndex((p) => p.name === propName);
-              if (propIndex !== -1 && entity.props[propIndex].desc !== defaultValue) {
-                entity.props[propIndex].desc = defaultValue;
-                await entity.save();
-              }
-            } catch {
-              // entity not found
-            }
-          }
-          // enum.{EnumId}.{value} → entity.enumLabels
-          else if (newKey.match(/^enum\.([A-Z][a-zA-Z0-9]*)\.(.+)$/)) {
-            const parts = newKey.split(".");
-            const enumId = parts[1];
-            const enumValue = parts.slice(2).join(".");
-            for (const entityId of EntityManager.getAllIds()) {
-              const entity = EntityManager.get(entityId);
-              if (entity.enumLabels[enumId]) {
-                if (entity.enumLabels[enumId][enumValue] !== defaultValue) {
-                  entity.enumLabels[enumId][enumValue] = defaultValue;
-                  await entity.save();
-                }
-                break;
-              }
-            }
-          }
+          await updateEntityByKey(newKey, values[defaultLocale]);
         }
 
         // project dict 업데이트 (entity의 non-default locale 또는 project source)
         const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
         if (!fs.existsSync(i18nDir)) {
           fs.mkdirSync(i18nDir, { recursive: true });
-        }
-
-        // 함수 원형인지 판별
-        function isFunctionValue(cellValue: string): boolean {
-          return /^\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*")$/.test(cellValue);
         }
 
         for (const locale of locales) {
