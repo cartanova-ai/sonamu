@@ -890,15 +890,62 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }
 
       /**
+       * 딕셔너리 엔트리 타입
+       */
+      type DictEntry = {
+        key: string;
+        value: string;
+        isFunction: boolean;
+      };
+
+      /**
+       * TypeScript 객체 내용에서 키-값 쌍 파싱
+       */
+      function parseDictObject(objectContent: string): DictEntry[] {
+        const entries: DictEntry[] = [];
+        const seenKeys = new Set<string>();
+
+        // 함수 원형 패턴 먼저 처리 (우선순위 높음)
+        // "key": (params) => `template` 또는 key: (params) => `template`
+        // 다중 줄 함수도 처리하기 위해 => 뒤에 공백/줄바꿈 허용
+        const functionPattern =
+          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_.]*)):\s*(\([^)]*\)\s*=>[\s]*(?:`[^`]*`|"[^"]*"))/g;
+        for (const match of objectContent.matchAll(functionPattern)) {
+          const key = match[1] ?? match[2];
+          // 다중 줄 함수를 한 줄로 정규화 (불필요한 공백/줄바꿈 제거)
+          const value = match[3].replace(/\s*\n\s*/g, " ");
+          entries.push({ key, value, isFunction: true });
+          seenKeys.add(key);
+        }
+
+        // 문자열 값 패턴: "key": "value" 또는 key: `value`
+        const stringPattern =
+          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_.]*)):\s*(?:"([^"]*?)"|`([^`]*?)`)/g;
+        for (const match of objectContent.matchAll(stringPattern)) {
+          const key = match[1] ?? match[2];
+          // 이미 함수로 처리된 키는 스킵
+          if (seenKeys.has(key)) continue;
+
+          const value = match[3] ?? match[4];
+          // 화살표 함수 패턴이 아닌 경우만
+          const lineStart = objectContent.lastIndexOf("\n", match.index ?? 0);
+          const lineEnd = objectContent.indexOf("\n", (match.index ?? 0) + match[0].length);
+          const fullLine = objectContent.slice(lineStart, lineEnd > -1 ? lineEnd : undefined);
+          if (!fullLine.includes("=>")) {
+            entries.push({ key, value, isFunction: false });
+          }
+        }
+
+        return entries;
+      }
+
+      /**
        * sd.generated.ts에서 entity labels 추출
        */
-      function extractEntityLabels(): { key: string; value: string; isFunction?: boolean }[] {
-        const labels: { key: string; value: string; isFunction?: boolean }[] = [];
-
-        // sd.generated.ts 파일에서 entityLabels 파싱
+      function extractEntityLabels(): DictEntry[] {
         const sdPath = path.join(Sonamu.apiRootPath, "src", "i18n", "sd.generated.ts");
         if (!fs.existsSync(sdPath)) {
-          return labels;
+          return [];
         }
 
         const content = fs.readFileSync(sdPath, "utf-8");
@@ -908,51 +955,19 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           /const\s+entityLabels\s*=\s*\{([\s\S]*?)\}\s*as\s*const/,
         );
         if (!entityLabelsMatch) {
-          return labels;
+          return [];
         }
 
-        const objectContent = entityLabelsMatch[1];
-
-        // 문자열 값 패턴: "key": "value" 또는 "key": `value`
-        const stringPattern = /"([^"]+)":\s*(?:"([^"]*)"|`([^`]*)`)/g;
-        for (const match of objectContent.matchAll(stringPattern)) {
-          const key = match[1];
-          const value = match[2] ?? match[3];
-          labels.push({ key, value });
-        }
-
-        // 함수 값 패턴: "key": (params) => `template`
-        const functionPattern = /"([^"]+)":\s*(\([^)]*\)\s*=>\s*`[^`]*`)/g;
-        for (const match of objectContent.matchAll(functionPattern)) {
-          const key = match[1];
-          const value = match[2];
-          // 이미 문자열로 추가된 경우 덮어쓰기 (함수가 우선)
-          const existingIndex = labels.findIndex((l) => l.key === key);
-          if (existingIndex !== -1) {
-            labels[existingIndex] = { key, value, isFunction: true };
-          } else {
-            labels.push({ key, value, isFunction: true });
-          }
-        }
-
-        return labels;
+        return parseDictObject(entityLabelsMatch[1]);
       }
 
       /**
        * Project dict 파일([locale].ts)에서 딕셔너리 로드
        */
-      type DictEntry = {
-        key: string;
-        value: string;
-        isFunction: boolean;
-      };
-
       function loadProjectDict(locale: string): { entries: DictEntry[] } {
         const dictPath = path.join(Sonamu.apiRootPath, "src", "i18n", `${locale}.ts`);
-        const entries: DictEntry[] = [];
-
         if (!fs.existsSync(dictPath)) {
-          return { entries };
+          return { entries: [] };
         }
 
         const content = fs.readFileSync(dictPath, "utf-8");
@@ -962,37 +977,35 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           /export\s+default\s+(?:defineLocale\s*\(\s*)?\{([\s\S]*?)\}(?:\s*\))?(?:\s+as\s+const)?;?$/m,
         );
         if (!objectMatch) {
-          return { entries };
+          return { entries: [] };
         }
 
-        const objectContent = objectMatch[1];
+        return { entries: parseDictObject(objectMatch[1]) };
+      }
 
-        // 각 키-값 쌍 추출
-        const stringPattern =
-          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*)):\s*(?:"([^"]*?)"|`([^`]*?)`)/g;
-        for (const match of objectContent.matchAll(stringPattern)) {
-          const key = match[1] ?? match[2];
-          const value = match[3] ?? match[4];
-          // 함수가 아닌 경우만 (화살표 함수 패턴이 아닌 경우)
-          const lineStart = objectContent.lastIndexOf("\n", match.index ?? 0);
-          const lineEnd = objectContent.indexOf("\n", (match.index ?? 0) + match[0].length);
-          const fullLine = objectContent.slice(lineStart, lineEnd > -1 ? lineEnd : undefined);
-          if (!fullLine.includes("=>")) {
-            entries.push({ key, value, isFunction: false });
-          }
+      /**
+       * Sonamu built-in dict 소스 파일에서 딕셔너리 로드
+       * 런타임 import가 아닌 소스 파싱으로 타입 정보 보존
+       */
+      function loadSonamuDict(locale: string): { entries: DictEntry[] } {
+        // sonamu 패키지 루트에서 src/dict 경로 찾기
+        // import.meta.dirname이 dist/ui일 수 있으므로 패키지 루트 기준으로 접근
+        const sonamuPackageRoot = path.resolve(import.meta.dirname, "..", "..");
+        const dictPath = path.join(sonamuPackageRoot, "src", "dict", `${locale}.ts`);
+
+        if (!fs.existsSync(dictPath)) {
+          return { entries: [] };
         }
 
-        // 함수 원형 전체를 value에 저장
-        // 여러 파라미터도 지원: (name: string, id: number) => `...`
-        const functionPattern =
-          /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_]*)):\s*(\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*"))/g;
-        for (const match of objectContent.matchAll(functionPattern)) {
-          const key = match[1] ?? match[2];
-          const value = match[3]; // 함수 원형 전체: (params) => `template`
-          entries.push({ key, value, isFunction: true });
+        const content = fs.readFileSync(dictPath, "utf-8");
+
+        // export default { ... } as const; 패턴 매칭
+        const objectMatch = content.match(/export\s+default\s*\{([\s\S]*)\}\s*as\s*const/);
+        if (!objectMatch) {
+          return { entries: [] };
         }
 
-        return { entries };
+        return { entries: parseDictObject(objectMatch[1]) };
       }
 
       /**
@@ -1073,29 +1086,29 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           rowMap.set(label.key, row);
         }
 
-        // 2. Sonamu built-in dict
-        const { sonamuDictKo, sonamuDictEn } = await import("../dict");
-        type DictValue = string | ((...args: never[]) => string);
-        const sonamuDicts: Record<string, Record<string, DictValue>> = {
-          ko: sonamuDictKo as Record<string, DictValue>,
-          en: sonamuDictEn as Record<string, DictValue>,
-        };
+        // 2. Sonamu built-in dict (소스 파일에서 파싱하여 타입 정보 보존)
+        const sonamuDicts: Record<string, DictEntry[]> = {};
+        for (const locale of locales) {
+          const { entries } = loadSonamuDict(locale);
+          sonamuDicts[locale] = entries;
+        }
 
-        for (const [key, value] of Object.entries(sonamuDictKo)) {
-          const isFunction = typeof value === "function";
+        // defaultLocale 기준으로 키 추출
+        const sonamuDefaultEntries = sonamuDicts[defaultLocale] ?? [];
+        for (const entry of sonamuDefaultEntries) {
           const row: I18nDictionaryRow = {
-            key,
+            key: entry.key,
             source: "sonamu",
-            isFunction,
+            isFunction: entry.isFunction,
           };
           for (const locale of locales) {
-            const dict = sonamuDicts[locale];
-            if (dict?.[key]) {
-              const val = dict[key];
-              row[locale] = isFunction ? String(val) : (val as string);
+            const localeEntries = sonamuDicts[locale];
+            const localeEntry = localeEntries?.find((e) => e.key === entry.key);
+            if (localeEntry) {
+              row[locale] = localeEntry.value;
             }
           }
-          rowMap.set(key, row);
+          rowMap.set(entry.key, row);
         }
 
         // 3. Project dict (각 locale별)
