@@ -887,6 +887,65 @@ describe("code-converters", () => {
         );
         expect(result).toBe("number[][]");
       });
+
+      test("array 타입의 elements가 intersection인 경우 - 괄호 필요", () => {
+        // (A & B)[] 형태 - intersection이 배열 요소일 때 괄호 필요
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: {
+              t: "intersection",
+              types: [
+                { t: "ref", id: "UserSubsetMapping" },
+                { t: "object", props: [{ name: "similarity", type: "number", optional: false }] },
+              ],
+            },
+          },
+          [],
+        );
+        // 괄호가 있어야 (A & B)[]로 파싱됨
+        // 괄호가 없으면 A & B[]로 파싱되어 A & (B[])가 됨
+        expect(result).toBe("(UserSubsetMapping & { similarity: number })[]");
+      });
+
+      test("array 타입의 elements가 union인 경우 - 괄호 필요", () => {
+        // (A | B)[] 형태 - union이 배열 요소일 때 괄호 필요
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: {
+              t: "union",
+              types: ["string", "number"],
+            },
+          },
+          [],
+        );
+        // 괄호가 있어야 (string | number)[]로 파싱됨
+        // 괄호가 없으면 string | number[]로 파싱되어 string | (number[])가 됨
+        expect(result).toBe("(string | number)[]");
+      });
+
+      test("복잡한 케이스: 배열 안 intersection 안 ref with args", () => {
+        // 실제 발생한 버그 케이스: (QAPairSubsetMapping[T] & { similarity: number })[]
+        const result = apiParamTypeToTsType(
+          {
+            t: "array",
+            elementsType: {
+              t: "intersection",
+              types: [
+                {
+                  t: "indexed-access",
+                  object: { t: "ref", id: "QAPairSubsetMapping" },
+                  index: { t: "ref", id: "T" },
+                },
+                { t: "object", props: [{ name: "similarity", type: "number", optional: false }] },
+              ],
+            },
+          },
+          [],
+        );
+        expect(result).toBe("(QAPairSubsetMapping[T] & { similarity: number })[]");
+      });
     });
 
     describe("Ref 타입", () => {
