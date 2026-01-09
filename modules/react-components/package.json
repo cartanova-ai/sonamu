@@ -22,6 +22,10 @@
       "types": "./dist/components/index.d.ts",
       "import": "./dist/react-components.es.js"
     },
+    "./contexts": {
+      "types": "./dist/contexts/index.d.ts",
+      "import": "./dist/react-components.es.js"
+    },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
       "import": "./dist/react-components.es.js"
