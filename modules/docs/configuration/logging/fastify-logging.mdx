@@ -1,10 +1,974 @@
 ---
 title: 'Fastify 로깅'
-description: 'HTTP 요청 로깅하기'
+description: 'HTTP 요청/응답 로깅 커스터마이징'
 ---
 
-# Fastify 로깅
+Sonamu는 Fastify의 HTTP 요청과 응답을 자동으로 로깅합니다. `@logtape/fastify` 패키지를 통해 LogTape와 통합되어 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## HTTP 로깅이 중요한 이유
+
+HTTP 로그는 웹 서비스 운영의 핵심입니다.
+
+### 1. 문제 해결
+
+**에러 추적:**
+```
+[ERROR] POST /api/order → 500
+→ 어떤 API가 실패했는가?
+→ 언제 발생했는가?
+→ 어떤 사용자가 영향받았는가?
+```
+
+**버그 재현:**
+```
+사용자 보고: "결제가 안 돼요"
+→ 로그 확인: POST /api/payment → 500
+→ 오류 내용: "card_declined"
+→ 문제 파악: 카드 결제 시스템 문제
+```
+
+### 2. 성능 모니터링
+
+**느린 요청 발견:**
+```
+[WARN] GET /api/user/list → 200 (3500ms)
+→ 3.5초 걸림, 너무 느림!
+→ 쿼리 최적화 필요
+```
+
+**병목 현상 감지:**
+```
+[INFO] GET /api/product/123 → 200 (100ms)
+[INFO] GET /api/product/123 → 200 (100ms)
+[INFO] GET /api/product/123 → 200 (100ms)
+→ 같은 요청이 반복됨
+→ 캐싱 필요
+```
+
+### 3. 보안 모니터링
+
+**비정상적인 접근 감지:**
+```
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+[WARN] GET /api/admin/users → 403 (from 192.168.1.100)
+→ 권한 없는 접근 시도 반복
+→ 보안 위협 가능성
+```
+
+**공격 패턴 발견:**
+```
+[ERROR] POST /api/login → 401
+[ERROR] POST /api/login → 401
+[ERROR] POST /api/login → 401
+→ 브루트 포스 공격 가능성
+```
+
+### 4. 비즈니스 분석
+
+**사용 패턴 분석:**
+```
+오늘의 로그:
+GET /api/product/* → 1,000건
+GET /api/user/* → 500건
+POST /api/order → 200건
+
+→ 제품 조회가 가장 많음
+→ 주문 전환율 20%
+```
+
+## 무엇을 로깅해야 하나?
+
+### 필수 로깅 항목
+
+**1. 요청 정보**
+- HTTP 메서드 (GET, POST, PUT, DELETE)
+- URL 경로
+- 타임스탬프
+
+```typescript
+[INFO] GET /api/user/list
+[INFO] POST /api/order
+```
+
+**2. 응답 정보**
+- 상태 코드 (200, 404, 500)
+- 응답 시간
+
+```typescript
+[INFO] GET /api/user/list → 200 (123ms)
+[ERROR] POST /api/order → 500 (456ms)
+```
+
+**3. 에러 정보**
+- 에러 메시지
+- 스택 트레이스
+
+```typescript
+[ERROR] POST /api/payment → 500
+Error: Card declined
+  at PaymentService.charge
+  at OrderController.create
+```
+
+### 로깅하면 안 되는 것
+
+**보안 정보:**
+```typescript
+// ❌ 절대 로깅 금지
+POST /api/login
+{ password: "user-password-123" }  // 비밀번호!
+
+// ✅ 안전하게
+POST /api/login
+{ userId: "user@example.com" }  // 비밀번호 제외
+```
+
+**개인정보:**
+```typescript
+// ❌ 민감 정보 노출
+[INFO] 주민번호: 123456-1234567
+[INFO] 카드 번호: 1234-5678-9012-3456
+
+// ✅ 마스킹 처리
+[INFO] 주민번호: 123456-*******
+[INFO] 카드 번호: 1234-****-****-3456
+```
+
+### 로그 레벨 선택
+
+**info - 정상 요청**
+```typescript
+[INFO] GET /api/user/list → 200 (100ms)
+[INFO] POST /api/order → 201 (200ms)
+```
+- 2xx, 3xx 상태 코드
+- 정상적인 비즈니스 흐름
+
+**warning - 주의 필요**
+```typescript
+[WARN] GET /api/user/list → 200 (3500ms)  // 느림
+[WARN] POST /api/order → 429 (50ms)      // Rate limit
+```
+- 느린 응답 (>1초)
+- 4xx 상태 코드 (클라이언트 오류)
+- Rate limiting
+
+**error - 서버 오류**
+```typescript
+[ERROR] POST /api/payment → 500
+[ERROR] GET /api/user/123 → 500
+```
+- 5xx 상태 코드
+- 예외 발생
+- DB 연결 실패
+
+## 응답 시간 (responseTime) 활용
+
+`responseTime`은 API 응답에 걸린 시간(밀리초)입니다.
+
+### 성능 기준
+
+| 시간 | 평가 | 조치 |
+|------|------|------|
+| < 100ms | 매우 빠름 | 유지 |
+| 100-500ms | 적절 | 모니터링 |
+| 500ms-1s | 느림 | 최적화 검토 |
+| > 1s | 매우 느림 | 즉시 최적화 |
+
+### 성능 모니터링 설정
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "fast": (record) => {
+        const time = record.properties.responseTime as number | undefined;
+        return time ? time < 100 : false;
+      },
+      "slow": (record) => {
+        const time = record.properties.responseTime as number | undefined;
+        return time ? time > 1000 : false;
+      },
+    },
+    
+    loggers: [
+      // 빠른 요청: debug 레벨
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        filters: ["fast"],
+        lowestLevel: "debug",
+      },
+      // 느린 요청: warning 레벨
+      {
+        category: ["fastify"],
+        sinks: ["console", "slowLog"],
+        filters: ["slow"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 성능 분석
+
+```typescript
+// 로그 데이터로 통계
+/api/user/list
+- 평균: 150ms
+- 최소: 50ms
+- 최대: 500ms
+
+/api/order/create
+- 평균: 800ms
+- 최소: 300ms  
+- 최대: 2000ms  // 문제!
+
+→ order/create API 최적화 필요
+```
+
+## 자동 로깅
+
+별도 설정 없이 HTTP 로깅이 자동으로 활성화됩니다.
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**자동으로 로깅되는 정보:**
+- HTTP 메서드 (GET, POST, PUT, DELETE 등)
+- 요청 URL
+- 응답 코드 (200, 404, 500 등)
+- 응답 시간
+- 에러 스택트레이스 (에러 발생 시)
+
+## 기본 로그 형식
+
+```
+[2025-01-09 12:34:56] [fastify] INFO: [GET:200] /api/user/list - Request completed
+[2025-01-09 12:34:57] [fastify] INFO: [POST:201] /api/user - User created
+[2025-01-09 12:34:58] [fastify] ERROR: [POST:500] /api/order - Internal server error
+```
+
+**형식 구조:**
+```
+[타임스탬프] [카테고리] 레벨: [메서드:코드] URL - 메시지
+```
+
+## 기본 동작
+
+### 1. 로깅 대상
+
+기본적으로 `/api`로 시작하는 경로만 로깅합니다.
+
+```typescript
+// ✅ 로깅됨
+GET /api/user/list
+POST /api/order
+PUT /api/company/123
+
+// ❌ 로깅 안 됨
+GET /                      // API가 아님
+GET /assets/logo.png       // 정적 파일
+GET /api/healthcheck       // 헬스체크는 제외
+```
+
+### 2. 기본 sink
+
+Sonamu는 자동으로 `"fastify-console"` sink를 생성합니다.
+
+**특징:**
+- 콘솔 출력
+- 예쁜 형식 (pretty formatter)
+- HTTP 메서드와 응답 코드 표시
+- 타임스탬프, 카테고리 표시
+
+### 3. 기본 filter
+
+`"fastify-console"` filter가 자동 생성됩니다.
+
+**조건:**
+- URL이 `/api`로 시작
+- `/api/healthcheck` 제외
+
+### 4. 기본 logger
+
+```typescript
+{
+  category: ["fastify"],
+  sinks: ["fastify-console"],
+  lowestLevel: "info",
+  filters: ["fastify-console"],
+}
+```
+
+## fastifyCategory 커스터마이징
+
+Fastify 로깅에 사용할 카테고리를 변경할 수 있습니다.
+
+```typescript
+export default defineConfig({
+  logging: {
+    fastifyCategory: ["app", "server", "http"],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**로그 출력:**
+```
+[2025-01-09 12:34:56] [app.server.http] INFO: [GET:200] /api/user/list - Request completed
+```
+
+## LogRecord 프로퍼티
+
+Fastify 로그는 특별한 프로퍼티를 포함합니다.
+
+```typescript
+type FastifyLogRecord = LogRecord & {
+  properties: {
+    req?: FastifyRequest;      // 요청 정보
+    res?: FastifyReply;         // 응답 정보
+    responseTime?: number;      // 응답 시간 (ms)
+  };
+};
+```
+
+### req 프로퍼티
+
+```typescript
+{
+  method: "GET",
+  url: "/api/user/list?page=1",
+  originalUrl: "/api/user/list?page=1",
+  headers: { ... },
+  params: { ... },
+  query: { page: "1" },
+  body: { ... },
+}
+```
+
+### res 프로퍼티
+
+```typescript
+{
+  statusCode: 200,
+  request: FastifyRequest,  // 연관된 요청
+}
+```
+
+### responseTime 프로퍼티
+
+```typescript
+{
+  responseTime: 123  // 밀리초 (ms)
+}
+```
+
+## 커스텀 Filter
+
+### URL 패턴 필터링
+
+```typescript
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+export default defineConfig({
+  logging: {
+    filters: {
+      "admin-only": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/admin") ?? false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["admin-only"],  // /api/admin/* 만
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 상태 코드 필터링
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "errors-only": (record: LogRecord) => {
+        const res = record.properties.res as FastifyReply | undefined;
+        return res ? res.statusCode >= 400 : false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["errors-only"],  // 4xx, 5xx만
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 느린 요청 필터링
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "slow-requests": (record: LogRecord) => {
+        const responseTime = record.properties.responseTime as number | undefined;
+        return responseTime ? responseTime > 1000 : false;  // 1초 이상
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["slow-requests"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## 커스텀 Formatter
+
+### 간단한 형식
+
+```typescript
+import { getConsoleSink, type LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const simpleFormatter = (record: LogRecord): string => {
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  
+  if (req) {
+    return `${req.method} ${req.url}`;
+  }
+  
+  if (res) {
+    return `${res.request.method} ${res.request.url} → ${res.statusCode}`;
+  }
+  
+  return record.message.join(" ");
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      simple: getConsoleSink({ formatter: simpleFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["simple"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**출력:**
+```
+GET /api/user/list
+POST /api/user → 201
+GET /api/order/123 → 200
+```
+
+### 상세 형식
+
+```typescript
+import { getConsoleSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const detailedFormatter = (record: LogRecord): string => {
+  const timestamp = record.timestamp.toISOString();
+  const level = record.level.toUpperCase();
+  
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  const responseTime = record.properties.responseTime as number | undefined;
+  
+  if (res) {
+    const time = responseTime ? ` (${responseTime}ms)` : "";
+    return `[${timestamp}] ${level}: ${res.request.method} ${res.request.url} → ${res.statusCode}${time}`;
+  }
+  
+  if (req) {
+    return `[${timestamp}] ${level}: ${req.method} ${req.url}`;
+  }
+  
+  return `[${timestamp}] ${level}: ${record.message.join(" ")}`;
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      detailed: getConsoleSink({ formatter: detailedFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["detailed"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**출력:**
+```
+[2025-01-09T03:34:56.123Z] INFO: GET /api/user/list
+[2025-01-09T03:34:56.456Z] INFO: GET /api/user/list → 200 (123ms)
+[2025-01-09T03:34:57.789Z] ERROR: POST /api/order → 500 (456ms)
+```
+
+### JSON 형식
+
+```typescript
+import { getConsoleSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+const jsonFormatter = (record: LogRecord): string => {
+  const req = record.properties.req as FastifyRequest | undefined;
+  const res = record.properties.res as FastifyReply | undefined;
+  const responseTime = record.properties.responseTime as number | undefined;
+  
+  const log = {
+    timestamp: record.timestamp.toISOString(),
+    level: record.level,
+    category: record.category,
+    method: req?.method ?? res?.request.method,
+    url: req?.url ?? res?.request.url,
+    statusCode: res?.statusCode,
+    responseTime,
+  };
+  
+  return JSON.stringify(log);
+};
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      json: getConsoleSink({ formatter: jsonFormatter }),
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["json"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+**출력:**
+```json
+{"timestamp":"2025-01-09T03:34:56.123Z","level":"info","category":["fastify"],"method":"GET","url":"/api/user/list","statusCode":200,"responseTime":123}
+```
+
+## 실전 예시
+
+### 개발 환경 설정
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  logging: {
+    fastifyCategory: ["fastify"],
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        lowestLevel: "debug",  // 상세 로그
+        filters: ["fastify-console"],
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 프로덕션 설정
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getConsoleSink, getFileSink } from "@logtape/logtape";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      console: getConsoleSink(),
+      accessLog: getFileSink("logs/access.log"),
+      errorLog: getFileSink("logs/errors.log"),
+    },
+    
+    filters: {
+      "errors": (record) => {
+        const res = record.properties.res;
+        return res ? res.statusCode >= 400 : false;
+      },
+    },
+    
+    loggers: [
+      // 콘솔: warning 이상
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        lowestLevel: "warning",
+      },
+      // access.log: 모든 요청
+      {
+        category: ["fastify"],
+        sinks: ["accessLog"],
+        lowestLevel: "info",
+      },
+      // error.log: 에러만
+      {
+        category: ["fastify"],
+        sinks: ["errorLog"],
+        filters: ["errors"],
+        lowestLevel: "error",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 경로별 로그 분리
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getFileSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+import type { FastifyRequest, FastifyReply } from "fastify";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      adminLog: getFileSink("logs/admin.log"),
+      userLog: getFileSink("logs/user.log"),
+      publicLog: getFileSink("logs/public.log"),
+    },
+    
+    filters: {
+      "admin": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/admin") ?? false;
+      },
+      "user": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/user") ?? false;
+      },
+      "public": (record: LogRecord) => {
+        const req = record.properties.req as FastifyRequest | undefined;
+        const res = record.properties.res as FastifyReply | undefined;
+        const url = req?.url ?? res?.request.url;
+        return url?.startsWith("/api/public") ?? false;
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["adminLog"],
+        filters: ["admin"],
+        lowestLevel: "info",
+      },
+      {
+        category: ["fastify"],
+        sinks: ["userLog"],
+        filters: ["user"],
+        lowestLevel: "info",
+      },
+      {
+        category: ["fastify"],
+        sinks: ["publicLog"],
+        filters: ["public"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 느린 요청 모니터링
+
+```typescript
+import { defineConfig } from "sonamu";
+import { getConsoleSink, getFileSink } from "@logtape/logtape";
+import type { LogRecord } from "@logtape/logtape";
+
+export default defineConfig({
+  logging: {
+    sinks: {
+      console: getConsoleSink(),
+      slowLog: getFileSink("logs/slow-requests.log"),
+    },
+    
+    filters: {
+      "slow": (record: LogRecord) => {
+        const responseTime = record.properties.responseTime as number | undefined;
+        return responseTime ? responseTime > 1000 : false;
+      },
+    },
+    
+    loggers: [
+      // 일반 로그
+      {
+        category: ["fastify"],
+        sinks: ["console"],
+        lowestLevel: "info",
+      },
+      // 느린 요청 (1초 이상)
+      {
+        category: ["fastify"],
+        sinks: ["slowLog"],
+        filters: ["slow"],
+        lowestLevel: "warning",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## 로깅 비활성화
+
+### 전체 비활성화
+
+```typescript
+export default defineConfig({
+  logging: false,  // 모든 로깅 비활성화
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### Fastify 로깅만 비활성화
+
+```typescript
+export default defineConfig({
+  logging: {
+    loggers: [
+      // fastifyCategory에 대한 logger를 추가하지 않음
+      // → Fastify 로깅 비활성화
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+### 특정 경로 제외
+
+```typescript
+export default defineConfig({
+  logging: {
+    filters: {
+      "exclude-healthcheck": (record) => {
+        const req = record.properties.req;
+        const res = record.properties.res;
+        const url = req?.url ?? res?.request.url;
+        return url !== "/api/healthcheck";  // healthcheck 제외
+      },
+    },
+    
+    loggers: [
+      {
+        category: ["fastify"],
+        sinks: ["fastify-console"],
+        filters: ["exclude-healthcheck"],
+        lowestLevel: "info",
+      },
+    ],
+  },
+  
+  server: {
+    listen: { port: 1028 },
+  },
+});
+```
+
+## 주의사항
+
+### 1. req vs res 프로퍼티
+
+```typescript
+// ✅ 둘 다 체크
+const req = record.properties.req as FastifyRequest | undefined;
+const res = record.properties.res as FastifyReply | undefined;
+const url = req?.url ?? res?.request.url;
+
+// ❌ 하나만 체크하면 누락 가능
+const req = record.properties.req;
+const url = req.url;  // res만 있을 경우 에러
+```
+
+### 2. responseTime은 res에만 있음
+
+```typescript
+// ✅ 올바른 체크
+const responseTime = record.properties.responseTime as number | undefined;
+if (responseTime) {
+  // responseTime 사용
+}
+
+// ❌ req에서 찾으면 없음
+const req = record.properties.req;
+const responseTime = req?.responseTime;  // undefined
+```
+
+### 3. fastify-console 덮어쓰기 주의
+
+```typescript
+// ❌ 기본 sink 손실
+sinks: {
+  "fastify-console": getConsoleSink(),  // 기본 formatter 손실
+}
+
+// ✅ 다른 이름 사용
+sinks: {
+  "my-console": getConsoleSink(),
+}
+```
+
+### 4. Fastify logger 옵션 충돌
+
+```typescript
+// ❌ 충돌 발생
+logging: false,
+server: {
+  fastify: {
+    logger: true,  // logging: false와 충돌
+  },
+}
+
+// ✅ 일관성 유지
+logging: false,
+server: {
+  fastify: {
+    // logger 설정 안 함
+  },
+}
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="카테고리 로깅" 
+    icon="folder-tree" 
+    href="/configuration/logging/category-logging"
+  >
+    카테고리 시스템으로 로그를 체계적으로 관리하세요
+  </Card>
+  
+  <Card 
+    title="Sinks & Filters" 
+    icon="filter" 
+    href="/configuration/logging/sinks-and-filters"
+  >
+    커스텀 Sink와 Filter로 로그 출력을 제어하세요
+  </Card>
+  
+  <Card 
+    title="LogTape 설정" 
+    icon="gear" 
+    href="/configuration/logging/logtape-setup"
+  >
+    기본 로깅 설정과 개념을 학습하세요
+  </Card>
+  
+  <Card 
+    title="LogTape 공식 문서" 
+    icon="book-open" 
+    href="https://github.com/dahlia/logtape"
+  >
+    Fastify 통합을 포함한 고급 기능을 확인하세요
+  </Card>
+</CardGroup>
