@@ -1,10 +1,787 @@
 ---
 title: '서버'
-description: 'port, plugins 설정하기'
+description: 'Fastify 서버 기본 설정 및 플러그인'
 ---
 
-# 서버
+Sonamu는 Fastify를 기반으로 하는 고성능 HTTP 서버입니다. 서버 포트, 호스트, 플러그인, 라이프사이클 훅 등을 설정할 수 있습니다.
+
+## 기본 구조
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    listen: { port, host },
+    
+    plugins: {
+      formbody: true,
+      qs: true,
+      multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+      },
+      session: {
+        secret: process.env.SESSION_SECRET,
+        salt: process.env.SESSION_SALT,
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+      }),
+    },
+    
+    lifecycle: {
+      onStart: () => console.log(`🌲 Server listening on http://${host}:${port}`),
+      onShutdown: () => console.log("graceful shutdown"),
+    },
+  },
+  // ...
+});
+```
+
+## baseUrl
+
+외부에서 접근 가능한 서버의 전체 URL을 지정합니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: `http://{listen.host}:{listen.port}`
+
+```typescript
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    // ...
+  },
+});
+```
+
+**실제 도메인 사용**:
+
+```typescript
+export default defineConfig({
+  server: {
+    baseUrl: "https://api.myapp.com",  // 프로덕션 URL
+    listen: { port: 3000, host: "0.0.0.0" },
+  },
+});
+```
+
+<Tip>
+`baseUrl`은 파일 업로드 시 생성되는 URL, SSR 메타 태그 등에 사용됩니다.
+</Tip>
+
+## listen
+
+서버가 수신할 포트와 호스트를 설정합니다.
+
+**타입**: (선택적)
+
+```typescript
+listen?: {
+  port: number;
+  host?: string;
+}
+```
+
+### port
+
+서버가 수신할 포트 번호입니다.
+
+**타입**: `number`
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,  // 이 포트에서 수신
+    },
+  },
+});
+```
+
+**환경 변수로 포트 설정**:
+
+```typescript
+const port = Number(process.env.PORT ?? 1028);
+
+export default defineConfig({
+  server: {
+    listen: { port },
+  },
+});
+```
+
+### host
+
+서버가 바인딩할 호스트 주소입니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: `"localhost"`
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,
+      host: "localhost",  // 로컬에서만 접근 가능
+    },
+  },
+});
+```
+
+**모든 네트워크 인터페이스에서 수신**:
+
+```typescript
+export default defineConfig({
+  server: {
+    listen: {
+      port: 1028,
+      host: "0.0.0.0",  // 외부 접근 허용
+    },
+  },
+});
+```
+
+<Warning>
+프로덕션 환경에서 `0.0.0.0`을 사용할 때는 방화벽 설정을 확인하세요.
+</Warning>
+
+## fastify
+
+Fastify 서버 옵션을 설정합니다.
+
+**타입**: `Omit<FastifyServerOptions, "logger">` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    fastify: {
+      connectionTimeout: 30000,
+      keepAliveTimeout: 5000,
+      maxParamLength: 200,
+      trustProxy: true,  // 프록시 뒤에 있을 때
+    },
+    // ...
+  },
+});
+```
 
 <Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
+로깅은 Sonamu의 `logging` 설정을 통해 별도로 구성합니다.
 </Note>
+
+## plugins
+
+Fastify 플러그인을 활성화하고 설정합니다.
+
+### formbody
+
+`application/x-www-form-urlencoded` 요청 본문을 파싱합니다.
+
+**타입**: `boolean | FastifyFormbodyOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      formbody: true,  // 기본 설정으로 활성화
+    },
+  },
+});
+```
+
+**옵션 지정**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      formbody: {
+        bodyLimit: 1048576,  // 1MB
+      },
+    },
+  },
+});
+```
+
+### qs
+
+쿼리 스트링을 파싱합니다. 중첩된 객체와 배열을 지원합니다.
+
+**타입**: `boolean | QsPluginOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      qs: true,  // ?filter[status]=active&sort[name]=asc 파싱
+    },
+  },
+});
+```
+
+### multipart
+
+파일 업로드를 처리합니다 (`multipart/form-data`).
+
+**타입**: `boolean | FastifyMultipartOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 30,  // 30MB
+          files: 10,  // 최대 10개 파일
+        },
+      },
+    },
+  },
+});
+```
+
+**더 큰 파일 허용**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 100,  // 100MB
+          files: 20,
+        },
+      },
+    },
+  },
+});
+```
+
+### static
+
+정적 파일을 제공합니다.
+
+**타입**: `boolean | FastifyStaticOptions` (선택적)
+
+```typescript
+import path from "path";
+
+export default defineConfig({
+  server: {
+    plugins: {
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",  // /api/public/* 경로로 제공
+      },
+    },
+  },
+});
+```
+
+**예시**: `/api/public/images/logo.png` → `public/images/logo.png` 파일
+
+### session
+
+세션 관리를 활성화합니다.
+
+**타입**: `boolean | SecureSessionPluginOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET || "change-this-secret",
+        salt: process.env.SESSION_SALT || "change-this-salt",
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365 * 10,  // 10년
+        },
+      },
+    },
+  },
+});
+```
+
+<Warning>
+프로덕션 환경에서는 반드시 환경 변수로 `secret`과 `salt`를 설정하세요!
+</Warning>
+
+**프로덕션 설정**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET,  // 필수!
+        salt: process.env.SESSION_SALT,      // 필수!
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30일
+          secure: true,  // HTTPS에서만
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+  },
+});
+```
+
+### compress
+
+응답을 압축합니다. 자세한 내용은 별도 문서를 참조하세요.
+
+**타입**: `boolean | FastifyCompressOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      compress: {
+        global: false,  // API별로 제어
+        threshold: 1024,  // 1KB 이상만 압축
+        encodings: ["gzip"],
+      },
+    },
+  },
+});
+```
+
+→ [compress 상세 설정](/configuration/sonamu-config/compress)
+
+### cors
+
+CORS(Cross-Origin Resource Sharing)를 설정합니다.
+
+**타입**: `boolean | FastifyCorsOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: {
+        origin: ["http://localhost:3000", "https://myapp.com"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+      },
+    },
+  },
+});
+```
+
+**개발 환경에서 모든 origin 허용**:
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      cors: process.env.NODE_ENV === "development" 
+        ? { origin: true }  // 모든 origin 허용
+        : {
+            origin: ["https://myapp.com"],
+            credentials: true,
+          },
+    },
+  },
+});
+```
+
+### sse
+
+Server-Sent Events를 지원합니다.
+
+**타입**: `boolean | SsePluginOptions` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      sse: true,
+    },
+  },
+});
+```
+
+→ [SSE 사용법](/advanced-features/sse/sse-setup)
+
+### custom
+
+커스텀 Fastify 플러그인을 등록합니다.
+
+**타입**: `(server: FastifyInstance) => void` (선택적)
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      custom: (server) => {
+        // 커스텀 훅 등록
+        server.addHook("onRequest", async (request, reply) => {
+          console.log(`${request.method} ${request.url}`);
+        });
+        
+        // 커스텀 플러그인 등록
+        server.register(myCustomPlugin);
+      },
+    },
+  },
+});
+```
+
+## apiConfig
+
+API 동작 방식을 설정합니다.
+
+### contextProvider
+
+각 API 호출마다 Context를 생성하는 함수입니다.
+
+**타입**: `(defaultContext, request) => Context`
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      contextProvider: (defaultContext, request) => {
+        return {
+          ...defaultContext,
+          ip: request.ip,
+          session: request.session,
+          body: request.body,
+        };
+      },
+    },
+  },
+});
+```
+
+→ [Context 상세 설명](/api-development/context/custom-context)
+
+### guardHandler
+
+Guard 데코레이터 실행 시 호출되는 함수입니다.
+
+**타입**: `(guard, request, api) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        // 권한 검사 로직
+        if (guard === "admin" && !request.session.isAdmin) {
+          throw new UnauthorizedError("Admin only");
+        }
+      },
+    },
+  },
+});
+```
+
+### cacheControlHandler
+
+Cache-Control 헤더를 설정하는 함수입니다.
+
+**타입**: `(req) => string | undefined`
+
+```typescript
+import { CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "assets") {
+          return CachePresets.immutable;
+        }
+        if (req.type === "api" && req.method === "GET") {
+          return CachePresets.shortLived;
+        }
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+→ [Cache-Control 상세 설명](/configuration/sonamu-config/cache-control)
+
+## lifecycle
+
+서버 라이프사이클 이벤트에 훅을 등록합니다.
+
+### onStart
+
+서버가 시작될 때 실행됩니다.
+
+**타입**: `(server: FastifyInstance) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onStart: (server) => {
+        console.log(`🌲 Server listening on http://localhost:1028`);
+        console.log(`📊 Routes registered: ${server.printRoutes()}`);
+      },
+    },
+  },
+});
+```
+
+### onShutdown
+
+서버가 종료될 때 실행됩니다 (graceful shutdown).
+
+**타입**: `(server: FastifyInstance) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onShutdown: async (server) => {
+        console.log("Closing database connections...");
+        await closeAllConnections();
+        console.log("Graceful shutdown complete");
+      },
+    },
+  },
+});
+```
+
+### onError
+
+처리되지 않은 에러가 발생했을 때 실행됩니다.
+
+**타입**: `(error, request, reply) => void | Promise<void>`
+
+```typescript
+export default defineConfig({
+  server: {
+    lifecycle: {
+      onError: (error, request, reply) => {
+        console.error(`[ERROR] ${request.method} ${request.url}`, error);
+        
+        reply.status(500).send({
+          error: "Internal Server Error",
+          message: process.env.NODE_ENV === "development" 
+            ? error.message 
+            : undefined,
+        });
+      },
+    },
+  },
+});
+```
+
+## 실전 예시
+
+### 기본 개발 서버
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const host = "localhost";
+const port = 1028;
+
+export default defineConfig({
+  server: {
+    baseUrl: `http://${host}:${port}`,
+    listen: { port, host },
+    
+    plugins: {
+      formbody: true,
+      qs: true,
+      multipart: { limits: { fileSize: 1024 * 1024 * 30 } },
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+      },
+      session: {
+        secret: "dev-secret-change-in-production",
+        salt: "dev-salt-change-in-production",
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+        },
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+        session: request.session,
+      }),
+    },
+    
+    lifecycle: {
+      onStart: () => console.log(`🌲 Server started at http://${host}:${port}`),
+    },
+  },
+  // ...
+});
+```
+
+### 프로덕션 서버
+
+```typescript
+import path from "path";
+import { defineConfig } from "sonamu";
+
+const port = Number(process.env.PORT ?? 3000);
+const host = "0.0.0.0";
+
+export default defineConfig({
+  server: {
+    baseUrl: process.env.BASE_URL ?? "https://api.myapp.com",
+    
+    listen: { port, host },
+    
+    fastify: {
+      trustProxy: true,
+      connectionTimeout: 60000,
+      keepAliveTimeout: 30000,
+    },
+    
+    plugins: {
+      compress: {
+        global: false,
+        threshold: 1024,
+        encodings: ["gzip", "br"],
+      },
+      
+      cors: {
+        origin: [process.env.FRONTEND_URL ?? "https://myapp.com"],
+        credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+      },
+      
+      formbody: true,
+      qs: true,
+      
+      multipart: {
+        limits: {
+          fileSize: 1024 * 1024 * 50,  // 50MB
+          files: 20,
+        },
+      },
+      
+      static: {
+        root: path.join(import.meta.dirname, "/../", "public"),
+        prefix: "/api/public",
+        maxAge: 86400000,  // 1일
+      },
+      
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30일
+          secure: true,
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+    
+    apiConfig: {
+      contextProvider: (defaultContext, request) => ({
+        ...defaultContext,
+        ip: request.ip,
+        session: request.session,
+        userAgent: request.headers["user-agent"],
+      }),
+      
+      guardHandler: (guard, request) => {
+        if (guard === "admin" && !request.session.isAdmin) {
+          throw new UnauthorizedError("Admin access required");
+        }
+      },
+    },
+    
+    lifecycle: {
+      onStart: () => {
+        console.log(`🌲 Production server started`);
+        console.log(`   Port: ${port}`);
+        console.log(`   Base URL: ${process.env.BASE_URL}`);
+      },
+      
+      onShutdown: async () => {
+        console.log("Shutting down gracefully...");
+      },
+      
+      onError: (error, request, reply) => {
+        console.error(`[ERROR] ${request.method} ${request.url}`, {
+          message: error.message,
+          stack: error.stack,
+        });
+        
+        reply.status(500).send({
+          error: "Internal Server Error",
+        });
+      },
+    },
+  },
+  // ...
+});
+```
+
+### Docker 컨테이너 환경
+
+```typescript
+import { defineConfig } from "sonamu";
+
+const port = Number(process.env.PORT ?? 3000);
+
+export default defineConfig({
+  server: {
+    baseUrl: process.env.BASE_URL ?? `http://localhost:${port}`,
+    
+    listen: {
+      port,
+      host: "0.0.0.0",  // 컨테이너 외부 접근 허용
+    },
+    
+    fastify: {
+      trustProxy: true,  // 리버스 프록시 뒤에 있을 때
+    },
+    
+    // ... 플러그인 설정
+  },
+  // ...
+});
+```
+
+## 다음 단계
+
+서버 기본 설정을 완료했다면:
+
+- [auth](/configuration/sonamu-config/auth) - 인증 설정
+- [storage](/configuration/sonamu-config/storage) - 파일 스토리지 설정
+- [cache](/configuration/sonamu-config/cache) - 캐시 설정
+- [compress](/configuration/sonamu-config/compress) - 응답 압축 설정

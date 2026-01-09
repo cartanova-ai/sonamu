@@ -1,10 +1,504 @@
 ---
 title: '동기화 대상'
-description: 'web, app 동기화 설정하기'
+description: '프론트엔드와 타입/Service 동기화 설정'
 ---
 
-# 동기화 대상
+import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+
+Sonamu는 Entity와 API가 변경되면 자동으로 타입 정의와 Service 코드를 생성하여 프론트엔드 프로젝트에 동기화합니다. `sync.targets`로 동기화할 프론트엔드를 지정합니다.
+
+## 기본 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  sync: {
+    targets: ["web"],  // web 폴더로 동기화
+  },
+  // ...
+});
+```
+
+## targets
+
+동기화할 프론트엔드 프로젝트 목록을 지정합니다.
+
+**타입**: `string[]` (필수)
+
+```typescript
+export default defineConfig({
+  sync: {
+    targets: ["web", "app"],  // 2개 프로젝트에 동기화
+  },
+});
+```
+
+### 동작 방식
+
+Entity나 API가 변경되면 Sonamu는 다음 파일들을 자동으로 생성하여 각 target 디렉토리에 동기화합니다:
+
+1. **타입 정의** (`{entity}.types.ts`)
+   - Entity 필드에서 생성된 TypeScript 타입
+   - Zod 검증 스키마
+   - Subset 타입
+
+2. **Service 클래스** (`{entity}.service.ts`)
+   - API 호출을 위한 타입 안전한 메서드
+   - TanStack Query 통합 준비
+
+### 디렉토리 구조
+
+<Card>
+<FileTree>
+  <FileItem name="project-root/">
+    <FileItem name="api/" description="백엔드">
+      <FileItem name="src/">
+        <FileItem name="application/">
+          <FileItem name="user/">
+            <FileItem name="user.entity.json" />
+            <FileItem name="user.model.ts" />
+          </FileItem>
+        </FileItem>
+      </FileItem>
+    </FileItem>
+    <FileItem name="web/" description="첫 번째 target">
+      <FileItem name="src/">
+        <FileItem name="services/">
+          <FileItem name="user.types.ts" description="자동 생성" />
+          <FileItem name="user.service.ts" description="자동 생성" />
+        </FileItem>
+      </FileItem>
+    </FileItem>
+    <FileItem name="app/" description="두 번째 target">
+      <FileItem name="src/">
+        <FileItem name="services/">
+          <FileItem name="user.types.ts" description="자동 생성" />
+          <FileItem name="user.service.ts" description="자동 생성" />
+        </FileItem>
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+## 단일 프론트엔드
+
+가장 일반적인 경우로, 웹 프론트엔드 하나만 사용합니다.
+
+```typescript
+export default defineConfig({
+  sync: {
+    targets: ["web"],
+  },
+  // ...
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="my-project/">
+    <FileItem name="api/" description="Sonamu 백엔드" />
+    <FileItem name="web/" description="React/Vue 프론트엔드" />
+  </FileItem>
+</FileTree>
+</Card>
+
+**동기화되는 위치**: `web/src/services/`
+
+## 다중 프론트엔드
+
+웹과 앱(React Native, Flutter 등)을 동시에 개발하는 경우:
+
+```typescript
+export default defineConfig({
+  sync: {
+    targets: ["web", "app"],
+  },
+  // ...
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="my-project/">
+    <FileItem name="api/" description="Sonamu 백엔드" />
+    <FileItem name="web/" description="웹 프론트엔드" />
+    <FileItem name="app/" description="모바일 앱" />
+  </FileItem>
+</FileTree>
+</Card>
+
+**동기화되는 위치**:
+- `web/src/services/`
+- `app/src/services/`
+
+<Tip>
+각 프론트엔드는 동일한 타입과 Service를 공유하므로, API 변경 시 모든 클라이언트가 자동으로 업데이트됩니다.
+</Tip>
+
+## target 디렉토리 위치
+
+기본적으로 Sonamu는 프로젝트 루트에서 target 이름과 동일한 디렉토리를 찾습니다.
+
+<Card>
+<FileTree>
+  <FileItem name="project-root/">
+    <FileItem name="api/" description="Sonamu가 실행되는 위치" />
+    <FileItem name="web/" description='targets: ["web"]' />
+    <FileItem name="mobile-app/" description='targets: ["mobile-app"]' />
+  </FileItem>
+</FileTree>
+</Card>
+
+### 커스텀 경로
+
+target 디렉토리가 다른 위치에 있다면 상대 경로를 사용할 수 있습니다:
+
+```typescript
+export default defineConfig({
+  sync: {
+    targets: ["../frontend/web", "../mobile/app"],
+  },
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="workspace/">
+    <FileItem name="backend/">
+      <FileItem name="api/" description="Sonamu 실행 위치" />
+    </FileItem>
+    <FileItem name="frontend/">
+      <FileItem name="web/" description="../frontend/web" />
+    </FileItem>
+    <FileItem name="mobile/">
+      <FileItem name="app/" description="../mobile/app" />
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+## 동기화 확인
+
+Entity를 수정하고 저장하면 콘솔에 동기화 메시지가 표시됩니다:
+
+```bash
+✨ Syncing to targets...
+   → web/src/services/user.types.ts
+   → web/src/services/user.service.ts
+   → app/src/services/user.types.ts
+   → app/src/services/user.service.ts
+
+✅ All files are synced!
+```
+
+### 생성되는 파일
+
+각 Entity마다 2개의 파일이 생성됩니다:
+
+**user.types.ts**:
+
+```typescript
+// 자동 생성된 타입
+export type UserSaved = {
+  id: number;
+  email: string;
+  name: string;
+  createdAt: Date;
+};
+
+export type UserForm = {
+  email: string;
+  name: string;
+};
+
+// Zod 스키마
+export const UserFormSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+});
+```
+
+**user.service.ts**:
+
+```typescript
+// 자동 생성된 Service
+export class UserService {
+  static async list(params: UserListParams): Promise<UserSaved[]> {
+    return apiClient.get("/api/user/list", { params });
+  }
+  
+  static async detail(id: number): Promise<UserSaved> {
+    return apiClient.get(`/api/user/${id}/detail`);
+  }
+  
+  static async save(form: UserForm): Promise<UserSaved> {
+    return apiClient.post("/api/user/save", form);
+  }
+}
+```
+
+## 동기화 비활성화
+
+프론트엔드가 없거나 동기화가 필요 없다면 빈 배열을 지정합니다:
+
+```typescript
+export default defineConfig({
+  sync: {
+    targets: [],  // 동기화 하지 않음
+  },
+  // ...
+});
+```
 
 <Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
+API 전용 프로젝트(예: 마이크로서비스)에서는 동기화를 비활성화할 수 있습니다.
 </Note>
+
+## 실전 예시
+
+### 기본 웹 프로젝트
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MyApp",
+  
+  sync: {
+    targets: ["web"],
+  },
+  
+  // ...
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="my-app/">
+    <FileItem name="api/">
+      <FileItem name="src/">
+        <FileItem name="application/">
+          <FileItem name="user/" />
+          <FileItem name="post/" />
+          <FileItem name="comment/" />
+        </FileItem>
+      </FileItem>
+    </FileItem>
+    <FileItem name="web/">
+      <FileItem name="src/">
+        <FileItem name="services/" description="동기화 위치">
+          <FileItem name="user.types.ts" />
+          <FileItem name="user.service.ts" />
+          <FileItem name="post.types.ts" />
+          <FileItem name="post.service.ts" />
+          <FileItem name="comment.types.ts" />
+          <FileItem name="comment.service.ts" />
+        </FileItem>
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+### 웹 + 모바일 앱
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "EcommerceApp",
+  
+  sync: {
+    targets: ["web", "mobile"],
+  },
+  
+  // ...
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="ecommerce/">
+    <FileItem name="api/" description="Sonamu 백엔드">
+      <FileItem name="src/application/">
+        <FileItem name="product/" />
+        <FileItem name="order/" />
+        <FileItem name="user/" />
+      </FileItem>
+    </FileItem>
+    <FileItem name="web/" description="Next.js 웹 앱">
+      <FileItem name="src/services/">
+        <FileItem name="product.types.ts" />
+        <FileItem name="product.service.ts" />
+        <FileItem name="..." />
+      </FileItem>
+    </FileItem>
+    <FileItem name="mobile/" description="React Native 앱">
+      <FileItem name="src/services/">
+        <FileItem name="product.types.ts" />
+        <FileItem name="product.service.ts" />
+        <FileItem name="..." />
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+### Monorepo 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MonorepoApp",
+  
+  sync: {
+    targets: [
+      "../packages/web-client",
+      "../packages/admin-panel",
+      "../packages/mobile-app",
+    ],
+  },
+  
+  // ...
+});
+```
+
+**프로젝트 구조**:
+
+<Card>
+<FileTree>
+  <FileItem name="monorepo/">
+    <FileItem name="apps/">
+      <FileItem name="api/" description="Sonamu 실행 위치">
+        <FileItem name="sonamu.config.ts" />
+      </FileItem>
+    </FileItem>
+    <FileItem name="packages/">
+      <FileItem name="web-client/" description="고객용 웹">
+        <FileItem name="src/services/" />
+      </FileItem>
+      <FileItem name="admin-panel/" description="관리자 패널">
+        <FileItem name="src/services/" />
+      </FileItem>
+      <FileItem name="mobile-app/" description="모바일 앱">
+        <FileItem name="src/services/" />
+      </FileItem>
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+## 동기화 주의사항
+
+### 1. 자동 생성 파일 수정 금지
+
+동기화된 파일은 자동으로 생성되므로 직접 수정하면 안 됩니다.
+
+```typescript
+// ❌ 수정하지 마세요!
+// web/src/services/user.service.ts
+
+export class UserService {
+  static async list() {
+    // 여기에 코드를 추가하면 다음 동기화 시 사라집니다!
+  }
+}
+```
+
+**대신 래퍼 클래스 사용**:
+
+```typescript
+// ✅ 별도 파일로 관리
+// web/src/services/user-wrapper.ts
+
+import { UserService } from "./user.service";
+
+export class UserServiceWrapper {
+  static async listActiveUsers() {
+    const users = await UserService.list();
+    return users.filter(u => u.status === "active");
+  }
+}
+```
+
+### 2. Git 관리
+
+동기화된 파일은 Git에 커밋하세요.
+
+```gitignore
+# ❌ .gitignore에 추가하지 마세요
+# web/src/services/
+
+# ✅ Git에 포함시켜야 합니다
+```
+
+**이유**:
+- 팀원들이 백엔드를 실행하지 않아도 프론트엔드 개발 가능
+- CI/CD에서 Sonamu 없이 프론트엔드만 빌드 가능
+
+### 3. target 디렉토리 존재 확인
+
+target으로 지정한 디렉토리가 존재해야 합니다.
+
+```bash
+# 디렉토리가 없으면 에러 발생
+❌ Error: Sync target 'web' not found at ../web
+```
+
+**해결**:
+
+```bash
+# target 디렉토리 생성
+mkdir web
+mkdir app
+```
+
+## 프론트엔드 설정
+
+동기화된 Service를 사용하려면 프론트엔드에서 약간의 설정이 필요합니다.
+
+### 1. API 클라이언트 설정
+
+**web/src/lib/api-client.ts**:
+
+```typescript
+import axios from "axios";
+
+export const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:1028",
+  withCredentials: true,
+});
+```
+
+### 2. Service 사용
+
+```typescript
+import { UserService } from "@/services/user.service";
+
+// API 호출
+const users = await UserService.list();
+const user = await UserService.detail(1);
+```
+
+→ [프론트엔드 통합 가이드](/frontend-integration/generated-services/using-services)
+
+## 다음 단계
+
+동기화 대상 설정을 완료했다면:
+
+- [frontend-integration](/frontend-integration/generated-services/how-services-work) - Service 사용법
+- [storage](/configuration/sonamu-config/storage) - 파일 스토리지 설정
+- [cache](/configuration/sonamu-config/cache) - 캐시 설정

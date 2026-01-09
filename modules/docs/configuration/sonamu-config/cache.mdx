@@ -1,10 +1,551 @@
 ---
-title: '캐시'
-description: 'stores 설정하기'
+title: '캐시 (BentoCache)'
+description: 'BentoCache 기반 캐싱 설정'
 ---
 
-# 캐시
+Sonamu는 BentoCache를 기반으로 하는 강력한 캐싱 시스템을 제공합니다. 메모리, Redis 등 다양한 드라이버를 지원하며, 다층 캐시(L1/L2)와 분산 무효화를 지원합니다.
+
+## 기본 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "5m",
+      prefix: "myapp:",
+    },
+  },
+  // ...
+});
+```
+
+## default
+
+기본으로 사용할 캐시 스토어를 지정합니다.
+
+**타입**: `string`
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",  // stores.main 사용
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+    },
+  },
+});
+```
+
+## stores
+
+사용할 캐시 스토어들을 정의합니다.
+
+**타입**: `Record<string, BentoCacheStore>`
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "100mb" })),
+        
+        distributed: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+    },
+  },
+});
+```
+
+### 단일 레이어: 메모리
+
+가장 간단한 설정으로, 메모리에만 캐시를 저장합니다.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+      ttl: "5m",
+    },
+  },
+});
+```
+
+**장점**: 빠른 속도, 설정 간단  
+**단점**: 서버 재시작 시 캐시 손실, 다중 서버 간 공유 불가
+
+### 다층 캐시: L1 (메모리) + L2 (Redis)
+
+L1은 메모리로 빠르게, L2는 Redis로 영구적으로 캐싱합니다.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "1h",
+    },
+  },
+});
+```
+
+**동작 방식**:
+1. 캐시 조회 시 L1(메모리) 먼저 확인
+2. L1에 없으면 L2(Redis) 확인
+3. L2에서 찾으면 L1에도 저장
+4. 둘 다 없으면 원본 데이터 조회 후 L1, L2에 저장
+
+### 분산 캐시: L1 + L2 + Bus
+
+여러 서버 간 캐시 무효화를 동기화합니다.
+
+```typescript
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+      ttl: "1h",
+    },
+  },
+});
+```
+
+**동작 방식**:
+- 한 서버에서 캐시를 무효화하면
+- Bus를 통해 다른 모든 서버에 전파
+- 모든 서버의 L1 캐시도 자동 무효화
+
+<Tip>
+다중 서버(로드 밸런서 뒤)를 운영한다면 Bus를 활성화하세요. 캐시 일관성이 보장됩니다.
+</Tip>
+
+## ttl
+
+캐시의 기본 유효 시간(Time To Live)을 설정합니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: `"5m"` (5분)
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: { /* ... */ },
+      ttl: "1h",  // 1시간
+    },
+  },
+});
+```
+
+**시간 형식**:
+- `"5s"` - 5초
+- `"1m"` - 1분
+- `"1h"` - 1시간
+- `"1d"` - 1일
+
+**API별로 다른 TTL 사용**:
+
+```typescript
+import { cache } from "sonamu";
+
+export class ProductModel {
+  @cache({ ttl: "10m" })  // 10분 캐시
+  @api()
+  static async list() {
+    // ...
+  }
+  
+  @cache({ ttl: "1h" })  // 1시간 캐시
+  @api()
+  static async detail(id: number) {
+    // ...
+  }
+}
+```
+
+## prefix
+
+모든 캐시 키에 추가될 접두사를 설정합니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: `""`
+
+```typescript
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: { /* ... */ },
+      prefix: "myapp:",  // 모든 키에 "myapp:" 추가
+    },
+  },
+});
+```
+
+**예시**:
+
+```typescript
+// prefix: "myapp:"로 설정 시
+await cache.set("user:123", data);
+// 실제 Redis 키: "myapp:user:123"
+```
+
+<Tip>
+같은 Redis 인스턴스를 여러 앱이 공유한다면 prefix를 설정하여 키 충돌을 방지하세요.
+</Tip>
+
+## 드라이버 옵션
+
+### memory 드라이버
+
+메모리에 캐시를 저장합니다.
+
+```typescript
+drivers.memory({
+  maxSize: "100mb",  // 최대 메모리 크기
+})
+```
+
+**옵션**:
+- `maxSize`: 최대 메모리 사용량 (`"50mb"`, `"100mb"`, `"1gb"` 등)
+
+### redis 드라이버
+
+Redis에 캐시를 저장합니다.
+
+```typescript
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  password: process.env.REDIS_PASSWORD,
+});
+
+drivers.redis({
+  connection: redisConnection,
+})
+```
+
+**connection 설정**:
+
+```typescript
+const redisConnection = createClient({
+  url: "redis://localhost:6379",
+  password: "your-password",
+  socket: {
+    connectTimeout: 10000,
+  },
+});
+
+await redisConnection.connect();
+```
+
+### redisBus 드라이버
+
+Redis Pub/Sub을 사용하여 캐시 무효화를 전파합니다.
+
+```typescript
+drivers.redisBus({
+  connection: redisConnection,
+})
+```
 
 <Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
+`redisBus`는 `redis` 드라이버와 같은 연결을 사용할 수 있습니다.
 </Note>
+
+## 실전 예시
+
+### 단일 서버: 메모리만 사용
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store().useL1Layer(drivers.memory({ maxSize: "100mb" })),
+      },
+      ttl: "5m",
+    },
+  },
+  // ...
+});
+```
+
+**용도**: 소규모 앱, 단일 서버
+
+### 다층 캐시: 메모리 + Redis
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+});
+
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "1h",
+      prefix: "myapp:",
+    },
+  },
+  // ...
+});
+```
+
+**용도**: 중규모 앱, 단일 서버, 영구 캐시 필요
+
+### 분산 환경: 메모리 + Redis + Bus
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+import { createClient } from "redis";
+
+const redisConnection = createClient({
+  url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  password: process.env.REDIS_PASSWORD,
+});
+
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "main",
+      stores: {
+        main: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+      ttl: "1h",
+      prefix: "prod:",
+    },
+  },
+  // ...
+});
+```
+
+**용도**: 대규모 앱, 다중 서버(로드 밸런서), 캐시 일관성 필요
+
+### 다중 스토어: 용도별 분리
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers, store } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    cache: {
+      default: "short",
+      stores: {
+        // 짧은 캐시 (API 응답)
+        short: store()
+          .useL1Layer(drivers.memory({ maxSize: "50mb" })),
+        
+        // 긴 캐시 (정적 데이터)
+        long: store()
+          .useL1Layer(drivers.memory({ maxSize: "30mb" }))
+          .useL2Layer(drivers.redis({ connection: redisConnection })),
+      },
+      ttl: "5m",
+    },
+  },
+  // ...
+});
+```
+
+**사용 예시**:
+
+```typescript
+import { cache } from "sonamu";
+
+export class DataModel {
+  // 짧은 캐시 (기본 스토어)
+  @cache({ ttl: "1m" })
+  @api()
+  static async list() { /* ... */ }
+  
+  // 긴 캐시 (long 스토어)
+  @cache({ store: "long", ttl: "1d" })
+  @api()
+  static async staticData() { /* ... */ }
+}
+```
+
+## 캐시 사용
+
+설정 후 API에서 `@cache` 데코레이터를 사용합니다.
+
+```typescript
+import { api, cache } from "sonamu";
+
+export class ProductModel {
+  @cache({ ttl: "10m" })
+  @api()
+  static async list() {
+    // 첫 호출: DB 조회 후 캐시 저장
+    // 이후 10분간: 캐시에서 반환
+    return this.getPuri().select("*");
+  }
+  
+  @cache({ key: (id) => `product:${id}`, ttl: "1h" })
+  @api()
+  static async detail(id: number) {
+    // 상품별로 1시간 캐시
+    return this.findById(id);
+  }
+}
+```
+
+→ [캐시 데코레이터 사용법](/advanced-features/caching/cache-decorator)
+
+## Redis 설치
+
+Redis를 사용하려면 먼저 설치가 필요합니다.
+
+### Docker
+
+```bash
+docker run -d \
+  --name redis \
+  -p 6379:6379 \
+  redis:7
+```
+
+### macOS
+
+```bash
+brew install redis
+brew services start redis
+```
+
+### Linux
+
+```bash
+sudo apt-get install redis-server
+sudo systemctl start redis
+```
+
+### 연결 확인
+
+```bash
+redis-cli ping
+# PONG
+```
+
+## 주의사항
+
+### 1. Redis 연결 관리
+
+```typescript
+// ✅ 좋은 예: 연결 재사용
+const redisConnection = createClient({ /* ... */ });
+await redisConnection.connect();
+
+export default defineConfig({
+  server: {
+    cache: {
+      stores: {
+        main: store()
+          .useL2Layer(drivers.redis({ connection: redisConnection }))
+          .useBus(drivers.redisBus({ connection: redisConnection })),
+      },
+    },
+  },
+});
+```
+
+### 2. 메모리 크기 설정
+
+```typescript
+// 서버 메모리를 고려하여 설정
+drivers.memory({
+  maxSize: "100mb",  // 서버 메모리의 10-20% 정도
+})
+```
+
+### 3. TTL 선택
+
+```typescript
+// 데이터 변경 빈도에 따라 조정
+ttl: "1m"   // 자주 변경되는 데이터
+ttl: "10m"  // 일반적인 API 응답
+ttl: "1h"   // 거의 변경되지 않는 데이터
+ttl: "1d"   // 정적 데이터
+```
+
+## 다음 단계
+
+캐시 설정을 완료했다면:
+
+- [cache decorator](/advanced-features/caching/cache-decorator) - API에 캐싱 적용
+- [cache-control](/configuration/sonamu-config/cache-control) - HTTP 캐시 제어
+- [cache strategies](/advanced-features/caching/cache-strategies) - 고급 캐싱 전략

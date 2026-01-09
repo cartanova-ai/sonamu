@@ -1,10 +1,331 @@
 ---
 title: '프로젝트 설정'
-description: 'projectName, paths 설정하기'
+description: 'projectName, api, i18n 설정하기'
 ---
 
-# 프로젝트 설정
+`sonamu.config.ts`의 기본 프로젝트 설정을 다룹니다. 프로젝트 이름, API 경로, 시간대, 다국어 지원 등을 설정할 수 있습니다.
+
+## 기본 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MyProject",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",
+    },
+    timezone: "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  
+  // ... 다른 설정
+});
+```
+
+## projectName
+
+프로젝트의 이름을 정의합니다. 로그, 오류 메시지, Sonamu UI 등에서 표시됩니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: 설정하지 않으면 `SonamuProject`
+
+### 사용 예시
+
+```typescript
+export default defineConfig({
+  projectName: "Ecommerce",
+  // ...
+});
+```
+
+**환경 변수로 설정**:
+
+```typescript
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
+  // ...
+});
+```
+
+<Tip>
+환경별로 다른 프로젝트 이름을 사용하려면 환경 변수를 활용하세요. (e.g., `MyProject-Dev`, `MyProject-Prod`)
+</Tip>
+
+## api 설정
+
+API 관련 기본 설정을 정의합니다.
+
+### api.dir
+
+API 코드가 위치한 디렉토리 이름입니다.
+
+**타입**: `string`
+
+**기본값**: `"api"`
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",  // src/application 폴더가 있는 디렉토리
+    // ...
+  },
+});
+```
 
 <Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
+대부분의 프로젝트에서 `"api"` 그대로 사용합니다. 특별한 이유가 없다면 기본값을 유지하세요.
 </Note>
+
+### api.route.prefix
+
+모든 API 엔드포인트의 공통 접두사를 설정합니다.
+
+**타입**: `string`
+
+**기본값**: `"/api"`
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",  // 모든 API가 /api/* 경로로 시작
+    },
+  },
+});
+```
+
+**예시**:
+
+`prefix: "/api"`로 설정하면:
+
+- `UserModel.list` → `GET /api/user/list`
+- `PostModel.detail` → `GET /api/post/detail`
+- `OrderModel.create` → `POST /api/order/create`
+
+<Warning>
+`prefix`를 변경하면 프론트엔드에서 생성된 Service 코드도 함께 업데이트됩니다. 따라서 프로젝트 초기에만 변경하는 것을 권장합니다.
+</Warning>
+
+**다른 prefix 예시**:
+
+```typescript
+export default defineConfig({
+  api: {
+    route: {
+      prefix: "/v1",  // GET /v1/user/list
+    },
+  },
+});
+```
+
+```typescript
+export default defineConfig({
+  api: {
+    route: {
+      prefix: "/graphql",  // 다른 라우팅 전략
+    },
+  },
+});
+```
+
+### api.timezone
+
+서버의 기본 시간대를 설정합니다. 날짜/시간 관련 처리에 영향을 줍니다.
+
+**타입**: `string` (선택적)
+
+**기본값**: 시스템 기본값
+
+```typescript
+export default defineConfig({
+  api: {
+    dir: "api",
+    route: { prefix: "/api" },
+    timezone: "Asia/Seoul",  // 한국 시간
+  },
+});
+```
+
+**지원하는 시간대 형식**: [IANA 시간대 데이터베이스](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+**주요 시간대 예시**:
+
+- `"Asia/Seoul"` - 한국
+- `"America/New_York"` - 미국 동부
+- `"Europe/London"` - 영국
+- `"Asia/Tokyo"` - 일본
+- `"UTC"` - 협정 세계시
+
+<Tip>
+글로벌 서비스라면 `"UTC"`를 사용하고, 클라이언트에서 사용자 시간대로 변환하는 것을 권장합니다.
+</Tip>
+
+## i18n 설정
+
+다국어 지원을 위한 국제화(i18n) 설정입니다.
+
+**타입**: `SonamuI18nOptions` (선택적)
+
+```typescript
+export type SonamuI18nOptions = {
+  /** 기본 locale (키 정의 기준 + 런타임 기본값) */
+  defaultLocale: string;
+  /** 지원하는 locale 목록 */
+  supportedLocales: string[];
+};
+```
+
+### 기본 설정
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  // ...
+});
+```
+
+### defaultLocale
+
+기본 언어를 설정합니다. 다음 두 가지 역할을 합니다:
+
+1. **키 정의 기준**: Entity의 `label`, `enumLabel` 등을 작성할 때 기준이 되는 언어
+2. **런타임 기본값**: 사용자가 locale을 지정하지 않았을 때 사용할 언어
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",  // 한국어를 기본으로
+    supportedLocales: ["ko", "en", "ja"],
+  },
+});
+```
+
+### supportedLocales
+
+지원할 모든 언어의 목록입니다. `defaultLocale`도 반드시 포함되어야 합니다.
+
+```typescript
+export default defineConfig({
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en", "ja", "zh"],  // 4개국 언어 지원
+  },
+});
+```
+
+<Warning>
+`defaultLocale`이 `supportedLocales`에 포함되어 있지 않으면 오류가 발생합니다.
+</Warning>
+
+### i18n 비활성화
+
+다국어 지원이 필요 없다면 `i18n` 설정을 생략하면 됩니다:
+
+```typescript
+export default defineConfig({
+  projectName: "MyProject",
+  api: { /* ... */ },
+  // i18n: undefined  ← 생략
+  // ...
+});
+```
+
+## 실전 예시
+
+### 기본 프로젝트 설정
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "MyEcommerce",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api",
+    },
+    timezone: "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en"],
+  },
+  
+  // ... database, server 등 다른 설정
+});
+```
+
+### 환경 변수 활용
+
+```typescript
+import { defineConfig } from "sonamu";
+
+const isDev = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  projectName: process.env.PROJECT_NAME ?? "MyProject",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: process.env.API_PREFIX ?? "/api",
+    },
+    timezone: process.env.TIMEZONE ?? "Asia/Seoul",
+  },
+  
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en", "ja"],
+  },
+  
+  // ...
+});
+```
+
+### 글로벌 서비스
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  projectName: "GlobalService",
+  
+  api: {
+    dir: "api",
+    route: {
+      prefix: "/api/v1",  // 버저닝 포함
+    },
+    timezone: "UTC",  // 글로벌 서비스는 UTC 권장
+  },
+  
+  i18n: {
+    defaultLocale: "en",
+    supportedLocales: ["en", "ko", "ja", "zh", "es", "fr"],
+  },
+  
+  // ...
+});
+```
+
+## 다음 단계
+
+프로젝트 기본 설정을 완료했다면, 다음 설정들을 진행하세요:
+
+- [database](/configuration/sonamu-config/database) - 데이터베이스 연결 설정
+- [server](/configuration/sonamu-config/server) - 서버 옵션 및 플러그인 설정
+- [sync-targets](/configuration/sonamu-config/sync-targets) - 프론트엔드 동기화 대상 설정

@@ -1,10 +1,463 @@
 ---
 title: 'Cache-Control'
-description: 'cacheControl 설정하기'
+description: 'HTTP Cache-Control 헤더 설정'
 ---
 
-# Cache-Control
+Sonamu는 HTTP Cache-Control 헤더를 자동으로 설정하여 브라우저와 CDN의 캐싱 동작을 제어할 수 있습니다. API 응답, 정적 파일, SSR 페이지 등 각 리소스 타입별로 적절한 캐싱 전략을 적용할 수 있습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 기본 구조
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            return CachePresets.immutable;
+          case "api":
+            return CachePresets.noCache;
+          case "ssr":
+            return CachePresets.ssr;
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+  // ...
+});
+```
+
+## cacheControlHandler
+
+각 요청에 대해 Cache-Control 헤더를 동적으로 생성하는 함수입니다.
+
+**타입**: `(req: CacheControlRequest) => string | undefined`
+
+```typescript
+type CacheControlRequest = {
+  type: "assets" | "api" | "ssr" | "csr";
+  method: string;
+  path: string;
+};
+```
+
+### 요청 타입
+
+**type**:
+- `"assets"` - 정적 파일 (JS, CSS, 이미지 등)
+- `"api"` - API 엔드포인트
+- `"ssr"` - SSR 페이지
+- `"csr"` - CSR 진입점 (index.html)
+
+**method**: HTTP 메서드 (`GET`, `POST`, `PUT`, `DELETE` 등)
+
+**path**: 요청 경로 (`/api/user/list`, `/assets/main.js` 등)
+
+## CachePresets
+
+Sonamu가 제공하는 사전 정의된 캐싱 전략입니다.
+
+```typescript
+import { CachePresets } from "sonamu";
+```
+
+### 사용 가능한 Presets
+
+**CachePresets.noCache**
+```
+Cache-Control: no-cache, no-store, must-revalidate
+```
+- 항상 원본 서버에서 최신 버전 확인
+- 용도: 실시간 데이터, 인증이 필요한 API
+
+**CachePresets.shortLived** (1분)
+```
+Cache-Control: public, max-age=60
+```
+- 1분간 캐시
+- 용도: 자주 변경되는 데이터, CSR 진입점
+
+**CachePresets.mediumLived** (5분)
+```
+Cache-Control: public, max-age=300
+```
+- 5분간 캐시
+- 용도: 보통 주기로 변경되는 데이터
+
+**CachePresets.longLived** (1시간)
+```
+Cache-Control: public, max-age=3600
+```
+- 1시간 캐시
+- 용도: 거의 변경되지 않는 정적 데이터
+
+**CachePresets.immutable** (1년)
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+- 1년간 캐시, 변경되지 않음
+- 용도: 해시가 포함된 빌드 파일
+
+**CachePresets.ssr** (10초)
+```
+Cache-Control: public, max-age=10, stale-while-revalidate=60
+```
+- 10초간 캐시, 백그라운드에서 갱신
+- 용도: SSR 페이지
+
+## 기본 예시
+
+### 단순 설정
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // 모든 API는 캐시 없음
+        if (req.type === "api") {
+          return CachePresets.noCache;
+        }
+        
+        // 정적 파일은 긴 캐시
+        if (req.type === "assets") {
+          return CachePresets.longLived;
+        }
+        
+        // SSR 페이지는 짧은 캐시
+        if (req.type === "ssr") {
+          return CachePresets.ssr;
+        }
+      },
+    },
+  },
+});
+```
+
+### Assets 세분화
+
+해시가 포함된 파일은 영구 캐시, 그 외는 일반 캐시:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "assets") {
+          // 해시 포함 파일 (예: main-a3f2b1c.js)
+          if (req.path.match(/-[a-f0-9]+\./)) {
+            return CachePresets.immutable;
+          }
+          // 일반 정적 파일
+          return CachePresets.longLived;
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+### API 경로별 캐싱
+
+GET 요청만 선택적으로 캐시:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "api") {
+          // GET 요청만 캐싱 고려
+          if (req.method === "GET") {
+            // 특정 경로는 짧은 캐시
+            if (req.path.startsWith("/api/static-data")) {
+              return CachePresets.shortLived;
+            }
+            
+            // 약관 등은 중간 캐시
+            if (req.path.startsWith("/api/terms")) {
+              return CachePresets.mediumLived;
+            }
+          }
+          
+          // 기본: 캐시 없음
+          return CachePresets.noCache;
+        }
+      },
+    },
+  },
+});
+```
+
+## 실전 예시
+
+### 표준 웹 앱
+
+```typescript
+import { defineConfig, CachePresets } from "sonamu";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            // 해시 포함 파일: 영구 캐시
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            // GET 요청만 캐싱
+            if (req.method === "GET") {
+              // 정적 데이터
+              if (req.path.startsWith("/api/static")) {
+                return CachePresets.mediumLived;
+              }
+            }
+            return CachePresets.noCache;
+          
+          case "ssr":
+            // SSR 페이지: 10초 캐시
+            return CachePresets.ssr;
+          
+          case "csr":
+            // index.html: 1분 캐시
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+### CDN 최적화
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        switch (req.type) {
+          case "assets":
+            // CDN 엣지에 오래 캐시
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            // API는 CDN 캐시 안 함
+            return CachePresets.noCache;
+          
+          case "ssr":
+            // SSR은 CDN에 짧게 캐시
+            return "public, max-age=30, stale-while-revalidate=120";
+          
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+### 개발 vs 프로덕션
+
+```typescript
+const isDev = process.env.NODE_ENV === "development";
+
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // 개발 환경: 캐시 비활성화
+        if (isDev) {
+          return CachePresets.noCache;
+        }
+        
+        // 프로덕션: 일반적인 캐싱 전략
+        switch (req.type) {
+          case "assets":
+            if (req.path.match(/-[a-f0-9]+\./)) {
+              return CachePresets.immutable;
+            }
+            return CachePresets.longLived;
+          
+          case "api":
+            if (req.method === "GET") {
+              return CachePresets.shortLived;
+            }
+            return CachePresets.noCache;
+          
+          case "ssr":
+            return CachePresets.ssr;
+          
+          case "csr":
+            return CachePresets.shortLived;
+        }
+      },
+    },
+  },
+});
+```
+
+## 커스텀 Cache-Control
+
+Preset이 아닌 직접 헤더 값을 반환할 수도 있습니다:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        if (req.type === "api" && req.path.startsWith("/api/feed")) {
+          // 피드는 5분 캐시 + stale-while-revalidate
+          return "public, max-age=300, stale-while-revalidate=600";
+        }
+        
+        if (req.type === "assets" && req.path.endsWith(".woff2")) {
+          // 폰트는 1년 캐시
+          return "public, max-age=31536000, immutable";
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+## Cache-Control 이해하기
+
+### 주요 디렉티브
+
+**public**
+- CDN과 중간 프록시에서도 캐시 가능
+- 정적 파일, 공개 API에 적합
+
+**private**
+- 브라우저만 캐시 가능
+- 개인화된 데이터에 적합
+
+**no-cache**
+- 캐시는 하되 매번 원본 검증 필요
+- 조건부 요청 (304 Not Modified) 가능
+
+**no-store**
+- 어디에도 캐시하지 않음
+- 민감한 데이터에 사용
+
+**max-age=N**
+- N초 동안 신선한(fresh) 상태
+- 이 기간 동안은 재검증 없이 캐시 사용
+
+**immutable**
+- 절대 변경되지 않음
+- 브라우저가 재검증을 건너뜀
+- 해시 기반 파일에 최적
+
+**stale-while-revalidate=N**
+- 만료 후 N초 동안 stale 버전 반환
+- 백그라운드에서 갱신
+- SSR 페이지에 유용
+
+### 예시 조합
+
+```typescript
+// 영구 캐시 (빌드 파일)
+"public, max-age=31536000, immutable"
+
+// 짧은 캐시 + 백그라운드 갱신 (SSR)
+"public, max-age=10, stale-while-revalidate=60"
+
+// 브라우저만 짧게 캐시 (인증 API)
+"private, max-age=60"
+
+// 캐시 안 함 (실시간 데이터)
+"no-cache, no-store, must-revalidate"
+```
+
+## undefined 반환
+
+헤더를 설정하지 않으려면 `undefined`를 반환합니다:
+
+```typescript
+export default defineConfig({
+  server: {
+    apiConfig: {
+      cacheControlHandler: (req) => {
+        // 내부 API는 Cache-Control 헤더 없음
+        if (req.path.startsWith("/api/internal")) {
+          return undefined;
+        }
+        
+        return CachePresets.noCache;
+      },
+    },
+  },
+});
+```
+
+## 주의사항
+
+### 1. 인증이 필요한 API
+
+```typescript
+// ❌ 나쁜 예: 인증 API를 public 캐시
+if (req.path.startsWith("/api/user/profile")) {
+  return "public, max-age=300";  // 다른 사용자 데이터 노출 위험!
+}
+
+// ✅ 좋은 예: private 또는 no-cache
+if (req.path.startsWith("/api/user/profile")) {
+  return "private, max-age=60";  // 또는 CachePresets.noCache
+}
+```
+
+### 2. POST/PUT/DELETE는 캐시 안 함
+
+```typescript
+if (req.type === "api") {
+  // GET만 캐싱
+  if (req.method === "GET") {
+    return CachePresets.shortLived;
+  }
+  // POST, PUT, DELETE는 항상 no-cache
+  return CachePresets.noCache;
+}
+```
+
+### 3. 해시 기반 파일 감지
+
+```typescript
+// 일반적인 빌드 도구의 해시 패턴
+const hashPatterns = [
+  /-[a-f0-9]{8,}\./,  // Vite: main-a3f2b1c4.js
+  /\.[a-f0-9]{20}\./,  // Webpack: main.a3f2b1c4d5e6f7a8b9c0.js
+];
+
+if (req.type === "assets") {
+  if (hashPatterns.some(p => p.test(req.path))) {
+    return CachePresets.immutable;
+  }
+}
+```
+
+## 다음 단계
+
+Cache-Control 설정을 완료했다면:
+
+- [cache](/configuration/sonamu-config/cache) - 서버 사이드 캐싱 (BentoCache)
+- [compress](/configuration/sonamu-config/compress) - 응답 압축 설정
+- [advanced-features/ssr](/frontend-integration/ssr/cache-control) - SSR에서 Cache-Control 활용

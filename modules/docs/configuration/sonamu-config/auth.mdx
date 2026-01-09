@@ -1,10 +1,507 @@
 ---
 title: '인증'
-description: 'auth 설정하기'
+description: 'Passport.js 기반 인증 설정'
 ---
 
-# 인증
+Sonamu는 Passport.js를 기반으로 하는 인증 시스템을 제공합니다. 세션 기반 인증을 지원하며, 사용자 직렬화/역직렬화를 커스터마이징할 수 있습니다.
+
+## 기본 구조
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    auth: true,  // 기본 인증 활성화
+    
+    // 또는 커스터마이징
+    auth: {
+      userSerializer: async (user, request) => {
+        // 세션에 저장할 데이터
+        return { id: user.id, email: user.email };
+      },
+      userDeserializer: async (serialized, request) => {
+        // 세션에서 사용자 복원
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+  // ...
+});
+```
+
+## auth 설정
+
+### 간단한 활성화
+
+**타입**: `boolean | AuthOptions`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: true,  // 기본 설정으로 활성화
+  },
+});
+```
+
+**비활성화**:
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: false,  // 인증 비활성화
+  },
+});
+```
 
 <Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
+`auth: true`로 설정하면 Sonamu의 기본 직렬화/역직렬화를 사용합니다.
 </Note>
+
+### 커스텀 설정
+
+```typescript
+type AuthOptions = {
+  userSerializer: SerializeFunction<unknown, unknown>;
+  userDeserializer: DeserializeFunction<unknown, unknown>;
+};
+```
+
+## userSerializer
+
+사용자 객체를 세션에 저장 가능한 형태로 변환합니다.
+
+**타입**: `(user, request) => SerializedUser | Promise<SerializedUser>`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, request) => {
+        // 세션에 최소한의 정보만 저장
+        return {
+          id: user.id,
+          email: user.email,
+        };
+      },
+      // ...
+    },
+  },
+});
+```
+
+**user**: 로그인 시 전달된 사용자 객체  
+**request**: Fastify request 객체  
+**반환**: 세션에 저장될 직렬화된 데이터
+
+<Tip>
+세션 크기를 줄이기 위해 필수 정보만 저장하세요. 보통 `id`만으로 충분합니다.
+</Tip>
+
+## userDeserializer
+
+세션에서 사용자 정보를 복원합니다.
+
+**타입**: `(serialized, request) => User | Promise<User>`
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userDeserializer: async (serialized, request) => {
+        // DB에서 전체 사용자 정보 조회
+        return UserModel.findById(serialized.id);
+      },
+      // ...
+    },
+  },
+});
+```
+
+**serialized**: `userSerializer`가 반환한 데이터  
+**request**: Fastify request 객체  
+**반환**: 복원된 사용자 객체
+
+<Warning>
+`userDeserializer`는 매 요청마다 호출되므로 성능에 영향을 줄 수 있습니다. 캐싱을 고려하세요.
+</Warning>
+
+## 기본 예시
+
+### ID만 저장 (권장)
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return user.id;  // ID만 저장
+      },
+      
+      userDeserializer: async (userId, _request) => {
+        return UserModel.findById(userId);
+      },
+    },
+  },
+});
+```
+
+### 기본 정보 저장
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+        };
+      },
+      
+      userDeserializer: async (serialized, _request) => {
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+});
+```
+
+### 캐싱 추가
+
+```typescript
+import { cache } from "sonamu/cache";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user, _request) => {
+        return user.id;
+      },
+      
+      userDeserializer: async (userId, _request) => {
+        // 사용자 정보 캐싱 (1분)
+        const cacheKey = `user:${userId}`;
+        
+        let user = await cache.get(cacheKey);
+        if (!user) {
+          user = await UserModel.findById(userId);
+          await cache.set(cacheKey, user, { ttl: "1m" });
+        }
+        
+        return user;
+      },
+    },
+  },
+});
+```
+
+## 로그인/로그아웃
+
+인증 설정 후 로그인/로그아웃 API를 구현합니다.
+
+### 로그인
+
+```typescript
+import { api } from "sonamu";
+import { login } from "sonamu/auth";
+import bcrypt from "bcrypt";
+
+export class AuthModel {
+  @api({ httpMethod: "POST" })
+  static async login(email: string, password: string) {
+    // 사용자 조회
+    const user = await UserModel.findByEmail(email);
+    if (!user) {
+      throw new BadRequestError("Invalid credentials");
+    }
+    
+    // 비밀번호 확인
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new BadRequestError("Invalid credentials");
+    }
+    
+    // 로그인 (세션 생성)
+    await login(user);
+    
+    return { success: true, user };
+  }
+}
+```
+
+### 로그아웃
+
+```typescript
+import { api } from "sonamu";
+import { logout } from "sonamu/auth";
+
+export class AuthModel {
+  @api({ httpMethod: "POST" })
+  static async logout() {
+    await logout();
+    return { success: true };
+  }
+}
+```
+
+### 현재 사용자
+
+```typescript
+import { api, getUser } from "sonamu";
+
+export class AuthModel {
+  @api()
+  static async me() {
+    const user = getUser();
+    if (!user) {
+      throw new UnauthorizedError("Not authenticated");
+    }
+    
+    return user;
+  }
+}
+```
+
+→ [인증 API 구현 가이드](/api-development/authentication/setup)
+
+## 실전 예시
+
+### 기본 설정
+
+```typescript
+import { defineConfig } from "sonamu";
+
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: "localhost",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30일
+        },
+      },
+    },
+    
+    auth: {
+      userSerializer: async (user) => user.id,
+      userDeserializer: async (userId) => {
+        return UserModel.findById(userId);
+      },
+    },
+  },
+});
+```
+
+### Role 기반 인증
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => ({
+        id: user.id,
+        role: user.role,
+      }),
+      
+      userDeserializer: async (serialized) => {
+        const user = await UserModel.findById(serialized.id);
+        
+        // Role 변경 감지
+        if (user.role !== serialized.role) {
+          // 세션 갱신 필요
+          await updateSession(user);
+        }
+        
+        return user;
+      },
+    },
+  },
+});
+```
+
+### JWT와 세션 병행
+
+```typescript
+import jwt from "jsonwebtoken";
+
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => {
+        // JWT 토큰 생성
+        const token = jwt.sign(
+          { userId: user.id },
+          process.env.JWT_SECRET!,
+          { expiresIn: "7d" }
+        );
+        
+        return { id: user.id, token };
+      },
+      
+      userDeserializer: async (serialized) => {
+        // JWT 검증
+        try {
+          jwt.verify(serialized.token, process.env.JWT_SECRET!);
+        } catch {
+          throw new UnauthorizedError("Invalid token");
+        }
+        
+        return UserModel.findById(serialized.id);
+      },
+    },
+  },
+});
+```
+
+### 권한 체크
+
+```typescript
+export default defineConfig({
+  server: {
+    auth: {
+      userSerializer: async (user) => user.id,
+      
+      userDeserializer: async (userId) => {
+        const user = await UserModel.findById(userId);
+        
+        // 비활성화된 사용자
+        if (!user.isActive) {
+          throw new UnauthorizedError("Account deactivated");
+        }
+        
+        // 만료된 계정
+        if (user.expiresAt && user.expiresAt < new Date()) {
+          throw new UnauthorizedError("Account expired");
+        }
+        
+        return user;
+      },
+    },
+    
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        const user = request.user;
+        
+        if (guard === "admin" && user?.role !== "admin") {
+          throw new UnauthorizedError("Admin access required");
+        }
+        
+        if (guard === "premium" && !user?.isPremium) {
+          throw new UnauthorizedError("Premium subscription required");
+        }
+      },
+    },
+  },
+});
+```
+
+## Session 설정
+
+인증은 세션을 기반으로 동작하므로 session 플러그인이 필요합니다.
+
+```typescript
+export default defineConfig({
+  server: {
+    plugins: {
+      session: {
+        secret: process.env.SESSION_SECRET!,
+        salt: process.env.SESSION_SALT!,
+        cookie: {
+          domain: process.env.COOKIE_DOMAIN,
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30,  // 30일
+          secure: process.env.NODE_ENV === "production",
+          httpOnly: true,
+          sameSite: "strict",
+        },
+      },
+    },
+    
+    auth: true,
+  },
+});
+```
+
+→ [Session 설정](/configuration/sonamu-config/server#session)
+
+## 주의사항
+
+### 1. 세션 크기
+
+```typescript
+// ❌ 나쁜 예: 너무 많은 데이터 저장
+userSerializer: async (user) => ({
+  id: user.id,
+  email: user.email,
+  profile: user.profile,  // 큰 객체
+  preferences: user.preferences,
+  history: user.history,
+})
+
+// ✅ 좋은 예: ID만 저장
+userSerializer: async (user) => user.id
+```
+
+### 2. userDeserializer 성능
+
+```typescript
+// ❌ 나쁜 예: 매번 DB 조회
+userDeserializer: async (userId) => {
+  return UserModel.findById(userId);  // 모든 요청마다!
+}
+
+// ✅ 좋은 예: 캐싱 추가
+userDeserializer: async (userId) => {
+  const cached = await cache.get(`user:${userId}`);
+  if (cached) return cached;
+  
+  const user = await UserModel.findById(userId);
+  await cache.set(`user:${userId}`, user, { ttl: "1m" });
+  return user;
+}
+```
+
+### 3. 세션 secret
+
+```typescript
+// ❌ 나쁜 예: 하드코딩된 secret
+session: {
+  secret: "my-secret-key",
+  salt: "my-salt",
+}
+
+// ✅ 좋은 예: 환경 변수 사용
+session: {
+  secret: process.env.SESSION_SECRET!,
+  salt: process.env.SESSION_SALT!,
+}
+```
+
+### 4. null 처리
+
+```typescript
+// ✅ 사용자가 없을 수 있음
+userDeserializer: async (userId) => {
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    // 세션은 있지만 사용자 삭제됨
+    throw new UnauthorizedError("User not found");
+  }
+  return user;
+}
+```
+
+## 다음 단계
+
+인증 설정을 완료했다면:
+
+- [authentication](/api-development/authentication/setup) - 로그인/로그아웃 구현
+- [session-management](/api-development/authentication/session-management) - 세션 관리
+- [protected-routes](/api-development/authentication/protected-routes) - 보호된 라우트
