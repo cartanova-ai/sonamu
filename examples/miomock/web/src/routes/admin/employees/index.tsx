@@ -70,7 +70,7 @@ function EmployeeList({}: EmployeeListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/employees",
-    title: SD("entity.Employee.list"),
+    title: SD("entity.list")(SD("entity.Employee")),
   };
 
   // 컬럼 정의

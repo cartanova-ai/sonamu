@@ -90,7 +90,9 @@ export function EmployeesForm({ id, mode }: EmployeesFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.Employee.edit")(id) : SD("entity.Employee.create"),
+    title: id
+      ? SD("entity.edit")(SD("entity.Employee"), id)
+      : SD("entity.create")(SD("entity.Employee")),
   };
 
   return (

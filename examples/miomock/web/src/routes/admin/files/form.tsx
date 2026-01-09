@@ -85,7 +85,7 @@ export function FilesForm({ id, mode }: FilesFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.File.edit")(id) : SD("entity.File.create"),
+    title: id ? SD("entity.edit")(SD("entity.File"), id) : SD("entity.create")(SD("entity.File")),
   };
 
   return (

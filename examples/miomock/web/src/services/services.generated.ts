@@ -931,7 +931,7 @@ export namespace DocumentService {
   export async function getSimilarDocumentsByVector<T extends DocumentSubsetKey>(
     subset: T,
     params: DocumentSemanticParams,
-  ): Promise<{ rows: DocumentSubsetMapping[T] & { similarity: number }[] }> {
+  ): Promise<{ rows: (DocumentSubsetMapping[T] & { similarity: number })[] }> {
     return fetch({
       method: "POST",
       url: `/api/document/findManySemanticByVector`,

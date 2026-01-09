@@ -92,7 +92,9 @@ export function ProjectsForm({ id, mode }: ProjectsFormProps) {
   });
 
   const PAGE = {
-    title: id ? SD("entity.Project.edit")(id) : SD("entity.Project.create"),
+    title: id
+      ? SD("entity.edit")(SD("entity.Project"), id)
+      : SD("entity.create")(SD("entity.Project")),
   };
 
   return (

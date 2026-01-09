@@ -70,7 +70,7 @@ function DepartmentList({}: DepartmentListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/departments",
-    title: SD("entity.Department.list"),
+    title: SD("entity.list")(SD("entity.Department")),
   };
 
   // 컬럼 정의

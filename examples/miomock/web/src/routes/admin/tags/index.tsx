@@ -70,7 +70,7 @@ function TagList({}: TagListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/tags",
-    title: SD("entity.Tag.list"),
+    title: SD("entity.list")(SD("entity.Tag")),
   };
 
   // 컬럼 정의

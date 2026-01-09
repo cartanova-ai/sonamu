@@ -117,7 +117,7 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "d98cb00a36be2fb795d0f250cea3e2a1f43c7b03"
+    "checksum": "5aecec429ca8fb93fbae095c0fb6f97bfb1b2bcd"
   },
   {
     "path": "src/i18n/ko.ts",
@@ -125,7 +125,7 @@
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "93a77610ecd4eccc73794863a23180d332858e2d"
+    "checksum": "b6f74645b970bf0af094264486f429912b3195f9"
   },
   {
     "path": "src/sonamu.config.ts",

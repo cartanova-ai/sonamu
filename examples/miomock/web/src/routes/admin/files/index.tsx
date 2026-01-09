@@ -138,7 +138,7 @@ function FileList({}: FileListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/files",
-    title: SD("entity.File.list"),
+    title: SD("entity.list")(SD("entity.File")),
   };
 
   // 컬럼 정의

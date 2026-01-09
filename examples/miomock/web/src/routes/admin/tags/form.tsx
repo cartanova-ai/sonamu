@@ -78,7 +78,7 @@ export function TagsForm({ id, mode }: TagsFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.Tag.edit")(id) : SD("entity.Tag.create"),
+    title: id ? SD("entity.edit")(SD("entity.Tag"), id) : SD("entity.create")(SD("entity.Tag")),
   };
 
   return (

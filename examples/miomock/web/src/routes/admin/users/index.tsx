@@ -71,7 +71,7 @@ function UserList({}: UserListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/users",
-    title: SD("entity.User.list"),
+    title: SD("entity.list")(SD("entity.User")),
   };
 
   // 컬럼 정의

@@ -86,7 +86,9 @@ export function DepartmentsForm({ id, mode }: DepartmentsFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.Department.edit")(id) : SD("entity.Department.create"),
+    title: id
+      ? SD("entity.edit")(SD("entity.Department"), id)
+      : SD("entity.create")(SD("entity.Department")),
   };
 
   return (

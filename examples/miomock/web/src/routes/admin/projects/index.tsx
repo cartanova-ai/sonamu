@@ -74,7 +74,7 @@ function ProjectList({}: ProjectListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/projects",
-    title: SD("entity.Project.list"),
+    title: SD("entity.list")(SD("entity.Project")),
   };
 
   // 컬럼 정의
@@ -139,11 +139,11 @@ function ProjectList({}: ProjectListProps) {
       tc: (row) => <>{row.virtual_query_test}</>,
     },
     {
-      label: SD("entity.Employee.list"),
+      label: SD("entity.list")(SD("entity.Employee")),
       tc: (_row) => <>{/* array row.employee */}</>,
     },
     {
-      label: SD("entity.Tag.list"),
+      label: SD("entity.list")(SD("entity.Tag")),
       tc: (_row) => <>{/* array row.tags */}</>,
     },
     {

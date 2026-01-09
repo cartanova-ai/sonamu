@@ -70,7 +70,7 @@ function CompanyList({}: CompanyListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/companies",
-    title: SD("entity.Company.list"),
+    title: SD("entity.list")(SD("entity.Company")),
   };
 
   // 컬럼 정의

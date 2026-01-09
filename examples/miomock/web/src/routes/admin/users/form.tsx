@@ -85,7 +85,7 @@ export function UsersForm({ id, mode }: UsersFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.User.edit")(id) : SD("entity.User.create"),
+    title: id ? SD("entity.edit")(SD("entity.User"), id) : SD("entity.create")(SD("entity.User")),
   };
 
   return (

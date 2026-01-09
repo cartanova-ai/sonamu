@@ -78,7 +78,9 @@ export function CompaniesForm({ id, mode }: CompaniesFormProps) {
   };
 
   const PAGE = {
-    title: id ? SD("entity.Company.edit")(id) : SD("entity.Company.create"),
+    title: id
+      ? SD("entity.edit")(SD("entity.Company"), id)
+      : SD("entity.create")(SD("entity.Company")),
   };
 
   return (
