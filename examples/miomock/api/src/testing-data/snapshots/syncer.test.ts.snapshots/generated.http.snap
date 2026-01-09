@@ -349,6 +349,17 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/file/inlineUpload
+Content-Type: application/json
+
+{
+  "uploadParams": {
+    "category": "CATEGORY"
+  }
+}
+
+###
+
 GET {{baseUrl}}/api/employee/findById
 	?subset=unknown
 	&id=0

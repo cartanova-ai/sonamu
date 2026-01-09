@@ -251,7 +251,11 @@ export function FileInput(props: FileInputProps) {
           ) : (
             <>
               {isImageView ? (
-                <img src={url} alt="Preview" className="h-full w-full object-cover rounded-lg overflow-hidden" />
+                <img
+                  src={url}
+                  alt="Preview"
+                  className="h-full w-full object-cover rounded-lg overflow-hidden"
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 p-3 h-full w-full">
                   <FileIcon className="h-8 w-8 text-muted-foreground" />

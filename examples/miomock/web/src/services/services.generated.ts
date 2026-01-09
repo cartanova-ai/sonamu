@@ -734,6 +734,56 @@ export namespace FileService {
       retry: false,
       ...options,
     });
+
+  export async function inlineUpload(
+    uploadParams: { category: string },
+    files: File[],
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
+  ): Promise<{ category: string; files: { name: string; url: string; mime_type: string }[] }> {
+    const formData = new FormData();
+    files.forEach((f) => {
+      formData.append("files", f);
+    });
+    formData.append("uploadParams", String(uploadParams));
+    return fetch({
+      method: "POST",
+      url: `/api/file/inlineUpload`,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress,
+      data: formData,
+    });
+  }
+
+  export const useInlineUploadMutation = (
+    options?: UseMutationOptions<
+      { category: string; files: { name: string; url: string; mime_type: string }[] },
+      Error,
+      { files: File[]; uploadParams: { category: string } }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: async (params: { files: File[]; uploadParams: { category: string } }) => {
+        const { files, uploadParams } = params;
+        const formData = new FormData();
+        files.forEach((f) => {
+          formData.append("files", f);
+        });
+        formData.append("uploadParams", String(uploadParams));
+        return fetch({
+          method: "POST",
+          url: `/api/file/inlineUpload`,
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: options?.onUploadProgress,
+          data: formData,
+        });
+      },
+      retry: false,
+      ...options,
+    });
 }
 
 export namespace EmployeeService {

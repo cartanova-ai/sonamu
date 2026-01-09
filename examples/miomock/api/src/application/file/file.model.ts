@@ -185,6 +185,32 @@ class FileModelClass extends BaseModelClass<
       files,
     };
   }
+
+  @upload({ mode: "multiple" })
+  async inlineUpload(uploadParams: { category: string }): Promise<{
+    category: string;
+    files: { name: string; url: string; mime_type: string }[];
+  }> {
+    const { category } = uploadParams;
+    const { files } = Sonamu.getUploadContext();
+
+    console.log("files를 원하는 로직으로 처리해주세요", files);
+
+    if (files.length === 0) {
+      throw new BadRequestException(SD("file.uploadFailed"));
+    }
+
+    return {
+      category,
+      files: await Promise.all(
+        files.map(async (file) => ({
+          name: file.filename,
+          url: await file.saveToDisk(`${category}/${file.filename}`),
+          mime_type: file.mimetype,
+        })),
+      ),
+    };
+  }
 }
 
 export const FileModel = new FileModelClass();
