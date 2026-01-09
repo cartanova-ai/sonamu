@@ -1,10 +1,689 @@
 ---
-title: 'API 키'
-description: '외부 서비스 API 키 설정하기'
+title: 'API 키 관리'
+description: '외부 서비스 API 키 안전하게 설정하기'
 ---
 
-# API 키
+Sonamu 프로젝트에서 외부 서비스 (AWS S3, OpenAI 등)를 사용할 때 API 키를 환경변수로 관리합니다. 코드에 하드코딩하지 않고 안전하게 보관하는 방법을 설명합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+<Danger>
+API 키는 **절대 Git에 커밋하면 안 됩니다!** 유출되면 즉시 키를 무효화하고 재발급받으세요.
+</Danger>
+
+## 주요 API 키
+
+Sonamu에서 자주 사용하는 외부 서비스 API 키입니다.
+
+### AWS (S3 스토리지)
+
+```bash title=".env"
+# AWS 자격 증명
+AWS_ACCESS_KEY_ID=your-aws-access-key-id
+AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+
+# S3 설정
+S3_REGION=ap-northeast-2
+S3_BUCKET=my-project-uploads
+```
+
+**sonamu.config.ts:**
+
+```typescript
+import { defineConfig } from "sonamu";
+import { drivers } from "sonamu/storage";
+
+export default defineConfig({
+  server: {
+    storage: {
+      default: process.env.DRIVE_DISK ?? "fs",
+      drivers: {
+        s3: drivers.s3({
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+          },
+          region: process.env.S3_REGION ?? "ap-northeast-2",
+          bucket: process.env.S3_BUCKET ?? "default-bucket",
+          visibility: "private",
+        }),
+      },
+    },
+  },
+});
+```
+
+### OpenAI
+
+```bash title=".env"
+# OpenAI API 키
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_ORG_ID=your-openai-org-id  # Organization ID (선택)
+```
+
+**사용 예시:**
+
+```typescript
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  organization: process.env.OPENAI_ORG_ID,
+});
+
+const completion = await openai.chat.completions.create({
+  model: "gpt-4",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+```
+
+### 선택적 외부 서비스 통합
+
+Sonamu는 다양한 외부 서비스를 통합할 수 있습니다. 아래는 자주 사용되는 서비스들의 환경변수 예시입니다.
+
+<Info>
+이 서비스들은 Sonamu 기본 구성이 아닙니다. 프로젝트에 필요한 경우에만 추가하세요.
+</Info>
+
+<Tabs>
+  <Tab title="Stripe" icon="stripe">
+    ```bash
+    # Stripe 결제
+    STRIPE_SECRET_KEY=your-stripe-secret-key
+    STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+    STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+    ```
+  </Tab>
+
+  <Tab title="SendGrid" icon="envelope">
+    ```bash
+    # SendGrid 이메일
+    SENDGRID_API_KEY=your-sendgrid-api-key
+    SENDGRID_FROM_EMAIL=noreply@example.com
+    ```
+  </Tab>
+
+  <Tab title="Twilio" icon="phone">
+    ```bash
+    # Twilio SMS
+    TWILIO_ACCOUNT_SID=your-twilio-account-sid
+    TWILIO_AUTH_TOKEN=your-twilio-auth-token
+    TWILIO_PHONE_NUMBER=+1234567890
+    ```
+  </Tab>
+
+  <Tab title="Firebase" icon="fire">
+    ```bash
+    # Firebase
+    FIREBASE_API_KEY=your-firebase-api-key
+    FIREBASE_PROJECT_ID=my-project
+    FIREBASE_APP_ID=your-firebase-app-id
+    ```
+  </Tab>
+</Tabs>
+
+## 환경별 키 관리
+
+<Warning>
+**절대 프로덕션 키를 개발 환경에 사용하지 마세요!** 각 환경마다 별도의 키를 사용해야 합니다.
+</Warning>
+
+<Tabs>
+  <Tab title="개발" icon="laptop-code">
+    ```bash title=".env.development"
+    # 테스트용 키 또는 샌드박스 키
+    OPENAI_API_KEY=your-test-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-test-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-test-aws-secret-key
+    S3_BUCKET=myproject-dev
+    
+    STRIPE_SECRET_KEY=your-test-stripe-key
+    ```
+
+    **특징:**
+    - 테스트 모드 키 사용
+    - 요금 부과 없거나 최소화
+    - 제한된 권한
+  </Tab>
+
+  <Tab title="스테이징" icon="flask">
+    ```bash title=".env.staging"
+    # 스테이징 전용 키
+    OPENAI_API_KEY=your-staging-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-staging-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-staging-aws-secret-key
+    S3_BUCKET=myproject-staging
+    
+    STRIPE_SECRET_KEY=your-test-stripe-key  # 여전히 테스트 모드
+    ```
+
+    **특징:**
+    - 프로덕션과 분리된 리소스
+    - 실제 요금 발생 가능
+    - 프로덕션과 동일한 권한
+  </Tab>
+
+  <Tab title="프로덕션" icon="server">
+    ```bash title=".env.production"
+    # 프로덕션 키 (매우 엄격하게 관리)
+    OPENAI_API_KEY=your-production-openai-key
+    
+    AWS_ACCESS_KEY_ID=your-production-aws-key-id
+    AWS_SECRET_ACCESS_KEY=your-production-aws-secret-key
+    S3_BUCKET=myproject-production
+    
+    STRIPE_SECRET_KEY=your-live-stripe-key  # 라이브 모드
+    ```
+
+    **특징:**
+    - 최고 수준의 보안
+    - 최소 권한 원칙 적용
+    - 주기적인 로테이션
+  </Tab>
+</Tabs>
+
+## AWS IAM 사용자 생성
+
+<Steps>
+  <Step title="IAM 콘솔 접속" icon="aws">
+    [AWS IAM Console](https://console.aws.amazon.com/iam/) 접속
+  </Step>
+
+  <Step title="사용자 생성" icon="user-plus">
+    1. Users → Add users
+    2. 사용자 이름: `sonamu-s3-user`
+    3. Access type: **Programmatic access** 선택
+  </Step>
+
+  <Step title="권한 설정" icon="shield">
+    **Option 1: 기존 정책 연결**
+    
+    ```
+    AmazonS3FullAccess  ❌ (너무 광범위)
+    ```
+
+    **Option 2: 커스텀 정책 (권장)**
+
+    ```json title="sonamu-s3-policy.json"
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:PutObject",
+            "s3:GetObject",
+            "s3:DeleteObject",
+            "s3:ListBucket"
+          ],
+          "Resource": [
+            "arn:aws:s3:::myproject-uploads/*",
+            "arn:aws:s3:::myproject-uploads"
+          ]
+        }
+      ]
+    }
+    ```
+
+    <Tip>
+    특정 버킷과 작업만 허용하여 보안을 강화하세요.
+    </Tip>
+  </Step>
+
+  <Step title="액세스 키 발급" icon="key">
+    사용자 생성 완료 후:
+    - Access key ID: `your-aws-access-key-id`
+    - Secret access key: `your-aws-secret-access-key`
+
+    <Danger>
+    Secret access key는 한 번만 표시됩니다! 즉시 안전한 곳에 저장하세요.
+    </Danger>
+  </Step>
+
+  <Step title=".env 파일에 추가" icon="file-code">
+    ```bash
+    AWS_ACCESS_KEY_ID=your-aws-access-key-id
+    AWS_SECRET_ACCESS_KEY=your-aws-secret-access-key
+    ```
+  </Step>
+</Steps>
+
+## OpenAI API 키 발급
+
+<Steps>
+  <Step title="OpenAI 플랫폼 접속" icon="robot">
+    [OpenAI API Platform](https://platform.openai.com/) 로그인
+  </Step>
+
+  <Step title="API 키 생성" icon="key">
+    1. API keys → Create new secret key
+    2. 이름: `sonamu-production`
+    3. 권한: **All** 또는 **Restricted** (권장)
+  </Step>
+
+  <Step title="사용 한도 설정" icon="gauge-high">
+    Settings → Billing → Usage limits 설정
+
+    ```
+    Hard limit: $100/month (초과 시 자동 차단)
+    Soft limit: $80/month (알림)
+    ```
+
+    <Warning>
+    사용 한도를 설정하지 않으면 예상치 못한 요금이 청구될 수 있습니다!
+    </Warning>
+  </Step>
+
+  <Step title="키 저장" icon="save">
+    ```bash
+    OPENAI_API_KEY=your-openai-api-key
+    ```
+
+    발급 즉시 안전한 곳에 저장 (다시 확인 불가)
+  </Step>
+</Steps>
+
+## 보안 모범 사례
+
+<Accordion title="키 로테이션" icon="rotate">
+  ### 정기적인 키 교체
+
+  **권장 주기:**
+  - 프로덕션: 3개월마다
+  - 스테이징: 6개월마다
+  - 개발: 1년마다 또는 필요 시
+
+  ### 로테이션 절차
+
+  <Steps>
+    <Step title="새 키 생성">
+      기존 키를 유지한 채 새 키를 생성합니다.
+    </Step>
+
+    <Step title="새 키 배포">
+      ```bash
+      # 새 키를 환경변수에 추가
+      AWS_ACCESS_KEY_ID=your-new-aws-key-id
+      AWS_SECRET_ACCESS_KEY=your-new-aws-secret-key
+      
+      # 애플리케이션 재시작
+      ```
+    </Step>
+
+    <Step title="모니터링">
+      24시간 동안 오류 없이 작동하는지 확인
+    </Step>
+
+    <Step title="이전 키 삭제">
+      문제없으면 이전 키 비활성화/삭제
+    </Step>
+  </Steps>
+
+  <Info>
+  키 로테이션 시 다운타임 없이 진행하려면 새 키와 이전 키를 동시에 유지하는 블루-그린 방식을 사용하세요.
+  </Info>
+</Accordion>
+
+<Accordion title="최소 권한 원칙" icon="user-shield">
+  ### IAM 정책 최소화
+
+  ```json
+  // ❌ 나쁜 예: 모든 권한
+  {
+    "Effect": "Allow",
+    "Action": "s3:*",
+    "Resource": "*"
+  }
+
+  // ✅ 좋은 예: 필요한 권한만
+  {
+    "Effect": "Allow",
+    "Action": [
+      "s3:PutObject",
+      "s3:GetObject"
+    ],
+    "Resource": "arn:aws:s3:::my-bucket/uploads/*"
+  }
+  ```
+
+  ### 읽기 전용 키 분리
+
+  ```bash
+  # 쓰기 권한 (애플리케이션)
+  AWS_WRITE_ACCESS_KEY_ID=your-write-key-id
+  AWS_WRITE_SECRET_ACCESS_KEY=your-write-secret-key
+
+  # 읽기 권한 (분석/백업)
+  AWS_READ_ACCESS_KEY_ID=your-read-key-id
+  AWS_READ_SECRET_ACCESS_KEY=your-read-secret-key
+  ```
+</Accordion>
+
+<Accordion title="키 유출 대응" icon="triangle-exclamation">
+  ### 즉시 조치 사항
+
+  <Steps>
+    <Step title="키 즉시 무효화" icon="ban">
+      ```bash
+      # AWS CLI
+      aws iam delete-access-key \
+        --access-key-id your-leaked-access-key-id \
+        --user-name sonamu-user
+
+      # OpenAI Platform
+      # API keys → Revoke 클릭
+      ```
+    </Step>
+
+    <Step title="새 키 발급 및 배포" icon="key">
+      새 키를 즉시 발급하고 프로덕션에 배포
+    </Step>
+
+    <Step title="사용 내역 확인" icon="magnifying-glass">
+      ```bash
+      # AWS CloudTrail에서 의심스러운 활동 확인
+      # OpenAI Usage 페이지에서 비정상적인 호출 확인
+      ```
+    </Step>
+
+    <Step title="Git 이력 정리" icon="git-alt">
+      ```bash
+      # 커밋 이력에서 키 제거 (신중하게!)
+      git filter-branch --force --index-filter \
+        "git rm --cached --ignore-unmatch .env" \
+        --prune-empty --tag-name-filter cat -- --all
+      
+      # 강제 푸시
+      git push origin --force --all
+      ```
+
+      <Danger>
+      Git 이력 정리는 협업 중인 팀에 영향을 줍니다. 팀원들과 조율 후 진행하세요.
+      </Danger>
+    </Step>
+  </Steps>
+
+  ### 유출 감지 도구
+
+  ```bash
+  # git-secrets 설치
+  brew install git-secrets
+
+  # 프로젝트에 적용
+  git secrets --install
+  git secrets --register-aws
+
+  # 스캔
+  git secrets --scan
+  ```
+</Accordion>
+
+<Accordion title="환경변수 암호화" icon="lock">
+  ### 개발 환경
+
+  ```bash
+  # dotenv-vault 사용
+  npm install -g dotenv-vault
+
+  # 암호화
+  npx dotenv-vault encrypt
+
+  # 복호화 (팀원)
+  DOTENV_KEY=your-dotenv-vault-key npx dotenv-vault decrypt
+  ```
+
+  ### 프로덕션 환경
+
+  **AWS Systems Manager Parameter Store:**
+
+  ```typescript
+  import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+  const client = new SSMClient({ region: "ap-northeast-2" });
+  
+  async function getSecret(name: string) {
+    const command = new GetParameterCommand({
+      Name: name,
+      WithDecryption: true,
+    });
+    const response = await client.send(command);
+    return response.Parameter?.Value;
+  }
+
+  // 사용
+  const apiKey = await getSecret("/myproject/prod/openai-api-key");
+  ```
+
+  **HashiCorp Vault:**
+
+  ```typescript
+  import vault from "node-vault";
+
+  const client = vault({
+    endpoint: "https://vault.example.com:8200",
+    token: process.env.VAULT_TOKEN,
+  });
+
+  const { data } = await client.read("secret/data/myproject/prod");
+  const apiKey = data.data.OPENAI_API_KEY;
+  ```
+</Accordion>
+
+## 키 사용 모니터링
+
+### AWS CloudWatch
+
+```typescript
+// AWS SDK로 사용량 모니터링
+import { CloudWatchClient, GetMetricStatisticsCommand } from "@aws-sdk/client-cloudwatch";
+
+const client = new CloudWatchClient({ region: "ap-northeast-2" });
+
+const stats = await client.send(
+  new GetMetricStatisticsCommand({
+    Namespace: "AWS/S3",
+    MetricName: "NumberOfObjects",
+    Dimensions: [{
+      Name: "BucketName",
+      Value: "my-project-uploads",
+    }],
+    StartTime: new Date(Date.now() - 86400000), // 24시간 전
+    EndTime: new Date(),
+    Period: 3600, // 1시간
+    Statistics: ["Average"],
+  })
+);
+```
+
+### OpenAI 사용량 알림
+
+```typescript
+// 사용량 확인 및 알림
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// 주기적으로 실행 (cron job)
+async function checkUsage() {
+  const usage = await fetch("https://api.openai.com/v1/usage", {
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+  }).then(r => r.json());
+
+  const totalCost = usage.total_usage * 0.0001; // 예시 요금
+
+  if (totalCost > 80) {
+    // 경고 알림 전송 (Slack, Email 등)
+    console.warn(`⚠️ OpenAI 사용량 경고: $${totalCost}`);
+  }
+}
+```
+
+## 테스트 환경 키 관리
+
+<CodeGroup>
+```bash Jest
+# .env.test
+OPENAI_API_KEY=test-mock-key
+AWS_ACCESS_KEY_ID=test-key-id
+AWS_SECRET_ACCESS_KEY=test-secret-key
+```
+
+```typescript Mock
+// __mocks__/openai.ts
+export const OpenAI = jest.fn().mockImplementation(() => ({
+  chat: {
+    completions: {
+      create: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "Mocked response" } }],
+      }),
+    },
+  },
+}));
+```
+
+```typescript Env Override
+// test/setup.ts
+process.env.OPENAI_API_KEY = "test-mock-key";
+process.env.AWS_ACCESS_KEY_ID = "test-key-id";
+process.env.AWS_SECRET_ACCESS_KEY = "test-secret-key";
+```
+</CodeGroup>
+
+<Tip>
+테스트에서는 실제 API를 호출하지 않도록 Mock을 사용하세요. 테스트 비용을 절감하고 속도를 높일 수 있습니다.
+</Tip>
+
+## 문제 해결
+
+<Accordion title="AWS 401 Unauthorized" icon="ban">
+  **증상:**
+  ```
+  Error: The AWS Access Key Id you provided does not exist in our records
+  ```
+
+  **원인:**
+  1. 잘못된 Access Key ID
+  2. 키가 삭제되었거나 비활성화됨
+  3. 타이핑 오류 (공백, 줄바꿈)
+
+  **해결:**
+  ```bash
+  # 키 확인
+  echo $AWS_ACCESS_KEY_ID
+  
+  # .env 파일 확인
+  cat .env | grep AWS
+  
+  # IAM 콘솔에서 키 상태 확인
+  # Active 상태인지 확인
+  ```
+</Accordion>
+
+<Accordion title="OpenAI Rate Limit" icon="gauge-high">
+  **증상:**
+  ```
+  RateLimitError: Rate limit reached for gpt-4
+  ```
+
+  **원인:**
+  - API 요청 한도 초과 (RPM, TPM)
+
+  **해결:**
+
+  ```typescript
+  // 재시도 로직 구현
+  import { RateLimiter } from "limiter";
+
+  const limiter = new RateLimiter({
+    tokensPerInterval: 10,
+    interval: "minute",
+  });
+
+  async function callOpenAI(prompt: string) {
+    await limiter.removeTokens(1);
+    
+    try {
+      return await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+      });
+    } catch (error) {
+      if (error.status === 429) {
+        // 1분 후 재시도
+        await new Promise(resolve => setTimeout(resolve, 60000));
+        return callOpenAI(prompt);
+      }
+      throw error;
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="S3 403 Forbidden" icon="lock">
+  **증상:**
+  ```
+  Access Denied: You do not have permission to perform this action
+  ```
+
+  **원인:**
+  - IAM 정책에 필요한 권한 없음
+  - 버킷 정책으로 차단됨
+
+  **해결:**
+
+  ```json
+  // IAM 정책에 권한 추가
+  {
+    "Effect": "Allow",
+    "Action": [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject"
+    ],
+    "Resource": "arn:aws:s3:::my-bucket/*"
+  }
+  ```
+
+  ```bash
+  # 권한 테스트
+  aws s3 ls s3://my-bucket --profile myproject
+  ```
+</Accordion>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title=".env 설정" 
+    icon="file-code" 
+    href="/configuration/environment-variables/env-setup"
+  >
+    환경변수 기본 설정을 학습하세요
+  </Card>
+  
+  <Card 
+    title="데이터베이스 인증" 
+    icon="database" 
+    href="/configuration/environment-variables/database-credentials"
+  >
+    DB 연결 정보를 안전하게 관리하세요
+  </Card>
+  
+  <Card 
+    title="스토리지 설정" 
+    icon="cloud" 
+    href="/configuration/sonamu-config/storage"
+  >
+    S3 스토리지를 설정하세요
+  </Card>
+  
+  <Card 
+    title="세션 설정" 
+    icon="shield" 
+    href="/configuration/sonamu-config/server"
+  >
+    세션 및 보안 설정을 확인하세요
+  </Card>
+</CardGroup>
