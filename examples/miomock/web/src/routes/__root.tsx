@@ -1,7 +1,7 @@
-import type React from "react";
 import { SonamuProvider } from "@sonamu-kit/react-components";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import type React from "react";
 import App from "@/App";
 import { AuthProvider } from "@/admin-common/auth";
 import { FileService } from "@/services/services.generated";

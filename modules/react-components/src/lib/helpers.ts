@@ -6,6 +6,7 @@ import qs from "qs";
 import { get, isObject, set, unique } from "radashi";
 import React, { type ReactElement, useEffect, useState } from "react";
 import { z } from "zod";
+import { useSonamuContext } from "@/contexts/sonamu-context";
 import { caster } from "./caster";
 
 // radashi에 intersection이 없으므로 직접 구현
@@ -62,12 +63,47 @@ export type ErrorObj = {
   pointing?: "above" | "below" | "left" | "right";
 };
 
+// File 업로드를 위한 재귀적 순회 헬퍼 함수
+async function traverseAndUploadFiles(
+  value: any,
+  uploader: (files: File[]) => Promise<string[]>,
+): Promise<any> {
+  // File 객체인 경우
+  if (value instanceof File) {
+    const [url] = await uploader([value]);
+    return url;
+  }
+
+  // 배열인 경우
+  if (Array.isArray(value)) {
+    // 모든 요소가 File이면 일괄 업로드
+    if (value.length > 0 && value.every((item) => item instanceof File)) {
+      return await uploader(value as File[]);
+    }
+    // 아니면 각 요소를 재귀 처리
+    return await Promise.all(value.map((item) => traverseAndUploadFiles(item, uploader)));
+  }
+
+  // 객체인 경우 (null 제외)
+  if (value !== null && typeof value === "object") {
+    const result: any = {};
+    for (const [key, val] of Object.entries(value)) {
+      result[key] = await traverseAndUploadFiles(val, uploader);
+    }
+    return result;
+  }
+
+  // 원시값은 그대로 반환
+  return value;
+}
+
 export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U extends z.infer<T>>(
   zType: T,
   defaultValue: U,
 ) {
   const [form, setForm] = useState<z.infer<T>>(defaultValue);
   const [errorObjs, setErrorObjs] = useState<Map<string, ErrorObj>>(new Map());
+  const { uploader } = useSonamuContext();
 
   function getEmptyStringTo(zType: T, objPath: string): "normal" | "nullable" | "optional" {
     const zTypeObjPath = objPath
@@ -133,6 +169,13 @@ export function useTypeForm<T extends z.ZodObject<any> | z.ZodArray<any>, U exte
 
       return result;
     },
+    submit:
+      <R>(callback: (formData: z.infer<T>) => Promise<R>) =>
+      async () => {
+        const transformedForm = await traverseAndUploadFiles(form, uploader);
+        setForm(transformedForm);
+        return await callback(transformedForm);
+      },
     addError: (objPath: string, errorMessage: string | ErrorObj): void => {
       setErrorObjs((p) => {
         const newP = new Map(p);

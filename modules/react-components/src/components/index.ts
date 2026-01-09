@@ -155,6 +155,9 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+// File Input
+export type { FileInputProps } from "./ui/file-input";
+export { FileInput } from "./ui/file-input";
 // File Uploader - Lazy (Single/Multiple)
 export type {
   CommonFileUploaderProps,
