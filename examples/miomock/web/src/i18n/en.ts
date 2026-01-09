@@ -76,9 +76,9 @@ export default defineLocale({
   "menu.project": "Projects",
   "menu.tag": "Tags",
   "menu.user": "Users",
+  notFound: (name: string, id: number) => `${name} ID ${id} not found`,
   "search.invalidField": (field: string) => `Invalid search field: ${field}`,
   "user.email.duplicate": "Email is already in use",
   "user.login.failed": "Email or password does not match",
   "user.logout.failed": "Failed to logout",
-  notFound: (name: string, id: number) => `${name} ID ${id} not found`,
 });
