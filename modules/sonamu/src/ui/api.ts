@@ -1247,7 +1247,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             // non-default locale은 project dict에 저장
             for (const locale of locales) {
               if (locale === defaultLocale) continue;
-              const cellValue = row[locale];
+              const cellValue = row[locale]?.trim();
               if (cellValue) {
                 projectDictEntries[locale].push({
                   key,
@@ -1259,7 +1259,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           } else if (source === "project") {
             // project source: 모든 locale을 project dict에 저장
             for (const locale of locales) {
-              const cellValue = row[locale];
+              const cellValue = row[locale]?.trim();
               if (cellValue) {
                 projectDictEntries[locale].push({
                   key,
@@ -1331,7 +1331,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           // entity source의 default locale은 entity.json에서 처리했으므로 스킵
           if (source === "entity" && locale === defaultLocale) continue;
 
-          const cellValue = values[locale];
+          const cellValue = values[locale]?.trim();
           if (!cellValue) continue;
 
           // 기존 dict 로드
