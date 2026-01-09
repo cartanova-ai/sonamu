@@ -297,14 +297,15 @@ function I18nIndex() {
                         {row.source}
                       </span>
                     </TableCell>
-                    {locales.map((locale) =>
-                      renderEditableCell(
+                    {locales.map((locale) => {
+                      const isEmpty = row[locale] == null || row[locale] === "";
+                      return renderEditableCell(
                         row,
                         locale,
-                        row[locale] ?? <span className="text-gray-400 italic">-</span>,
-                        "text-sm",
-                      ),
-                    )}
+                        isEmpty ? <span className="text-yellow-600">&#x26A0; -</span> : row[locale],
+                        `text-sm ${isEmpty ? "bg-yellow-50" : ""}`,
+                      );
+                    })}
                   </TableRow>
                 ))}
               </TableBody>
