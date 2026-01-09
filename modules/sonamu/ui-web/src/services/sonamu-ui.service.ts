@@ -472,6 +472,25 @@ export namespace SonamuUIService {
     });
   }
 
+  export function createI18n(params: {
+    key: string;
+    values: Record<string, string>;
+  }): Promise<{ success: boolean }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/i18n/create`,
+      data: params,
+    });
+  }
+
+  export function deleteI18n(key: string): Promise<{ success: boolean }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/i18n/delete`,
+      data: { key },
+    });
+  }
+
   export function checkI18nUsage(keys: string[]): Promise<{
     unusedKeys: string[];
     usedKeysCount?: number;

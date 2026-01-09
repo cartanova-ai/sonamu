@@ -10,7 +10,9 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import DownloadIcon from "~icons/lucide/download";
+import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
+import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
@@ -40,6 +42,11 @@ function I18nIndex() {
   // 미사용 키 상태
   const [unusedKeys, setUnusedKeys] = useState<Set<string>>(new Set());
   const [usageCheckError, setUsageCheckError] = useState<string | null>(null);
+
+  // 키 추가 모달 상태
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newKey, setNewKey] = useState("");
+  const [newValues, setNewValues] = useState<Record<string, string>>({});
 
   // 편집 모드 진입 시 input에 포커스
   useEffect(() => {
@@ -178,6 +185,52 @@ function I18nIndex() {
     setEditValue("");
   };
 
+  // 키 추가 모달 열기
+  const openCreateModal = () => {
+    setNewKey("");
+    setNewValues({});
+    setShowCreateModal(true);
+  };
+
+  // 키 추가
+  const handleCreate = async () => {
+    if (!newKey.trim()) {
+      alert("키를 입력해주세요");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await SonamuUIService.createI18n({
+        key: newKey.trim(),
+        values: newValues,
+      });
+      setShowCreateModal(false);
+      await refetch();
+    } catch (err) {
+      defaultCatch(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 키 삭제
+  const handleDelete = async (key: string) => {
+    if (!confirm(`"${key}" 키를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await SonamuUIService.deleteI18n(key);
+      await refetch();
+    } catch (err) {
+      defaultCatch(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 키보드 이벤트 핸들러
   const handleKeyDown = (e: React.KeyboardEvent, row: I18nDictionaryRow) => {
     if (e.key === "Enter") {
@@ -247,6 +300,13 @@ function I18nIndex() {
 
           <div className="flex gap-2 mb-4">
             <Button
+              onClick={openCreateModal}
+              disabled={loading}
+              icon={<PlusIcon className="w-4 h-4" />}
+            >
+              Add Key
+            </Button>
+            <Button
               onClick={handleExport}
               disabled={loading}
               icon={<DownloadIcon className="w-4 h-4" />}
@@ -309,6 +369,7 @@ function I18nIndex() {
                       )}
                     </TableHead>
                   ))}
+                  <TableHead className="sticky top-0 z-10 w-[60px] bg-gray-100"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -352,6 +413,18 @@ function I18nIndex() {
                         `text-sm ${isEmpty ? "bg-yellow-50" : ""}`,
                       );
                     })}
+                    <TableCell>
+                      {row.source === "project" && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row.key)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Delete key"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -363,6 +436,56 @@ function I18nIndex() {
           </div>
         </div>
       </div>
+
+      {/* 키 추가 모달 */}
+      {showCreateModal && locales && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Add New Key</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
+                <input
+                  type="text"
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  placeholder="e.g. common.myNewKey"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {locales.map((locale) => (
+                <div key={locale}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {locale}
+                    {locale === defaultLocale && " (default)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={newValues[locale] ?? ""}
+                    onChange={(e) =>
+                      setNewValues((prev) => ({ ...prev, [locale]: e.target.value }))
+                    }
+                    placeholder={`Value for ${locale}`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateModal(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={loading}>
+                {loading ? "Creating..." : "Create"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

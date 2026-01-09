@@ -1369,6 +1369,101 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return { success: true };
       });
 
+      // POST /api/i18n/create - 새 딕셔너리 키 추가 (project source만)
+      server.post<{
+        Body: {
+          key: string;
+          values: Record<string, string>;
+        };
+      }>("/api/i18n/create", async (request) => {
+        const { key, values } = request.body;
+
+        if (!key?.trim()) {
+          throw new BadRequestException("키를 입력해주세요");
+        }
+
+        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
+          defaultLocale: "ko",
+          supportedLocales: ["ko"],
+        };
+        const locales = supportedLocales;
+
+        // 중복 키 체크
+        for (const locale of locales) {
+          const { entries } = loadProjectDict(locale);
+          if (entries.some((e) => e.key === key)) {
+            throw new BadRequestException(`이미 존재하는 키입니다: ${key}`);
+          }
+        }
+
+        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
+        if (!fs.existsSync(i18nDir)) {
+          fs.mkdirSync(i18nDir, { recursive: true });
+        }
+
+        // 각 locale에 새 키 추가
+        for (const locale of locales) {
+          const cellValue = values[locale]?.trim();
+          if (!cellValue) continue;
+
+          const { entries } = loadProjectDict(locale);
+          entries.push({
+            key,
+            value: cellValue,
+            isFunction: isFunctionValue(cellValue),
+          });
+
+          const dictPath = path.join(i18nDir, `${locale}.ts`);
+          const content = generateProjectDict(locale, entries, locale === defaultLocale);
+          const formatted = formatCode(content, "typescript", dictPath);
+          fs.writeFileSync(dictPath, formatted, "utf-8");
+        }
+
+        return { success: true };
+      });
+
+      // POST /api/i18n/delete - 딕셔너리 키 삭제 (project source만)
+      server.post<{
+        Body: {
+          key: string;
+        };
+      }>("/api/i18n/delete", async (request) => {
+        const { key } = request.body;
+
+        if (!key) {
+          throw new BadRequestException("키를 입력해주세요");
+        }
+
+        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
+          defaultLocale: "ko",
+          supportedLocales: ["ko"],
+        };
+        const locales = supportedLocales;
+
+        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
+
+        let deleted = false;
+        for (const locale of locales) {
+          const { entries } = loadProjectDict(locale);
+          const index = entries.findIndex((e) => e.key === key);
+          if (index !== -1) {
+            entries.splice(index, 1);
+            deleted = true;
+
+            const dictPath = path.join(i18nDir, `${locale}.ts`);
+            const content = generateProjectDict(locale, entries, locale === defaultLocale);
+            const formatted = formatCode(content, "typescript", dictPath);
+            fs.writeFileSync(dictPath, formatted, "utf-8");
+          }
+        }
+
+        if (!deleted) {
+          throw new BadRequestException(`키를 찾을 수 없습니다: ${key}`);
+        }
+
+        return { success: true };
+      });
+
       // POST /api/i18n/checkUsage - ast-grep을 사용하여 미사용 키 검사
       server.post<{ Body: { keys: string[] } }>("/api/i18n/checkUsage", async (request) => {
         const { keys } = request.body;
