@@ -49,16 +49,13 @@ export function getEnumInfoFromColName(
       `${inflection.underscore(entityId)}_${inflection.underscore(colName)}`,
       false,
     );
-    try {
-      const targetEntityNames = EntityManager.getNamesFromId(entityId);
-      return {
-        id: idCandidate,
-        targetEntityId: entityId,
-        targetEntityNames: targetEntityNames,
-        title: idCandidate,
-      };
-    } catch {}
-    throw new Error(`찾을 수 없는 EnumProp ${colName}`);
+    const targetEntityNames = EntityManager.getNamesFromId(entityId);
+    return {
+      id: idCandidate,
+      targetEntityId: entityId,
+      targetEntityNames: targetEntityNames,
+      title: idCandidate,
+    };
   }
 }
 
