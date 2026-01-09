@@ -1212,6 +1212,136 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         };
       });
 
+      // POST /api/i18n/update - 단일 딕셔너리 항목 수정
+      server.post<{
+        Body: {
+          oldKey: string;
+          newKey: string;
+          source: "entity" | "sonamu" | "project";
+          values: Record<string, string>;
+        };
+      }>("/api/i18n/update", async (request) => {
+        const { oldKey, newKey, source, values } = request.body;
+
+        if (source === "sonamu") {
+          throw new BadRequestException("sonamu source는 수정할 수 없습니다");
+        }
+
+        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
+          defaultLocale: "ko",
+          supportedLocales: ["ko"],
+        };
+        const locales = supportedLocales;
+
+        // entity source의 default locale 처리
+        if (source === "entity" && values[defaultLocale]) {
+          const defaultValue = values[defaultLocale];
+
+          // entity.{EntityId} → entity.title
+          if (
+            newKey.match(/^entity\.([A-Z][a-zA-Z0-9]*)$/) &&
+            !newKey.includes(".list") &&
+            !newKey.includes(".create") &&
+            !newKey.includes(".edit")
+          ) {
+            const entityId = newKey.split(".")[1];
+            try {
+              const entity = EntityManager.get(entityId);
+              if (entity.title !== defaultValue) {
+                entity.title = defaultValue;
+                await entity.save();
+              }
+            } catch {
+              // entity not found
+            }
+          }
+          // entity.{EntityId}.{propName} → entity.props[].desc
+          else if (newKey.match(/^entity\.([A-Z][a-zA-Z0-9]*)\.([a-z_][a-z0-9_]*)$/)) {
+            const parts = newKey.split(".");
+            const entityId = parts[1];
+            const propName = parts[2];
+            try {
+              const entity = EntityManager.get(entityId);
+              const propIndex = entity.props.findIndex((p) => p.name === propName);
+              if (propIndex !== -1 && entity.props[propIndex].desc !== defaultValue) {
+                entity.props[propIndex].desc = defaultValue;
+                await entity.save();
+              }
+            } catch {
+              // entity not found
+            }
+          }
+          // enum.{EnumId}.{value} → entity.enumLabels
+          else if (newKey.match(/^enum\.([A-Z][a-zA-Z0-9]*)\.(.+)$/)) {
+            const parts = newKey.split(".");
+            const enumId = parts[1];
+            const enumValue = parts.slice(2).join(".");
+            for (const entityId of EntityManager.getAllIds()) {
+              const entity = EntityManager.get(entityId);
+              if (entity.enumLabels[enumId]) {
+                if (entity.enumLabels[enumId][enumValue] !== defaultValue) {
+                  entity.enumLabels[enumId][enumValue] = defaultValue;
+                  await entity.save();
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        // project dict 업데이트 (entity의 non-default locale 또는 project source)
+        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
+        if (!fs.existsSync(i18nDir)) {
+          fs.mkdirSync(i18nDir, { recursive: true });
+        }
+
+        // 함수 원형인지 판별
+        function isFunctionValue(cellValue: string): boolean {
+          return /^\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*")$/.test(cellValue);
+        }
+
+        for (const locale of locales) {
+          // entity source의 default locale은 entity.json에서 처리했으므로 스킵
+          if (source === "entity" && locale === defaultLocale) continue;
+
+          const cellValue = values[locale];
+          if (!cellValue) continue;
+
+          // 기존 dict 로드
+          const { entries } = loadProjectDict(locale);
+
+          // key 변경 시 기존 key 제거
+          if (oldKey !== newKey) {
+            const oldIndex = entries.findIndex((e) => e.key === oldKey);
+            if (oldIndex !== -1) {
+              entries.splice(oldIndex, 1);
+            }
+          }
+
+          // 새 값 업데이트 또는 추가
+          const existingIndex = entries.findIndex((e) => e.key === newKey);
+          const newEntry: DictEntry = {
+            key: newKey,
+            value: cellValue,
+            isFunction: isFunctionValue(cellValue),
+          };
+
+          if (existingIndex !== -1) {
+            entries[existingIndex] = newEntry;
+          } else {
+            entries.push(newEntry);
+          }
+
+          // dict 파일 저장
+          const dictPath = path.join(i18nDir, `${locale}.ts`);
+          const content = generateProjectDict(locale, entries, locale === defaultLocale);
+          const formatted = formatCode(content, "typescript", dictPath);
+          fs.writeFileSync(dictPath, formatted, "utf-8");
+        }
+
+        return { success: true };
+      });
+
       // ui-web 빌드 파일 서빙
       const uiDistPath = path.resolve(import.meta.dirname, "../ui-web");
 

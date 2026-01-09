@@ -457,6 +457,19 @@ export namespace SonamuUIService {
       },
     });
   }
+
+  export function updateI18n(params: {
+    oldKey: string;
+    newKey: string;
+    source: "entity" | "sonamu" | "project";
+    values: Record<string, string>;
+  }): Promise<{ success: boolean }> {
+    return fetch({
+      method: "POST",
+      url: `/sonamu-ui/api/i18n/update`,
+      data: params,
+    });
+  }
 }
 
 export type ScaffoldingStatus = {
