@@ -3,6 +3,8 @@ title: "문제 해결"
 description: "HMR 관련 문제 해결 가이드"
 ---
 
+import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
+
 HMR 사용 중 발생할 수 있는 문제와 실전 해결 방법입니다.
 
 ## 변경사항이 반영되지 않음
@@ -649,25 +651,56 @@ pnpm dev
 
 여전히 문제가 해결되지 않으면:
 
-1. **GitHub Issues에 보고**: https://github.com/cartanova-ai/sonamu/issues
+### 1. GitHub Issues에 보고하세요
 
-2. **다음 정보 포함**:
-   - Sonamu 버전 (`package.json`)
-   - Node.js 버전 (`node -v`)
-   - 발생한 에러 메시지
-   - 재현 가능한 최소 예제
-   - HMR 로그 (`DEBUG=hmr-hook:* pnpm dev`)
+아래 링크에서 새로운 이슈를 생성해주세요:
 
-3. **코드 예시**:
+https://github.com/cartanova-ai/sonamu/issues
 
-```typescript
-// 문제가 발생하는 파일 구조
-src/
-├── user/
-│   ├── user.model.ts     // 이 파일을 수정하면
-│   └── user.api.ts       // HMR이 작동하지 않음
-└── post/
-    └── post.model.ts
+### 2. 다음 정보를 포함해주세요
+
+문제 해결을 위해 다음 정보를 함께 제공해주세요:
+
+- Sonamu 버전 (`package.json`)
+- Node.js 버전 (`node -v`)
+- 발생한 에러 메시지
+- 재현 가능한 최소 예제
+- HMR 로그 (`DEBUG=hmr-hook:* pnpm dev`)
+
+### 3. 파일 구조 예시를 작성해주세요
+
+문제가 발생하는 파일 구조를 아래와 같이 명확하게 표시해주세요:
+
+<Card>
+<FileTree>
+  <FileItem name="src/">
+    <FileItem name="user/">
+      <FileItem name="user.model.ts" description="이 파일을 수정하면" />
+      <FileItem name="user.api.ts" description="HMR이 작동하지 않음" />
+    </FileItem>
+    <FileItem name="post/">
+      <FileItem name="post.model.ts" />
+    </FileItem>
+  </FileItem>
+</FileTree>
+</Card>
+
+**예시 설명을 함께 작성해주세요**:
+
+```
+증상:
+- user.model.ts를 수정하고 저장
+- 콘솔에 "Invalidated: user.model.ts" 표시됨
+- 하지만 user.api.ts에서 여전히 이전 코드 실행
+- 서버 재시작하면 정상 작동
+
+시도한 해결 방법:
+1. 동적 import 확인 → 이미 동적으로 로드됨
+2. 서버 재시작 → 임시로 해결되지만 다시 발생
+3. 캐시 삭제 (rm -rf dist/) → 효과 없음
+
+HMR 로그:
+[로그 내용 첨부]
 ```
 
-빠른 답변을 받을 수 있습니다!
+이렇게 상세하게 작성하면 빠른 답변을 받을 수 있습니다!
