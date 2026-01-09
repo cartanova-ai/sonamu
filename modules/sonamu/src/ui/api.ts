@@ -1046,6 +1046,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         rows: I18nDictionaryRow[];
         locales: string[];
         defaultLocale: string;
+        stats: Record<string, { total: number; filled: number; percent: number }>;
       }> {
         const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
           defaultLocale: "ko",
@@ -1123,7 +1124,16 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         rows.push(...rowMap.values());
         rows.sort((a, b) => a.key.localeCompare(b.key));
 
-        return { rows, locales, defaultLocale };
+        // 통계 계산: locale별 (채워진 값 / 전체 키 수)
+        const stats: Record<string, { total: number; filled: number; percent: number }> = {};
+        const total = rows.length;
+        for (const locale of locales) {
+          const filled = rows.filter((row) => row[locale] != null && row[locale] !== "").length;
+          const percent = total > 0 ? Math.round((filled / total) * 100) : 0;
+          stats[locale] = { total, filled, percent };
+        }
+
+        return { rows, locales, defaultLocale, stats };
       }
 
       // GET /api/i18n/dictionary

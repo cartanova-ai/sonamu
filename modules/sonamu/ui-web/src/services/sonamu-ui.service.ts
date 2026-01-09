@@ -429,6 +429,7 @@ export namespace SonamuUIService {
           rows: I18nDictionaryRow[];
           locales: string[];
           defaultLocale: string;
+          stats: Record<string, { total: number; filled: number; percent: number }>;
         }>,
     });
   }

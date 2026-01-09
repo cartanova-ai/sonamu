@@ -23,7 +23,7 @@ export const Route = createFileRoute("/i18n")({
 
 function I18nIndex() {
   const { data, error, refetch } = SonamuUIService.useI18nDictionary();
-  const { rows, locales, defaultLocale } = data ?? {};
+  const { rows, locales, defaultLocale, stats } = data ?? {};
 
   const isLoading = !error && !data;
   const [loading, setLoading] = useState(false);
@@ -260,6 +260,19 @@ function I18nIndex() {
                     <TableHead key={locale} className="sticky top-0 z-10 min-w-[200px] bg-gray-100">
                       {locale}
                       {locale === defaultLocale && " (default)"}
+                      {stats?.[locale] && (
+                        <span
+                          className={`ml-2 text-xs ${
+                            stats[locale].percent === 100
+                              ? "text-green-600"
+                              : stats[locale].percent >= 80
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                          }`}
+                        >
+                          {stats[locale].percent}%
+                        </span>
+                      )}
                     </TableHead>
                   ))}
                 </TableRow>
