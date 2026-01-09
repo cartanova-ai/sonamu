@@ -204,15 +204,13 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
 
   /**
    * 모든 entity.json에서 entity labels 추출
+   * entity.json에서 직접 관리되는 값만 포함 (자동 생성 값 제외)
    * - entity.{entityId}: entity title
    * - entity.{entityId}.{propName}: prop desc
-   * - entity.{entityId}.list: 목록
-   * - entity.{entityId}.create: 생성
-   * - entity.{entityId}.edit: 수정 (함수)
    * - enum.{EnumId}.{value}: enum label
    */
-  private extractEntityLabels(): { key: string; value: string; isFunction?: boolean }[] {
-    const labels: { key: string; value: string; isFunction?: boolean }[] = [];
+  private extractEntityLabels(): { key: string; value: string }[] {
+    const labels: { key: string; value: string }[] = [];
 
     if (!EntityManager.isAutoloaded) {
       return labels;
@@ -223,26 +221,17 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
     for (const entityId of entityIds) {
       const entity = EntityManager.get(entityId);
 
-      // entity title
+      // entity title (entity.json에서 관리)
       labels.push({ key: `entity.${entityId}`, value: entity.title });
 
-      // entity CRUD labels
-      labels.push({ key: `entity.${entityId}.list`, value: `${entity.title} 목록` });
-      labels.push({ key: `entity.${entityId}.create`, value: `${entity.title} 생성` });
-      labels.push({
-        key: `entity.${entityId}.edit`,
-        value: `${entity.title} 수정 (#\${id})`,
-        isFunction: true,
-      });
-
-      // prop labels (prop name을 camelCase로 변환)
+      // prop labels (entity.json에서 관리)
       for (const prop of entity.props) {
         if (prop.desc) {
           labels.push({ key: `entity.${entityId}.${prop.name}`, value: prop.desc });
         }
       }
 
-      // enum labels
+      // enum labels (entity.json에서 관리)
       for (const [enumId, enumLabelsMap] of Object.entries(entity.enumLabels)) {
         for (const [value, label] of Object.entries(enumLabelsMap)) {
           labels.push({ key: `enum.${enumId}.${value}`, value: label });
@@ -256,23 +245,12 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
   /**
    * entityLabels를 TypeScript 코드로 변환
    */
-  private generateEntityLabelsCode(
-    labels: { key: string; value: string; isFunction?: boolean }[],
-  ): string {
+  private generateEntityLabelsCode(labels: { key: string; value: string }[]): string {
     if (labels.length === 0) {
       return "const entityLabels = {} as const;";
     }
 
-    const entries: string[] = [];
-
-    for (const { key, value, isFunction } of labels) {
-      if (isFunction) {
-        // 함수로 생성 (id 파라미터)
-        entries.push(`  "${key}": (id: number) => \`${value}\`,`);
-      } else {
-        entries.push(`  "${key}": "${this.escapeString(value)}",`);
-      }
-    }
+    const entries = labels.map(({ key, value }) => `  "${key}": "${this.escapeString(value)}",`);
 
     return `const entityLabels = {
 ${entries.join("\n")}

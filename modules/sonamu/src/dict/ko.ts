@@ -38,4 +38,9 @@ export default {
     `${field}은(는) ${min}~${max} 사이여야 합니다`,
   "validation.email": "올바른 이메일 형식이 아닙니다",
   "validation.url": "올바른 URL 형식이 아닙니다",
+
+  // Entity 페이지 (템플릿 함수)
+  "entity.list": (name: string) => `${name} 목록`,
+  "entity.create": (name: string) => `${name} 생성`,
+  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
 } as const;

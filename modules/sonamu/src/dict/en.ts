@@ -38,4 +38,9 @@ export default {
     `${field} must be between ${min} and ${max}`,
   "validation.email": "Invalid email format",
   "validation.url": "Invalid URL format",
+
+  // Entity pages (template functions)
+  "entity.list": (name: string) => `${name} List`,
+  "entity.create": (name: string) => `Create ${name}`,
+  "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
 } as const;

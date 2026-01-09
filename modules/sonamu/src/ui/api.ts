@@ -941,6 +941,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
 
       /**
        * sd.generated.ts에서 entity labels 추출
+       * entity.json에서 관리되는 값만 포함 (.list, .create, .edit 제외)
        */
       function extractEntityLabels(): DictEntry[] {
         const sdPath = path.join(Sonamu.apiRootPath, "src", "i18n", "sd.generated.ts");
@@ -958,7 +959,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           return [];
         }
 
-        return parseDictObject(entityLabelsMatch[1]);
+        const entries = parseDictObject(entityLabelsMatch[1]);
+
+        // .list, .create, .edit는 entity.json에서 관리되지 않으므로 제외
+        // (기존 sd.generated.ts에 남아있을 수 있음)
+        return entries.filter(
+          (e) => !e.key.match(/^entity\.[A-Z][a-zA-Z0-9]*\.(list|create|edit)$/),
+        );
       }
 
       /**
