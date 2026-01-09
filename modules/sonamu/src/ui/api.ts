@@ -890,44 +890,48 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }
 
       /**
-       * entity.json에서 entity labels 추출
+       * sd.generated.ts에서 entity labels 추출
        */
       function extractEntityLabels(): { key: string; value: string; isFunction?: boolean }[] {
         const labels: { key: string; value: string; isFunction?: boolean }[] = [];
 
-        if (!EntityManager.isAutoloaded) {
+        // sd.generated.ts 파일에서 entityLabels 파싱
+        const sdPath = path.join(Sonamu.apiRootPath, "src", "i18n", "sd.generated.ts");
+        if (!fs.existsSync(sdPath)) {
           return labels;
         }
 
-        const entityIds = EntityManager.getAllIds();
+        const content = fs.readFileSync(sdPath, "utf-8");
 
-        for (const entityId of entityIds) {
-          const entity = EntityManager.get(entityId);
+        // const entityLabels = { ... } as const; 패턴 매칭
+        const entityLabelsMatch = content.match(
+          /const\s+entityLabels\s*=\s*\{([\s\S]*?)\}\s*as\s*const/,
+        );
+        if (!entityLabelsMatch) {
+          return labels;
+        }
 
-          // entity title
-          labels.push({ key: `entity.${entityId}`, value: entity.title });
+        const objectContent = entityLabelsMatch[1];
 
-          // entity CRUD labels
-          labels.push({ key: `entity.${entityId}.list`, value: `${entity.title} 목록` });
-          labels.push({ key: `entity.${entityId}.create`, value: `${entity.title} 생성` });
-          labels.push({
-            key: `entity.${entityId}.edit`,
-            value: `${entity.title} 수정 (#\${id})`,
-            isFunction: true,
-          });
+        // 문자열 값 패턴: "key": "value" 또는 "key": `value`
+        const stringPattern = /"([^"]+)":\s*(?:"([^"]*)"|`([^`]*)`)/g;
+        for (const match of objectContent.matchAll(stringPattern)) {
+          const key = match[1];
+          const value = match[2] ?? match[3];
+          labels.push({ key, value });
+        }
 
-          // prop labels
-          for (const prop of entity.props) {
-            if (prop.desc) {
-              labels.push({ key: `entity.${entityId}.${prop.name}`, value: prop.desc });
-            }
-          }
-
-          // enum labels
-          for (const [enumId, enumLabelsMap] of Object.entries(entity.enumLabels)) {
-            for (const [value, label] of Object.entries(enumLabelsMap)) {
-              labels.push({ key: `enum.${enumId}.${value}`, value: label });
-            }
+        // 함수 값 패턴: "key": (params) => `template`
+        const functionPattern = /"([^"]+)":\s*(\([^)]*\)\s*=>\s*`[^`]*`)/g;
+        for (const match of objectContent.matchAll(functionPattern)) {
+          const key = match[1];
+          const value = match[2];
+          // 이미 문자열로 추가된 경우 덮어쓰기 (함수가 우선)
+          const existingIndex = labels.findIndex((l) => l.key === key);
+          if (existingIndex !== -1) {
+            labels[existingIndex] = { key, value, isFunction: true };
+          } else {
+            labels.push({ key, value, isFunction: true });
           }
         }
 
