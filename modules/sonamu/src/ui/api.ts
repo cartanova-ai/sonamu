@@ -1220,6 +1220,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         root: uiDistPath,
         prefix: "/",
         decorateReply: false,
+        wildcard: false,
       });
 
       // SPA fallback - 정적 파일이 없는 모든 경로는 index.html로
