@@ -273,7 +273,12 @@ export function apiParamTypeToTsType(paramType: ApiParamType, injectImportKeys: 
   } else if (ApiParamType.isIntersection(paramType)) {
     return paramType.types.map((type) => apiParamTypeToTsType(type, injectImportKeys)).join(" & ");
   } else if (ApiParamType.isArray(paramType)) {
-    return `${apiParamTypeToTsType(paramType.elementsType, injectImportKeys)}[]`;
+    // intersection이나 union인 경우 괄호로 감싸기
+    const elementsType = apiParamTypeToTsType(paramType.elementsType, injectImportKeys);
+    return ApiParamType.isIntersection(paramType.elementsType) ||
+      ApiParamType.isUnion(paramType.elementsType)
+      ? `(${elementsType})[]`
+      : `${elementsType}[]`;
   } else if (ApiParamType.isRef(paramType)) {
     if (["Pick", "Omit", "Promise", "Partial", "Date"].includes(paramType.id) === false) {
       // importKeys 인젝션
