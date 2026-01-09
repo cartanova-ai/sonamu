@@ -1,10 +1,910 @@
 ---
 title: 'findMany'
-description: '여러 엔티티 찾기'
+description: '리스트 조회 및 페이지네이션'
 ---
 
-# findMany
+`findMany`는 조건에 맞는 여러 레코드를 조회하는 메서드입니다. 페이지네이션, 검색, 필터링, 정렬을 지원하며 총 개수와 함께 결과를 반환합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+<Info>
+`findMany`는 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에 자동으로 생성하는 **표준 패턴**입니다.
+</Info>
+
+## 타입 시그니처
+
+```typescript
+async findMany<T extends SubsetKey, LP extends ListParams>(
+  subset: T,
+  params?: LP,
+): Promise<ListResult<LP, SubsetMapping[T]>>
+```
+
+## 자동 생성 코드
+
+Sonamu는 Entity를 기반으로 다음 코드를 자동으로 생성합니다:
+
+```typescript
+// src/application/user/user.model.ts (자동 생성)
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "Users" })
+  async findMany<T extends UserSubsetKey, LP extends UserListParams>(
+    subset: T,
+    rawParams?: LP,
+  ): Promise<ListResult<LP, UserSubsetMapping[T]>> {
+    // 1. 기본값 설정
+    const params = {
+      num: 24,
+      page: 1,
+      search: "id" as const,
+      orderBy: "id-desc" as const,
+      ...rawParams,
+    } satisfies UserListParams;
+
+    // 2. 서브셋 쿼리 빌더 가져오기
+    const { qb } = this.getSubsetQueries(subset);
+    
+    // 3. 필터링 조건 추가
+    if (params.id) {
+      qb.whereIn("users.id", asArray(params.id));
+    }
+
+    // 4. 검색 조건
+    if (params.search && params.keyword) {
+      if (params.search === "id") {
+        qb.where("users.id", Number(params.keyword));
+      } else if (params.search === "email") {
+        qb.where("users.email", "like", `%${params.keyword}%`);
+      }
+    }
+      
+    // 5. 정렬
+    if (params.orderBy === "id-desc") {
+      qb.orderBy("users.id", "desc");
+    }
+
+    // 6. Enhancer 생성
+    const enhancers = this.createEnhancers({
+      A: (row) => ({ ...row }),
+      B: (row) => ({ ...row }),
+      // ... 서브셋별 virtual 필드 계산
+    });
+
+    // 7. 쿼리 실행
+    return this.executeSubsetQuery({
+      subset,
+      qb,
+      params,
+      enhancers,
+      debug: false,
+    });
+  }
+}
+```
+
+**내부 동작:**
+1. **getSubsetQueries()**: BaseModelClass 메서드로 서브셋 쿼리 빌더 획득
+2. **조건 추가**: WHERE, 검색, 정렬 조건 추가
+3. **createEnhancers()**: BaseModelClass 메서드로 virtual 필드 계산 함수 생성
+4. **executeSubsetQuery()**: BaseModelClass 메서드로 실제 쿼리 실행
+   - COUNT 쿼리 (total)
+   - SELECT 쿼리 (rows)
+   - Loader 실행 (관계 데이터 로드)
+   - Hydrate (flat → 중첩 객체)
+   - Enhancer 적용 (virtual 필드 계산)
+
+## 매개변수
+
+### subset
+
+조회할 데이터의 서브셋을 지정합니다.
+
+**타입:** `SubsetKey` (예: `"A"`, `"B"`, `"C"`)
+
+```typescript
+// 기본 정보만 조회
+const { rows } = await UserModel.findMany("A", { num: 10, page: 1 });
+
+// 관계 데이터 포함
+const { rows } = await UserModel.findMany("B", { num: 10, page: 1 });
+```
+
+### params
+
+조회 조건과 페이지네이션 설정입니다.
+
+**타입:** `ListParams` (선택적)
+
+```typescript
+type UserListParams = {
+  // 페이지네이션
+  num?: number;        // 페이지당 개수 (기본: 24)
+  page?: number;       // 페이지 번호 (기본: 1)
+  
+  // 필터링
+  id?: number | number[];      // ID 필터
+  status?: "active" | "inactive";  // 커스텀 필터
+  
+  // 검색
+  search?: "id" | "email" | "name";  // 검색 필드
+  keyword?: string;                   // 검색어
+  
+  // 정렬
+  orderBy?: "id-desc" | "created-desc";  // 정렬 방식
+  
+  // 쿼리 모드
+  queryMode?: "list" | "count" | "both";  // 조회 모드
+}
+```
+
+#### 기본값
+
+```typescript
+const params = {
+  num: 24,
+  page: 1,
+  search: "id",
+  orderBy: "id-desc",
+  ...rawParams,  // 사용자 입력으로 덮어쓰기
+};
+```
+
+## 반환값
+
+**타입:** `Promise<ListResult<LP, SubsetMapping[T]>>`
+
+```typescript
+type ListResult<LP, T> = 
+  // queryMode: "list"
+  | { rows: T[] }
+  // queryMode: "count"
+  | { total: number }
+  // queryMode: "both" (기본)
+  | { rows: T[]; total: number };
+```
+
+### rows
+
+조회된 레코드 배열입니다.
+
+```typescript
+const { rows } = await UserModel.findMany("A", { num: 10, page: 1 });
+
+rows.forEach(user => {
+  console.log(user.id, user.name);
+});
+```
+
+### total
+
+조건에 맞는 전체 레코드 수입니다.
+
+```typescript
+const { total } = await UserModel.findMany("A", { num: 10, page: 1 });
+
+const totalPages = Math.ceil(total / 10);
+console.log(`Total pages: ${totalPages}`);
+```
+
+## 페이지네이션
+
+### num (페이지당 개수)
+
+한 페이지에 표시할 레코드 수입니다.
+
+**기본값:** `24`
+
+```typescript
+// 10개씩 조회
+const { rows } = await UserModel.findMany("A", { num: 10 });
+
+// 50개씩 조회
+const { rows } = await UserModel.findMany("A", { num: 50 });
+
+// 전체 조회 (num: 0)
+const { rows } = await UserModel.findMany("A", { num: 0 });
+```
+
+### page (페이지 번호)
+
+조회할 페이지 번호입니다 (1부터 시작).
+
+**기본값:** `1`
+
+```typescript
+// 첫 번째 페이지
+const { rows: page1 } = await UserModel.findMany("A", {
+  num: 10,
+  page: 1  // 1~10번째 레코드
+});
+
+// 두 번째 페이지
+const { rows: page2 } = await UserModel.findMany("A", {
+  num: 10,
+  page: 2  // 11~20번째 레코드
+});
+
+// 세 번째 페이지
+const { rows: page3 } = await UserModel.findMany("A", {
+  num: 10,
+  page: 3  // 21~30번째 레코드
+});
+```
+
+## 필터링
+
+### ID 필터
+
+```typescript
+// 단일 ID
+const { rows } = await UserModel.findMany("A", { id: 1 });
+
+// 여러 ID
+const { rows } = await UserModel.findMany("A", { id: [1, 2, 3] });
+```
+
+### 커스텀 필터
+
+Entity 정의에 따라 추가 필터를 사용할 수 있습니다.
+
+```typescript
+// 상태 필터
+const { rows } = await UserModel.findMany("A", {
+  status: "active"
+});
+
+// 날짜 범위 필터
+const { rows } = await UserModel.findMany("A", {
+  created_from: "2024-01-01",
+  created_to: "2024-12-31"
+});
+
+// 여러 필터 조합
+const { rows } = await UserModel.findMany("A", {
+  status: "active",
+  role: "admin",
+  verified: true
+});
+```
+
+## 검색
+
+### search + keyword
+
+```typescript
+// ID로 검색
+const { rows } = await UserModel.findMany("A", {
+  search: "id",
+  keyword: "123"
+});
+
+// 이메일로 검색
+const { rows } = await UserModel.findMany("A", {
+  search: "email",
+  keyword: "john"
+});
+
+// 이름으로 검색 (부분 일치)
+const { rows } = await UserModel.findMany("A", {
+  search: "name",
+  keyword: "Smith"
+});
+```
+
+### 구현 예시
+
+생성된 Model 코드:
+
+```typescript
+// search-keyword
+if (params.search && params.keyword && params.keyword.length > 0) {
+  if (params.search === "id") {
+    qb.where("users.id", Number(params.keyword));
+  } else if (params.search === "email") {
+    qb.where("users.email", "like", `%${params.keyword}%`);
+  } else if (params.search === "name") {
+    qb.where("users.name", "like", `%${params.keyword}%`);
+  } else {
+    throw new BadRequestException(`구현되지 않은 검색 필드 ${params.search}`);
+  }
+}
+```
+
+## 정렬
+
+### orderBy
+
+```typescript
+// ID 내림차순 (기본)
+const { rows } = await UserModel.findMany("A", {
+  orderBy: "id-desc"
+});
+
+// 생성일 내림차순
+const { rows } = await UserModel.findMany("A", {
+  orderBy: "created-desc"
+});
+
+// 이름 오름차순
+const { rows } = await UserModel.findMany("A", {
+  orderBy: "name-asc"
+});
+```
+
+### 구현 예시
+
+```typescript
+// orderBy
+if (params.orderBy) {
+  if (params.orderBy === "id-desc") {
+    qb.orderBy("users.id", "desc");
+  } else if (params.orderBy === "created-desc") {
+    qb.orderBy("users.created_at", "desc");
+  } else if (params.orderBy === "name-asc") {
+    qb.orderBy("users.name", "asc");
+  } else {
+    exhaustive(params.orderBy);
+  }
+}
+```
+
+## 쿼리 모드
+
+### queryMode: "both" (기본)
+
+리스트와 총 개수를 모두 반환합니다.
+
+```typescript
+const { rows, total } = await UserModel.findMany("A", {
+  num: 10,
+  page: 1,
+  queryMode: "both"  // 기본값
+});
+
+console.log(`${rows.length} of ${total}`);
+```
+
+### queryMode: "list"
+
+리스트만 반환합니다 (COUNT 쿼리 생략).
+
+```typescript
+const { rows } = await UserModel.findMany("A", {
+  num: 10,
+  page: 1,
+  queryMode: "list"  // total 없음
+});
+
+// total은 undefined
+```
+
+<Info>
+COUNT 쿼리가 무거운 경우 `queryMode: "list"`를 사용하면 성능이 향상됩니다.
+</Info>
+
+### queryMode: "count"
+
+총 개수만 반환합니다 (SELECT 쿼리 생략).
+
+```typescript
+const { total } = await UserModel.findMany("A", {
+  status: "active",
+  queryMode: "count"  // rows 없음
+});
+
+console.log(`Total active users: ${total}`);
+```
+
+## 기본 사용법
+
+### 단순 리스트
+
+```typescript
+import { UserModel } from "./user/user.model";
+
+class UserService {
+  async getUsers(page: number = 1) {
+    const { rows, total } = await UserModel.findMany("A", {
+      num: 20,
+      page
+    });
+    
+    return {
+      users: rows,
+      total,
+      page,
+      totalPages: Math.ceil(total / 20)
+    };
+  }
+}
+```
+
+### 필터링 + 페이지네이션
+
+```typescript
+async getActiveUsers(page: number = 1) {
+  const { rows, total } = await UserModel.findMany("A", {
+    status: "active",
+    num: 20,
+    page
+  });
+  
+  return { rows, total };
+}
+```
+
+### 검색 + 정렬
+
+```typescript
+async searchUsers(keyword: string) {
+  const { rows } = await UserModel.findMany("A", {
+    search: "name",
+    keyword,
+    orderBy: "name-asc",
+    num: 50
+  });
+  
+  return rows;
+}
+```
+
+## 실전 예시
+
+<Tabs>
+  <Tab title="무한 스크롤" icon="arrows-down-to-line">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api } from "sonamu";
+
+    class UserFrame {
+      @api({ httpMethod: "GET" })
+      async getUsersInfinite(page: number = 1) {
+        // 리스트만 조회 (COUNT 생략으로 성능 향상)
+        const { rows } = await UserModel.findMany("A", {
+          num: 20,
+          page,
+          queryMode: "list",
+          orderBy: "created-desc"
+        });
+        
+        return {
+          users: rows,
+          hasMore: rows.length === 20,  // 20개면 다음 페이지 있음
+          nextPage: page + 1
+        };
+      }
+    }
+    
+    // React에서 사용
+    import { useInfiniteQuery } from "@tanstack/react-query";
+    
+    function UserList() {
+      const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+      } = useInfiniteQuery({
+        queryKey: ["users"],
+        queryFn: ({ pageParam = 1 }) => 
+          UserService.getUsersInfinite(pageParam),
+        getNextPageParam: (lastPage) => 
+          lastPage.hasMore ? lastPage.nextPage : undefined,
+      });
+      
+      return (
+        <div>
+          {data?.pages.map((page) =>
+            page.users.map((user) => (
+              <UserCard key={user.id} user={user} />
+            ))
+          )}
+          {hasNextPage && (
+            <button onClick={() => fetchNextPage()}>
+              Load More
+            </button>
+          )}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="데이터 테이블" icon="table">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api } from "sonamu";
+
+    class UserFrame {
+      @api({ httpMethod: "GET" })
+      async getUserTable(params: {
+        page: number;
+        pageSize: number;
+        search?: string;
+        keyword?: string;
+        orderBy?: string;
+      }) {
+        const { rows, total } = await UserModel.findMany("A", {
+          num: params.pageSize,
+          page: params.page,
+          search: params.search as any,
+          keyword: params.keyword,
+          orderBy: params.orderBy as any
+        });
+        
+        return {
+          data: rows,
+          total,
+          page: params.page,
+          pageSize: params.pageSize,
+          totalPages: Math.ceil(total / params.pageSize)
+        };
+      }
+    }
+    
+    // React 테이블
+    function UserTable() {
+      const [page, setPage] = useState(1);
+      const [pageSize, setPageSize] = useState(20);
+      const [search, setSearch] = useState("name");
+      const [keyword, setKeyword] = useState("");
+      
+      const { data, isLoading } = useQuery({
+        queryKey: ["users", page, pageSize, search, keyword],
+        queryFn: () => UserService.getUserTable({
+          page,
+          pageSize,
+          search,
+          keyword
+        })
+      });
+      
+      return (
+        <div>
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Search users..."
+          />
+          
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data?.data.map(user => (
+                <tr key={user.id}>
+                  <td>{user.id}</td>
+                  <td>{user.name}</td>
+                  <td>{user.email}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          <div>
+            Page {data?.page} of {data?.totalPages}
+            <button 
+              onClick={() => setPage(p => p - 1)}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <button 
+              onClick={() => setPage(p => p + 1)}
+              disabled={page === data?.totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="통계 및 카운트" icon="chart-bar">
+    ```typescript
+    import { UserModel, OrderModel } from "./models";
+    import { api } from "sonamu";
+
+    class DashboardFrame {
+      @api({ httpMethod: "GET" })
+      async getDashboardStats() {
+        // COUNT만 조회 (빠른 통계)
+        const [
+          { total: totalUsers },
+          { total: activeUsers },
+          { total: todayOrders },
+          { total: pendingOrders }
+        ] = await Promise.all([
+          UserModel.findMany("A", { queryMode: "count" }),
+          UserModel.findMany("A", { 
+            status: "active", 
+            queryMode: "count" 
+          }),
+          OrderModel.findMany("A", { 
+            created_from: new Date().toISOString().split('T')[0],
+            queryMode: "count" 
+          }),
+          OrderModel.findMany("A", { 
+            status: "pending", 
+            queryMode: "count" 
+          })
+        ]);
+        
+        return {
+          totalUsers,
+          activeUsers,
+          todayOrders,
+          pendingOrders,
+          activeUserRate: (activeUsers / totalUsers * 100).toFixed(1)
+        };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Export" icon="file-export">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api } from "sonamu";
+    import * as XLSX from "xlsx";
+
+    class ExportFrame {
+      @api({ httpMethod: "GET" })
+      async exportUsers(filters: {
+        status?: string;
+        created_from?: string;
+        created_to?: string;
+      }) {
+        // 전체 데이터 조회 (num: 0)
+        const { rows } = await UserModel.findMany("Export", {
+          ...filters,
+          num: 0,  // 전체
+          orderBy: "id-asc"
+        });
+        
+        // Excel 생성
+        const worksheet = XLSX.utils.json_to_sheet(
+          rows.map(user => ({
+            ID: user.id,
+            Name: user.name,
+            Email: user.email,
+            Status: user.status,
+            Created: user.created_at
+          }))
+        );
+        
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+        
+        const buffer = XLSX.write(workbook, { 
+          type: "buffer", 
+          bookType: "xlsx" 
+        });
+        
+        return {
+          filename: `users_${Date.now()}.xlsx`,
+          data: buffer.toString("base64")
+        };
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## BaseModelClass 메서드 활용
+
+`findMany`는 내부적으로 다음 BaseModelClass 메서드들을 사용합니다:
+
+### getSubsetQueries()
+
+서브셋 쿼리 빌더를 가져옵니다.
+
+```typescript
+const { qb } = this.getSubsetQueries(subset);
+```
+
+### createEnhancers()
+
+Virtual 필드 계산 함수를 생성합니다.
+
+```typescript
+const enhancers = this.createEnhancers({
+  A: (row) => ({
+    ...row,
+    full_name: `${row.first_name} ${row.last_name}`
+  }),
+});
+```
+
+### executeSubsetQuery()
+
+쿼리를 실행하고 결과를 반환합니다.
+
+```typescript
+return this.executeSubsetQuery({
+  subset,
+  qb,
+  params,
+  enhancers,
+  debug: false,
+  optimizeCountQuery: false
+});
+```
+
+## 타입 안정성
+
+### 서브셋 타입 추론
+
+```typescript
+// 서브셋 A
+const { rows: usersA } = await UserModel.findMany("A", {});
+usersA[0].posts;  // ❌ 타입 에러
+
+// 서브셋 B (posts 포함)
+const { rows: usersB } = await UserModel.findMany("B", {});
+usersB[0].posts;  // ✅ Post[]
+```
+
+### ListParams 타입
+
+```typescript
+// params는 UserListParams 타입으로 제한됨
+await UserModel.findMany("A", {
+  unknownField: true  // ❌ 타입 에러
+});
+
+await UserModel.findMany("A", {
+  status: "active"    // ✅ 정의된 필드
+});
+```
+
+### queryMode 타입 추론
+
+```typescript
+// queryMode: "both"
+const { rows, total } = await UserModel.findMany("A", {
+  queryMode: "both"
+});
+rows;   // ✅ User[]
+total;  // ✅ number
+
+// queryMode: "list"
+const { rows } = await UserModel.findMany("A", {
+  queryMode: "list"
+});
+total;  // ❌ 타입 에러 (total 없음)
+
+// queryMode: "count"
+const { total } = await UserModel.findMany("A", {
+  queryMode: "count"
+});
+rows;   // ❌ 타입 에러 (rows 없음)
+```
+
+## 성능 최적화
+
+### 1. queryMode: "list" 사용
+
+COUNT 쿼리가 무거운 경우:
+
+```typescript
+// ❌ 느림: COUNT(*) 실행
+const { rows, total } = await UserModel.findMany("A", {
+  num: 20,
+  page: 1
+});
+
+// ✅ 빠름: COUNT 생략
+const { rows } = await UserModel.findMany("A", {
+  num: 20,
+  page: 1,
+  queryMode: "list"
+});
+```
+
+### 2. 인덱스 활용
+
+자주 필터링하는 필드에 인덱스 추가:
+
+```sql
+CREATE INDEX idx_users_status ON users(status);
+CREATE INDEX idx_users_created_at ON users(created_at);
+```
+
+### 3. 서브셋 최소화
+
+필요한 필드만 포함하는 서브셋 사용:
+
+```typescript
+// ❌ 무거움: 모든 관계 로드
+const { rows } = await UserModel.findMany("Full", { num: 100 });
+
+// ✅ 가벼움: 기본 필드만
+const { rows } = await UserModel.findMany("A", { num: 100 });
+```
+
+### 4. num 제한
+
+한 번에 너무 많은 데이터 조회 방지:
+
+```typescript
+// ❌ 위험: 메모리 부족 가능
+const { rows } = await UserModel.findMany("A", { num: 0 });
+
+// ✅ 안전: 적절한 페이지 크기
+const { rows } = await UserModel.findMany("A", { num: 100 });
+```
+
+## 주의사항
+
+### 1. num: 0 주의
+
+`num: 0`은 전체 조회이므로 신중하게 사용하세요.
+
+```typescript
+// ❌ 위험: 수백만 레코드 조회 가능
+const { rows } = await UserModel.findMany("A", { num: 0 });
+
+// ✅ 안전: 페이지네이션
+const { rows } = await UserModel.findMany("A", { num: 100 });
+```
+
+### 2. page는 1부터 시작
+
+```typescript
+// ❌ 잘못됨: 0부터 시작
+const { rows } = await UserModel.findMany("A", { page: 0 });
+
+// ✅ 올바름: 1부터 시작
+const { rows } = await UserModel.findMany("A", { page: 1 });
+```
+
+### 3. 서브셋 선택
+
+```typescript
+// ❌ 비효율: 필요없는 관계 로드
+const { rows } = await UserModel.findMany("Full", { num: 1000 });
+
+// ✅ 효율: 필요한 것만
+const { rows } = await UserModel.findMany("A", { num: 1000 });
+```
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="findById" 
+    icon="magnifying-glass" 
+    href="/api-reference/base-model/find-by-id"
+  >
+    ID로 단일 레코드 조회
+  </Card>
+  
+  <Card 
+    title="save" 
+    icon="floppy-disk" 
+    href="/api-reference/base-model/save"
+  >
+    레코드 저장 및 수정
+  </Card>
+  
+  <Card 
+    title="Subset" 
+    icon="layer-group" 
+    href="/database/subsets/what-are-subsets"
+  >
+    서브셋 이해하기
+  </Card>
+  
+  <Card 
+    title="Puri 쿼리 빌더" 
+    icon="code" 
+    href="/database/puri/basic-queries"
+  >
+    고급 쿼리 작성하기
+  </Card>
+</CardGroup>

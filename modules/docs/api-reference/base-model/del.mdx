@@ -1,10 +1,737 @@
 ---
 title: 'del'
-description: '엔티티 삭제하기'
+description: '레코드 삭제'
 ---
 
-# del
+`del`은 ID 배열로 여러 레코드를 한 번에 삭제하는 메서드입니다. 트랜잭션 내에서 안전하게 실행되며, 기본적으로 관리자 권한이 필요합니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+<Info>
+`del`은 BaseModelClass에 정의되어 있지 않습니다. Entity를 생성하면 Syncer가 각 Model 클래스에 자동으로 생성하는 **표준 패턴**입니다.
+</Info>
+
+## 타입 시그니처
+
+```typescript
+async del(ids: number[]): Promise<number>
+```
+
+## 자동 생성 코드
+
+Sonamu는 Entity를 기반으로 다음 코드를 자동으로 생성합니다:
+
+```typescript
+// src/application/user/user.model.ts (자동 생성)
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"], guards: ["admin"] })
+  async del(ids: number[]): Promise<number> {
+    const wdb = this.getPuri("w");
+
+    // 트랜잭션 내에서 삭제
+    await wdb.transaction(async (trx) => {
+      return trx.table("users").whereIn("users.id", ids).delete();
+    });
+
+    return ids.length;
+  }
+}
+```
+
+**내부 동작:**
+1. **getPuri("w")**: BaseModelClass 메서드로 쓰기용 Puri 획득
+2. **transaction()**: 트랜잭션 시작
+3. **table().whereIn().delete()**: Knex 메서드로 삭제 실행
+4. **ids.length 반환**: 삭제 요청한 ID 개수 반환
+
+## 매개변수
+
+### ids
+
+삭제할 레코드의 ID 배열입니다.
+
+**타입:** `number[]`
+
+```typescript
+// 단일 레코드 삭제
+await UserModel.del([123]);
+
+// 여러 레코드 삭제
+await UserModel.del([1, 2, 3, 4, 5]);
+
+// 빈 배열 (아무것도 삭제하지 않음)
+await UserModel.del([]);
+```
+
+## 반환값
+
+**타입:** `Promise<number>`
+
+삭제된 레코드의 개수를 반환합니다.
+
+```typescript
+// 3개 삭제
+const count = await UserModel.del([1, 2, 3]);
+console.log(`${count} users deleted`);  // "3 users deleted"
+
+// 존재하지 않는 ID 포함
+const count = await UserModel.del([1, 999, 1000]);
+console.log(`${count} users deleted`);  // "1 users deleted" (1번만 존재)
+```
+
+<Info>
+존재하지 않는 ID는 무시되며 에러를 발생시키지 않습니다.
+</Info>
+
+## 기본 사용법
+
+### 단일 레코드 삭제
+
+```typescript
+import { UserModel } from "./user/user.model";
+
+class UserService {
+  async deleteUser(userId: number) {
+    const count = await UserModel.del([userId]);
+    
+    if (count === 0) {
+      throw new Error("User not found");
+    }
+    
+    return { success: true };
+  }
+}
+```
+
+### 여러 레코드 삭제
+
+```typescript
+async deleteUsers(userIds: number[]) {
+  const count = await UserModel.del(userIds);
+  
+  return {
+    requested: userIds.length,
+    deleted: count
+  };
+}
+```
+
+### 조건부 삭제
+
+```typescript
+async deleteInactiveUsers() {
+  // 비활성 사용자 조회
+  const { rows } = await UserModel.findMany("A", {
+    status: "inactive",
+    num: 0
+  });
+  
+  // ID 추출하여 삭제
+  const ids = rows.map(user => user.id);
+  const count = await UserModel.del(ids);
+  
+  return { deleted: count };
+}
+```
+
+## 트랜잭션
+
+`del`은 자동으로 트랜잭션 내에서 실행됩니다.
+
+```typescript
+async del(ids: number[]): Promise<number> {
+  const wdb = this.getPuri("w");
+
+  // 트랜잭션
+  await wdb.transaction(async (trx) => {
+    return trx.table("users")
+      .whereIn("users.id", ids)
+      .delete();
+  });
+
+  return ids.length;
+}
+```
+
+### @transactional과 함께
+
+```typescript
+import { api, transactional } from "sonamu";
+
+class UserFrame {
+  @api({ httpMethod: "POST" })
+  @transactional()
+  async deleteUserAndRelated(userId: number) {
+    // 관련 데이터 삭제
+    await PostModel.del(
+      (await PostModel.findMany("A", { 
+        user_id: userId, 
+        num: 0 
+      })).rows.map(p => p.id)
+    );
+    
+    // 사용자 삭제
+    await UserModel.del([userId]);
+    
+    // 모두 성공하거나 모두 실패
+    return { success: true };
+  }
+}
+```
+
+## 권한 확인
+
+기본적으로 `del`은 관리자 권한이 필요합니다.
+
+```typescript
+@api({ 
+  httpMethod: "POST", 
+  clients: ["axios", "tanstack-mutation"], 
+  guards: ["admin"]  // 기본 설정
+})
+async del(ids: number[]): Promise<number> {
+  // ...
+}
+```
+
+### 본인 데이터 삭제
+
+```typescript
+import { Sonamu, api, UnauthorizedException } from "sonamu";
+
+class PostFrame {
+  @api({ httpMethod: "POST" })
+  async deleteMyPost(postId: number) {
+    const { user } = Sonamu.getContext();
+    
+    // 게시물 소유자 확인
+    const post = await PostModel.findById("A", postId);
+    
+    if (post.user_id !== user.id) {
+      throw new UnauthorizedException("본인의 게시물만 삭제할 수 있습니다");
+    }
+    
+    await PostModel.del([postId]);
+    
+    return { success: true };
+  }
+}
+```
+
+## 실전 예시
+
+<Tabs>
+  <Tab title="회원 탈퇴" icon="user-xmark">
+    ```typescript
+    import { UserModel, PostModel, CommentModel } from "./models";
+    import { Sonamu, api, transactional } from "sonamu";
+
+    class UserFrame {
+      @api({ httpMethod: "POST" })
+      @transactional()
+      async deleteAccount() {
+        const { user } = Sonamu.getContext();
+        
+        // 사용자의 모든 댓글 삭제
+        const { rows: comments } = await CommentModel.findMany("A", {
+          user_id: user.id,
+          num: 0
+        });
+        if (comments.length > 0) {
+          await CommentModel.del(comments.map(c => c.id));
+        }
+        
+        // 사용자의 모든 게시물 삭제
+        const { rows: posts } = await PostModel.findMany("A", {
+          user_id: user.id,
+          num: 0
+        });
+        if (posts.length > 0) {
+          await PostModel.del(posts.map(p => p.id));
+        }
+        
+        // 사용자 삭제
+        await UserModel.del([user.id]);
+        
+        // 세션 종료
+        Sonamu.getContext().passport.logout();
+        
+        return { success: true };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="게시물 삭제" icon="trash">
+    ```typescript
+    import { PostModel, CommentModel, LikeModel } from "./models";
+    import { Sonamu, api, transactional, UnauthorizedException } from "sonamu";
+
+    class PostFrame {
+      @api({ httpMethod: "POST" })
+      @transactional()
+      async deletePost(postId: number) {
+        const { user } = Sonamu.getContext();
+        
+        // 게시물 소유자 확인
+        const post = await PostModel.findById("A", postId);
+        
+        if (post.user_id !== user.id) {
+          throw new UnauthorizedException("권한이 없습니다");
+        }
+        
+        // 게시물의 모든 좋아요 삭제
+        const { rows: likes } = await LikeModel.findMany("A", {
+          post_id: postId,
+          num: 0
+        });
+        if (likes.length > 0) {
+          await LikeModel.del(likes.map(l => l.id));
+        }
+        
+        // 게시물의 모든 댓글 삭제
+        const { rows: comments } = await CommentModel.findMany("A", {
+          post_id: postId,
+          num: 0
+        });
+        if (comments.length > 0) {
+          await CommentModel.del(comments.map(c => c.id));
+        }
+        
+        // 게시물 삭제
+        await PostModel.del([postId]);
+        
+        return { success: true };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="대량 삭제" icon="eraser">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api, transactional } from "sonamu";
+
+    class AdminFrame {
+      @api({ httpMethod: "POST", guards: ["admin"] })
+      @transactional()
+      async bulkDeleteUsers(params: {
+        status?: string;
+        inactive_days?: number;
+      }) {
+        // 삭제 대상 조회
+        let conditions: any = {};
+        
+        if (params.status) {
+          conditions.status = params.status;
+        }
+        
+        if (params.inactive_days) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - params.inactive_days);
+          conditions.last_login_before = cutoffDate.toISOString();
+        }
+        
+        const { rows } = await UserModel.findMany("A", {
+          ...conditions,
+          num: 0
+        });
+        
+        if (rows.length === 0) {
+          return { deleted: 0 };
+        }
+        
+        // ID 추출
+        const ids = rows.map(user => user.id);
+        
+        // 삭제 (500개씩 배치 처리)
+        let totalDeleted = 0;
+        for (let i = 0; i < ids.length; i += 500) {
+          const batch = ids.slice(i, i + 500);
+          const count = await UserModel.del(batch);
+          totalDeleted += count;
+        }
+        
+        return {
+          requested: ids.length,
+          deleted: totalDeleted
+        };
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="소프트 삭제" icon="eye-slash">
+    ```typescript
+    import { UserModel } from "./user/user.model";
+    import { api } from "sonamu";
+
+    class UserFrame {
+      // del 대신 status를 변경하는 소프트 삭제
+      @api({ httpMethod: "POST" })
+      async softDeleteUser(userId: number) {
+        // status를 'deleted'로 변경
+        await UserModel.save([
+          {
+            id: userId,
+            status: "deleted",
+            deleted_at: new Date()
+          }
+        ]);
+        
+        return { success: true };
+      }
+      
+      // 영구 삭제 (관리자만)
+      @api({ httpMethod: "POST", guards: ["admin"] })
+      async hardDeleteUser(userId: number) {
+        // 실제로 DB에서 삭제
+        await UserModel.del([userId]);
+        
+        return { success: true };
+      }
+      
+      // 복구
+      @api({ httpMethod: "POST", guards: ["admin"] })
+      async restoreUser(userId: number) {
+        await UserModel.save([
+          {
+            id: userId,
+            status: "active",
+            deleted_at: null
+          }
+        ]);
+        
+        return { success: true };
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## API에서 사용
+
+### 자동 생성된 del API
+
+```typescript
+// Model 클래스
+class UserModelClass extends BaseModelClass {
+  @api({ 
+    httpMethod: "POST", 
+    clients: ["axios", "tanstack-mutation"], 
+    guards: ["admin"] 
+  })
+  async del(ids: number[]): Promise<number> {
+    // 자동 생성된 코드
+  }
+}
+```
+
+### 클라이언트 코드
+
+```typescript
+import { UserService } from "@/services/UserService";
+
+// 사용자 삭제
+const count = await UserService.del([1, 2, 3]);
+console.log(`${count} users deleted`);
+```
+
+### React (TanStack Query)
+
+```typescript
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { UserService } from "@/services/UserService";
+
+function DeleteUserButton({ userId }: { userId: number }) {
+  const queryClient = useQueryClient();
+  
+  const deleteUser = useMutation({
+    mutationFn: (id: number) => UserService.del([id]),
+    onSuccess: () => {
+      // 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
+
+  const handleDelete = () => {
+    if (confirm("정말 삭제하시겠습니까?")) {
+      deleteUser.mutate(userId);
+    }
+  };
+
+  return (
+    <button 
+      onClick={handleDelete}
+      disabled={deleteUser.isPending}
+    >
+      {deleteUser.isPending ? "Deleting..." : "Delete"}
+    </button>
+  );
+}
+```
+
+## 외래 키 제약조건
+
+### CASCADE 설정
+
+```sql
+-- 부모 레코드 삭제 시 자식 레코드 자동 삭제
+CREATE TABLE comments (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  FOREIGN KEY (post_id) 
+    REFERENCES posts(id) 
+    ON DELETE CASCADE
+);
+```
+
+```typescript
+// 게시물 삭제 시 댓글 자동 삭제됨
+await PostModel.del([1]);
+```
+
+### RESTRICT 설정
+
+```sql
+-- 자식 레코드가 있으면 부모 레코드 삭제 불가
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  FOREIGN KEY (user_id) 
+    REFERENCES users(id) 
+    ON DELETE RESTRICT
+);
+```
+
+```typescript
+// 게시물이 있는 사용자 삭제 시 에러
+try {
+  await UserModel.del([1]);
+} catch (error) {
+  // Foreign key violation
+  console.error("Cannot delete user with posts");
+}
+```
+
+### 수동 처리
+
+```typescript
+@transactional()
+async deleteUserWithPosts(userId: number) {
+  // 먼저 게시물 삭제
+  const { rows: posts } = await PostModel.findMany("A", {
+    user_id: userId,
+    num: 0
+  });
+  
+  if (posts.length > 0) {
+    await PostModel.del(posts.map(p => p.id));
+  }
+  
+  // 그 다음 사용자 삭제
+  await UserModel.del([userId]);
+  
+  return { success: true };
+}
+```
+
+## 삭제 확인
+
+### 존재 여부 확인
+
+```typescript
+async deleteUserSafely(userId: number) {
+  // 사용자 존재 확인
+  try {
+    await UserModel.findById("A", userId);
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw new BadRequestException("사용자를 찾을 수 없습니다");
+    }
+    throw error;
+  }
+  
+  // 삭제
+  const count = await UserModel.del([userId]);
+  
+  return { success: count > 0 };
+}
+```
+
+### 삭제 후 확인
+
+```typescript
+async deleteAndVerify(userId: number) {
+  // 삭제
+  const count = await UserModel.del([userId]);
+  
+  // 실제로 삭제되었는지 확인
+  const deleted = await UserModel.findOne("A", { id: userId });
+  
+  return {
+    deleteCount: count,
+    verified: deleted === null
+  };
+}
+```
+
+## 성능 최적화
+
+### 배치 삭제
+
+대량 삭제 시 배치로 나눠서 처리하세요.
+
+```typescript
+async deleteManyUsers(ids: number[]) {
+  const batchSize = 500;
+  let totalDeleted = 0;
+  
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+    const count = await UserModel.del(batch);
+    totalDeleted += count;
+  }
+  
+  return { total: totalDeleted };
+}
+```
+
+### 인덱스 활용
+
+자주 삭제하는 외래 키에 인덱스를 추가하세요.
+
+```sql
+-- user_id로 자주 삭제하는 경우
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+```
+
+## 주의사항
+
+### 1. 배열로 전달
+
+`del`은 **반드시 배열**을 받습니다.
+
+```typescript
+// ❌ 잘못됨
+await UserModel.del(123);
+
+// ✅ 올바름
+await UserModel.del([123]);
+```
+
+### 2. 반환값은 개수
+
+```typescript
+const count = await UserModel.del([1, 2, 3]);
+console.log(count);  // 3 (또는 실제 삭제된 개수)
+```
+
+### 3. CASCADE 주의
+
+CASCADE 설정이 있으면 의도치 않은 데이터까지 삭제될 수 있습니다.
+
+```typescript
+// ❌ 위험: 게시물의 모든 댓글도 삭제됨
+await PostModel.del([1, 2, 3]);
+```
+
+### 4. 트랜잭션 권장
+
+관련된 여러 테이블을 삭제할 때는 트랜잭션을 사용하세요.
+
+```typescript
+// ✅ 안전: 모두 성공하거나 모두 실패
+@transactional()
+async deleteUserAndRelated(userId: number) {
+  await CommentModel.del([...]);
+  await PostModel.del([...]);
+  await UserModel.del([userId]);
+}
+```
+
+### 5. 권한 확인
+
+기본 `guards: ["admin"]` 설정을 변경할 때는 신중하세요.
+
+```typescript
+// ⚠️ 주의: 누구나 삭제 가능
+@api({ guards: [] })
+async del(ids: number[]) {
+  // 위험!
+}
+```
+
+## 소프트 삭제 vs 하드 삭제
+
+### 하드 삭제 (del)
+
+```typescript
+// 영구적으로 DB에서 제거
+await UserModel.del([1]);
+```
+
+**장점:**
+- 디스크 공간 절약
+- 단순한 구조
+
+**단점:**
+- 복구 불가능
+- 히스토리 손실
+
+### 소프트 삭제 (save)
+
+```typescript
+// status 또는 deleted_at 컬럼 사용
+await UserModel.save([
+  {
+    id: 1,
+    status: "deleted",
+    deleted_at: new Date()
+  }
+]);
+```
+
+**장점:**
+- 복구 가능
+- 히스토리 유지
+- 감사 추적
+
+**단점:**
+- 디스크 공간 증가
+- 쿼리 복잡도 증가
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="save" 
+    icon="floppy-disk" 
+    href="/api-reference/base-model/save"
+  >
+    레코드 저장 및 수정
+  </Card>
+  
+  <Card 
+    title="findMany" 
+    icon="list" 
+    href="/api-reference/base-model/find-many"
+  >
+    삭제할 레코드 조회하기
+  </Card>
+  
+  <Card 
+    title="@transactional" 
+    icon="arrows-rotate" 
+    href="/api-reference/decorators/transactional"
+  >
+    트랜잭션으로 안전하게 삭제하기
+  </Card>
+  
+  <Card 
+    title="외래 키" 
+    icon="link" 
+    href="/database/migrations/foreign-keys"
+  >
+    외래 키 제약조건 설정
+  </Card>
+</CardGroup>
