@@ -1222,11 +1222,11 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         decorateReply: false,
       });
 
-      // SPA fallback - 정적 파일이 없는 경로만 index.html로
-      server.setNotFoundHandler(async (_request, reply) => {
+      // SPA fallback - 정적 파일이 없는 모든 경로는 index.html로
+      server.get("*", async (_request, reply) => {
         reply.headers({ "Content-type": "text/html" }).send(
           fs
-            .readFileSync(path.resolve(import.meta.dirname, "../ui-web/index.html"))
+            .readFileSync(path.resolve(uiDistPath, "index.html"))
             .toString()
             .replace("{{projectName}}", Sonamu.config.projectName ?? "UnknownSonamuProject"),
         );
