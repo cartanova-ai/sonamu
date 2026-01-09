@@ -11,8 +11,8 @@ description: "데이터베이스 마이그레이션 관리하기"
 
 - **Entity 기반**: Entity 정의에서 자동으로 마이그레이션 생성
 - **순차 실행**: 생성 순서대로 마이그레이션 적용
-- **롤백 지원**: 실수를 되돌릴 수 있음
 - **다중 DB 지원**: 여러 데이터베이스를 동시에 관리
+- **자동 감지**: Entity 변경사항 자동 감지 및 코드 생성
 
 ## 명령어
 
@@ -71,55 +71,6 @@ All migrations completed successfully!
 <Info>
 Sonamu는 Entity 정의를 분석하여 필요한 마이그레이션을 **자동으로 생성**합니다. 수동으로 마이그레이션 파일을 작성할 필요가 없습니다.
 </Info>
-
-### rollback - 롤백
-
-마지막 배치의 마이그레이션을 되돌립니다.
-
-```bash
-pnpm migrate rollback
-```
-
-**실행 과정**:
-```
-Rolling back last batch...
-
-Development Master:
-  ✓ Rollback 20240116_102045_create_posts_table
-  ✓ Rollback 20240116_101530_add_user_profile
-
-Rollback completed successfully!
-```
-
-<Warning>
-롤백은 **데이터 손실**을 초래할 수 있습니다. 프로덕션에서는 매우 신중하게 사용하세요.
-</Warning>
-
-### reset - 전체 초기화
-
-모든 마이그레이션을 롤백합니다.
-
-```bash
-pnpm migrate reset
-```
-
-**주의사항**:
-- 모든 테이블이 삭제됩니다
-- 데이터가 모두 손실됩니다
-- 개발 환경에서만 사용하세요
-
-### clear - 마이그레이션 기록 삭제
-
-마이그레이션 기록만 삭제합니다 (테이블은 유지).
-
-```bash
-pnpm migrate clear
-```
-
-**사용 시나리오**:
-- 마이그레이션 기록이 손상된 경우
-- 수동으로 스키마를 수정한 경우
-- 마이그레이션을 재정렬해야 하는 경우
 
 ## 마이그레이션 생성
 
@@ -193,8 +144,8 @@ Sonamu가 자동으로 감지하고 마이그레이션을 생성하는 변경사
 | 컬럼 추가 | 새 프로퍼티 추가 | `phone` 필드 추가 |
 | 컬럼 수정 | 타입/길이 변경 | `varchar(100)` → `varchar(255)` |
 | 컬럼 삭제 | 프로퍼티 제거 | `deprecated_field` 삭제 |
-| 인덱스 추가 | 인덱스 정의 | `@index` 데코레이터 |
-| 외래키 추가 | 관계 정의 | `@belongsTo` 관계 |
+| 인덱스 추가 | 인덱스 정의 | `indexes` 배열 |
+| 외래키 추가 | 관계 정의 | `belongsTo` 관계 |
 
 ## 다중 데이터베이스 관리
 
@@ -207,11 +158,11 @@ export default {
   database: {
     // 개발 환경 - 마스터
     development_master: {
-      client: "pg",
+      client: "mysql2",
       connection: {
         host: "localhost",
         database: "myapp_dev",
-        user: "postgres",
+        user: "root",
         password: "password",
       },
     },
@@ -221,21 +172,21 @@ export default {
     },
     // 테스트 환경
     test: {
-      client: "pg",
+      client: "mysql2",
       connection: {
         host: "localhost",
         database: "myapp_test",
-        user: "postgres",
+        user: "root",
         password: "password",
       },
     },
     // 프로덕션 환경
     production: {
-      client: "pg",
+      client: "mysql2",
       connection: {
         host: "prod-db.example.com",
         database: "myapp_prod",
-        user: "postgres",
+        user: "root",
         password: process.env.DB_PASSWORD,
       },
     },
@@ -309,6 +260,60 @@ class UserModelClass extends BaseModel {
 }
 ```
 
+## 고급 사용법 (프로그래매틱)
+
+CLI 명령어로 제공되지 않는 고급 기능은 `Migrator` 클래스를 직접 사용하여 구현할 수 있습니다.
+
+### Migrator 클래스 사용
+
+```typescript title="src/scripts/migration-tools.ts"
+import { Migrator } from "sonamu";
+
+const migrator = new Migrator();
+
+// 롤백 (마지막 배치)
+await migrator.runAction("rollback", ["development_master"]);
+
+// 특정 데이터베이스만 선택
+await migrator.runAction("apply", ["test"]);
+
+// 상태 확인 (프로그래매틱)
+const status = await migrator.getStatus();
+console.log(status);
+```
+
+### 롤백 스크립트
+
+```typescript title="src/scripts/rollback-migration.ts"
+import { Migrator, Sonamu } from "sonamu";
+
+Sonamu.runScript(async () => {
+  const migrator = new Migrator();
+  
+  console.log("Rolling back last migration batch...");
+  await migrator.runAction("rollback", ["development_master", "test"]);
+  console.log("Rollback completed!");
+});
+```
+
+**실행**:
+```bash
+pnpm tsx src/scripts/rollback-migration.ts
+```
+
+<Warning>
+**데이터 손실 위험**: 롤백은 테이블이나 컬럼을 삭제할 수 있으므로 **프로덕션에서는 매우 신중하게** 사용하세요.
+</Warning>
+
+### 사용 가능한 액션
+
+`Migrator.runAction()` 메서드가 지원하는 액션:
+
+| 액션 | 설명 | 사용 예시 |
+|------|------|----------|
+| `apply` | 마이그레이션 적용 | 새 스키마 변경 적용 |
+| `rollback` | 마지막 배치 롤백 | 실수한 마이그레이션 되돌리기 |
+
 ## 문제 해결
 
 ### 마이그레이션 충돌
@@ -334,19 +339,19 @@ pnpm migrate run
 
 **문제**: DB 연결 실패
 ```
-Error: connect ECONNREFUSED 127.0.0.1:5432
+Error: connect ECONNREFUSED 127.0.0.1:3306
 ```
 
 **해결**:
 ```bash
-# 1. PostgreSQL 실행 확인
-psql -U postgres -l
+# 1. MySQL 실행 확인
+mysql -u root -p -e "SHOW DATABASES;"
 
 # 2. 연결 정보 확인
 cat sonamu.config.ts
 
 # 3. 데이터베이스 생성
-createdb myapp_dev
+mysql -u root -p -e "CREATE DATABASE myapp_dev;"
 ```
 
 ### 마이그레이션 순서 오류
@@ -357,15 +362,26 @@ Error: Foreign key constraint violation
 ```
 
 **해결**:
-```bash
-# 1. 롤백
-pnpm migrate rollback
 
-# 2. 마이그레이션 파일명 수정 (타임스탬프)
-mv 20240116_110230_*.ts 20240116_110231_*.ts
+외래키 참조 관계가 있는 경우, 참조되는 테이블이 먼저 생성되어야 합니다.
 
-# 3. 재적용
-pnpm migrate run
+**수정 방법 1: 프로그래매틱 롤백 후 재적용**
+```typescript
+// 롤백
+const migrator = new Migrator();
+await migrator.runAction("rollback", ["development_master"]);
+
+// 마이그레이션 파일명 수정 (타임스탬프 조정)
+// 20240116_110230_*.ts → 20240116_110231_*.ts
+
+// 재적용
+await migrator.runAction("apply", ["development_master"]);
+```
+
+**수정 방법 2: Entity 정의 순서 조정**
+```typescript
+// users 테이블을 먼저 생성하도록 Entity 파일 순서 조정
+// 그 후 pnpm migrate run
 ```
 
 ## 베스트 프랙티스
@@ -391,7 +407,7 @@ pnpm migrate run
 
 ```bash
 # 프로덕션 마이그레이션 전 백업
-pg_dump myapp_prod > backup_$(date +%Y%m%d).sql
+mysqldump -u root -p myapp_prod > backup_$(date +%Y%m%d).sql
 
 # 마이그레이션 적용
 pnpm migrate run
@@ -400,7 +416,7 @@ pnpm migrate run
 ### 4. 롤백 가능성 고려
 
 ```typescript
-// ✅ 롤백 가능
+// ✅ 롤백 가능 - down() 함수가 제대로 정의됨
 export async function up(knex: Knex) {
   await knex.schema.alterTable("users", (table) => {
     table.string("phone").nullable();
@@ -412,6 +428,17 @@ export async function down(knex: Knex) {
     table.dropColumn("phone");
   });
 }
+```
+
+### 5. Git으로 버전 관리
+
+```bash
+# 마이그레이션 파일을 Git에 커밋
+git add src/migrations/
+git commit -m "Add phone field to users table"
+
+# 팀원들과 공유
+git push
 ```
 
 ## 다음 단계
