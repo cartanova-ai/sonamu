@@ -3,8 +3,529 @@ title: 'Path Mapping'
 description: '모듈 경로 별칭 설정하기'
 ---
 
-# Path Mapping
+Path Mapping을 사용하면 상대 경로 대신 절대 경로로 모듈을 import할 수 있습니다. 코드 가독성이 향상되고 파일 이동 시 import 경로를 수정할 필요가 없습니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Web (React)의 Path Mapping
+
+Sonamu Web 프로젝트는 기본적으로 `@/*` 경로 매핑을 제공합니다.
+
+### tsconfig.json 설정
+
+```json title="web/tsconfig.json"
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+### Vite 설정
+
+TypeScript 설정만으로는 부족하고, Vite에도 동일한 alias를 설정해야 합니다.
+
+```typescript title="web/vite.config.ts"
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+});
+```
+
+<Warning>
+TypeScript와 Vite 모두에 설정해야 합니다. 하나만 설정하면 타입 체크나 빌드가 실패합니다.
+</Warning>
+
+### 사용 예시
+
+<Tabs>
+  <Tab title="Before (상대 경로)" icon="ban">
+    <FileTree>
+    - src/
+      - pages/
+        - users/
+          - UserList.tsx
+          - UserDetail.tsx
+      - components/
+        - Button.tsx
+        - Input.tsx
+      - utils/
+        - format.ts
+      - hooks/
+        - useAuth.ts
+    </FileTree>
+
+    ```typescript title="src/pages/users/UserDetail.tsx"
+    // ❌ 복잡하고 유지보수 어려움
+    import { Button } from "../../components/Button";
+    import { Input } from "../../components/Input";
+    import { formatDate } from "../../utils/format";
+    import { useAuth } from "../../hooks/useAuth";
+    ```
+
+    **문제점:**
+    - 파일 위치가 바뀌면 모든 import 수정 필요
+    - `../../../` 같은 복잡한 경로
+    - 가독성이 떨어짐
+  </Tab>
+
+  <Tab title="After (절대 경로)" icon="check">
+    ```typescript title="src/pages/users/UserDetail.tsx"
+    // ✅ 깔끔하고 명확함
+    import { Button } from "@/components/Button";
+    import { Input } from "@/components/Input";
+    import { formatDate } from "@/utils/format";
+    import { useAuth } from "@/hooks/useAuth";
+    ```
+
+    **장점:**
+    - 파일 위치가 바뀌어도 import 경로 유지
+    - 어디서든 동일한 방식으로 import
+    - 가독성 향상
+  </Tab>
+</Tabs>
+
+### 디렉토리별 매핑
+
+더 많은 경로를 매핑할 수 있습니다.
+
+```json title="web/tsconfig.json"
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@components/*": ["./src/components/*"],
+      "@pages/*": ["./src/pages/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@types/*": ["./src/types/*"]
+    }
+  }
+}
+```
+
+```typescript title="web/vite.config.ts"
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@components": path.resolve(__dirname, "./src/components"),
+      "@pages": path.resolve(__dirname, "./src/pages"),
+      "@utils": path.resolve(__dirname, "./src/utils"),
+      "@hooks": path.resolve(__dirname, "./src/hooks"),
+      "@types": path.resolve(__dirname, "./src/types"),
+    },
+  },
+});
+```
+
+**사용 예시:**
+
+```typescript
+// 기본 방식
+import { Button } from "@/components/Button";
+
+// 세부 매핑
+import { Button } from "@components/Button";
+import { UserPage } from "@pages/UserPage";
+import { formatDate } from "@utils/format";
+import { useAuth } from "@hooks/useAuth";
+import type { User } from "@types/user";
+```
+
+<Tip>
+`@/*` 하나만 사용하는 것을 권장합니다. 너무 많은 매핑은 오히려 혼란을 줄 수 있습니다.
+</Tip>
+
+## API 서버의 모듈 해석
+
+API 서버는 일반적으로 path mapping을 사용하지 않습니다.
+
+### 이유
+
+```json title="api/tsconfig.json"
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler",  // Vite가 모듈 해석
+    "target": "esnext",
+    "module": "esnext"
+  }
+}
+```
+
+**Vite가 모든 모듈을 해석**
+- API는 Vite로 빌드되므로 별도의 path mapping 불필요
+- `sonamu` 같은 패키지는 Vite가 자동으로 해석
+- 상대 경로가 더 명확하고 단순함
+
+### API 구조
+
+API는 상대적으로 간단한 구조를 가집니다.
+
+<FileTree>
+- api/
+  - src/
+    - application/
+      - controllers/
+      - services/
+    - domain/
+      - entities/
+      - models/
+    - sonamu.config.ts
+</FileTree>
+
+```typescript title="api/src/application/controllers/UserController.ts"
+// 상대 경로로 충분히 명확함
+import { UserService } from "../services/UserService";
+import { User } from "../../domain/entities/User";
+```
+
+<Info>
+API에서 path mapping이 필요하다면 추가할 수 있지만, 일반적으로 불필요합니다.
+</Info>
+
+## Sonamu 패키지 Import
+
+Sonamu 자체는 path mapping 없이 import할 수 있습니다.
+
+```typescript
+// ✅ 직접 import
+import { BaseModelClass, api, transactional } from "sonamu";
+import { DB } from "sonamu";
+import { drivers } from "sonamu/storage";
+import { store } from "sonamu/cache";
+
+// ✅ 타입 import
+import type { Context, SonamuConfig } from "sonamu";
+```
+
+**Sonamu 패키지 구조:**
+- `sonamu` - 메인 패키지
+- `sonamu/storage` - 스토리지 드라이버
+- `sonamu/cache` - 캐시 드라이버
+
+<Info>
+Sonamu는 `package.json`의 `exports` 필드로 서브패키지를 제공합니다.
+</Info>
+
+## 타입 Import
+
+타입만 import할 때는 `type` 키워드를 사용하세요.
+
+```typescript
+// ✅ 타입만 import
+import type { User } from "@/types/user";
+import type { Context } from "sonamu";
+
+// ✅ 값과 타입 혼합
+import { DB, type Context } from "sonamu";
+
+// ❌ 런타임에 불필요한 import
+import { User } from "@/types/user";
+```
+
+<Tip>
+`type` import는 컴파일 후 제거되어 번들 크기를 줄입니다.
+</Tip>
+
+## IDE 자동 완성
+
+Path mapping을 설정하면 IDE가 자동으로 인식합니다.
+
+### VS Code
+
+```json title=".vscode/settings.json"
+{
+  "typescript.preferences.importModuleSpecifier": "non-relative"
+}
+```
+
+이 설정으로 자동 import 시 절대 경로를 사용합니다.
+
+### IntelliJ / WebStorm
+
+자동으로 `tsconfig.json`을 읽어 path mapping을 인식합니다.
+
+<Accordion title="자동 완성이 작동하지 않을 때" icon="question-circle">
+  **증상:**
+  - `@/...` 경로가 빨간 밑줄
+  - 자동 완성이 작동하지 않음
+
+  **해결:**
+
+  1. **TypeScript 서버 재시작**
+     ```
+     VS Code: Cmd/Ctrl + Shift + P → "TypeScript: Restart TS Server"
+     ```
+
+  2. **tsconfig.json 확인**
+     ```json
+     {
+       "compilerOptions": {
+         "baseUrl": ".",  // 필수!
+         "paths": {
+           "@/*": ["./src/*"]
+         }
+       }
+     }
+     ```
+
+  3. **Vite 개발 서버 재시작**
+     ```bash
+     # Vite 재시작
+     pnpm dev
+     ```
+
+  4. **node_modules 재설치**
+     ```bash
+     rm -rf node_modules
+     pnpm install
+     ```
+</Accordion>
+
+## Jest 테스트 설정
+
+테스트에서도 path mapping을 사용하려면 Jest 설정이 필요합니다.
+
+```typescript title="web/jest.config.ts"
+export default {
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@components/(.*)$": "<rootDir>/src/components/$1",
+  },
+};
+```
+
+**테스트 파일에서 사용:**
+
+```typescript title="src/components/Button.test.tsx"
+import { render } from "@testing-library/react";
+import { Button } from "@/components/Button";
+import { formatDate } from "@/utils/format";
+
+describe("Button", () => {
+  it("renders correctly", () => {
+    const { getByText } = render(<Button>Click me</Button>);
+    expect(getByText("Click me")).toBeInTheDocument();
+  });
+});
+```
+
+## 일반적인 문제 해결
+
+<Accordion title="Cannot find module '@/...' 에러" icon="exclamation-triangle">
+  **증상:**
+  ```
+  Cannot find module '@/components/Button' or its corresponding type declarations.
+  ```
+
+  **원인:**
+  1. `baseUrl`이 설정되지 않음
+  2. Vite alias가 설정되지 않음
+  3. 경로 오타
+
+  **해결:**
+
+  **1. tsconfig.json 확인**
+  ```json
+  {
+    "compilerOptions": {
+      "baseUrl": ".",  // 반드시 필요!
+      "paths": {
+        "@/*": ["./src/*"]
+      }
+    }
+  }
+  ```
+
+  **2. vite.config.ts 확인**
+  ```typescript
+  import path from "path";
+
+  export default defineConfig({
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+  });
+  ```
+
+  **3. 파일 존재 확인**
+  ```bash
+  ls -la src/components/Button.tsx
+  ```
+</Accordion>
+
+<Accordion title="빌드는 되지만 타입 체크 실패" icon="code">
+  **증상:**
+  ```bash
+  pnpm build  # ✅ 성공
+  pnpm tsc    # ❌ 타입 에러
+  ```
+
+  **원인:**
+  - Vite는 alias를 인식하지만 TypeScript는 인식하지 못함
+
+  **해결:**
+  
+  `tsconfig.json`에 `baseUrl`과 `paths` 추가:
+  ```json
+  {
+    "compilerOptions": {
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./src/*"]
+      }
+    }
+  }
+  ```
+</Accordion>
+
+<Accordion title="타입 체크는 되지만 빌드 실패" icon="hammer">
+  **증상:**
+  ```bash
+  pnpm tsc    # ✅ 성공
+  pnpm build  # ❌ 빌드 에러
+  ```
+
+  **원인:**
+  - TypeScript는 alias를 인식하지만 Vite는 인식하지 못함
+
+  **해결:**
+
+  `vite.config.ts`에 alias 추가:
+  ```typescript
+  import path from "path";
+
+  export default defineConfig({
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+  });
+  ```
+</Accordion>
+
+## 권장 사항
+
+<Tabs>
+  <Tab title="Web" icon="browser">
+    **권장 설정:**
+
+    ```json
+    {
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      }
+    }
+    ```
+
+    **사용 방법:**
+    - `@/components/*` - 컴포넌트
+    - `@/pages/*` - 페이지
+    - `@/utils/*` - 유틸리티
+    - `@/hooks/*` - 커스텀 훅
+    - `@/types/*` - 타입 정의
+
+    **피해야 할 것:**
+    - 너무 많은 alias (혼란 가중)
+    - 하위 디렉토리마다 alias (불필요)
+  </Tab>
+
+  <Tab title="API" icon="server">
+    **권장:**
+    - Path mapping 사용하지 않음
+    - 상대 경로로 충분히 명확함
+
+    **만약 필요하다면:**
+    ```json
+    {
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      }
+    }
+    ```
+
+    단, Vite 설정은 필요 없음 (moduleResolution: bundler)
+  </Tab>
+
+  <Tab title="일관성" icon="check">
+    **팀 전체 일관성 유지:**
+
+    ```json
+    // ✅ 모든 프로젝트에서 동일
+    {
+      "paths": {
+        "@/*": ["./src/*"]
+      }
+    }
+    ```
+
+    ```typescript
+    // ✅ 팀원 모두가 동일한 방식 사용
+    import { Button } from "@/components/Button";
+    ```
+
+    **피해야 할 것:**
+    ```typescript
+    // ❌ 프로젝트마다 다른 prefix
+    import { Button } from "~/components/Button";  // 프로젝트 A
+    import { Button } from "@/components/Button";  // 프로젝트 B
+    import { Button } from "#/components/Button";  // 프로젝트 C
+    ```
+  </Tab>
+</Tabs>
+
+## 다음 단계
+
+<CardGroup cols={2}>
+  <Card 
+    title="tsconfig.json" 
+    icon="file-code" 
+    href="/configuration/typescript/tsconfig"
+  >
+    전체 TypeScript 설정을 확인하세요
+  </Card>
+  
+  <Card 
+    title="타입 체크" 
+    icon="shield-check" 
+    href="/configuration/typescript/type-checking"
+  >
+    타입 체크 옵션을 학습하세요
+  </Card>
+  
+  <Card 
+    title="컴포넌트 작성" 
+    icon="cube" 
+    href="/frontend-integration/react-components/generated-components"
+  >
+    React 컴포넌트를 작성하세요
+  </Card>
+  
+  <Card 
+    title="프로젝트 구조" 
+    icon="folder-tree" 
+    href="/getting-started/project-structure"
+  >
+    전체 프로젝트 구조를 확인하세요
+  </Card>
+</CardGroup>
