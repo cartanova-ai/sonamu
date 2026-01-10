@@ -1,10 +1,502 @@
 ---
-title: 'UnauthorizedError'
-description: '401 Unauthorized 에러'
+title: 'UnauthorizedException'
+description: '인증 및 권한 처리를 위한 401 예외'
 ---
 
-# UnauthorizedError
+`UnauthorizedException`은 인증이 필요하거나 권한이 부족한 경우 사용하는 예외입니다. HTTP 401 상태 코드를 반환하며, 로그인 필요, 세션 만료, 권한 부족 등의 상황에 사용됩니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 기본 사용법
+
+```typescript
+class UnauthorizedException extends SoException {
+  constructor(
+    public message = "Unauthorized",
+    public payload?: unknown,
+  );
+}
+```
+
+**간단한 예시:**
+
+```typescript
+@api()
+async getMyProfile(ctx: Context) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  return this.findById(ctx.user.id);
+}
+```
+
+## 실용 예제
+
+### 기본 인증 체크
+
+```typescript
+@api()
+async updateMyProfile(
+  ctx: Context,
+  name: string,
+  bio: string
+) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  return this.update(ctx.user.id, { name, bio });
+}
+```
+
+### Guards를 사용한 인증 (권장)
+
+간단한 로그인 체크는 Guards를 사용하는 것이 더 깔끔합니다:
+
+```typescript
+// Guards 사용 (권장)
+@api({ guards: ["user"] })
+async getMyData(ctx: Context) {
+  // ctx.user가 보장됨
+  return this.findById(ctx.user!.id);
+}
+
+// sonamu.config.ts에서 Guard 처리
+export default {
+  server: {
+    apiConfig: {
+      guardHandler: (guard, request, api) => {
+        if (guard === "user" && !request.user) {
+          throw new UnauthorizedException("로그인이 필요합니다");
+        }
+        return true;
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+### 리소스 소유권 검증
+
+```typescript
+@api()
+async deletePost(ctx: Context, postId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  const post = await this.findById(postId);
+  
+  if (!post) {
+    throw new NotFoundException("게시물을 찾을 수 없습니다");
+  }
+
+  // 본인이 작성한 게시물만 삭제 가능
+  if (post.authorId !== ctx.user.id) {
+    throw new UnauthorizedException(
+      "본인이 작성한 게시물만 삭제할 수 있습니다",
+      { postId, authorId: post.authorId }
+    );
+  }
+
+  return this.delete(postId);
+}
+```
+
+### 역할 기반 권한 검증
+
+```typescript
+@api()
+async deleteUser(ctx: Context, userId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  // 관리자 권한 체크
+  if (!ctx.user.isAdmin) {
+    throw new UnauthorizedException(
+      "관리자만 사용자를 삭제할 수 있습니다",
+      { requiredRole: "admin", currentRole: ctx.user.role }
+    );
+  }
+
+  // 자기 자신은 삭제 불가
+  if (ctx.user.id === userId) {
+    throw new BadRequestException("자기 자신은 삭제할 수 없습니다");
+  }
+
+  return this.delete(userId);
+}
+```
+
+### 복합 권한 검증
+
+```typescript
+@api()
+async publishPost(ctx: Context, postId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  const post = await this.findById(postId);
+
+  if (!post) {
+    throw new NotFoundException("게시물을 찾을 수 없습니다");
+  }
+
+  // 작성자이거나 편집자 권한이 있어야 함
+  const isAuthor = post.authorId === ctx.user.id;
+  const isEditor = ctx.user.role === "editor" || ctx.user.role === "admin";
+
+  if (!isAuthor && !isEditor) {
+    throw new UnauthorizedException(
+      "게시물을 발행할 권한이 없습니다",
+      {
+        postId,
+        authorId: post.authorId,
+        currentUserId: ctx.user.id,
+        currentRole: ctx.user.role,
+        requiredCondition: "author or editor/admin role"
+      }
+    );
+  }
+
+  return this.update(postId, { status: "published" });
+}
+```
+
+### 조직/팀 권한 검증
+
+```typescript
+@api()
+async addTeamMember(
+  ctx: Context,
+  teamId: number,
+  newMemberId: number
+) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  const team = await TeamModel.findById(teamId);
+
+  if (!team) {
+    throw new NotFoundException("팀을 찾을 수 없습니다");
+  }
+
+  // 팀 관리자만 멤버 추가 가능
+  const membership = await TeamMemberModel.findOne({
+    teamId,
+    userId: ctx.user.id
+  });
+
+  if (!membership) {
+    throw new UnauthorizedException(
+      "팀 멤버가 아닙니다",
+      { teamId }
+    );
+  }
+
+  if (membership.role !== "admin" && membership.role !== "owner") {
+    throw new UnauthorizedException(
+      "팀 관리자만 멤버를 추가할 수 있습니다",
+      {
+        teamId,
+        currentRole: membership.role,
+        requiredRole: "admin or owner"
+      }
+    );
+  }
+
+  return TeamMemberModel.create({
+    teamId,
+    userId: newMemberId,
+    role: "member"
+  });
+}
+```
+
+### API 키 인증
+
+```typescript
+@api()
+async getApiData(ctx: Context) {
+  const apiKey = ctx.headers["x-api-key"];
+
+  if (!apiKey) {
+    throw new UnauthorizedException(
+      "API 키가 필요합니다",
+      { header: "x-api-key" }
+    );
+  }
+
+  const validKey = await ApiKeyModel.findByKey(apiKey);
+
+  if (!validKey) {
+    throw new UnauthorizedException(
+      "유효하지 않은 API 키입니다"
+    );
+  }
+
+  if (validKey.expiresAt && validKey.expiresAt < new Date()) {
+    throw new UnauthorizedException(
+      "만료된 API 키입니다",
+      { expiresAt: validKey.expiresAt }
+    );
+  }
+
+  if (!validKey.isActive) {
+    throw new UnauthorizedException(
+      "비활성화된 API 키입니다",
+      { keyId: validKey.id }
+    );
+  }
+
+  // API 데이터 반환
+  return this.getDataForApiKey(validKey.id);
+}
+```
+
+### 시간 기반 접근 제어
+
+```typescript
+@api()
+async accessRestrictedResource(ctx: Context, resourceId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  const subscription = await SubscriptionModel.findByUserId(ctx.user.id);
+
+  if (!subscription) {
+    throw new UnauthorizedException(
+      "구독이 필요한 리소스입니다",
+      { resourceId }
+    );
+  }
+
+  const now = new Date();
+
+  // 구독 만료 체크
+  if (subscription.expiresAt < now) {
+    throw new UnauthorizedException(
+      "구독이 만료되었습니다",
+      {
+        expiresAt: subscription.expiresAt,
+        renewUrl: "/subscription/renew"
+      }
+    );
+  }
+
+  // 구독 플랜별 접근 제한
+  const resource = await ResourceModel.findById(resourceId);
+  
+  if (resource.requiredPlan === "premium" && subscription.plan === "basic") {
+    throw new UnauthorizedException(
+      "프리미엄 플랜이 필요한 리소스입니다",
+      {
+        requiredPlan: "premium",
+        currentPlan: "basic",
+        upgradeUrl: "/subscription/upgrade"
+      }
+    );
+  }
+
+  return resource;
+}
+```
+
+### IP 기반 접근 제어
+
+```typescript
+@api()
+async adminOnlyEndpoint(ctx: Context) {
+  if (!ctx.user?.isAdmin) {
+    throw new UnauthorizedException("관리자 권한이 필요합니다");
+  }
+
+  // 특정 IP 대역에서만 접근 허용
+  const allowedIPs = ["192.168.1.0/24", "10.0.0.0/8"];
+  const clientIP = ctx.request.ip;
+
+  if (!this.isIPAllowed(clientIP, allowedIPs)) {
+    throw new UnauthorizedException(
+      "허용되지 않은 IP 주소입니다",
+      {
+        clientIP,
+        allowedRanges: allowedIPs
+      }
+    );
+  }
+
+  return this.getAdminData();
+}
+
+private isIPAllowed(ip: string, allowedRanges: string[]): boolean {
+  // IP 대역 체크 로직
+  return true; // 실제 구현 필요
+}
+```
+
+## Guards와 수동 체크 비교
+
+### Guards 사용 (권장)
+
+```typescript
+// sonamu.config.ts
+guardHandler: (guard, request, api) => {
+  if (guard === "user" && !request.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+  
+  if (guard === "admin" && !request.user?.isAdmin) {
+    throw new UnauthorizedException("관리자 권한이 필요합니다");
+  }
+  
+  return true;
+}
+
+// API 메서드
+@api({ guards: ["user"] })
+async simpleUserEndpoint(ctx: Context) {
+  // 인증 체크가 자동으로 완료됨
+  return this.getData(ctx.user!.id);
+}
+
+@api({ guards: ["admin"] })
+async adminEndpoint(ctx: Context) {
+  // 관리자 권한 체크가 자동으로 완료됨
+  return this.getAdminData();
+}
+```
+
+### 수동 체크 (복잡한 로직)
+
+```typescript
+@api()
+async complexAuthEndpoint(ctx: Context, postId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  const post = await PostModel.findById(postId);
+  
+  // 복잡한 권한 로직: 작성자이거나, 편집자이거나, 같은 팀 멤버
+  const isAuthor = post.authorId === ctx.user.id;
+  const isEditor = ctx.user.role === "editor";
+  const isSameTeam = await TeamModel.areInSameTeam(
+    ctx.user.id,
+    post.authorId
+  );
+
+  if (!isAuthor && !isEditor && !isSameTeam) {
+    throw new UnauthorizedException("접근 권한이 없습니다");
+  }
+
+  return post;
+}
+```
+
+## payload 활용 패턴
+
+### 로그인 유도
+
+```typescript
+throw new UnauthorizedException("로그인이 필요합니다", {
+  loginUrl: "/auth/login",
+  returnUrl: ctx.request.url
+});
+```
+
+### 권한 업그레이드 유도
+
+```typescript
+throw new UnauthorizedException(
+  "프리미엄 기능입니다",
+  {
+    requiredPlan: "premium",
+    currentPlan: "basic",
+    upgradeUrl: "/subscription/upgrade",
+    features: ["고급 분석", "무제한 프로젝트", "우선 지원"]
+  }
+);
+```
+
+### 만료 정보
+
+```typescript
+throw new UnauthorizedException(
+  "세션이 만료되었습니다",
+  {
+    expiredAt: session.expiresAt,
+    refreshUrl: "/auth/refresh"
+  }
+);
+```
+
+## 클라이언트 응답 예시
+
+### 기본 응답
+
+```json
+{
+  "statusCode": 401,
+  "message": "로그인이 필요합니다"
+}
+```
+
+### payload 포함 응답
+
+```json
+{
+  "statusCode": 401,
+  "message": "프리미엄 플랜이 필요한 리소스입니다",
+  "payload": {
+    "requiredPlan": "premium",
+    "currentPlan": "basic",
+    "upgradeUrl": "/subscription/upgrade"
+  }
+}
+```
+
+## 401 vs 403
+
+- **401 Unauthorized**: 인증 자체가 안 되었거나 권한이 부족한 경우
+- **403 Forbidden**: 인증은 되었지만 해당 리소스에 접근할 권한이 명시적으로 없는 경우
+
+Sonamu에서는 `UnauthorizedException` 하나로 둘 다 처리하지만, 필요하다면 커스텀 `ForbiddenException`을 만들 수 있습니다.
+
+```typescript
+// 커스텀 403 예외
+export class ForbiddenException extends SoException {
+  constructor(
+    public message = "Forbidden",
+    public payload?: unknown,
+  ) {
+    super(403, message, payload);
+  }
+}
+
+// 사용
+@api()
+async deleteUser(ctx: Context, userId: number) {
+  if (!ctx.user) {
+    throw new UnauthorizedException("로그인이 필요합니다");
+  }
+
+  if (!ctx.user.isAdmin) {
+    throw new ForbiddenException(
+      "이 작업을 수행할 권한이 없습니다",
+      { requiredRole: "admin" }
+    );
+  }
+
+  return this.delete(userId);
+}
+```
+
+## 관련 문서
+
+- [SoException](/api-reference/exceptions/sonamu-error)
+- [AuthContext](/api-reference/context/auth-context)
+- [Guards](/api-development/guards)
+- [커스텀 예외](/api-reference/exceptions/custom-errors)
