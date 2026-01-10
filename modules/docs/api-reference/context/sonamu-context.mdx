@@ -1,10 +1,161 @@
 ---
-title: 'SonamuContext'
-description: 'SonamuContext 레퍼런스'
+title: 'Context'
+description: 'Sonamu API 요청 컨텍스트 레퍼런스'
 ---
 
-# SonamuContext
+Context는 Sonamu API 메서드 실행 중에 HTTP 요청과 관련된 정보에 접근할 수 있게 해주는 객체입니다. API 메서드의 파라미터로 주입받아 사용할 수 있으며, AsyncLocalStorage를 통해 관리됩니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 타입 정의
+
+```typescript
+type Context = {
+  request: FastifyRequest;
+  reply: FastifyReply;
+  headers: IncomingHttpHeaders;
+  createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>;
+  naiteStore: NaiteStore;
+  locale?: string;
+} & AuthContext & ContextExtend;
+```
+
+## Context 속성
+
+### request
+
+```typescript
+request: FastifyRequest
+```
+
+현재 HTTP 요청을 나타내는 Fastify Request 객체입니다. 요청 URL, 메서드, 쿼리 파라미터 등에 접근할 수 있습니다.
+
+### reply
+
+```typescript
+reply: FastifyReply
+```
+
+현재 HTTP 응답을 나타내는 Fastify Reply 객체입니다. 응답 헤더 설정, 상태 코드 변경 등에 사용할 수 있습니다.
+
+### headers
+
+```typescript
+headers: IncomingHttpHeaders
+```
+
+HTTP 요청 헤더입니다. `request.headers`와 동일한 값으로, 편의를 위해 제공됩니다.
+
+### createSSE
+
+```typescript
+createSSE: <T extends ZodObject>(events: T) => ReturnType<typeof createSSEFactory<T>>
+```
+
+Server-Sent Events(SSE) 스트림을 생성하는 함수입니다. Zod 스키마를 사용하여 타입 안전한 이벤트 스트림을 만들 수 있습니다.
+
+**사용 예시:**
+
+```typescript
+import { z } from "zod";
+
+class MyModelClass extends BaseModel {
+  @api()
+  @stream({
+    type: "sse",
+    events: z.object({
+      progress: z.object({ percent: z.number() }),
+      complete: z.object({ result: z.string() })
+    })
+  })
+  async processData(ctx: Context) {
+    const sse = ctx.createSSE({
+      progress: z.object({ percent: z.number() }),
+      complete: z.object({ result: z.string() })
+    });
+
+    // 진행률 전송
+    await sse.send("progress", { percent: 50 });
+    
+    // 완료 이벤트 전송
+    await sse.send("complete", { result: "done" });
+    
+    return sse.getResponse();
+  }
+}
+```
+
+### naiteStore
+
+```typescript
+naiteStore: NaiteStore
+```
+
+Naite 테스팅 프레임워크에서 사용하는 저장소입니다. 테스트 중 모킹된 데이터나 스냅샷 정보를 저장하는 용도로 사용됩니다.
+
+### locale
+
+```typescript
+locale?: string
+```
+
+현재 요청의 locale(언어 설정)입니다. `sonamu.config.ts`에서 i18n 설정이 활성화되어 있을 때만 존재합니다.
+
+`Accept-Language` 헤더를 파싱하여 지원하는 locale 중 하나를 자동으로 선택합니다.
+
+**설정 예시:**
+
+```typescript
+// sonamu.config.ts
+export default {
+  i18n: {
+    defaultLocale: "ko",
+    supportedLocales: ["ko", "en", "ja"]
+  }
+} satisfies SonamuConfig;
+```
+
+### AuthContext 속성
+
+Context는 [AuthContext](/api-reference/context/auth-context)의 속성들도 포함합니다:
+
+- `user`: 현재 인증된 사용자 정보
+- `passport`: 인증 관련 메서드 (login, logout)
+
+## Context 확장
+
+프로젝트에서 Context에 커스텀 속성을 추가하려면 `ContextExtend` 인터페이스를 확장할 수 있습니다:
+
+```typescript
+// src/types.ts
+declare module "sonamu" {
+  interface ContextExtend {
+    customProperty: string;
+    helperMethod: () => void;
+  }
+}
+```
+
+이렇게 확장된 속성은 `contextProvider`를 통해 주입할 수 있습니다:
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    apiConfig: {
+      contextProvider: async (baseContext) => {
+        return {
+          ...baseContext,
+          customProperty: "custom value",
+          helperMethod: () => console.log("helper")
+        };
+      }
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+## 관련 문서
+
+- [AuthContext](/api-reference/context/auth-context)
+- [Context 메서드](/api-reference/context/methods)
+- [Context 가져오기](/api-development/context/getting-context)
+- [커스텀 Context](/api-development/context/custom-context)
