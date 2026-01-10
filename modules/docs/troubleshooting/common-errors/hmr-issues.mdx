@@ -3,8 +3,367 @@ title: 'HMR 문제'
 description: 'HMR 문제 해결하기'
 ---
 
-# HMR 문제
+Sonamu의 Hot Module Replacement (HMR) 시스템에서 발생하는 문제와 해결 방법을 다룹니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## HMR이 작동하지 않음
+
+### 증상
+
+파일을 수정해도 서버가 자동으로 재시작되지 않습니다.
+
+```bash
+# 파일 수정 후 아무 일도 일어나지 않음
+```
+
+### 원인
+
+1. HMR 경계(boundary)가 올바르게 설정되지 않음
+2. 파일 감시자가 파일 변경을 감지하지 못함
+3. 순환 의존성으로 인한 HMR 실패
+
+### 해결 방법
+
+#### 1. 개발 서버 재시작
+
+```bash
+# Ctrl+C로 중단 후 재시작
+pnpm dev
+```
+
+#### 2. HMR 경계 확인
+
+HMR 경계는 `hmr-hook-register.ts`에서 설정됩니다:
+
+```typescript
+// src/bin/hmr-hook-register.ts
+if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
+  const { hot } = await import("@sonamu-kit/hmr-hook");
+
+  await hot.init({
+    rootDirectory: process.env.API_ROOT_PATH,
+    boundaries: [`./src/**/*.ts`],  // 모든 .ts 파일
+  });
+
+  console.log("🔥 HMR-hook initialized");
+}
+```
+
+HMR 경계를 변경하려면 이 파일을 수정하세요.
+
+#### 3. 파일 감시자 한도 증가 (Linux/macOS)
+
+```bash
+# Linux
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+
+# macOS - 일반적으로 필요 없음
+```
+
+#### 4. .gitignore 패턴 확인
+
+HMR이 `node_modules`나 `dist` 같은 디렉토리를 감시하면 성능 문제가 발생할 수 있습니다.
+
+## 파일 변경 후 에러 발생
+
+### 증상
+
+파일을 수정하면 HMR이 동작하지만 에러가 발생합니다:
+
+```bash
+Error: Cannot import module /src/application/user/user.model.ts
+```
+
+### 원인
+
+1. 순환 의존성 (circular dependency)
+2. 동적 import가 올바르게 처리되지 않음
+3. ESM/CommonJS 혼용
+
+### 해결 방법
+
+#### 1. 순환 의존성 확인
+
+```bash
+# madge 설치
+pnpm add -D madge
+
+# 순환 의존성 검사
+pnpm madge --circular --extensions ts src/
+```
+
+발견된 순환 의존성을 제거하세요:
+
+```typescript
+// ❌ 순환 의존성
+// user.model.ts
+import { PostModel } from "../post/post.model";
+
+// post.model.ts
+import { UserModel } from "../user/user.model";
+
+// ✅ 해결: 타입만 import
+// user.model.ts
+import type { PostModel } from "../post/post.model";
+
+// 또는 공통 타입 파일 생성
+// types.ts
+export type { UserModel } from "./user/user.model";
+export type { PostModel } from "./post/post.model";
+```
+
+#### 2. 동적 import 확인
+
+HMR 경계 내에서는 동적 import를 피하세요:
+
+```typescript
+// ❌ HMR 경계 내에서 동적 import
+class UserModelClass extends BaseModel {
+  async getRelated() {
+    const { PostModel } = await import("../post/post.model");
+    return PostModel.findMany();
+  }
+}
+
+// ✅ 정적 import 사용
+import { PostModel } from "../post/post.model";
+
+class UserModelClass extends BaseModel {
+  async getRelated() {
+    return PostModel.findMany();
+  }
+}
+```
+
+## HMR 후 타입 에러
+
+### 증상
+
+HMR이 동작한 후 TypeScript 타입 에러가 발생합니다:
+
+```bash
+Property 'newMethod' does not exist on type 'UserModel'
+```
+
+### 원인
+
+TypeScript 서버가 HMR 변경사항을 인식하지 못했습니다.
+
+### 해결 방법
+
+#### 1. TypeScript 서버 재시작
+
+**VSCode:**
+```
+Command Palette (Cmd+Shift+P 또는 Ctrl+Shift+P)
+> TypeScript: Restart TS Server
+```
+
+#### 2. 에디터 재시작
+
+```
+Command Palette
+> Developer: Reload Window
+```
+
+#### 3. tsconfig.json 확인
+
+```json
+{
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
+  }
+}
+```
+
+## HMR 성능 저하
+
+### 증상
+
+파일을 저장할 때마다 HMR이 느리거나 서버가 멈춥니다.
+
+### 원인
+
+1. 너무 많은 파일이 HMR 경계에 포함됨
+2. 무거운 연산이 모듈 로딩 시점에 실행됨
+3. 메모리 누수
+
+### 해결 방법
+
+#### 1. HMR 경계 최적화
+
+`hmr-hook-register.ts`에서 경계 패턴 수정:
+
+```typescript
+// src/bin/hmr-hook-register.ts
+if (process.env.HOT === "yes" && process.env.API_ROOT_PATH) {
+  const { hot } = await import("@sonamu-kit/hmr-hook");
+
+  await hot.init({
+    rootDirectory: process.env.API_ROOT_PATH,
+    boundaries: [
+      // 자주 변경되는 파일만 포함
+      `./src/application/**/*.model.ts`,
+      `./src/application/**/*.helper.ts`
+    ],
+  });
+}
+```
+
+#### 2. 모듈 초기화 최적화
+
+무거운 연산은 lazy loading으로:
+
+```typescript
+// ❌ 모듈 로딩 시 즉시 실행
+const heavyData = processLargeDataset();
+
+export class UserModelClass extends BaseModel {
+  // ...
+}
+
+// ✅ 필요할 때만 실행
+let heavyData: any;
+
+export class UserModelClass extends BaseModel {
+  private getHeavyData() {
+    if (!heavyData) {
+      heavyData = processLargeDataset();
+    }
+    return heavyData;
+  }
+}
+```
+
+#### 3. 메모리 프로파일링
+
+```bash
+# Node.js 메모리 사용량 확인
+node --expose-gc --inspect node_modules/.bin/sonamu dev
+
+# Chrome DevTools에서 메모리 프로파일링
+chrome://inspect
+```
+
+## HMR 경계 설정 오류
+
+### 증상
+
+```bash
+Error: HMR boundary pattern is invalid: /src/**/*.model.ts
+```
+
+### 원인
+
+HMR 경계 패턴이 올바르지 않습니다.
+
+### 해결 방법
+
+`hmr-hook-register.ts`에서 올바른 glob 패턴 사용:
+
+```typescript
+// src/bin/hmr-hook-register.ts
+await hot.init({
+  rootDirectory: process.env.API_ROOT_PATH,
+  boundaries: [
+    // ✅ 올바른 패턴 (상대 경로)
+    `./src/application/**/*.model.ts`,
+    `./src/application/**/*.helper.ts`,
+    
+    // ❌ 잘못된 패턴
+    // "/src/**/*.ts",  // 절대 경로는 작동하지 않음
+    // "./src/**/*.{ts,js}",  // brace expansion 미지원
+  ],
+});
+```
+
+## 특정 파일만 HMR이 작동하지 않음
+
+### 증상
+
+대부분의 파일은 HMR이 잘 작동하는데, 특정 파일만 변경 시 재시작되지 않습니다.
+
+### 원인
+
+1. 파일이 HMR 경계 패턴과 일치하지 않음
+2. 파일이 명시적으로 제외됨
+3. 파일이 다른 모듈에서 캐시됨
+
+### 해결 방법
+
+#### 1. 파일이 경계에 포함되는지 확인
+
+```bash
+# HMR 로깅 활성화
+DEBUG=hmr:* pnpm dev
+```
+
+파일 저장 시 로그 확인:
+
+```bash
+hmr:boundary /src/application/user/user.model.ts matched +0ms
+hmr:reload Reloading module: user.model +5ms
+```
+
+#### 2. 캐시 클리어
+
+```typescript
+// 모듈 캐시 문제가 있다면 서버 재시작
+```
+
+#### 3. 파일 이름 패턴 확인
+
+```typescript
+// HMR 경계에 맞게 파일 이름 변경
+// user-service.ts → user.helper.ts
+```
+
+## ESM/CommonJS 혼용 문제
+
+### 증상
+
+```bash
+Error [ERR_REQUIRE_ESM]: require() of ES Module not supported
+```
+
+### 원인
+
+HMR 시스템이 ESM 모듈을 CommonJS로 로딩하려 했습니다.
+
+### 해결 방법
+
+#### 1. package.json 설정
+
+```json
+{
+  "type": "module"
+}
+```
+
+#### 2. 파일 확장자 명시
+
+```typescript
+// ❌
+import { UserModel } from "./user.model";
+
+// ✅
+import { UserModel } from "./user.model.js";  // ESM에서는 .js 사용
+```
+
+#### 3. tsconfig.json 설정
+
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+## 관련 문서
+
+- [HMR 작동 원리](/tools-and-cli/hmr/how-hmr-works)
+- [HMR 경계 설정](/tools-and-cli/hmr/boundaries)
+- [HMR 트러블슈팅](/tools-and-cli/hmr/troubleshooting)

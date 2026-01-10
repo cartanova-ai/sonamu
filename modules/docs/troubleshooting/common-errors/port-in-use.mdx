@@ -3,8 +3,168 @@ title: '포트가 이미 사용 중'
 description: '포트 충돌 해결하기'
 ---
 
-# 포트가 이미 사용 중
+포트 충돌 문제와 해결 방법을 다룹니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## 개발 서버 포트 충돌
+
+### 증상
+
+```bash
+pnpm dev
+
+Error: listen EADDRINUSE: address already in use :::10280
+```
+
+### 원인
+
+지정된 포트에서 다른 프로세스가 이미 실행 중입니다.
+
+### 해결 방법
+
+#### 1. 프로세스 확인 및 종료
+
+**macOS/Linux:**
+
+```bash
+# 포트 사용 중인 프로세스 확인
+lsof -i :10280
+
+# 프로세스 종료
+kill -9 <PID>
+```
+
+**Windows:**
+
+```bash
+# 포트 사용 중인 프로세스 확인
+netstat -ano | findstr :10280
+
+# 프로세스 종료
+taskkill /PID <프로세스ID> /F
+```
+
+#### 2. 포트 수동 지정
+
+`sonamu.config.ts`:
+
+```typescript
+export default {
+  server: {
+    listen: {
+      port: 10281,  // 다른 포트 사용
+      host: "localhost"
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+## Sonamu UI 접근
+
+### 설명
+
+Sonamu UI는 API 서버와 같은 포트를 사용하며, `/sonamu-ui` 경로로 접근합니다.
+
+```bash
+# API 서버 포트 변경
+```
+
+```typescript
+export default {
+  server: {
+    listen: {
+      port: 10280
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+Sonamu UI 접근: `http://localhost:10280/sonamu-ui`
+
+## 여러 프로젝트 동시 실행
+
+### 증상
+
+여러 Sonamu 프로젝트를 동시에 실행하려는데 포트가 충돌합니다.
+
+### 해결 방법
+
+각 프로젝트마다 다른 포트 사용:
+
+**프로젝트 A:**
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    listen: {
+      port: 10280
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+**프로젝트 B:**
+
+```typescript
+// sonamu.config.ts
+export default {
+  server: {
+    listen: {
+      port: 10380
+    }
+  }
+} satisfies SonamuConfig;
+```
+
+## PostgreSQL 포트 충돌
+
+### 증상
+
+```bash
+Error: could not connect to server: Connection refused
+  Is the server running on host "localhost" (::1) and accepting
+  TCP/IP connections on port 5432?
+```
+
+### 원인
+
+PostgreSQL이 실행되지 않았거나, 다른 프로세스가 5432 포트를 사용 중입니다.
+
+### 해결 방법
+
+#### 1. PostgreSQL 실행 확인
+
+```bash
+# macOS
+brew services list
+brew services start postgresql
+
+# Linux
+sudo systemctl status postgresql
+sudo systemctl start postgresql
+```
+
+#### 2. 다른 포트로 PostgreSQL 실행
+
+PostgreSQL 설정 파일(`postgresql.conf`)에서:
+
+```conf
+port = 5433  # 다른 포트 사용
+```
+
+재시작 후 `.env` 파일 업데이트:
+
+```bash
+DB_PORT=5433
+```
+
+#### 3. 포트 충돌 프로세스 확인
+
+```bash
+lsof -i :5432
+```
+
+## 관련 문서
+
+- [서버 설정](/configuration/sonamu-config/server)
+- [개발 환경 설정](/getting-started/development-setup)

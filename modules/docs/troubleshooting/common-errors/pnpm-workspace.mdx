@@ -1,0 +1,464 @@
+---
+title: 'pnpm Workspace 의존성 문제'
+description: 'pnpm workspace 환경에서의 의존성 해결 문제'
+---
+
+pnpm workspace 환경에서 발생하는 의존성 관련 문제와 해결 방법을 다룹니다.
+
+## 엄격한 의존성 해결
+
+### 증상
+
+```bash
+pnpm install
+
+ ERR_PNPM_PEER_DEP_ISSUES  Unmet peer dependencies
+
+.
+└─┬ @types/react 19.2.7
+  └── ✕ missing peer prop-types@^15.0.0
+
+Peer dependencies that should be installed:
+  prop-types@^15.8.1
+```
+
+### 원인
+
+pnpm은 Yarn이나 npm보다 의존성 해결이 엄격합니다. 누락된 peer dependency를 자동으로 설치하지 않고 명시적으로 설치하도록 요구합니다.
+
+### 해결 방법
+
+#### 1. Peer dependency 명시적 설치
+
+```bash
+pnpm add -D prop-types
+```
+
+#### 2. auto-install-peers 설정 (권장하지 않음)
+
+`.npmrc`:
+
+```ini
+auto-install-peers=true
+```
+
+**단점:** 의존성 트리가 예측 불가능해질 수 있음
+
+#### 3. pnpm.overrides 사용
+
+`package.json`:
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "prop-types": "^15.8.1"
+    }
+  }
+}
+```
+
+## Workspace Protocol 오류
+
+### 증상
+
+```bash
+ ERR_PNPM_WORKSPACE_PKG_NOT_FOUND  
+ 
+In sonamu: "workspace:*" is in the dependencies but no package 
+named "sonamu" is present in the workspace
+```
+
+### 원인
+
+`workspace:*` 프로토콜을 사용했는데 해당 패키지가 workspace에 없습니다.
+
+### 해결 방법
+
+#### 1. workspace 패키지 확인
+
+`pnpm-workspace.yaml`:
+
+```yaml
+packages:
+  - examples/**/*
+  - modules/**/*
+  - "!modules/create-sonamu/template/**/*"
+```
+
+#### 2. 패키지 이름 확인
+
+```bash
+# workspace 내 모든 패키지 확인
+pnpm ls -r --depth -1
+```
+
+#### 3. package.json 수정
+
+```json
+{
+  "dependencies": {
+    "sonamu": "workspace:*"  // workspace에 sonamu 패키지 있어야 함
+  }
+}
+```
+
+## Catalog 버전 불일치
+
+### 증상
+
+```bash
+ ERR_PNPM_CATALOG_VERSION_MISMATCH
+ 
+Package "react" has version "19.2.3" in catalog but "18.3.0" 
+in package.json
+```
+
+### 원인
+
+`pnpm-workspace.yaml`의 catalog에 정의된 버전과 `package.json`의 버전이 다릅니다.
+
+### 해결 방법
+
+#### 1. Catalog 버전 사용 (권장)
+
+`package.json`:
+
+```json
+{
+  "dependencies": {
+    "react": "catalog:"  // pnpm-workspace.yaml의 버전 사용
+  }
+}
+```
+
+#### 2. Catalog 업데이트
+
+`pnpm-workspace.yaml`:
+
+```yaml
+catalog:
+  react: ^19.2.3  # package.json에 맞춰 업데이트
+```
+
+#### 3. 전체 workspace에서 catalog 버전으로 통일
+
+```bash
+# 모든 패키지의 의존성을 catalog 버전으로 업데이트
+pnpm update -r
+```
+
+## 호이스팅 문제
+
+### 증상
+
+```bash
+Error: Cannot find module '@types/node'
+Require stack:
+- /path/to/your/project/src/index.ts
+```
+
+모듈이 설치되어 있는데도 찾을 수 없습니다.
+
+### 원인
+
+pnpm은 기본적으로 의존성을 호이스팅하지 않습니다. 각 패키지는 `node_modules/.pnpm`에 격리되어 설치됩니다.
+
+### 해결 방법
+
+#### 1. public-hoist-pattern 사용
+
+`.npmrc`:
+
+```ini
+public-hoist-pattern[]=@types/*
+public-hoist-pattern[]=eslint-*
+```
+
+특정 패키지만 루트 `node_modules`로 호이스팅합니다.
+
+#### 2. shamefully-hoist (최후의 수단)
+
+`.npmrc`:
+
+```ini
+shamefully-hoist=true
+```
+
+**경고:** npm/yarn과 동일하게 작동하지만 pnpm의 장점을 포기하게 됩니다.
+
+#### 3. 올바른 의존성 선언
+
+```json
+{
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
+```
+
+필요한 패키지를 직접 선언하는 것이 가장 안전합니다.
+
+## TypeScript Path Mapping 오류
+
+### 증상
+
+```typescript
+import { UserModel } from "@/application/user/user.model";
+// Error: Cannot find module '@/application/user/user.model'
+```
+
+### 원인
+
+pnpm의 엄격한 의존성 해결로 인해 TypeScript path mapping이 제대로 작동하지 않습니다.
+
+### 해결 방법
+
+#### 1. tsconfig.json 설정
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  }
+}
+```
+
+#### 2. tsx/ts-node 설정
+
+`tsconfig.json`:
+
+```json
+{
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
+}
+```
+
+설치:
+
+```bash
+pnpm add -D tsconfig-paths
+```
+
+## Phantom Dependencies
+
+### 증상
+
+코드에서 직접 import하는 패키지가 `package.json`에 없는데도 작동합니다.
+
+```typescript
+import _ from "lodash-es";  // package.json에 없음
+```
+
+로컬에서는 작동하지만 CI나 다른 환경에서 실패합니다.
+
+### 원인
+
+다른 패키지의 의존성을 통해 우연히 접근 가능한 **Phantom Dependencies**입니다.
+
+### 해결 방법
+
+#### 1. 명시적 의존성 추가
+
+```bash
+pnpm add lodash-es
+```
+
+#### 2. pnpm check 실행
+
+```bash
+# Phantom dependencies 검사
+pnpm ls --depth=Infinity
+
+# 사용하지 않는 의존성 확인
+pnpm why <package-name>
+```
+
+## onlyBuiltDependencies 오류
+
+### 증상
+
+```bash
+ ERR_PNPM_CANNOT_RESOLVE_OPTIONAL_DEPENDENCY
+ 
+Could not resolve optional dependency @parcel/watcher
+```
+
+### 원인
+
+`onlyBuiltDependencies` 목록의 패키지를 선택적으로만 설치하도록 설정되어 있습니다.
+
+### 해결 방법
+
+`pnpm-workspace.yaml`:
+
+```yaml
+onlyBuiltDependencies:
+  - "@parcel/watcher"
+  - "@swc/core"
+  - bcrypt
+  - esbuild
+  - sharp
+```
+
+이 패키지들은 바이너리를 포함하므로 플랫폼별로 설치가 필요합니다. 설치 실패 시:
+
+```bash
+# 재설치 시도
+pnpm install --force
+
+# 또는 특정 패키지만
+pnpm add sharp --force
+```
+
+## Overrides 적용 안 됨
+
+### 증상
+
+`pnpm.overrides`를 설정했는데 적용되지 않습니다.
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "axios": ">=1.0.0"
+    }
+  }
+}
+```
+
+### 원인
+
+1. overrides 문법이 잘못됨
+2. workspace root가 아닌 곳에 설정함
+3. pnpm 버전이 낮음
+
+### 해결 방법
+
+#### 1. 올바른 overrides 문법
+
+`package.json` (workspace root):
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "axios@<1.0.0": ">=1.0.0",
+      "lodash": "^4.17.21"
+    }
+  }
+}
+```
+
+#### 2. pnpm-workspace.yaml에서 사용
+
+```yaml
+overrides:
+  axios@<0.30.0: ">=0.30.0"
+  axios@>=0.8.1 <0.28.0: ">=0.28.0"
+```
+
+#### 3. 적용 확인
+
+```bash
+# lockfile 재생성
+pnpm install --force
+
+# 버전 확인
+pnpm why axios
+```
+
+## 순환 workspace 의존성
+
+### 증상
+
+```bash
+ ERR_PNPM_WORKSPACE_CYCLE  
+ 
+There is a circular dependency in the workspace:
+  @sonamu-kit/react-sui -> @sonamu-kit/ui -> @sonamu-kit/react-sui
+```
+
+### 원인
+
+Workspace 패키지들이 서로를 참조하여 순환 의존성이 발생했습니다.
+
+### 해결 방법
+
+#### 1. 의존성 구조 재설계
+
+```json
+// @sonamu-kit/react-sui/package.json
+{
+  "dependencies": {
+    "@sonamu-kit/ui": "workspace:*"  // ❌ react-sui가 ui에 의존
+  }
+}
+
+// @sonamu-kit/ui/package.json
+{
+  "dependencies": {
+    "@sonamu-kit/react-sui": "workspace:*"  // ❌ ui가 react-sui에 의존
+  }
+}
+```
+
+해결:
+
+```json
+// 공통 의존성을 별도 패키지로 분리
+// @sonamu-kit/common 생성 후 둘 다 참조
+```
+
+#### 2. peerDependencies 사용
+
+```json
+{
+  "peerDependencies": {
+    "@sonamu-kit/ui": "workspace:*"
+  }
+}
+```
+
+## 캐시 문제
+
+### 증상
+
+의존성을 업데이트했는데도 이전 버전이 사용됩니다.
+
+### 해결 방법
+
+#### 1. pnpm store 정리
+
+```bash
+# store 검증
+pnpm store prune
+
+# 완전 정리
+pnpm store prune --force
+```
+
+#### 2. 전체 재설치
+
+```bash
+# node_modules 삭제
+rm -rf node_modules
+
+# lockfile 유지한 채 재설치
+pnpm install --frozen-lockfile
+
+# 또는 완전 새로 설치
+rm pnpm-lock.yaml
+pnpm install
+```
+
+## 관련 문서
+
+- [타입 오류](/troubleshooting/common-errors/type-errors)
+- [TypeScript 설정](/configuration/typescript/tsconfig)
+- [HMR 문제](/troubleshooting/common-errors/hmr-issues)

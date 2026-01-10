@@ -503,7 +503,8 @@
                   "troubleshooting/common-errors/migration-errors",
                   "troubleshooting/common-errors/type-errors",
                   "troubleshooting/common-errors/hmr-issues",
-                  "troubleshooting/common-errors/database-connection"
+                  "troubleshooting/common-errors/database-connection",
+                  "troubleshooting/common-errors/pnpm-workspace"
                 ]
               },
               {
