@@ -155,14 +155,26 @@ function getChecksumOfData(data: string): string {
 
 async function getChecksumOfFile(filePath: PathLike): Promise<string> {
   return new Promise<string>((resolve, reject) => {
+    let settled = false;
     const hash = crypto.createHash("sha1");
     const input = createReadStream(filePath);
-    input.on("error", reject);
+
+    // error 이벤트 후에도 close 이벤트가 발생할 수 있어서,
+    // Promise가 한 번만 settle되도록 플래그로 보호합니다.
+    input.on("error", (err) => {
+      if (!settled) {
+        settled = true;
+        reject(err);
+      }
+    });
     input.on("data", (chunk: BinaryLike) => {
       hash.update(chunk);
     });
     input.on("close", () => {
-      resolve(hash.digest("hex"));
+      if (!settled) {
+        settled = true;
+        resolve(hash.digest("hex"));
+      }
     });
   });
 }

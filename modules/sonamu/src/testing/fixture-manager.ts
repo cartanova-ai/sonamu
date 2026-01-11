@@ -326,8 +326,9 @@ export class FixtureManagerClass {
 
       return unique(fixtures, (f) => f.fixtureId);
     } finally {
-      await targetDB.destroy();
-      await sourceDB.destroy();
+      // 두 DB 연결 모두 정리되도록 Promise.allSettled 사용
+      // 하나의 destroy가 실패해도 다른 하나는 반드시 정리됩니다.
+      await Promise.allSettled([targetDB.destroy(), sourceDB.destroy()]);
     }
   }
 
