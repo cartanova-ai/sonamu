@@ -1,10 +1,540 @@
 ---
-title: '테스팅 질문'
-description: '테스트 관련 질문'
+title: '테스팅'
+description: '테스트 작성과 실행에 관한 질문'
 ---
 
-# 테스팅 질문
+## 테스트 기본
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+<AccordionGroup>
+<Accordion title="Sonamu는 어떤 테스트 프레임워크를 사용하나요?">
+
+Sonamu는 **Vitest**를 사용합니다.
+
+**특징:**
+- Vite 기반으로 매우 빠른 실행 속도
+- Jest 호환 API
+- TypeScript 네이티브 지원
+- HMR 지원
+
+</Accordion>
+
+<Accordion title="테스트를 실행하려면?">
+
+```bash
+# 모든 테스트 실행
+pnpm test
+
+# 특정 파일만 실행
+pnpm test user.model.test.ts
+
+# Watch 모드 (파일 변경 감지)
+pnpm test --watch
+
+# Coverage 리포트
+pnpm test --coverage
+
+# UI 모드
+pnpm test --ui
+```
+
+</Accordion>
+
+<Accordion title="테스트 파일을 생성하려면?">
+
+**Scaffolding으로 생성:**
+
+1. Sonamu UI 접속
+2. Scaffolding 탭
+3. Entity 선택
+4. Template: `model_test` 선택
+5. Generate 클릭
+
+**자동 생성되는 파일:**
+
+```typescript
+// user.model.test.ts
+import { beforeAll, describe, expect, test } from "vitest";
+import { UserModel } from "./user.model";
+
+beforeAll(async () => {
+  await UserModel.setTestData();
+});
+
+describe("UserModel", () => {
+  test("findById", async () => {
+    const user = await UserModel.findById(1);
+    expect(user).toBeDefined();
+    expect(user.id).toBe(1);
+  });
+
+  test("save", async () => {
+    const user = await UserModel.save({
+      name: "Test User",
+      email: "test@example.com"
+    });
+    expect(user.id).toBeGreaterThan(0);
+    expect(user.name).toBe("Test User");
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 테스트 데이터
+
+<AccordionGroup>
+<Accordion title="테스트 데이터를 준비하려면?">
+
+**setTestData() 메서드:**
+
+```typescript
+// user.model.ts
+class UserModelClass extends BaseModelClass {
+  static async setTestData() {
+    await this.truncate();
+    
+    await this.bulkInsert([
+      { id: 1, name: "John", email: "john@example.com" },
+      { id: 2, name: "Jane", email: "jane@example.com" },
+      { id: 3, name: "Bob", email: "bob@example.com" }
+    ]);
+  }
+}
+```
+
+**테스트에서 사용:**
+
+```typescript
+import { beforeAll, describe, test } from "vitest";
+
+beforeAll(async () => {
+  await UserModel.setTestData();
+  await PostModel.setTestData();
+  await CommentModel.setTestData();
+});
+
+describe("UserModel", () => {
+  test("findById", async () => {
+    const user = await UserModel.findById(1);
+    expect(user.name).toBe("John");
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="테스트마다 DB를 초기화하려면?">
+
+**beforeEach 사용:**
+
+```typescript
+import { beforeEach, describe, test } from "vitest";
+
+beforeEach(async () => {
+  await UserModel.setTestData();
+});
+
+describe("UserModel", () => {
+  test("create user", async () => {
+    const user = await UserModel.save({ name: "New User" });
+    expect(user.id).toBeGreaterThan(3);
+  });
+  
+  test("delete user", async () => {
+    await UserModel.del(1);
+    const user = await UserModel.findById(1);
+    expect(user).toBeNull();
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 모델 테스트
+
+<AccordionGroup>
+<Accordion title="CRUD 메서드를 테스트하려면?">
+
+```typescript
+describe("UserModel CRUD", () => {
+  test("findById", async () => {
+    const user = await UserModel.findById(1);
+    expect(user).toBeDefined();
+    expect(user.id).toBe(1);
+  });
+
+  test("findMany", async () => {
+    const result = await UserModel.findMany("A", { num: 10, page: 1 });
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(result.total).toBeGreaterThan(0);
+  });
+
+  test("save - create", async () => {
+    const user = await UserModel.save({
+      name: "New User",
+      email: "new@example.com"
+    });
+    expect(user.id).toBeGreaterThan(0);
+    expect(user.name).toBe("New User");
+  });
+
+  test("save - update", async () => {
+    const user = await UserModel.save({
+      id: 1,
+      name: "Updated Name"
+    });
+    expect(user.id).toBe(1);
+    expect(user.name).toBe("Updated Name");
+  });
+
+  test("del", async () => {
+    await UserModel.del(1);
+    const user = await UserModel.findById(1);
+    expect(user).toBeNull();
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="Subset을 테스트하려면?">
+
+```typescript
+describe("UserModel Subsets", () => {
+  test("Subset A", async () => {
+    const result = await UserModel.findMany("A", { num: 10, page: 1 });
+    expect(result.rows[0]).toHaveProperty("id");
+    expect(result.rows[0]).toHaveProperty("name");
+  });
+
+  test("Subset WithPosts", async () => {
+    const result = await UserModel.findMany("WithPosts", { num: 10, page: 1 });
+    expect(result.rows[0]).toHaveProperty("posts");
+    expect(Array.isArray(result.rows[0].posts)).toBe(true);
+  });
+
+  test("Subset 필드 존재 확인", async () => {
+    const user = await UserModel.findById(1, "WithProfile");
+    expect(user).toHaveProperty("profile");
+    expect(user.profile).toBeDefined();
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="관계(Relation)를 테스트하려면?">
+
+```typescript
+describe("User Relations", () => {
+  test("User -> Posts (HasMany)", async () => {
+    const user = await UserModel.findById(1, "WithPosts");
+    expect(user.posts).toBeDefined();
+    expect(Array.isArray(user.posts)).toBe(true);
+    expect(user.posts.length).toBeGreaterThan(0);
+  });
+
+  test("Post -> User (BelongsToOne)", async () => {
+    const post = await PostModel.findById(1, "WithAuthor");
+    expect(post.author).toBeDefined();
+    expect(post.author.id).toBe(post.user_id);
+  });
+
+  test("User -> Profile (OneToOne)", async () => {
+    const user = await UserModel.findById(1, "WithProfile");
+    expect(user.profile).toBeDefined();
+    expect(user.profile.user_id).toBe(user.id);
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## API 테스트
+
+<AccordionGroup>
+<Accordion title="API 메서드를 테스트하려면?">
+
+```typescript
+describe("User API", () => {
+  test("listUsers", async () => {
+    const result = await UserModel.listUsers({ num: 10, page: 1 });
+    expect(result.rows.length).toBeLessThanOrEqual(10);
+    expect(result.total).toBeGreaterThan(0);
+  });
+
+  test("createUser", async () => {
+    const user = await UserModel.createUser({
+      name: "API Test User",
+      email: "apitest@example.com"
+    });
+    expect(user.id).toBeGreaterThan(0);
+    expect(user.name).toBe("API Test User");
+  });
+
+  test("updateUser", async () => {
+    const user = await UserModel.updateUser(1, {
+      name: "Updated via API"
+    });
+    expect(user.id).toBe(1);
+    expect(user.name).toBe("Updated via API");
+  });
+
+  test("deleteUser", async () => {
+    await UserModel.deleteUser(1);
+    const user = await UserModel.findById(1);
+    expect(user).toBeNull();
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="에러를 테스트하려면?">
+
+```typescript
+import { BadRequestError, NotFoundError } from "sonamu";
+
+describe("User API Errors", () => {
+  test("createUser - 이메일 중복", async () => {
+    await expect(
+      UserModel.createUser({
+        name: "Test",
+        email: "john@example.com"  // 이미 존재
+      })
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  test("findById - 존재하지 않는 ID", async () => {
+    await expect(
+      UserModel.findById(99999)
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  test("deleteUser - 권한 없음", async () => {
+    await expect(
+      UserModel.deleteUser(1)  // 권한 체크 실패
+    ).rejects.toThrow(ForbiddenError);
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 고급 테스트
+
+<AccordionGroup>
+<Accordion title="트랜잭션을 테스트하려면?">
+
+```typescript
+describe("Transactions", () => {
+  test("트랜잭션 성공", async () => {
+    await UserModel.transaction(async (trx) => {
+      const user = await UserModel.save(
+        { name: "Tx User" },
+        { trx }
+      );
+      const profile = await ProfileModel.save(
+        { user_id: user.id, bio: "Bio" },
+        { trx }
+      );
+      
+      expect(user.id).toBeGreaterThan(0);
+      expect(profile.user_id).toBe(user.id);
+    });
+  });
+
+  test("트랜잭션 롤백", async () => {
+    const initialCount = await UserModel.count();
+    
+    try {
+      await UserModel.transaction(async (trx) => {
+        await UserModel.save({ name: "Rollback User" }, { trx });
+        throw new Error("강제 에러");
+      });
+    } catch (error) {
+      // 에러 무시
+    }
+    
+    const finalCount = await UserModel.count();
+    expect(finalCount).toBe(initialCount);  // 변화 없음
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="비동기 작업을 테스트하려면?">
+
+```typescript
+describe("Async Operations", () => {
+  test("이메일 전송", async () => {
+    const result = await UserModel.sendWelcomeEmail(1);
+    expect(result.success).toBe(true);
+  });
+
+  test("파일 업로드", async () => {
+    const file = {
+      buffer: Buffer.from("test content"),
+      originalname: "test.txt"
+    } as Express.Multer.File;
+    
+    const result = await UserModel.uploadAvatar(file);
+    expect(result.url).toBeDefined();
+    expect(result.url).toContain("avatar");
+  });
+
+  test("외부 API 호출", async () => {
+    const result = await UserModel.fetchExternalData();
+    expect(result).toBeDefined();
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="Mock을 사용하려면?">
+
+```typescript
+import { vi } from "vitest";
+
+describe("Mocking", () => {
+  test("외부 서비스 Mock", async () => {
+    // EmailService.send를 Mock
+    const sendMock = vi.spyOn(EmailService, "send")
+      .mockResolvedValue({ success: true });
+    
+    await UserModel.sendWelcomeEmail(1);
+    
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "john@example.com",
+        subject: "Welcome!"
+      })
+    );
+    
+    sendMock.mockRestore();
+  });
+
+  test("Date.now Mock", async () => {
+    const mockDate = new Date("2025-01-01");
+    vi.setSystemTime(mockDate);
+    
+    const user = await UserModel.save({ name: "Test" });
+    expect(user.created_at).toEqual(mockDate);
+    
+    vi.useRealTimers();
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 테스트 패턴
+
+<AccordionGroup>
+<Accordion title="test.each로 반복 테스트하려면?">
+
+```typescript
+describe("Validation", () => {
+  test.each([
+    ["john@example.com", true],
+    ["invalid-email", false],
+    ["", false],
+    ["test@", false]
+  ])("이메일 검증: %s -> %s", async (email, expected) => {
+    const isValid = await UserModel.validateEmail(email);
+    expect(isValid).toBe(expected);
+  });
+});
+
+describe("UserRole", () => {
+  test.each([
+    ["admin", true],
+    ["user", false],
+    ["guest", false]
+  ])("관리자 권한: %s -> %s", async (role, expected) => {
+    const user = await UserModel.findById(1);
+    user.role = role;
+    const isAdmin = await UserModel.isAdmin(user);
+    expect(isAdmin).toBe(expected);
+  });
+});
+```
+
+</Accordion>
+
+<Accordion title="테스트를 그룹화하려면?">
+
+```typescript
+describe("UserModel", () => {
+  describe("CRUD Operations", () => {
+    test("create", async () => { });
+    test("read", async () => { });
+    test("update", async () => { });
+    test("delete", async () => { });
+  });
+
+  describe("Validations", () => {
+    test("email validation", async () => { });
+    test("password strength", async () => { });
+  });
+
+  describe("Relations", () => {
+    test("posts", async () => { });
+    test("profile", async () => { });
+  });
+});
+```
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices
+
+<AccordionGroup>
+<Accordion title="테스트 작성 시 주의사항">
+
+**DO:**
+- ✅ 각 테스트는 독립적으로 실행 가능해야 함
+- ✅ `beforeAll`이나 `beforeEach`로 테스트 데이터 초기화
+- ✅ 의미 있는 테스트 이름 사용
+- ✅ 하나의 테스트에서 하나의 기능만 테스트
+- ✅ 에러 케이스도 반드시 테스트
+
+**DON'T:**
+- ❌ 테스트 간 의존성 만들지 않기
+- ❌ 실제 외부 서비스 호출하지 않기 (Mock 사용)
+- ❌ 프로덕션 DB 사용하지 않기
+- ❌ 하드코딩된 ID나 날짜 사용 지양
+- ❌ 테스트 실패를 무시하지 않기
+
+</Accordion>
+</AccordionGroup>
+
+---
+
+## 관련 문서
+
+- [Naite 테스팅](/testing/using-naite)
+- [테스트 작성 가이드](/testing/writing-tests)
+- [테스트 모범 사례](/testing/best-practices)
+- [모델 테스트](/testing/model-testing)
