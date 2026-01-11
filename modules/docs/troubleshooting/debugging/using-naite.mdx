@@ -3,8 +3,420 @@ title: 'Naite 사용하기'
 description: 'Naite로 디버깅하기'
 ---
 
-# Naite 사용하기
+Naite를 활용한 효과적인 디버깅 방법을 다룹니다.
 
-<Note>
-  이 페이지는 작성 중입니다. 곧 내용이 추가될 예정입니다!
-</Note>
+## Naite란?
+
+Naite는 Sonamu의 테스트 전용 로깅 시스템으로, 테스트 실행 중 발생하는 모든 로그를 수집하고 분석할 수 있습니다.
+
+**주요 특징:**
+- 테스트별로 로그 격리
+- 키-값 기반 로그 저장
+- 강력한 쿼리 기능
+- Naite Viewer로 시각화
+
+## 기본 사용법
+
+### 1. 로그 기록하기
+
+```typescript
+import { Naite } from "sonamu";
+
+describe("User API", () => {
+  test("사용자 생성", async () => {
+    const email = "test@example.com";
+    
+    // 로그 기록
+    Naite.t("user.create.input", { email });
+    
+    const user = await UserModel.create({ email });
+    
+    Naite.t("user.create.output", { userId: user.id });
+    
+    expect(user.email).toBe(email);
+  });
+});
+```
+
+### 2. 로그 조회하기
+
+테스트 실패 시 로그를 확인하여 문제를 파악할 수 있습니다:
+
+```typescript
+test("디버깅 예제", async () => {
+  try {
+    const result = await complexOperation();
+    expect(result).toBe(expectedValue);
+  } catch (error) {
+    // 실패 시 로그 확인
+    const logs = Naite.getAll();
+    console.log("테스트 로그:", logs);
+    throw error;
+  }
+});
+```
+
+## 디버깅 패턴
+
+### API 요청/응답 추적
+
+```typescript
+test("API 호출 추적", async () => {
+  const params = { page: 1, limit: 10 };
+  
+  // 요청 기록
+  Naite.t("api.request", { 
+    method: "findMany", 
+    params 
+  });
+  
+  const users = await UserModel.findMany(params);
+  
+  // 응답 기록
+  Naite.t("api.response", { 
+    count: users.length,
+    firstUser: users[0]
+  });
+  
+  expect(users.length).toBeGreaterThan(0);
+});
+```
+
+### 데이터베이스 쿼리 추적
+
+```typescript
+test("쿼리 추적", async () => {
+  const userId = 1;
+  
+  // 쿼리 전
+  Naite.t("db.query.before", { userId });
+  
+  const user = await UserModel.findById(userId);
+  
+  // 쿼리 후
+  Naite.t("db.query.after", { 
+    found: !!user,
+    data: user 
+  });
+  
+  expect(user).toBeDefined();
+});
+```
+
+### 비즈니스 로직 흐름 추적
+
+```typescript
+test("주문 프로세스 추적", async () => {
+  const orderId = 1;
+  
+  Naite.t("order.process.start", { orderId });
+  
+  // 1. 주문 조회
+  const order = await OrderModel.findById(orderId);
+  Naite.t("order.found", { status: order.status });
+  
+  // 2. 결제 처리
+  const payment = await processPayment(order);
+  Naite.t("payment.processed", { 
+    paymentId: payment.id,
+    amount: payment.amount 
+  });
+  
+  // 3. 주문 상태 업데이트
+  await OrderModel.updateStatus(orderId, "paid");
+  Naite.t("order.status.updated", { newStatus: "paid" });
+  
+  Naite.t("order.process.complete", { orderId });
+});
+```
+
+## 로그 키 네이밍 규칙
+
+계층적 구조로 키를 설계하면 나중에 쿼리하기 쉽습니다:
+
+```typescript
+// ✅ 좋은 키 네이밍
+Naite.t("user.create.input", data);
+Naite.t("user.create.validation", result);
+Naite.t("user.create.output", user);
+
+// ✅ 도메인별 분리
+Naite.t("order.payment.start", params);
+Naite.t("order.payment.complete", result);
+
+// ❌ 나쁜 키 네이밍
+Naite.t("data1", data);
+Naite.t("result", result);
+Naite.t("test", value);
+```
+
+**권장 패턴:**
+```
+{domain}.{action}.{stage}
+예: user.create.input, order.payment.complete
+```
+
+## 조건부 로깅
+
+디버깅이 필요한 경우에만 로그를 활성화:
+
+```typescript
+const DEBUG = process.env.DEBUG === "true";
+
+test("조건부 로깅", async () => {
+  if (DEBUG) {
+    Naite.t("debug.start", { timestamp: Date.now() });
+  }
+  
+  const result = await someOperation();
+  
+  if (DEBUG) {
+    Naite.t("debug.result", result);
+  }
+  
+  expect(result).toBeDefined();
+});
+```
+
+## Model에서 Naite 사용
+
+비즈니스 로직에서 Naite로 로그를 남길 수 있습니다:
+
+```typescript
+class UserModelClass extends BaseModel {
+  @api()
+  async createUser(name: string, email: string) {
+    // Naite.t()로 로그 기록
+    Naite.t("user.input", { name, email });
+    
+    const user = await this.save({ name, email });
+    
+    Naite.t("user.created", user);
+    
+    return user;
+  }
+}
+```
+
+테스트에서 확인:
+
+```typescript
+test("Naite 로그 확인", async () => {
+  await UserModel.createUser("Alice", "alice@example.com");
+  
+  // .first()로 첫 번째 데이터 추출
+  const input = Naite.get("user.input").first();
+  const created = Naite.get("user.created").first();
+  
+  expect(input.name).toBe("Alice");
+  expect(created.id).toBeDefined();
+});
+```
+
+## 로그 쿼리
+
+Naite는 강력한 쿼리 기능을 제공합니다:
+
+```typescript
+test("로그 쿼리", async () => {
+  // 여러 작업 수행
+  await createUsers();
+  await processOrders();
+  
+  // 특정 키로 조회
+  const userLogs = Naite.get("user").result();
+  
+  // 패턴으로 조회 (wildcard 지원)
+  const createLogs = Naite.get("*.create.*").result();
+  
+  // 전체 로그
+  const allLogs = Naite.getAll();
+  
+  console.log("User logs:", userLogs);
+  console.log("Create logs:", createLogs);
+  console.log("All logs:", allLogs);
+});
+```
+
+### NaiteQuery 메서드
+
+`Naite.get()`은 `NaiteQuery` 객체를 반환합니다:
+
+```typescript
+test("NaiteQuery 메서드", async () => {
+  Naite.t("test.data", { value: 1 });
+  Naite.t("test.data", { value: 2 });
+  Naite.t("test.data", { value: 3 });
+  
+  // 첫 번째 데이터
+  const first = Naite.get("test.data").first();
+  console.log(first); // { value: 1 }
+  
+  // 마지막 데이터
+  const last = Naite.get("test.data").last();
+  console.log(last); // { value: 3 }
+  
+  // 모든 데이터 배열
+  const all = Naite.get("test.data").result();
+  console.log(all); // [{ value: 1 }, { value: 2 }, { value: 3 }]
+});
+```
+
+## Naite Viewer 사용
+
+테스트 실행 후 Naite Viewer로 로그를 시각화합니다:
+
+```bash
+# 테스트 실행
+pnpm test
+
+# Naite Viewer 실행
+pnpm naite:view
+```
+
+**Viewer 기능:**
+- 테스트별 로그 필터링
+- 키 기반 검색
+- 타임라인 뷰
+- 로그 내보내기
+
+## 디버깅 워크플로우
+
+### 1. 테스트 실패 시
+
+```typescript
+test("실패하는 테스트", async () => {
+  // 충분한 로그 추가
+  Naite.t("test.start", { timestamp: Date.now() });
+  
+  try {
+    const result = await problematicFunction();
+    Naite.t("test.result", result);
+    expect(result).toBe(expectedValue);
+  } catch (error) {
+    // 에러 발생 시 전체 로그 출력
+    console.log("=== Naite Logs ===");
+    console.log(JSON.stringify(Naite.getAll(), null, 2));
+    throw error;
+  }
+});
+```
+
+### 2. 로그 분석
+
+```typescript
+afterEach(() => {
+  // 테스트 후 로그 요약
+  const allLogs = Naite.getAll();
+  const errorKeys = Object.keys(allLogs).filter(key => 
+    key.includes("error") || key.includes("fail")
+  );
+  
+  if (errorKeys.length > 0) {
+    const errorLogs = errorKeys.map(key => ({ key, data: allLogs[key] }));
+    console.log("⚠️ 에러 로그:", errorLogs);
+  }
+});
+```
+
+### 3. 특정 시나리오 재현
+
+```typescript
+test("버그 재현", async () => {
+  // 버그가 발생한 시나리오 재현
+  Naite.t("bug.reproduction.start", {
+    scenario: "사용자 생성 후 즉시 삭제"
+  });
+  
+  const user = await UserModel.create({ email: "test@example.com" });
+  Naite.t("bug.user.created", user);
+  
+  await UserModel.del(user.id);
+  Naite.t("bug.user.deleted", { userId: user.id });
+  
+  // 다시 조회 시도
+  const deletedUser = await UserModel.findById(user.id);
+  Naite.t("bug.user.found", { found: !!deletedUser });
+  
+  expect(deletedUser).toBeNull();
+});
+```
+
+## 성능 디버깅
+
+로그에 타임스탬프를 추가하여 성능 분석:
+
+```typescript
+test("성능 측정", async () => {
+  const start = Date.now();
+  Naite.t("perf.start", { timestamp: start });
+  
+  // 무거운 작업
+  const result = await heavyOperation();
+  
+  const end = Date.now();
+  Naite.t("perf.end", { 
+    timestamp: end,
+    duration: end - start,
+    result 
+  });
+  
+  // 성능 기준 검증
+  expect(end - start).toBeLessThan(1000); // 1초 이내
+});
+```
+
+## 주의사항
+
+### 1. 프로덕션 코드에서 사용 금지
+
+```typescript
+// ❌ 프로덕션 코드에서 Naite 사용하지 말 것
+class UserModelClass extends BaseModel {
+  async createUser() {
+    Naite.t("user.create", data); // ❌ 테스트 전용!
+    return this.save(data);
+  }
+}
+```
+
+### 2. 민감한 정보 로깅 주의
+
+```typescript
+test("로그 주의사항", async () => {
+  // ❌ 비밀번호 같은 민감 정보 로깅하지 말 것
+  Naite.t("user.create", { 
+    email,
+    password  // ❌
+  });
+  
+  // ✅ 민감 정보 제외
+  Naite.t("user.create", { 
+    email,
+    hasPassword: !!password  // ✅
+  });
+});
+```
+
+### 3. 과도한 로깅 피하기
+
+```typescript
+// ❌ 루프 안에서 과도한 로깅
+for (let i = 0; i < 1000; i++) {
+  Naite.t(`item.${i}`, data); // ❌ 너무 많음
+}
+
+// ✅ 요약 로깅
+Naite.t("items.processed", { 
+  count: 1000,
+  sample: items.slice(0, 3)  // ✅ 샘플만
+});
+```
+
+## 관련 문서
+
+- [Naite 개요](/testing/naite/what-is-naite)
+- [로그 기록하기](/testing/naite/recording-logs)
+- [로그 쿼리하기](/testing/naite/querying-logs)
+- [Naite Viewer](/testing/naite/naite-viewer)
+- [테스트 디버깅](/testing/naite/debugging-tests)
