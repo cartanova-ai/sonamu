@@ -28,7 +28,7 @@ import {
   TemplateKey,
 } from "../types/types";
 import { type DictEntry, parseConstObjectDeclaration, parseDictFile } from "../utils/dict-parser";
-import { ensureDictKeys } from "../utils/dict-utils";
+import { ensureDictKeys, generateProjectDict } from "../utils/dict-utils";
 import { formatCode } from "../utils/formatter";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
@@ -701,8 +701,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           return template.getRequiredDictKeys() ?? [];
         });
 
-        console.log("new keys", [...new Set(keys)]);
-
         // 2. target별로 ensureDictKeys 호출 (순차 처리)
         await ensureDictKeys([...new Set(keys)]);
 
@@ -795,7 +793,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       // i18n API
       type I18nDictionaryRow = {
         key: string;
-        source: "entity" | "sonamu" | "project";
+        source: "entity" | "project";
         isFunction: boolean;
         [locale: string]: string | boolean | undefined;
       };
@@ -929,70 +927,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       }
 
       /**
-       * Sonamu built-in dict 소스 파일에서 딕셔너리 로드
-       */
-      function loadSonamuDict(locale: string): { entries: DictEntry[] } {
-        // sonamu 패키지 루트에서 src/dict 경로 찾기
-        // import.meta.dirname이 dist/ui일 수 있으므로 패키지 루트 기준으로 접근
-        const sonamuPackageRoot = path.resolve(import.meta.dirname, "..", "..");
-        const dictPath = path.join(sonamuPackageRoot, "src", "dict", `${locale}.ts`);
-
-        if (!fs.existsSync(dictPath)) {
-          return { entries: [] };
-        }
-        return { entries: parseDictFile(dictPath) };
-      }
-
-      /**
-       * Project dict 파일 생성
-       */
-      function generateProjectDict(
-        locale: string,
-        entries: DictEntry[],
-        isDefaultLocale: boolean,
-      ): string {
-        // key 알파벳 순 정렬
-        const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
-
-        const lines: string[] = [];
-
-        if (!isDefaultLocale) {
-          lines.push('import { defineLocale } from "./sd.generated";');
-          lines.push("");
-        }
-
-        lines.push("/**");
-        lines.push(` * Project ${locale.toUpperCase()} Dictionary`);
-        lines.push(" */");
-
-        if (isDefaultLocale) {
-          lines.push("export default {");
-        } else {
-          lines.push("export default defineLocale({");
-        }
-
-        for (const entry of sorted) {
-          if (entry.isFunction) {
-            // 함수인 경우: 원형 그대로 출력
-            lines.push(`  "${entry.key}": ${entry.value},`);
-          } else {
-            const escapedValue = entry.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-            lines.push(`  "${entry.key}": "${escapedValue}",`);
-          }
-        }
-
-        if (isDefaultLocale) {
-          lines.push("} as const;");
-        } else {
-          lines.push("});");
-        }
-        lines.push("");
-
-        return lines.join("\n");
-      }
-
-      /**
-       * 딕셔너리 데이터 수집 (entity + sonamu + project)
+       * 딕셔너리 데이터 수집 (entity + project)
        */
       async function collectDictionary(): Promise<{
         rows: I18nDictionaryRow[];
@@ -1021,38 +956,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           rowMap.set(label.key, row);
         }
 
-        // 2. Sonamu built-in dict (소스 파일에서 파싱하여 타입 정보 보존)
-        const sonamuDicts: Record<string, DictEntry[]> = {};
-        for (const locale of locales) {
-          const { entries } = loadSonamuDict(locale);
-          sonamuDicts[locale] = entries;
-        }
-
-        // defaultLocale 기준으로 키 추출
-        const sonamuDefaultEntries = sonamuDicts[defaultLocale] ?? [];
-        for (const entry of sonamuDefaultEntries) {
-          const row: I18nDictionaryRow = {
-            key: entry.key,
-            source: "sonamu",
-            isFunction: entry.isFunction,
-          };
-          for (const locale of locales) {
-            const localeEntries = sonamuDicts[locale];
-            const localeEntry = localeEntries?.find((e) => e.key === entry.key);
-            if (localeEntry) {
-              row[locale] = localeEntry.value;
-            }
-          }
-          rowMap.set(entry.key, row);
-        }
-
-        // 3. Project dict (각 locale별)
+        // 2. Project dict (각 locale별)
         for (const locale of locales) {
           const { entries } = loadProjectDict(locale);
           for (const entry of entries) {
             const existing = rowMap.get(entry.key);
             if (existing) {
-              // entity나 sonamu source가 있으면 해당 locale 값만 추가
+              // entity source가 있으면 해당 locale 값만 추가
               existing[locale] = entry.value;
               if (entry.isFunction) {
                 existing.isFunction = true;
@@ -1093,18 +1003,15 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return collectDictionary();
       });
 
-      // GET /api/i18n/export (sonamu source 제외)
+      // GET /api/i18n/export
       server.get("/api/i18n/export", async (_request, reply) => {
         const { rows, locales } = await collectDictionary();
-
-        // sonamu source 제외
-        const filteredRows = rows.filter((row) => row.source !== "sonamu");
 
         // Excel 데이터 생성 (함수인 경우 value가 이미 원형 전체)
         const headers = ["key", "source", ...locales];
         const data = [
           headers,
-          ...filteredRows.map((row) => [
+          ...rows.map((row) => [
             row.key,
             row.source,
             ...locales.map((locale) => row[locale] ?? ""),
@@ -1228,15 +1135,11 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         Body: {
           oldKey: string;
           newKey: string;
-          source: "entity" | "sonamu" | "project";
+          source: "entity" | "project";
           values: Record<string, string>;
         };
       }>("/api/i18n/update", async (request) => {
         const { oldKey, newKey, source, values } = request.body;
-
-        if (source === "sonamu") {
-          throw new BadRequestException("sonamu source는 수정할 수 없습니다");
-        }
 
         const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
           defaultLocale: "ko",

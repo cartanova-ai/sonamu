@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { Sonamu } from "../api/sonamu";
-import { parseDictFile } from "./dict-parser";
+import { type DictEntry, parseDictFile } from "./dict-parser";
+import { formatCode } from "./formatter";
 
 /**
  * 프로젝트의 i18n dict 파일 경로를 반환합니다.
@@ -77,63 +78,79 @@ export async function ensureDictKeys(
   }
 
   // 프로젝트 dict 파일에 추가
-  await appendEntriesToDictFile(projectDictPath, entriesToAdd);
+  await appendEntriesToDictFile(projectDictPath, entriesToAdd, defaultLocale, true);
 
   return entriesToAdd.map((e) => e.key);
 }
 
 /**
  * dict 파일에 엔트리를 추가합니다.
- * `} as const;` 또는 `});` 직전에 삽입합니다.
+ * 기존 파일을 파싱하고, 새 엔트리를 추가한 뒤, 전체 파일을 재생성합니다.
  */
 async function appendEntriesToDictFile(
   filePath: string,
-  entries: { key: string; value: string; isFunction: boolean }[],
+  entries: DictEntry[],
+  locale: string,
+  isDefaultLocale: boolean,
 ): Promise<void> {
-  const content = fs.readFileSync(filePath, "utf-8");
+  // 기존 entries 파싱
+  const existingEntries = parseDictFile(filePath);
 
-  // 새 엔트리 코드 생성
-  const newLines = entries.map(({ key, value, isFunction }) => {
-    const codeValue = isFunction ? value : `"${escapeString(value)}"`;
-    return `  "${key}": ${codeValue},`;
-  });
+  // 새 entries 추가
+  for (const entry of entries) {
+    existingEntries.push(entry);
+  }
 
-  // `} as const;` 또는 `});` 패턴 찾기
-  // defineLocale({...}) 또는 export default {...} as const; 두 가지 패턴 지원
-  const closingPatterns = [
-    /(\n\s*\}\s*as\s+const\s*;?\s*)$/, // } as const;
-    /(\n\s*\}\s*\)\s*;?\s*)$/, // });
-  ];
+  // 파일 재생성
+  const content = generateProjectDict(locale, existingEntries, isDefaultLocale);
+  const formatted = formatCode(content, "typescript", filePath);
+  fs.writeFileSync(filePath, formatted, "utf-8");
+}
 
-  let newContent = content;
-  let matched = false;
+/**
+ * Project dict 파일 생성
+ */
+export function generateProjectDict(
+  locale: string,
+  entries: DictEntry[],
+  isDefaultLocale: boolean,
+): string {
+  // key 알파벳 순 정렬
+  const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
 
-  for (const pattern of closingPatterns) {
-    const match = content.match(pattern);
-    if (match && match.index !== undefined) {
-      const insertPosition = match.index;
-      const beforeClosing = content.slice(0, insertPosition);
-      const closing = match[1];
+  const lines: string[] = [];
 
-      // 마지막 쉼표 확인 및 추가
-      const trimmedBefore = beforeClosing.trimEnd();
-      const needsComma = !trimmedBefore.endsWith(",") && !trimmedBefore.endsWith("{");
-      const comma = needsComma ? "," : "";
+  if (!isDefaultLocale) {
+    lines.push('import { defineLocale } from "./sd.generated";');
+    lines.push("");
+  }
 
-      newContent = `${beforeClosing}${comma}\n\n  // Sonamu 템플릿에서 자동 추가됨\n${newLines.join("\n")}${closing}`;
-      matched = true;
-      break;
+  lines.push("/**");
+  lines.push(` * Project ${locale.toUpperCase()} Dictionary`);
+  lines.push(" */");
+
+  if (isDefaultLocale) {
+    lines.push("export default {");
+  } else {
+    lines.push("export default defineLocale({");
+  }
+
+  for (const entry of sorted) {
+    if (entry.isFunction) {
+      // 함수인 경우: 원형 그대로 출력
+      lines.push(`  "${entry.key}": ${entry.value},`);
+    } else {
+      const escapedValue = entry.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      lines.push(`  "${entry.key}": "${escapedValue}",`);
     }
   }
 
-  if (!matched) {
-    console.warn(`[ensureDictKeys] ${filePath}에서 닫는 패턴을 찾을 수 없습니다.`);
-    return;
+  if (isDefaultLocale) {
+    lines.push("} as const;");
+  } else {
+    lines.push("});");
   }
+  lines.push("");
 
-  fs.writeFileSync(filePath, newContent, "utf-8");
-}
-
-function escapeString(str: string): string {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+  return lines.join("\n");
 }
