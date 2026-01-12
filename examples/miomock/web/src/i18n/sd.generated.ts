@@ -137,16 +137,6 @@ const entityLabels = {
 } as const;
 
 const sonamuDictKo = {
-  "validation.required": (field: string) => `${field}은(는) 필수입니다`,
-  "validation.minLength": (field: string, min: number) =>
-    `${field}은(는) 최소 ${min}자 이상이어야 합니다`,
-  "validation.maxLength": (field: string, max: number) =>
-    `${field}은(는) 최대 ${max}자까지 입력할 수 있습니다`,
-  "validation.range": (field: string, min: number, max: number) =>
-    `${field}은(는) ${min}~${max} 사이여야 합니다`,
-  "entity.list": (name: string) => `${name} 목록`,
-  "entity.create": (name: string) => `${name} 생성`,
-  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
   "error.badRequest": "잘못된 요청입니다",
   "error.unauthorized": "인증이 필요합니다",
   "error.forbidden": "권한이 없습니다",
@@ -166,20 +156,20 @@ const sonamuDictKo = {
   "common.close": "닫기",
   "confirm.delete": "정말 삭제하시겠습니까?",
   "confirm.save": "저장하시겠습니까?",
+  "validation.required": (field: string) => `${field}은(는) 필수입니다`,
+  "validation.minLength": (field: string, min: number) =>
+    `${field}은(는) 최소 ${min}자 이상이어야 합니다`,
+  "validation.maxLength": (field: string, max: number) =>
+    `${field}은(는) 최대 ${max}자까지 입력할 수 있습니다`,
+  "validation.range": (field: string, min: number, max: number) =>
+    `${field}은(는) ${min}~${max} 사이여야 합니다`,
   "validation.email": "올바른 이메일 형식이 아닙니다",
   "validation.url": "올바른 URL 형식이 아닙니다",
+  "entity.list": (name: string) => `${name} 목록`,
+  "entity.create": (name: string) => `${name} 생성`,
+  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
 };
 const sonamuDictEn = {
-  "validation.required": (field: string) => `${field} is required`,
-  "validation.minLength": (field: string, min: number) =>
-    `${field} must be at least ${min} characters`,
-  "validation.maxLength": (field: string, max: number) =>
-    `${field} must be at most ${max} characters`,
-  "validation.range": (field: string, min: number, max: number) =>
-    `${field} must be between ${min} and ${max}`,
-  "entity.list": (name: string) => `${name} List`,
-  "entity.create": (name: string) => `Create ${name}`,
-  "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
   "error.badRequest": "Bad Request",
   "error.unauthorized": "Authentication required",
   "error.forbidden": "Permission denied",
@@ -199,8 +189,18 @@ const sonamuDictEn = {
   "common.close": "Close",
   "confirm.delete": "Are you sure you want to delete?",
   "confirm.save": "Do you want to save?",
+  "validation.required": (field: string) => `${field} is required`,
+  "validation.minLength": (field: string, min: number) =>
+    `${field} must be at least ${min} characters`,
+  "validation.maxLength": (field: string, max: number) =>
+    `${field} must be at most ${max} characters`,
+  "validation.range": (field: string, min: number, max: number) =>
+    `${field} must be between ${min} and ${max}`,
   "validation.email": "Invalid email format",
   "validation.url": "Invalid URL format",
+  "entity.list": (name: string) => `${name} List`,
+  "entity.create": (name: string) => `Create ${name}`,
+  "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
 };
 
 // defaultLocale의 dictionary를 기준으로 키 추출
