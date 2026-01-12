@@ -527,7 +527,6 @@ export const SonamuSemanticParams = z.object({
     threshold: z.number().optional(),
     method: z.enum(["cosine", "l2", "inner_product"]).optional(),
   }),
-  which: z.string(),
 });
 export type SonamuSemanticParams = z.infer<typeof SonamuSemanticParams>;
 
