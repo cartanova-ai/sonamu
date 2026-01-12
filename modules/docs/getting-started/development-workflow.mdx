@@ -39,9 +39,6 @@ Model 파일과 테스트 파일을 자동 생성합니다.
 </Step>
 </Steps>
 
-<Frame caption="🎬 필요: 전체 개발 워크플로우 순서도 (위 7단계를 시각화)">
-</Frame>
-
 ## 1단계: 엔티티 설계 및 정의
 
 ### Sonamu UI에서 엔티티 생성
@@ -69,8 +66,43 @@ pnpm dev
 - `sonamu.generated.ts` - Base 스키마 (모든 엔티티)
 </Tip>
 
-<Frame caption="📸 필요: Sonamu UI에서 엔티티 정의하는 화면">
-</Frame>
+<Tabs>
+  <Tab title="1. 엔티티 생성">
+    <Frame caption="엔티티 생성">
+      <img src="/images/sonamuUI-create-entity.png" alt="엔티티 생성" />
+    </Frame>
+  </Tab>
+  <Tab title="2. 기본 필드 추가">
+    <Frame caption="기본 필드 추가">
+      <img src="/images/sonamuUI-add-prop.png" alt="기본 필드 추가" />
+    </Frame>
+  </Tab>
+  <Tab title="3. 필드 세부 정의">
+    <Frame caption="필드 세부 정의">
+      <img src="/images/sonamuUI-add-a-prop.png" alt="필드 세부 정의" />
+    </Frame>
+  </Tab>
+  <Tab title="4. Subset 정의">
+    <Frame caption="Subset 정의">
+      <img src="/images/sonamuUI-subsets.png" alt="Subset 정의" />
+    </Frame>
+  </Tab>
+  <Tab title="5. Enum 정의">
+    <Frame caption="Enum 정의">
+      <img src="/images/sonamuUI-enums.png" alt="Enum 정의" />
+    </Frame>
+  </Tab>
+  <Tab title="6. Relation 정의">
+    <Frame caption="Relation 정의">
+      <img src="/images/sonamuUI-relation.png" alt="Relation 정의" />
+    </Frame>
+  </Tab>
+  <Tab title="결과 화면">
+    <Frame caption="엔티티 정의 완료">
+      <img src="/images/sonamuUI-relation-result.png" alt="엔티티 정의 결과" />
+    </Frame>
+  </Tab>
+</Tabs>
 
 ### CLI로 엔티티 생성 (선택사항)
 
