@@ -8,7 +8,7 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
-import { BadRequestException, createMockSSEFactory, DB, isDaemonServer } from "..";
+import { createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
@@ -689,16 +689,12 @@ class SonamuClass {
           // 업로드 옵션이 있는 경우 파트로 분리하여 file 또는 field로 구분 처리
           // file은 UploadedFile 인스턴스로 변환
           // field는 body에 추가
-          const parts = request.parts();
+          const parts = request.parts({
+            limits: api.uploadOptions.limits,
+          });
           for await (const part of parts) {
             if (part.type === "file") {
               uploaded.files.push(new UploadedFile(part));
-              if (
-                api.uploadOptions.limits?.files &&
-                uploaded.files.length >= api.uploadOptions.limits.files
-              ) {
-                throw new BadRequestException("File count limit exceeded");
-              }
             } else if (part.type === "field") {
               body[part.fieldname] = part.value;
             }

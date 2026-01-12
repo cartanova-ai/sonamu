@@ -1,3 +1,4 @@
+import type { FastifyMultipartBaseOptions } from "@fastify/multipart";
 import { getLogger } from "@logtape/logtape";
 import assert from "assert";
 import type { HTTPMethods } from "fastify";
@@ -60,9 +61,7 @@ export type StreamDecoratorOptions = {
   description?: string;
 };
 export type UploadDecoratorOptions = {
-  limits?: {
-    files?: number;
-  };
+  limits?: FastifyMultipartBaseOptions["limits"];
 };
 export const registeredApis: {
   /**
