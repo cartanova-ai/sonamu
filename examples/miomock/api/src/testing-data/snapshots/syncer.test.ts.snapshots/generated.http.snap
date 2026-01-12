@@ -342,18 +342,11 @@ Content-Type: application/json
 
 ###
 
-POST {{baseUrl}}/api/file/uploadMultiple
-Content-Type: application/json
-
-{}
-
-###
-
 POST {{baseUrl}}/api/file/inlineUpload
 Content-Type: application/json
 
 {
-  "uploadParams": {
+  "params": {
     "category": "CATEGORY"
   }
 }
