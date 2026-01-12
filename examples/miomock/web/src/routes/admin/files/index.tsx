@@ -115,12 +115,12 @@ function FileList({}: FileListProps) {
     refetch();
   });
 
-  const handleInlineUploadSubmit = inlineUploadForm.submit(async (values) => {
-    const { files, ...params } = values;
-    await FileService.inlineUpload(params, files);
+  const handleInlineUploadSubmit = async () => {
+    const { files, category } = inlineUploadForm.form;
+    await FileService.inlineUpload(category, files);
 
     refetch();
-  });
+  };
 
   // 리스트 필터
   const { listParams, register } = useListParams(FileListParams, {

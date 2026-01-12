@@ -53,7 +53,7 @@
   },
   {
     "path": "src/application/file/file.model.ts",
-    "checksum": "7653f468fb467572496095fd83163bf00cc75609"
+    "checksum": "7dca7163f452848a6ec286a10d20f14efbb1c9f9"
   },
   {
     "path": "src/application/file/file.types.ts",

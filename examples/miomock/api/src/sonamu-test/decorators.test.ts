@@ -1,4 +1,4 @@
-import { api, registeredApis, stream, transactional, upload } from "sonamu";
+import { api, registeredApis, stream, transactional } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeEach, describe, expect, vi } from "vitest";
 import z from "zod";
@@ -151,50 +151,6 @@ describe("decorators", () => {
           value: () => {},
         });
       }).toThrow("conflicting options");
-    });
-  });
-
-  describe("@upload", () => {
-    test("@upload 단독 사용 → 자동으로 완전한 API 등록", () => {
-      const target = createMockTarget("PracticeModel", "uploadFile");
-
-      upload({ mode: "single" })(target, "uploadFile", { value: () => {} });
-
-      expect(registeredApis).toHaveLength(1);
-      expect(registeredApis[0]?.modelName).toEqual("PracticeModel");
-      expect(registeredApis[0]?.methodName).toEqual("uploadFile");
-      expect(registeredApis[0]?.path).toEqual("/practice/uploadFile");
-      expect(registeredApis[0]?.options).toEqual({
-        httpMethod: "POST",
-        clients: ["axios-multipart", "tanstack-mutation-multipart"],
-      });
-      expect(registeredApis[0]?.uploadOptions).toEqual({ mode: "single" });
-    });
-
-    test("@upload multiple 모드", () => {
-      const target = createMockTarget("FileModel", "uploadMultiple");
-
-      upload({ mode: "multiple" })(target, "uploadMultiple", { value: () => {} });
-
-      expect(registeredApis).toHaveLength(1);
-      expect(registeredApis[0]?.path).toEqual("/file/uploadMultiple");
-      expect(registeredApis[0]?.uploadOptions).toEqual({ mode: "multiple" });
-    });
-
-    test("같은 메서드에 @upload 재실행 → existingApi 로직 검증", () => {
-      const target = createMockTarget("PracticeModel", "upload");
-
-      // 첫 등록
-      upload({ mode: "single" })(target, "upload", { value: () => {} });
-
-      expect(registeredApis).toHaveLength(1);
-      expect(registeredApis[0]?.uploadOptions).toEqual({ mode: "single" });
-
-      // 재실행 (Hot reload나 테스트 등의 이유로 같은 메서드에 데코레이터가 다시 실행됨)
-      upload({ mode: "multiple" })(target, "upload", { value: () => {} });
-
-      expect(registeredApis).toHaveLength(1); // 1개 (중복 등록 안됨)
-      expect(registeredApis[0]?.uploadOptions).toEqual({ mode: "multiple" }); // 옵션만 업데이트
     });
   });
 

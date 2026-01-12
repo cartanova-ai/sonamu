@@ -44,6 +44,7 @@ import {
   fetch,
   type ListResult,
   type SSEStreamOptions,
+  toFormData,
   useSSEStream,
 } from "./sonamu.shared";
 import { SyncFixtureListParams, SyncFixtureSaveParams } from "./sync-fixture/sync-fixture.types";
@@ -644,11 +645,13 @@ export namespace FileService {
     });
 
   export async function upload(
-    file: File,
+    files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ file: { name: string; url: string; mime_type: string } }> {
+  ): Promise<{ files: { name: string; url: string; mime_type: string }[] }> {
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((f) => {
+      formData.append("files", f);
+    });
 
     return fetch({
       method: "POST",
@@ -663,52 +666,6 @@ export namespace FileService {
 
   export const useUploadMutation = (
     options?: UseMutationOptions<
-      { file: { name: string; url: string; mime_type: string } },
-      Error,
-      { file: File }
-    > & {
-      onUploadProgress?: (e: AxiosProgressEvent) => void;
-    },
-  ) =>
-    useMutation({
-      mutationFn: async (params: { file: File }) => {
-        const { file } = params;
-        const formData = new FormData();
-        formData.append("file", file);
-        return fetch({
-          method: "POST",
-          url: `/api/file/upload`,
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: options?.onUploadProgress,
-          data: formData,
-        });
-      },
-      retry: false,
-      ...options,
-    });
-
-  export async function uploadMultiple(
-    files: File[],
-    onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ files: { name: string; url: string; mime_type: string }[] }> {
-    const formData = new FormData();
-    files.forEach((f) => {
-      formData.append("files", f);
-    });
-
-    return fetch({
-      method: "POST",
-      url: `/api/file/uploadMultiple`,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      onUploadProgress,
-      data: formData,
-    });
-  }
-
-  export const useUploadMultipleMutation = (
-    options?: UseMutationOptions<
       { files: { name: string; url: string; mime_type: string }[] },
       Error,
       { files: File[] }
@@ -717,26 +674,13 @@ export namespace FileService {
     },
   ) =>
     useMutation({
-      mutationFn: async (params: { files: File[] }) => {
-        const { files } = params;
-        const formData = new FormData();
-        files.forEach((f) => {
-          formData.append("files", f);
-        });
-        return fetch({
-          method: "POST",
-          url: `/api/file/uploadMultiple`,
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: options?.onUploadProgress,
-          data: formData,
-        });
-      },
+      mutationFn: (params: { files: File[] }) => upload(params.files),
       retry: false,
       ...options,
     });
 
   export async function inlineUpload(
-    uploadParams: { category: string },
+    params: { category: string },
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
   ): Promise<{ category: string; files: { name: string; url: string; mime_type: string }[] }> {
@@ -744,7 +688,7 @@ export namespace FileService {
     files.forEach((f) => {
       formData.append("files", f);
     });
-    formData.append("uploadParams", String(uploadParams));
+    toFormData(params, formData, "params");
     return fetch({
       method: "POST",
       url: `/api/file/inlineUpload`,
@@ -760,27 +704,13 @@ export namespace FileService {
     options?: UseMutationOptions<
       { category: string; files: { name: string; url: string; mime_type: string }[] },
       Error,
-      { files: File[]; uploadParams: { category: string } }
+      { files: File[]; params: { category: string } }
     > & {
       onUploadProgress?: (e: AxiosProgressEvent) => void;
     },
   ) =>
     useMutation({
-      mutationFn: async (params: { files: File[]; uploadParams: { category: string } }) => {
-        const { files, uploadParams } = params;
-        const formData = new FormData();
-        files.forEach((f) => {
-          formData.append("files", f);
-        });
-        formData.append("uploadParams", String(uploadParams));
-        return fetch({
-          method: "POST",
-          url: `/api/file/inlineUpload`,
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: options?.onUploadProgress,
-          data: formData,
-        });
-      },
+      mutationFn: async (params: { params: {category: string }, files: File[]}) => inlineUpload(params.params, params.files),
       retry: false,
       ...options,
     });

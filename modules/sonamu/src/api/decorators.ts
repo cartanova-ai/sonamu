@@ -17,8 +17,6 @@ import { UpsertBuilder } from "../database/upsert-builder";
 import { convertDomainToCategory } from "../logger/category";
 import type { ApiParam, ApiParamType } from "../types/types";
 import { BaseFrameClass } from "./base-frame";
-import type { UploadContext } from "./context";
-import { Sonamu } from "./sonamu";
 
 export interface GuardKeys {
   query: true;
@@ -62,7 +60,9 @@ export type StreamDecoratorOptions = {
   description?: string;
 };
 export type UploadDecoratorOptions = {
-  mode?: "single" | "multiple";
+  limits?: {
+    files?: number;
+  };
 };
 export const registeredApis: {
   /**
@@ -388,31 +388,7 @@ export function upload(options: UploadDecoratorOptions = {}) {
         );
       }
 
-      const { request } = Sonamu.getContext();
-      const uploadContext: UploadContext = {
-        file: undefined,
-        files: [],
-      };
-
-      const { UploadedFile } = await import("../storage/uploaded-file");
-      if (options.mode === "multiple") {
-        const rawFilesIterator = request.files();
-        for await (const rawFile of rawFilesIterator) {
-          if (rawFile) {
-            await rawFile.toBuffer();
-            uploadContext.files.push(new UploadedFile(rawFile));
-          }
-        }
-      } else {
-        const rawFile = await request.file();
-        if (rawFile) {
-          uploadContext.file = new UploadedFile(rawFile);
-        }
-      }
-
-      return Sonamu.uploadStorage.run({ uploadContext }, () => {
-        return originalMethod.apply(this, args);
-      });
+      return originalMethod.apply(this, args);
     };
 
     return descriptor;

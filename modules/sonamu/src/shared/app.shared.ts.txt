@@ -143,6 +143,26 @@ export async function fetch(options: AxiosRequestConfig) {
   }
 }
 
+export function toFormData(obj: Record<string, unknown>, formData = new FormData(), prefix = ''): FormData {
+  for (const [key, value] of Object.entries(obj)) {
+    const formKey = prefix ? `${prefix}[${key}]` : key;
+    
+    if (value instanceof File || value instanceof Blob) {
+      formData.append(formKey, value);
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        toFormData({ [index]: item }, formData, formKey);
+      });
+    } else if (value !== null && value !== undefined && typeof value === 'object') {
+      toFormData(value as Record<string, unknown>, formData, formKey);  // 재귀로 펼치기
+    } else if (value !== null && value !== undefined) {
+      formData.append(formKey, String(value));
+    }
+  }
+  
+  return formData;
+}
+
 export class SonamuError extends Error {
   isSonamuError: boolean;
 

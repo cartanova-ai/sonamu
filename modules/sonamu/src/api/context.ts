@@ -16,6 +16,8 @@ export type Context = {
   naiteStore: NaiteStore;
   /** 현재 요청의 locale (i18n 설정이 있을 때만 존재) */
   locale?: string;
+  // 파일 업로드
+  files?: UploadedFile[];
 } & AuthContext &
   ContextExtend;
 
@@ -25,9 +27,4 @@ export type AuthContext = {
     login: (user: PassportUser) => Promise<void>;
     logout: () => void;
   };
-};
-
-export type UploadContext = {
-  file?: UploadedFile;
-  files: UploadedFile[];
 };

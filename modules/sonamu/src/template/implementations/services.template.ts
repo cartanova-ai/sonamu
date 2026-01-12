@@ -122,16 +122,10 @@ export function ${methodNameStreamCamelized}(
 
         // axios-multipart 처리 (파일 업로드)
         if (clients.includes("axios-multipart")) {
-          const isMultiple = api.uploadOptions?.mode === "multiple";
-          const fileParamName = isMultiple ? "files" : "file";
-          const fileParamType = isMultiple ? "File[]" : "File";
-
-          const formDataAppend = isMultiple
-            ? `${fileParamName}.forEach(f => { formData.append("${fileParamName}", f); });`
-            : `formData.append("${fileParamName}", ${fileParamName});`;
+          const formDataAppend = `files.forEach(f => { formData.append("files", f); });`;
 
           const otherParamsAppend = paramsWithoutContext
-            .map((param) => `formData.append('${param.name}', String(${param.name}));`)
+            .map((param) => `toFormData(${param.name}, formData, '${param.name}');`)
             .join("\n    ");
 
           const paramsDefComma = paramsDef !== "" ? ", " : "";
@@ -139,7 +133,7 @@ export function ${methodNameStreamCamelized}(
             `
 export async function ${methodName}${typeParamsDef}(
   ${paramsDef}${paramsDefComma}
-  ${fileParamName}: ${fileParamType},
+  files: File[],
   onUploadProgress?: (pe: AxiosProgressEvent) => void
 ): Promise<${returnTypeDef}> {
   const formData = new FormData();
@@ -243,9 +237,6 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
         // 4. useMutation with multipart (tanstack-mutation-multipart)
         if (clients.includes("tanstack-mutation-multipart")) {
           const hookName = inflection.camelize(api.methodName);
-          const isMultiple = api.uploadOptions?.mode === "multiple";
-          const fileParamName = isMultiple ? "files" : "file";
-          const fileParamType = isMultiple ? "File[]" : "File";
 
           // 파일 외 다른 파라미터들
           const otherParamsAppend =
@@ -256,22 +247,20 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
               : "";
 
           // FormData append 로직 (단수/복수 처리)
-          const formDataAppendFile = isMultiple
-            ? `${fileParamName}.forEach(f => { formData.append('${fileParamName}', f); });`
-            : `formData.append('${fileParamName}', ${fileParamName});`;
+          const formDataAppendFile = `files.forEach(f => { formData.append('files', f); });`;
 
           // 파라미터 타입 정의
           const mutationParamType =
             paramsWithoutContext.length > 0
-              ? `{ ${fileParamName}: ${fileParamType}, ${paramsWithoutContext
+              ? `{ files: File[], ${paramsWithoutContext
                   .map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, [])}`)
                   .join(", ")} }`
-              : `{ ${fileParamName}: ${fileParamType} }`;
+              : `{ files: File[] }`;
 
           const mutationParamDestructure =
             paramsWithoutContext.length > 0
-              ? `{ ${fileParamName}, ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
-              : `{ ${fileParamName} }`;
+              ? `{ files, ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
+              : `{ files }`;
 
           const formDataAppendOthers = otherParamsAppend ? `\n${otherParamsAppend}` : "";
 
@@ -323,7 +312,7 @@ ${functions.join("\n\n")}
         `import { queryOptions, useQuery, useMutation, type UseMutationOptions } from '@tanstack/react-query';`,
         `import type { AxiosProgressEvent } from 'axios';`,
         `import qs from 'qs';`,
-        `import { type ListResult, fetch, type EventHandlers, type SSEStreamOptions, useSSEStream } from './sonamu.shared';`,
+        `import { type ListResult, fetch, type EventHandlers, type SSEStreamOptions, useSSEStream, toFormData } from './sonamu.shared';`,
       ],
     };
   }

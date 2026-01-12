@@ -134,38 +134,14 @@ class FileModelClass extends BaseModelClass<
     return ids.length;
   }
 
-  @upload()
+  @upload({ limits: { files: 10 } })
   async upload(): Promise<{
-    file: { name: string; url: string; mime_type: string };
-  }> {
-    const { file } = Sonamu.getUploadContext();
-
-    console.log("file", file);
-    if (file === undefined) {
-      throw new BadRequestException(SD("file.uploadFailed"));
-    }
-
-    const md5 = await file.md5();
-    const key = `${md5}.${file.extname}`;
-    const url = await file.saveToDisk(key);
-
-    return {
-      file: {
-        name: file.filename,
-        url,
-        mime_type: file.mimetype,
-      },
-    };
-  }
-
-  @upload({ mode: "multiple" })
-  async uploadMultiple(): Promise<{
     files: { name: string; url: string; mime_type: string }[];
   }> {
-    const { files: _files } = Sonamu.getUploadContext();
+    const { files: _files } = Sonamu.getContext();
 
     console.log("files", _files);
-    if (_files.length === 0) {
+    if (!_files || _files.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }
 
@@ -186,17 +162,17 @@ class FileModelClass extends BaseModelClass<
     };
   }
 
-  @upload({ mode: "multiple" })
-  async inlineUpload(uploadParams: { category: string }): Promise<{
+  @upload({ limits: { files: 5 } })
+  async inlineUpload(params: { category: string }): Promise<{
     category: string;
     files: { name: string; url: string; mime_type: string }[];
   }> {
-    const { category } = uploadParams;
-    const { files } = Sonamu.getUploadContext();
+    const { files } = Sonamu.getContext();
+    const { category } = params;
 
     console.log("files를 원하는 로직으로 처리해주세요", files);
 
-    if (files.length === 0) {
+    if (!files || files.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }
 
@@ -205,7 +181,7 @@ class FileModelClass extends BaseModelClass<
       files: await Promise.all(
         files.map(async (file) => ({
           name: file.filename,
-          url: await file.saveToDisk(`${category}/${file.filename}`),
+          url: await file.saveToDisk(`${category}/${await file.md5()}`),
           mime_type: file.mimetype,
         })),
       ),

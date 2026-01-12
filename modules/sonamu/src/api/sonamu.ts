@@ -8,7 +8,7 @@ import type { IncomingMessage, Server, ServerResponse } from "http";
 import os from "os";
 import path from "path";
 import type { ZodObject } from "zod";
-import { createMockSSEFactory, DB, isDaemonServer } from "..";
+import { BadRequestException, createMockSSEFactory, DB, isDaemonServer } from "..";
 import type { CacheConfig, CacheManager } from "../cache/types";
 import { applyCacheHeaders, CachePresets } from "../cache-control/cache-control";
 import type { CacheControlConfig, CacheControlRequest } from "../cache-control/types";
@@ -23,7 +23,7 @@ import type { SonamuFastifyConfig } from "../types/types";
 import { exists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import type { SonamuConfig, SonamuServerOptions, SonamuTaskOptions } from "./config";
-import type { AuthContext, Context, UploadContext } from "./context";
+import type { AuthContext, Context } from "./context";
 import type { ExtendedApi } from "./decorators";
 import { getSecrets, type SonamuSecrets } from "./secret";
 
@@ -33,14 +33,10 @@ class SonamuClass {
     context: Context;
   }> = new AsyncLocalStorage();
 
-  public uploadStorage: AsyncLocalStorage<{
-    uploadContext: UploadContext;
-  }> = new AsyncLocalStorage();
-
   public getContext(): Context {
     const store = this.asyncLocalStorage.getStore();
     if (store?.context) {
-      return store.context;
+      return store.context as Context;
     }
 
     if (process.env.NODE_ENV === "test") {
@@ -56,14 +52,6 @@ class SonamuClass {
     } else {
       throw new Error("Sonamu cannot find context");
     }
-  }
-
-  public getUploadContext(): UploadContext {
-    const store = this.uploadStorage.getStore();
-    if (store?.uploadContext) {
-      return store.uploadContext;
-    }
-    throw new Error("Sonamu cannot find upload context. Did you use @upload decorator?");
   }
 
   private _apiRootPath: AbsolutePath | null = null;
@@ -687,9 +675,38 @@ class SonamuClass {
       let reqBody: {
         [key: string]: unknown;
       };
+      // 파일 업로드 있는 경우 임시 데이터
+      const { UploadedFile } = await import("../storage/uploaded-file");
+      const uploaded: {
+        files: InstanceType<typeof UploadedFile>[];
+      } = {
+        files: [] as InstanceType<typeof UploadedFile>[],
+      };
+
       try {
+        const body = (request[which] ?? {}) as Record<string, unknown>;
+        if (api.uploadOptions) {
+          // 업로드 옵션이 있는 경우 파트로 분리하여 file 또는 field로 구분 처리
+          // file은 UploadedFile 인스턴스로 변환
+          // field는 body에 추가
+          const parts = request.parts();
+          for await (const part of parts) {
+            if (part.type === "file") {
+              uploaded.files.push(new UploadedFile(part));
+              if (
+                api.uploadOptions.limits?.files &&
+                uploaded.files.length >= api.uploadOptions.limits.files
+              ) {
+                throw new BadRequestException("File count limit exceeded");
+              }
+            } else if (part.type === "field") {
+              body[part.fieldname] = part.value;
+            }
+          }
+        }
+
         const { fastifyCaster } = await import("./caster");
-        reqBody = fastifyCaster(ReqType).parse(request[which] ?? {});
+        reqBody = fastifyCaster(ReqType).parse(body);
       } catch (e) {
         const { ZodError } = await import("zod");
         if (e instanceof ZodError) {
@@ -718,6 +735,11 @@ class SonamuClass {
       // Context 생성
       const context: Context = await this.createContext(config, request, reply);
 
+      // 업로드 옵션이 있는 경우 파일 데이터를 Context에 추가
+      if (api.uploadOptions) {
+        context.files = uploaded.files;
+      }
+
       // 모델 메소드 args 생성하여 호출
       const { ApiParamType } = await import("../types/types");
       const args = api.parameters.map((param) => {
@@ -728,6 +750,7 @@ class SonamuClass {
           return reqBody[param.name];
         }
       });
+
       return this.invokeModelMethod(api, args, context, reply);
     };
   }
