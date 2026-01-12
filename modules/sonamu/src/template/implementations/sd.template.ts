@@ -112,7 +112,11 @@ const dictionaries: Record<string, Partial<MergedDictionary>> = {
   ${defaultLocale}: { ...sonamuDict${this.capitalize(defaultLocale)}, ...entityLabels, ...${defaultLocale} },
   ${supportedLocales
     .filter((locale) => locale !== defaultLocale)
-    .map((locale) => `  ${locale}: { ...sonamuDict${this.capitalize(locale)}, ...${locale} },`)
+    .map((locale) =>
+      ["en", "ko"].includes(locale)
+        ? `  ${locale}: { ...sonamuDict${this.capitalize(locale)}, ...${locale} },`
+        : `  ${locale}: { ...${locale} },`,
+    )
     .join("\n")}
 };
 
