@@ -62,8 +62,15 @@ const CreateUserSchema = z.object({
 // TypeScript 타입 추론
 type CreateUserParams = z.infer<typeof CreateUserSchema>;
 
-class UserModel extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
@@ -84,7 +91,16 @@ class UserModel extends BaseModelClass {
 ### 검증 에러 처리
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     try {
@@ -257,7 +273,16 @@ const RegisterSchema = z.object({
 
 type RegisterParams = z.infer<typeof RegisterSchema>;
 
-class AuthModel extends BaseModelClass {
+class AuthModelClass extends BaseModelClass<
+  AuthSubsetKey,
+  AuthSubsetMapping,
+  typeof authSubsetQueries,
+  typeof authLoaderQueries
+> {
+  constructor() {
+    super("Auth", authSubsetQueries, authLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async register(params: RegisterParams): Promise<{ userId: number }> {
     const validated = RegisterSchema.parse(params);
@@ -298,7 +323,16 @@ const UserListSchema = PaginationSchema.extend({
 
 type UserListParams = z.infer<typeof UserListSchema>;
 
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
     users: User[];
@@ -364,7 +398,16 @@ const ReportSchema = z.object({
 
 type ReportParams = z.infer<typeof ReportSchema>;
 
-class ReportModel extends BaseModelClass {
+class ReportModelClass extends BaseModelClass<
+  ReportSubsetKey,
+  ReportSubsetMapping,
+  typeof reportSubsetQueries,
+  typeof reportLoaderQueries
+> {
+  constructor() {
+    super("Report", reportSubsetQueries, reportLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async generate(params: ReportParams): Promise<{ reportId: number }> {
     const validated = ReportSchema.parse(params);
@@ -527,7 +570,16 @@ const ComplexSchema = z
 ## safeParse (안전한 검증)
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async create(params: unknown): Promise<{ userId: number }> {
     // safeParse는 예외를 던지지 않음

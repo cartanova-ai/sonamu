@@ -37,9 +37,18 @@ Sonamu는 `@upload` 데코레이터를 통해 파일 업로드를 간편하게 �
 ```typescript
 import { BaseModelClass, api, upload } from "sonamu";
 import type { UploadedFile } from "sonamu";
+import type { FileSubsetKey, FileSubsetMapping } from "../sonamu.generated";
+import { fileLoaderQueries, fileSubsetQueries } from "../sonamu.generated.sso";
 
-class FileModel extends BaseModelClass {
-  modelName = "File";
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
+> {
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
   
   // 단일 파일 업로드
   @api({ httpMethod: "POST" })
@@ -91,7 +100,16 @@ class FileModel extends BaseModelClass {
 ### 다중 파일 업로드
 
 ```typescript
-class FileModel extends BaseModelClass {
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
+> {
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   @upload({ mode: "multiple" })
   async uploadMultiple(params: {
@@ -226,7 +244,16 @@ GCS_KEY_FILENAME=/path/to/service-account-key.json
 ### 특정 디스크에 저장
 
 ```typescript
-class FileModel extends BaseModelClass {
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
+> {
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   @upload({ mode: "single" })
   async uploadToS3(params: {
@@ -298,7 +325,16 @@ Sonamu의 `@upload` 데코레이터는 Fastify multipart를 자동으로 처리�
 ### 크기 및 타입 검증
 
 ```typescript
-class ImageModel extends BaseModelClass {
+class ImageModelClass extends BaseModelClass<
+  ImageSubsetKey,
+  ImageSubsetMapping,
+  typeof imageSubsetQueries,
+  typeof imageLoaderQueries
+> {
+  constructor() {
+    super("Image", imageSubsetQueries, imageLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   @upload({ mode: "single" })
   async uploadImage(params: {
@@ -357,7 +393,16 @@ class ImageModel extends BaseModelClass {
 ### 프로필 이미지 업로드
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   @upload({ mode: "single" })
   async uploadProfileImage(params: {
@@ -438,7 +483,16 @@ class UserModel extends BaseModelClass {
 ### 게시글 첨부파일
 
 ```typescript
-class PostModel extends BaseModelClass {
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   @upload({ mode: "multiple" })
   async createWithAttachments(params: {

@@ -11,9 +11,18 @@ API 메서드 내에서 `Sonamu.getContext()`를 호출하여 현재 요청의 C
 
 ```typescript
 import { BaseModelClass, api, Sonamu } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 
-class UserModel extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
@@ -51,7 +60,16 @@ class UserModel extends BaseModelClass {
 ### 1. 인증된 사용자 확인
 
 ```typescript
-class PostModel extends BaseModelClass {
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async create(params: PostSaveParams): Promise<{ postId: number }> {
     const context = Sonamu.getContext();
@@ -80,7 +98,16 @@ class PostModel extends BaseModelClass {
 ### 2. 권한 확인
 
 ```typescript
-class AdminModel extends BaseModelClass {
+class AdminModelClass extends BaseModelClass<
+  AdminSubsetKey,
+  AdminSubsetMapping,
+  typeof adminSubsetQueries,
+  typeof adminLoaderQueries
+> {
+  constructor() {
+    super("Admin", adminSubsetQueries, adminLoaderQueries);
+  }
+
   @api({ httpMethod: "DELETE" })
   async deleteUser(userId: number): Promise<void> {
     const context = Sonamu.getContext();
@@ -104,7 +131,16 @@ class AdminModel extends BaseModelClass {
 ### 3. 소유권 확인
 
 ```typescript
-class PostModel extends BaseModelClass {
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
   @api({ httpMethod: "PUT" })
   async update(
     postId: number,
@@ -146,7 +182,16 @@ class PostModel extends BaseModelClass {
 ### 4. Request 정보 접근
 
 ```typescript
-class AnalyticsModel extends BaseModelClass {
+class AnalyticsModelClass extends BaseModelClass<
+  AnalyticsSubsetKey,
+  AnalyticsSubsetMapping,
+  typeof analyticsSubsetQueries,
+  typeof analyticsLoaderQueries
+> {
+  constructor() {
+    super("Analytics", analyticsSubsetQueries, analyticsLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async trackEvent(params: EventParams): Promise<void> {
     const context = Sonamu.getContext();
@@ -169,7 +214,16 @@ class AnalyticsModel extends BaseModelClass {
 ### 5. Response 헤더 설정
 
 ```typescript
-class FileModel extends BaseModelClass {
+class FileModelClass extends BaseModelClass<
+  FileSubsetKey,
+  FileSubsetMapping,
+  typeof fileSubsetQueries,
+  typeof fileLoaderQueries
+> {
+  constructor() {
+    super("File", fileSubsetQueries, fileLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async download(fileId: number): Promise<Buffer> {
     const context = Sonamu.getContext();
@@ -234,7 +288,16 @@ class BaseModelClass {
 }
 
 // 사용
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     // 간단하게 권한 확인
@@ -290,7 +353,16 @@ class BaseModelClass {
 }
 
 // 사용
-class PostModel extends BaseModelClass {
+class PostModelClass extends BaseModelClass<
+  PostSubsetKey,
+  PostSubsetMapping,
+  typeof postSubsetQueries,
+  typeof postLoaderQueries
+> {
+  constructor() {
+    super("Post", postSubsetQueries, postLoaderQueries);
+  }
+
   @api({ httpMethod: "DELETE" })
   async remove(postId: number): Promise<void> {
     // 소유권 자동 확인
@@ -307,7 +379,16 @@ class PostModel extends BaseModelClass {
 ### Model 메서드에서
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     const context = Sonamu.getContext();
@@ -365,7 +446,16 @@ class AnalyticsFrame extends BaseFrameClass {
 ### 비동기 작업에서
 
 ```typescript
-class NotificationModel extends BaseModelClass {
+class NotificationModelClass extends BaseModelClass<
+  NotificationSubsetKey,
+  NotificationSubsetMapping,
+  typeof notificationSubsetQueries,
+  typeof notificationLoaderQueries
+> {
+  constructor() {
+    super("Notification", notificationSubsetQueries, notificationLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async sendBulk(params: {
     userIds: number[];
@@ -426,7 +516,16 @@ class BaseModelClass {
   }
 }
 
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "DELETE" })
   async remove(userId: number): Promise<void> {
     this.requireAdmin();
@@ -449,7 +548,16 @@ class UserModel extends BaseModelClass {
 ### 요청 속도 제한 체크
 
 ```typescript
-class ApiModel extends BaseModelClass {
+class ApiModelClass extends BaseModelClass<
+  ApiSubsetKey,
+  ApiSubsetMapping,
+  typeof apiSubsetQueries,
+  typeof apiLoaderQueries
+> {
+  constructor() {
+    super("Api", apiSubsetQueries, apiLoaderQueries);
+  }
+
   private async checkRateLimit(): Promise<void> {
     const context = Sonamu.getContext();
     const rdb = this.getPuri("r");
@@ -492,7 +600,16 @@ class ApiModel extends BaseModelClass {
 ### 다국어 지원
 
 ```typescript
-class I18nModel extends BaseModelClass {
+class I18nModelClass extends BaseModelClass<
+  I18nSubsetKey,
+  I18nSubsetMapping,
+  typeof i18nSubsetQueries,
+  typeof i18nLoaderQueries
+> {
+  constructor() {
+    super("I18n", i18nSubsetQueries, i18nLoaderQueries);
+  }
+
   private getLanguage(): string {
     const context = Sonamu.getContext();
     
@@ -540,11 +657,16 @@ class I18nModel extends BaseModelClass {
 
 ```typescript
 // ❌ 잘못됨: 생성자에서 호출
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
   private currentUser?: ContextUser;
   
   constructor() {
-    super();
+    super("User", userSubsetQueries, userLoaderQueries);
     // 생성자에서는 Context 없음
     const context = Sonamu.getContext(); // ← 에러
     this.currentUser = context.user;
@@ -552,13 +674,23 @@ class UserModel extends BaseModelClass {
 }
 
 // ❌ 잘못됨: 클래스 필드에서 호출
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
   // 클래스 필드 초기화 시점에는 Context 없음
   private context = Sonamu.getContext(); // ← 에러
 }
 
 // ❌ 잘못됨: API 메서드 밖에서 호출
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
   private getContext() {
     // private 메서드는 가능하지만,
     // API 요청 컨텍스트 밖에서 호출하면 에러
@@ -567,7 +699,16 @@ class UserModel extends BaseModelClass {
 }
 
 // ✅ 올바름: API 메서드 내에서 호출
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async getCurrentUser(): Promise<User> {
     const context = Sonamu.getContext(); // ← 정상

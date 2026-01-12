@@ -36,8 +36,15 @@ Frame은 데이터베이스 Entity와 연결되지 않은 독립적인 API 엔�
 
 ```typescript
 // Entity 기반 API
-class UserModel extends BaseModelClass {
-  modelName = "User"; // ← Entity와 연결
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries); // ← Entity와 연결
+  }
   
   @api({ httpMethod: "GET" })
   async list(): Promise<User[]> {

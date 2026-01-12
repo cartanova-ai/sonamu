@@ -36,9 +36,18 @@ description: "메서드를 API 엔드포인트로 변환하기"
 
 ```typescript
 import { BaseModelClass, api } from "sonamu";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 
-class UserModel extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
@@ -56,6 +65,8 @@ class UserModel extends BaseModelClass {
     return user;
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 **생성되는 엔드포인트**:
@@ -66,8 +77,15 @@ class UserModel extends BaseModelClass {
 ### HTTP 메서드 지정
 
 ```typescript
-class UserModel extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   // GET 요청
   @api({ httpMethod: "GET" })
@@ -102,6 +120,8 @@ class UserModel extends BaseModelClass {
     await wdb.table("users").where("id", id).delete();
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ## API 라우팅 규칙
@@ -109,8 +129,15 @@ class UserModel extends BaseModelClass {
 ### URL 생성 패턴
 
 ```typescript
-class UserModel extends BaseModelClass {
-  modelName = "User"; // ← 모델명이 URL에 사용됨
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries); // ← 모델명이 URL에 사용됨
+  }
   
   @api({ httpMethod: "GET" })
   async getProfile(userId: number) {
@@ -124,6 +151,8 @@ class UserModel extends BaseModelClass {
     // ...
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ```mermaid
@@ -155,7 +184,16 @@ flowchart LR
 ### 단일 파라미터
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   // 숫자 파라미터
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
@@ -177,6 +215,8 @@ class UserModel extends BaseModelClass {
     // ...
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ### 복합 파라미터 (객체)
@@ -189,7 +229,16 @@ interface UserListParams {
   role?: UserRole;
 }
 
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
     users: User[];
@@ -227,7 +276,16 @@ class UserModel extends BaseModelClass {
 ### 여러 파라미터
 
 ```typescript
-class OrderModel extends BaseModelClass {
+class OrderModelClass extends BaseModelClass<
+  OrderSubsetKey,
+  OrderSubsetMapping,
+  typeof orderSubsetQueries,
+  typeof orderLoaderQueries
+> {
+  constructor() {
+    super("Order", orderSubsetQueries, orderLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async createOrder(
     userId: number,
@@ -267,7 +325,16 @@ class OrderModel extends BaseModelClass {
 ### 기본 타입
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   // 객체 반환
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
@@ -301,7 +368,16 @@ class UserModel extends BaseModelClass {
 ### 구조화된 응답
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async list(params: UserListParams): Promise<{
     data: User[];
@@ -343,7 +419,16 @@ class UserModel extends BaseModelClass {
 ### @api + @transactional
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   // 순서는 상관없음
   @api({ httpMethod: "POST" })
   @transactional()
@@ -398,7 +483,16 @@ class UserModel extends BaseModelClass {
 ### 자동 에러 변환
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
     const rdb = this.getPuri("r");
@@ -458,8 +552,15 @@ interface UserListParams {
   search?: string;
 }
 
-class UserModel extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   // Create
   @api({ httpMethod: "POST" })
@@ -549,8 +650,15 @@ class UserModel extends BaseModelClass {
 ### 복잡한 비즈니스 로직
 
 ```typescript
-class OrderModel extends BaseModelClass {
-  modelName = "Order";
+class OrderModelClass extends BaseModelClass<
+  OrderSubsetKey,
+  OrderSubsetMapping,
+  typeof orderSubsetQueries,
+  typeof orderLoaderQueries
+> {
+  constructor() {
+    super("Order", orderSubsetQueries, orderLoaderQueries);
+  }
   
   @api({ httpMethod: "POST" })
   @transactional()
@@ -635,7 +743,16 @@ interface CreateUserParams {
   role: "admin" | "normal";
 }
 
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async create(params: CreateUserParams): Promise<{ userId: number }> {
     // TypeScript가 params 타입을 검증
@@ -671,7 +788,16 @@ class UserModel extends BaseModelClass {
 ### 반환 타입 명시
 
 ```typescript
-class UserModel extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   // 반환 타입을 명시하면 타입 안전성 보장
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<{
@@ -717,24 +843,58 @@ class UserModel extends BaseModelClass {
 ### 흔한 실수
 
 ```typescript
-class UserModel extends BaseModelClass {
-  // ❌ 잘못됨: modelName 없음
-  // modelName = "User"; // ← 필수!
-  
-  // ❌ 잘못됨: async 아님
+// ❌ 잘못됨: constructor와 super() 호출 없음
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async getUser(id: number): Promise<User> {
+    // ...
+  }
+}
+
+// ❌ 잘못됨: async 아님
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "GET" })
   getUser(id: number): User {
     // ...
   }
-  
-  // ❌ 잘못됨: 타입 미지정
+}
+
+// ❌ 잘못됨: 타입 미지정
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   @api({ httpMethod: "POST" })
   async create(params): Promise<any> {
     // params와 반환 타입이 any
   }
-  
-  // ✅ 올바름
-  modelName = "User";
+}
+
+// ✅ 올바름
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   @api({ httpMethod: "GET" })
   async getUser(id: number): Promise<User> {
@@ -746,6 +906,8 @@ class UserModel extends BaseModelClass {
     // ...
   }
 }
+
+export const UserModel = new UserModelClass();
 ```
 
 ## 다음 단계

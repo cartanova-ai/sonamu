@@ -48,11 +48,20 @@ import { FileTree, FileItem } from "../../../snippets/FileTree.jsx";
 import { BaseModelClass } from "sonamu";
 import type { InferSelectModel } from "sonamu";
 import { UserEntity } from "../entities/User.entity";
+import type { UserSubsetKey, UserSubsetMapping } from "../sonamu.generated";
+import { userLoaderQueries, userSubsetQueries } from "../sonamu.generated.sso";
 
 export type User = InferSelectModel<typeof UserEntity>;
 
-class UserModelClass extends BaseModelClass {
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   // TODO: Model 메서드 추가
 }
@@ -127,9 +136,15 @@ pnpm sonamu ui
 생성된 Model 클래스는 다음 구조를 가집니다:
 
 ```typescript
-class UserModelClass extends BaseModelClass {
-  // Model 이름
-  modelName = "User";
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
   
   // Entity 타입
   entity = UserEntity;
@@ -219,8 +234,15 @@ pnpm scaffold model
 ### 4. 비즈니스 로직 추가
 
 ```typescript title="src/models/Product.model.ts"
-class ProductModelClass extends BaseModelClass {
-  modelName = "Product";
+class ProductModelClass extends BaseModelClass<
+  ProductSubsetKey,
+  ProductSubsetMapping,
+  typeof productSubsetQueries,
+  typeof productLoaderQueries
+> {
+  constructor() {
+    super("Product", productSubsetQueries, productLoaderQueries);
+  }
   
   // 카테고리별 상품 조회
   async findByCategory(categoryId: number) {
@@ -295,7 +317,16 @@ class ProductModelClass extends BaseModelClass {
 생성된 Model에 비즈니스 로직을 추가합니다:
 
 ```typescript
-class UserModelClass extends BaseModelClass {
+class UserModelClass extends BaseModelClass<
+  UserSubsetKey,
+  UserSubsetMapping,
+  typeof userSubsetQueries,
+  typeof userLoaderQueries
+> {
+  constructor() {
+    super("User", userSubsetQueries, userLoaderQueries);
+  }
+
   // 이메일로 사용자 찾기
   async findByEmail(email: string): Promise<User | null> {
     return this.getPuri("r")
