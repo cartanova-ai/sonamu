@@ -117,7 +117,7 @@ function FileList({}: FileListProps) {
 
   const handleInlineUploadSubmit = async () => {
     const { files, category } = inlineUploadForm.form;
-    await FileService.inlineUpload(category, files);
+    await FileService.inlineUpload({ category }, files);
 
     refetch();
   };
