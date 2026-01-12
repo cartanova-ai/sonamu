@@ -2,10 +2,6 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Sonamu",
-  "logo": {
-    "dark": "/logo/pinetree.png",
-    "light": "/logo/pinetree.png"
-  },
   "favicon": "/logo/pinetree.png",
   "colors": {
     "primary": "#10b981",
