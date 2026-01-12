@@ -90,6 +90,7 @@ type DecoratorTarget = { constructor: { name: string } };
 const DECORATOR_TYPES = {
   API: Symbol("api"),
   STREAM: Symbol("stream"),
+  UPLOAD: Symbol("upload"),
 } as const;
 
 function checkSingleDecorator(target: DecoratorTarget, propertyKey: string, decoratorType: symbol) {
@@ -338,6 +339,9 @@ export function upload(options: UploadDecoratorOptions = {}) {
       `modelName is required on @upload decorator on ${target.constructor.name}.${propertyKey}`,
     );
     const methodName = propertyKey;
+
+    // 메서드에 걸린 데코레이터 중복 체크
+    checkSingleDecorator(target, propertyKey, DECORATOR_TYPES.UPLOAD);
 
     const defaultPath = `/${inflection.camelize(
       modelName.replace(/Model$/, "").replace(/Frame$/, ""),
