@@ -191,11 +191,19 @@ export function defaultCatch(e: any) {
 /*
   Isomorphic Types
 */
-export type ListResult<LP extends { queryMode?: SonamuQueryMode }, T> = LP["queryMode"] extends "list"
-  ? { rows: T[] }
+// semanticQuery가 있으면 similarity를 추가하는 조건부 타입
+type WithSimilarity<LP, T> = LP extends { semanticQuery: Record<string, unknown> }
+  ? T & { similarity: number }
+  : T;
+
+export type ListResult<
+  LP extends { queryMode?: SonamuQueryMode },
+  T,
+> = LP["queryMode"] extends "list"
+  ? { rows: WithSimilarity<LP, T>[] }
   : LP["queryMode"] extends "count"
     ? { total: number }
-    : { rows: T[]; total: number };
+    : { rows: WithSimilarity<LP, T>[]; total: number };
 
 export const SonamuQueryMode = z.enum(["both", "list", "count"]);
 export type SonamuQueryMode = z.infer<typeof SonamuQueryMode>;
