@@ -37,7 +37,7 @@
     "zx": "^8.8.5",
     "ts-node": "^10.9.2"
   },
-  "packageManager": "pnpm@10.26.2",
+  "packageManager": "pnpm@10.28.0",
   "dependencies": {
     "chalk": "catalog:",
     "ora": "^8.0.1",

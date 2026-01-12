@@ -22,7 +22,7 @@
     "verify:clean": "tsx scripts/verify.ts clean",
     "verify:fast": "tsx scripts/verify.ts fast"
   },
-  "packageManager": "pnpm@10.26.2",
+  "packageManager": "pnpm@10.28.0",
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@types/node": "catalog:",
