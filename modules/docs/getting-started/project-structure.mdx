@@ -17,7 +17,9 @@ import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="📸 필요: VS Code에서 열린 Sonamu 프로젝트 전체 디렉토리 구조 (Explorer 사이드바)"></Frame>
+<Frame caption="VS Code에서 열린 Sonamu 프로젝트 전체 디렉토리 구조">
+  <img src="/images/projectStructure1.png" alt="프로젝트 전체 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
 
 ## API 디렉토리 (백엔드)
 
@@ -37,7 +39,9 @@ import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="📸 필요: api 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
+<Frame caption="api 디렉토리의 실제 파일 구조">
+  <img src="/images/projectStructure2.png" alt="api 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
 
 <Accordion title="주요 파일 설명">
 
@@ -97,7 +101,22 @@ import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="📸 필요: api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)"></Frame>
+<Frame caption="api/src 디렉토리 구조 (application 폴더가 펼쳐진 상태)">
+  <img src="/images/projectStructure3.png" alt="api/src 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
+
+<Note>
+**엔티티 파일 생성 과정**
+
+`application/{entity}/` 폴더 내의 파일들은 Sonamu UI를 통해 엔티티를 생성하고 스캐폴딩해야 생성됩니다:
+
+- **{entity}.entity.json**: Sonamu UI에서 엔티티 정의 시 자동 생성
+- **{entity}.model.ts**: `pnpm scaffold model` 또는 Sonamu UI의 Scaffolding 탭에서 생성
+- **{entity}.types.ts**: 엔티티 저장 시 자동 생성
+- **{entity}.model.test.ts**: `pnpm scaffold model_test` 또는 Sonamu UI의 Scaffolding 탭에서 생성 (선택사항)
+
+처음 프로젝트를 생성했을 때는 `application/` 폴더가 비어 있습니다. 첫 번째 엔티티를 생성하면 해당 폴더가 만들어집니다.
+</Note>
 
 <Accordion title="주요 디렉토리 설명">
 
@@ -219,7 +238,9 @@ import { FileTree, FileItem } from "../../snippets/FileTree.jsx";
   </FileItem>
 </FileTree>
 
-<Frame caption="📸 필요: web 디렉토리의 실제 파일 구조 (VS Code Explorer)"></Frame>
+<Frame caption="web 디렉토리의 실제 파일 구조">
+  <img src="/images/projectStructure4.png" alt="web 디렉토리 구조" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
 
 <Accordion title="주요 파일 설명">
 
@@ -308,7 +329,12 @@ User 엔티티를 생성하면 다음과 같은 구조가 만들어집니다:
   </FileItem>
 </FileTree>
 
-<Frame caption="📸 필요: User 엔티티 생성 후 api/src/application/user 폴더의 실제 파일 구조"></Frame>
+<Frame caption="User 엔티티 생성 후 api/src/application/user 폴더의 실제 파일 구조">
+  <div className="grid grid-cols-2 gap-4">
+    <img src="/images/projectStructure5.png" alt="user 폴더 구조 1" style={{borderRadius: '0.75rem'}} />
+    <img src="/images/projectStructure6.png" alt="user 폴더 구조 2" style={{borderRadius: '0.75rem'}} />
+  </div>
+</Frame>
 
 ### 각 파일의 역할
 
@@ -386,7 +412,9 @@ export class UserService {
 
 </CodeGroup>
 
-<Frame caption="📸 필요: VS Code에서 user.entity.json, user.model.ts, user.types.ts 파일을 나란히 열어 놓은 화면 (split view)"></Frame>
+<Frame caption="VS Code에서 user.entity.json, user.model.ts, user.types.ts 파일을 나란히 열어 놓은 화면 (split view)">
+  <img src="/images/projectStructure7.png" alt="VS Code split view" style={{width: '100%', borderRadius: '0.75rem'}} />
+</Frame>
 
 <Note>
   **자동 생성 vs 직접 작성** - `.entity.json`: Sonamu UI에서 작성 - `.model.ts`:

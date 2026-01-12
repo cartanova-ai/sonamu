@@ -29,7 +29,16 @@ pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 �
 pnpm create sonamu
 ```
 
-<Frame caption="🎬 필요: pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정 (영상 또는 연속 스크린샷)">
+<Frame caption="pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정">
+  <video 
+    autoPlay 
+    muted 
+    loop 
+    playsInline 
+    controls 
+    className="w-full rounded-xl" 
+    src="/images/installation2.mp4"
+  ></video>
 </Frame>
 
 대화형 프롬프트가 나타나면 프로젝트 정보를 입력합니다:
@@ -70,14 +79,16 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 </Step>
 </Steps>
 
-<Frame caption="📸 필요: 프로젝트 생성 완료 메시지 및 생성된 디렉토리 구조 화면">
+<Frame caption="프로젝트 생성 완료 메시지 및 생성된 디렉토리 구조">
+  <img src="/images/installation3.png" alt="프로젝트 생성 완료" />
 </Frame>
 
 ## 생성된 프로젝트 구조
 
 `create-sonamu`는 다음과 같은 모노레포 구조를 생성합니다:
 
-<Frame caption="📸 필요: VS Code에서 열린 프로젝트의 실제 디렉토리 트리 구조 (Explorer 사이드바)">
+<Frame caption="VS Code에서 열린 프로젝트의 디렉토리 트리 구조">
+  <img src="/images/installation4.png" alt="VS Code Explorer 사이드바" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 
 <Tree>
@@ -122,17 +133,9 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 
 생성된 API 서버의 진입점은 다음과 같습니다:
 
-<Frame caption="📸 필요: VS Code에서 열린 api/src/index.ts 파일 전체 화면">
+<Frame caption="VS Code에서 열린 api/src/index.ts 파일">
+  <img src="/images/installation5.png" alt="api/src/index.ts 파일" style={{maxWidth: '800px', width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
-
-```typescript title="api/src/index.ts"
-import { Sonamu } from "sonamu";
-
-async function bootstrap() {
-  await Sonamu.createServer();
-}
-bootstrap();
-```
 
 ### Sonamu 설정
 
