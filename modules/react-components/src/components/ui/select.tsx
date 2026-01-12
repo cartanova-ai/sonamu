@@ -4,7 +4,7 @@ import CheckIcon from "~icons/lucide/check";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 import ChevronUpIcon from "~icons/lucide/chevron-up";
 import XCircleIcon from "~icons/lucide/x-circle";
-import type { Override } from "../../lib/helpers";
+import type { Override } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
 type SelectProps = Override<

@@ -17,22 +17,6 @@ export function cn(...inputs: ClassValue[]) {
  * 2. 생성된 URL은 `blob:http://...` 형태로, 브라우저 메모리를 직접 참조
  * 3. 컴포넌트 언마운트나 파일 변경 시 cleanup 함수가 `URL.revokeObjectURL()`로 메모리 해제
  *
- * **최적화 기법**:
- * - `signature`: File 객체의 참조가 아닌 내용(name, size, lastModified)으로 비교
- * - 동일한 파일이면 불필요한 URL 재생성을 방지하여 메모리 누수 방지
- * - File 객체는 매번 새로 생성될 수 있지만, 내용이 같으면 기존 URL 재사용
- *
- * **사용 예시**:
- * ```tsx
- * const [pendingFiles, setPendingFiles] = useState<File[]>([]);
- * const previewUrls = useObjectUrls(pendingFiles);
- *
- * // previewUrls를 img src로 사용
- * {previewUrls.map((url, i) => (
- *   <img key={url} src={url} alt={`Preview ${i}`} />
- * ))}
- * ```
- *
  * @param files - 미리보기할 File 객체 배열
  * @returns 생성된 Object URL 문자열 배열
  */
