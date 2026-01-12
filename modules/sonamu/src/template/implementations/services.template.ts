@@ -238,31 +238,27 @@ export const use${hookName}Mutation = ${typeParamsDef}() => useMutation({
         if (clients.includes("tanstack-mutation-multipart")) {
           const hookName = inflection.camelize(api.methodName);
 
-          // 파일 외 다른 파라미터들
-          const otherParamsAppend =
+          // 파라미터 타입 정의: paramsDef에서 타입만 추출
+          // paramsDef 예: "params: { category: string }" → "{ category: string }"
+          const paramsTypeDef =
             paramsWithoutContext.length > 0
-              ? paramsWithoutContext
-                  .map((param) => `    formData.append('${param.name}', String(${param.name}));`)
-                  .join("\n")
+              ? paramsDef
+                  .split(":")
+                  .slice(1)
+                  .join(":")
+                  .trim() // "params: { category: string }" → "{ category: string }"
               : "";
 
-          // FormData append 로직 (단수/복수 처리)
-          const formDataAppendFile = `files.forEach(f => { formData.append('files', f); });`;
-
-          // 파라미터 타입 정의
           const mutationParamType =
             paramsWithoutContext.length > 0
-              ? `{ files: File[], ${paramsWithoutContext
-                  .map((p) => `${p.name}: ${apiParamTypeToTsType(p.type, [])}`)
-                  .join(", ")} }`
+              ? `{ params: ${paramsTypeDef}, files: File[] }`
               : `{ files: File[] }`;
 
-          const mutationParamDestructure =
+          // mutationFn 호출 파라미터
+          const mutationFnCall =
             paramsWithoutContext.length > 0
-              ? `{ files, ${paramsWithoutContext.map((p) => p.name).join(", ")} }`
-              : `{ files }`;
-
-          const formDataAppendOthers = otherParamsAppend ? `\n${otherParamsAppend}` : "";
+              ? `${methodName}(params.params, params.files)`
+              : `${methodName}(params.files)`;
 
           functions.push(
             `
@@ -271,19 +267,7 @@ export const use${hookName}Mutation = ${typeParamsDef}(
     onUploadProgress?: (e: AxiosProgressEvent) => void;
   }
 ) => useMutation({
-  mutationFn: async (params: ${mutationParamType}) => {
-    const ${mutationParamDestructure} = params;
-    const formData = new FormData();
-    ${formDataAppendFile}${formDataAppendOthers}
-    return fetch({
-      method: 'POST',
-      url: \`${apiBaseUrl}\`,
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: options?.onUploadProgress,
-      data: formData,
-      ${api.options.timeout ? `signal: AbortSignal.timeout(${api.options.timeout}),` : ""}
-    });
-  },
+  mutationFn: (params: ${mutationParamType}) => ${mutationFnCall},
   retry: false,
   ...options,
 });

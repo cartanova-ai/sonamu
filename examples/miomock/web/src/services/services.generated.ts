@@ -704,13 +704,14 @@ export namespace FileService {
     options?: UseMutationOptions<
       { category: string; files: { name: string; url: string; mime_type: string }[] },
       Error,
-      { files: File[]; params: { category: string } }
+      { params: { category: string }; files: File[] }
     > & {
       onUploadProgress?: (e: AxiosProgressEvent) => void;
     },
   ) =>
     useMutation({
-      mutationFn: async (params: { params: {category: string }, files: File[]}) => inlineUpload(params.params, params.files),
+      mutationFn: (params: { params: { category: string }; files: File[] }) =>
+        inlineUpload(params.params, params.files),
       retry: false,
       ...options,
     });
