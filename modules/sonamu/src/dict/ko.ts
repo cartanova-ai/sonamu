@@ -21,8 +21,14 @@ export default {
   "common.edit": "수정",
   "common.create": "생성",
   "common.search": "검색",
+  "common.searchPlaceholder": "검색...",
+  "common.all": "전체",
   "common.confirm": "확인",
   "common.close": "닫기",
+  "common.backToList": "목록으로",
+
+  // 폼
+  "form.createdAt": "생성일시",
 
   // 확인 메시지
   "confirm.delete": "정말 삭제하시겠습니까?",
@@ -41,6 +47,11 @@ export default {
 
   // Entity 페이지 (템플릿 함수)
   "entity.list": (name: string) => `${name} 목록`,
+  "entity.listManage": (name: string) => `${name} 목록 관리`,
   "entity.create": (name: string) => `${name} 생성`,
   "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
+
+  // 에러 메시지 (템플릿 함수)
+  "error.entityNotFound": (name: string, id: number) => `존재하지 않는 ${name} ID ${id}`,
+  "error.unknownSearchField": (field: string) => `구현되지 않은 검색 필드 ${field}`,
 } as const;

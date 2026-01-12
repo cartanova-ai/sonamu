@@ -21,8 +21,14 @@ export default {
   "common.edit": "Edit",
   "common.create": "Create",
   "common.search": "Search",
+  "common.searchPlaceholder": "Search...",
+  "common.all": "All",
   "common.confirm": "Confirm",
   "common.close": "Close",
+  "common.backToList": "Back To List",
+
+  // Form
+  "form.createdAt": "Created At",
 
   // Confirmation messages
   "confirm.delete": "Are you sure you want to delete?",
@@ -41,6 +47,11 @@ export default {
 
   // Entity pages (template functions)
   "entity.list": (name: string) => `${name} List`,
+  "entity.listManage": (name: string) => `${name} List Management`,
   "entity.create": (name: string) => `Create ${name}`,
   "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
+
+  // Error messages (template functions)
+  "error.entityNotFound": (name: string, id: number) => `${name} ID ${id} not found`,
+  "error.unknownSearchField": (field: string) => `Unknown search field: ${field}`,
 } as const;

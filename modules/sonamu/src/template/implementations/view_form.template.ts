@@ -1,8 +1,10 @@
 import inflection from "inflection";
 import { unique } from "radashi";
 import { z } from "zod";
+import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
+import { ensureDictKeys } from "../../utils/dict-utils";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
@@ -49,15 +51,22 @@ export class Template__view_form extends Template {
     }
   }
 
-  renderColumn(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
+  renderColumn(
+    entityId: string,
+    col: RenderingNode,
+    names: EntityNamesRecord,
+    useI18n: boolean = false,
+  ): string {
     const regExpr = `{...register("${col.name}")}`;
+    // i18n 적용 시 SD 사용, 아니면 하드코딩 문자열
+    const placeholder = useI18n ? `{SD("entity.${entityId}.${col.name}")}` : `"${col.label}"`;
 
     switch (col.renderType) {
       case "string-plain":
         if (col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) <= 256) {
-          return `<Input className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+          return `<Input className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         } else {
-          return `<Textarea className="text-xs bg-white" rows={4} placeholder="${col.label}" ${regExpr} />`;
+          return `<Textarea className="text-xs bg-white" rows={4} placeholder=${placeholder} ${regExpr} />`;
         }
       case "datetime":
         return `<DateInput
@@ -67,7 +76,7 @@ export class Template__view_form extends Template {
       case "number-id":
         return `<input type="hidden" ${regExpr} />`;
       case "number-plain":
-        return `<Input type="number" className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+        return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
       case "boolean":
         return `<Switch ${regExpr} />`;
       case "string-image":
@@ -88,7 +97,7 @@ export class Template__view_form extends Template {
                       return uploadedFile.url;
                     }}
                     previewSize="md"
-                    placeholder="${col.label}"
+                    placeholder=${placeholder}
                   />`;
       case "enums":
         try {
@@ -111,7 +120,7 @@ export class Template__view_form extends Template {
             col.optional || col.nullable ? "clearable" : ""
           } className="h-8 text-xs" />`;
         } catch {
-          return `<Input type="number" className="h-8 text-xs bg-white" placeholder="${col.label}" ${regExpr} />`;
+          return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
         }
       case "array":
       case "object":
@@ -159,6 +168,15 @@ export class Template__view_form extends Template {
   async render({ entityId }: TemplateOptions["view_form"]) {
     const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
+
+    // i18n 설정 확인
+    const useI18n = !!Sonamu.config.i18n;
+    if (useI18n) {
+      await ensureDictKeys(
+        ["entity.create", "entity.edit", "common.backToList", "form.createdAt", "common.save"],
+        "web",
+      );
+    }
 
     // SaveParams 타입을 로드하여 saveParamsNode 생성
     const { loadTypes } = await import("../../syncer/module-loader");
@@ -294,6 +312,7 @@ ${unique(
       return this.renderColumnImport(entityId, col);
     }),
 ).join("\n")}
+${useI18n ? `import { SD } from "@/i18n/sd.generated";` : ""}
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
@@ -408,7 +427,7 @@ ${(() => {
   };
 
   const PAGE = {
-    title: \`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\`,
+    title: ${useI18n ? `id ? SD("entity.edit")(SD("entity.${entityId}"), id) : SD("entity.create")(SD("entity.${entityId}"))` : `\`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\``},
   };
 
   return (
@@ -427,7 +446,7 @@ ${(() => {
                 onClick={() => router.navigate({ to: "/admin/${names.fsPlural}" })}
                 icon={<ArrowLeftIcon />}
               >
-                Back To List
+                ${useI18n ? `{SD("common.backToList")}` : "Back To List"}
               </Button>
             )}
           </div>
@@ -455,10 +474,11 @@ ${columns
       }
       return col.label;
     })();
+    const labelExpr = useI18n ? `{SD("entity.${entityId}.${col.name}")}` : label;
     return `                {/* ${label} */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">${label}</label>
-                  ${this.renderColumn(entityId, col, names)}
+                  <label className="block text-xs mb-1 text-gray-600">${labelExpr}</label>
+                  ${this.renderColumn(entityId, col, names, useI18n)}
                 </div>`;
   })
   .join("\n\n")}
@@ -467,7 +487,7 @@ ${columns
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">Created At:</label>
+                      <label className="mr-2 text-xs text-gray-600">${useI18n ? `{SD("form.createdAt")}` : "Created At"}:</label>
                       <span className="text-xs text-gray-600">
                         {String(form.created_at)}
                       </span>
@@ -477,7 +497,7 @@ ${columns
                     onClick={handleSubmit}
                     icon={<SaveIcon />}
                   >
-                    Save
+                    ${useI18n ? `{SD("common.save")}` : "Save"}
                   </Button>
                 </div>
               </div>
