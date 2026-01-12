@@ -27,7 +27,7 @@ function App({ children }: AppProps) {
     <div className="h-screen">
       <div className="flex h-screen md:flex-row flex-col">
         {!isLoginPage && <Sidebar />}
-        <div className="flex-1 p-8 md:p-4 bg-white overflow-auto">
+        <div className="flex-1 p-8 md:p-4 bg-white">
           <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
         </div>
       </div>

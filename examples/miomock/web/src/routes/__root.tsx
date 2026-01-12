@@ -49,15 +49,14 @@ function RootComponent() {
 }
 
 function SonamuProviderWithUploader({ children }: { children: React.ReactNode }) {
-  const uploadMultipleMutation = FileService.useUploadMutation();
+  const uploadMutation = FileService.useUploadMutation();
 
   const uploader = async (files: File[]): Promise<string[]> => {
     if (files.length === 0) {
       return [];
     }
 
-    // multiple 파일 업로드
-    const result = await uploadMultipleMutation.mutateAsync({ files });
+    const result = await uploadMutation.mutateAsync({ files });
     return result.files.map((file) => file.url);
   };
 
