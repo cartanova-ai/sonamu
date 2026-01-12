@@ -2,6 +2,7 @@
  * Project KO Dictionary
  */
 export default {
+  "common.all": "전체",
   "common.backToList": "목록으로",
   "common.cancel": "취소",
   "common.close": "닫기",
@@ -16,6 +17,7 @@ export default {
   "common.results": (count: number) => `${count}개 결과`,
   "common.save": "저장",
   "common.search": "검색",
+  "common.searchPlaceholder": "검색...",
   "common.searchType": "검색 유형",
   "common.sort": "정렬",
   "confirm.delete": "정말 삭제하시겠습니까?",
@@ -33,6 +35,7 @@ export default {
   "entity.create": (name: string) => `${name} 생성`,
   "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
   "entity.list": (name: string) => `${name} 목록`,
+  "entity.listManage": (name: string) => `${name} 목록 관리`,
   "error.alreadyProcessed": "이미 처리되었습니다",
   "error.badRequest": "잘못된 요청입니다",
   "error.duplicateRow": "중복된 데이터입니다",
