@@ -1,7 +1,6 @@
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
-import { ensureDictKeys } from "../../utils/dict-utils";
 import { getLabel } from "../helpers";
 import { Template } from "../template";
 
@@ -17,15 +16,17 @@ export class Template__view_enums_select extends Template {
     };
   }
 
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["common.all"];
+  }
+
   async render({ entityId, enumId }: TemplateOptions["view_enums_select"]) {
     const names = EntityManager.getNamesFromId(entityId);
     const label = getLabel(entityId, enumId);
 
     // i18n 설정 확인
     const useI18n = !!Sonamu.config.i18n;
-    if (useI18n) {
-      await ensureDictKeys(["common.all"], "web");
-    }
 
     // SD import 및 "전체" 텍스트
     const sdImport = useI18n ? `import { SD } from "@/i18n/sd.generated";\n` : "";

@@ -4,7 +4,6 @@ import { z } from "zod";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
-import { ensureDictKeys } from "../../utils/dict-utils";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
@@ -19,6 +18,11 @@ export class Template__view_list extends Template {
       target: "web/src/routes/admin",
       path: `${names.fsPlural}/index.tsx`,
     };
+  }
+
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["entity.listManage", "common.all"];
   }
 
   wrapTc(body: string, key: string, collapsing: boolean = true, className: string = "") {
@@ -251,9 +255,6 @@ export class Template__view_list extends Template {
 
     // i18n 설정 확인
     const useI18n = !!Sonamu.config.i18n;
-    if (useI18n) {
-      await ensureDictKeys(["entity.listManage"], "web");
-    }
 
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])

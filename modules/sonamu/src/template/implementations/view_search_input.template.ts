@@ -1,7 +1,6 @@
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
-import { ensureDictKeys } from "../../utils/dict-utils";
 import { Template } from "../template";
 
 export class Template__view_search_input extends Template {
@@ -16,14 +15,16 @@ export class Template__view_search_input extends Template {
     };
   }
 
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["common.searchPlaceholder"];
+  }
+
   async render({ entityId }: TemplateOptions["view_search_input"]) {
     const names = EntityManager.getNamesFromId(entityId);
 
     // i18n 설정 확인
     const useI18n = !!Sonamu.config.i18n;
-    if (useI18n) {
-      await ensureDictKeys(["common.searchPlaceholder"], "web");
-    }
 
     // SD import
     const sdImport = useI18n ? `import { SD } from "@/i18n/sd.generated";\n` : "";

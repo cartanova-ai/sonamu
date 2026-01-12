@@ -4,7 +4,6 @@ import { z } from "zod";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
-import { ensureDictKeys } from "../../utils/dict-utils";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
 import type { RenderedTemplate } from "../template";
 import { Template } from "../template";
@@ -19,6 +18,11 @@ export class Template__view_form extends Template {
       target: "web/src/routes/admin",
       path: `${names.fsPlural}/form.tsx`,
     };
+  }
+
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["entity.create", "entity.edit", "common.backToList", "form.createdAt", "common.save"];
   }
 
   wrapFC(body: string, label?: string): string {
@@ -171,12 +175,6 @@ export class Template__view_form extends Template {
 
     // i18n 설정 확인
     const useI18n = !!Sonamu.config.i18n;
-    if (useI18n) {
-      await ensureDictKeys(
-        ["entity.create", "entity.edit", "common.backToList", "form.createdAt", "common.save"],
-        "web",
-      );
-    }
 
     // SaveParams 타입을 로드하여 saveParamsNode 생성
     const { loadTypes } = await import("../../syncer/module-loader");

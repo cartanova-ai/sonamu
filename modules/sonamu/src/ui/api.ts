@@ -15,6 +15,7 @@ import {
   ServiceUnavailableException,
 } from "../exceptions/so-exceptions";
 import { type MigrationResult, Migrator } from "../migration/migrator";
+import { TemplateManager } from "../template/template-manager";
 import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
 import {
   type EntityIndex,
@@ -27,6 +28,7 @@ import {
   TemplateKey,
 } from "../types/types";
 import { type DictEntry, parseConstObjectDeclaration, parseDictFile } from "../utils/dict-parser";
+import { ensureDictKeys } from "../utils/dict-utils";
 import { formatCode } from "../utils/formatter";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
@@ -693,6 +695,18 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           throw new BadRequestException("options must be provided");
         }
 
+        // 1. 모든 템플릿에서 필요한 dict 키를 수집
+        const keys = options.flatMap(({ templateKey }) => {
+          const template = TemplateManager.get(templateKey);
+          return template.getRequiredDictKeys() ?? [];
+        });
+
+        console.log("new keys", [...new Set(keys)]);
+
+        // 2. target별로 ensureDictKeys 호출 (순차 처리)
+        await ensureDictKeys([...new Set(keys)]);
+
+        // 3. 템플릿 생성 (병렬 처리)
         const result = await Promise.all(
           options.map(async ({ entityId, templateKey, enumId, overwrite }) => {
             try {

@@ -3,7 +3,6 @@ import { Sonamu } from "../../api";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import { Naite } from "../../naite/naite";
 import type { TemplateOptions } from "../../types/types";
-import { ensureDictKeys } from "../../utils/dict-utils";
 import { Template } from "../template";
 import { getZodTypeById, zodTypeToRenderingNode } from "../zod-converter";
 import { Template__view_list } from "./view_list.template";
@@ -19,6 +18,11 @@ export class Template__model extends Template {
       target: `${dir}/src/application`,
       path: `${names.fs}/${names.fs}.model.ts`,
     };
+  }
+
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["error.entityNotFound", "error.unknownSearchField"];
   }
 
   async render({ entityId }: TemplateOptions["model"]) {
@@ -41,9 +45,6 @@ export class Template__model extends Template {
 
     // i18n 설정 확인
     const useI18n = !!Sonamu.config.i18n;
-    if (useI18n) {
-      await ensureDictKeys(["error.entityNotFound", "error.unknownSearchField"], "api");
-    }
 
     // 에러 메시지 생성
     const notFoundError = useI18n
