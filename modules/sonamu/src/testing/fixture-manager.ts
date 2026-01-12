@@ -150,11 +150,7 @@ export class FixtureManagerClass {
 
     const wdb = BaseModel.getDB("w");
     for (const query of queries) {
-      const [rsh] = await wdb.raw(query);
-      console.log({
-        query,
-        info: rsh.info,
-      });
+      await wdb.raw(query);
     }
   }
 
@@ -167,7 +163,6 @@ export class FixtureManagerClass {
     }
     this.visitedRecords.add(recordKey);
 
-    console.log({ entityId, field, id });
     const entity = EntityManager.get(entityId);
     const wdb = BaseModel.getDB("w");
 
