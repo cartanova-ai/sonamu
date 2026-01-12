@@ -1320,8 +1320,21 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           };
         }
 
-        // 프로젝트 src 디렉토리에서 검색
-        const searchPath = path.join(Sonamu.apiRootPath, "src");
+        const searchPaths: string[] = [];
+        for (const entry of ["api", "web", "app"]) {
+          const srcPath = path.join(Sonamu.appRootPath, entry, "src");
+          if (fs.existsSync(srcPath)) {
+            searchPaths.push(srcPath);
+          }
+        }
+
+        if (searchPaths.length === 0) {
+          return {
+            error: "검색할 src 디렉토리를 찾을 수 없습니다.",
+            unusedKeys: [] as string[],
+          };
+        }
+
         const usedKeys = new Set<string>();
 
         try {
@@ -1329,27 +1342,29 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           // 패턴: SD("KEY") 또는 SD('KEY') 형태
           const patterns = ['SD("$KEY")', "SD('$KEY')"];
 
-          for (const pattern of patterns) {
-            try {
-              const result = execSync(`${sgPath} --pattern '${pattern}' --json ${searchPath}`, {
-                encoding: "utf-8",
-                maxBuffer: 50 * 1024 * 1024, // 50MB
-              });
+          for (const searchPath of searchPaths) {
+            for (const pattern of patterns) {
+              try {
+                const result = execSync(`${sgPath} --pattern '${pattern}' --json ${searchPath}`, {
+                  encoding: "utf-8",
+                  maxBuffer: 50 * 1024 * 1024, // 50MB
+                });
 
-              if (result.trim()) {
-                const matches = JSON.parse(result);
-                for (const match of matches) {
-                  // metaVariables.single.KEY.text에서 키 추출
-                  const keyText = match.metaVariables?.single?.KEY?.text;
-                  if (keyText) {
-                    // 따옴표 제거
-                    const cleanKey = keyText.replace(/^["']|["']$/g, "");
-                    usedKeys.add(cleanKey);
+                if (result.trim()) {
+                  const matches = JSON.parse(result);
+                  for (const match of matches) {
+                    // metaVariables.single.KEY.text에서 키 추출
+                    const keyText = match.metaVariables?.single?.KEY?.text;
+                    if (keyText) {
+                      // 따옴표 제거
+                      const cleanKey = keyText.replace(/^["']|["']$/g, "");
+                      usedKeys.add(cleanKey);
+                    }
                   }
                 }
+              } catch {
+                // 패턴 매치 없으면 에러 (무시)
               }
-            } catch {
-              // 패턴 매치 없으면 에러 (무시)
             }
           }
 
