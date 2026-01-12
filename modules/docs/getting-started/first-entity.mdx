@@ -11,20 +11,26 @@ description: "Sonamu UI로 첫 번째 엔티티를 생성하고 API 만들기"
 - API 서버가 http://localhost:1028 에서 실행 중이어야 합니다.
 
 <Tip>
-API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:1028/sonamu-ui 에서 자동으로 제공됩니다.
+  API 서버(`pnpm dev`)가 실행되면 Sonamu UI가 http://localhost:1028/sonamu-ui
+  에서 자동으로 제공됩니다.
 </Tip>
 
 ## 1단계: Sonamu UI 접속
 
 브라우저에서 http://localhost:1028/sonamu-ui 로 접속합니다.
 
-<Frame caption="📸 필요: Sonamu UI 메인 화면 (Entity, Migration, Scaffolding 탭이 보이는 전체 UI)">
+<Frame caption="Sonamu UI 메인 화면 (Entity, Migration, Scaffolding 탭)">
+  <img
+    src="/images/sonamuUI1.png"
+    alt="Sonamu UI 메인 화면"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 Sonamu UI는 엔티티를 시각적으로 관리할 수 있는 웹 인터페이스입니다. 여기서 다음 작업을 수행할 수 있습니다:
 
 - 엔티티 생성 및 편집
-- 필드 추가/수정/삭제
+- 프롭 추가/수정/삭제
 - 관계(Relation) 정의
 - Enum 타입 관리
 - Subset 정의
@@ -35,27 +41,34 @@ Sonamu UI는 엔티티를 시각적으로 관리할 수 있는 웹 인터페이�
 
 <Steps>
 <Step title="Entity 탭 클릭">
-Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭합니다.
+Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭하여 현재 존재하는 엔티티를 확인합니다.
 
-<Frame caption="📸 필요: Entity 탭 클릭 후 화면 (엔티티 목록 또는 빈 화면)">
+<Frame caption="Entity 탭 화면">
+  <img src="/images/sonamuUI1.png" alt="Entity 탭" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
-<Step title="Add Entity 버튼">
-우측 상단의 **Add Entity** 버튼을 클릭합니다.
+<Step title="New Entity 버튼 클릭">
+좌측 사이드바 하단에 있는 **New Entity** 버튼을 클릭합니다.
 
-<Frame caption="📸 필요: Add Entity 다이얼로그 또는 모달 창">
+<Frame caption="엔티티 생성 모달 창">
+  <img src="/images/sonamuUI-create-entity.png" alt="엔티티 생성 모달" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
-<Step title="기본 정보 입력">
-새 엔티티의 기본 정보를 입력합니다:
+<Step title="기본 정보 입력 및 생성">
+새 엔티티의 기본 정보를 입력하고 **Create** 버튼을 클릭합니다:
 
 - **Entity ID**: `Post` (대문자로 시작, 단수형)
 - **Table Name**: `posts` (소문자, 복수형)
 - **Title**: `게시글`
 
-<Frame caption="📸 필요: Post 엔티티 기본 정보 입력 완료된 폼">
+<Frame caption="Create 버튼 클릭 후 생성된 Post 엔티티 화면">
+  <img
+    src="/images/sonamuUI-created-entity.png"
+    alt="생성된 Post 엔티티"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
@@ -64,57 +77,62 @@ Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭합니다.
 </Step>
 </Steps>
 
-## 3단계: 필드 정의
+## 3단계: 프롭 정의
 
-이제 `Post` 엔티티에 필드들을 추가합니다:
+이제 `Post` 엔티티에 프롭들을 추가합니다:
 
 <Steps>
-<Step title="기본 필드 추가">
+<Step title="기본 프롭 추가">
 
-**Add Field** 버튼을 클릭하여 다음 필드들을 추가합니다:
+**Add a prop** 버튼을 클릭하여 다음 프롭들을 추가합니다:
 
-| 필드명 | 타입 | 설명 | 옵션 |
-|--------|------|------|------|
-| `id` | integer | ID | Primary Key |
-| `created_at` | date | 생성일시 | DB Default: `CURRENT_TIMESTAMP` |
-| `title` | string | 제목 | Length: 255 |
-| `content` | string | 내용 | - |
-| `author` | string | 작성자 | Length: 100 |
-| `view_count` | integer | 조회수 | DB Default: `0` |
+| 프롭명       | 타입    | 설명     | 옵션                            |
+| ------------ | ------- | -------- | ------------------------------- |
+| `id`         | integer | ID       | Primary Key                     |
+| `created_at` | date    | 생성일시 | DB Default: `CURRENT_TIMESTAMP` |
+| `title`      | string  | 제목     | Length: 255                     |
+| `content`    | string  | 내용     | -                               |
+| `author`     | string  | 작성자   | Length: 100                     |
+| `view_count` | integer | 조회수   | DB Default: `0`                 |
 
-<Accordion title="각 필드 설정 방법">
+<Accordion title="각 프롭 설정 방법">
 
-**id 필드**
+**id 프롭**
+
 - Name: `id`
 - Type: `integer`
 - Description: `ID`
-- ✅ **Is Primary** 체크
 
-**created_at 필드**
+**created_at 프롭**
+
 - Name: `created_at`
 - Type: `date`
 - Description: `생성일시`
 - DB Default: `CURRENT_TIMESTAMP`
 
-**title 필드**
+**title 프롭**
+
 - Name: `title`
 - Type: `string`
 - Description: `제목`
 - Length: `255`
 
-**content 필드**
+**content 프롭**
+
 - Name: `content`
 - Type: `string`
 - Description: `내용`
 - Length: 빈칸 (TEXT 타입으로 생성됨)
 
-**author 필드**
+**author 프롭**
+
 - Name: `author`
 - Type: `string`
 - Description: `작성자`
 - Length: `100`
 
-**view_count 필드**
+**view_count 프롭**
+
 - Name: `view_count`
 - Type: `integer`
 - Description: `조회수`
@@ -122,7 +140,12 @@ Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭합니다.
 
 </Accordion>
 
-<Frame caption="📸 필요: 필드 추가 UI (Add Field 버튼과 모든 필드가 추가된 필드 리스트)">
+<Frame caption="프롭 추가 UI (Add a prop 버튼과 모든 프롭이 추가된 프롭 리스트)">
+  <img
+    src="/images/sonamuUI-add-a-prop.png"
+    alt="프롭 추가 UI"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 </Step>
@@ -131,14 +154,22 @@ Sonamu UI 상단 메뉴에서 **Entity** 탭을 클릭합니다.
 
 **Subsets** 섹션에서 데이터 조회 형태를 정의합니다:
 
-- **Subset A** (All): `id`, `created_at`, `title`, `content`, `author`, `view_count`
-- **Subset C** (Compact): `id`, `title`, `author`, `view_count`, `created_at`
+- **Subset A** (Admin): `id`, `created_at`, `title`, `content`, `author`, `view_count` - 전체 정보
+- **Subset P** (Public): `id`, `title`, `author`, `created_at` - 공개 정보
+- **Subset SS** (Secure Short): `id`, `title`, `author` - 요약 정보
 
-<Frame caption="📸 필요: Subset 편집 화면 (Subset A와 C가 정의된 상태)">
+<Frame caption="Subset 편집 화면 (Subset A, P, SS가 정의된 상태)">
+  <img
+    src="/images/sonamuUI-subsets.png"
+    alt="Subset 편집 화면"
+    style={{ width: "400px", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
-Subset은 API에서 데이터를 조회할 때 어떤 필드들을 포함할지 미리 정의하는 기능입니다. 자세한 내용은 [Subset 가이드](/database/subsets/what-are-subsets)를 참고하세요.
+  Subset은 API에서 데이터를 조회할 때 어떤 프롭들을 포함할지 미리 정의하는
+  기능입니다. 자세한 내용은 [Subset
+  가이드](/database/subsets/what-are-subsets)를 참고하세요.
 </Note>
 
 </Step>
@@ -148,30 +179,24 @@ Subset은 API에서 데이터를 조회할 때 어떤 필드들을 포함할지 
 **Enums** 섹션에서 정렬 및 검색 옵션을 정의합니다:
 
 **PostOrderBy**
+
 - `id-desc`: ID 최신순
 - `created_at-desc`: 생성일시 최신순
 - `view_count-desc`: 조회수 높은순
 
 **PostSearchField**
+
 - `id`: ID
 - `title`: 제목
 - `author`: 작성자
 
-<Frame caption="📸 필요: Enum 편집 화면 (PostOrderBy, PostSearchField 정의된 상태)">
+<Frame caption="Enum 편집 화면 (PostOrderBy, PostSearchField 정의된 상태)">
+  <img
+    src="/images/sonamuUI-enums.png"
+    alt="Enum 편집 화면"
+    style={{ width: "800px", borderRadius: "0.75rem" }}
+  />
 </Frame>
-
-</Step>
-
-<Step title="저장">
-**Save** 버튼을 클릭하여 엔티티 정의를 저장합니다.
-
-<Frame caption="📸 필요: 저장 완료 메시지 또는 토스트 알림">
-</Frame>
-
-저장하면 다음 파일들이 자동으로 생성됩니다:
-- `api/src/application/post/post.entity.json` (엔티티 정의)
-- `api/src/application/post/post.types.ts` (타입 및 Zod 스키마)
-- `api/src/application/sonamu.generated.ts` (Base 스키마)
 
 </Step>
 </Steps>
@@ -184,41 +209,39 @@ Subset은 API에서 데이터를 조회할 때 어떤 필드들을 포함할지 
 <Step title="Migration 탭으로 이동">
 Sonamu UI에서 **Migration** 탭을 클릭합니다.
 
-<Frame caption="📸 필요: Migration 탭 화면 (마이그레이션 목록 또는 Generate Migration 버튼)">
+<Frame caption="Migration 탭 화면 (마이그레이션 목록 또는 Generate Migration 버튼)">
+  <img src="/images/sonamuUI-db-migration2.png" alt="Migration 탭 화면" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
 <Step title="마이그레이션 생성">
-**Generate Migration** 버튼을 클릭하면 새로운 마이그레이션 파일이 자동 생성됩니다.
+**Generate** 버튼을 클릭하면 새로운 마이그레이션 Code File이 자동 생성됩니다.
 
-생성된 마이그레이션 SQL을 확인할 수 있습니다:
+생성된 파일 목록에서 `<>` 버튼을 클릭하면 Cursor의 해당 마이그레이션 파일 페이지가 열립니다. 파일 내용은 다음과 같습니다:
 
-```sql
-CREATE TABLE posts (
-  id SERIAL PRIMARY KEY,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  title VARCHAR(255) NOT NULL,
-  content TEXT NOT NULL,
-  author VARCHAR(100) NOT NULL,
-  view_count INTEGER DEFAULT 0
-);
-```
-
-<Frame caption="📸 필요: 생성된 마이그레이션 SQL 미리보기 화면">
+<Frame caption="Cursor에서 열린 마이그레이션 파일">
+  <img src="/images/sonamuUI-db-migration3.png" alt="Cursor에서 열린 마이그레이션 파일" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
 <Step title="마이그레이션 실행">
-**Run Migration** 버튼을 클릭하여 데이터베이스에 테이블을 생성합니다.
+Migration 탭에서 pending 상태의 마이그레이션을 확인할 수 있습니다.
 
-<Frame caption="📸 필요: 마이그레이션 실행 완료 메시지 또는 성공 알림">
+**all** 버튼을 클릭한 후 **Apply to Latest**를 클릭하면 모달 창에서 migration targets를 확인할 수 있습니다.
+
+**Shadow DB Testing**을 선택한 후 **commit** 버튼을 클릭하면 데이터베이스 테이블이 생성됩니다.
+
+<Frame caption="Migration 실행 완료">
+  <video 
+    autoPlay 
+    muted 
+    loop 
+    playsInline 
+    controls 
+    className="w-full rounded-xl" 
+    src="/images/sonamuUi-db-migration2-generate.mp4"
+  ></video>
 </Frame>
-
-터미널에서 다음 명령어로도 실행 가능합니다:
-```bash
-cd api
-pnpm sonamu migrate run
-```
 </Step>
 
 <Step title="확인">
@@ -234,13 +257,12 @@ PostgreSQL 클라이언트나 pgAdmin으로 데이터베이스에 접속하여 `
 <Step title="Scaffolding 탭으로 이동">
 Sonamu UI에서 **Scaffolding** 탭을 클릭합니다.
 
-<Frame caption="📸 필요: Scaffolding 탭 화면 (엔티티 목록 및 템플릿 선택 UI)">
+<Frame caption="Scaffolding 탭 화면 (엔티티 목록 및 템플릿 선택 UI)">
+  <img src="/images/sonamuUI-scaffolding1.png" alt="Scaffolding 탭 화면" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
-<Step title="Post 엔티티 선택">
-스캐폴딩할 엔티티로 **Post**를 선택합니다.
-</Step>
+<Step title="Post 엔티티 선택">스캐폴딩할 엔티티로 **Post**를 선택합니다.</Step>
 
 <Step title="템플릿 선택">
 생성할 템플릿을 선택합니다:
@@ -248,7 +270,12 @@ Sonamu UI에서 **Scaffolding** 탭을 클릭합니다.
 - ✅ **Model** - `post.model.ts` (비즈니스 로직 및 API 엔드포인트)
 - ✅ **Model Test** - `post.model.test.ts` (테스트 파일)
 
-<Frame caption="📸 필요: 템플릿 선택 UI (Model, Model Test 체크박스가 선택된 상태)">
+<Frame caption="템플릿 선택 UI (Model, Model Test 체크박스가 선택된 상태)">
+  <img
+    src="/images/sonamuUI-scaffolding2.png"
+    alt="템플릿 선택 UI"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Note>
@@ -259,26 +286,35 @@ Sonamu UI에서 **Scaffolding** 탭을 클릭합니다.
 <Step title="미리보기 (선택사항)">
 **Preview** 버튼을 클릭하면 생성될 코드를 미리 볼 수 있습니다.
 
-<Frame caption="📸 필요: 코드 미리보기 모달 (생성될 model.ts 코드)">
+<Frame caption="코드 미리보기 모달 (생성될 model.ts 코드)">
+  <img src="/images/sonamuUI-scaffolding3.png" alt="코드 미리보기 모달" style={{width: '100%', borderRadius: '0.75rem'}} />
 </Frame>
 </Step>
 
 <Step title="생성">
 **Generate** 버튼을 클릭하여 파일을 생성합니다.
 
-<Frame caption="📸 필요: 스캐폴딩 완료 메시지 (생성된 파일 경로 표시)">
+<Frame caption="생성된 파일 목록">
+  <img
+    src="/images/sonamuUI-scaffolding5.png"
+    alt="생성된 파일 목록"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 다음 파일들이 생성됩니다:
+
 - `api/src/application/post/post.model.ts`
 - `api/src/application/post/post.model.test.ts`
 
 터미널에서 다음 명령어로도 실행 가능합니다:
+
 ```bash
 cd api
 pnpm sonamu scaffold model Post
 pnpm sonamu scaffold model_test Post
 ```
+
 </Step>
 </Steps>
 
@@ -286,135 +322,47 @@ pnpm sonamu scaffold model_test Post
 
 스캐폴딩으로 생성된 `post.model.ts` 파일을 확인해봅시다:
 
-<Frame caption="📸 필요: VS Code에서 열린 post.model.ts 파일 전체 화면">
+<Frame caption="VS Code에서 열린 post.model.ts 파일">
+  <img
+    src="/images/afterScaffolding-model.png"
+    alt="VS Code에서 열린 post.model.ts 파일"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
-```typescript title="api/src/application/post/post.model.ts (자동 생성)"
-import {
-  api,
-  BaseModelClass,
-  type ListResult,
-  NotFoundException,
-} from "sonamu";
-import type { PostSubsetKey, PostSubsetMapping } from "../sonamu.generated";
-import { postLoaderQueries, postSubsetQueries } from "../sonamu.generated.sso";
-import type { Post, PostListParams, PostSaveParams } from "./post.types";
-
-class PostModelClass extends BaseModelClass<
-  PostSubsetKey,
-  PostSubsetMapping,
-  typeof postSubsetQueries,
-  typeof postLoaderQueries
-> {
-  constructor() {
-    super("Post", postSubsetQueries, postLoaderQueries);
-  }
-
-  @api({
-    httpMethod: "GET",
-    clients: ["axios", "tanstack-query"],
-    resourceName: "Post",
-  })
-  async findById<T extends PostSubsetKey>(
-    subset: T,
-    id: number,
-  ): Promise<PostSubsetMapping[T]> {
-    const { rows } = await this.findMany(subset, {
-      id,
-      num: 1,
-      page: 1,
-    });
-    
-    if (!rows[0]) {
-      throw new NotFoundException(`Post ID ${id} not found`);
-    }
-
-    return rows[0];
-  }
-
-  @api({
-    httpMethod: "GET",
-    clients: ["axios", "tanstack-query"],
-    resourceName: "Posts",
-  })
-  async findMany<T extends PostSubsetKey>(
-    subset: T,
-    params?: PostListParams,
-  ): Promise<ListResult<PostListParams, PostSubsetMapping[T]>> {
-    const listParams = {
-      num: 10,
-      page: 1,
-      orderBy: "id-desc" as const,
-      ...params,
-    };
-
-    return await this.list(subset, listParams, (qb) => {
-      // 검색 조건 추가
-      if (listParams.search && listParams.searchField) {
-        if (listParams.searchField === "id") {
-          qb.where("id", Number(listParams.search));
-        } else {
-          qb.where(listParams.searchField, "like", `%${listParams.search}%`);
-        }
-      }
-
-      // 정렬
-      const [field, direction] = listParams.orderBy.split("-");
-      qb.orderBy(field, direction as "asc" | "desc");
-    });
-  }
-
-  @api({
-    httpMethod: "POST",
-    clients: ["axios", "tanstack-query"],
-    resourceName: "Post",
-  })
-  async save(params: PostSaveParams): Promise<Post> {
-    const id = await this.upsert(params);
-    return await this.findById("A", id);
-  }
-
-  @api({
-    httpMethod: "DELETE",
-    clients: ["axios", "tanstack-query"],
-    resourceName: "Post",
-  })
-  async del(id: number): Promise<void> {
-    await this.deleteById(id);
-  }
-}
-
-export const PostModel = new PostModelClass();
-```
-
 <Info>
-생성된 Model 파일은 기본적인 CRUD API를 포함하고 있습니다. 필요에 따라 비즈니스 로직을 추가하거나 수정할 수 있습니다.
+  생성된 Model 파일은 기본적인 CRUD API를 포함하고 있습니다. 필요에 따라
+  비즈니스 로직을 추가하거나 수정할 수 있습니다.
 </Info>
 
 API 서버가 HMR(Hot Module Replacement)로 자동 재시작됩니다:
 
-<Frame caption="📸 필요: 터미널에서 HMR 재시작 로그 (✓ Detected changes in post.model.ts)">
+<Frame caption="터미널에서 HMR 재시작 로그">
+  <img
+    src="/images/sonamuUI-scaffolding4.png"
+    alt="터미널에서 HMR 재시작 로그"
+    style={{ width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 ## 7단계: 프론트엔드 Service 자동 생성
 
 API를 작성하면 프론트엔드 Service 파일이 자동으로 생성됩니다.
 
-<Frame caption="📸 필요: VS Code에서 web/src/services/PostService.ts 파일이 생성된 화면">
-</Frame>
+<Frame caption="📸 필요: VS Code에서 web/src/services/PostService.ts 파일이 생성된 화면"></Frame>
 
 ```typescript title="web/src/services/PostService.ts (자동 생성)"
 export class PostService {
   static async findById(subset: PostSubsetKey, id: number) {
     const res = await axios.get(`/api/posts/${id}`, {
-      params: { subset }
+      params: { subset },
     });
     return res.data;
   }
 
   static async findMany(subset: PostSubsetKey, params?: PostListParams) {
     const res = await axios.get("/api/posts", {
-      params: { subset, ...params }
+      params: { subset, ...params },
     });
     return res.data;
   }
@@ -458,20 +406,21 @@ curl http://localhost:1028/api/posts/1?subset=A
 ```bash title="게시글 삭제 (DELETE)"
 curl -X DELETE http://localhost:1028/api/posts/1
 ```
+
 </CodeGroup>
 
 ### 브라우저에서 테스트
 
 http://localhost:1028/api/posts?subset=C 로 접속하여 JSON 응답을 확인합니다.
 
-<Frame caption="📸 필요: 브라우저에서 API 응답 JSON 화면 (게시글 목록 데이터)">
-</Frame>
+<Frame caption="📸 필요: 브라우저에서 API 응답 JSON 화면 (게시글 목록 데이터)"></Frame>
 
 ## 완성! 🎉
 
 축하합니다! 첫 번째 엔티티를 성공적으로 만들었습니다.
 
 지금까지 다음 작업을 완료했습니다:
+
 - ✅ Sonamu UI로 엔티티 정의
 - ✅ 데이터베이스 테이블 생성
 - ✅ 타입 및 스키마 자동 생성
@@ -481,28 +430,48 @@ http://localhost:1028/api/posts?subset=C 로 접속하여 JSON 응답을 확인�
 - ✅ API 테스트
 
 <Warning>
-**스캐폴딩의 장점**
+  **스캐폴딩의 장점**
 
-스캐폴딩을 사용하면:
-- Model 파일을 직접 작성할 필요 없이 기본 CRUD API가 자동 생성됩니다
-- 테스트 파일 템플릿도 함께 생성되어 테스트 작성이 쉬워집니다
-- 프로젝트의 일관된 코드 스타일을 유지할 수 있습니다
-- 생성된 코드는 언제든지 수정하여 비즈니스 로직을 추가할 수 있습니다
+  스캐폴딩을 사용하면:
+
+  - Model 파일을 직접 작성할 필요 없이 기본 CRUD API가 자동 생성됩니다
+  - 테스트 파일 템플릿도 함께 생성되어 테스트 작성이 쉬워집니다
+  - 프로젝트의 일관된 코드 스타일을 유지할 수 있습니다
+  - 생성된 코드는 언제든지 수정하여 비즈니스 로직을 추가할 수 있습니다
 </Warning>
 
 ## 다음 단계
 
 <CardGroup cols={2}>
-  <Card title="개발 워크플로우" icon="diagram-project" href="/getting-started/development-workflow">
-    Sonamu의 전체 개발 워크플로우를 이해하고 효율적으로 작업하는 방법을 배워보세요.
+  <Card
+    title="개발 워크플로우"
+    icon="diagram-project"
+    href="/getting-started/development-workflow"
+  >
+    Sonamu의 전체 개발 워크플로우를 이해하고 효율적으로 작업하는 방법을
+    배워보세요.
   </Card>
-  <Card title="Relation 정의하기" icon="link" href="/core-concepts/entity/relations">
+  <Card
+    title="Relation 정의하기"
+    icon="link"
+    href="/core-concepts/entity/relations"
+  >
     엔티티 간의 관계를 정의하고 JOIN 쿼리를 작성하는 방법을 알아보세요.
   </Card>
-  <Card title="Puri 쿼리 빌더" icon="database" href="/database/puri/basic-queries">
-    타입 안전한 쿼리 빌더로 복잡한 데이터베이스 쿼리를 작성하는 방법을 배워보세요.
+  <Card
+    title="Puri 쿼리 빌더"
+    icon="database"
+    href="/database/puri/basic-queries"
+  >
+    타입 안전한 쿼리 빌더로 복잡한 데이터베이스 쿼리를 작성하는 방법을
+    배워보세요.
   </Card>
-  <Card title="테스트 작성하기" icon="flask" href="/testing/writing-tests/test-structure">
-    자동 생성된 테스트 템플릿을 기반으로 Model의 비즈니스 로직을 테스트하는 방법을 알아보세요.
+  <Card
+    title="테스트 작성하기"
+    icon="flask"
+    href="/testing/writing-tests/test-structure"
+  >
+    자동 생성된 테스트 템플릿을 기반으로 Model의 비즈니스 로직을 테스트하는
+    방법을 알아보세요.
   </Card>
 </CardGroup>
