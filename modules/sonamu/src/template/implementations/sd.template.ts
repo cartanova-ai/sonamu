@@ -3,6 +3,7 @@ import path from "path";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
+import { parseDictFile } from "../../utils/dict-parser";
 import { Template } from "../template";
 
 /**
@@ -268,7 +269,6 @@ ${entries.join("\n")}
 
   /**
    * sonamu dict 소스 파일을 읽어 파싱하고 코드로 변환
-   * 런타임 toString()이 아닌 소스 파싱으로 타입 정보 보존
    */
   private generateDictCodeFromSource(varName: string, locale: string): string {
     // sonamu 패키지 루트에서 src/dict 경로 찾기
@@ -280,67 +280,19 @@ ${entries.join("\n")}
       return `const ${varName} = {};`;
     }
 
-    const content = fs.readFileSync(dictPath, "utf-8");
-
-    // export default { ... } as const; 패턴 매칭
-    const objectMatch = content.match(/export\s+default\s*\{([\s\S]*)\}\s*as\s*const/);
-    if (!objectMatch) {
-      return `const ${varName} = {};`;
-    }
-
-    const objectContent = objectMatch[1];
-    const entries = this.parseDictObject(objectContent);
+    const entries = parseDictFile(dictPath);
 
     if (entries.length === 0) {
       return `const ${varName} = {};`;
     }
 
-    const entryLines = entries.map(({ key, value }) => `  "${key}": ${value},`);
+    const entryLines = entries.map(({ key, value, isFunction }) => {
+      const codeValue = isFunction ? value : `"${this.escapeString(value)}"`;
+      return `  "${key}": ${codeValue},`;
+    });
 
     return `const ${varName} = {
 ${entryLines.join("\n")}
 };`;
-  }
-
-  /**
-   * dict 객체 내용을 파싱하여 key-value 추출
-   * 함수의 경우 원본 소스 그대로 보존 (타입 포함)
-   */
-  private parseDictObject(objectContent: string): { key: string; value: string }[] {
-    const entries: { key: string; value: string }[] = [];
-    const seenKeys = new Set<string>();
-
-    // 함수 원형 패턴 먼저 처리 (우선순위 높음)
-    // "key": (params: type) => `template` 또는 key: (params: type) => `template`
-    // 다중 줄 함수도 처리하기 위해 [\s\S]로 줄바꿈 허용
-    const functionPattern =
-      /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_.]*)):\s*(\([^)]*\)\s*=>[\s]*(?:`[^`]*`|"[^"]*"))/g;
-    for (const match of objectContent.matchAll(functionPattern)) {
-      const key = match[1] ?? match[2];
-      // 다중 줄 함수를 한 줄로 정규화 (불필요한 공백/줄바꿈 제거)
-      const value = match[3].replace(/\s*\n\s*/g, " ");
-      entries.push({ key, value });
-      seenKeys.add(key);
-    }
-
-    // 문자열 값 패턴: "key": "value" 또는 key: `value`
-    const stringPattern = /(?:"([^"]+)"|([a-zA-Z_][a-zA-Z0-9_.]*)):\s*(?:"([^"]*?)"|`([^`]*?)`)/g;
-    for (const match of objectContent.matchAll(stringPattern)) {
-      const key = match[1] ?? match[2];
-      // 이미 함수로 처리된 키는 스킵
-      if (seenKeys.has(key)) continue;
-
-      const stringValue = match[3] ?? match[4];
-      // 화살표 함수 패턴이 아닌 경우만
-      const lineStart = objectContent.lastIndexOf("\n", match.index ?? 0);
-      const lineEnd = objectContent.indexOf("\n", (match.index ?? 0) + match[0].length);
-      const fullLine = objectContent.slice(lineStart, lineEnd > -1 ? lineEnd : undefined);
-      if (!fullLine.includes("=>")) {
-        // 문자열은 따옴표로 감싸서 반환
-        entries.push({ key, value: `"${this.escapeString(stringValue)}"` });
-      }
-    }
-
-    return entries;
   }
 }
