@@ -309,14 +309,14 @@ function I18nIndex() {
             <Button
               onClick={handleExport}
               disabled={loading}
-              icon={<DownloadIcon className="w-4 h-4" />}
+              icon={<UploadIcon className="w-4 h-4" />}
             >
               Export Excel
             </Button>
             <Button
               onClick={handleImportClick}
               disabled={loading}
-              icon={<UploadIcon className="w-4 h-4" />}
+              icon={<DownloadIcon className="w-4 h-4" />}
             >
               Import Excel
             </Button>
