@@ -1,9 +1,6 @@
-import fs from "fs";
-import path from "path";
 import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
-import { parseDictFile } from "../../utils/dict-parser";
 import { Template } from "../template";
 
 /**
@@ -65,10 +62,6 @@ export function getCurrentLocale(): string {
 }
 `.trim();
 
-    // sonamuDict를 소스 파일에서 파싱하여 코드로 변환 (타입 정보 보존)
-    const sonamuDictKoCode = this.generateDictCodeFromSource("sonamuDictKo", "ko");
-    const sonamuDictEnCode = this.generateDictCodeFromSource("sonamuDictEn", "en");
-
     // locale import
     const localeImports = supportedLocales
       .map((locale) => `import ${locale} from "./${locale}";`)
@@ -85,14 +78,10 @@ ${localeImports}
 // entity.json에서 추출한 entity labels (defaultLocale 전용)
 ${entityLabelsCode}
 
-${sonamuDictKoCode}
-${sonamuDictEnCode}
-
 // defaultLocale의 dictionary를 기준으로 키 추출
 type ProjectDictionary = typeof ${defaultLocale};
-type SonamuDictionary = typeof sonamuDict${this.capitalize(defaultLocale)};
 type EntityLabels = typeof entityLabels;
-type RawMergedDictionary = EntityLabels & SonamuDictionary & ProjectDictionary;
+type RawMergedDictionary = EntityLabels & ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
 type MergedDictionary = {
@@ -107,12 +96,12 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
   return dict;
 }
 
-// 각 locale별로 entity labels + Sonamu 내장 dict + 프로젝트 dict 합침
+// 각 locale별로 entity labels + 프로젝트 dict 합침
 const dictionaries: Record<string, Partial<MergedDictionary>> = {
-  ${defaultLocale}: { ...sonamuDict${this.capitalize(defaultLocale)}, ...entityLabels, ...${defaultLocale} },
+  ${defaultLocale}: { ...entityLabels, ...${defaultLocale} },
   ${supportedLocales
     .filter((locale) => locale !== defaultLocale)
-    .map((locale) => `  ${locale}: { ...sonamuDict${this.capitalize(locale)}, ...${locale} },`)
+    .map((locale) => `  ${locale}: { ...${locale} },`)
     .join("\n")}
 };
 
@@ -204,10 +193,6 @@ SD.enumLabels = (enumName: string): Record<string, LocalizedString> => {
     };
   }
 
-  private capitalize(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
   /**
    * 모든 entity.json에서 entity labels 추출
    * entity.json에서 직접 관리되는 값만 포함 (자동 생성 값 제외)
@@ -265,34 +250,5 @@ ${entries.join("\n")}
 
   private escapeString(str: string): string {
     return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
-  }
-
-  /**
-   * sonamu dict 소스 파일을 읽어 파싱하고 코드로 변환
-   */
-  private generateDictCodeFromSource(varName: string, locale: string): string {
-    // sonamu 패키지 루트에서 src/dict 경로 찾기
-    // __dirname이 dist/template/implementations일 수 있으므로 패키지 루트 기준으로 접근
-    const packageRoot = path.resolve(import.meta.dirname, "..", "..", "..");
-    const dictPath = path.join(packageRoot, "src", "dict", `${locale}.ts`);
-
-    if (!fs.existsSync(dictPath)) {
-      return `const ${varName} = {};`;
-    }
-
-    const entries = parseDictFile(dictPath);
-
-    if (entries.length === 0) {
-      return `const ${varName} = {};`;
-    }
-
-    const entryLines = entries.map(({ key, value, isFunction }) => {
-      const codeValue = isFunction ? value : `"${this.escapeString(value)}"`;
-      return `  "${key}": ${codeValue},`;
-    });
-
-    return `const ${varName} = {
-${entryLines.join("\n")}
-};`;
   }
 }

@@ -27,11 +27,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { TagOrderBySelect } from "@/components/tag/TagOrderBySelect";
 import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
-import { localizedColumn, SD } from "@/i18n/sd.generated";
+import { SD } from "@/i18n/sd.generated";
 import { TagService } from "@/services/services.generated";
 import { TagOrderBy, TagSearchField } from "@/services/sonamu.generated";
 import { TagListParams } from "@/services/tag/tag.types";
-
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -39,7 +38,7 @@ import SearchIcon from "~icons/mdi/magnify";
 
 export const Route = createFileRoute("/admin/tags/")({
   head: () => ({
-    meta: [{ title: "TAG List" }, { name: "description", content: "TAG 목록 관리" }],
+    meta: [{ title: "TAG List" }, { name: "description", content: SD("entity.listManage")("TAG") }],
   }),
   component: TagList,
 });
@@ -70,7 +69,7 @@ function TagList({}: TagListProps) {
   // 현재 경로와 타이틀
   const PAGE = {
     route: "/admin/tags",
-    title: SD("entity.list")(SD("entity.Tag")),
+    title: "TAG",
   };
 
   // 컬럼 정의
@@ -83,26 +82,24 @@ function TagList({}: TagListProps) {
       align: "center",
     },
     {
-      label: SD("common.createdAt"),
+      label: "등록일시",
       tc: (row) => <span>{datetimeF(row.created_at)}</span>,
       fit: true,
     },
     {
-      label: `${SD("entity.Tag.name")} (localizedColumn)`,
-      tc: (row) => <>{localizedColumn(row, "name")}</>,
-      fit: true,
+      label: "태그명",
+      tc: (row) => <>{row.name}</>,
     },
     {
-      label: SD("entity.Tag.name_ko"),
+      label: "태그명 한국어",
       tc: (row) => <>{row.name_ko}</>,
-      fit: true,
     },
     {
-      label: SD("entity.Tag.name_en"),
+      label: "태그명 영어",
       tc: (row) => <>{row.name_en}</>,
     },
     {
-      label: SD("common.manage"),
+      label: "Manage",
       fit: true,
       align: "center",
       tc: (row) => (
@@ -180,14 +177,14 @@ function TagList({}: TagListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <TagSearchFieldSelect
                     {...register("search")}
-                    placeholder={SD("common.searchType")}
+                    placeholder="Search Type"
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
 
                   <div className="relative flex-1 max-w-xs">
                     <Input
                       {...register("keyword")}
-                      placeholder={SD("common.search")}
+                      placeholder="Search..."
                       className="h-8 pr-8 text-xs bg-white border-gray-300"
                     />
                     <Button
@@ -203,7 +200,7 @@ function TagList({}: TagListProps) {
                       className="h-8 px-4 bg-primary hover:bg-primary/90 text-white"
                       onClick={() => navigate({ to: `${PAGE.route}/form` })}
                     >
-                      <span className="text-xs">{SD("common.create")}</span>
+                      <span className="text-xs">Create</span>
                     </Button>
                   </div>
                 </div>
@@ -211,13 +208,11 @@ function TagList({}: TagListProps) {
                 <div className="flex items-center gap-3 flex-wrap">
                   <TagOrderBySelect
                     {...register("orderBy")}
-                    placeholder={SD("common.sort")}
-                    textPrefix={`${SD("common.sort")}: `}
+                    placeholder="Sort"
+                    textPrefix="Sort: "
                     className="w-[200px] h-8 bg-white border-gray-300 text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">
-                    {SD("common.results")(total ?? 0)}
-                  </span>
+                  <span className="text-xs text-muted-foreground">{total ?? 0} results</span>
                 </div>
               </div>
             </CardHeader>
@@ -275,14 +270,14 @@ function TagList({}: TagListProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{SD("delete.confirm.title")}</AlertDialogTitle>
-            <AlertDialogDescription>{SD("delete.confirm.description")}</AlertDialogDescription>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this item.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{SD("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>
-              {SD("common.delete")}
-            </AlertDialogAction>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

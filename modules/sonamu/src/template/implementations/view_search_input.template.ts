@@ -1,3 +1,4 @@
+import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
 import { Template } from "../template";
@@ -14,8 +15,20 @@ export class Template__view_search_input extends Template {
     };
   }
 
-  render({ entityId }: TemplateOptions["view_search_input"]) {
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["common.searchPlaceholder"];
+  }
+
+  async render({ entityId }: TemplateOptions["view_search_input"]) {
     const names = EntityManager.getNamesFromId(entityId);
+
+    // i18n 설정 확인
+    const useI18n = !!Sonamu.config.i18n;
+
+    // SD import
+    const sdImport = useI18n ? `import { SD } from "@/i18n/sd.generated";\n` : "";
+    const placeholder = useI18n ? `{SD("common.searchPlaceholder")}` : `"검색..."`;
 
     return {
       ...this.getTargetAndPath(names),
@@ -25,7 +38,7 @@ import type React from "react";
 import { useState } from "react";
 import { ${names.capital}SearchFieldSelect } from "@/components/${names.fs}/${names.capital}SearchFieldSelect";
 import SearchIcon from "~icons/lucide/search";
-
+${sdImport}
 export type ${names.capital}SearchInputProps = {
   input: {
     value?: string;
@@ -65,7 +78,7 @@ export function ${names.capital}SearchInput({
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="검색..."
+          placeholder=${placeholder}
           className="h-8 w-[200px] pr-8"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}

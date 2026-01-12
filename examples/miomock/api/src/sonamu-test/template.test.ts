@@ -199,6 +199,7 @@ describe("TemplateManager", () => {
           key: "isolated-only",
           render: vi.fn(),
           getTargetAndPath: vi.fn(),
+          getRequiredDictKeys: vi.fn(),
         };
 
         isolatedManager.register(customTemplate as Template);
@@ -256,12 +257,14 @@ describe("TemplateManager", () => {
           key: "overwrite-test",
           render: vi.fn().mockReturnValue({ target: "", path: "", body: "V1", importKeys: [] }),
           getTargetAndPath: vi.fn(),
+          getRequiredDictKeys: vi.fn(),
         };
 
         const template2 = {
           key: "overwrite-test",
           render: vi.fn().mockReturnValue({ target: "", path: "", body: "V2", importKeys: [] }),
           getTargetAndPath: vi.fn(),
+          getRequiredDictKeys: vi.fn(),
         };
 
         TemplateManager.register(template1 as Template);
@@ -278,9 +281,24 @@ describe("TemplateManager", () => {
         const initialSize = TemplateManager.size;
 
         const templates = [
-          { key: "batch-1", render: vi.fn(), getTargetAndPath: vi.fn() },
-          { key: "batch-2", render: vi.fn(), getTargetAndPath: vi.fn() },
-          { key: "batch-3", render: vi.fn(), getTargetAndPath: vi.fn() },
+          {
+            key: "batch-1",
+            render: vi.fn(),
+            getTargetAndPath: vi.fn(),
+            getRequiredDictKeys: vi.fn(),
+          },
+          {
+            key: "batch-2",
+            render: vi.fn(),
+            getTargetAndPath: vi.fn(),
+            getRequiredDictKeys: vi.fn(),
+          },
+          {
+            key: "batch-3",
+            render: vi.fn(),
+            getTargetAndPath: vi.fn(),
+            getRequiredDictKeys: vi.fn(),
+          },
         ];
 
         TemplateManager.registerAll(templates as Template[]);
@@ -339,6 +357,7 @@ describe("TemplateManager", () => {
           key: "isolated-pattern-1",
           render: vi.fn(),
           getTargetAndPath: vi.fn(),
+          getRequiredDictKeys: vi.fn(),
         };
         TemplateManager.register(customTemplate as Template);
 

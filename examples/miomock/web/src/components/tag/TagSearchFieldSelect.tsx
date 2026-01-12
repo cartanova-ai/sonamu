@@ -5,8 +5,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@sonamu-kit/react-components/components";
-
-import { TagSearchField, TagSearchFieldLabel } from "@/services/sonamu.generated";
+import { SD } from "@/i18n/sd.generated";
+import { TagSearchField } from "@/services/sonamu.generated";
 
 export type TagSearchFieldSelectProps = {
   value?: string;
@@ -29,6 +29,7 @@ export function TagSearchFieldSelect({
 }: TagSearchFieldSelectProps) {
   // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
   const validOptions = TagSearchField.options.filter((key) => (key as string) !== "");
+  const enumLabels = SD.enumLabels("TagSearchField");
 
   return (
     <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
@@ -36,10 +37,10 @@ export function TagSearchFieldSelect({
         <SelectValue placeholder={placeholder ?? "검색"} />
       </SelectTrigger>
       <SelectContent>
-        {clearable && <SelectItem value="">전체</SelectItem>}
+        {clearable && <SelectItem value="">{SD("common.all")}</SelectItem>}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
-            {(textPrefix ?? "") + TagSearchFieldLabel[key]}
+            {(textPrefix ?? "") + enumLabels[key]}
           </SelectItem>
         ))}
       </SelectContent>

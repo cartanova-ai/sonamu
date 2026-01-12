@@ -136,78 +136,10 @@ const entityLabels = {
   "enum.UserRole.admin": "관리자",
 } as const;
 
-const sonamuDictKo = {
-  "error.badRequest": "잘못된 요청입니다",
-  "error.unauthorized": "인증이 필요합니다",
-  "error.forbidden": "권한이 없습니다",
-  "error.notFound": "찾을 수 없습니다",
-  "error.serviceUnavailable": "서비스를 사용할 수 없습니다",
-  "error.internalServerError": "서버 오류가 발생했습니다",
-  "error.alreadyProcessed": "이미 처리되었습니다",
-  "error.duplicateRow": "중복된 데이터입니다",
-  "error.targetNotFound": "대상을 찾을 수 없습니다",
-  "common.save": "저장",
-  "common.cancel": "취소",
-  "common.delete": "삭제",
-  "common.edit": "수정",
-  "common.create": "생성",
-  "common.search": "검색",
-  "common.confirm": "확인",
-  "common.close": "닫기",
-  "confirm.delete": "정말 삭제하시겠습니까?",
-  "confirm.save": "저장하시겠습니까?",
-  "validation.required": (field: string) => `${field}은(는) 필수입니다`,
-  "validation.minLength": (field: string, min: number) =>
-    `${field}은(는) 최소 ${min}자 이상이어야 합니다`,
-  "validation.maxLength": (field: string, max: number) =>
-    `${field}은(는) 최대 ${max}자까지 입력할 수 있습니다`,
-  "validation.range": (field: string, min: number, max: number) =>
-    `${field}은(는) ${min}~${max} 사이여야 합니다`,
-  "validation.email": "올바른 이메일 형식이 아닙니다",
-  "validation.url": "올바른 URL 형식이 아닙니다",
-  "entity.list": (name: string) => `${name} 목록`,
-  "entity.create": (name: string) => `${name} 생성`,
-  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
-};
-const sonamuDictEn = {
-  "error.badRequest": "Bad Request",
-  "error.unauthorized": "Authentication required",
-  "error.forbidden": "Permission denied",
-  "error.notFound": "Not found",
-  "error.serviceUnavailable": "Service unavailable",
-  "error.internalServerError": "Internal server error",
-  "error.alreadyProcessed": "Already processed",
-  "error.duplicateRow": "Duplicate data",
-  "error.targetNotFound": "Target not found",
-  "common.save": "Save",
-  "common.cancel": "Cancel",
-  "common.delete": "Delete",
-  "common.edit": "Edit",
-  "common.create": "Create",
-  "common.search": "Search",
-  "common.confirm": "Confirm",
-  "common.close": "Close",
-  "confirm.delete": "Are you sure you want to delete?",
-  "confirm.save": "Do you want to save?",
-  "validation.required": (field: string) => `${field} is required`,
-  "validation.minLength": (field: string, min: number) =>
-    `${field} must be at least ${min} characters`,
-  "validation.maxLength": (field: string, max: number) =>
-    `${field} must be at most ${max} characters`,
-  "validation.range": (field: string, min: number, max: number) =>
-    `${field} must be between ${min} and ${max}`,
-  "validation.email": "Invalid email format",
-  "validation.url": "Invalid URL format",
-  "entity.list": (name: string) => `${name} List`,
-  "entity.create": (name: string) => `Create ${name}`,
-  "entity.edit": (name: string, id: number) => `Edit ${name} (#${id})`,
-};
-
 // defaultLocale의 dictionary를 기준으로 키 추출
 type ProjectDictionary = typeof ko;
-type SonamuDictionary = typeof sonamuDictKo;
 type EntityLabels = typeof entityLabels;
-type RawMergedDictionary = EntityLabels & SonamuDictionary & ProjectDictionary;
+type RawMergedDictionary = EntityLabels & ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
 type MergedDictionary = {
@@ -222,10 +154,10 @@ export function defineLocale(dict: Partial<MergedDictionary>) {
   return dict;
 }
 
-// 각 locale별로 entity labels + Sonamu 내장 dict + 프로젝트 dict 합침
+// 각 locale별로 entity labels + 프로젝트 dict 합침
 const dictionaries: Record<string, Partial<MergedDictionary>> = {
-  ko: { ...sonamuDictKo, ...entityLabels, ...ko },
-  en: { ...sonamuDictEn, ...en },
+  ko: { ...entityLabels, ...ko },
+  en: { ...en },
 };
 
 type SDReturnType<K extends DictKey> = MergedDictionary[K] extends (...args: infer P) => string

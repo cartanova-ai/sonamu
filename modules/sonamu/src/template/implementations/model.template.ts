@@ -20,6 +20,11 @@ export class Template__model extends Template {
     };
   }
 
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["error.entityNotFound", "error.unknownSearchField"];
+  }
+
   async render({ entityId }: TemplateOptions["model"]) {
     Naite.t("render", { entityId });
 
@@ -38,6 +43,20 @@ export class Template__model extends Template {
     }
     const def = vlTpl.getDefault(listParamsNode.children);
 
+    // i18n 설정 확인
+    const useI18n = !!Sonamu.config.i18n;
+
+    // 에러 메시지 생성
+    const notFoundError = useI18n
+      ? `SD("error.entityNotFound")("${names.capital}", id)`
+      : `\`존재하지 않는 ${names.capital} ID \${id}\``;
+    const unknownSearchFieldError = useI18n
+      ? `SD("error.unknownSearchField")(params.search)`
+      : `\`구현되지 않은 검색 필드 \${params.search}\``;
+
+    // SD import
+    const sdImport = useI18n ? `import { SD } from "../../i18n/sd.generated";\n` : "";
+
     return {
       ...this.getTargetAndPath(names),
       body: `
@@ -51,7 +70,7 @@ import {
   ${names.camel}LoaderQueries,
 } from "../sonamu.generated.sso";
 import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
-
+${sdImport}
 /*
   ${entityId} Model
 */
@@ -76,7 +95,7 @@ class ${entityId}ModelClass extends BaseModelClass<
       page: 1,
     });
     if (!rows[0]) {
-      throw new NotFoundException(\`존재하지 않는 ${names.capital} ID \${id}\`);
+      throw new NotFoundException(${notFoundError});
     }
 
     return rows[0];
@@ -124,7 +143,7 @@ class ${entityId}ModelClass extends BaseModelClass<
         // } else if (params.search === "field") {
         //   qb.where("${entity.table}.field", "like", \`%\${params.keyword}%\`);
       } else {
-        throw new BadRequestException(\`구현되지 않은 검색 필드 \${params.search}\`);
+        throw new BadRequestException(${unknownSearchFieldError});
       }
     }
       

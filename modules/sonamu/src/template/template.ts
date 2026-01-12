@@ -102,4 +102,16 @@ export abstract class Template {
     target: string;
     path: string;
   };
+
+  /**
+   * 이 템플릿이 필요로 하는 i18n dict 키를 반환합니다.
+   * 스캐폴딩 시 여러 템플릿의 키를 모아서 한 번에 처리합니다.
+   *
+   * @param options - 템플릿 옵션
+   * @returns 필요한 dict 키 배열 또는 null (i18n 불필요 시)
+   */
+  public getRequiredDictKeys(): string[] | null {
+    // 기본적으로 dict 키가 필요 없음. 필요한 템플릿에서 오버라이드
+    return null;
+  }
 }

@@ -1,6 +1,7 @@
 import inflection from "inflection";
 import { flat } from "radashi";
 import { z } from "zod";
+import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
@@ -17,6 +18,11 @@ export class Template__view_list extends Template {
       target: "web/src/routes/admin",
       path: `${names.fsPlural}/index.tsx`,
     };
+  }
+
+  override getRequiredDictKeys(): string[] | null {
+    if (!Sonamu.config.i18n) return null;
+    return ["entity.listManage", "common.all"];
   }
 
   wrapTc(body: string, key: string, collapsing: boolean = true, className: string = "") {
@@ -247,6 +253,9 @@ export class Template__view_list extends Template {
     const names = EntityManager.getNamesFromId(entityId);
     const entity = EntityManager.get(entityId);
 
+    // i18n 설정 확인
+    const useI18n = !!Sonamu.config.i18n;
+
     // 실제 리스트 컬럼
     const columns = (columnsNode.children as RenderingNode[])
 
@@ -434,8 +443,9 @@ import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
 import SearchIcon from "~icons/mdi/magnify";
+${useI18n ? `import { SD } from "@/i18n/sd.generated";` : ""}
 
-export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: "${entity.title ?? names.capital} List" },\n      { name: "description", content: "${entity.title ?? names.capital} 목록 관리" },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
+export const Route = createFileRoute("/admin/${names.fsPlural}/")({\n  head: () => ({\n    meta: [\n      { title: "${entity.title ?? names.capital} List" },\n      { name: "description", content: ${useI18n ? `SD("entity.listManage")("${entity.title ?? names.capital}")` : `"${entity.title ?? names.capital} 목록 관리"`} },\n    ],\n  }),\n  component: ${names.capital}List,\n});\n\ntype ${names.capital}ListProps = {};
 
 function ${names.capital}List({}: ${names.capital}ListProps) {
   const navigate = useNavigate();

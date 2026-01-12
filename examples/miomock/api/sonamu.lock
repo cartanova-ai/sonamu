@@ -37,7 +37,7 @@
   },
   {
     "path": "src/application/employee/employee.entity.json",
-    "checksum": "199325a330a4e6e56fab31c23059b693411eb17a"
+    "checksum": "dc6568300f3032a80c03e436fdbfca793c4cc165"
   },
   {
     "path": "src/application/employee/employee.model.ts",
@@ -117,15 +117,15 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "906a3df20b2b0059c4883c3394ed941792e868d5"
+    "checksum": "52f2fdf19b60f4eff4a8d9fb1c4cb1ca1c7a92d9"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "2741182b280c8dfa675455fd0923db57cc82911b"
+    "checksum": "1cf7659c1f73ab9f6c3703aa362bae2e91e549c9"
   },
   {
     "path": "src/i18n/sd.generated.ts",
-    "checksum": "9b610b0e397fa3809c928c12fcc4943ba3a40651"
+    "checksum": "0a51f5edae54289ad5ac8b6940295f0ad7c2b825"
   },
   {
     "path": "src/sonamu.config.ts",

@@ -2,6 +2,7 @@ import { Button, Input } from "@sonamu-kit/react-components/components";
 import type React from "react";
 import { useState } from "react";
 import { TagSearchFieldSelect } from "@/components/tag/TagSearchFieldSelect";
+import { SD } from "@/i18n/sd.generated";
 import SearchIcon from "~icons/lucide/search";
 
 export type TagSearchInputProps = {
@@ -43,7 +44,7 @@ export function TagSearchInput({
       <div className="relative flex items-center">
         <Input
           type="text"
-          placeholder="검색..."
+          placeholder={SD("common.searchPlaceholder")}
           className="h-8 w-[200px] pr-8"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}

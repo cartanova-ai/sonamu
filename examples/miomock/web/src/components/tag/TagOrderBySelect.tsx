@@ -37,7 +37,7 @@ export function TagOrderBySelect({
         <SelectValue placeholder={placeholder ?? "정렬"} />
       </SelectTrigger>
       <SelectContent>
-        {clearable && <SelectItem value="">전체</SelectItem>}
+        {clearable && <SelectItem value="">{SD("common.all")}</SelectItem>}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
             {(textPrefix ?? "") + enumLabels[key]}
