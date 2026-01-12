@@ -259,7 +259,7 @@ describe("Puri Query", () => {
         );
       });
 
-      test.only("where로 NULL 체크", async () => {
+      test("where로 NULL 체크", async () => {
         const db = UserModel.getPuri("r");
         await db.table("employees").where("employees.hire_date", null);
         const query = Naite.get("puri:executed-query").first();
@@ -267,7 +267,7 @@ describe("Puri Query", () => {
         expectQuery(query, "where").toMatchInlineSnapshot(`""employees"."hire_date" IS NULL"`);
       });
 
-      test.only("where로 NOT NULL 체크", async () => {
+      test("where로 NOT NULL 체크", async () => {
         const db = UserModel.getPuri("r");
         await db.table("employees").where("employees.hire_date", "!=", null);
         const query = Naite.get("puri:executed-query").first();
