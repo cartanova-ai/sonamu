@@ -218,7 +218,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             .replace(/{EntityID}/g, entityId ? EntityManager.get(entityId).title : "");
         })();
 
-        console.log({ entityId, origin, suggested });
         return { suggested };
       });
 
@@ -731,7 +730,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
             }
           }),
         );
-        console.log(result);
 
         if (result.filter(nonNullable).length === 0) {
           throw new ServiceUnavailableException("이미 모든 파일이 생성된 상태입니다.");

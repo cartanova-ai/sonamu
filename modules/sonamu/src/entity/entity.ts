@@ -634,8 +634,9 @@ export class Entity {
         return group.map((propName) => {
           const prop = entity.props.find((p) => p.name === propName);
           if (prop === undefined) {
-            console.log({ propName, groups });
-            throw new Error(`${entity.id} -- 잘못된 FieldExpr ${propName}`);
+            throw new Error(
+              `${entity.id} -- 잘못된 FieldExpr '${propName}' (사용 가능한 props: ${entity.props.map((p) => p.name).join(", ")})`,
+            );
           }
           return {
             nodeType: "plain" as const,

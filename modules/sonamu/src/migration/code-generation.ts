@@ -331,7 +331,8 @@ async function generateCreateCode_Foreign(
 
   const { up, down } = genForeignDefinitions(table, foreigns);
   if (up.length === 0 && down.length === 0) {
-    console.log("fk 가 뭔가 다릅니다");
+    // foreigns가 있는데 생성된 코드가 없는 경우는 비정상적인 상황이지만,
+    // 마이그레이션 생성을 중단시키지 않고 빈 배열을 반환합니다.
     return [];
   }
 
