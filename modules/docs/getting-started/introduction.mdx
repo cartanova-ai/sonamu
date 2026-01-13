@@ -13,13 +13,13 @@ Sonamu는 TypeScript의 타입 시스템을 중심에 두고 설계되었습니�
 
 <Frame caption="🎬 Entity 생성 → Migration 실행 → 타입/스키마/API 자동 생성 → 프론트엔드 Service 생성까지 전체 플로우">
   <video
-    autoPlay
     muted
     loop
     playsInline
     controls
     className="w-full rounded-xl"
-    src="/images/introduction1.mp4"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"
   ></video>
 </Frame>
 
@@ -77,7 +77,7 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
     async save(spa: UserSaveParams[]): Promise<number[]> {
       // ...
     }
-    
+
     // 프론트엔드 Service (자동 생성)
     export namespace UserService {
       // GET 요청 함수
@@ -85,9 +85,9 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
         subset: T,
         id: number,
       ): Promise<UserSubsetMapping[T]> {
-        return fetch({ 
-          method: "GET", 
-          url: `/api/user/findById?${qs.stringify({ subset, id })}` 
+        return fetch({
+          method: "GET",
+          url: `/api/user/findById?${qs.stringify({ subset, id })}`
         });
       }
 
@@ -100,8 +100,8 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
 
       // POST 요청 함수
       export async function save(spa: UserSaveParams[]): Promise<number[]> {
-        return fetch({ 
-          method: "POST", 
+        return fetch({
+          method: "POST",
           url: `/api/user/save`,
           data: { spa }
         });
@@ -111,18 +111,23 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
       export const useSaveMutation = () =>
         useMutation({ mutationFn: (params: { spa: UserSaveParams[] }) => save(params.spa) });
     }
-    
+
     // 컴포넌트에서 사용
     const user = await UserService.getUser("A", 123);      // 직접 호출
     const { data: user } = UserService.useUser("A", 123);  // Hook으로 호출
     console.log(user.username);    // ✅ 타입 체크됨
     console.log(user.nonExistent); // ❌ 컴파일 에러
     ```
+
   </Tab>
 </Tabs>
 
 <Frame caption="📸 Sonamu 방식에서 존재하지 않는 속성에 접근하면 컴파일 에러 표시">
-  <img src="/images/introduction2.png" alt="Sonamu 방식 컴파일 에러" style={{width: '80%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/introduction2.png"
+    alt="Sonamu 방식 컴파일 에러"
+    style={{ width: "80%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 ---
@@ -235,13 +240,13 @@ test("관리자는 모든 사용자를 볼 수 있다", async () => {
 
 <Frame caption="📸 Naite Viewer 화면 - 테스트 실행 중 데이터베이스 변화를 시각적으로 보여주는 UI">
   <video
-    autoPlay
     muted
     loop
     playsInline
     controls
     className="w-full rounded-xl"
-    src="/images/introduction4.mp4"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction4.mp4"
   ></video>
 </Frame>
 
@@ -648,11 +653,13 @@ function RegisterForm() {
   </Card>
 
 {" "}
+
 <Card title="타입 안전성을 신뢰하는 팀" icon="shield-check">
   런타임 에러보다 컴파일 에러를 선호하고, IDE의 도움을 최대한 활용하는 팀
 </Card>
 
 {" "}
+
 <Card title="프론트엔드와 협업하는 백엔드" icon="handshake">
   API 스펙 문서화와 클라이언트 작성의 이중 작업에서 벗어나고 싶은 분
 </Card>
@@ -688,11 +695,13 @@ open http://localhost:1028/sonamu-ui
   </Card>
 
 {" "}
+
 <Card title="Installation" icon="download" href="/getting-started/installation">
   자세한 설치 가이드
 </Card>
 
 {" "}
+
 <Card title="Core Concepts" icon="book" href="/core-concepts/how-sonamu-works">
   Sonamu 작동 원리 이해하기
 </Card>

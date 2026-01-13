@@ -14,7 +14,7 @@ Sonamu를 사용하기 위해서는 다음 환경이 필요합니다:
 - **Docker** (데이터베이스 실행용)
 
 <Tip>
-pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.
+  pnpm이 설치되지 않았다면 `corepack enable` 명령어로 활성화할 수 있습니다.
 </Tip>
 
 <Frame caption="터미널에서 node --version, pnpm --version, docker --version 실행 결과">
@@ -30,14 +30,14 @@ pnpm create sonamu
 ```
 
 <Frame caption="pnpm create sonamu 실행부터 모든 프롬프트 입력 완료까지 전체 과정">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    controls 
-    className="w-full rounded-xl" 
-    src="/images/installation2.mp4"
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/installation2.mp4"
   ></video>
 </Frame>
 
@@ -64,7 +64,7 @@ pnpm create sonamu
 </Step>
 
 <Step title="pnpm 설정">
-pnpm을 자동으로 설정할지 선택합니다. 권장 옵션입니다.
+  pnpm을 자동으로 설정할지 선택합니다. 권장 옵션입니다.
 </Step>
 
 <Step title="데이터베이스 설정">
@@ -76,6 +76,7 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 - 데이터베이스 비밀번호
 
 를 입력받고, 이 정보로 `api/.env` 파일이 자동 생성됩니다.
+
 </Step>
 </Steps>
 
@@ -88,7 +89,11 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 `create-sonamu`는 다음과 같은 모노레포 구조를 생성합니다:
 
 <Frame caption="VS Code에서 열린 프로젝트의 디렉토리 트리 구조">
-  <img src="/images/installation4.png" alt="VS Code Explorer 사이드바" style={{maxWidth: '500px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/installation4.png"
+    alt="VS Code Explorer 사이드바"
+    style={{ maxWidth: "500px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 <Tree>
@@ -134,7 +139,11 @@ Docker를 사용한 PostgreSQL 데이터베이스를 설정할지 선택합니�
 생성된 API 서버의 진입점은 다음과 같습니다:
 
 <Frame caption="VS Code에서 열린 api/src/index.ts 파일">
-  <img src="/images/installation5.png" alt="api/src/index.ts 파일" style={{maxWidth: '800px', width: '100%', borderRadius: '0.75rem'}} />
+  <img
+    src="/images/installation5.png"
+    alt="api/src/index.ts 파일"
+    style={{ maxWidth: "800px", width: "100%", borderRadius: "0.75rem" }}
+  />
 </Frame>
 
 ### Sonamu 설정
@@ -246,7 +255,7 @@ export default defineConfig({
 <Note>
 - API 서버 포트: `api/src/sonamu.config.ts`에서 `port` 상수 수정 (이 경우 `web/.sonamu.env`의 `API_PORT`도 함께 수정 필요)
 - Web 앱 포트: `web/vite.config.ts`에서 `server.port` 수정
-- 데이터베이스 포트: `api/.env`에서 `DB_PORT` 수정
+- 데이터베이스 포트: `api/src/sonamu.config.ts`의 `database.defaultOptions.connection.port`에서 환경변수 설정 (예: `MIOMOCK_DB_PORT`)
 </Note>
 
 ## 다음 단계

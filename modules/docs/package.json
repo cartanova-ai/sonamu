@@ -4,7 +4,9 @@
   "description": "Sonamu Framework Documentation",
   "scripts": {
     "dev": "mint dev",
-    "migrate": "node migrate-docs.js"
+    "migrate": "node migrate-docs.js",
+    "upload-videos": "node scripts/upload-videos.mjs",
+    "upload-videos:dry": "node scripts/upload-videos.mjs --dry-run"
   },
   "keywords": [
     "sonamu",
