@@ -59,6 +59,7 @@ import {
   SonamuFileSchema,
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
+import { runtimePath } from "../utils/path-utils";
 
 // <any>를 자제하고, Zod에서 제약하는 기본적인 Generic Type Parameter를 사용함.
 type AnyZodRecord = z.ZodRecord<z.ZodString | z.ZodNumber | z.ZodSymbol, z.ZodType>;
@@ -103,7 +104,10 @@ export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
 
   // 프로젝트에서 정의한 타입 동적 로드
   const modulePath = EntityManager.getModulePath(zodTypeId);
-  const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", `${modulePath}.js`);
+  const moduleAbsPath = path.join(
+    Sonamu.apiRootPath,
+    runtimePath(`dist/application/${modulePath}.js`),
+  );
   const importUrl = createImportUrl(moduleAbsPath);
   const imported = await import(importUrl);
 

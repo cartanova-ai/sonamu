@@ -92,6 +92,12 @@ export class Template__view_list extends Template {
         return `<div className="flex gap-1">{ ${colName}?.map((r, i) => ${
           col.nullable ? `r && ` : ""
         }<img key={i} src={r} alt={\`${col.label ?? col.name} \${i + 1}\`} className="h-8 w-8 object-cover rounded" />) }</div>`;
+      case "json-sonamufile":
+        return `<div className="flex items-center gap-2">{${colName} ? <img src={${colName}.url} alt={${colName}.name} className="h-8 w-8 object-cover rounded" /> : '-'}</div>`;
+      case "json-sonamufile-array":
+        return `<div className="flex gap-1">{ ${colName}?.map((r, i) => ${
+          col.nullable ? `r && ` : ""
+        }<img key={i} src={r.url} alt={\`${col.label ?? col.name} \${i + 1}\`} className="h-8 w-8 object-cover rounded" />) }</div>`;
       case "number-plain":
         return `<>{${col.nullable || col.name.includes(".") ? `${colName} && ` : ""}numF(${colName})}</>`;
       case "object":
