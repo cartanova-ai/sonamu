@@ -11,7 +11,7 @@ Sonamu는 TypeScript의 타입 시스템을 중심에 두고 설계되었습니�
 
 **Entity 하나를 정의하면, 나머지는 TypeScript가 알아서 합니다.**
 
-<Frame caption="🎬 Entity 저장 → 타입/스키마/API 자동 생성 → 프론트엔드 Service 생성까지 전체 플로우">
+<Frame caption="🎬 Entity 생성 → Migration 실행 → 타입/스키마/API 자동 생성 → 프론트엔드 Service 생성까지 전체 플로우">
   <video
     autoPlay
     muted
@@ -68,26 +68,62 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
   <Tab title="Sonamu 방식">
     ```typescript
     // 백엔드 Model
-    @api({ httpMethod: "GET" })
-    async findById(id: number): Promise<User> {
+    @api({ httpMethod: "GET", clients: ["axios", "tanstack-query"], resourceName: "User" })
+    async findById<T extends UserSubsetKey>(subset: T, id: number): Promise<UserSubsetMapping[T]> {
       return this.getPuri("r").table("users").where("id", id).first();
+    }
+
+    @api({ httpMethod: "POST", clients: ["axios", "tanstack-mutation"] })
+    async save(spa: UserSaveParams[]): Promise<number[]> {
+      // ...
     }
     
     // 프론트엔드 Service (자동 생성)
     export namespace UserService {
-      export async function findById(id: number): Promise<User> {
-        return fetch({ method: "GET", url: `/api/user/findById?id=${id}` });
+      // GET 요청 함수
+      export async function getUser<T extends UserSubsetKey>(
+        subset: T,
+        id: number,
+      ): Promise<UserSubsetMapping[T]> {
+        return fetch({ 
+          method: "GET", 
+          url: `/api/user/findById?${qs.stringify({ subset, id })}` 
+        });
       }
+
+      // GET을 위한 React Query Hook
+      export const useUser = <T extends UserSubsetKey>(
+        subset: T,
+        id: number,
+        options?: { enabled?: boolean },
+      ) => useQuery({ queryKey: ["User", "getUser", subset, id], queryFn: () => getUser(subset, id), ...options });
+
+      // POST 요청 함수
+      export async function save(spa: UserSaveParams[]): Promise<number[]> {
+        return fetch({ 
+          method: "POST", 
+          url: `/api/user/save`,
+          data: { spa }
+        });
+      }
+
+      // POST를 위한 React Query Hook
+      export const useSaveMutation = () =>
+        useMutation({ mutationFn: (params: { spa: UserSaveParams[] }) => save(params.spa) });
     }
     
-    const user = await UserService.findById(123);
+    // 컴포넌트에서 사용
+    const user = await UserService.getUser("A", 123);      // 직접 호출
+    const { data: user } = UserService.useUser("A", 123);  // Hook으로 호출
     console.log(user.username);    // ✅ 타입 체크됨
     console.log(user.nonExistent); // ❌ 컴파일 에러
     ```
   </Tab>
 </Tabs>
 
-<Frame caption="📸 필요: VS Code에서 타입 에러가 빨간 줄로 표시되는 스크린샷 (user.nonExistent에 빨간 밑줄)"></Frame>
+<Frame caption="📸 Sonamu 방식에서 존재하지 않는 속성에 접근하면 컴파일 에러 표시">
+  <img src="/images/introduction2.png" alt="Sonamu 방식 컴파일 에러" style={{width: '80%', borderRadius: '0.75rem'}} />
+</Frame>
 
 ---
 
@@ -95,7 +131,17 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
 
 백엔드 API를 정의하면, 프론트엔드 Service와 TanStack Query Hook이 자동으로 생성됩니다.
 
-<Frame caption="🎬 필요: 백엔드 @api 메서드 작성 → pnpm generate → 프론트엔드에서 useQuery 사용 (20초)"></Frame>
+<Frame caption="🎬 백엔드 @api 메서드 작성 → 프론트엔드 Service 자동 생성 → useQuery 사용">
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    src="/images/introduction3.mp4"
+  ></video>
+</Frame>
 
 ```tsx
 // 백엔드: @api 데코레이터로 API 정의
@@ -187,7 +233,17 @@ test("관리자는 모든 사용자를 볼 수 있다", async () => {
 
 테스트 실행 중 모든 데이터 변화를 추적하고 시각화합니다. 디버깅이 훨씬 쉬워집니다.
 
-<Frame caption="📸 필요: Naite Viewer 화면 - 테스트 실행 중 데이터베이스 변화를 시각적으로 보여주는 UI"></Frame>
+<Frame caption="📸 Naite Viewer 화면 - 테스트 실행 중 데이터베이스 변화를 시각적으로 보여주는 UI">
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    src="/images/introduction4.mp4"
+  ></video>
+</Frame>
 
 ```typescript
 test("사용자 생성 플로우", async () => {
@@ -497,6 +553,13 @@ const posts = await PostModel.findMany("A", {
 
 Entity를 정의하고 사용하기까지의 전체 플로우입니다.
 
+> **참고:** 자동 생성되는 파일들
+>
+> - `api/src/application/sonamu.generated.ts` - 모든 타입, 스키마, Enum
+> - `web/src/services/sonamu.generated.ts` - 프론트엔드 타입 (동기화됨)
+> - `web/src/services/services.generated.ts` - 모든 Service 메서드
+> - `web/src/services/{entity}/{entity}.types.ts` - 커스텀 타입 (수동 작성)
+
 ### 1. Entity 정의
 
 <Frame caption="📸 필요: Sonamu UI에서 User Entity를 정의하는 화면"></Frame>
@@ -513,14 +576,14 @@ Entity를 정의하고 사용하기까지의 전체 플로우입니다.
 }
 ```
 
-### 2. 자동 생성
+### 2. Migration 실행 및 동기화
 
-저장 버튼을 누르는 순간:
+Entity 저장 → Migration 실행 → `pnpm sync`:
 
-✅ TypeScript 타입  
-✅ Zod 스키마  
+✅ TypeScript 타입 (`sonamu.generated.ts`)  
+✅ Zod 스키마 (BaseSchema, BaseListParams)  
 ✅ DB 마이그레이션  
-✅ 프론트엔드 Service  
+✅ 프론트엔드 Service (`services.generated.ts`)  
 ✅ TanStack Query Hook
 
 ### 3. Model에서 비즈니스 로직 작성
@@ -584,13 +647,15 @@ function RegisterForm() {
     반복 작업에 시간을 낭비하지 않고, 비즈니스 로직에 집중하고 싶은 분
   </Card>
 
-  <Card title="타입 안전성을 신뢰하는 팀" icon="shield-check">
-    런타임 에러보다 컴파일 에러를 선호하고, IDE의 도움을 최대한 활용하는 팀
-  </Card>
+{" "}
+<Card title="타입 안전성을 신뢰하는 팀" icon="shield-check">
+  런타임 에러보다 컴파일 에러를 선호하고, IDE의 도움을 최대한 활용하는 팀
+</Card>
 
-  <Card title="프론트엔드와 협업하는 백엔드" icon="handshake">
-    API 스펙 문서화와 클라이언트 작성의 이중 작업에서 벗어나고 싶은 분
-  </Card>
+{" "}
+<Card title="프론트엔드와 협업하는 백엔드" icon="handshake">
+  API 스펙 문서화와 클라이언트 작성의 이중 작업에서 벗어나고 싶은 분
+</Card>
 
   <Card title="빠른 프로토타이핑이 필요한 스타트업" icon="gauge-high">
     MVP를 빠르게 만들면서도 기술 부채를 최소화하고 싶은 팀
@@ -622,21 +687,15 @@ open http://localhost:1028/sonamu-ui
     5분 만에 첫 API 만들기
   </Card>
 
-  <Card
-    title="Installation"
-    icon="download"
-    href="/getting-started/installation"
-  >
-    자세한 설치 가이드
-  </Card>
+{" "}
+<Card title="Installation" icon="download" href="/getting-started/installation">
+  자세한 설치 가이드
+</Card>
 
-  <Card
-    title="Core Concepts"
-    icon="book"
-    href="/core-concepts/how-sonamu-works"
-  >
-    Sonamu 작동 원리 이해하기
-  </Card>
+{" "}
+<Card title="Core Concepts" icon="book" href="/core-concepts/how-sonamu-works">
+  Sonamu 작동 원리 이해하기
+</Card>
 
   <Card
     title="Development Workflow"
