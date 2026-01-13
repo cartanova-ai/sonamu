@@ -21,6 +21,7 @@ import Trash2Icon from "~icons/lucide/trash-2";
 import { EditableInput } from "../../components/EditableInput";
 import { SheetCellInput } from "../../components/SheetCellInput";
 import { useSheetTable } from "../../components/useSheetTable";
+import { useSD } from "../../i18n";
 import { defaultCatch } from "../../services/sonamu.shared";
 import { SonamuUIService } from "../../services/sonamu-ui.service";
 import { EntityIndexModal } from "../entities/_entity_index_modal";
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/entities/$entityId")({
 
 type EntitiesShowPageProps = {};
 function EntitiesShowPage({}: EntitiesShowPageProps) {
+  const SD = useSD();
   const { data, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 
@@ -53,7 +55,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     if (!entity) {
       return;
     }
-    const answer = confirm(`Are you sure to delete an entity "${entity.id}"?`);
+    const answer = confirm(SD("entity.confirm.delete").replace("{id}", entity.id));
     if (!answer) {
       return;
     }
@@ -492,7 +494,9 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     if (!entity) {
       return;
     }
-    const answer = confirm(`Are you sure to delete "${entity.props[at].name}"?`);
+    const answer = confirm(
+      SD("entity.confirm.deleteProp").replace("{name}", entity.props[at].name),
+    );
     if (!answer) {
       return;
     }
@@ -568,7 +572,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     if (!entity) {
       return;
     }
-    const answer = confirm(`Are you sure to delete the index"?`);
+    const answer = confirm(SD("entity.confirm.deleteIndex"));
     if (!answer) {
       return;
     }
@@ -591,7 +595,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
 
   // subsets
   const addSubsetKey = () => {
-    const subsetKey = prompt("Subset key?");
+    const subsetKey = prompt(SD("entity.prompt.subsetKey"));
     if (!subsetKey) {
       return;
     }
@@ -604,7 +608,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       .catch(defaultCatch);
   };
   const delSubset = (subsetKey: string) => {
-    const answer = confirm(`Are you sure to delete "${subsetKey}"?`);
+    const answer = confirm(SD("entity.confirm.deleteSubset").replace("{key}", subsetKey));
     if (!answer) {
       return;
     }
@@ -678,7 +682,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
     if (!entity) {
       return;
     }
-    const answer = confirm(`Are you sure to delete "${enumId}"?`);
+    const answer = confirm(SD("entity.confirm.deleteEnum").replace("{id}", enumId));
     if (!answer) {
       return;
     }
@@ -694,7 +698,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
       return;
     }
 
-    const newEnumId = prompt("New enum id?");
+    const newEnumId = prompt(SD("entity.prompt.newEnumId"));
     if (!newEnumId) {
       return;
     }
@@ -717,9 +721,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
         <>
           <div className="relative pb-4 border-b border-gray-200">
             <h3 className="text-2xl text-slate-800 mb-4 flex items-center justify-between">
-              <span>
-                Entity: <strong className="text-green-600">{entity.id}</strong>
-              </span>
+              <span>{SD("entity.title").replace("{id}", entity.id)}</span>
               <Button
                 size="xs"
                 variant="destructive"
@@ -732,7 +734,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             <form className="block">
               <div className="flex gap-[14px]">
                 <div className="flex-1">
-                  <label className="block mb-1 font-bold">ParentID</label>
+                  <label className="block mb-1 font-bold">{SD("entity.parentId")}</label>
                   <EditableInput
                     value={entity.parentId ?? ""}
                     onChange={handleEntityBaseOnEnter("parentId")}
@@ -743,7 +745,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                   <EditableInput value={entity.title} onChange={handleEntityBaseOnEnter("title")} />
                 </div>
                 <div className="flex-1">
-                  <label className="block mb-1 font-bold">TableName</label>
+                  <label className="block mb-1 font-bold">{SD("entity.tableName")}</label>
                   <EditableInput value={entity.table} onChange={handleEntityBaseOnEnter("table")} />
                 </div>
                 <div className="flex-1">
@@ -757,17 +759,17 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
           </div>
           <div className="flex gap-4">
             <div className="flex-1">
-              <h3>Props</h3>
+              <h3>{SD("entity.props")}</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Desc</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Nullable</TableHead>
-                    <TableHead>With/As</TableHead>
-                    <TableHead>Default</TableHead>
-                    <TableHead>Filter</TableHead>
+                    <TableHead>{SD("entity.prop.name")}</TableHead>
+                    <TableHead>{SD("entity.prop.desc")}</TableHead>
+                    <TableHead>{SD("entity.prop.type")}</TableHead>
+                    <TableHead>{SD("entity.prop.nullable")}</TableHead>
+                    <TableHead>{SD("entity.prop.withAs")}</TableHead>
+                    <TableHead>{SD("entity.prop.default")}</TableHead>
+                    <TableHead>{SD("entity.prop.filter")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -860,7 +862,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         icon={<PlusIcon />}
                         onClick={() => openPropModal("add", undefined, 2)}
                       >
-                        Add a prop
+                        {SD("entity.addProp")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -868,12 +870,12 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
               </Table>
             </div>
             <div className="flex-[0.5]">
-              <h3>Indexes</h3>
+              <h3>{SD("entity.indexes")}</h3>
               <Table className="border rounded-lg bg-white">
                 <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Columns</TableHead>
+                    <TableHead>{SD("entity.index.type")}</TableHead>
+                    <TableHead>{SD("entity.index.columns")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -901,7 +903,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                         icon={<PlusIcon />}
                         onClick={() => openIndexModal("add", undefined, 0)}
                       >
-                        Add a index
+                        {SD("entity.addIndex")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -913,7 +915,8 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             {entity && Object.keys(enumLabelsArray).length > 0 && (
               <div className="flex-1">
                 <h3>
-                  Enums <Button size="xs" icon={<PlusIcon />} onClick={() => openCreateNewEnum()} />
+                  {SD("entity.enums")}{" "}
+                  <Button size="xs" icon={<PlusIcon />} onClick={() => openCreateNewEnum()} />
                 </h3>
                 <div className="flex flex-wrap gap-8">
                   {Object.keys(enumLabelsArray).map((enumId, enumsIndex) => (
@@ -924,7 +927,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
                             <TableHead
                               colSpan={2}
                               onDoubleClick={() => {
-                                const newEnumId = prompt("You want to change the EnumID?", enumId);
+                                const newEnumId = prompt(SD("entity.prompt.changeEnumId"), enumId);
                                 if (!newEnumId) {
                                   return;
                                 }
@@ -1004,7 +1007,7 @@ function EntitiesShowPage({}: EntitiesShowPageProps) {
             {entity && Object.keys(entity.subsets).length > 0 && (
               <div className="flex-[0.5]">
                 <h3>
-                  Subsets{" "}
+                  {SD("entity.subsets")}{" "}
                   <Button
                     size="xs"
                     icon={<PlusIcon />}
