@@ -4,6 +4,7 @@ import classNames from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import SearchModal from "./components/SearchModal";
+import { type Locale, SUPPORTED_LOCALES, useLocale, useSD, useSetLocale } from "./i18n";
 import { SonamuUIService } from "./services/sonamu-ui.service";
 
 interface AppProps {
@@ -11,27 +12,16 @@ interface AppProps {
 }
 
 function App({ children }: AppProps) {
+  const SD = useSD();
+  const locale = useLocale();
+  const setLocale = useSetLocale();
+
   const menus = [
-    {
-      name: "Entities",
-      path: "/entities",
-    },
-    {
-      name: "DB Migration",
-      path: "/migrations",
-    },
-    {
-      name: "Scaffolding",
-      path: "/scaffolding",
-    },
-    {
-      name: "Fixture",
-      path: "/fixture",
-    },
-    {
-      name: "i18n",
-      path: "/i18n",
-    },
+    { name: SD("nav.entities"), path: "/entities" },
+    { name: SD("nav.migration"), path: "/migrations" },
+    { name: SD("nav.scaffolding"), path: "/scaffolding" },
+    { name: SD("nav.fixture"), path: "/fixture" },
+    { name: SD("nav.i18n"), path: "/i18n" },
   ];
   const location = useLocation();
 
@@ -93,16 +83,29 @@ function App({ children }: AppProps) {
               ))}
             </div>
           </div>
-          <button
-            type="button"
-            className="mr-4 px-4 py-[0.4em] rounded-[20px] border border-white/10 bg-black/20 cursor-pointer text-text-muted text-[0.9em] transition-all duration-200 hover:border-accent hover:text-white *:mr-2"
-            onClick={() => setShowSearch(true)}
-          >
-            <span>🔍</span>
-            <span>Search</span>
-            <kbd className="keycap">⌘</kbd>
-            <kbd className="keycap">K</kbd>
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as Locale)}
+              className="px-2 py-[0.4em] rounded-md border border-white/10 bg-black/20 cursor-pointer text-text-muted text-[0.85em] transition-all duration-200 hover:border-accent hover:text-white"
+            >
+              {SUPPORTED_LOCALES.map((loc) => (
+                <option key={loc.value} value={loc.value}>
+                  {loc.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="mr-4 px-4 py-[0.4em] rounded-[20px] border border-white/10 bg-black/20 cursor-pointer text-text-muted text-[0.9em] transition-all duration-200 hover:border-accent hover:text-white *:mr-2"
+              onClick={() => setShowSearch(true)}
+            >
+              <span>🔍</span>
+              <span>{SD("nav.search")}</span>
+              <kbd className="keycap">⌘</kbd>
+              <kbd className="keycap">K</kbd>
+            </button>
+          </div>
         </div>
         <div className="content">{children}</div>
       </div>
