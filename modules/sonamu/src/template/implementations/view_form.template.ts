@@ -331,7 +331,7 @@ export function ${names.capitalPlural}Form({ id, mode }: ${names.capitalPlural}F
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { form, setForm, register } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
+  const { form, setForm, register${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? ", submit" : ""} } = useTypeForm(${names.capital}SaveParams, ${JSON.stringify(defaultValue).replace(/"now\(\)"/g, '""')});
 ${(() => {
   const hasDatetime = columns.some((col) => col.renderType === "string-datetime");
   const hasDate = columns.some((col) => col.renderType === "string-date");
@@ -396,7 +396,9 @@ ${(() => {
   }, [id, setForm]);
 
   const saveMutation = ${names.capital}Service.useSaveMutation();
-  const handleSubmit = () => {
+  const handleSubmit = ${
+    columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType))
+      ? `submit(async (form) => {
     saveMutation.mutate(
       { spa: [form] },
       {
@@ -414,6 +416,26 @@ ${(() => {
         onError: defaultCatch,
       },
     );
+  })`
+      : `() => {
+    saveMutation.mutate(
+      { spa: [form] },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["${names.capital}"],
+          });
+
+          if (mode === "modal") {
+            // modal mode
+          } else {
+            router.navigate({ to: "/admin/${names.fsPlural}" });
+          }
+        },
+        onError: defaultCatch,
+      },
+    );
+  }`
   };
 
   const PAGE = {

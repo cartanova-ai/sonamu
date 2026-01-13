@@ -210,14 +210,16 @@ export interface SonamuFile {
   size: number;
 }
 
-export const SonamuFileSchema = z.object({
-  name: z.string(),
-  url: z.string(),
-  mime_type: z.string(),
-  size: z.number(),
-});
+export const SonamuFileSchema = z
+  .object({
+    name: z.string(),
+    url: z.string(),
+    mime_type: z.string(),
+    size: z.number(),
+  })
+  .describe("SonamuFile");
 
-export const SonamuFileArraySchema = z.array(SonamuFileSchema);
+export const SonamuFileArraySchema = z.array(SonamuFileSchema).describe("SonamuFile[]");
 
 /**
  * Sonamu 코어에서 제공하는 내장 JSON 타입 ID 목록

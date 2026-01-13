@@ -12,11 +12,20 @@ import { Button } from "./button";
 export type { SonamuFile } from "@/contexts/sonamu-context";
 export type PreviewSize = "sm" | "md" | "lg" | "xl";
 
-const sizeClasses: Record<PreviewSize, string> = {
+// 이미지용: 정사각형
+const imageSizeClasses: Record<PreviewSize, string> = {
   sm: "w-20 h-20",
   md: "w-32 h-32",
   lg: "w-40 h-40",
   xl: "w-48 h-48",
+};
+
+// 파일용: 가로로 긴 직사각형
+const fileSizeClasses: Record<PreviewSize, string> = {
+  sm: "w-48 h-12",
+  md: "w-80 h-16",
+  lg: "w-96 h-20",
+  xl: "w-[28rem] h-24",
 };
 
 type BaseProps = {
@@ -207,6 +216,9 @@ export function FileInput(props: FileInputProps) {
     }
   };
 
+  // viewMode에 따라 적절한 사이즈 클래스 선택
+  const sizeClasses = isImageView ? imageSizeClasses : fileSizeClasses;
+
   // Single 모드 렌더링
   if (!isMultiple && displayItems.length > 0) {
     const item = displayItems[0];
@@ -258,9 +270,21 @@ export function FileInput(props: FileInputProps) {
                   className="h-full w-full object-cover rounded-lg overflow-hidden"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center gap-2 p-3 h-full w-full">
-                  <FileIcon className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-xs text-center truncate w-full px-1">{item.name}</span>
+                <div className="flex items-center gap-2 px-3 h-full w-full min-w-0 overflow-hidden">
+                  <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+                  <span
+                    className={cn(
+                      "text-xs truncate min-w-0",
+                      item.isPending ? "w-[140px] shrink-0" : "flex-1",
+                    )}
+                  >
+                    {item.name}
+                  </span>
+                  {item.isPending && (
+                    <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
+                      대기중
+                    </span>
+                  )}
                 </div>
               )}
               {!disabled && (
@@ -273,8 +297,8 @@ export function FileInput(props: FileInputProps) {
                   icon={<XIcon />}
                 />
               )}
-              {/* 대기 중인 파일에 배지 표시 */}
-              {item.isPending && (
+              {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
+              {isImageView && item.isPending && (
                 <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
                   대기중
                 </div>
@@ -314,13 +338,25 @@ export function FileInput(props: FileInputProps) {
           ) : (
             <div
               className={cn(
-                "relative flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2",
+                "relative flex items-center gap-2 px-3 rounded-lg border-2 min-w-0 overflow-hidden",
                 "border-dashed border-muted-foreground/25",
                 "h-full w-full",
               )}
             >
-              <FileIcon className="h-8 w-8 text-muted-foreground" />
-              <span className="text-xs text-center truncate w-full px-1">{item.name}</span>
+              <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+              <span
+                className={cn(
+                  "text-xs truncate min-w-0",
+                  item.isPending ? "w-[140px] shrink-0" : "flex-1",
+                )}
+              >
+                {item.name}
+              </span>
+              {item.isPending && (
+                <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
+                  대기중
+                </span>
+              )}
             </div>
           )}
           {!disabled && (
@@ -333,8 +369,8 @@ export function FileInput(props: FileInputProps) {
               icon={<XIcon />}
             />
           )}
-          {/* 대기 중인 파일에 배지 표시 */}
-          {item.isPending && (
+          {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
+          {isImageView && item.isPending && (
             <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
               대기중
             </div>
