@@ -190,8 +190,7 @@ export function generateProjectDict(
       // 함수인 경우: 원형 그대로 출력
       lines.push(`  "${entry.key}": ${entry.value},`);
     } else {
-      const escapedValue = entry.value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-      lines.push(`  "${entry.key}": "${escapedValue}",`);
+      lines.push(`  "${entry.key}": ${JSON.stringify(entry.value)},`);
     }
   }
 
