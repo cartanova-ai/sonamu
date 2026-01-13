@@ -9,4 +9,4 @@
 
 export { default as sonamuDictEn } from "./en";
 export { default as sonamuDictKo } from "./ko";
-export { plural } from "./utils";
+export * from "./utils";
