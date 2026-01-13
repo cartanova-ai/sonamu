@@ -108,6 +108,35 @@ async function appendEntriesToDictFile(
 }
 
 /**
+ * sonamu/dict에서 제공하는 헬퍼 함수 목록
+ * 함수 값에서 이들이 사용되면 자동으로 import합니다.
+ * format은 특별 처리: createFormat을 import하고 const format = createFormat(locale) 추가
+ */
+const DICT_HELPERS = ["plural", "josa"] as const;
+
+/**
+ * 함수 값들에서 사용되는 헬퍼 함수를 감지합니다.
+ */
+function detectUsedHelpers(entries: DictEntry[]): { helpers: string[]; usesFormat: boolean } {
+  const functionEntries = entries.filter((e) => e.isFunction);
+  const helpers: string[] = [];
+
+  for (const helper of DICT_HELPERS) {
+    // 함수명이 단어 경계로 사용되는지 확인 (예: plural( 또는 plural,)
+    const pattern = new RegExp(`\\b${helper}\\s*\\(`);
+    if (functionEntries.some((e) => pattern.test(e.value))) {
+      helpers.push(helper);
+    }
+  }
+
+  // format 사용 여부 별도 감지 (format.number(...), format.date(...) 등)
+  const formatPattern = /\bformat\.\w+\s*\(/;
+  const usesFormat = functionEntries.some((e) => formatPattern.test(e.value));
+
+  return { helpers, usesFormat };
+}
+
+/**
  * Project dict 파일 생성
  */
 export function generateProjectDict(
@@ -120,8 +149,29 @@ export function generateProjectDict(
 
   const lines: string[] = [];
 
+  // 함수 값에서 사용되는 헬퍼 함수 감지
+  const { helpers, usesFormat } = detectUsedHelpers(entries);
+
+  // 헬퍼 함수 import 추가
+  const imports = [...helpers];
+  if (usesFormat) {
+    imports.push("createFormat");
+  }
+  if (imports.length > 0) {
+    lines.push(`import { ${imports.join(", ")} } from "sonamu/dict";`);
+  }
+
   if (!isDefaultLocale) {
     lines.push('import { defineLocale } from "./sd.generated";');
+  }
+
+  if (imports.length > 0 || !isDefaultLocale) {
+    lines.push("");
+  }
+
+  // format 사용 시 createFormat 호출 추가
+  if (usesFormat) {
+    lines.push(`const format = createFormat("${locale}");`);
     lines.push("");
   }
 
