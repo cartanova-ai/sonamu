@@ -692,13 +692,26 @@ class SonamuClass {
           const parts = request.parts({
             limits: api.uploadOptions.limits,
           });
+
+          // FormData의 field들을 임시로 저장
+          const fields: Record<string, string> = {};
+
           for await (const part of parts) {
             if (part.type === "file") {
-              uploaded.files.push(new UploadedFile(part));
+              const uploadedFile = new UploadedFile(part);
+              // CRITICAL: 파일 스트림을 즉시 consume해야 다음 part로 넘어갈 수 있음
+              // 이 호출이 없으면 종종 multipart 파싱이 pending 상태로 타임아웃 발생
+              await uploadedFile.toBuffer();
+              uploaded.files.push(uploadedFile);
             } else if (part.type === "field") {
-              body[part.fieldname] = part.value;
+              fields[part.fieldname] = String(part.value);
             }
           }
+
+          // qs로 중첩 구조 파싱: params[category] → { params: { category: "test" } }
+          const qs = await import("qs");
+          const parsed = qs.default.parse(fields);
+          Object.assign(body, parsed);
         }
 
         const { fastifyCaster } = await import("./caster");

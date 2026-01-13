@@ -170,8 +170,30 @@ class FileModelClass extends BaseModelClass<
     const { files } = Sonamu.getContext();
     const { category } = params;
 
+    if (!files || files.length === 0) {
+      throw new BadRequestException(SD("file.uploadFailed"));
+    }
+
     console.log("files를 원하는 로직으로 처리해주세요", files);
 
+    return {
+      category,
+      files: await Promise.all(
+        files.map(async (file) => ({
+          name: file.filename,
+          url: await file.saveToDisk(`${category}/${await file.md5()}`),
+          mime_type: file.mimetype,
+        })),
+      ),
+    };
+  }
+
+  @upload({ limits: { files: 1 } })
+  async inlineUploadFlat(category: string): Promise<{
+    category: string;
+    files: { name: string; url: string; mime_type: string }[];
+  }> {
+    const { files } = Sonamu.getContext();
     if (!files || files.length === 0) {
       throw new BadRequestException(SD("file.uploadFailed"));
     }

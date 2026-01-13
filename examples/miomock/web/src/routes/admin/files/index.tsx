@@ -90,7 +90,18 @@ function FileList({}: FileListProps) {
   );
 
   const inlineUploadForm = useTypeForm(
-    z.object({ category: z.string(), files: z.array(z.instanceof(File)) }),
+    z.object({
+      category: z.string(),
+      files: z.array(z.union([z.string(), z.instanceof(File)])),
+    }),
+    { category: "", files: [] },
+  );
+
+  const inlineUploadFlatForm = useTypeForm(
+    z.object({
+      category: z.string(),
+      files: z.array(z.union([z.string(), z.instanceof(File)])),
+    }),
     { category: "", files: [] },
   );
 
@@ -115,10 +126,42 @@ function FileList({}: FileListProps) {
     refetch();
   });
 
+  /**
+   * Inline Upload
+   *
+   * 1. useTypeForm의 submit 핸들러 대신 일반 async 함수 사용
+   * 2. File 객체만 필터링하여 다른 작업 진행 (AI 분석 등)
+   * 3. '대기중' 상태 제거 방법 (수동 설정 필요)
+   *    - File → URL 변환: 업로드 완료 후 FileInput이 "대기중" 배지 제거
+   */
   const handleInlineUploadSubmit = async () => {
     const { files, category } = inlineUploadForm.form;
-    await FileService.inlineUpload({ category }, files);
 
+    // File 객체만 필터링 (URL 문자열 제외)
+    const filesToUpload = files.filter((f) => f instanceof File);
+
+    // 업로드할 새 파일이 없으면 종료
+    if (filesToUpload.length === 0) return;
+
+    const result = await FileService.inlineUpload({ category }, filesToUpload);
+
+    // 기존 URL은 유지하고, 새로 업로드된 URL만 추가
+    const existingUrls = files.filter((f) => typeof f === "string");
+    inlineUploadForm.form.files = [...existingUrls, ...result.files.map((f) => f.url)];
+    refetch();
+  };
+
+  const handleInlineUploadFlat = async () => {
+    const { files, category } = inlineUploadFlatForm.form;
+
+    const filesToUpload = files.filter((f) => f instanceof File);
+
+    if (filesToUpload.length === 0) return;
+
+    const result = await FileService.inlineUploadFlat(category, filesToUpload);
+
+    const existingUrls = files.filter((f) => typeof f === "string");
+    inlineUploadFlatForm.form.files = [...existingUrls, ...result.files.map((f) => f.url)];
     refetch();
   };
 
@@ -444,10 +487,12 @@ function FileList({}: FileListProps) {
                   </div>
                 </CardContent>
               </Card>
-              {/* 9. Inline Upload */}
+              {/* 9. Inline Upload (Object Params) */}
               <Card className="border-red-200 bg-red-50/50">
                 <CardHeader className="pb-2">
-                  <div className="text-xs font-semibold text-red-700">Inline Upload</div>
+                  <div className="text-xs font-semibold text-red-700">
+                    Inline Upload (Object Params)
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <Input
@@ -471,9 +516,47 @@ function FileList({}: FileListProps) {
                   >
                     Upload
                   </Button>
-                  <div className="text-xs text-gray-500">
-                    {inlineUploadForm.form.files.length}개 파일
+                  {inlineUploadForm.form.files.length > 0 && (
+                    <div className="text-xs text-gray-500">
+                      {inlineUploadForm.form.files.length}개 파일
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              {/* 10. Inline Upload (Flat Params) */}
+              <Card className="border-orange-200 bg-orange-50/50">
+                <CardHeader className="pb-2">
+                  <div className="text-xs font-semibold text-orange-700">
+                    Inline Upload (Flat Params)
                   </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Input
+                    {...inlineUploadFlatForm.register("category")}
+                    placeholder="Category"
+                    className="bg-white"
+                  />
+                  <FileInput
+                    multiple={true}
+                    uploadMode="lazy"
+                    viewMode="file"
+                    previewSize="md"
+                    maxFiles={1}
+                    {...inlineUploadFlatForm.register("files")}
+                  />
+                  <Button
+                    size="xs"
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    onClick={handleInlineUploadFlat}
+                    icon={<UploadIcon />}
+                  >
+                    Upload
+                  </Button>
+                  {inlineUploadFlatForm.form.files.length > 0 && (
+                    <div className="text-xs text-gray-500">
+                      {inlineUploadFlatForm.form.files.length}개 파일
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

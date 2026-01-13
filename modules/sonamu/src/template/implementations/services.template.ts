@@ -125,7 +125,20 @@ export function ${methodNameStreamCamelized}(
           const formDataAppend = `files.forEach(f => { formData.append("files", f); });`;
 
           const otherParamsAppend = paramsWithoutContext
-            .map((param) => `toFormData(${param.name}, formData, '${param.name}');`)
+            .map((param) => {
+              // primitive 타입인지 체크
+              const isPrimitive =
+                typeof param.type === "string" &&
+                ["string", "number", "boolean"].includes(param.type);
+
+              if (isPrimitive) {
+                // primitive: 직접 formData.append
+                return `formData.append('${param.name}', String(${param.name}));`;
+              } else {
+                // object: toFormData 사용
+                return `toFormData(${param.name}, formData, '${param.name}');`;
+              }
+            })
             .join("\n    ");
 
           const paramsDefComma = paramsDef !== "" ? ", " : "";

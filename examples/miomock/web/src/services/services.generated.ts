@@ -715,6 +715,43 @@ export namespace FileService {
       retry: false,
       ...options,
     });
+
+  export async function inlineUploadFlat(
+    category: string,
+    files: File[],
+    onUploadProgress?: (pe: AxiosProgressEvent) => void,
+  ): Promise<{ category: string; files: { name: string; url: string; mime_type: string }[] }> {
+    const formData = new FormData();
+    files.forEach((f) => {
+      formData.append("files", f);
+    });
+    formData.append("category", String(category));
+    return fetch({
+      method: "POST",
+      url: `/api/file/inlineUploadFlat`,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress,
+      data: formData,
+    });
+  }
+
+  export const useInlineUploadFlatMutation = (
+    options?: UseMutationOptions<
+      { category: string; files: { name: string; url: string; mime_type: string }[] },
+      Error,
+      { params: string; files: File[] }
+    > & {
+      onUploadProgress?: (e: AxiosProgressEvent) => void;
+    },
+  ) =>
+    useMutation({
+      mutationFn: (params: { params: string; files: File[] }) =>
+        inlineUploadFlat(params.params, params.files),
+      retry: false,
+      ...options,
+    });
 }
 
 export namespace EmployeeService {

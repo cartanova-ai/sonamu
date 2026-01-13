@@ -353,6 +353,15 @@ Content-Type: application/json
 
 ###
 
+POST {{baseUrl}}/api/file/inlineUploadFlat
+Content-Type: application/json
+
+{
+  "category": "CATEGORY"
+}
+
+###
+
 GET {{baseUrl}}/api/employee/findById
 	?subset=unknown
 	&id=0
