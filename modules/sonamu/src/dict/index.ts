@@ -9,8 +9,4 @@
 
 export { default as sonamuDictEn } from "./en";
 export { default as sonamuDictKo } from "./ko";
-
-// 타입 추출용
-import type ko from "./ko";
-export type SonamuDictionary = typeof ko;
-export type SonamuDictKey = keyof SonamuDictionary;
+export { plural } from "./utils";

@@ -2,7 +2,7 @@ import { hot } from "@sonamu-kit/hmr-hook";
 import assert from "assert";
 import chalk from "chalk";
 import { EventEmitter } from "events";
-import { access, mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import inflection from "inflection";
 import { minimatch } from "minimatch";
 import path, { dirname } from "path";
@@ -20,7 +20,7 @@ import { TemplateKey, type TemplateOptions } from "../types/types";
 import { mapAsync, reduceAsync } from "../utils/async-utils";
 import { centerText } from "../utils/console-util";
 import { isTest } from "../utils/controller";
-import { exists } from "../utils/fs-utils";
+import { copyFileWithReplaceCoreToShared, exists } from "../utils/fs-utils";
 import type { AbsolutePath } from "../utils/path-utils";
 import { runWithGracefulShutdown } from "../utils/process-utils";
 import { areFilesSame, findChangedFilesUsingChecksums, renewChecksums } from "./checksum";
@@ -189,11 +189,21 @@ export class Syncer {
   }
 
   async copySharedToTargets(targets: string[]): Promise<void> {
+    // plural.ts 내용을 읽어서 shared 파일에 삽입합니다.
+    const dictUtilsPath = path.join(
+      import.meta.dirname.replace("/dist/", "/src/"),
+      "../dict/utils.ts",
+    );
+    const dictUtilsCode = (await exists(dictUtilsPath))
+      ? await readFile(dictUtilsPath, "utf-8")
+      : "";
+
     // 특정 변수 치환을 위해서 사용합니다.
     const convertMap = {
       baseUrl:
         Sonamu.config.server.baseUrl ??
         `http://${Sonamu.config.server.listen?.host ?? "localhost"}:${Sonamu.config.server.listen?.port ?? 3000}`,
+      dictUtils: dictUtilsCode,
     };
 
     for (const target of targets) {
@@ -541,38 +551,13 @@ export class Syncer {
                 console.log(
                   chalk.bold("Copied: ") + chalk.blue(dst.replace(`${Sonamu.appRootPath}/`, "")),
                 );
-              await this.copyFileWithReplaceCoreToShared(realSrc, dst);
+              await copyFileWithReplaceCoreToShared(realSrc, dst);
               return dst;
             }),
           ),
         ),
       )
     ).flat();
-  }
-
-  private async copyFileWithReplaceCoreToShared(fromPath: string, toPath: string) {
-    if (!(await exists(fromPath))) {
-      return;
-    }
-
-    const oldFileContent = (await readFile(fromPath)).toString();
-
-    const newFileContent = (() => {
-      // web이나 app 등에는 sonamu가 없습니다.
-      // 따라서 sonamu에 대한 import는 함께 복사되는 sonamu.shared.ts에 대한 import로 치환해야 합니다.
-      // 문제는 리소스 종류에 따라 sonamu.shared.ts로 가는 경로가 다르다는 점입니다.
-      // 예를 들어 sonamu.generated.ts 입장에서 sonamu.shared.ts는 같은 디렉토리에 있으니 ./sonamu.shared로 치환하면 되지만,
-      // user.types.ts 입장에서 sonamu.shared.ts는 상위 디렉토리에 있으니 ../sonamu.shared로 치환해야 합니다.
-      // 이 문제를 해결하기 위해 복사하고자 하는 리소스의 경로(toPath)를 기준으로 sonamu.shared.ts가 있는 디렉토리를 찾아서 상대 경로를 계산하도록 하였습니다.
-      const servicesDir = toPath.replace(/\/services\/.*$/, "/services");
-      const fileDir = dirname(toPath);
-      const relativePath = path.relative(fileDir, servicesDir);
-      const sharedPath = relativePath === "" ? "./sonamu.shared" : `${relativePath}/sonamu.shared`;
-
-      const nfc = oldFileContent.replace(/from "sonamu"/g, `from "${sharedPath}"`);
-      return nfc;
-    })();
-    return writeFile(toPath, newFileContent);
   }
 
   /**
@@ -735,29 +720,7 @@ export class Syncer {
       const sourceFile = path.join(apiI18nDir, `${locale}.ts`);
       const targetFile = path.join(targetI18nDir, `${locale}.ts`);
 
-      // 소스 파일이 존재하는지 확인
-      try {
-        await access(sourceFile);
-      } catch {
-        // 소스 파일이 없으면 스킵
-        continue;
-      }
-
-      // 소스 파일 읽기
-      const sourceContent = await readFile(sourceFile, "utf-8");
-
-      // 타겟 파일이 존재하면 내용 비교
-      try {
-        const targetContent = await readFile(targetFile, "utf-8");
-        if (sourceContent === targetContent) {
-          continue; // 내용이 같으면 스킵
-        }
-      } catch {
-        // 파일이 없음 - 복사 진행
-      }
-
-      // 파일 복사
-      await writeFile(targetFile, sourceContent);
+      await copyFileWithReplaceCoreToShared(sourceFile, targetFile);
       !isTest() &&
         console.log(chalk.bold("Copied: ") + chalk.cyan(`${target}/src/i18n/${locale}.ts`));
     }

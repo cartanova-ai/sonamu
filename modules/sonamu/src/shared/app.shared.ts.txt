@@ -510,3 +510,8 @@ export function useSSEStream<T extends Record<string, any>>(
 
   return state;
 }
+
+/*
+  Dictionary Helper
+*/
+$[[dictUtils]]
