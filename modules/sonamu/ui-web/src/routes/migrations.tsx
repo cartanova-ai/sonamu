@@ -20,6 +20,7 @@ import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import ToggleLeftIcon from "~icons/lucide/toggle-left";
 import ToggleRightIcon from "~icons/lucide/toggle-right";
 import TrashIcon from "~icons/lucide/trash";
+import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { MigrationActionModal } from "./migrations/_migration_action_modal";
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/migrations")({
 
 type MigrationsIndexProps = {};
 function MigrationsIndex(_props: MigrationsIndexProps) {
+  const SD = useSD();
   const { data, error, refetch } = SonamuUIService.useMigrationStatus();
   const { status } = data ?? {};
   const { preparedCodes, conns, codes } = status ?? {};
@@ -77,7 +79,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
       return;
     }
     const answer = confirm(
-      `Are you sure to delete the selected ${selectedCodeNames.length} migration codes?`,
+      SD("migration.confirm.deleteCodes").replace("{count}", String(selectedCodeNames.length)),
     );
     if (!answer) {
       return;
@@ -154,27 +156,27 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
         {preparedCodes && (
           <div className="p-4">
             <h3 className="relative ">
-              Prepared Migration Codes{" "}
+              {SD("migration.preparedCodes")}{" "}
               <div className="absolute right-0 top-0 flex gap-2">
                 <Button
                   icon={isAllCodeViewerOpen ? <ToggleRightIcon /> : <ToggleLeftIcon />}
                   size="xs"
                   onClick={() => setAllCodeViewerOpen(!isAllCodeViewerOpen)}
                 >
-                  Toggle codes
+                  {SD("migration.toggleCodes")}
                 </Button>
                 <Button size="xs" icon={<PlayIcon />} onClick={() => generatePreparedCodes()}>
-                  Generate
+                  {SD("migration.generate")}
                 </Button>
               </div>
             </h3>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent bg-gray-100">
-                  <TableHead>Type</TableHead>
-                  <TableHead>Table</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
+                  <TableHead>{SD("common.type")}</TableHead>
+                  <TableHead>{SD("common.table")}</TableHead>
+                  <TableHead>{SD("common.name")}</TableHead>
+                  <TableHead>{SD("common.code")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -186,7 +188,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 {!migrationStatusError && preparedCodes.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center">
-                      No prepared migration codes.
+                      {SD("migration.noPreparedCodes")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -196,7 +198,11 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                     <TableCell>{pcode.table}</TableCell>
                     <TableCell>{pcode.title}</TableCell>
                     <TableCell style={{ padding: 0, width: 700, textAlign: "center" }}>
-                      <CodeViewer code={pcode.formatted ?? ""} open={isAllCodeViewerOpen} />
+                      <CodeViewer
+                        code={pcode.formatted ?? ""}
+                        open={isAllCodeViewerOpen}
+                        collapsedText={SD("migration.codeCollapsed")}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -206,7 +212,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
           </div>
         )}
         <div className="p-4">
-          <h3>Migration Code Files</h3>
+          <h3>{SD("migration.codeFiles")}</h3>
           <div className="flex gap-8">
             <div className="flex-1">
               <Button
@@ -215,7 +221,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 disabled={selectedCodeNames.length === 0}
                 onClick={() => confirmDelCodes()}
               >
-                Delete codes
+                {SD("migration.deleteCodes")}
               </Button>
             </div>
             <div className="flex gap-2 justify-end">
@@ -232,7 +238,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
                 onClick={() => openActionModal("apply")}
               >
-                Apply to Latest
+                {SD("migration.applyToLatest")}
               </Button>
               <Button
                 variant="destructive"
@@ -240,7 +246,7 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 disabled={selectedConnKeys.length === 0 || !!migrationStatusError}
                 onClick={() => openActionModal("rollback")}
               >
-                Rollback
+                {SD("migration.rollback")}
               </Button>
             </div>
           </div>
@@ -287,16 +293,13 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
                 {conns.some((conn) => conn.status === "error" || !!migrationStatusError) && (
                   <TableRow>
                     <TableCell colSpan={6}>
-                      <b>
-                        Some connections are in error state. Please check the connection settings
-                        and try again.
-                      </b>
+                      <b>{SD("migration.error.connections")}</b>
                     </TableCell>
                   </TableRow>
                 )}
                 {codes.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>No migration code files</TableCell>
+                    <TableCell colSpan={6}>{SD("migration.noCodeFiles")}</TableCell>
                   </TableRow>
                 )}
                 {codes.map((code, codeIndex) => (
@@ -375,8 +378,9 @@ function MigrationsIndex(_props: MigrationsIndexProps) {
 type CodeViewerProps = {
   code: string;
   open: boolean;
+  collapsedText: string;
 };
-function CodeViewer({ code, open }: CodeViewerProps) {
+function CodeViewer({ code, open, collapsedText }: CodeViewerProps) {
   return (
     <div className="flex items-start">
       {open ? (
@@ -384,7 +388,7 @@ function CodeViewer({ code, open }: CodeViewerProps) {
           <code>{code}</code>
         </pre>
       ) : (
-        <div className="m-auto">Code is collapsed</div>
+        <div className="m-auto">{collapsedText}</div>
       )}
     </div>
   );

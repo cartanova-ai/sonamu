@@ -14,6 +14,7 @@ import PlusIcon from "~icons/lucide/plus";
 import RefreshCwIcon from "~icons/lucide/refresh-cw";
 import TrashIcon from "~icons/lucide/trash-2";
 import UploadIcon from "~icons/lucide/upload";
+import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/i18n")({
 });
 
 function I18nIndex() {
+  const SD = useSD();
   const { data, error, refetch } = SonamuUIService.useI18nDictionary();
   const { rows, locales, defaultLocale, stats } = data ?? {};
 
@@ -216,7 +218,7 @@ function I18nIndex() {
 
   // 키 삭제
   const handleDelete = async (key: string) => {
-    if (!confirm(`"${key}" 키를 삭제하시겠습니까?`)) {
+    if (!confirm(SD("i18n.confirm.delete").replace("{key}", key))) {
       return;
     }
 
@@ -288,7 +290,7 @@ function I18nIndex() {
             className="flex items-center gap-2 mb-4"
             style={{ display: "flex", alignItems: "baseline" }}
           >
-            <h3>i18n Dictionary</h3>
+            <h3>{SD("i18n.title")}</h3>
             <Button
               variant="outline"
               size="sm"
@@ -304,21 +306,21 @@ function I18nIndex() {
               disabled={loading}
               icon={<PlusIcon className="w-4 h-4" />}
             >
-              Add Key
+              {SD("i18n.addKey")}
             </Button>
             <Button
               onClick={handleExport}
               disabled={loading}
               icon={<UploadIcon className="w-4 h-4" />}
             >
-              Export Excel
+              {SD("i18n.exportExcel")}
             </Button>
             <Button
               onClick={handleImportClick}
               disabled={loading}
               icon={<DownloadIcon className="w-4 h-4" />}
             >
-              Import Excel
+              {SD("i18n.importExcel")}
             </Button>
             <input
               type="file"
@@ -329,9 +331,7 @@ function I18nIndex() {
             />
           </div>
 
-          <p className="text-sm text-gray-500 mb-4">
-            Double-click on a cell to edit. Press Enter to save, Escape to cancel.
-          </p>
+          <p className="text-sm text-gray-500 mb-4">{SD("i18n.editHint")}</p>
 
           {usageCheckError && (
             <p className="text-sm text-yellow-600 mb-4 p-2 bg-yellow-50 rounded">
@@ -339,16 +339,22 @@ function I18nIndex() {
             </p>
           )}
 
-          {isLoading && <div className="text-gray-500">Loading...</div>}
-          {error && <div className="text-red-500">Error: {String(error)}</div>}
+          {isLoading && <div className="text-gray-500">{SD("common.loading")}</div>}
+          {error && (
+            <div className="text-red-500">
+              {SD("common.error")}: {String(error)}
+            </div>
+          )}
 
           {rows && locales && (
             <Table containerClassName="border rounded-lg overflow-auto max-h-[calc(100vh-250px)]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky top-0 z-10 min-w-[300px] bg-gray-100">Key</TableHead>
+                  <TableHead className="sticky top-0 z-10 min-w-[300px] bg-gray-100">
+                    {SD("i18n.key")}
+                  </TableHead>
                   <TableHead className="sticky top-0 z-10 min-w-[100px] bg-gray-100">
-                    Source
+                    {SD("i18n.source")}
                   </TableHead>
                   {locales.map((locale) => (
                     <TableHead key={locale} className="sticky top-0 z-10 min-w-[200px] bg-gray-100">
@@ -432,7 +438,7 @@ function I18nIndex() {
           )}
 
           <div className="mt-4 text-sm text-gray-500">
-            {rows && <span>Total: {rows.length} keys</span>}
+            {rows && <span>{SD("i18n.totalKeys").replace("{count}", String(rows.length))}</span>}
           </div>
         </div>
       </div>
@@ -441,10 +447,12 @@ function I18nIndex() {
       {showCreateModal && locales && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold mb-4">Add New Key</h3>
+            <h3 className="text-lg font-semibold mb-4">{SD("i18n.modal.addNewKey")}</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Key</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {SD("i18n.key")}
+                </label>
                 <input
                   type="text"
                   value={newKey}
@@ -465,7 +473,7 @@ function I18nIndex() {
                     onChange={(e) =>
                       setNewValues((prev) => ({ ...prev, [locale]: e.target.value }))
                     }
-                    placeholder={`Value for ${locale}`}
+                    placeholder={SD("i18n.modal.valueFor").replace("{locale}", locale)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -477,10 +485,10 @@ function I18nIndex() {
                 onClick={() => setShowCreateModal(false)}
                 disabled={loading}
               >
-                Cancel
+                {SD("common.cancel")}
               </Button>
               <Button onClick={handleCreate} disabled={loading}>
-                {loading ? "Creating..." : "Create"}
+                {loading ? SD("i18n.creating") : SD("common.create")}
               </Button>
             </div>
           </div>

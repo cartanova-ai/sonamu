@@ -20,6 +20,7 @@ import CheckIcon from "~icons/lucide/check";
 import CodeIcon from "~icons/lucide/code";
 import PlayIcon from "~icons/lucide/play";
 import XIcon from "~icons/lucide/x";
+import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ScaffoldingStatus, SonamuUIService } from "../services/sonamu-ui.service";
 
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/scaffolding")({
 
 type ScaffoldingIndexProps = {};
 function ScaffoldingIndex({}: ScaffoldingIndexProps) {
+  const SD = useSD();
   const { data: entitiesData } = SonamuUIService.useEntities();
   const { entities: allEntities } = entitiesData ?? {};
 
@@ -139,11 +141,11 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         ]
       : []),
     {
-      label: "Path",
+      label: SD("common.path"),
       tc: (row) => <>{row.subPath}</>,
     },
     {
-      label: "IsExists",
+      label: SD("scaffolding.isExists"),
       tc: (row) => (
         <>
           {row.isExists ? (
@@ -176,7 +178,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
             toggleOverwrite();
           }}
         >
-          Overwrite
+          {SD("common.overwrite")}
         </Button>
       ),
       tc: (row) => (
@@ -199,7 +201,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       fit: true,
     },
     {
-      label: "Preview",
+      label: SD("common.preview"),
       tc: (row) => (
         <Button
           size="xs"
@@ -209,7 +211,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
             openPreviewModal(row);
           }}
         >
-          Preview
+          {SD("common.preview")}
         </Button>
       ),
       fit: true,
@@ -274,15 +276,15 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
   return (
     <div className="flex justify-start min-h-[calc(100vh-50px)]">
       <div className="bg-sidebar-bg text-white pl-4 pr-0 h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb w-[250px] overflow-y-auto">
-        <h3>Entities</h3>
+        <h3>{SD("scaffolding.entities")}</h3>
         <div className="py-3 text-center">
           {selected.entityIds.length !== entities.length ? (
             <Button icon={<CheckIcon />} onClick={() => setEntityIds(entities.map((e) => e.id))}>
-              Check all entities
+              {SD("scaffolding.checkAllEntities")}
             </Button>
           ) : (
             <Button icon={<CheckIcon />} onClick={() => setEntityIds([])}>
-              Uncheck all entities
+              {SD("scaffolding.uncheckAllEntities")}
             </Button>
           )}
         </div>
@@ -306,7 +308,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       <div className="bg-sidebar-bg pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
         {templateGroups.map((group) => (
           <div className="pb-4" key={group.name}>
-            <h4 className="mb-1">Template: {group.name}</h4>
+            <h4 className="mb-1">{SD("scaffolding.template").replace("{name}", group.name)}</h4>
             <div className="py-3 text-center">
               {selected.templateGroupName !== group.name ||
               selected.templateKeys.length !== group.templateKeys.length ? (
@@ -314,11 +316,11 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   icon={<CheckIcon />}
                   onClick={() => setTemplateKeys(group.name, group.templateKeys)}
                 >
-                  Check all
+                  {SD("scaffolding.checkAll")}
                 </Button>
               ) : (
                 <Button icon={<CheckIcon />} onClick={() => setTemplateKeys(group.name, [])}>
-                  Uncheck all
+                  {SD("scaffolding.uncheckAll")}
                 </Button>
               )}
             </div>
@@ -348,15 +350,15 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       </div>
       {selected.templateGroupName === "Enums" && (
         <div className="bg-sidebar-bg p-4 pl-8 border-l border-[#85aa8a] h-[calc(100vh-var(--spacing-gnb))] sticky left-0 top-gnb text-white w-[250px] overflow-y-auto">
-          <h4 className="mb-1">Enums</h4>
+          <h4 className="mb-1">{SD("scaffolding.enums")}</h4>
           <div className="py-3 text-center">
             {selected.enumIds.length !== filteredEnumIds.length ? (
               <Button icon={<CheckIcon />} onClick={() => setEnumIds(filteredEnumIds)}>
-                Check all enums
+                {SD("scaffolding.checkAllEnums")}
               </Button>
             ) : (
               <Button icon={<CheckIcon />} onClick={() => setEnumIds([])}>
-                Uncheck all enums
+                {SD("scaffolding.uncheckAllEnums")}
               </Button>
             )}
           </div>
@@ -381,16 +383,19 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
         <div>
           {!statuses && !scaffoldingIsLoading && (
             <div className="w-[50em] my-[30vh] mx-auto whitespace-pre-line p-[3em] bg-white leading-[2em] border-2 border-orange-500">
-              Please select EntityIDs / TemplateKeys
-              {selected.templateGroupName === "Enums" ? " / EnumIDs" : ""} to generate
+              {SD("scaffolding.selectPrompt")}
+              {selected.templateGroupName === "Enums"
+                ? SD("scaffolding.selectPromptWithEnums")
+                : ""}
             </div>
           )}
           {statuses && (
             <div>
               {statuses.length > 0 && (
                 <Button size="sm" variant="default" icon={<PlayIcon />} onClick={() => generate()}>
-                  Generate {statuses.length} template(s) — {Object.keys(generateOptions).length}{" "}
-                  overwrite
+                  {SD("scaffolding.generateTemplates")
+                    .replace("{count}", String(statuses.length))
+                    .replace("{overwriteCount}", String(Object.keys(generateOptions).length))}
                 </Button>
               )}
               <Table className="mt-4 text-[0.9em]">
@@ -431,8 +436,8 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
       >
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Preview</DialogTitle>
-            <DialogDescription>Preview of generated code files</DialogDescription>
+            <DialogTitle>{SD("scaffolding.previewTitle")}</DialogTitle>
+            <DialogDescription>{SD("scaffolding.previewDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {previewModalState.pathAndCodes?.map((pnc) => (
@@ -442,7 +447,7 @@ function ScaffoldingIndex({}: ScaffoldingIndexProps) {
                   <code>{pnc.code}</code>
                 </pre>
               </div>
-            )) ?? <p>No preview data available</p>}
+            )) ?? <p>{SD("scaffolding.noPreviewData")}</p>}
           </div>
         </DialogContent>
       </Dialog>

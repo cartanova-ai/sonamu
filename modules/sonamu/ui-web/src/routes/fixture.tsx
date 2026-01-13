@@ -26,6 +26,7 @@ import TableIcon from "~icons/lucide/table";
 import TrashIcon from "~icons/lucide/trash";
 import ChatComponent from "../components/ChatComponent";
 import FixtureGraph from "../components/fixture/ErdGraph";
+import { useSD } from "../i18n";
 import { defaultCatch } from "../services/sonamu.shared";
 import { type ExtendedEntity, SonamuUIService } from "../services/sonamu-ui.service";
 import FixtureCodeViewer from "./fixture/_fixture_code_viewer";
@@ -45,6 +46,7 @@ type DuplicateCheckColumns = {
 };
 
 function FixtureIndex() {
+  const SD = useSD();
   const { data: entitiesData, isLoading: entitiesLoading } = SonamuUIService.useEntities();
   const [sourceDB, setSourceDB] = useState("development_master");
   const [targetDB, setTargetDB] = useState("test");
@@ -277,7 +279,7 @@ function FixtureIndex() {
           <div className="flex flex-wrap flex-col gap-[5px] p-[15px] bg-[#fcfcfc] border border-[#e0e0e0] rounded-lg">
             <div className="flex gap-2 items-center mb-2">
               <SearchIcon />
-              <span className="text-lg font-bold">검색 대상 설정</span>
+              <span className="text-lg font-bold">{SD("fixture.searchSettings")}</span>
             </div>
 
             <div className="grow min-w-[150px]">
@@ -286,7 +288,7 @@ function FixtureIndex() {
                 onValueChange={(value) => setSourceDB(value || "development_master")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="검색할 DB 선택" />
+                  <SelectValue placeholder={SD("fixture.selectSourceDb")} />
                 </SelectTrigger>
                 <SelectContent>
                   {DB_NAMES.map((db) => (
@@ -301,7 +303,7 @@ function FixtureIndex() {
             <div style={{ flexGrow: 1, minWidth: "200px" }}>
               <Select {...register("entityId")}>
                 <SelectTrigger disabled={entitiesLoading}>
-                  <SelectValue placeholder="엔티티 선택" />
+                  <SelectValue placeholder={SD("fixture.selectEntity")} />
                 </SelectTrigger>
                 <SelectContent>
                   {entitiesData?.entities?.map((entity) => (
@@ -317,7 +319,7 @@ function FixtureIndex() {
               <>
                 <Select {...register("field")}>
                   <SelectTrigger>
-                    <SelectValue placeholder="컬럼 선택" />
+                    <SelectValue placeholder={SD("fixture.selectColumn")} />
                   </SelectTrigger>
                   <SelectContent>
                     {searchEntity.props
@@ -337,7 +339,11 @@ function FixtureIndex() {
                       ))}
                   </SelectContent>
                 </Select>
-                <Input placeholder="검색 값 입력" {...register("value")} style={{ flexGrow: 1 }} />
+                <Input
+                  placeholder={SD("fixture.inputSearchValue")}
+                  {...register("value")}
+                  style={{ flexGrow: 1 }}
+                />
                 <Select {...register("searchType")}>
                   <SelectTrigger>
                     <SelectValue />
@@ -355,7 +361,7 @@ function FixtureIndex() {
               disabled={!form.entityId || !form.field || !form.value || entitiesLoading}
               variant="default"
             >
-              검색
+              {SD("fixture.search")}
             </Button>
           </div>
 
@@ -372,7 +378,7 @@ function FixtureIndex() {
                 <ChevronRightIcon style={{ width: "16px", height: "16px" }} />
               )}
               <DatabaseIcon style={{ marginRight: "5px", width: "16px", height: "16px" }} />
-              저장 DB 설정
+              {SD("fixture.saveSettings")}
               {fixtureRecords.length > 0 &&
                 (() => {
                   const saveTargets = fixtureRecords.filter((f) => {
@@ -393,7 +399,7 @@ function FixtureIndex() {
                       className="inline-block leading-none bg-green-500 text-white font-bold rounded px-2 py-1 text-xs"
                       style={{ marginLeft: "auto" }}
                     >
-                      {saveTargets.length}개 저장 예정
+                      {SD("fixture.itemsToSave").replace("{count}", String(saveTargets.length))}
                     </span>
                   );
                 })()}
@@ -402,7 +408,7 @@ function FixtureIndex() {
             <div className="grow min-w-[150px]">
               <Select value={targetDB} onValueChange={(value) => setTargetDB(value || "test")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="저장할 대상 DB 선택" />
+                  <SelectValue placeholder={SD("fixture.selectTargetDb")} />
                 </SelectTrigger>
                 <SelectContent>
                   {DB_NAMES.map((db) => (
@@ -415,7 +421,7 @@ function FixtureIndex() {
             </div>
 
             <Button onClick={saveFixture} variant="default" disabled={fixtureRecords.length === 0}>
-              저장
+              {SD("common.save")}
             </Button>
 
             {showSaveTargets &&
@@ -445,7 +451,7 @@ function FixtureIndex() {
                 return (
                   <div style={{ marginTop: "10px", marginBottom: "10px" }}>
                     <p style={{ color: "#666", fontSize: "12px", marginBottom: "10px" }}>
-                      저장될 픽스쳐 목록
+                      {SD("fixture.fixtureList")}
                     </p>
                     <div className="flex flex-col gap-[10px]">
                       {Object.entries(groupedByEntity).map(([entityId, fixtures]) => (
@@ -464,9 +470,9 @@ function FixtureIndex() {
                             {fixtures.map((f) => {
                               const hasTarget = !!f.target;
                               const hasUnique = !!f.unique;
-                              let reason = "신규";
+                              let reason = SD("fixture.new");
                               if (f.override && (hasTarget || hasUnique)) {
-                                reason = "덮어쓰기";
+                                reason = SD("fixture.overwrite");
                               }
 
                               return (
@@ -535,7 +541,7 @@ function FixtureIndex() {
                 onValueChange={(value) => setDupCheckEntityId(value || "")}
               >
                 <SelectTrigger disabled={entitiesLoading}>
-                  <SelectValue placeholder="엔티티 선택" />
+                  <SelectValue placeholder={SD("fixture.selectEntity")} />
                 </SelectTrigger>
                 <SelectContent>
                   {entitiesData?.entities
@@ -635,13 +641,13 @@ function FixtureIndex() {
               variant="outline"
               icon={view === "table" ? <GridIcon /> : <TableIcon />}
             >
-              {view === "table" ? "그래프 보기" : "테이블 보기"}
+              {view === "table" ? SD("fixture.graphView") : SD("fixture.tableView")}
             </Button>
           </div>
           <Tabs value={tabValue} onValueChange={(value) => setActiveTab(Number(value))}>
             <TabsList>
-              <TabsTrigger value="0">Fixture Record Viewer</TabsTrigger>
-              <TabsTrigger value="1">Fixture Code Viewer</TabsTrigger>
+              <TabsTrigger value="0">{SD("fixture.recordViewer")}</TabsTrigger>
+              <TabsTrigger value="1">{SD("fixture.codeViewer")}</TabsTrigger>
             </TabsList>
             <TabsContent value="0">
               {view === "table" ? (

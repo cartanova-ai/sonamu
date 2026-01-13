@@ -6,6 +6,7 @@ import ArrowUpIcon from "~icons/lucide/arrow-up";
 import MessageSquareIcon from "~icons/lucide/message-square";
 import PlusIcon from "~icons/lucide/plus";
 import EntityChatComponent from "../components/EntityChatComponent";
+import { useSD } from "../i18n";
 import { SonamuUIService } from "../services/sonamu-ui.service";
 import { EntityCreateModal } from "./entities/_entity_create_modal";
 
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/entities")({
 
 type EntitiesLayoutProps = {};
 function EntitiesLayout(_props: EntitiesLayoutProps) {
+  const SD = useSD();
   const { data, error, refetch, isLoading } = SonamuUIService.useEntities();
   const { entities } = data ?? {};
 
@@ -77,7 +79,7 @@ function EntitiesLayout(_props: EntitiesLayoutProps) {
               className="flex-1 shadow-none! hover:bg-white/10!"
               onClick={() => setCreateModalOpen(true)}
             >
-              <PlusIcon className="mr-2 h-4 w-4" /> New Entity
+              <PlusIcon className="mr-2 h-4 w-4" /> {SD("entity.new")}
             </Button>
             <Button
               variant="outline"
