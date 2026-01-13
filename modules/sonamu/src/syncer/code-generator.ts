@@ -8,6 +8,7 @@ import { AlreadyProcessedException } from "../exceptions/so-exceptions";
 import { Naite } from "../naite/naite";
 import type { RenderedTemplate } from "../template/template";
 import { TemplateManager } from "../template/template-manager";
+import { BUILT_IN_TYPES } from "../template/zod-converter";
 import type { GenerateOptions, PathAndCode, TemplateKey, TemplateOptions } from "../types/types";
 import { everyAsync, filterAsync } from "../utils/async-utils";
 import { isTest } from "../utils/controller";
@@ -112,7 +113,10 @@ async function resolveRenderedTemplate(
   const { target, path: filePath, body, importKeys, customHeaders } = result;
 
   // import 할 대상의 대상 path 추출
+  const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map((info) => info.schemaName as string);
   const importDefs = importKeys
+    // 내장 타입 스키마는 이미 sonamu에서 import되므로 제외
+    .filter((importKey) => !builtInSchemaNames.includes(importKey))
     .reduce(
       (r, importKey) => {
         let modulePath = importKey;

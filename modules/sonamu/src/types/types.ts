@@ -873,6 +873,8 @@ export type RenderingNode = {
     | "enums"
     | "array"
     | "array-images"
+    | "json-sonamufile"
+    | "json-sonamufile-array"
     | "object"
     | "object-pick"
     | "record"

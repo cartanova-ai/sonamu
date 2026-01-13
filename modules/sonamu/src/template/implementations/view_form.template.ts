@@ -103,6 +103,22 @@ export class Template__view_form extends Template {
                     previewSize="md"
                     placeholder=${placeholder}
                   />`;
+      case "json-sonamufile":
+        return `<FileInput
+                    uploadMode="lazy"
+                    viewMode="image"
+                    previewSize="md"
+                    ${regExpr}
+                  />`;
+      case "json-sonamufile-array":
+        return `<FileInput
+                    multiple={true}
+                    uploadMode="lazy"
+                    viewMode="image"
+                    previewSize="md"
+                    maxFiles={10}
+                    ${regExpr}
+                  />`;
       case "enums":
         try {
           let enumId: string;
@@ -269,7 +285,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}${columns.some((col) => col.renderType === "array-images") ? "\n  MultiImageUploader," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}${columns.some((col) => col.renderType === "array-images") ? "\n  MultiImageUploader," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
