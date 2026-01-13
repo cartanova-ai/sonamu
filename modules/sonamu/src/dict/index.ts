@@ -9,4 +9,6 @@
 
 export { default as sonamuDictEn } from "./en";
 export { default as sonamuDictKo } from "./ko";
+export * from "./sonamu-dictionary";
+export * from "./types";
 export * from "./utils";

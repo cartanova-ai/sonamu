@@ -434,14 +434,6 @@ export namespace SonamuUIService {
     });
   }
 
-  export function exportI18n(): Promise<Blob> {
-    return fetch({
-      method: "GET",
-      url: `/sonamu-ui/api/i18n/export`,
-      responseType: "blob",
-    });
-  }
-
   export function importI18n(file: File): Promise<{
     success: boolean;
     updatedEntities: number;

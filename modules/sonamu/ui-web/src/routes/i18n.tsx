@@ -82,23 +82,8 @@ function I18nIndex() {
     checkUsage();
   }, [rows]);
 
-  const handleExport = async () => {
-    setLoading(true);
-    try {
-      const blob = await SonamuUIService.exportI18n();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `i18n-${new Date().toISOString().split("T")[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      defaultCatch(e);
-    } finally {
-      setLoading(false);
-    }
+  const handleExport = () => {
+    window.location.href = "/sonamu-ui/api/i18n/export";
   };
 
   const handleImportClick = () => {

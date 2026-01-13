@@ -4,9 +4,9 @@ import fs from "fs";
 import inflection from "inflection";
 import path from "path";
 import { range } from "radashi";
-import * as XLSX from "xlsx";
 import { Sonamu } from "../api/sonamu";
 import type { SonamuDBConfig } from "../database/db";
+import { sonamuDictionary } from "../dict/sonamu-dictionary";
 import type { Entity } from "../entity/entity";
 import { EntityManager } from "../entity/entity-manager";
 import {
@@ -27,14 +27,6 @@ import {
   type PathAndCode,
   TemplateKey,
 } from "../types/types";
-import {
-  type DictEntry,
-  isExpressionFunction,
-  parseConstObjectDeclaration,
-  parseDictFile,
-} from "../utils/dict-parser";
-import { ensureDictKeys, generateProjectDict } from "../utils/dict-utils";
-import { formatCode } from "../utils/formatter";
 import { nonNullable } from "../utils/utils";
 import { setAiApi } from "./ai-api";
 
@@ -706,7 +698,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         });
 
         // 2. target별로 ensureDictKeys 호출 (순차 처리)
-        await ensureDictKeys([...new Set(keys)]);
+        await sonamuDictionary.ensureDictKeys([...new Set(keys)]);
 
         // 3. 템플릿 생성 (병렬 처리)
         const result = await Promise.all(
@@ -793,339 +785,30 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         return FixtureManager.addFixtureLoader(code);
       });
 
-      // i18n API
-      type I18nDictionaryRow = {
-        key: string;
-        source: "entity" | "project";
-        isFunction: boolean;
-        [locale: string]: string | boolean | undefined;
-      };
-
-      /**
-       * entity key 파싱 결과 타입
-       */
-      type EntityKeyInfo =
-        | { type: "entityTitle"; entityId: string }
-        | { type: "propDesc"; entityId: string; propName: string }
-        | { type: "enumLabel"; enumId: string; enumValue: string }
-        | { type: "other" };
-
-      /**
-       * i18n key를 파싱하여 entity 관련 정보 추출
-       */
-      function parseEntityKey(key: string): EntityKeyInfo {
-        // entity.{EntityId} (list, create, edit 제외)
-        const entityTitleMatch = key.match(/^entity\.([A-Z][a-zA-Z0-9]*)$/);
-        if (
-          entityTitleMatch &&
-          !key.includes(".list") &&
-          !key.includes(".create") &&
-          !key.includes(".edit")
-        ) {
-          return { type: "entityTitle", entityId: entityTitleMatch[1] };
-        }
-
-        // entity.{EntityId}.{propName}
-        const propDescMatch = key.match(/^entity\.([A-Z][a-zA-Z0-9]*)\.([a-z_][a-z0-9_]*)$/);
-        if (propDescMatch) {
-          return { type: "propDesc", entityId: propDescMatch[1], propName: propDescMatch[2] };
-        }
-
-        // enum.{EnumId}.{value}
-        const enumLabelMatch = key.match(/^enum\.([A-Z][a-zA-Z0-9]*)\.(.+)$/);
-        if (enumLabelMatch) {
-          return { type: "enumLabel", enumId: enumLabelMatch[1], enumValue: enumLabelMatch[2] };
-        }
-
-        return { type: "other" };
-      }
-
-      /**
-       * entity key에 대해 entity.json 업데이트 수행
-       * @returns 업데이트 여부
-       */
-      async function updateEntityByKey(key: string, value: string): Promise<boolean> {
-        const keyInfo = parseEntityKey(key);
-
-        switch (keyInfo.type) {
-          case "entityTitle": {
-            try {
-              const entity = EntityManager.get(keyInfo.entityId);
-              if (entity.title !== value) {
-                entity.title = value;
-                await entity.save();
-                return true;
-              }
-            } catch {
-              // entity not found
-            }
-            return false;
-          }
-
-          case "propDesc": {
-            try {
-              const entity = EntityManager.get(keyInfo.entityId);
-              const propIndex = entity.props.findIndex((p) => p.name === keyInfo.propName);
-              if (propIndex !== -1 && entity.props[propIndex].desc !== value) {
-                entity.props[propIndex].desc = value;
-                await entity.save();
-                return true;
-              }
-            } catch {
-              // entity not found
-            }
-            return false;
-          }
-
-          case "enumLabel": {
-            for (const entityId of EntityManager.getAllIds()) {
-              const entity = EntityManager.get(entityId);
-              if (entity.enumLabels[keyInfo.enumId]) {
-                if (entity.enumLabels[keyInfo.enumId][keyInfo.enumValue] !== value) {
-                  entity.enumLabels[keyInfo.enumId][keyInfo.enumValue] = value;
-                  await entity.save();
-                  return true;
-                }
-                break;
-              }
-            }
-            return false;
-          }
-
-          default:
-            return false;
-        }
-      }
-
-      /**
-       * sd.generated.ts에서 entity labels 추출
-       * entity.json에서 관리되는 값만 포함 (.list, .create, .edit 제외)
-       */
-      function extractEntityLabels(): DictEntry[] {
-        const sdPath = path.join(Sonamu.apiRootPath, "src", "i18n", "sd.generated.ts");
-        if (!fs.existsSync(sdPath)) {
-          return [];
-        }
-
-        return parseConstObjectDeclaration(sdPath, "entityLabels");
-      }
-
-      /**
-       * Project dict 파일([locale].ts)에서 딕셔너리 로드
-       */
-      function loadProjectDict(locale: string): { entries: DictEntry[] } {
-        const dictPath = path.join(Sonamu.apiRootPath, "src", "i18n", `${locale}.ts`);
-        if (!fs.existsSync(dictPath)) {
-          return { entries: [] };
-        }
-        return { entries: parseDictFile(dictPath) };
-      }
-
-      /**
-       * 딕셔너리 데이터 수집 (entity + project)
-       */
-      async function collectDictionary(): Promise<{
-        rows: I18nDictionaryRow[];
-        locales: string[];
-        defaultLocale: string;
-        stats: Record<string, { total: number; filled: number; percent: number }>;
-      }> {
-        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
-          defaultLocale: "ko",
-          supportedLocales: ["ko"],
-        };
-        const locales = supportedLocales;
-
-        const rows: I18nDictionaryRow[] = [];
-        const rowMap = new Map<string, I18nDictionaryRow>();
-
-        // 1. Entity labels (default locale 기준)
-        const entityLabels = extractEntityLabels();
-        for (const label of entityLabels) {
-          const row: I18nDictionaryRow = {
-            key: label.key,
-            source: "entity",
-            isFunction: label.isFunction ?? false,
-            [defaultLocale]: label.value,
-          };
-          rowMap.set(label.key, row);
-        }
-
-        // 2. Project dict (각 locale별)
-        for (const locale of locales) {
-          const { entries } = loadProjectDict(locale);
-          for (const entry of entries) {
-            const existing = rowMap.get(entry.key);
-            if (existing) {
-              // entity source가 있으면 해당 locale 값만 추가
-              existing[locale] = entry.value;
-              if (entry.isFunction) {
-                existing.isFunction = true;
-              }
-            } else {
-              // project source로 새로 추가
-              let row = rowMap.get(entry.key);
-              if (!row) {
-                row = {
-                  key: entry.key,
-                  source: "project",
-                  isFunction: entry.isFunction,
-                };
-                rowMap.set(entry.key, row);
-              }
-              row[locale] = entry.value;
-            }
-          }
-        }
-
-        rows.push(...rowMap.values());
-        rows.sort((a, b) => a.key.localeCompare(b.key));
-
-        // 통계 계산: locale별 (채워진 값 / 전체 키 수)
-        const stats: Record<string, { total: number; filled: number; percent: number }> = {};
-        const total = rows.length;
-        for (const locale of locales) {
-          const filled = rows.filter((row) => row[locale] != null && row[locale] !== "").length;
-          const percent = total > 0 ? Math.round((filled / total) * 100) : 0;
-          stats[locale] = { total, filled, percent };
-        }
-
-        return { rows, locales, defaultLocale, stats };
-      }
-
-      // GET /api/i18n/dictionary
       server.get("/api/i18n/dictionary", async () => {
-        return collectDictionary();
+        return sonamuDictionary.getDictionary();
       });
 
-      // GET /api/i18n/export
       server.get("/api/i18n/export", async (_request, reply) => {
-        const { rows, locales } = await collectDictionary();
-
-        // Excel 데이터 생성 (함수인 경우 value가 이미 원형 전체)
-        const headers = ["key", "source", ...locales];
-        const data = [
-          headers,
-          ...rows.map((row) => [
-            row.key,
-            row.source,
-            ...locales.map((locale) => row[locale] ?? ""),
-          ]),
-        ];
-
-        const worksheet = XLSX.utils.aoa_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "i18n");
-
-        const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-
+        const { filename, buffer } = await sonamuDictionary.exportToExcel();
         reply
           .header(
             "Content-Type",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           )
-          .header(
-            "Content-Disposition",
-            `attachment; filename="i18n-${new Date().toISOString().split("T")[0]}.xlsx"`,
-          )
+          .header("Content-Disposition", `attachment; filename="${filename}"`)
           .send(buffer);
       });
 
-      // POST /api/i18n/import
       server.post("/api/i18n/import", async (request) => {
         const data = await request.file();
         if (!data) {
           throw new BadRequestException("파일이 업로드되지 않았습니다");
         }
-
         const buffer = await data.toBuffer();
-        const workbook = XLSX.read(buffer, { type: "buffer" });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(worksheet);
-
-        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
-          defaultLocale: "ko",
-          supportedLocales: ["ko"],
-        };
-        const locales = supportedLocales;
-
-        let updatedEntities = 0;
-        let updatedLocales = 0;
-
-        // locale별 project dict entries
-        const projectDictEntries: Record<string, DictEntry[]> = {};
-        for (const locale of locales) {
-          projectDictEntries[locale] = [];
-        }
-
-        for (const row of jsonData) {
-          const key = row.key;
-          const source = row.source as "entity" | "project";
-
-          if (!key || !source) continue;
-
-          if (source === "entity") {
-            // entity source: default locale만 entity.json에 저장
-            const defaultValue = row[defaultLocale];
-            if (defaultValue) {
-              const updated = await updateEntityByKey(key, defaultValue);
-              if (updated) {
-                updatedEntities++;
-              }
-            }
-
-            // non-default locale은 project dict에 저장
-            for (const locale of locales) {
-              if (locale === defaultLocale) continue;
-              const cellValue = row[locale]?.trim();
-              if (cellValue) {
-                projectDictEntries[locale].push({
-                  key,
-                  value: cellValue,
-                  isFunction: isExpressionFunction(cellValue),
-                });
-              }
-            }
-          } else if (source === "project") {
-            // project source: 모든 locale을 project dict에 저장
-            for (const locale of locales) {
-              const cellValue = row[locale]?.trim();
-              if (cellValue) {
-                projectDictEntries[locale].push({
-                  key,
-                  value: cellValue,
-                  isFunction: isExpressionFunction(cellValue),
-                });
-              }
-            }
-          }
-        }
-
-        // Project dict 파일 생성
-        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
-        if (!fs.existsSync(i18nDir)) {
-          fs.mkdirSync(i18nDir, { recursive: true });
-        }
-
-        for (const locale of locales) {
-          const entries = projectDictEntries[locale];
-          if (entries.length > 0) {
-            const dictPath = path.join(i18nDir, `${locale}.ts`);
-            const content = generateProjectDict(locale, entries, locale === defaultLocale);
-            const formatted = formatCode(content, "typescript", dictPath);
-            fs.writeFileSync(dictPath, formatted, "utf-8");
-            updatedLocales++;
-          }
-        }
-
-        return {
-          success: true,
-          updatedEntities,
-          updatedLocales,
-        };
+        return sonamuDictionary.importFromExcel(buffer);
       });
 
-      // POST /api/i18n/update - 단일 딕셔너리 항목 수정
       server.post<{
         Body: {
           oldKey: string;
@@ -1134,245 +817,31 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           values: Record<string, string>;
         };
       }>("/api/i18n/update", async (request) => {
-        const { oldKey, newKey, source, values } = request.body;
-
-        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
-          defaultLocale: "ko",
-          supportedLocales: ["ko"],
-        };
-        const locales = supportedLocales;
-
-        // entity source의 default locale 처리
-        if (source === "entity" && values[defaultLocale]) {
-          await updateEntityByKey(newKey, values[defaultLocale]);
-        }
-
-        // project dict 업데이트 (entity의 non-default locale 또는 project source)
-        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
-        if (!fs.existsSync(i18nDir)) {
-          fs.mkdirSync(i18nDir, { recursive: true });
-        }
-
-        for (const locale of locales) {
-          // entity source의 default locale은 entity.json에서 처리했으므로 스킵
-          if (source === "entity" && locale === defaultLocale) continue;
-
-          const cellValue = values[locale]?.trim();
-          if (!cellValue) continue;
-
-          // 기존 dict 로드
-          const { entries } = loadProjectDict(locale);
-
-          // key 변경 시 기존 key 제거
-          if (oldKey !== newKey) {
-            const oldIndex = entries.findIndex((e) => e.key === oldKey);
-            if (oldIndex !== -1) {
-              entries.splice(oldIndex, 1);
-            }
-          }
-
-          // 새 값 업데이트 또는 추가
-          const existingIndex = entries.findIndex((e) => e.key === newKey);
-          const newEntry: DictEntry = {
-            key: newKey,
-            value: cellValue,
-            isFunction: isExpressionFunction(cellValue),
-          };
-
-          if (existingIndex !== -1) {
-            entries[existingIndex] = newEntry;
-          } else {
-            entries.push(newEntry);
-          }
-
-          // dict 파일 저장
-          const dictPath = path.join(i18nDir, `${locale}.ts`);
-          const content = generateProjectDict(locale, entries, locale === defaultLocale);
-          const formatted = formatCode(content, "typescript", dictPath);
-          fs.writeFileSync(dictPath, formatted, "utf-8");
-        }
-
+        await sonamuDictionary.updateEntry(request.body);
         return { success: true };
       });
 
-      // POST /api/i18n/create - 새 딕셔너리 키 추가 (project source만)
       server.post<{
         Body: {
           key: string;
           values: Record<string, string>;
         };
       }>("/api/i18n/create", async (request) => {
-        const { key, values } = request.body;
-
-        if (!key?.trim()) {
-          throw new BadRequestException("키를 입력해주세요");
-        }
-
-        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
-          defaultLocale: "ko",
-          supportedLocales: ["ko"],
-        };
-        const locales = supportedLocales;
-
-        // 중복 키 체크
-        for (const locale of locales) {
-          const { entries } = loadProjectDict(locale);
-          if (entries.some((e) => e.key === key)) {
-            throw new BadRequestException(`이미 존재하는 키입니다: ${key}`);
-          }
-        }
-
-        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
-        if (!fs.existsSync(i18nDir)) {
-          fs.mkdirSync(i18nDir, { recursive: true });
-        }
-
-        // 각 locale에 새 키 추가
-        for (const locale of locales) {
-          const cellValue = values[locale]?.trim();
-          if (!cellValue) continue;
-
-          const { entries } = loadProjectDict(locale);
-          entries.push({
-            key,
-            value: cellValue,
-            isFunction: isExpressionFunction(cellValue),
-          });
-
-          const dictPath = path.join(i18nDir, `${locale}.ts`);
-          const content = generateProjectDict(locale, entries, locale === defaultLocale);
-          const formatted = formatCode(content, "typescript", dictPath);
-          fs.writeFileSync(dictPath, formatted, "utf-8");
-        }
-
+        await sonamuDictionary.createEntry(request.body);
         return { success: true };
       });
 
-      // POST /api/i18n/delete - 딕셔너리 키 삭제 (project source만)
       server.post<{
         Body: {
           key: string;
         };
       }>("/api/i18n/delete", async (request) => {
-        const { key } = request.body;
-
-        if (!key) {
-          throw new BadRequestException("키를 입력해주세요");
-        }
-
-        const { defaultLocale, supportedLocales } = Sonamu.config.i18n ?? {
-          defaultLocale: "ko",
-          supportedLocales: ["ko"],
-        };
-        const locales = supportedLocales;
-
-        const i18nDir = path.join(Sonamu.apiRootPath, "src", "i18n");
-
-        let deleted = false;
-        for (const locale of locales) {
-          const { entries } = loadProjectDict(locale);
-          const index = entries.findIndex((e) => e.key === key);
-          if (index !== -1) {
-            entries.splice(index, 1);
-            deleted = true;
-
-            const dictPath = path.join(i18nDir, `${locale}.ts`);
-            const content = generateProjectDict(locale, entries, locale === defaultLocale);
-            const formatted = formatCode(content, "typescript", dictPath);
-            fs.writeFileSync(dictPath, formatted, "utf-8");
-          }
-        }
-
-        if (!deleted) {
-          throw new BadRequestException(`키를 찾을 수 없습니다: ${key}`);
-        }
-
+        await sonamuDictionary.deleteEntry(request.body.key);
         return { success: true };
       });
 
-      // POST /api/i18n/checkUsage - ast-grep을 사용하여 미사용 키 검사
       server.post<{ Body: { keys: string[] } }>("/api/i18n/checkUsage", async (request) => {
-        const { keys } = request.body;
-        const { execSync } = await import("child_process");
-
-        // ast-grep 설치 확인
-        let sgPath: string | null = null;
-        try {
-          sgPath = execSync("which sg", { encoding: "utf-8" }).trim();
-        } catch {
-          try {
-            sgPath = execSync("which ast-grep", { encoding: "utf-8" }).trim();
-          } catch {
-            // ast-grep not installed
-          }
-        }
-
-        if (!sgPath) {
-          return {
-            error:
-              "ast-grep이 설치되어 있지 않습니다. brew install ast-grep 또는 npm install -g @ast-grep/cli로 설치해주세요.",
-            unusedKeys: [] as string[],
-          };
-        }
-
-        const searchPaths: string[] = [];
-        for (const entry of ["api", "web", "app"]) {
-          const srcPath = path.join(Sonamu.appRootPath, entry, "src");
-          if (fs.existsSync(srcPath)) {
-            searchPaths.push(srcPath);
-          }
-        }
-
-        if (searchPaths.length === 0) {
-          return {
-            error: "검색할 src 디렉토리를 찾을 수 없습니다.",
-            unusedKeys: [] as string[],
-          };
-        }
-
-        const usedKeys = new Set<string>();
-
-        try {
-          // ast-grep으로 SD("...") 패턴 검색
-          // 패턴: SD("KEY") 또는 SD('KEY') 형태
-          const patterns = ['SD("$KEY")', "SD('$KEY')"];
-
-          for (const searchPath of searchPaths) {
-            for (const pattern of patterns) {
-              try {
-                const result = execSync(`${sgPath} --pattern '${pattern}' --json ${searchPath}`, {
-                  encoding: "utf-8",
-                  maxBuffer: 50 * 1024 * 1024, // 50MB
-                });
-
-                if (result.trim()) {
-                  const matches = JSON.parse(result);
-                  for (const match of matches) {
-                    // metaVariables.single.KEY.text에서 키 추출
-                    const keyText = match.metaVariables?.single?.KEY?.text;
-                    if (keyText) {
-                      // 따옴표 제거
-                      const cleanKey = keyText.replace(/^["']|["']$/g, "");
-                      usedKeys.add(cleanKey);
-                    }
-                  }
-                }
-              } catch {
-                // 패턴 매치 없으면 에러 (무시)
-              }
-            }
-          }
-
-          // keys 중에서 usedKeys에 없는 것들이 미사용 키
-          const unusedKeys = keys.filter((k) => !usedKeys.has(k));
-
-          return { unusedKeys, usedKeysCount: usedKeys.size };
-        } catch (e) {
-          return {
-            error: `검색 중 오류 발생: ${e instanceof Error ? e.message : String(e)}`,
-            unusedKeys: [] as string[],
-          };
-        }
+        return sonamuDictionary.checkUsage(request.body.keys);
       });
 
       // ui-web 빌드 파일 서빙
