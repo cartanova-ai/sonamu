@@ -61,7 +61,7 @@ export abstract class Template {
 
   /**
    * 템플릿 **인스턴스**를 key로 찾아옵니다.
-   * 만약 템플릿이 로드(loadAll)되지 않았거나 찾는 템플릿이 없다면 에러를 던집니다.
+   * 만약 템플릿이 로드(autoload)되지 않았거나 찾는 템플릿이 없다면 에러를 던집니다.
    * @deprecated TemplateManager.get() 사용 권장
    * @param key
    * @returns
@@ -70,7 +70,7 @@ export abstract class Template {
     const instance = Template.templates.get(key);
     if (!instance) {
       throw new Error(
-        `Template ${key} not found. It might be because you tried to find a template before loading all templates. Did you call Template.loadAll()?`,
+        `Template ${key} not found. It might be because you tried to find a template before loading all templates. Did you call Template.autoload()?`,
       );
     }
     return instance;
