@@ -136,7 +136,7 @@ class FileModelClass extends BaseModelClass<
 
   @upload({ limits: { files: 10 } })
   async upload(): Promise<{
-    files: { name: string; url: string; mime_type: string }[];
+    files: { name: string; url: string; mime_type: string; size: number }[];
   }> {
     const { files: _files } = Sonamu.getContext();
 
@@ -153,6 +153,7 @@ class FileModelClass extends BaseModelClass<
           name: file.filename,
           url: await file.saveToDisk(key),
           mime_type: file.mimetype,
+          size: file.size,
         };
       }),
     );
@@ -165,7 +166,7 @@ class FileModelClass extends BaseModelClass<
   @upload({ limits: { files: 5 } })
   async inlineUpload(params: { category: string }): Promise<{
     category: string;
-    files: { name: string; url: string; mime_type: string }[];
+    files: { name: string; url: string; mime_type: string; size: number }[];
   }> {
     const { files } = Sonamu.getContext();
     const { category } = params;
@@ -183,6 +184,7 @@ class FileModelClass extends BaseModelClass<
           name: file.filename,
           url: await file.saveToDisk(`${category}/${await file.md5()}`),
           mime_type: file.mimetype,
+          size: file.size,
         })),
       ),
     };
@@ -191,7 +193,7 @@ class FileModelClass extends BaseModelClass<
   @upload({ limits: { files: 1 } })
   async inlineUploadFlat(category: string): Promise<{
     category: string;
-    files: { name: string; url: string; mime_type: string }[];
+    files: { name: string; url: string; mime_type: string; size: number }[];
   }> {
     const { files } = Sonamu.getContext();
     if (!files || files.length === 0) {
@@ -205,6 +207,7 @@ class FileModelClass extends BaseModelClass<
           name: file.filename,
           url: await file.saveToDisk(`${category}/${await file.md5()}`),
           mime_type: file.mimetype,
+          size: file.size,
         })),
       ),
     };

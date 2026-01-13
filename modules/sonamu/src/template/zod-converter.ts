@@ -543,12 +543,11 @@ export function zodTypeToRenderingNode(
    * 케이스 처리 순서
    *
    * 1. 특수 케이스 (description 기반)
-   *    - SonamuFile/SonamuFile[] : z.object/z.array이지만 파일 업로드용 특수 타입
+   *    - SonamuFile/SonamuFile[] : z.object/z.array이지만 파일 업로드용 내장 타입
    *
    * 2. 일반 케이스 (instanceof 기반)
    *    - z.ZodObject : 일반 객체
    *    - z.ZodArray : 일반 배열
-   *      - array-images : z.array(z.string)이지만 네이밍 기반으로 이미지 업로드 (deprecated 예정)
    *      - vector : z.array(z.number)이지만 네이밍 기반으로 벡터 임베딩
    *      - 일반 배열 : 그 외
    *    - z.ZodUnion, z.ZodOptional, z.ZodNullable : 유틸리티 타입
@@ -579,15 +578,6 @@ export function zodTypeToRenderingNode(
     };
   } else if (zodType instanceof z.ZodArray) {
     const innerType = (zodType as z.ZodArray<z.ZodTypeAny>).def.element;
-    if (
-      innerType instanceof z.ZodString &&
-      (baseKey.includes("images") || baseKey.includes("image"))
-    ) {
-      return {
-        ...def,
-        renderType: "array-images",
-      };
-    }
     // vector 타입 판별: number 배열이면서 embedding, vector 등의 이름을 가진 경우
     if (
       innerType instanceof z.ZodNumber &&
@@ -634,9 +624,7 @@ function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["r
   if (zodType instanceof z.ZodDate) {
     return "datetime";
   } else if (zodType instanceof z.ZodString) {
-    if (key.includes("img") || key.includes("image")) {
-      return "string-image";
-    } else if (zodType.description === "SQLDateTimeString") {
+    if (zodType.description === "SQLDateTimeString") {
       return "string-datetime";
     } else if (key.endsWith("date")) {
       return "string-date";

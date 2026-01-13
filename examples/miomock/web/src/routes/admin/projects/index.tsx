@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@sonamu-kit/react-components/components";
-import { datetimeF, numF, useListParams } from "@sonamu-kit/react-components/lib";
+import { datetimeF, useListParams } from "@sonamu-kit/react-components/lib";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Fragment, useState } from "react";
 import { ProjectOrderBySelect } from "@/components/project/ProjectOrderBySelect";
@@ -121,7 +121,7 @@ function ProjectList({}: ProjectListProps) {
               r && (
                 <img
                   key={i}
-                  src={r}
+                  src={r.url}
                   alt={`ImageUrls ${i + 1}`}
                   className="h-8 w-8 object-cover rounded"
                 />
@@ -129,14 +129,6 @@ function ProjectList({}: ProjectListProps) {
           )}
         </div>
       ),
-    },
-    {
-      label: "virtual prop test",
-      tc: (row) => <>{row.virtual_test && numF(row.virtual_test)}</>,
-    },
-    {
-      label: "virtual query prop test",
-      tc: (row) => <>{row.virtual_query_test}</>,
     },
     {
       label: SD("entity.list")(SD("entity.Employee")),

@@ -83,26 +83,6 @@ export class Template__view_form extends Template {
         return `<Input type="number" className="h-8 text-xs bg-white" placeholder=${placeholder} ${regExpr} />`;
       case "boolean":
         return `<Switch ${regExpr} />`;
-      case "string-image":
-        return `<ImageUploader
-                      ${regExpr}
-                      uploader={async (file: File) => {
-                        const { file: uploadedFile } = await FileService.upload(file);
-                        return uploadedFile.url;
-                      }}
-                      previewSize="md"
-                    />`;
-      case "array-images":
-        return `<MultiImageUploader
-                    value={Array.isArray(form.${col.name}) ? form.${col.name} : []}
-                    onValueChange={(urls) => setForm({ ...form, ${col.name}: urls })}
-                    uploader={async (file: File) => {
-                      const { file: uploadedFile } = await FileService.upload(file);
-                      return uploadedFile.url;
-                    }}
-                    previewSize="md"
-                    placeholder=${placeholder}
-                  />`;
       case "json-sonamufile":
         return `<FileInput
                     uploadMode="lazy"
@@ -285,18 +265,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => col.renderType === "string-image") ? "\n  ImageUploader," : ""}${columns.some((col) => col.renderType === "array-images") ? "\n  MultiImageUploader," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
+  Input,${columns.some((col) => col.renderType === "string-plain" && col.zodType instanceof z.ZodString && (col.zodType.maxLength ?? 0) > 256) ? "\n  Textarea," : ""}${columns.some((col) => col.renderType === "enums") ? "\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue," : ""}${columns.some((col) => col.renderType === "boolean") ? "\n  Switch," : ""}${columns.some((col) => ["json-sonamufile", "json-sonamufile-array"].includes(col.renderType)) ? "\n  FileInput," : ""}${columns.some((col) => ["string-datetime", "string-date", "datetime"].includes(col.renderType)) ? "\n  DateInput," : ""}
 } from "@sonamu-kit/react-components/components";
 import { useTypeForm } from "@sonamu-kit/react-components/lib";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { z } from "zod";
-import { ${names.capital}Service${
-        columns.some((col) => ["string-image", "array-images"].includes(col.renderType))
-          ? ", FileService"
-          : ""
-      } } from "@/services/services.generated";
+import { ${names.capital}Service } from "@/services/services.generated";
 import type { ${names.capital}SubsetA } from "@/services/sonamu.generated";${
         columns.filter((col) => col.renderType === "enums").length > 0
           ? "\nimport { " +

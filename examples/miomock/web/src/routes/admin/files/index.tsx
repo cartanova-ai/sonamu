@@ -298,8 +298,12 @@ function FileList({}: FileListProps) {
                     previewSize="md"
                     {...singleEagerImageForm.register("file")}
                   />
-                  <div className="text-xs text-gray-500 truncate">
-                    {singleEagerImageForm.form.file || "파일 없음"}
+                  <div className="text-xs text-gray-500 wrap-break-word">
+                    {typeof singleEagerImageForm.form.file === "string"
+                      ? singleEagerImageForm.form.file
+                      : singleEagerImageForm.form.file
+                        ? JSON.stringify(singleEagerImageForm.form.file)
+                        : "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -325,7 +329,7 @@ function FileList({}: FileListProps) {
                   >
                     Upload
                   </Button>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-xs text-gray-500 wrap-break-word">
                     {typeof singleLazyImageForm.form.file === "string"
                       ? singleLazyImageForm.form.file
                       : singleLazyImageForm.form.file?.name || "파일 없음"}
@@ -346,8 +350,12 @@ function FileList({}: FileListProps) {
                     previewSize="md"
                     {...singleEagerFileForm.register("file")}
                   />
-                  <div className="text-xs text-gray-500 truncate">
-                    {singleEagerFileForm.form.file || "파일 없음"}
+                  <div className="text-xs text-gray-500 wrap-break-word">
+                    {typeof singleEagerFileForm.form.file === "string"
+                      ? singleEagerFileForm.form.file
+                      : singleEagerFileForm.form.file
+                        ? JSON.stringify(singleEagerFileForm.form.file)
+                        : "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -373,7 +381,7 @@ function FileList({}: FileListProps) {
                   >
                     Upload
                   </Button>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-xs text-gray-500 wrap-break-word">
                     {typeof singleLazyFileForm.form.file === "string"
                       ? singleLazyFileForm.form.file
                       : singleLazyFileForm.form.file?.name || "파일 없음"}

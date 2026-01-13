@@ -1,7 +1,14 @@
 import { createContext, type ReactNode, useContext } from "react";
 
+export type SonamuFile = {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+};
+
 export interface SonamuContextValue {
-  uploader?: (files: File[]) => Promise<string[]>;
+  uploader?: (files: File[]) => Promise<SonamuFile[]>;
 }
 
 const SonamuContext = createContext<SonamuContextValue>({} as SonamuContextValue);
