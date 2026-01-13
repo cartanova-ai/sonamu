@@ -217,13 +217,7 @@ export class SonamuDictionary {
     requiredKeys: string[],
     target: "api" | "web" | "app" = "api",
   ): Promise<string[]> {
-    const i18nConfig = Sonamu.config.i18n;
-    if (!i18nConfig) {
-      // i18n 설정이 없으면 아무것도 하지 않음
-      return [];
-    }
-
-    const { defaultLocale } = i18nConfig;
+    const { defaultLocale } = Sonamu.config.i18n;
     const projectDictPath = this.getProjectDictPath(defaultLocale, target);
 
     // 프로젝트 dict 파일이 없으면 아무것도 하지 않음
@@ -383,12 +377,7 @@ export class SonamuDictionary {
    * i18n 설정을 가져옵니다.
    */
   private getI18nConfig(): I18nConfig {
-    return (
-      Sonamu.config.i18n ?? {
-        defaultLocale: "ko",
-        supportedLocales: ["ko"],
-      }
-    );
+    return Sonamu.config.i18n;
   }
 
   /**

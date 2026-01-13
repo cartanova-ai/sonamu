@@ -52,7 +52,7 @@ export type SonamuConfig<TSinkId extends string = string, TFilterId extends stri
    * }
    * ```
    */
-  i18n?: SonamuI18nOptions;
+  i18n: SonamuI18nOptions;
 
   sync: {
     targets: string[]; // "web", "app" 등
@@ -167,7 +167,7 @@ export type SonamuTaskOptions = {
   enableWorker?: boolean;
   workerOptions?: WorkflowOptions;
   contextProvider: (
-    defaultContext: Pick<Context, "reply" | "request" | "headers" | "createSSE" | "naiteStore"> &
+    defaultContext: Pick<Context, "reply" | "request" | "headers" | "createSSE" | "naiteStore" | "locale"> &
       AuthContext,
   ) => Context | Promise<Context>;
 };

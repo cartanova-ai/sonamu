@@ -25,10 +25,7 @@ export class Template__sd extends Template {
 
   render(options: TemplateOptions["sd"]) {
     const { target } = options;
-    const i18nConfig = Sonamu.config.i18n ?? {
-      defaultLocale: "ko",
-      supportedLocales: ["ko"],
-    };
+    const i18nConfig = Sonamu.config.i18n;
 
     const { defaultLocale, supportedLocales } = i18nConfig;
 

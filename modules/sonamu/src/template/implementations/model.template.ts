@@ -21,7 +21,6 @@ export class Template__model extends Template {
   }
 
   override getRequiredDictKeys(): string[] | null {
-    if (!Sonamu.config.i18n) return null;
     return ["error.entityNotFound", "error.unknownSearchField"];
   }
 
@@ -43,19 +42,9 @@ export class Template__model extends Template {
     }
     const def = vlTpl.getDefault(listParamsNode.children);
 
-    // i18n 설정 확인
-    const useI18n = !!Sonamu.config.i18n;
-
     // 에러 메시지 생성
-    const notFoundError = useI18n
-      ? `SD("error.entityNotFound")("${names.capital}", id)`
-      : `\`존재하지 않는 ${names.capital} ID \${id}\``;
-    const unknownSearchFieldError = useI18n
-      ? `SD("error.unknownSearchField")(params.search)`
-      : `\`구현되지 않은 검색 필드 \${params.search}\``;
-
-    // SD import
-    const sdImport = useI18n ? `import { SD } from "../../i18n/sd.generated";\n` : "";
+    const notFoundError = `SD("error.entityNotFound")("${names.capital}", id)`;
+    const unknownSearchFieldError = `SD("error.unknownSearchField")(params.search)`;
 
     return {
       ...this.getTargetAndPath(names),
@@ -70,7 +59,8 @@ import {
   ${names.camel}LoaderQueries,
 } from "../sonamu.generated.sso";
 import { ${entityId}ListParams, ${entityId}SaveParams } from "./${names.fs}.types";
-${sdImport}
+import { SD } from "../../i18n/sd.generated";
+
 /*
   ${entityId} Model
 */

@@ -869,11 +869,10 @@ class SonamuClass {
       _events: T,
     ) => createSSEFactory(_request.socket, _reply, _events)).bind(null, request, reply);
 
-    // i18n 설정이 있을 때만 locale 감지
-    const locale = this.config.i18n
-      ? (this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
-        this.config.i18n.defaultLocale)
-      : undefined;
+    // locale 감지
+    const locale =
+      this.detectLocale(request.headers["accept-language"], this.config.i18n.supportedLocales) ??
+      this.config.i18n.defaultLocale;
 
     const context: Context = {
       ...(await Promise.resolve(

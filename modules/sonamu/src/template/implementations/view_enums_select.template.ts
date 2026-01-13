@@ -1,4 +1,3 @@
-import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { TemplateOptions } from "../../types/types";
 import { getLabel } from "../helpers";
@@ -17,21 +16,12 @@ export class Template__view_enums_select extends Template {
   }
 
   override getRequiredDictKeys(): string[] | null {
-    if (!Sonamu.config.i18n) return null;
     return ["common.all"];
   }
 
   async render({ entityId, enumId }: TemplateOptions["view_enums_select"]) {
     const names = EntityManager.getNamesFromId(entityId);
     const label = getLabel(entityId, enumId);
-
-    // i18n 설정 확인
-    const useI18n = !!Sonamu.config.i18n;
-
-    // SD import 및 "전체" 텍스트
-    const sdImport = useI18n ? `import { SD } from "@/i18n/sd.generated";\n` : "";
-    const allText = useI18n ? `{SD("common.all")}` : `전체`;
-    const enumLabels = useI18n ? `SD.enumLabels("${enumId}")` : `${enumId}Label`;
 
     return {
       ...this.getTargetAndPath(names, enumId),
@@ -40,7 +30,7 @@ export class Template__view_enums_select extends Template {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@sonamu-kit/react-components/components';
 
 import { ${enumId}, ${enumId}Label } from '@/services/sonamu.generated';
-${sdImport}
+import { SD } from "@/i18n/sd.generated";
 export type ${enumId}SelectProps = {
   value?: string;
   onValueChange?: (value: string | null | undefined) => void;
@@ -62,7 +52,7 @@ export function ${enumId}Select({
 }: ${enumId}SelectProps) {
   // Filter out empty string from options (Radix UI doesn't allow empty string as SelectItem value)
   const validOptions = ${enumId}.options.filter((key) => (key as string) !== "");
-  const enumLabels = ${enumLabels};
+  const enumLabels = SD.enumLabels("${enumId}");
 
   return (
     <Select value={value ?? ""} onValueChange={onValueChange} disabled={disabled}>
@@ -70,7 +60,7 @@ export function ${enumId}Select({
         <SelectValue placeholder={placeholder ?? "${label}"} />
       </SelectTrigger>
       <SelectContent>
-        {clearable && <SelectItem value="">${allText}</SelectItem>}
+        {clearable && <SelectItem value="">{SD("common.all")}</SelectItem>}
         {validOptions.map((key) => (
           <SelectItem key={key} value={key}>
             {(textPrefix ?? "") + enumLabels[key]}

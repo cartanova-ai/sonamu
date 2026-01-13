@@ -678,12 +678,10 @@ export class Syncer {
 
   /**
    * SD(Sonamu Dictionary) 템플릿을 생성합니다.
-   * i18n 설정이 있을 때만 호출됩니다.
    */
   async syncSD(): Promise<void> {
     const { targets } = Sonamu.config.sync;
     const i18nConfig = Sonamu.config.i18n;
-    if (!i18nConfig) return;
 
     const targetList = ["api", ...targets] as ("api" | "web" | "app")[];
 

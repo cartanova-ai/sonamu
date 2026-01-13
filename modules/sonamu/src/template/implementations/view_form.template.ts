@@ -1,7 +1,6 @@
 import inflection from "inflection";
 import { unique } from "radashi";
 import { z } from "zod";
-import { Sonamu } from "../../api/sonamu";
 import { EntityManager, type EntityNamesRecord } from "../../entity/entity-manager";
 import type { RenderingNode, TemplateKey, TemplateOptions } from "../../types/types";
 import { getEnumInfoFromColName, getRelationPropFromColName } from "../helpers";
@@ -21,7 +20,6 @@ export class Template__view_form extends Template {
   }
 
   override getRequiredDictKeys(): string[] | null {
-    if (!Sonamu.config.i18n) return null;
     return ["entity.create", "entity.edit", "common.backToList", "form.createdAt", "common.save"];
   }
 
@@ -55,15 +53,9 @@ export class Template__view_form extends Template {
     }
   }
 
-  renderColumn(
-    entityId: string,
-    col: RenderingNode,
-    names: EntityNamesRecord,
-    useI18n: boolean = false,
-  ): string {
+  renderColumn(entityId: string, col: RenderingNode, names: EntityNamesRecord): string {
     const regExpr = `{...register("${col.name}")}`;
-    // i18n 적용 시 SD 사용, 아니면 하드코딩 문자열
-    const placeholder = useI18n ? `{SD("entity.${entityId}.${col.name}")}` : `"${col.label}"`;
+    const placeholder = `{SD("entity.${entityId}.${col.name}")}`;
 
     switch (col.renderType) {
       case "string-plain":
@@ -168,9 +160,6 @@ export class Template__view_form extends Template {
   async render({ entityId }: TemplateOptions["view_form"]) {
     const entity = EntityManager.get(entityId);
     const names = EntityManager.getNamesFromId(entityId);
-
-    // i18n 설정 확인
-    const useI18n = !!Sonamu.config.i18n;
 
     // SaveParams 타입을 로드하여 saveParamsNode 생성
     const { loadTypes } = await import("../../syncer/module-loader");
@@ -302,7 +291,7 @@ ${unique(
       return this.renderColumnImport(entityId, col);
     }),
 ).join("\n")}
-${useI18n ? `import { SD } from "@/i18n/sd.generated";` : ""}
+import { SD } from "@/i18n/sd.generated";
 
 import ArrowLeftIcon from "~icons/lucide/arrow-left";
 import SaveIcon from "~icons/lucide/save";
@@ -439,7 +428,7 @@ ${(() => {
   };
 
   const PAGE = {
-    title: ${useI18n ? `id ? SD("entity.edit")(SD("entity.${entityId}"), id) : SD("entity.create")(SD("entity.${entityId}"))` : `\`${entity.title ?? names.capital}\${id ? \` #\${id} Edit\` : " Create"}\``},
+    title: id ? SD("entity.edit")(SD("entity.${entityId}"), id) : SD("entity.create")(SD("entity.${entityId}")),
   };
 
   return (
@@ -458,7 +447,7 @@ ${(() => {
                 onClick={() => router.navigate({ to: "/admin/${names.fsPlural}" })}
                 icon={<ArrowLeftIcon />}
               >
-                ${useI18n ? `{SD("common.backToList")}` : "Back To List"}
+                {SD("common.backToList")}
               </Button>
             )}
           </div>
@@ -486,11 +475,10 @@ ${columns
       }
       return col.label;
     })();
-    const labelExpr = useI18n ? `{SD("entity.${entityId}.${col.name}")}` : label;
     return `                {/* ${label} */}
                 <div className="space-y-2">
-                  <label className="block text-xs mb-1 text-gray-600">${labelExpr}</label>
-                  ${this.renderColumn(entityId, col, names, useI18n)}
+                  <label className="block text-xs mb-1 text-gray-600">{SD("entity.${entityId}.${col.name}")}</label>
+                  ${this.renderColumn(entityId, col, names)}
                 </div>`;
   })
   .join("\n\n")}
@@ -499,7 +487,7 @@ ${columns
                 <div className="flex items-center justify-between pt-4">
                   {form.id && form.created_at && (
                     <div className="flex items-center">
-                      <label className="mr-2 text-xs text-gray-600">${useI18n ? `{SD("form.createdAt")}` : "Created At"}:</label>
+                      <label className="mr-2 text-xs text-gray-600">{SD("form.createdAt")}:</label>
                       <span className="text-xs text-gray-600">
                         {String(form.created_at)}
                       </span>
@@ -509,7 +497,7 @@ ${columns
                     onClick={handleSubmit}
                     icon={<SaveIcon />}
                   >
-                    ${useI18n ? `{SD("common.save")}` : "Save"}
+                    {SD("common.save")}
                   </Button>
                 </div>
               </div>
