@@ -1,3 +1,5 @@
+import { josa } from "../services/sonamu.shared";
+
 /**
  * Project KO Dictionary
  */
@@ -73,6 +75,6 @@ export default {
     `${field}은(는) 최소 ${min}자 이상이어야 합니다`,
   "validation.range": (field: string, min: number, max: number) =>
     `${field}은(는) ${min}~${max} 사이여야 합니다`,
-  "validation.required": (field: string) => `${field}은(는) 필수입니다`,
+  "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
   "validation.url": "올바른 URL 형식이 아닙니다",
 } as const;
