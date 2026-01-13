@@ -35,8 +35,8 @@ src/
 ## 설치
 
 ```bash
-cd packages/react-components
-yarn install
+cd modules/react-components
+pnpm install
 ```
 
 ## 사용
@@ -50,9 +50,9 @@ import { useTypeForm } from "@sonamu-kit/react-components/hooks";
 
 ## 개발
 
-- `yarn dev`: TypeScript watch 모드
-- `yarn build`: 빌드
-- `yarn lint`: 린팅
+- `pnpm dev`: TypeScript watch 모드
+- `pnpm build`: 빌드
+- `pnpm lint`: 린팅
 
 ## 향후 계획
 
