@@ -1,4 +1,6 @@
-import { josa } from "../services/sonamu.shared";
+import { createFormat, josa } from "../services/sonamu.shared";
+
+const format = createFormat("ko");
 
 /**
  * Project KO Dictionary
@@ -65,6 +67,7 @@ export default {
   "menu.user": "사용자 관리",
   notFound: (name: string, id: number) => `존재하지 않는 ${name} ID ${id}`,
   "search.invalidField": (field: string) => `구현되지 않은 검색 필드 ${field}`,
+  test: (date: Date) => format.date(date),
   "user.email.duplicate": "이미 사용중인 이메일입니다",
   "user.login.failed": "이메일 또는 비밀번호가 일치하지 않습니다",
   "user.logout.failed": "로그아웃 실패",

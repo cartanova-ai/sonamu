@@ -17,10 +17,7 @@ export default defineLocale({
   "common.logout": "Logout",
   "common.manage": "Manage",
   "common.results": (count: number) =>
-    plural(count, {
-      one: `${count} result`,
-      other: `${count} results`,
-    }),
+    plural(count, { one: `${count} result`, other: `${count} results` }),
   "common.save": "Save",
   "common.search": "Search",
   "common.searchType": "Search Type",
@@ -112,10 +109,7 @@ export default defineLocale({
   "validation.maxLength": (field: string, max: number) =>
     `${field} must be at most ${max} characters`,
   "validation.minLength": (field: string, min: number) =>
-    `${field} must be at least ${min} ${plural(min, {
-      one: "character",
-      other: "characters",
-    })}`,
+    `${field} must be at least ${min} ${plural(min, { one: "character", other: "characters" })}`,
   "validation.range": (field: string, min: number, max: number) =>
     `${field} must be between ${min} and ${max}`,
   "validation.required": (field: string) => `${field} is required`,

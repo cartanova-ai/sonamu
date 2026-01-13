@@ -139,7 +139,7 @@ const entityLabels = {
 // defaultLocale의 dictionary를 기준으로 키 추출
 type ProjectDictionary = typeof ko;
 type EntityLabels = typeof entityLabels;
-type RawMergedDictionary = EntityLabels & ProjectDictionary;
+type RawMergedDictionary = Omit<EntityLabels, keyof ProjectDictionary> & ProjectDictionary;
 
 // 키는 유지하되, 값 타입은 string 또는 함수로 일반화 (다른 locale의 리터럴 타입 충돌 방지)
 type MergedDictionary = {

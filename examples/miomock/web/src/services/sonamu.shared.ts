@@ -399,17 +399,14 @@ export function createFormat(locale: string) {
   };
 }
 
-// 받침 체크 함수
-function hasFinalConsonant(str: string): boolean {
-  const lastChar = str.charCodeAt(str.length - 1);
-  // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
-  if (lastChar < 0xac00 || lastChar > 0xd7a3) return false;
-  return (lastChar - 0xac00) % 28 !== 0;
-}
-
-// 조사 선택 함수
 export function josa(word: string, type: "은는" | "이가" | "을를" | "과와" | "으로") {
-  const has받침 = hasFinalConsonant(word);
+  const has받침 = (() => {
+    const lastChar = word.charCodeAt(word.length - 1);
+    if (lastChar < 0xac00 || lastChar > 0xd7a3)
+      // 한글 유니코드 범위: 0xAC00 ~ 0xD7A3
+      return false;
+    return (lastChar - 0xac00) % 28 !== 0;
+  })();
   const map = {
     은는: has받침 ? "은" : "는",
     이가: has받침 ? "이" : "가",
