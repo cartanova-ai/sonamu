@@ -25,6 +25,7 @@ import type { $ZodLooseShape } from "zod/v4/core";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
+  BUILT_IN_TYPE_IDS,
   type EntityProp,
   type EntityPropNode,
   isBelongsToOneRelationProp,
@@ -54,6 +55,8 @@ import {
   isVectorSingleProp,
   isVirtualProp,
   type RenderingNode,
+  SonamuFileArraySchema,
+  SonamuFileSchema,
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 
@@ -66,11 +69,31 @@ type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
 type AnyZodTemplateLiteral = z.ZodTemplateLiteral<string>;
+
+/**
+ * 내장 타입 ID에 대응하는 Zod 스키마를 반환하는 매핑 객체
+ */
+const BUILT_IN_TYPE_SCHEMAS: Record<string, z.ZodTypeAny> = {
+  SonamuFile: SonamuFileSchema,
+  "SonamuFile[]": SonamuFileArraySchema,
+};
+
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
- * dist 디렉토리에서 ESM으로 import하여 가져옵니다.
+ * 내장 타입(BUILT_IN_TYPE_IDS)은 바로 반환하고,
+ * 그 외는 dist 디렉토리에서 ESM으로 import하여 가져옵니다.
  */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
+  // 내장 타입 처리
+  if ((BUILT_IN_TYPE_IDS as readonly string[]).includes(zodTypeId)) {
+    const schema = BUILT_IN_TYPE_SCHEMAS[zodTypeId];
+    if (!schema) {
+      throw new Error(`내장 타입 ${zodTypeId}의 스키마가 정의되지 않았습니다`);
+    }
+    return schema.describe(zodTypeId);
+  }
+
+  // 프로젝트에서 정의한 타입 동적 로드
   const modulePath = EntityManager.getModulePath(zodTypeId);
   const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", `${modulePath}.js`);
   const importUrl = createImportUrl(moduleAbsPath);
