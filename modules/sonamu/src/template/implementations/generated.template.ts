@@ -110,10 +110,10 @@ export class Template__generated extends Template {
 
     // import
     // sourceCode.importKeys에 내장 타입의 스키마가 있으면 sonamu import에 추가
-    const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map((info) => info.schemaName as string);
-    const builtInSchemas = sourceCode.importKeys.filter((key) =>
-      builtInSchemaNames.includes(key),
+    const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map(
+      (info) => info.schemaName as string,
     );
+    const builtInSchemas = sourceCode.importKeys.filter((key) => builtInSchemaNames.includes(key));
     const sonamuImports = [
       "zArrayable",
       "SQLDateTimeString",

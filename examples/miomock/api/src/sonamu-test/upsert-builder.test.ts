@@ -1,4 +1,4 @@
-import { DB, isRefField, Naite, Sonamu, type UBRef, UpsertBuilder } from "sonamu";
+import { DB, isRefField, Naite, Sonamu, type SonamuFile, type UBRef, UpsertBuilder } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, describe, expect, vi } from "vitest";
 import { expectUB } from "../testing/expect-ub";
@@ -80,19 +80,33 @@ describe("Upsert Builder", () => {
     test("register() 시 객체는 JSON 문자열 변환, 배열은 원본 유지/null은 유지", async () => {
       const ub = new UpsertBuilder();
 
-      const imageUrls = ["https://example.com/1.png", "https://example.com/2.png"];
+      const imageFiles: SonamuFile[] = [
+        {
+          name: "image1.png",
+          url: "https://example.com/1.png",
+          mime_type: "image/png",
+          size: 1024,
+        },
+        {
+          name: "image2.png",
+          url: "https://example.com/2.png",
+          mime_type: "image/png",
+          size: 2048,
+        },
+      ];
 
       // 배열 → 원본 유지
       ub.register("projects", {
         name: "테스트 프로젝트",
         status: "planning",
-        image_urls: imageUrls,
+        image_urls: imageFiles,
       });
 
-      // [expectUB] 배열이 그대로 저장됨
+      // [expectUB] JSON 컬럼이므로 문자열로 변환되어 저장됨
       expectUB(ub, "row", "projects", 0).toMatchObject({
         name: "테스트 프로젝트",
-        image_urls: imageUrls,
+        status: "planning",
+        image_urls: JSON.stringify(imageFiles),
       });
 
       // null 값 등록

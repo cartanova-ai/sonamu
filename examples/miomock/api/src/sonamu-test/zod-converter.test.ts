@@ -16,6 +16,10 @@ import {
   zodTypeToZodCode,
 } from "../../../../../modules/sonamu/dist/template/zod-converter";
 import type { EntityProp, EntityPropNode } from "../../../../../modules/sonamu/dist/types/types";
+import {
+  SonamuFileArraySchema,
+  SonamuFileSchema,
+} from "../../../../../modules/sonamu/dist/types/types";
 
 describe("zod-converter", () => {
   // Helper functions
@@ -1368,14 +1372,6 @@ describe("zod-converter", () => {
         expect(result.element?.renderType).toBe("number-plain");
       });
 
-      test("array with images key", () => {
-        // 기대: 키 이름이 "images"인 경우 특별한 renderType "array-images" 적용
-        const zodType = z.array(z.string());
-        const result = zodTypeToRenderingNode(zodType, "images");
-
-        expect(result.renderType).toBe("array-images");
-      });
-
       test("array of objects", () => {
         // 기대: 배열의 요소가 객체인 경우 element가 object renderType을 가짐
 
@@ -1459,8 +1455,6 @@ describe("zod-converter", () => {
         ["Date type", z.date(), "createdAt", "datetime"], // z.date() → "datetime"
 
         // String 타입 - 키 이름에 따라 다른 renderType
-        ["String with img key", z.string(), "avatar_img", "string-image"], // "img" 포함 → 이미지
-        ["String with image key", z.string(), "profile_image", "string-image"], // "image" 포함 → 이미지
         [
           "String with SQLDateTimeString description",
           z.string().describe("SQLDateTimeString"),
@@ -1474,6 +1468,15 @@ describe("zod-converter", () => {
         ["Number with id key", z.number(), "id", "number-id"], // 키가 "id" → Primary Key
         ["Number ending with _id", z.number(), "user_id", "number-fk_id"], // "_id"로 끝남 → Foreign Key
         ["Number plain", z.number(), "age", "number-plain"], // 일반 숫자
+
+        // SonamuFile 타입
+        ["SonamuFile object", SonamuFileSchema.describe("SonamuFile"), "avatar", "json-sonamufile"], // SonamuFile 구조 → "json-sonamufile"
+        [
+          "SonamuFile array",
+          SonamuFileArraySchema.describe("SonamuFile[]"),
+          "images",
+          "json-sonamufile-array",
+        ], // SonamuFile[] 구조 → "json-sonamufile-array"
 
         // 기타 타입들
         ["Boolean type", z.boolean(), "active", "boolean"], // boolean → "boolean"
