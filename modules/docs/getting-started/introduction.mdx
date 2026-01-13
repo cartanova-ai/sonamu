@@ -493,6 +493,21 @@ async getPublicData(): Promise<PublicData[]> {
 }
 ```
 
+### i18n: 타입 안전한 다국어 지원
+
+Entity의 title, prop.desc, enumLabels가 자동으로 딕셔너리에 추출됩니다. 타입 안전한 `SD()` 함수로 번역을 관리하고, 존재하지 않는 키는 컴파일 타임에 에러로 잡아줍니다.
+
+```typescript
+import { SD } from "../i18n/sd.generated";
+
+SD("common.save")         // "저장" (ko) / "Save" (en)
+SD("error.typo")          // ❌ 컴파일 에러: 키 없음
+
+SD("entity.User")         // "사용자" - Entity title 자동 추출
+SD("entity.User.email")   // "이메일" - prop.desc 자동 추출
+SD.enumLabels("UserRole")["admin"]  // "관리자"
+```
+
 ### Workflow: 복잡한 비즈니스 로직 관리
 
 여러 단계로 이루어진 복잡한 비즈니스 로직을 체계적으로 관리할 수 있습니다.
@@ -551,6 +566,7 @@ const posts = await PostModel.findMany("A", {
 
 - ✅ BentoCache로 다층 캐싱 (메모리 + Redis)
 - ✅ Cache-Control로 HTTP 응답 캐싱
+- ✅ i18n으로 타입 안전한 다국어 지원
 - ✅ Workflow로 복잡한 비즈니스 로직 관리
 - ✅ N+1 문제 자동 해결
 
@@ -563,11 +579,11 @@ const posts = await PostModel.findMany("A", {
     다층 캐싱 전략
   </Card>
   <Card
-    title="Workflow"
-    icon="diagram-project"
-    href="/advanced-features/workflows"
+    title="i18n"
+    icon="language"
+    href="/advanced-features/i18n/overview"
   >
-    비즈니스 로직 관리
+    다국어 지원 시스템
   </Card>
 </CardGroup>
 
