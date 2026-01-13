@@ -12,14 +12,14 @@ Sonamu는 TypeScript의 타입 시스템을 중심에 두고 설계되었습니�
 **Entity 하나를 정의하면, 나머지는 TypeScript가 알아서 합니다.**
 
 <Frame caption="🎬 Entity 저장 → 타입/스키마/API 자동 생성 → 프론트엔드 Service 생성까지 전체 플로우">
-  <video 
-    autoPlay 
-    muted 
-    loop 
-    playsInline 
-    controls 
-    className="w-full rounded-xl" 
-    src="/images/introduction1-demo.mp4"
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    src="/images/introduction1.mp4"
   ></video>
 </Frame>
 
@@ -30,7 +30,7 @@ flowchart LR
     A --> D[DB 스키마]
     A --> E[API 클라이언트]
     A --> F[TanStack Query]
-    
+
     style A fill:#4f46e5,color:#fff,stroke-width:3px
     style B fill:#e3f2fd
     style C fill:#e8f5e9
@@ -87,8 +87,7 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
   </Tab>
 </Tabs>
 
-<Frame caption="📸 필요: VS Code에서 타입 에러가 빨간 줄로 표시되는 스크린샷 (user.nonExistent에 빨간 밑줄)">
-</Frame>
+<Frame caption="📸 필요: VS Code에서 타입 에러가 빨간 줄로 표시되는 스크린샷 (user.nonExistent에 빨간 밑줄)"></Frame>
 
 ---
 
@@ -96,8 +95,7 @@ Entity를 한 곳에 정의하면, 시스템 전체가 동기화됩니다. 수�
 
 백엔드 API를 정의하면, 프론트엔드 Service와 TanStack Query Hook이 자동으로 생성됩니다.
 
-<Frame caption="🎬 필요: 백엔드 @api 메서드 작성 → pnpm generate → 프론트엔드에서 useQuery 사용 (20초)">
-</Frame>
+<Frame caption="🎬 필요: 백엔드 @api 메서드 작성 → pnpm generate → 프론트엔드에서 useQuery 사용 (20초)"></Frame>
 
 ```tsx
 // 백엔드: @api 데코레이터로 API 정의
@@ -109,7 +107,7 @@ async getProfile(userId: number): Promise<User> {
 // 프론트엔드: 자동 생성된 Hook 사용
 function UserProfile({ userId }: { userId: number }) {
   const { data: user, isLoading } = UserService.useUser("A", userId);
-  
+
   if (isLoading) return <div>Loading...</div>;
   return <div>{user.username}</div>; // ✅ 완벽한 타입 안전성
 }
@@ -130,16 +128,25 @@ const user = await UserService.findById("C", userId);
 ```
 
 **핵심 기능**:
+
 - ✅ 백엔드 변경 시 컴파일 에러로 즉시 감지
 - ✅ Namespace 기반으로 깔끔한 구조
 - ✅ TanStack Query 자동 통합 (캐싱, 재검증, 낙관적 업데이트)
 - ✅ Subset별 정확한 타입 추론
 
 <CardGroup cols={2}>
-  <Card title="Service 사용법" icon="code" href="/frontend-integration/generated-services/using-services">
+  <Card
+    title="Service 사용법"
+    icon="code"
+    href="/frontend-integration/generated-services/using-services"
+  >
     자동 생성된 Service 활용하기
   </Card>
-  <Card title="TanStack Query" icon="arrows-rotate" href="/frontend-integration/generated-services/tanstack-query">
+  <Card
+    title="TanStack Query"
+    icon="arrows-rotate"
+    href="/frontend-integration/generated-services/tanstack-query"
+  >
     React Hook으로 데이터 페칭
   </Card>
 </CardGroup>
@@ -180,22 +187,21 @@ test("관리자는 모든 사용자를 볼 수 있다", async () => {
 
 테스트 실행 중 모든 데이터 변화를 추적하고 시각화합니다. 디버깅이 훨씬 쉬워집니다.
 
-<Frame caption="📸 필요: Naite Viewer 화면 - 테스트 실행 중 데이터베이스 변화를 시각적으로 보여주는 UI">
-</Frame>
+<Frame caption="📸 필요: Naite Viewer 화면 - 테스트 실행 중 데이터베이스 변화를 시각적으로 보여주는 UI"></Frame>
 
 ```typescript
 test("사용자 생성 플로우", async () => {
   Naite.t("초기 상태", { userCount: 0 });
-  
+
   const user = await UserModel.create({
     email: "test@test.com",
     username: "testuser",
   });
-  
+
   Naite.t("사용자 생성 후", { userCount: 1, userId: user.id });
-  
+
   await UserModel.delete(user.id);
-  
+
   Naite.t("삭제 후", { userCount: 0 });
 });
 ```
@@ -240,13 +246,18 @@ testAs(
 ```
 
 **핵심 기능**:
+
 - ✅ Fixture로 테스트 데이터 재사용
 - ✅ Naite로 데이터 변화 시각화
 - ✅ Transaction 자동 롤백으로 격리된 테스트
 - ✅ testAs로 권한 테스트 간편화
 
 <CardGroup cols={2}>
-  <Card title="Fixture 시스템" icon="box" href="/testing/writing-tests/test-helpers">
+  <Card
+    title="Fixture 시스템"
+    icon="box"
+    href="/testing/writing-tests/test-helpers"
+  >
     테스트 데이터 관리
   </Card>
   <Card title="Naite 가이드" icon="chart-line" href="/testing/naite">
@@ -264,8 +275,7 @@ Sonamu는 AI 시대에 맞는 기능들을 네이티브로 지원합니다.
 
 AI 임베딩 검색을 Entity 필드로 정의하면 끝입니다. pgvector를 네이티브로 지원합니다.
 
-<Frame caption="📸 필요: Entity에 vector 필드 정의 → 자동 생성된 벡터 검색 메서드 사용하는 화면">
-</Frame>
+<Frame caption="📸 필요: Entity에 vector 필드 정의 → 자동 생성된 벡터 검색 메서드 사용하는 화면"></Frame>
 
 ```typescript
 // Entity에 vector 필드 정의
@@ -277,7 +287,7 @@ AI 임베딩 검색을 Entity 필드로 정의하면 끝입니다. pgvector를 �
 
 // 벡터 검색 (raw SQL 사용)
 const results = await DocumentModel.getPuri("r").raw(`
-  SELECT 
+  SELECT
     id, title, content,
     1 - (embedding <=> ?) AS similarity
   FROM documents
@@ -301,7 +311,7 @@ async chat(message: string): Promise<StreamingResponse> {
     model: openai("gpt-4"),
     messages: [{ role: "user", content: message }],
   });
-  
+
   return result.toTextStreamResponse();
 }
 ```
@@ -317,12 +327,12 @@ import { z } from "zod";
 @api({ httpMethod: "GET" })
 async streamEvents() {
   const { createSSE } = Sonamu.getContext();
-  
+
   const events = z.object({
     type: z.literal("message"),
     data: z.string(),
   });
-  
+
   return createSSE(events)(async (emit) => {
     for (let i = 0; i < 10; i++) {
       await emit({ type: "message", data: `Event ${i}` });
@@ -336,8 +346,7 @@ async streamEvents() {
 
 Sonamu UI의 AI 채팅으로 Entity를 자연어로 생성할 수 있습니다.
 
-<Frame caption="🎬 필요: Sonamu UI에서 AI에게 '이커머스 주문 시스템 만들어줘' 입력 → Entity 4개 자동 생성 (30초)">
-</Frame>
+<Frame caption="🎬 필요: Sonamu UI에서 AI에게 '이커머스 주문 시스템 만들어줘' 입력 → Entity 4개 자동 생성 (30초)"></Frame>
 
 ```
 💬 "이커머스 주문 시스템을 만들어줘. 사용자, 상품, 주문, 주문 아이템 테이블이 필요해."
@@ -346,13 +355,18 @@ Sonamu UI의 AI 채팅으로 Entity를 자연어로 생성할 수 있습니다.
 ```
 
 **핵심 기능**:
+
 - ✅ pgvector 네이티브 지원 (벡터 검색)
 - ✅ AI SDK 완벽 통합 (스트리밍)
 - ✅ SSE로 실시간 이벤트
 - ✅ AI Agent로 Entity 자동 생성
 
 <CardGroup cols={2}>
-  <Card title="Vector Search" icon="magnifying-glass" href="/advanced-features/vector-search/pgvector-setup">
+  <Card
+    title="Vector Search"
+    icon="magnifying-glass"
+    href="/advanced-features/vector-search/pgvector-setup"
+  >
     임베딩 검색 구현하기
   </Card>
   <Card title="SSE 스트리밍" icon="signal-stream" href="/advanced-features/sse">
@@ -388,7 +402,7 @@ const user = await Sonamu.cache.getOrSet(
 HTTP 응답 캐싱 전략을 데코레이터로 간단히 설정할 수 있습니다.
 
 ```typescript
-@api({ 
+@api({
   httpMethod: "GET",
   cacheControl: { maxAge: 3600, sMaxAge: 7200 }
 })
@@ -409,33 +423,31 @@ import { workflow } from "sonamu";
 export const processOrder = workflow(
   {
     name: "process-order",
-    version: "1.0"
+    version: "1.0",
   },
   async ({ input, step }) => {
     // Step 1: 검증
-    await step.define(
-      { name: "validate" },
-      async () => validateOrder(input)
-    ).run();
-    
+    await step
+      .define({ name: "validate" }, async () => validateOrder(input))
+      .run();
+
     // Step 2: 결제
-    const payment = await step.define(
-      { name: "charge" },
-      async () => chargePayment(input)
-    ).run();
-    
+    const payment = await step
+      .define({ name: "charge" }, async () => chargePayment(input))
+      .run();
+
     // Step 3: 주문 생성
-    const order = await step.define(
-      { name: "create-order" },
-      async () => createOrderRecord(input, payment)
-    ).run();
-    
+    const order = await step
+      .define({ name: "create-order" }, async () =>
+        createOrderRecord(input, payment)
+      )
+      .run();
+
     // Step 4: 이메일 전송
-    await step.define(
-      { name: "send-email" },
-      async () => sendConfirmationEmail(order)
-    ).run();
-    
+    await step
+      .define({ name: "send-email" }, async () => sendConfirmationEmail(order))
+      .run();
+
     return order;
   }
 );
@@ -456,16 +468,25 @@ const posts = await PostModel.findMany("A", {
 ```
 
 **핵심 기능**:
+
 - ✅ BentoCache로 다층 캐싱 (메모리 + Redis)
 - ✅ Cache-Control로 HTTP 응답 캐싱
 - ✅ Workflow로 복잡한 비즈니스 로직 관리
 - ✅ N+1 문제 자동 해결
 
 <CardGroup cols={2}>
-  <Card title="BentoCache" icon="layer-group" href="/advanced-features/caching/bentocache">
+  <Card
+    title="BentoCache"
+    icon="layer-group"
+    href="/advanced-features/caching/bentocache"
+  >
     다층 캐싱 전략
   </Card>
-  <Card title="Workflow" icon="diagram-project" href="/advanced-features/workflows">
+  <Card
+    title="Workflow"
+    icon="diagram-project"
+    href="/advanced-features/workflows"
+  >
     비즈니스 로직 관리
   </Card>
 </CardGroup>
@@ -478,8 +499,7 @@ Entity를 정의하고 사용하기까지의 전체 플로우입니다.
 
 ### 1. Entity 정의
 
-<Frame caption="📸 필요: Sonamu UI에서 User Entity를 정의하는 화면">
-</Frame>
+<Frame caption="📸 필요: Sonamu UI에서 User Entity를 정의하는 화면"></Frame>
 
 ```json
 {
@@ -514,17 +534,17 @@ async register(params: {
   password: string;
 }): Promise<{ user: User }> {
   const wdb = this.getPuri("w");
-  
+
   wdb.ubRegister("users", {
     email: params.email,
     username: params.username,
     password: await bcrypt.hash(params.password, 10),
     role: "user",
   });
-  
+
   const [userId] = await wdb.ubUpsert("users");
   const user = await this.findById("C", userId);
-  
+
   return { user };
 }
 ```
@@ -538,23 +558,22 @@ function RegisterForm() {
   const registerMutation = useMutation({
     mutationFn: UserService.register,
   });
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     const { user } = await registerMutation.mutateAsync({
       email: formData.get("email") as string,
       username: formData.get("username") as string,
       password: formData.get("password") as string,
     });
-    
+
     console.log("Registered:", user.username); // ✅ 타입 안전
   };
-  
+
   return <form onSubmit={handleSubmit}>...</form>;
 }
 ```
 
-<Frame caption="🎬 필요: 위 전체 플로우를 실제로 시연하는 영상 (30초 타임랩스)">
-</Frame>
+<Frame caption="🎬 필요: 위 전체 플로우를 실제로 시연하는 영상 (30초 타임랩스)"></Frame>
 
 ---
 
@@ -564,15 +583,15 @@ function RegisterForm() {
   <Card title="생산성을 중시하는 개발자" icon="rocket">
     반복 작업에 시간을 낭비하지 않고, 비즈니스 로직에 집중하고 싶은 분
   </Card>
-  
+
   <Card title="타입 안전성을 신뢰하는 팀" icon="shield-check">
     런타임 에러보다 컴파일 에러를 선호하고, IDE의 도움을 최대한 활용하는 팀
   </Card>
-  
+
   <Card title="프론트엔드와 협업하는 백엔드" icon="handshake">
     API 스펙 문서화와 클라이언트 작성의 이중 작업에서 벗어나고 싶은 분
   </Card>
-  
+
   <Card title="빠른 프로토타이핑이 필요한 스타트업" icon="gauge-high">
     MVP를 빠르게 만들면서도 기술 부채를 최소화하고 싶은 팀
   </Card>
@@ -596,23 +615,34 @@ pnpm dev
 open http://localhost:1028/sonamu-ui
 ```
 
-<Frame caption="📸 필요: 터미널에서 pnpm create sonamu 실행 후 프로젝트 생성되는 전체 과정">
-</Frame>
+<Frame caption="📸 필요: 터미널에서 pnpm create sonamu 실행 후 프로젝트 생성되는 전체 과정"></Frame>
 
 <CardGroup cols={2}>
   <Card title="Quick Start" icon="rocket" href="/getting-started/quick-start">
     5분 만에 첫 API 만들기
   </Card>
-  
-  <Card title="Installation" icon="download" href="/getting-started/installation">
+
+  <Card
+    title="Installation"
+    icon="download"
+    href="/getting-started/installation"
+  >
     자세한 설치 가이드
   </Card>
-  
-  <Card title="Core Concepts" icon="book" href="/core-concepts/how-sonamu-works">
+
+  <Card
+    title="Core Concepts"
+    icon="book"
+    href="/core-concepts/how-sonamu-works"
+  >
     Sonamu 작동 원리 이해하기
   </Card>
-  
-  <Card title="Development Workflow" icon="diagram-project" href="/getting-started/development-workflow">
+
+  <Card
+    title="Development Workflow"
+    icon="diagram-project"
+    href="/getting-started/development-workflow"
+  >
     개발 워크플로우 알아보기
   </Card>
 </CardGroup>
@@ -621,7 +651,11 @@ open http://localhost:1028/sonamu-ui
 
 ## 커뮤니티
 
-<Card title="GitHub" icon="github" href="https://github.com/cartanova-ai/sonamu">
+<Card
+  title="GitHub"
+  icon="github"
+  href="https://github.com/cartanova-ai/sonamu"
+>
   이슈 리포트와 기여
 </Card>
 
