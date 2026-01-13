@@ -27,7 +27,12 @@ import {
   type PathAndCode,
   TemplateKey,
 } from "../types/types";
-import { type DictEntry, parseConstObjectDeclaration, parseDictFile } from "../utils/dict-parser";
+import {
+  type DictEntry,
+  isExpressionFunction,
+  parseConstObjectDeclaration,
+  parseDictFile,
+} from "../utils/dict-parser";
 import { ensureDictKeys, generateProjectDict } from "../utils/dict-utils";
 import { formatCode } from "../utils/formatter";
 import { nonNullable } from "../utils/utils";
@@ -797,14 +802,6 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       };
 
       /**
-       * 함수 형태의 값인지 판별: (params) => `template` 또는 (params) => "string"
-       */
-      const FUNCTION_VALUE_PATTERN = /^\([^)]*\)\s*=>\s*(?:`[^`]*`|"[^"]*")$/;
-      function isFunctionValue(value: string): boolean {
-        return FUNCTION_VALUE_PATTERN.test(value);
-      }
-
-      /**
        * entity key 파싱 결과 타입
        */
       type EntityKeyInfo =
@@ -1085,7 +1082,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
                 projectDictEntries[locale].push({
                   key,
                   value: cellValue,
-                  isFunction: isFunctionValue(cellValue),
+                  isFunction: isExpressionFunction(cellValue),
                 });
               }
             }
@@ -1097,7 +1094,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
                 projectDictEntries[locale].push({
                   key,
                   value: cellValue,
-                  isFunction: isFunctionValue(cellValue),
+                  isFunction: isExpressionFunction(cellValue),
                 });
               }
             }
@@ -1179,7 +1176,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           const newEntry: DictEntry = {
             key: newKey,
             value: cellValue,
-            isFunction: isFunctionValue(cellValue),
+            isFunction: isExpressionFunction(cellValue),
           };
 
           if (existingIndex !== -1) {
@@ -1239,7 +1236,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           entries.push({
             key,
             value: cellValue,
-            isFunction: isFunctionValue(cellValue),
+            isFunction: isExpressionFunction(cellValue),
           });
 
           const dictPath = path.join(i18nDir, `${locale}.ts`);

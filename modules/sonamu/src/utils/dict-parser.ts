@@ -162,3 +162,17 @@ function extractDictEntry(
     isFunction: ts.isFunctionExpression(init),
   };
 }
+
+const ARROW_FUNCTION_PATTERN = /^\s*\([^)]*\)\s*=>/;
+
+/**
+ * 문자열이 화살표 함수 또는 함수 표현식인지 판별
+ */
+export function isExpressionFunction(code: string): boolean {
+  // 빈 문자열이나 공백만 있는 경우
+  if (!code.trim()) {
+    return false;
+  }
+
+  return ARROW_FUNCTION_PATTERN.test(code);
+}
