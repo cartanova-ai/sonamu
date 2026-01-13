@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict r4EDbGkYcqhyq7ScVCz3qouwfc2RLmkbttO2WgTSHhYLU8VMuAWppn5Q1Vg6kdQ
+\restrict PBlfQXqb6BSGclfE3AXn7umdBdBmlzkizmWcJUZPZezxIzUUr5zVgbCNoRLx5qV
 
 -- Dumped from database version 18.1 (Debian 18.1-1.pgdg12+2)
--- Dumped by pg_dump version 18.1
+-- Dumped by pg_dump version 18.1 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -310,7 +310,7 @@ CREATE TABLE public.projects (
     description text,
     budget numeric(12,2),
     deadline timestamp(3) with time zone,
-    image_urls text[],
+    image_urls jsonb,
     textsearchable_index_col tsvector GENERATED ALWAYS AS ((setweight(to_tsvector('simple'::regconfig, (COALESCE(name, ''::character varying))::text), 'A'::"char") || setweight(to_tsvector('simple'::regconfig, COALESCE(description, ''::text)), 'D'::"char"))) STORED NOT NULL
 );
 
@@ -662,6 +662,7 @@ INSERT INTO public.knex_migrations VALUES (65, '20260107170855_alter_projects_al
 INSERT INTO public.knex_migrations VALUES (66, '20260107170856_alter_sync_fixtures_alter2.ts', 10, '2026-01-07 17:36:40.926+09');
 INSERT INTO public.knex_migrations VALUES (67, '20260107170857_alter_tags_alter1.ts', 10, '2026-01-07 17:36:40.929+09');
 INSERT INTO public.knex_migrations VALUES (68, '20260107170858_alter_users_alter4.ts', 10, '2026-01-07 17:36:40.941+09');
+INSERT INTO public.knex_migrations VALUES (69, '20260113144233_alter_projects_alter3.ts', 11, '2026-01-13 16:43:36.411+09');
 
 
 --
@@ -1809,7 +1810,7 @@ SELECT pg_catalog.setval('public.files_id_seq', 1, false);
 -- Name: knex_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.knex_migrations_id_seq', 68, true);
+SELECT pg_catalog.setval('public.knex_migrations_id_seq', 69, true);
 
 
 --
@@ -2087,5 +2088,5 @@ ALTER TABLE ONLY public.projects__employees
 -- PostgreSQL database dump complete
 --
 
-\unrestrict r4EDbGkYcqhyq7ScVCz3qouwfc2RLmkbttO2WgTSHhYLU8VMuAWppn5Q1Vg6kdQ
+\unrestrict PBlfQXqb6BSGclfE3AXn7umdBdBmlzkizmWcJUZPZezxIzUUr5zVgbCNoRLx5qV
 

@@ -647,7 +647,7 @@ export namespace FileService {
   export async function upload(
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ files: { name: string; url: string; mime_type: string }[] }> {
+  ): Promise<{ files: { name: string; url: string; mime_type: string; size: number }[] }> {
     const formData = new FormData();
     files.forEach((f) => {
       formData.append("files", f);
@@ -666,7 +666,7 @@ export namespace FileService {
 
   export const useUploadMutation = (
     options?: UseMutationOptions<
-      { files: { name: string; url: string; mime_type: string }[] },
+      { files: { name: string; url: string; mime_type: string; size: number }[] },
       Error,
       { files: File[] }
     > & {
@@ -683,7 +683,10 @@ export namespace FileService {
     params: { category: string },
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ category: string; files: { name: string; url: string; mime_type: string }[] }> {
+  ): Promise<{
+    category: string;
+    files: { name: string; url: string; mime_type: string; size: number }[];
+  }> {
     const formData = new FormData();
     files.forEach((f) => {
       formData.append("files", f);
@@ -702,7 +705,7 @@ export namespace FileService {
 
   export const useInlineUploadMutation = (
     options?: UseMutationOptions<
-      { category: string; files: { name: string; url: string; mime_type: string }[] },
+      { category: string; files: { name: string; url: string; mime_type: string; size: number }[] },
       Error,
       { params: { category: string }; files: File[] }
     > & {
@@ -720,7 +723,10 @@ export namespace FileService {
     category: string,
     files: File[],
     onUploadProgress?: (pe: AxiosProgressEvent) => void,
-  ): Promise<{ category: string; files: { name: string; url: string; mime_type: string }[] }> {
+  ): Promise<{
+    category: string;
+    files: { name: string; url: string; mime_type: string; size: number }[];
+  }> {
     const formData = new FormData();
     files.forEach((f) => {
       formData.append("files", f);
@@ -739,7 +745,7 @@ export namespace FileService {
 
   export const useInlineUploadFlatMutation = (
     options?: UseMutationOptions<
-      { category: string; files: { name: string; url: string; mime_type: string }[] },
+      { category: string; files: { name: string; url: string; mime_type: string; size: number }[] },
       Error,
       { params: string; files: File[] }
     > & {

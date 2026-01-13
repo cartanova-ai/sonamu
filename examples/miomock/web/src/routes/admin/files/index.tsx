@@ -34,6 +34,7 @@ import { SD } from "@/i18n/sd.generated";
 import { FileListParams } from "@/services/file/file.types";
 import { FileService } from "@/services/services.generated";
 import { FileOrderBy, FileSearchField } from "@/services/sonamu.generated";
+import { type SonamuFile, SonamuFileSchema } from "@/services/sonamu.shared";
 import EditIcon from "~icons/lucide/square-pen";
 import TrashIcon from "~icons/lucide/trash-2";
 import ListIcon from "~icons/mdi/format-list-bulleted";
@@ -92,7 +93,7 @@ function FileList({}: FileListProps) {
   const inlineUploadForm = useTypeForm(
     z.object({
       category: z.string(),
-      files: z.array(z.union([z.string(), z.instanceof(File)])),
+      files: z.array(z.union([z.string(), z.instanceof(File), SonamuFileSchema])),
     }),
     { category: "", files: [] },
   );
@@ -100,7 +101,7 @@ function FileList({}: FileListProps) {
   const inlineUploadFlatForm = useTypeForm(
     z.object({
       category: z.string(),
-      files: z.array(z.union([z.string(), z.instanceof(File)])),
+      files: z.array(z.union([z.string(), z.instanceof(File), SonamuFileSchema])),
     }),
     { category: "", files: [] },
   );
@@ -129,10 +130,9 @@ function FileList({}: FileListProps) {
   /**
    * Inline Upload
    *
-   * 1. useTypeForm의 submit 핸들러 대신 일반 async 함수 사용
-   * 2. File 객체만 필터링하여 다른 작업 진행 (AI 분석 등)
-   * 3. '대기중' 상태 제거 방법 (수동 설정 필요)
-   *    - File → URL 변환: 업로드 완료 후 FileInput이 "대기중" 배지 제거
+   * 1. useTypeForm submit 대신 일반 async 함수 사용
+   * 2. File만 선별해 별도 처리 (AI 분석 등)
+   * 3. 업로드 완료 후 File → SonamuFile로 교체해서 "대기중" 제거 + 파일명 유지 (TODO: 로직 공통화)
    */
   const handleInlineUploadSubmit = async () => {
     const { files, category } = inlineUploadForm.form;
@@ -145,9 +145,35 @@ function FileList({}: FileListProps) {
 
     const result = await FileService.inlineUpload({ category }, filesToUpload);
 
-    // 기존 URL은 유지하고, 새로 업로드된 URL만 추가
-    const existingUrls = files.filter((f) => typeof f === "string");
-    inlineUploadForm.form.files = [...existingUrls, ...result.files.map((f) => f.url)];
+    const toSonamuFileFromUrl = (url: string): SonamuFile => ({
+      name: url.split("/").pop() ?? url,
+      url,
+      mime_type: "",
+      size: 0,
+    });
+    const isSonamuFile = (value: unknown): value is SonamuFile =>
+      typeof value === "object" &&
+      value !== null &&
+      "url" in value &&
+      "name" in value &&
+      "mime_type" in value &&
+      "size" in value;
+
+    let uploadedIndex = 0;
+    inlineUploadForm.form.files = files.map((item) => {
+      if (item instanceof File) {
+        const uploaded = result.files[uploadedIndex];
+        uploadedIndex += 1;
+        return uploaded ?? item;
+      }
+      if (typeof item === "string") {
+        return toSonamuFileFromUrl(item);
+      }
+      if (isSonamuFile(item)) {
+        return item;
+      }
+      return item;
+    });
     refetch();
   };
 
@@ -160,8 +186,35 @@ function FileList({}: FileListProps) {
 
     const result = await FileService.inlineUploadFlat(category, filesToUpload);
 
-    const existingUrls = files.filter((f) => typeof f === "string");
-    inlineUploadFlatForm.form.files = [...existingUrls, ...result.files.map((f) => f.url)];
+    const toSonamuFileFromUrl = (url: string): SonamuFile => ({
+      name: url.split("/").pop() ?? url,
+      url,
+      mime_type: "",
+      size: 0,
+    });
+    const isSonamuFile = (value: unknown): value is SonamuFile =>
+      typeof value === "object" &&
+      value !== null &&
+      "url" in value &&
+      "name" in value &&
+      "mime_type" in value &&
+      "size" in value;
+
+    let uploadedIndex = 0;
+    inlineUploadFlatForm.form.files = files.map((item) => {
+      if (item instanceof File) {
+        const uploaded = result.files[uploadedIndex];
+        uploadedIndex += 1;
+        return uploaded ?? item;
+      }
+      if (typeof item === "string") {
+        return toSonamuFileFromUrl(item);
+      }
+      if (isSonamuFile(item)) {
+        return item;
+      }
+      return item;
+    });
     refetch();
   };
 
@@ -298,8 +351,12 @@ function FileList({}: FileListProps) {
                     previewSize="md"
                     {...singleEagerImageForm.register("file")}
                   />
-                  <div className="text-xs text-gray-500 truncate">
-                    {singleEagerImageForm.form.file || "파일 없음"}
+                  <div className="text-xs text-gray-500 wrap-break-word">
+                    {typeof singleEagerImageForm.form.file === "string"
+                      ? singleEagerImageForm.form.file
+                      : singleEagerImageForm.form.file
+                        ? JSON.stringify(singleEagerImageForm.form.file)
+                        : "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -325,7 +382,7 @@ function FileList({}: FileListProps) {
                   >
                     Upload
                   </Button>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-xs text-gray-500 wrap-break-word">
                     {typeof singleLazyImageForm.form.file === "string"
                       ? singleLazyImageForm.form.file
                       : singleLazyImageForm.form.file?.name || "파일 없음"}
@@ -346,8 +403,12 @@ function FileList({}: FileListProps) {
                     previewSize="md"
                     {...singleEagerFileForm.register("file")}
                   />
-                  <div className="text-xs text-gray-500 truncate">
-                    {singleEagerFileForm.form.file || "파일 없음"}
+                  <div className="text-xs text-gray-500 wrap-break-word">
+                    {typeof singleEagerFileForm.form.file === "string"
+                      ? singleEagerFileForm.form.file
+                      : singleEagerFileForm.form.file
+                        ? JSON.stringify(singleEagerFileForm.form.file)
+                        : "파일 없음"}
                   </div>
                 </CardContent>
               </Card>
@@ -373,7 +434,7 @@ function FileList({}: FileListProps) {
                   >
                     Upload
                   </Button>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-xs text-gray-500 wrap-break-word">
                     {typeof singleLazyFileForm.form.file === "string"
                       ? singleLazyFileForm.form.file
                       : singleLazyFileForm.form.file?.name || "파일 없음"}

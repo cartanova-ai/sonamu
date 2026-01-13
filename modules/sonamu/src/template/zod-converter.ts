@@ -25,6 +25,7 @@ import type { $ZodLooseShape } from "zod/v4/core";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import {
+  BUILT_IN_TYPE_IDS,
   type EntityProp,
   type EntityPropNode,
   isBelongsToOneRelationProp,
@@ -54,6 +55,8 @@ import {
   isVectorSingleProp,
   isVirtualProp,
   type RenderingNode,
+  SonamuFileArraySchema,
+  SonamuFileSchema,
 } from "../types/types";
 import { createImportUrl } from "../utils/esm-utils";
 
@@ -66,11 +69,39 @@ type AnyZodUnion = z.ZodUnion<z.ZodType[]>;
 type AnyZodArray = z.ZodArray<z.ZodType>;
 type AnyZodOptional = z.ZodOptional<z.ZodType>;
 type AnyZodTemplateLiteral = z.ZodTemplateLiteral<string>;
+
+/**
+ * 내장 타입 정의 (Zod 스키마 + UI 렌더링 타입)
+ */
+export const BUILT_IN_TYPES = {
+  SonamuFile: {
+    schema: SonamuFileSchema,
+    renderType: "json-sonamufile",
+    schemaName: "SonamuFileSchema",
+  },
+  "SonamuFile[]": {
+    schema: SonamuFileArraySchema,
+    renderType: "json-sonamufile-array",
+    schemaName: "SonamuFileArraySchema",
+  },
+} as const;
+
 /**
  * Zod 타입 ID로부터 동적으로 Zod 스키마를 로드합니다.
- * dist 디렉토리에서 ESM으로 import하여 가져옵니다.
+ * 내장 타입(BUILT_IN_TYPE_IDS)은 바로 반환하고,
+ * 그 외는 dist 디렉토리에서 ESM으로 import하여 가져옵니다.
  */
 export async function getZodTypeById(zodTypeId: string): Promise<z.ZodTypeAny> {
+  // 내장 타입 처리
+  if ((BUILT_IN_TYPE_IDS as readonly string[]).includes(zodTypeId)) {
+    const builtInType = BUILT_IN_TYPES[zodTypeId as keyof typeof BUILT_IN_TYPES];
+    if (!builtInType) {
+      throw new Error(`내장 타입 ${zodTypeId}의 스키마가 정의되지 않았습니다`);
+    }
+    return builtInType.schema.describe(zodTypeId);
+  }
+
+  // 프로젝트에서 정의한 타입 동적 로드
   const modulePath = EntityManager.getModulePath(zodTypeId);
   const moduleAbsPath = path.join(Sonamu.apiRootPath, "dist", "application", `${modulePath}.js`);
   const importUrl = createImportUrl(moduleAbsPath);
@@ -210,8 +241,15 @@ export function propToZodTypeDef(prop: EntityProp, injectImportKeys: string[]): 
   } else if (isUuidArrayProp(prop)) {
     stmt = `${prop.name}: z.uuid().array()`;
   } else if (isJsonProp(prop)) {
-    stmt = `${prop.name}: ${prop.id}`;
-    injectImportKeys.push(prop.id);
+    // 내장 타입인 경우 스키마 이름으로 변환
+    if ((BUILT_IN_TYPE_IDS as readonly string[]).includes(prop.id)) {
+      const schemaName = prop.id === "SonamuFile" ? "SonamuFileSchema" : "SonamuFileArraySchema";
+      stmt = `${prop.name}: ${schemaName}`;
+      injectImportKeys.push(schemaName);
+    } else {
+      stmt = `${prop.name}: ${prop.id}`;
+      injectImportKeys.push(prop.id);
+    }
   } else if (isVectorSingleProp(prop)) {
     stmt = `${prop.name}: z.array(z.number())`;
   } else if (isVectorArrayProp(prop)) {
@@ -500,6 +538,33 @@ export function zodTypeToRenderingNode(
     label: inflection.camelize(baseKey, false),
     zodType,
   };
+
+  /**
+   * 케이스 처리 순서
+   *
+   * 1. 특수 케이스 (description 기반)
+   *    - SonamuFile/SonamuFile[] : z.object/z.array이지만 파일 업로드용 내장 타입
+   *
+   * 2. 일반 케이스 (instanceof 기반)
+   *    - z.ZodObject : 일반 객체
+   *    - z.ZodArray : 일반 배열
+   *      - vector : z.array(z.number)이지만 네이밍 기반으로 벡터 임베딩
+   *      - 일반 배열 : 그 외
+   *    - z.ZodUnion, z.ZodOptional, z.ZodNullable : 유틸리티 타입
+   *    - 기타 : resolveRenderType()으로 처리
+   */
+
+  // 특수 케이스: SonamuFile[] 타입 감지
+  if (zodType.description === "SonamuFile[]") {
+    return { ...def, renderType: "json-sonamufile-array" };
+  }
+
+  // 특수 케이스: SonamuFile 단일 타입 감지
+  if (zodType.description === "SonamuFile") {
+    return { ...def, renderType: "json-sonamufile" };
+  }
+
+  // 일반 케이스: ZodObject 체크
   if (zodType instanceof z.ZodObject) {
     const columnKeys = Object.keys(zodType.shape);
     const children = columnKeys.map((key) => {
@@ -513,15 +578,6 @@ export function zodTypeToRenderingNode(
     };
   } else if (zodType instanceof z.ZodArray) {
     const innerType = (zodType as z.ZodArray<z.ZodTypeAny>).def.element;
-    if (
-      innerType instanceof z.ZodString &&
-      (baseKey.includes("images") || baseKey.includes("image"))
-    ) {
-      return {
-        ...def,
-        renderType: "array-images",
-      };
-    }
     // vector 타입 판별: number 배열이면서 embedding, vector 등의 이름을 가진 경우
     if (
       innerType instanceof z.ZodNumber &&
@@ -568,9 +624,7 @@ function resolveRenderType(key: string, zodType: z.ZodTypeAny): RenderingNode["r
   if (zodType instanceof z.ZodDate) {
     return "datetime";
   } else if (zodType instanceof z.ZodString) {
-    if (key.includes("img") || key.includes("image")) {
-      return "string-image";
-    } else if (zodType.description === "SQLDateTimeString") {
+    if (zodType.description === "SQLDateTimeString") {
       return "string-datetime";
     } else if (key.endsWith("date")) {
       return "string-date";

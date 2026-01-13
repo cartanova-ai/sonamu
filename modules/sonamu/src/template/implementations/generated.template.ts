@@ -12,7 +12,7 @@ import {
 } from "../../types/types";
 import { nonNullable } from "../../utils/utils";
 import { Template } from "../template";
-import { propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
+import { BUILT_IN_TYPES, propNodeToZodTypeDef, zodTypeToZodCode } from "../zod-converter";
 
 export type SourceCode = {
   label: string;
@@ -109,11 +109,17 @@ export class Template__generated extends Template {
     Naite.t("Template__generated:body", body);
 
     // import
+    // sourceCode.importKeys에 내장 타입의 스키마가 있으면 sonamu import에 추가
+    const builtInSchemaNames = Object.values(BUILT_IN_TYPES).map(
+      (info) => info.schemaName as string,
+    );
+    const builtInSchemas = sourceCode.importKeys.filter((key) => builtInSchemaNames.includes(key));
     const sonamuImports = [
       "zArrayable",
       "SQLDateTimeString",
       "SubsetQuery",
       "SonamuQueryMode",
+      ...builtInSchemas,
     ].filter((mod) => body.includes(mod));
 
     return {

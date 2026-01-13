@@ -1,7 +1,7 @@
 /** biome-ignore-all lint: generated는 무시 */
 /** biome-ignore-all assist: generated는 무시 */
 
-import { SonamuQueryMode, zArrayable } from "./sonamu.shared";
+import { SonamuFileArraySchema, SonamuQueryMode, zArrayable } from "./sonamu.shared";
 import { z } from "zod";
 
 // CustomScalar: NumberType
@@ -213,7 +213,7 @@ export const ProjectBaseSchema = z.object({
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
   // tags: ManyToMany Tag
-  image_urls: z.string().array().nullable(),
+  image_urls: SonamuFileArraySchema.nullable(),
   virtual_test: NumberType.nullable(),
   virtual_query_test: StringType.nullable(),
   textsearchable_index_col: z.string(),
@@ -622,7 +622,7 @@ export const ProjectSubsetA = z.object({
   description: z.string().nullable(),
   budget: z.string().nullable(),
   deadline: z.date().nullable(),
-  image_urls: z.string().array().nullable(),
+  image_urls: SonamuFileArraySchema.nullable(),
   virtual_test: NumberType.nullable(),
   virtual_query_test: StringType.nullable(),
   employee: z.array(
@@ -656,7 +656,7 @@ export const ProjectSubsetP = z.object({
   status: ProjectStatus,
   description: z.string().nullable(),
   deadline: z.date().nullable(),
-  image_urls: z.string().array().nullable(),
+  image_urls: SonamuFileArraySchema.nullable(),
   employee: z.array(
     z.object({
       id: z.int(),

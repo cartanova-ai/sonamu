@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
-import { useSonamuContext } from "@/contexts/sonamu-context";
+import { type SonamuFile, useSonamuContext } from "@/contexts/sonamu-context";
 import { cn, useObjectUrls } from "@/lib/utils";
 import FileIcon from "~icons/lucide/file";
 import ImageIcon from "~icons/lucide/image";
@@ -9,13 +9,23 @@ import UploadIcon from "~icons/lucide/upload";
 import XIcon from "~icons/lucide/x";
 import { Button } from "./button";
 
+export type { SonamuFile } from "@/contexts/sonamu-context";
 export type PreviewSize = "sm" | "md" | "lg" | "xl";
 
-const sizeClasses: Record<PreviewSize, string> = {
+// 이미지용: 정사각형
+const imageSizeClasses: Record<PreviewSize, string> = {
   sm: "w-20 h-20",
   md: "w-32 h-32",
   lg: "w-40 h-40",
   xl: "w-48 h-48",
+};
+
+// 파일용: 가로로 긴 직사각형
+const fileSizeClasses: Record<PreviewSize, string> = {
+  sm: "w-48 h-12",
+  md: "w-80 h-16",
+  lg: "w-96 h-20",
+  xl: "w-[28rem] h-24",
 };
 
 type BaseProps = {
@@ -31,14 +41,14 @@ type BaseProps = {
 
 type SingleModeProps = BaseProps & {
   multiple?: false;
-  value: string | File | "";
-  onValueChange?: (value: string | File | "") => void;
+  value: SonamuFile | File | null;
+  onValueChange?: (value: SonamuFile | File | null) => void;
 };
 
 type MultipleModeProps = BaseProps & {
   multiple: true;
-  value: (string | File)[] | null;
-  onValueChange?: (value: (string | File)[]) => void;
+  value: (SonamuFile | File)[] | null;
+  onValueChange?: (value: (SonamuFile | File)[]) => void;
   maxFiles?: number;
 };
 
@@ -72,19 +82,16 @@ export function FileInput(props: FileInputProps) {
     placeholder ?? `${isImageView ? "이미지" : "파일"} URL${isMultiple ? "S" : ""}`;
 
   // 입력 정규화: 내부적으로 배열로 통일
+  const values = (() => {
+    if (!isMultiple) {
+      const singleValue = (props as SingleModeProps).value;
+      return singleValue ? [singleValue] : [];
+    }
 
-  const values =
-    (() => {
-      if (!isMultiple) {
-        const singleValue = (props as SingleModeProps).value;
-        return singleValue ? [singleValue] : [];
-      }
+    const multiValue = (props as MultipleModeProps).value || [];
 
-      if (props.value === "") {
-        return [];
-      }
-      return (props as MultipleModeProps).value;
-    })() ?? [];
+    return multiValue;
+  })();
 
   // File 객체만 추출
   const fileObjects = values.filter((v): v is File => v instanceof File);
@@ -92,13 +99,22 @@ export function FileInput(props: FileInputProps) {
   // File 객체는 useObjectUrls로 안전하게 blob URL 생성 (자동 메모리 해제)
   const blobUrls = useObjectUrls(fileObjects);
 
-  // 최종 URLs: 원래 순서를 유지하면서 File은 blob URL로, string은 그대로
-  const urls = values?.map((v) => {
+  // 최종 display 데이터: 원래 순서를 유지하면서 File은 blob URL로, SonamuFile은 그대로
+  const displayItems = values.map((v) => {
     if (v instanceof File) {
       const index = fileObjects.indexOf(v);
-      return blobUrls[index];
+      return {
+        url: blobUrls[index],
+        name: v.name,
+        isPending: true,
+      };
     }
-    return v;
+    // SonamuFile
+    return {
+      url: v.url,
+      name: v.name,
+      isPending: false,
+    };
   });
 
   const maxFiles = isMultiple ? ((props as MultipleModeProps).maxFiles ?? 10) : 1;
@@ -122,16 +138,20 @@ export function FileInput(props: FileInputProps) {
       if (uploadMode === "eager") {
         setIsUploading(true);
         try {
-          // uploader는 항상 File[] 배열을 받음
-          const uploadedUrls = await uploader(filesToAdd);
+          // uploader는 File[] 배열을 받아서 SonamuFile[] 배열을 반환해야 합니다
+          const uploadedFiles = await uploader(filesToAdd);
 
           if (isMultiple) {
             // Multiple 파일 업로드
-            const finalValues = [...values, ...uploadedUrls];
-            (props.onValueChange as ((v: (string | File)[]) => void) | undefined)?.(finalValues);
+            const finalValues = [...values, ...uploadedFiles];
+            (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(
+              finalValues,
+            );
           } else {
             // Single 파일 업로드
-            (props.onValueChange as ((v: string | File) => void) | undefined)?.(uploadedUrls[0]);
+            (props.onValueChange as ((v: SonamuFile | File) => void) | undefined)?.(
+              uploadedFiles[0],
+            );
           }
         } catch (error) {
           console.error("Upload failed:", error);
@@ -143,9 +163,9 @@ export function FileInput(props: FileInputProps) {
         // Lazy 모드: File 객체 그대로 전달
         if (isMultiple) {
           const finalValues = [...values, ...filesToAdd];
-          (props.onValueChange as ((v: (string | File)[]) => void) | undefined)?.(finalValues);
+          (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(finalValues);
         } else {
-          (props.onValueChange as ((v: string | File) => void) | undefined)?.(filesToAdd[0]);
+          (props.onValueChange as ((v: SonamuFile | File) => void) | undefined)?.(filesToAdd[0]);
         }
       }
     },
@@ -181,10 +201,10 @@ export function FileInput(props: FileInputProps) {
       e.stopPropagation();
 
       if (!isMultiple) {
-        (props.onValueChange as ((v: string | File | null) => void) | undefined)?.(null);
+        (props.onValueChange as ((v: SonamuFile | File | null) => void) | undefined)?.(null);
       } else {
         const newValue = values.filter((_, i) => i !== index);
-        (props.onValueChange as ((v: (string | File)[]) => void) | undefined)?.(newValue);
+        (props.onValueChange as ((v: (SonamuFile | File)[]) => void) | undefined)?.(newValue);
       }
     },
     [values, isMultiple, props.onValueChange],
@@ -196,25 +216,12 @@ export function FileInput(props: FileInputProps) {
     }
   };
 
-  // 파일명 추출 헬퍼
-  const getFileName = (url: string): string => {
-    try {
-      const urlObj = new URL(url, window.location.origin);
-      const pathname = urlObj.pathname;
-      return pathname.split("/").pop() || "Unknown file";
-    } catch {
-      return "Unknown file";
-    }
-  };
-
-  // File 객체 여부 판단 (lazy mode에서 "대기중" 배지 표시용)
-  const isPendingFile = (index: number) => {
-    return values[index] instanceof File;
-  };
+  // viewMode에 따라 적절한 사이즈 클래스 선택
+  const sizeClasses = isImageView ? imageSizeClasses : fileSizeClasses;
 
   // Single 모드 렌더링
-  if (!isMultiple && urls.length > 0) {
-    const url = urls[0];
+  if (!isMultiple && displayItems.length > 0) {
+    const item = displayItems[0];
     return (
       <div className={cn("relative inline-block", className)}>
         <input
@@ -258,16 +265,26 @@ export function FileInput(props: FileInputProps) {
             <>
               {isImageView ? (
                 <img
-                  src={url}
+                  src={item.url}
                   alt="Preview"
                   className="h-full w-full object-cover rounded-lg overflow-hidden"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center gap-2 p-3 h-full w-full">
-                  <FileIcon className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-xs text-center truncate w-full px-1">
-                    {getFileName(url)}
+                <div className="flex items-center gap-2 px-3 h-full w-full min-w-0 overflow-hidden">
+                  <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+                  <span
+                    className={cn(
+                      "text-xs truncate min-w-0",
+                      item.isPending ? "w-[140px] shrink-0" : "flex-1",
+                    )}
+                  >
+                    {item.name}
                   </span>
+                  {item.isPending && (
+                    <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
+                      대기중
+                    </span>
+                  )}
                 </div>
               )}
               {!disabled && (
@@ -280,8 +297,8 @@ export function FileInput(props: FileInputProps) {
                   icon={<XIcon />}
                 />
               )}
-              {/* 대기 중인 파일에 배지 표시 */}
-              {isPendingFile(0) && (
+              {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
+              {isImageView && item.isPending && (
                 <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
                   대기중
                 </div>
@@ -308,22 +325,38 @@ export function FileInput(props: FileInputProps) {
       />
 
       {/* 업로드된 파일들 */}
-      {urls.map((url, index) => (
-        <div key={`${url}-${index}`} className={cn("relative", sizeClasses[previewSize])}>
+      {displayItems.map((item, index) => (
+        <div key={`${item.url}-${index}`} className={cn("relative", sizeClasses[previewSize])}>
           {isImageView ? (
             <div className="h-full w-full rounded-lg border overflow-hidden">
-              <img src={url} alt={`Uploaded ${index + 1}`} className="h-full w-full object-cover" />
+              <img
+                src={item.url}
+                alt={`Uploaded ${index + 1}`}
+                className="h-full w-full object-cover"
+              />
             </div>
           ) : (
             <div
               className={cn(
-                "relative flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2",
+                "relative flex items-center gap-2 px-3 rounded-lg border-2 min-w-0 overflow-hidden",
                 "border-dashed border-muted-foreground/25",
                 "h-full w-full",
               )}
             >
-              <FileIcon className="h-8 w-8 text-muted-foreground" />
-              <span className="text-xs text-center truncate w-full px-1">{getFileName(url)}</span>
+              <FileIcon className="h-6 w-6 text-muted-foreground shrink-0" />
+              <span
+                className={cn(
+                  "text-xs truncate min-w-0",
+                  item.isPending ? "w-[140px] shrink-0" : "flex-1",
+                )}
+              >
+                {item.name}
+              </span>
+              {item.isPending && (
+                <span className="px-2 py-0.5 bg-yellow-500/90 text-white text-xs rounded whitespace-nowrap shrink-0">
+                  대기중
+                </span>
+              )}
             </div>
           )}
           {!disabled && (
@@ -336,8 +369,8 @@ export function FileInput(props: FileInputProps) {
               icon={<XIcon />}
             />
           )}
-          {/* 대기 중인 파일에 배지 표시 */}
-          {isPendingFile(index) && (
+          {/* 이미지 모드일 때만 하단에 대기중 배지 표시 */}
+          {isImageView && item.isPending && (
             <div className="absolute bottom-2 left-2 right-2 mx-auto max-w-[calc(100%-1rem)] px-2 py-1 bg-yellow-500/90 text-white text-xs rounded text-center truncate">
               대기중
             </div>

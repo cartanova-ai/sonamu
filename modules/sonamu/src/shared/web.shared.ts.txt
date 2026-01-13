@@ -155,6 +155,25 @@ export const SQLDateTimeString = z
   .describe("SQLDateTimeString");
 export type SQLDateTimeString = z.infer<typeof SQLDateTimeString>;
 
+/**
+ * SonamuFile Types
+ */
+export interface SonamuFile {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+}
+
+export const SonamuFileSchema = z.object({
+  name: z.string(),
+  url: z.string(),
+  mime_type: z.string(),
+  size: z.number(),
+});
+
+export const SonamuFileArraySchema = z.array(SonamuFileSchema);
+
 /*
   Stream
 */

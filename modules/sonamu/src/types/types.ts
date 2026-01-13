@@ -198,6 +198,37 @@ export type EntityProp =
   | RelationProp;
 
 /**
+ * SonamuFile Types
+ *
+ * 파일 업로드를 위한 JSON 타입입니다.
+ * Entity의 json 속성에서 id로 "SonamuFile" 또는 "SonamuFile[]"을 지정하여 사용합니다.
+ */
+export interface SonamuFile {
+  name: string;
+  url: string;
+  mime_type: string;
+  size: number;
+}
+
+export const SonamuFileSchema = z
+  .object({
+    name: z.string(),
+    url: z.string(),
+    mime_type: z.string(),
+    size: z.number(),
+  })
+  .describe("SonamuFile");
+
+export const SonamuFileArraySchema = z.array(SonamuFileSchema).describe("SonamuFile[]");
+
+/**
+ * Sonamu 코어에서 제공하는 내장 JSON 타입 ID 목록
+ * 새로운 내장 타입 추가 시 이 배열에 추가하면 자동으로 UI에 노출됩니다.
+ */
+export const BUILT_IN_TYPE_IDS = ["SonamuFile", "SonamuFile[]"] as const;
+export type BuiltInTypeId = (typeof BUILT_IN_TYPE_IDS)[number];
+
+/**
  * pgvector 거리 연산자 클래스
  *
  * @description
@@ -844,6 +875,8 @@ export type RenderingNode = {
     | "enums"
     | "array"
     | "array-images"
+    | "json-sonamufile"
+    | "json-sonamufile-array"
     | "object"
     | "object-pick"
     | "record"

@@ -18,6 +18,7 @@ import { type MigrationResult, Migrator } from "../migration/migrator";
 import { TemplateManager } from "../template/template-manager";
 import { type DuplicateCheckOptions, FixtureManager } from "../testing/fixture-manager";
 import {
+  BUILT_IN_TYPE_IDS,
   type EntityIndex,
   type EntityProp,
   type EntitySubsetRow,
@@ -268,12 +269,19 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
         }
 
         const typeIds = (() => {
-          const typeIds = Object.entries(Sonamu.syncer.types)
+          // 프로젝트에서 정의한 타입들
+          const projectTypeIds = Object.entries(Sonamu.syncer.types)
             .filter(([_typeId, zodType]) => (zodType.def.type as string) !== "enum")
             .map(([typeId, _zodType]) => typeId);
 
+          // 내장 타입들 (sonamu 코어에서 제공)
+          const builtInTypeIds = [...BUILT_IN_TYPE_IDS];
+
+          // 모든 타입 병합
+          const allTypeIds = [...builtInTypeIds, ...projectTypeIds];
+
           if (filter === "types") {
-            return typeIds;
+            return allTypeIds;
           }
 
           const enumIds = EntityManager.getAllIds().flatMap((entityId) => {
@@ -284,7 +292,7 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
           if (filter === "enums") {
             return enumIds;
           } else {
-            return [...typeIds, ...enumIds];
+            return [...allTypeIds, ...enumIds];
           }
         })();
 

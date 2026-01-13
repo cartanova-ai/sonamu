@@ -5,6 +5,7 @@ import type React from "react";
 import App from "@/App";
 import { AuthProvider } from "@/admin-common/auth";
 import { FileService } from "@/services/services.generated";
+import type { SonamuFile } from "@/services/sonamu.shared";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -51,13 +52,13 @@ function RootComponent() {
 function SonamuProviderWithUploader({ children }: { children: React.ReactNode }) {
   const uploadMutation = FileService.useUploadMutation();
 
-  const uploader = async (files: File[]): Promise<string[]> => {
+  const uploader = async (files: File[]): Promise<SonamuFile[]> => {
     if (files.length === 0) {
       return [];
     }
 
     const result = await uploadMutation.mutateAsync({ files });
-    return result.files.map((file) => file.url);
+    return result.files;
   };
 
   return <SonamuProvider uploader={uploader}>{children}</SonamuProvider>;

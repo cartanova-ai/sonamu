@@ -66,10 +66,6 @@ export class Template__view_list extends Template {
           return `<>{${colName}}</>`;
         }
       }
-      case "string-image":
-        return `<>{${
-          col.nullable ? `${colName} && ` : ""
-        }<img src={${colName}} alt="${col.label ?? col.name}" className="h-8 w-8 object-cover rounded" />}</>`;
       case "datetime":
         if (col.nullable || col.name.includes(".")) {
           return `<span>{${colName} ? datetimeF(${colName}) : '-'}</span>`;

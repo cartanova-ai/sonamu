@@ -3,27 +3,27 @@
 import { get, set } from "radashi";
 import { useState } from "react";
 import { z } from "zod";
-import { useSonamuContext } from "@/contexts/sonamu-context";
+import { type SonamuFile, useSonamuContext } from "@/contexts/sonamu-context";
 import type { ErrorObj } from "./types";
 
 /**
  * traverseAndUploadFiles
  *
  * 폼 데이터 안에 중첩되어 있는 File 객체들을 재귀적으로 찾아서 업로드하고,
- * File 객체를 업로드된 URL 문자열로 변환하는 헬퍼 함수입니다.
+ * File 객체를 업로드된 SonamuFile 객체로 변환하는 헬퍼 함수입니다.
  *
  * @param value - 검사할 값 (원시값, File, 배열, 객체 등 모든 타입 가능)
- * @param uploader - File 배열을 받아서 업로드된 URL 배열을 반환하는 함수
- * @returns 변환된 값 (File 객체는 URL 문자열로, 나머지는 원본 구조 유지)
+ * @param uploader - File 배열을 받아서 업로드된 SonamuFile 배열을 반환하는 함수
+ * @returns 변환된 값 (File 객체는 SonamuFile 객체로, 나머지는 원본 구조 유지)
  */
 async function traverseAndUploadFiles(
   value: any,
-  uploader: (files: File[]) => Promise<string[]>,
+  uploader: (files: File[]) => Promise<SonamuFile[]>,
 ): Promise<any> {
   // 1. File 객체를 발견한 경우
   if (value instanceof File) {
-    const [url] = await uploader([value]);
-    return url;
+    const [sonamuFile] = await uploader([value]);
+    return sonamuFile;
   }
 
   // 2. 배열을 발견한 경우

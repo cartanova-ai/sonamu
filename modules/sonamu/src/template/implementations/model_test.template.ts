@@ -23,8 +23,8 @@ export class Template__model_test extends Template {
     return {
       ...this.getTargetAndPath(names),
       body: `
+import { bootstrap, test } from "sonamu/test";
 import { describe, expect, vi } from "vitest";
-import { bootstrap, test } from '../../testing/bootstrap';
 
 bootstrap(vi);
 describe.skip("${entityId}ModelTest", () => {
