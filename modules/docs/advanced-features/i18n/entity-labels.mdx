@@ -1,0 +1,159 @@
+---
+title: "Entity 라벨 자동 추출"
+description: "Entity 정의에서 자동으로 추출되는 i18n 라벨"
+---
+
+Sonamu는 Entity 정의에서 라벨을 자동으로 추출하여 `sd.generated.ts`에 포함시킵니다. 이를 통해 Entity 관련 텍스트를 별도로 딕셔너리에 작성할 필요가 없습니다.
+
+## 자동 추출되는 항목
+
+### 1. Entity 타이틀
+
+Entity의 `title` 속성이 `entity.{EntityId}` 키로 추출됩니다:
+
+```json
+// entity.json
+{
+  "id": "User",
+  "title": "사용자",
+  "table": "users",
+  "props": [...]
+}
+```
+
+```typescript
+// sd.generated.ts (자동 생성)
+const entityLabels = {
+  "entity.User": "사용자",
+  // ...
+};
+
+// 사용
+SD("entity.User")  // "사용자"
+```
+
+### 2. Prop 라벨
+
+각 prop의 `desc` 속성이 `entity.{EntityId}.{propName}` 키로 추출됩니다:
+
+```json
+// entity.json
+{
+  "id": "User",
+  "props": [
+    { "name": "id", "type": "integer", "desc": "ID" },
+    { "name": "email", "type": "string", "desc": "이메일" },
+    { "name": "username", "type": "string", "desc": "이름" },
+    { "name": "created_at", "type": "datetime", "desc": "등록일시" }
+  ]
+}
+```
+
+```typescript
+// sd.generated.ts (자동 생성)
+const entityLabels = {
+  "entity.User": "USER",
+  "entity.User.id": "ID",
+  "entity.User.email": "이메일",
+  "entity.User.username": "이름",
+  "entity.User.created_at": "등록일시",
+  // ...
+};
+
+// 사용
+SD("entity.User.email")  // "이메일"
+```
+
+### 3. Enum 라벨
+
+Entity에 정의된 `enumLabels`가 `enum.{EnumId}.{value}` 키로 추출됩니다:
+
+```json
+// entity.json
+{
+  "id": "User",
+  "enums": {
+    "UserRole": ["admin", "normal"]
+  },
+  "enumLabels": {
+    "UserRole": {
+      "admin": "관리자",
+      "normal": "일반"
+    }
+  }
+}
+```
+
+```typescript
+// sd.generated.ts (자동 생성)
+const entityLabels = {
+  "enum.UserRole.admin": "관리자",
+  "enum.UserRole.normal": "일반",
+  // ...
+};
+
+// 사용
+SD("enum.UserRole.admin")  // "관리자"
+SD.enumLabels("UserRole")["admin"]  // "관리자"
+```
+
+### 4. OrderBy / SearchField 라벨
+
+ListParams에서 사용되는 enum들도 자동으로 추출됩니다:
+
+```typescript
+// sd.generated.ts (자동 생성)
+const entityLabels = {
+  "enum.UserOrderBy.id-desc": "ID최신순",
+  "enum.UserSearchField.id": "ID",
+  "enum.UserSearchField.email": "이메일",
+  // ...
+};
+```
+
+## Sonamu UI에서 라벨 편집
+
+Sonamu UI의 Entity 편집 화면에서 직접 라벨을 수정할 수 있습니다:
+
+1. **Entity 타이틀**: Entity 상세 페이지에서 수정
+2. **Prop 라벨**: 각 prop의 `desc` 필드 수정
+3. **Enum 라벨**: Enum 편집 모달에서 수정
+
+수정 후 저장하면 `entity.json`이 업데이트되고, `pnpm sync` 시 `sd.generated.ts`에 반영됩니다.
+
+## 다국어 Entity 라벨
+
+Entity 라벨은 `defaultLocale`에만 저장됩니다. 다른 locale의 번역은 해당 locale의 딕셔너리 파일에 직접 작성합니다:
+
+```typescript
+// en.ts
+import { defineLocale } from "./sd.generated";
+
+export default defineLocale({
+  // Entity 라벨 번역
+  "entity.User": "User",
+  "entity.User.email": "Email",
+  "entity.User.username": "Username",
+  
+  // Enum 라벨 번역
+  "enum.UserRole.admin": "Administrator",
+  "enum.UserRole.normal": "Normal User",
+  
+  // 나머지 프로젝트 딕셔너리
+  "common.save": "Save",
+  // ...
+});
+```
+
+## Excel로 일괄 번역
+
+Sonamu UI의 i18n 관리 페이지에서 Entity 라벨을 포함한 모든 키를 Excel로 export하고, 번역 후 import할 수 있습니다.
+
+<CardGroup cols={2}>
+  <Card title="Excel Import/Export" icon="file-excel" href="/advanced-features/i18n/excel-import">
+    번역 파일 일괄 관리
+  </Card>
+  <Card title="SD 함수 사용법" icon="code" href="/advanced-features/i18n/dictionary">
+    딕셔너리 작성 및 사용
+  </Card>
+</CardGroup>

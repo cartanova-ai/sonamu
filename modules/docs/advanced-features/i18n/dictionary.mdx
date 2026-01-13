@@ -1,0 +1,159 @@
+---
+title: "SD 함수와 딕셔너리"
+description: "타입 안전한 번역 함수 사용법"
+---
+
+## SD 함수 기본 사용법
+
+`SD` (Sonamu Dictionary) 함수는 현재 Context의 locale에 맞는 번역 텍스트를 반환합니다:
+
+```typescript
+import { SD } from "../i18n/sd.generated";
+
+// 단순 문자열
+const saveButton = SD("common.save");  // "저장" (ko) / "Save" (en)
+
+// 함수형 값 (동적 메시지)
+const message = SD("common.results")(42);  // "42개 결과"
+const error = SD("notFound")("User", 123);  // "존재하지 않는 User ID 123"
+```
+
+## 타입 안전성
+
+존재하지 않는 키를 사용하면 컴파일 에러가 발생합니다:
+
+```typescript
+SD("common.save")       // ✅ OK
+SD("common.savee")      // ❌ 컴파일 에러: 'common.savee' 키가 없음
+SD("typo.key")          // ❌ 컴파일 에러
+```
+
+## 특정 Locale 강제 사용
+
+`SD.locale()`을 사용하면 Context와 무관하게 특정 locale의 값을 가져올 수 있습니다:
+
+```typescript
+const EN = SD.locale("en");
+const KO = SD.locale("ko");
+
+EN("common.save")  // "Save" (항상 영어)
+KO("common.save")  // "저장" (항상 한국어)
+
+// 이메일 발송 시 수신자 locale로 전환
+async function sendEmail(userLocale: string, email: string) {
+  const L = SD.locale(userLocale);
+  await mailer.send({
+    to: email,
+    subject: L("email.welcome.subject"),
+    body: L("email.welcome.body"),
+  });
+}
+```
+
+## Enum 라벨 가져오기
+
+`SD.enumLabels()`는 Enum의 모든 값에 대한 라벨을 Proxy로 반환합니다:
+
+```typescript
+// Entity에서 정의된 Enum
+// enumLabels: { UserRole: { admin: "관리자", normal: "일반" } }
+
+const labels = SD.enumLabels("UserRole");
+labels["admin"]   // "관리자"
+labels["normal"]  // "일반"
+
+// Select 컴포넌트에서 사용
+<Select
+  options={Object.entries(UserRole).map(([key, value]) => ({
+    value,
+    label: SD.enumLabels("UserRole")[value],
+  }))}
+/>
+```
+
+## 딕셔너리 작성 패턴
+
+### 키 네이밍 컨벤션
+
+```typescript
+export default {
+  // 도메인.동작 또는 도메인.항목
+  "common.save": "저장",
+  "common.cancel": "취소",
+  
+  // 에러 메시지
+  "error.notFound": "찾을 수 없습니다",
+  "error.unauthorized": "인증이 필요합니다",
+  
+  // 검증 메시지
+  "validation.required": (field: string) => `${field}은(는) 필수입니다`,
+  "validation.email": "올바른 이메일 형식이 아닙니다",
+  
+  // 페이지/기능별
+  "login.title": "로그인",
+  "login.submit": "로그인",
+  "dashboard.welcome": "환영합니다!",
+  
+  // 확인 메시지
+  "confirm.delete": "정말 삭제하시겠습니까?",
+} as const;
+```
+
+### 함수형 값 작성
+
+동적 값이 필요한 경우 화살표 함수를 사용합니다:
+
+```typescript
+export default {
+  // 단순 보간
+  "common.results": (count: number) => `${count}개 결과`,
+  
+  // 여러 파라미터
+  "entity.edit": (name: string, id: number) => `${name} 수정 (#${id})`,
+  
+  // 조건부 텍스트
+  "items.count": (count: number) => 
+    count === 0 ? "항목 없음" : `${count}개 항목`,
+  
+  // 헬퍼 함수 사용
+  "validation.required": (field: string) => `${josa(field, "은는")} 필수입니다`,
+  "validation.range": (field: string, min: number, max: number) => 
+    `${field}은(는) ${format.number(min)}~${format.number(max)} 사이여야 합니다`,
+} as const;
+```
+
+## Model에서 사용
+
+```typescript
+import { SD } from "../i18n/sd.generated";
+
+class UserModelClass extends BaseModelClass {
+  @api({ httpMethod: "GET" })
+  async findById<T extends UserSubsetKey>(subset: T, id: number) {
+    const { rows } = await this.findMany(subset, { id, num: 1, page: 1 });
+    if (!rows[0]) {
+      // i18n된 에러 메시지
+      throw new NotFoundException(SD("notFound")("User", id));
+    }
+    return rows[0];
+  }
+  
+  @api({ httpMethod: "POST" })
+  async register(params: UserRegisterParams) {
+    const existing = await this.findOne("A", { email: params.email });
+    if (existing) {
+      throw new BadRequestException(SD("user.email.duplicate"));
+    }
+    // ...
+  }
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="헬퍼 함수" icon="wand-magic-sparkles" href="/advanced-features/i18n/helpers">
+    josa, plural, format 사용법
+  </Card>
+  <Card title="Entity 라벨" icon="tag" href="/advanced-features/i18n/entity-labels">
+    자동 추출되는 라벨
+  </Card>
+</CardGroup>

@@ -340,6 +340,18 @@
                   "advanced-features/workflows/worker-setup",
                   "advanced-features/workflows/error-handling"
                 ]
+              },
+              {
+                "group": "다국어 (i18n)",
+                "pages": [
+                  "advanced-features/i18n/overview",
+                  "advanced-features/i18n/setup",
+                  "advanced-features/i18n/dictionary",
+                  "advanced-features/i18n/entity-labels",
+                  "advanced-features/i18n/helpers",
+                  "advanced-features/i18n/excel-import",
+                  "advanced-features/i18n/localized-columns"
+                ]
               }
             ]
           },
