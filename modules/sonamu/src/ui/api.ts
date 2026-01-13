@@ -790,16 +790,13 @@ export async function sonamuUIApiPlugin(fastify: FastifyInstance) {
       });
 
       server.get("/api/i18n/export", async (_request, reply) => {
-        const buffer = await sonamuDictionary.exportToExcel();
+        const { filename, buffer } = await sonamuDictionary.exportToExcel();
         reply
           .header(
             "Content-Type",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           )
-          .header(
-            "Content-Disposition",
-            `attachment; filename="i18n-${new Date().toISOString().split("T")[0]}.xlsx"`,
-          )
+          .header("Content-Disposition", `attachment; filename="${filename}"`)
           .send(buffer);
       });
 

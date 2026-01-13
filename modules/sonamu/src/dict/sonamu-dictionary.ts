@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
+import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 import ts from "typescript";
-import * as XLSX from "xlsx";
 import { Sonamu } from "../api/sonamu";
 import { EntityManager } from "../entity/entity-manager";
 import { BadRequestException } from "../exceptions/so-exceptions";
@@ -598,30 +598,94 @@ export class SonamuDictionary {
   /**
    * Excel로 내보내기
    */
-  async exportToExcel(): Promise<Buffer> {
+  async exportToExcel(): Promise<{ filename: string; buffer: ExcelJS.Buffer }> {
     const { rows, locales } = await this.collectDictionary();
 
-    // Excel 데이터 생성 (함수인 경우 value가 이미 원형 전체)
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("i18n");
+
+    // 프로젝트명 (첫 번째 행)
+    const projectName = `${Sonamu.config.projectName ?? "Sonamu"} Dictionary`;
     const headers = ["key", "source", ...locales];
-    const data = [
-      headers,
-      ...rows.map((row) => [row.key, row.source, ...locales.map((locale) => row[locale] ?? "")]),
-    ];
 
-    const worksheet = XLSX.utils.aoa_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "i18n");
+    // 프로젝트명 행 추가
+    const titleRow = worksheet.addRow([projectName]);
+    titleRow.font = { size: 23 };
+    titleRow.alignment = { vertical: "middle", horizontal: "left" };
+    titleRow.height = 28;
 
-    return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+    // 빈 행
+    worksheet.addRow([]);
+
+    // 헤더 행 추가
+    const headerRow = worksheet.addRow(headers);
+    headerRow.font = { bold: true, size: 11 };
+    headerRow.alignment = { horizontal: "center", vertical: "middle" };
+    headerRow.height = 26;
+
+    // 헤더 배경색 적용
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "F1F1F1" },
+      };
+    });
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD0D0D0" } },
+        left: { style: "thin", color: { argb: "FFD0D0D0" } },
+        bottom: { style: "thin", color: { argb: "FFD0D0D0" } },
+        right: { style: "thin", color: { argb: "FFD0D0D0" } },
+      };
+    });
+
+    // 데이터 행 추가
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const values = [row.key, row.source, ...locales.map((locale) => row[locale] ?? "")];
+      const dataRow = worksheet.addRow(values);
+
+      dataRow.height = 24;
+      dataRow.font = { size: 11 };
+      dataRow.alignment = { vertical: "middle", horizontal: "left" };
+    }
+
+    // 셀 너비 계산
+    const MAX_WIDTH = 50;
+    const MIN_WIDTH = 10;
+    const columnWidths: number[] = headers.map((header) => Math.max(header.length, MIN_WIDTH));
+
+    for (const row of rows) {
+      const values = [row.key, row.source, ...locales.map((locale) => row[locale] ?? "")];
+      values.forEach((value, idx) => {
+        const textLength = String(value).length;
+        columnWidths[idx] = Math.min(Math.max(columnWidths[idx], textLength), MAX_WIDTH);
+      });
+    }
+
+    // 컬럼 너비 적용
+    worksheet.columns = columnWidths.map((width) => ({ width: width + 2 }));
+
+    return {
+      filename: `${projectName}-${new Date().toISOString().split("T")[0]}.xlsx`,
+      buffer: await workbook.xlsx.writeBuffer(),
+    };
   }
 
   /**
    * Excel에서 가져오기
+   *
+   * 형식:
+   * - 1행: 프로젝트명
+   * - 2행: 빈 행
+   * - 3행: 헤더 (key, source, locales...)
+   * - 4행 이후: 데이터
    */
   async importFromExcel(buffer: Buffer): Promise<ImportResult> {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(worksheet);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    const worksheet = workbook.worksheets[0];
 
     const { defaultLocale, supportedLocales } = this.getI18nConfig();
     const locales = supportedLocales;
@@ -635,15 +699,52 @@ export class SonamuDictionary {
       projectDictEntries[locale] = [];
     }
 
-    for (const row of jsonData) {
-      const key = row.key;
-      const source = row.source as "entity" | "project";
+    // 헤더 행 찾기: 첫 번째 컬럼이 "key"인 행
+    let headerRowNum = 0;
+    const rowCount = worksheet.rowCount;
+    for (let rowNum = 1; rowNum <= rowCount; rowNum++) {
+      const row = worksheet.getRow(rowNum);
+      const firstCellValue = String(row.getCell(1).value ?? "")
+        .trim()
+        .toLowerCase();
+      if (firstCellValue === "key") {
+        headerRowNum = rowNum;
+        break;
+      }
+    }
+
+    if (headerRowNum === 0) {
+      throw new BadRequestException(
+        "헤더 행을 찾을 수 없습니다. 첫 번째 컬럼이 'key'인 행이 필요합니다.",
+      );
+    }
+
+    const headerRow = worksheet.getRow(headerRowNum);
+    const headers: string[] = [];
+    headerRow.eachCell((cell: ExcelJS.Cell, colNumber: number) => {
+      headers[colNumber - 1] = String(cell.value ?? "");
+    });
+
+    // 데이터 행 읽기 (헤더 다음 행부터)
+    for (let rowNum = headerRowNum + 1; rowNum <= rowCount; rowNum++) {
+      const row = worksheet.getRow(rowNum);
+      const rowData: Record<string, string> = {};
+
+      row.eachCell((cell: ExcelJS.Cell, colNumber: number) => {
+        const headerName = headers[colNumber - 1];
+        if (headerName) {
+          rowData[headerName] = String(cell.value ?? "");
+        }
+      });
+
+      const key = rowData.key;
+      const source = rowData.source as "entity" | "project";
 
       if (!key || !source) continue;
 
       if (source === "entity") {
         // entity source: default locale만 entity.json에 저장
-        const defaultValue = row[defaultLocale];
+        const defaultValue = rowData[defaultLocale];
         if (defaultValue) {
           const updated = await this.updateEntityByKey(key, defaultValue);
           if (updated) {
@@ -654,7 +755,7 @@ export class SonamuDictionary {
         // non-default locale은 project dict에 저장
         for (const locale of locales) {
           if (locale === defaultLocale) continue;
-          const cellValue = row[locale]?.trim();
+          const cellValue = rowData[locale]?.trim();
           if (cellValue) {
             projectDictEntries[locale].push({
               key,
@@ -666,7 +767,7 @@ export class SonamuDictionary {
       } else if (source === "project") {
         // project source: 모든 locale을 project dict에 저장
         for (const locale of locales) {
-          const cellValue = row[locale]?.trim();
+          const cellValue = rowData[locale]?.trim();
           if (cellValue) {
             projectDictEntries[locale].push({
               key,
