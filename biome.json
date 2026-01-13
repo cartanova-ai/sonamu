@@ -43,7 +43,6 @@
       "!**/node_modules",
       "!examples/**/web/src/services/**/*",
       "!modules/create-sonamu/template",
-      "!modules/docs/**/*",
       "!**/*.gen.ts",
       "!**/*.generated.ts",
       "!**/*.generated.tsx"
