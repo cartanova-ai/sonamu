@@ -419,7 +419,6 @@ Sonamu UI의 AI 채팅으로 Entity를 자연어로 생성할 수 있습니다.
 
 <Frame caption="🎬 Sonamu UI에서 AI에게 '이커머스 주문 시스템 만들어줘' 입력 → Entity 4개 자동 생성">
   <video
-    autoPlay
     muted
     loop
     playsInline
@@ -587,7 +586,18 @@ Entity를 정의하고 사용하기까지의 전체 플로우입니다.
 
 ### 1. Entity 정의
 
-<Frame caption="📸 필요: Sonamu UI에서 User Entity를 정의하는 화면"></Frame>
+<Frame caption="🎬 Sonamu UI에서 User Entity를 정의하는 화면">
+  <video
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction7.mp4"
+  ></video>
+</Frame>
 
 ```json
 {
@@ -661,7 +671,17 @@ function RegisterForm() {
 }
 ```
 
-<Frame caption="🎬 필요: 위 전체 플로우를 실제로 시연하는 영상 (30초 타임랩스)"></Frame>
+<Frame caption="🎬 Entity 정의 → Migration → Model 작성 → React에서 사용까지 전체 플로우">
+  <video
+    muted
+    loop
+    playsInline
+    controls
+    className="w-full rounded-xl"
+    preload="metadata"
+    src="https://cf.cartanova.ai/sonamu-docs/introduction1.mp4"
+  ></video>
+</Frame>
 
 ---
 
@@ -706,8 +726,6 @@ pnpm dev
 # Sonamu UI 열기
 open http://localhost:1028/sonamu-ui
 ```
-
-<Frame caption="📸 필요: 터미널에서 pnpm create sonamu 실행 후 프로젝트 생성되는 전체 과정"></Frame>
 
 <CardGroup cols={2}>
   <Card title="Quick Start" icon="rocket" href="/getting-started/quick-start">
