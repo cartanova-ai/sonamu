@@ -10,7 +10,6 @@ Sonamu 앱에 블로그 글이나 매뉴얼을 업로드하는 기능을 만들�
 ```typescript
 class DocumentModelClass extends BaseModel {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());
@@ -87,7 +86,6 @@ const chunks = chunking.chunk("긴 텍스트...");
 ```typescript
 class DocumentModelClass extends BaseModel {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadLongDocument() {
     const { file } = Sonamu.getUploadContext();
     const content = await file.toBuffer().then(b => b.toString());

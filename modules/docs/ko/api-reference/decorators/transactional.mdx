@@ -284,7 +284,6 @@ async findWithRelations(id: number) {
 ### @upload와 함께
 
 ```typescript
-@api({ httpMethod: "POST" })
 @upload()
 @transactional()
 async uploadAvatar() {

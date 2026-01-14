@@ -156,7 +156,6 @@ type UploadContext = {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
   @upload()
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
@@ -184,7 +183,6 @@ class FileModelClass extends BaseModel {
 
 ```typescript
 class FileModelClass extends BaseModel {
-  @api()
   @upload()
   async uploadDocuments(ctx: Context, folderId: number) {
     const { files } = Sonamu.getUploadContext();

@@ -51,7 +51,6 @@ class FileModelClass extends BaseModelClass<
   }
   
   // 단일 파일 업로드
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadSingle(params: {
     file: UploadedFile;
@@ -110,7 +109,6 @@ class FileModelClass extends BaseModelClass<
     super("File", fileSubsetQueries, fileLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadMultiple(params: {
     files: UploadedFile[];
@@ -254,7 +252,6 @@ class FileModelClass extends BaseModelClass<
     super("File", fileSubsetQueries, fileLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadToS3(params: {
     file: UploadedFile;
@@ -270,7 +267,6 @@ class FileModelClass extends BaseModelClass<
     return { url };
   }
   
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadPublic(params: {
     file: UploadedFile;
@@ -335,7 +331,6 @@ class ImageModelClass extends BaseModelClass<
     super("Image", imageSubsetQueries, imageLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadImage(params: {
     image: UploadedFile;
@@ -403,7 +398,6 @@ class UserModelClass extends BaseModelClass<
     super("User", userSubsetQueries, userLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadProfileImage(params: {
     image: UploadedFile;
@@ -493,7 +487,6 @@ class PostModelClass extends BaseModelClass<
     super("Post", postSubsetQueries, postLoaderQueries);
   }
 
-  @api({ httpMethod: "POST" })
   @upload()
   async createWithAttachments(params: {
     title: string;
@@ -677,7 +670,7 @@ export function FileUpload() {
 <Warning>
 **파일 업로드 설정 시 주의사항**:
 1. Fastify multipart 플러그인 필수 등록
-2. `@upload` 데코레이터는 `@api`와 함께 사용
+2. `@upload` 데코레이터는 `@api` 없이 독립적으로 사용
 3. 파일 크기 제한 설정
 4. MIME 타입 검증
 5. Storage 설정 확인

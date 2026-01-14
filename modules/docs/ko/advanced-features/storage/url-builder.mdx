@@ -310,7 +310,6 @@ https://bucket.s3.amazonaws.com/private/doc.pdf?X-Amz-Algorithm=...&X-Amz-Expire
 
 ```typescript
 @upload()
-@api({ httpMethod: 'POST' })
 async uploadPrivateFile() {
   const { file } = Sonamu.getUploadContext();
   

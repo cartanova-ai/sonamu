@@ -40,7 +40,6 @@ Sonamu의 Storage Manager를 사용하여 로컬, S3, GCS 등에 파일을 저�
 import type { UploadedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -59,7 +58,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadToS3(params: {
     file: UploadedFile;
@@ -255,7 +253,6 @@ const signedUrl = await disk.getSignedUrl(key, expiresIn);
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -281,7 +278,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -308,7 +304,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class MediaModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadMedia(params: {
     file: UploadedFile;
@@ -333,7 +328,6 @@ class MediaModel extends BaseModelClass {
 import sharp from "sharp";
 
 class ImageModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadOptimized(params: {
     image: UploadedFile;
@@ -394,7 +388,6 @@ class ImageModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadWithBackup(params: {
     file: UploadedFile;
@@ -502,7 +495,6 @@ import { pipeline } from "stream/promises";
 import fs from "fs";
 
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadLarge(params: {
     file: UploadedFile;
@@ -538,7 +530,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadWithMetadata(params: {
     file: UploadedFile;

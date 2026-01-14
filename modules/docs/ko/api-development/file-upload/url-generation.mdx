@@ -38,7 +38,6 @@ description: "Public URL과 Signed URL"
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;

@@ -137,22 +137,23 @@ async updateProfile(
 
 <Accordion title="파일 업로드 API를 만들려면?">
 
+`@upload` 데코레이터는 `@api` 없이 독립적으로 사용합니다.
+
 **단일 파일:**
 
 ```typescript
-import { api, upload, Sonamu } from "sonamu";
+import { upload, Sonamu } from "sonamu";
 
-@api({ httpMethod: "POST" })
 @upload()
 async uploadAvatar(): Promise<{ url: string; filename: string }> {
   // POST /user/uploadAvatar
   // Content-Type: multipart/form-data
-  
+
   const { file } = Sonamu.getUploadContext();
-  
+
   const key = `avatars/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key);
-  
+
   return { url, filename: file.filename };
 }
 ```
@@ -160,23 +161,22 @@ async uploadAvatar(): Promise<{ url: string; filename: string }> {
 **다중 파일:**
 
 ```typescript
-import { api, upload, Sonamu } from "sonamu";
+import { upload, Sonamu } from "sonamu";
 
-@api({ httpMethod: "POST" })
 @upload()
 async uploadFiles(): Promise<{ files: Array<{ url: string; filename: string }> }> {
   // POST /user/uploadFiles
   // Content-Type: multipart/form-data
-  
+
   const { files } = Sonamu.getUploadContext();
-  
+
   const results = [];
   for (const file of files) {
     const key = `files/${Date.now()}_${file.filename}`;
     const url = await file.saveToDisk(key);
     results.push({ url, filename: file.filename });
   }
-  
+
   return { files: results };
 }
 ```

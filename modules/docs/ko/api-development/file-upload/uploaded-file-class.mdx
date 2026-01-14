@@ -38,7 +38,6 @@ UploadedFile 클래스는 업로드된 파일의 정보를 제공하고, `saveTo
 import type { UploadedFile } from "sonamu";
 
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -77,7 +76,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -100,7 +98,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadToS3(params: {
     file: UploadedFile;
@@ -116,7 +113,6 @@ class FileModel extends BaseModelClass {
     return { url };
   }
   
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadPublic(params: {
     file: UploadedFile;
@@ -140,7 +136,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async processImage(params: {
     image: UploadedFile;
@@ -185,7 +180,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadWithHash(params: {
     file: UploadedFile;
@@ -249,7 +243,6 @@ class FileValidator {
 
 // 사용
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async upload(params: {
     file: UploadedFile;
@@ -285,7 +278,6 @@ class FileValidator {
 
 // 사용
 class ImageModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadImage(params: {
     image: UploadedFile;
@@ -328,7 +320,6 @@ class FileValidator {
 
 // 사용
 class DocumentModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadDocument(params: {
     document: UploadedFile;
@@ -416,7 +407,6 @@ class FileValidator {
 
 // 사용
 class MediaModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadImage(params: {
     image: UploadedFile;
@@ -438,7 +428,6 @@ class MediaModel extends BaseModelClass {
 
 ```typescript
 class UserModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadProfileImage(params: {
     image: UploadedFile;
@@ -508,7 +497,6 @@ class UserModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadMultiple(params: {
     files: UploadedFile[];
@@ -598,7 +586,6 @@ class FileModel extends BaseModelClass {
 
 ```typescript
 class FileModel extends BaseModelClass {
-  @api({ httpMethod: "POST" })
   @upload()
   async uploadAdvanced(params: {
     file: UploadedFile;

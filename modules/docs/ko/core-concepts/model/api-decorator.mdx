@@ -416,26 +416,22 @@ async updateUserAndProfile(
 }
 ```
 
-### @api + @upload
+### @upload (독립 사용)
 
-파일 업로드 API를 만듭니다.
+파일 업로드 API를 만듭니다. `@upload`는 `@api` 없이 독립적으로 사용합니다.
 
 ```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"],
-})
 @upload()
 async uploadAvatar(): Promise<{ url: string }> {
   const { file } = Sonamu.getUploadContext();
-  
+
   if (!file) {
     throw new BadRequestException("파일이 없습니다");
   }
-  
+
   // 파일 처리...
   const url = await saveToS3(file);
-  
+
   return { url };
 }
 ```

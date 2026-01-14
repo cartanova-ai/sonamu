@@ -328,7 +328,6 @@ class FileModelClass extends BaseModel {
 ```typescript
 class UserModelClass extends BaseModel {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadAvatar(ctx: Context) {
     const { file } = Sonamu.getUploadContext();
     
@@ -356,7 +355,6 @@ class UserModelClass extends BaseModel {
 ```typescript
 class PostModelClass extends BaseModel {
   @upload()
-  @api({ httpMethod: 'POST' })
   async uploadImages(postId: number) {
     const { files } = Sonamu.getUploadContext();
     
@@ -377,7 +375,6 @@ class PostModelClass extends BaseModel {
 ```typescript
 class FileModelClass extends BaseModel {
   @upload()
-  @api({ httpMethod: 'POST' })
   async upload(type: 'public' | 'private') {
     const { file } = Sonamu.getUploadContext();
     

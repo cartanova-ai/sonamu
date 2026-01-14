@@ -381,7 +381,6 @@ import type { User, Post } from "@/types";
 ### 증상
 
 ```typescript
-@api()
 @upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
@@ -398,7 +397,6 @@ async uploadFile() {
 ### 해결 방법
 
 ```typescript
-@api()
 @upload()
 async uploadFile() {
   const { file } = Sonamu.getUploadContext();
