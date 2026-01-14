@@ -108,7 +108,7 @@ class DocumentModelClass extends BaseModelClass<
           // content이면 content 컬럼 사용
           return "documents.title_content_embedding" as const;
         }
-        throw new BadRequestException(`Invalid which: ${which}`);
+        throw new BadRequestException(SD("error.document.invalidWhich")(which ?? "undefined"));
       })();
 
       qb.vectorSimilarity(targetColumn, embedding, options);

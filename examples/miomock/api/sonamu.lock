@@ -29,7 +29,7 @@
   },
   {
     "path": "src/application/document/document.model.ts",
-    "checksum": "3c82184f0d1eade6a7cb271002a103bccafe1896"
+    "checksum": "d4547df5fd421c817d039b0bc28e3330c6c97b33"
   },
   {
     "path": "src/application/document/document.types.ts",
@@ -117,11 +117,11 @@
   },
   {
     "path": "src/i18n/en.ts",
-    "checksum": "e77d5c6e466c9b0e0d729c1f6dd811c46e95760f"
+    "checksum": "f489bdd84f2156eaace0632495846c8625c00868"
   },
   {
     "path": "src/i18n/ko.ts",
-    "checksum": "0bbe684e35277444f99918cb813165ea58d38aa6"
+    "checksum": "2af3ca55a769b5aa4aecbf865cbd9a272004145f"
   },
   {
     "path": "src/i18n/sd.generated.ts",

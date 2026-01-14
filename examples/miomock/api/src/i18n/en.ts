@@ -77,6 +77,7 @@ export default defineLocale({
   "enum.TagOrderBy.id-desc": "ID Descending",
   "error.alreadyProcessed": "Already processed",
   "error.badRequest": "Bad Request",
+  "error.document.invalidWhich": (which: string) => `Invalid which value: ${which}`,
   "error.duplicateRow": "Duplicate data",
   "error.forbidden": "Permission denied",
   "error.internalServerError": "Internal server error",

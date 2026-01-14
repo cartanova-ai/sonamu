@@ -42,6 +42,7 @@ export default {
   "entity.listManage": (name: string) => `${name} 목록 관리`,
   "error.alreadyProcessed": "이미 처리되었습니다",
   "error.badRequest": "잘못된 요청입니다",
+  "error.document.invalidWhich": (which: string) => `잘못된 which 값입니다: ${which}`,
   "error.duplicateRow": "중복된 데이터입니다",
   "error.forbidden": "권한이 없습니다",
   "error.internalServerError": "서버 오류가 발생했습니다",

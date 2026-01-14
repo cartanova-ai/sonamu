@@ -4,6 +4,7 @@ import type { EntityJson, EntityProp, TemplateKey, TemplateOptions } from "sonam
 import { Naite, Sonamu, Template } from "sonamu";
 import { bootstrap, test } from "sonamu/test";
 import { beforeAll, beforeEach, describe, expect, vi } from "vitest";
+import { SD } from "../../../../../modules/sonamu/dist/dict/sd";
 import type { EntityNamesRecord } from "../../../../../modules/sonamu/dist/entity/entity-manager";
 import {
   AlreadyProcessedException,
@@ -923,7 +924,7 @@ describe("Syncer", () => {
             title: "Invalid",
             table: "invalid",
           }),
-        ).rejects.toThrowError(new BadRequestException("entityId는 CamelCase 형식이어야 합니다."));
+        ).rejects.toThrowError(new BadRequestException(SD("sonamu.error.entityIdCamelCase")));
       });
 
       // 목적: 소문자로 시작하는 camelCase 형식의 entityId는 BadRequestException이 발생하는지 확인
@@ -934,7 +935,7 @@ describe("Syncer", () => {
             title: "Invalid",
             table: "invalid",
           }),
-        ).rejects.toThrowError(new BadRequestException("entityId는 CamelCase 형식이어야 합니다."));
+        ).rejects.toThrowError(new BadRequestException(SD("sonamu.error.entityIdCamelCase")));
       });
 
       // 목적: kebab-case 형식의 entityId는 BadRequestException이 발생하는지 확인
@@ -945,7 +946,7 @@ describe("Syncer", () => {
             title: "Invalid",
             table: "invalid",
           }),
-        ).rejects.toThrowError(new BadRequestException("entityId는 CamelCase 형식이어야 합니다."));
+        ).rejects.toThrowError(new BadRequestException(SD("sonamu.error.entityIdCamelCase")));
       });
 
       // 목적: 숫자로 시작하는 entityId는 BadRequestException이 발생하는지 확인
@@ -956,7 +957,7 @@ describe("Syncer", () => {
             title: "Invalid",
             table: "invalid",
           }),
-        ).rejects.toThrowError(new BadRequestException("entityId는 CamelCase 형식이어야 합니다."));
+        ).rejects.toThrowError(new BadRequestException(SD("sonamu.error.entityIdCamelCase")));
       });
 
       // 목적: 숫자를 포함하지만 CamelCase 형식을 따르는 entityId는 정상 생성되는지 확인
