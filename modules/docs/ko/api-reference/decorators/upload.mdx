@@ -248,44 +248,26 @@ async uploadToS3() {
 
 ## 다른 데코레이터와 함께 사용
 
-### @api와 함께
-
-```typescript
-@api({
-  httpMethod: "POST",
-  clients: ["axios-multipart"]
-})
-@upload()
-async uploadFile() {
-  // 파일 업로드 API
-}
-```
-
-<Warning>
-`@upload`을 사용하면 `clients` 옵션이 자동으로 설정됩니다.
-</Warning>
-
 ### @transactional과 함께
 
 ```typescript
-@api({ httpMethod: "POST" })
 @upload()
 @transactional()
 async uploadAndSave() {
   const { file } = Sonamu.getUploadContext();
   const wdb = this.getDB("w");
-  
+
   // 파일 저장 + DB 업데이트를 트랜잭션으로
   const key = `documents/${Date.now()}_${file.filename}`;
   const url = await file.saveToDisk(key);
-  
+
   await wdb.table("documents").insert({
     filename: file.filename,
     url,
     size: file.size,
     created_at: new Date()
   });
-  
+
   return { url };
 }
 ```
@@ -492,17 +474,17 @@ async uploadAndResizeImage() {
 
 ## 제약사항
 
-### 1. @api와 함께 사용 필요
+### 1. @api 데코레이터 없이 독립 사용
 
-`@upload`는 `@api` 없이도 동작하지만, 함께 사용하는 것을 권장합니다:
+`@upload`는 `@api` 데코레이터 없이 독립적으로 사용합니다:
 
 ```typescript
-// ✅ 권장
-@api({ httpMethod: "POST" })
+// ✅ 올바른 사용법
 @upload()
 async uploadFile() {}
 
-// ⚠️ 동작하지만 권장하지 않음
+// ❌ 잘못된 사용법 - @api와 함께 사용하지 않음
+@api({ httpMethod: "POST" })
 @upload()
 async uploadFile() {}
 ```
@@ -510,14 +492,6 @@ async uploadFile() {}
 ### 2. httpMethod는 POST
 
 `@upload`를 사용하면 자동으로 `httpMethod: "POST"`가 설정됩니다.
-
-```typescript
-@api({ httpMethod: "GET" })  // 무시됨
-@upload()
-async uploadFile() {
-  // POST로 동작함
-}
-```
 
 ### 3. clients 자동 설정
 
@@ -548,7 +522,6 @@ async uploadFile() {
   <Tab title="프로필 이미지" icon="user-circle">
     ```typescript
     class UserModelClass extends BaseModelClass {
-      @api({ httpMethod: "POST" })
       @upload()
       @transactional()
       async uploadAvatar() {
@@ -592,7 +565,6 @@ async uploadFile() {
   <Tab title="여러 파일 업로드" icon="images">
     ```typescript
     class DocumentModelClass extends BaseModelClass {
-      @api({ httpMethod: "POST" })
       @upload()
       @transactional()
       async uploadDocuments(projectId: number) {
@@ -645,7 +617,6 @@ async uploadFile() {
     import Papa from "papaparse";
 
     class ImportModelClass extends BaseModelClass {
-      @api({ httpMethod: "POST" })
       @upload()
       @transactional()
       async importUsers() {
@@ -703,7 +674,6 @@ async uploadFile() {
   <Tab title="MD5 해시 기반 저장" icon="hashtag">
     ```typescript
     class FileModelClass extends BaseModelClass {
-      @api({ httpMethod: "POST" })
       @upload()
       async uploadWithDeduplication() {
         const { files } = Sonamu.getUploadContext();
